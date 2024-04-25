@@ -21,19 +21,15 @@ lib_LTLIBRARIES = libdcautil.la
 libdcautil_la_SOURCES = dcautil.c dca.c dcalist.c legacyutils.c dcaproc.c dcajson.c rdk_linkedlist.c
 libdcautil_la_CFLAGS =
 libdcautil_la_LDFLAGS = -shared -fPIC -lcjson
-libdcautil_la_CFLAGS += $(DBUS_CFLAGS) -DUSE_TR181_CCSP_MESSAGEBUS
-libdcautil_la_LDFLAGS += $(DBUS_LIBS)
+libdcautil_la_CFLAGS += -DUSE_TR181_CCSP_MESSAGEBUS
 
 libdcautil_la_LIBADD = ${top_builddir}/source/ccspinterface/libccspinterface.la ${top_builddir}/source/utils/libt2utils.la
 
-libdcautil_la_CFLAGS += -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \
-                                -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/dbus-1.0/include \
-				-I${PKG_CONFIG_SYSROOT_DIR}$(includedir) \
+libdcautil_la_CFLAGS += -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir) \
 				-I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/rbus \
                                 -I${top_srcdir}/include \
                                 -I${top_srcdir}/source/ccspinterface \
                                 -I${top_srcdir}/source/utils \
                                 -I${top_srcdir}/source/bulkdata \
                                 -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ccsp
-
 libdcautil_la_DEPENDENCIES = ${top_builddir}/source/ccspinterface/libccspinterface.la ${top_builddir}/source/utils/libt2utils.la

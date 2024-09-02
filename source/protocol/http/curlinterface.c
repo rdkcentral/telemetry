@@ -37,13 +37,17 @@
 #include "t2MtlsUtils.h"
 #include "t2log_wrapper.h"
 #include "busInterface.h"
+#ifdef LIBRDKCERTSEL_BUILD
+#include "rdkcertselector.h"
+#define FILESCHEME "file://"
+#endif
 #ifdef LIBRDKCONFIG_BUILD
 #include "rdkconfig.h"
 #endif
 
 extern sigset_t blocking_signal;
 
-typedef struct 
+typedef struct
 {
     bool curlStatus;
     CURLcode curlResponse;
@@ -52,6 +56,10 @@ typedef struct
     int lineNumber;
 
 } childResponse ;
+
+#ifdef LIBRDKCERTSEL_BUILD
+static rdkcertselector_h curlCertSelector = NULL;
+#endif
 
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
 
@@ -81,7 +89,7 @@ static size_t writeToFile(void *ptr, size_t size, size_t nmemb, void *stream) {
 
 static T2ERROR setHeader(CURL *curl, const char* destURL, struct curl_slist **headerList,childResponse *childCurlResponse)
 {
-    
+
     //T2Debug("%s ++in\n", __FUNCTION__);
     if(curl == NULL || destURL == NULL)
     {
@@ -161,15 +169,17 @@ static T2ERROR setHeader(CURL *curl, const char* destURL, struct curl_slist **he
 static T2ERROR setMtlsHeaders(CURL *curl, const char* certFile, const char* pPasswd, childResponse *childCurlResponse) {
     if(curl == NULL || certFile == NULL || pPasswd == NULL){
         childCurlResponse->lineNumber = __LINE__;
-	return T2ERROR_FAILURE;  
+	return T2ERROR_FAILURE;
     }
     CURLcode code = CURLE_OK;
+#ifndef LIBRDKCERTSEL_BUILD
     code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
     if(code != CURLE_OK) {
         childCurlResponse->curlSetopCode = code;
         childCurlResponse->lineNumber = __LINE__;
 	    return T2ERROR_FAILURE;
     }
+#endif
     code = curl_easy_setopt(curl, CURLOPT_SSLCERTTYPE, "P12");
     if(code != CURLE_OK) {
         childCurlResponse->curlSetopCode = code;
@@ -224,15 +234,42 @@ static T2ERROR setPayload(CURL *curl, const char* payload, childResponse *childC
     childCurlResponse->lineNumber = __LINE__;
     return T2ERROR_SUCCESS;
 }
-
-
+#ifdef LIBRDKCERTSEL_BUILD
+void curlCertSelectorFree()
+{
+    rdkcertselector_free(&curlCertSelector);
+    if(curlCertSelector == NULL){
+        T2Info("%s, T2:Cert selector memory free\n", __func__);
+    }else{
+        T2Info("%s, T2:Cert selector memory free failed\n", __func__);
+    }
+}
+static void curlCertSelectorInit()
+{
+    if(curlCertSelector == NULL)
+    {
+        curlCertSelector = rdkcertselector_new( NULL, NULL, "MTLS" );
+        if(curlCertSelector == NULL){
+            T2Error("%s, T2:Cert selector initialization failed\n", __func__);
+        }else{
+            T2Info("%s, T2:Cert selector initialization successfully\n", __func__);
+        }
+    }
+}
+#endif    
 T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid) {
     CURL *curl = NULL;
     FILE *fp = NULL;
-    CURLcode res, code = CURLE_OK;
+    CURLcode code = CURLE_OK;
     T2ERROR ret = T2ERROR_FAILURE;
     childResponse childCurlResponse = {0};
     struct curl_slist *headerList = NULL;
+    CURLcode curl_code = CURLE_OK;
+#ifdef LIBRDKCERTSEL_BUILD
+    rdkcertselectorStatus_t curlGetCertStatus;
+    char *pCertURI = NULL;
+    char *pEngine=NULL;
+#endif
     char *pCertFile = NULL;
     char *pKeyFile = NULL;
 #ifdef LIBRDKCONFIG_BUILD
@@ -253,6 +290,9 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid) {
         T2Debug("%s --out\n", __FUNCTION__);
         return ret;
     }
+#ifdef LIBRDKCERTSEL_BUILD
+    curlCertSelectorInit();
+#endif
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
 
 #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
@@ -273,6 +313,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid) {
  #endif
  #endif
     mtls_enable = isMtlsEnabled();
+#ifndef LIBRDKCERTSEL_BUILD
     if(mtls_enable == true && T2ERROR_SUCCESS != getMtlsCerts(&pCertFile, &pKeyFile)){
         T2Error("mTLS_cert get failed\n");
         if(NULL != pCertFile)
@@ -289,13 +330,14 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid) {
         }
         return ret;
     }
-
+#endif
     // Block the userdefined signal handlers before fork
     pthread_sigmask(SIG_BLOCK,&blocking_signal,NULL);
     if((childPid = fork()) < 0) {
         T2Error("Failed to fork !!! exiting...\n");
         // Unblock the userdefined signal handler
-	if(NULL != pCertFile)
+#ifndef LIBRDKCERTSEL_BUILD
+        if(NULL != pCertFile)
             free(pCertFile);
         if(NULL != pKeyFile){
           #ifdef LIBRDKCONFIG_BUILD
@@ -307,6 +349,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid) {
             free(pKeyFile);
           #endif
         }
+#endif
         pthread_sigmask(SIG_UNBLOCK,&blocking_signal,NULL);
         T2Debug("%s --out\n", __FUNCTION__);
         return T2ERROR_FAILURE;
@@ -318,60 +361,87 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid) {
      * Forking the libcurl calls so that it executes and terminates to release memory per execution.
      */
     if(childPid == 0) {
-
         curl = curl_easy_init();
-        if(curl) {
+        if(curl){
             childCurlResponse.curlStatus = true;
             if(setHeader(curl, httpUrl, &headerList, &childCurlResponse) != T2ERROR_SUCCESS) {
                 curl_easy_cleanup(curl);
                 goto child_cleanReturn;
             }
-
-            if((mtls_enable == true) && (setMtlsHeaders(curl, pCertFile, pKeyFile, &childCurlResponse)!= T2ERROR_SUCCESS)) {
-                curl_easy_cleanup(curl); // CID 189985: Resource leak
-                goto child_cleanReturn;
-            }
-
             if (setPayload(curl, payload, &childCurlResponse)!= T2ERROR_SUCCESS){
                 curl_easy_cleanup(curl); // CID 189985: Resource leak
                 goto child_cleanReturn;
             }
-
-            pthread_once(&curlFileMutexOnce, sendOverHTTPInit);
-            pthread_mutex_lock(&curlFileMutex);
-
-            fp = fopen(CURL_OUTPUT_FILE, "wb");
-            if(fp) {
-                /* CID 143029 Unchecked return value from library */
-                code = curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)fp);
-                if(code != CURLE_OK) {
-                    // This might not be working we need to review this
-                    childCurlResponse.curlSetopCode = code;
-                }
-                res = curl_easy_perform(curl);
-                curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-                if(res != CURLE_OK || http_code != 200) {
-                    fprintf(stderr, "curl failed: %s\n", curl_easy_strerror(res));
-                    childCurlResponse.lineNumber = __LINE__;
-                }else {
-                    childCurlResponse.lineNumber = __LINE__;
-                    
-                }
-                childCurlResponse.curlResponse = res;
-                childCurlResponse.http_code = http_code;
-
-                fclose(fp);
+#ifdef LIBRDKCERTSEL_BUILD
+            pEngine= rdkcertselector_getEngine(curlCertSelector);
+            if(pEngine != NULL){
+                code = curl_easy_setopt(curl, CURLOPT_SSLENGINE, pEngine);
+            }else{
+                code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
             }
-            curl_slist_free_all(headerList);
-            curl_easy_cleanup(curl);
+            if(code != CURLE_OK) {
+                curl_easy_cleanup(curl);
+                goto child_cleanReturn;
+            }
+            do{
+                pCertFile = NULL;
+                pKeyFile = NULL;
+                pCertURI = NULL;
+                curlGetCertStatus= rdkcertselector_getCert(curlCertSelector, &pCertURI, &pKeyFile);              
+                if(curlGetCertStatus != certselectorOk)
+                {
+                    T2Error("%s, T2:Failed to retrieve the certificate.\n", __func__);
+                    curlCertSelectorFree();
+                    curl_easy_cleanup(curl);
+                    goto child_cleanReturn;
+                }else{
+                    // skip past file scheme in URI
+                    pCertFile = pCertURI;
+                    if ( strncmp( pCertFile, FILESCHEME, sizeof(FILESCHEME)-1 ) == 0 ) {
+                        pCertFile += (sizeof(FILESCHEME)-1);
+                    }
+#endif
+                    if((mtls_enable == true) && (setMtlsHeaders(curl, pCertFile, pKeyFile, &childCurlResponse)!= T2ERROR_SUCCESS)) {
+                        curl_easy_cleanup(curl); // CID 189985: Resource leak
+                        goto child_cleanReturn;
+                    }
+                    pthread_once(&curlFileMutexOnce, sendOverHTTPInit);
+                    pthread_mutex_lock(&curlFileMutex);
 
-            pthread_mutex_unlock(&curlFileMutex);
+                    fp = fopen(CURL_OUTPUT_FILE, "wb");
+                    if(fp) {
+                        /* CID 143029 Unchecked return value from library */
+                        code = curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)fp);
+                        if(code != CURLE_OK) {
+                            // This might not be working we need to review this
+                            childCurlResponse.curlSetopCode = code;
+                        }
+                        curl_code = curl_easy_perform(curl);
+                        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+                        if(curl_code != CURLE_OK || http_code != 200) {
+                            fprintf(stderr, "curl failed: %s\n", curl_easy_strerror(curl_code));
+                            childCurlResponse.lineNumber = __LINE__;
+                        }else {
+                            childCurlResponse.lineNumber = __LINE__;
+                        }
+                        childCurlResponse.curlResponse = curl_code;
+                        childCurlResponse.http_code = http_code;
+
+                        fclose(fp);
+                    }
+                    curl_slist_free_all(headerList);
+                    pthread_mutex_unlock(&curlFileMutex);
+#ifdef LIBRDKCERTSEL_BUILD
+                }
+            }while(rdkcertselector_setCurlStatus(curlCertSelector, curl_code, (const char*)httpUrl) == TRY_ANOTHER);
+#endif
+            curl_easy_cleanup(curl);
         }else {
             childCurlResponse.curlStatus = false;
         }
 
         child_cleanReturn :
-
+#ifndef LIBRDKCERTSEL_BUILD
         if(NULL != pCertFile)
             free(pCertFile);
 
@@ -385,7 +455,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid) {
             free(pKeyFile);
           #endif
         }
-
+#endif
         close(sharedPipeFds[0]);
         if( -1 == write(sharedPipeFds[1], &childCurlResponse, sizeof(childResponse))){
             fprintf(stderr, "unable to write to shared pipe from pid : %d \n", getpid());
@@ -395,7 +465,6 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid) {
         exit(0);
 
     }else {
-
         T2ERROR ret = T2ERROR_FAILURE;
         if(outForkedPid){
             *outForkedPid = childPid ;
@@ -414,7 +483,8 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid) {
         if ( -1 == close(sharedPipeFds[0])){
             T2Error("Failed in close the pipe\n");
         }
-	if(NULL != pCertFile)
+#ifndef LIBRDKCERTSEL_BUILD
+        if(NULL != pCertFile)
             free(pCertFile);
         if(NULL != pKeyFile){
           #ifdef LIBRDKCONFIG_BUILD
@@ -426,6 +496,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid) {
             free(pKeyFile);
           #endif
         }
+#endif
         T2Info("The return status from the child with pid %d is CurlStatus : %d\n",childPid, childCurlResponse.curlStatus);
         //if(childCurlResponse.curlStatus == CURLE_OK) commenting this as we are observing childCurlResponse.curlStatus as 1, from line with CID 143029 Unchecked return value from library
         T2Info("The return status from the child with pid %d SetopCode: %s; ResponseCode : %s; HTTP_CODE : %ld; Line Number : %d \n", childPid, curl_easy_strerror(childCurlResponse.curlSetopCode), curl_easy_strerror(childCurlResponse.curlResponse), childCurlResponse.http_code, childCurlResponse.lineNumber);

@@ -271,7 +271,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid) {
     char *pEngine=NULL;
 #endif
     char *pCertFile = NULL;
-    char *pKeyFile = NULL;
+    char *pCertPC = NULL;
 #ifdef LIBRDKCONFIG_BUILD
     size_t sKey = 0;
 #endif
@@ -314,18 +314,18 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid) {
  #endif
     mtls_enable = isMtlsEnabled();
 #ifndef LIBRDKCERTSEL_BUILD
-    if(mtls_enable == true && T2ERROR_SUCCESS != getMtlsCerts(&pCertFile, &pKeyFile)){
+    if(mtls_enable == true && T2ERROR_SUCCESS != getMtlsCerts(&pCertFile, &pCertPC)){
         T2Error("mTLS_cert get failed\n");
         if(NULL != pCertFile)
             free(pCertFile);
-        if(NULL != pKeyFile){
+        if(NULL != pCertPC){
           #ifdef LIBRDKCONFIG_BUILD
-            sKey = strlen(pKeyFile);
-            if (rdkconfig_free((unsigned char**)&pKeyFile, sKey) == RDKCONFIG_FAIL) {
+            sKey = strlen(pCertPC);
+            if (rdkconfig_free((unsigned char**)&pCertPC, sKey) == RDKCONFIG_FAIL) {
                 return T2ERROR_FAILURE;
             }
           #else
-            free(pKeyFile);
+            free(pCertPC);
           #endif
         }
         return ret;
@@ -339,14 +339,14 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid) {
 #ifndef LIBRDKCERTSEL_BUILD
         if(NULL != pCertFile)
             free(pCertFile);
-        if(NULL != pKeyFile){
+        if(NULL != pCertPC){
           #ifdef LIBRDKCONFIG_BUILD
-            sKey = strlen(pKeyFile);
-            if (rdkconfig_free((unsigned char**)&pKeyFile, sKey) == RDKCONFIG_FAIL) {
+            sKey = strlen(pCertPC);
+            if (rdkconfig_free((unsigned char**)&pCertPC, sKey) == RDKCONFIG_FAIL) {
                 return T2ERROR_FAILURE;
             }
           #else
-            free(pKeyFile);
+            free(pCertPC);
           #endif
         }
 #endif
@@ -385,9 +385,9 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid) {
             }
             do{
                 pCertFile = NULL;
-                pKeyFile = NULL;
+                pCertPC = NULL;
                 pCertURI = NULL;
-                curlGetCertStatus= rdkcertselector_getCert(curlCertSelector, &pCertURI, &pKeyFile);              
+                curlGetCertStatus= rdkcertselector_getCert(curlCertSelector, &pCertURI, &pCertPC);
                 if(curlGetCertStatus != certselectorOk)
                 {
                     T2Error("%s, T2:Failed to retrieve the certificate.\n", __func__);
@@ -401,7 +401,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid) {
                         pCertFile += (sizeof(FILESCHEME)-1);
                     }
 #endif
-                    if((mtls_enable == true) && (setMtlsHeaders(curl, pCertFile, pKeyFile, &childCurlResponse)!= T2ERROR_SUCCESS)) {
+                    if((mtls_enable == true) && (setMtlsHeaders(curl, pCertFile, pCertPC, &childCurlResponse)!= T2ERROR_SUCCESS)) {
                         curl_easy_cleanup(curl); // CID 189985: Resource leak
                         goto child_cleanReturn;
                     }
@@ -419,6 +419,9 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid) {
                         curl_code = curl_easy_perform(curl);
                         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
                         if(curl_code != CURLE_OK || http_code != 200) {
+                        #ifdef LIBRDKCERTSEL_BUILD
+                            T2Info("%s: Using xpki Certs connection certname: %s\n", __func__, pCertFile);
+                        #endif
                             fprintf(stderr, "curl failed: %s\n", curl_easy_strerror(curl_code));
                             childCurlResponse.lineNumber = __LINE__;
                         }else {
@@ -429,12 +432,12 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid) {
 
                         fclose(fp);
                     }
-                    curl_slist_free_all(headerList);
                     pthread_mutex_unlock(&curlFileMutex);
 #ifdef LIBRDKCERTSEL_BUILD
                 }
             }while(rdkcertselector_setCurlStatus(curlCertSelector, curl_code, (const char*)httpUrl) == TRY_ANOTHER);
 #endif
+            curl_slist_free_all(headerList);
             curl_easy_cleanup(curl);
         }else {
             childCurlResponse.curlStatus = false;
@@ -445,14 +448,14 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid) {
         if(NULL != pCertFile)
             free(pCertFile);
 
-        if(NULL != pKeyFile){
+        if(NULL != pCertPC){
           #ifdef LIBRDKCONFIG_BUILD
-            sKey = strlen(pKeyFile);
-            if (rdkconfig_free((unsigned char**)&pKeyFile, sKey) == RDKCONFIG_FAIL) {
+            sKey = strlen(pCertPC);
+            if (rdkconfig_free((unsigned char**)&pCertPC, sKey) == RDKCONFIG_FAIL) {
                 return T2ERROR_FAILURE;
             }
           #else
-            free(pKeyFile);
+            free(pCertPC);
           #endif
         }
 #endif
@@ -486,14 +489,14 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid) {
 #ifndef LIBRDKCERTSEL_BUILD
         if(NULL != pCertFile)
             free(pCertFile);
-        if(NULL != pKeyFile){
+        if(NULL != pCertPC){
           #ifdef LIBRDKCONFIG_BUILD
-            sKey = strlen(pKeyFile);
-            if (rdkconfig_free((unsigned char**)&pKeyFile, sKey) == RDKCONFIG_FAIL) {
+            sKey = strlen(pCertPC);
+            if (rdkconfig_free((unsigned char**)&pCertPC, sKey) == RDKCONFIG_FAIL) {
                 return T2ERROR_FAILURE;
             }
           #else
-            free(pKeyFile);
+            free(pCertPC);
           #endif
         }
 #endif

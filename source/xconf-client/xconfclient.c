@@ -603,7 +603,7 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
 
 #endif
             if(mtls_enable == true) {
-#ifdef LIBRDKCERTSEL_BUILD    
+#ifdef LIBRDKCERTSEL_BUILD
                 pEngine= rdkcertselector_getEngine(xcCertSelector);
                 if(pEngine!=NULL){
                     code = curl_easy_setopt(curl, CURLOPT_SSLENGINE, pEngine);
@@ -655,6 +655,10 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
                     }
                     curl_code = curl_easy_perform(curl);
 #ifdef LIBRDKCERTSEL_BUILD
+                        if(curl_code != CURLE_OK){
+                            T2Info("%s: Using xpki Certs connection certname : %s \n", __FUNCTION__, pCertFile);
+                            T2Error("Curl failed : %d \n", curl_code);
+                        }
                     }
                 }while(rdkcertselector_setCurlStatus(xcCertSelector, curl_code, (const char*)httpsUrl) == TRY_ANOTHER);
 #else

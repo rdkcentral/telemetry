@@ -1,0 +1,38 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://github.comcast.com/cfry002/telemetry2/schemas/t2_allProfilesSchema.schema.json",
+    "title":"Telemetry 2.0 Report Profiles Set",
+    "version": "2.0.2",
+    "type": "object",
+    "description": "The Telemetry 2.0 Report Profiles Set is the full set of profiles that are to be active on the device.  Each \"profile\" within the array defines a single Telemetry 2.0 Report Profile, where the \"value\" is the content of a single Profile.",
+  
+    "definitions": {
+        "profile": {
+            "type":  "object",
+            "title": "Profile Properties",
+            "properties": {
+                "name":           { "type": "string", "title":"name", "description": "Name of the Profile.  This is value is accessible from within the Report Profile as dataModel parameter \"Profile.Name\"."},
+                "versionHash":    { "type": "string", "title":"versionHash", "description": "Unique value that is expected to change when anything within the Report Profile is changed." },
+                "value":          { "type": "object", "title":"value", "description": "The JSON representing this Report Profile." }
+            },
+            "required": ["name", "versionHash", "value"]
+        }
+    },
+
+        "properties": {
+            "profiles": { 
+                "title": "profiles",
+                "type":"array",
+                "items": {
+                    "type":"object",
+                    "title":"profile items",
+                    "oneOf": [
+                        { "$ref": "#/definitions/profile" }
+                        ]
+                }
+            }
+        },
+    "required": ["profiles"]
+
+}
+

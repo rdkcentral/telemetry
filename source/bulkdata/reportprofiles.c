@@ -187,6 +187,10 @@ int tele_web_config_init()
 void ReportProfiles_Interrupt()
 {
     T2Debug("%s ++in\n", __FUNCTION__);
+    
+    // Interrupt the multi profile first as the DCADONE Flag is added from the xconf
+    sendLogUploadInterruptToScheduler();
+    
     char* xconfProfileName = NULL ;
     if (ProfileXConf_isSet()) {
         xconfProfileName = ProfileXconf_getName();
@@ -196,7 +200,6 @@ void ReportProfiles_Interrupt()
         }
     }
 
-    sendLogUploadInterruptToScheduler();
     T2Debug("%s --out\n", __FUNCTION__);
 }
 

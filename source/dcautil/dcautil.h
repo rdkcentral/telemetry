@@ -25,6 +25,7 @@
 #include "vector.h"
 
 #define TOPTEMP "/tmp/.t2toplog"
+#define DCADONEFLAG "/tmp/.dca_done"
 
 typedef struct _GrepResult
 {
@@ -68,4 +69,6 @@ int getMemInfo(procMemCpuInfo *pmInfo);
 int getCPUInfo(procMemCpuInfo *pInfo);
 int getProcPidStat(int pid, procinfo * pinfo);
 int getTotalCpuTimes(int * totalTime);
+
+void dcaFlagReportCompleation();
 #endif /* _DCAUTIL_H_ */

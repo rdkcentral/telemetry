@@ -1,0 +1,48 @@
+{
+    "urn:settings:GroupName": "Generic",
+    "urn:settings:CheckOnReboot": false,
+    "urn:settings:TimeZoneMode": "UTC",
+    "urn:settings:CheckSchedule:cron": "37 5 * * *",
+    "urn:settings:CheckSchedule:DurationMinutes": 300,
+    "urn:settings:LogUploadSettings:Message": null,
+    "urn:settings:LogUploadSettings:Name": "Generic",
+    "urn:settings:LogUploadSettings:NumberOfDays": 0,
+    "urn:settings:LogUploadSettings:UploadRepositoryName": "S3",
+    "urn:settings:LogUploadSettings:UploadRepository:URL": "https://secure.s3.bucket.test.url",
+    "urn:settings:LogUploadSettings:UploadRepository:uploadProtocol": "HTTP",
+    "urn:settings:LogUploadSettings:UploadOnReboot": false,
+    "urn:settings:LogUploadSettings:UploadImmediately": false,
+    "urn:settings:LogUploadSettings:upload": true,
+    "urn:settings:LogUploadSettings:UploadSchedule:cron": "36 6 * * *",
+    "urn:settings:LogUploadSettings:UploadSchedule:levelone:cron": null,
+    "urn:settings:LogUploadSettings:UploadSchedule:leveltwo:cron": null,
+    "urn:settings:LogUploadSettings:UploadSchedule:levelthree:cron": null,
+    "urn:settings:LogUploadSettings:UploadSchedule:TimeZoneMode": "UTC",
+    "urn:settings:LogUploadSettings:UploadSchedule:DurationMinutes": 240,
+    "urn:settings:VODSettings:Name": null,
+    "urn:settings:VODSettings:LocationsURL": null,
+    "urn:settings:VODSettings:SRMIPList": null,
+    "urn:settings:TelemetryProfile": {
+        "@type": "PermanentTelemetryProfile",
+        "id": "9e9fce57-8053-423e-a647-a537ca8b7899",
+        "telemetryProfile": [
+            {
+                "header": "SYS_GREP_TEST",
+                "content": "This is Test Log",
+                "type": "test.log",
+                "pollingFrequency": "0"
+            },
+            {
+                "header": "SYS_EVENT_TEST",
+                "content": "generic",
+                "type": "<event>",
+                "pollingFrequency": "0"
+            }
+        ],
+        "schedule": "*/1 * * * *",
+        "expires": 0,
+        "telemetryProfile:name": "NEW TEST PROFILE",
+        "uploadRepository:URL": "https://mockxconf:50051/dataLakeMockXconf",
+        "uploadRepository:uploadProtocol": "HTTP"
+    }
+}

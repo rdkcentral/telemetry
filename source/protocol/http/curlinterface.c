@@ -1,0 +1,460 @@
+/*
+ * If not stated otherwise in this file or this component's LICENSE file the
+ * following copyright and licenses apply:
+ *
+ * Copyright 2019 RDK Management
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+*/
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include <net/if.h>
+#include <netdb.h>
+#include <string.h>
+#include <ifaddrs.h>
+#include <stdbool.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <curl/curl.h>
+#include <signal.h>
+
+#include "curlinterface.h"
+#include "reportprofiles.h"
+#include "t2MtlsUtils.h"
+#include "t2log_wrapper.h"
+#include "busInterface.h"
+#ifdef LIBRDKCONFIG_BUILD
+#include "rdkconfig.h"
+#endif
+
+extern sigset_t blocking_signal;
+
+typedef struct 
+{
+    bool curlStatus;
+    CURLcode curlResponse;
+    CURLcode curlSetopCode;
+    long http_code;
+    int lineNumber;
+
+} childResponse ;
+
+#if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
+
+#if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
+   static char waninterface[256];
+#endif
+#endif
+static pthread_once_t curlFileMutexOnce = PTHREAD_ONCE_INIT;
+static pthread_mutex_t curlFileMutex;
+
+typedef enum _ADDRESS_TYPE
+{
+    ADDR_UNKNOWN,
+    ADDR_IPV4,
+    ADDR_IPV6
+}ADDRESS_TYPE;
+
+static void sendOverHTTPInit(){
+    pthread_mutex_init(&curlFileMutex, NULL);
+}
+
+
+static size_t writeToFile(void *ptr, size_t size, size_t nmemb, void *stream) {
+    size_t written = fwrite(ptr, size, nmemb, (FILE *) stream);
+    return written;
+}
+
+static T2ERROR setHeader(CURL *curl, const char* destURL, struct curl_slist **headerList,childResponse *childCurlResponse)
+{
+    
+    //T2Debug("%s ++in\n", __FUNCTION__);
+    if(curl == NULL || destURL == NULL)
+    {
+        childCurlResponse->lineNumber = __LINE__;
+        return T2ERROR_FAILURE;
+    }
+
+    //T2Debug("%s DEST URL %s \n", __FUNCTION__, destURL);
+    CURLcode code=CURLE_OK;
+    code = curl_easy_setopt(curl, CURLOPT_URL, destURL);
+    if(code != CURLE_OK){
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+        return T2ERROR_FAILURE;
+    }
+    code = curl_easy_setopt(curl, CURLOPT_SSLVERSION, TLSVERSION);
+    if(code != CURLE_OK){
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+        return T2ERROR_FAILURE;
+    }
+    code = curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, HTTP_METHOD);
+    if(code != CURLE_OK){
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+        return T2ERROR_FAILURE;
+    }
+    code = curl_easy_setopt(curl, CURLOPT_TIMEOUT, TIMEOUT);
+    if(code != CURLE_OK){
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+        return T2ERROR_FAILURE;
+    }
+
+#if defined(ENABLE_RDKB_SUPPORT) && !defined(_WNXL11BWL_PRODUCT_REQ_)
+
+#if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
+    code = curl_easy_setopt(curl, CURLOPT_INTERFACE, waninterface);
+    if(code != CURLE_OK) {
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+        return T2ERROR_FAILURE;
+    }
+#else
+     /* CID 125287: Unchecked return value from library */
+    code = curl_easy_setopt(curl, CURLOPT_INTERFACE, INTERFACE);
+    if(code != CURLE_OK){
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+        return T2ERROR_FAILURE;
+    }
+
+#endif
+#endif
+    *headerList = curl_slist_append(NULL, "Accept: application/json");
+    curl_slist_append(*headerList, "Content-type: application/json");
+
+    code = curl_easy_setopt(curl, CURLOPT_HTTPHEADER, *headerList);
+    if(code != CURLE_OK){
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+	return T2ERROR_FAILURE;
+    }
+
+    code = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeToFile);
+    if(code != CURLE_OK){
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+	return T2ERROR_FAILURE;
+    }
+    childCurlResponse->curlSetopCode = code;
+    childCurlResponse->lineNumber = __LINE__;
+    //T2Debug("%s --out\n", __FUNCTION__);
+    return T2ERROR_SUCCESS;
+}
+
+static T2ERROR setMtlsHeaders(CURL *curl, const char* certFile, const char* pPasswd, childResponse *childCurlResponse) {
+    if(curl == NULL || certFile == NULL || pPasswd == NULL){
+        childCurlResponse->lineNumber = __LINE__;
+	return T2ERROR_FAILURE;  
+    }
+    CURLcode code = CURLE_OK;
+    code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
+    if(code != CURLE_OK) {
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+	    return T2ERROR_FAILURE;
+    }
+    code = curl_easy_setopt(curl, CURLOPT_SSLCERTTYPE, "P12");
+    if(code != CURLE_OK) {
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+	    return T2ERROR_FAILURE;
+    }
+    /* set the cert for client authentication */
+    code = curl_easy_setopt(curl, CURLOPT_SSLCERT, certFile);
+    if(code != CURLE_OK) {
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+	    return T2ERROR_FAILURE;
+    }
+    code = curl_easy_setopt(curl, CURLOPT_KEYPASSWD, pPasswd);
+    if(code != CURLE_OK) {
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+	    return T2ERROR_FAILURE;
+    }
+    /* disconnect if we cannot authenticate */
+    code = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+    if(code != CURLE_OK) {
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+	    return T2ERROR_FAILURE;
+    }
+    childCurlResponse->curlSetopCode = code;
+    childCurlResponse->lineNumber = __LINE__;
+    return T2ERROR_SUCCESS;
+}
+
+static T2ERROR setPayload(CURL *curl, const char* payload, childResponse *childCurlResponse)
+{
+    if(curl == NULL || payload == NULL){
+        childCurlResponse->lineNumber = __LINE__;
+	    return T2ERROR_FAILURE;
+    }
+    CURLcode code = CURLE_OK ;
+    code = curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload);
+    if(code != CURLE_OK){
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+	    return T2ERROR_FAILURE;
+    }
+    code = curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(payload));
+    if(code != CURLE_OK){
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+        return T2ERROR_FAILURE;
+    }
+    childCurlResponse->curlSetopCode = code;
+    childCurlResponse->lineNumber = __LINE__;
+    return T2ERROR_SUCCESS;
+}
+
+
+T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid) {
+    CURL *curl = NULL;
+    FILE *fp = NULL;
+    CURLcode res, code = CURLE_OK;
+    T2ERROR ret = T2ERROR_FAILURE;
+    childResponse childCurlResponse = {0};
+    struct curl_slist *headerList = NULL;
+    char *pCertFile = NULL;
+    char *pKeyFile = NULL;
+#ifdef LIBRDKCONFIG_BUILD
+    size_t sKey = 0;
+#endif
+    long http_code;
+    bool mtls_enable = false;
+    pid_t childPid;
+    int sharedPipeFds[2];
+
+    T2Debug("%s ++in\n", __FUNCTION__);
+    if(httpUrl == NULL || payload == NULL)
+    {
+        return ret;
+    }
+    if(pipe(sharedPipeFds) != 0) {
+        T2Error("Failed to create pipe !!! exiting...\n");
+        T2Debug("%s --out\n", __FUNCTION__);
+        return ret;
+    }
+#if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
+
+#if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
+    char *paramVal = NULL;
+    memset(waninterface, 0, sizeof(waninterface));
+    snprintf(waninterface, sizeof(waninterface), "%s", INTERFACE); 
+
+    if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_CURRENT_WAN_IFNAME, &paramVal)) {
+        if(strlen(paramVal) >0) {
+            memset(waninterface, 0, sizeof(waninterface));
+            snprintf(waninterface, sizeof(waninterface), "%s", paramVal);
+        }
+        free(paramVal);
+        paramVal = NULL;
+    } else {
+          T2Error("Failed to get Value for %s\n", TR181_DEVICE_CURRENT_WAN_IFNAME);
+    }
+ #endif
+ #endif
+    mtls_enable = isMtlsEnabled();
+    if(mtls_enable == true && T2ERROR_SUCCESS != getMtlsCerts(&pCertFile, &pKeyFile)){
+        T2Error("mTLS_cert get failed\n");
+        if(NULL != pCertFile)
+            free(pCertFile);
+        if(NULL != pKeyFile){
+          #ifdef LIBRDKCONFIG_BUILD
+            sKey = strlen(pKeyFile);
+            if (rdkconfig_free((unsigned char**)&pKeyFile, sKey) == RDKCONFIG_FAIL) {
+                return T2ERROR_FAILURE;
+            }
+          #else
+            free(pKeyFile);
+          #endif
+        }
+        return ret;
+    }
+
+    // Block the userdefined signal handlers before fork
+    pthread_sigmask(SIG_BLOCK,&blocking_signal,NULL);
+    if((childPid = fork()) < 0) {
+        T2Error("Failed to fork !!! exiting...\n");
+        // Unblock the userdefined signal handler
+	if(NULL != pCertFile)
+            free(pCertFile);
+        if(NULL != pKeyFile){
+          #ifdef LIBRDKCONFIG_BUILD
+            sKey = strlen(pKeyFile);
+            if (rdkconfig_free((unsigned char**)&pKeyFile, sKey) == RDKCONFIG_FAIL) {
+                return T2ERROR_FAILURE;
+            }
+          #else
+            free(pKeyFile);
+          #endif
+        }
+        pthread_sigmask(SIG_UNBLOCK,&blocking_signal,NULL);
+        T2Debug("%s --out\n", __FUNCTION__);
+        return T2ERROR_FAILURE;
+    }
+
+    /**
+     * Openssl has growing RSS which gets cleaned up only with OPENSSL_cleanup .
+     * This cleanup is not thread safe and classified as run once per application life cycle.
+     * Forking the libcurl calls so that it executes and terminates to release memory per execution.
+     */
+    if(childPid == 0) {
+
+        curl = curl_easy_init();
+        if(curl) {
+            childCurlResponse.curlStatus = true;
+            if(setHeader(curl, httpUrl, &headerList, &childCurlResponse) != T2ERROR_SUCCESS) {
+                curl_easy_cleanup(curl);
+                goto child_cleanReturn;
+            }
+
+            if((mtls_enable == true) && (setMtlsHeaders(curl, pCertFile, pKeyFile, &childCurlResponse)!= T2ERROR_SUCCESS)) {
+                curl_easy_cleanup(curl); // CID 189985: Resource leak
+                goto child_cleanReturn;
+            }
+
+            if (setPayload(curl, payload, &childCurlResponse)!= T2ERROR_SUCCESS){
+                curl_easy_cleanup(curl); // CID 189985: Resource leak
+                goto child_cleanReturn;
+            }
+
+            pthread_once(&curlFileMutexOnce, sendOverHTTPInit);
+            pthread_mutex_lock(&curlFileMutex);
+
+            fp = fopen(CURL_OUTPUT_FILE, "wb");
+            if(fp) {
+                /* CID 143029 Unchecked return value from library */
+                code = curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)fp);
+                if(code != CURLE_OK) {
+                    // This might not be working we need to review this
+                    childCurlResponse.curlSetopCode = code;
+                }
+                res = curl_easy_perform(curl);
+                curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+                if(res != CURLE_OK || http_code != 200) {
+                    fprintf(stderr, "curl failed: %s\n", curl_easy_strerror(res));
+                    childCurlResponse.lineNumber = __LINE__;
+                }else {
+                    childCurlResponse.lineNumber = __LINE__;
+                    
+                }
+                childCurlResponse.curlResponse = res;
+                childCurlResponse.http_code = http_code;
+
+                fclose(fp);
+            }
+            curl_slist_free_all(headerList);
+            curl_easy_cleanup(curl);
+
+            pthread_mutex_unlock(&curlFileMutex);
+        }else {
+            childCurlResponse.curlStatus = false;
+        }
+
+        child_cleanReturn :
+
+        if(NULL != pCertFile)
+            free(pCertFile);
+
+        if(NULL != pKeyFile){
+          #ifdef LIBRDKCONFIG_BUILD
+            sKey = strlen(pKeyFile);
+            if (rdkconfig_free((unsigned char**)&pKeyFile, sKey) == RDKCONFIG_FAIL) {
+                return T2ERROR_FAILURE;
+            }
+          #else
+            free(pKeyFile);
+          #endif
+        }
+
+        close(sharedPipeFds[0]);
+        if( -1 == write(sharedPipeFds[1], &childCurlResponse, sizeof(childResponse))){
+            fprintf(stderr, "unable to write to shared pipe from pid : %d \n", getpid());
+            T2Error("unable to write \n");
+        }
+        close(sharedPipeFds[1]);
+        exit(0);
+
+    }else {
+
+        T2ERROR ret = T2ERROR_FAILURE;
+        if(outForkedPid){
+            *outForkedPid = childPid ;
+        }
+        // Use waitpid insted of wait we can have multiple child process
+        waitpid(childPid,NULL,0);
+        // Unblock the userdefined signal handlers before fork
+        pthread_sigmask(SIG_UNBLOCK,&blocking_signal,NULL);
+        // Get the return status via IPC from child process
+        if ( -1 == close(sharedPipeFds[1])){
+            T2Error("Failed in close \n");
+        }
+        if( -1 == read(sharedPipeFds[0], &childCurlResponse, sizeof(childResponse))){
+            T2Error("unable to read from the pipe \n");
+        }
+        if ( -1 == close(sharedPipeFds[0])){
+            T2Error("Failed in close the pipe\n");
+        }
+	if(NULL != pCertFile)
+            free(pCertFile);
+        if(NULL != pKeyFile){
+          #ifdef LIBRDKCONFIG_BUILD
+            sKey = strlen(pKeyFile);
+            if (rdkconfig_free((unsigned char**)&pKeyFile, sKey) == RDKCONFIG_FAIL) {
+                return T2ERROR_FAILURE;
+            }
+          #else
+            free(pKeyFile);
+          #endif
+        }
+        T2Info("The return status from the child with pid %d is CurlStatus : %d\n",childPid, childCurlResponse.curlStatus);
+        //if(childCurlResponse.curlStatus == CURLE_OK) commenting this as we are observing childCurlResponse.curlStatus as 1, from line with CID 143029 Unchecked return value from library
+        T2Info("The return status from the child with pid %d SetopCode: %s; ResponseCode : %s; HTTP_CODE : %ld; Line Number : %d \n", childPid, curl_easy_strerror(childCurlResponse.curlSetopCode), curl_easy_strerror(childCurlResponse.curlResponse), childCurlResponse.http_code, childCurlResponse.lineNumber);
+        if (childCurlResponse.http_code == 200 || childCurlResponse.curlResponse == CURLE_OK){
+            ret = T2ERROR_SUCCESS;
+            T2Info("Report Sent Successfully over HTTP : %ld\n", childCurlResponse.http_code);
+        }
+        T2Debug("%s --out\n", __FUNCTION__);
+        return ret;
+    }
+
+}
+
+T2ERROR sendCachedReportsOverHTTP(char *httpUrl, Vector *reportList)
+{
+    if(httpUrl == NULL || reportList == NULL)
+    {
+        return T2ERROR_FAILURE;
+    }
+    while(Vector_Size(reportList) > 0)
+    {
+        char* payload = (char *)Vector_At(reportList, 0);
+        if(T2ERROR_FAILURE == sendReportOverHTTP(httpUrl, payload, NULL))
+        {
+            T2Error("Failed to send cached report, left with %lu reports in cache \n", (unsigned long)Vector_Size(reportList));
+            return T2ERROR_FAILURE;
+        }
+        Vector_RemoveItem(reportList, payload, NULL);
+        free(payload);
+    }
+    return T2ERROR_SUCCESS;
+}

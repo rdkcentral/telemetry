@@ -1,0 +1,120 @@
+{
+    "urn:settings:GroupName": "Generic",
+    "urn:settings:CheckOnReboot": false,
+    "urn:settings:TimeZoneMode": "UTC",
+    "urn:settings:CheckSchedule:cron": "37 5 * * *",
+    "urn:settings:CheckSchedule:DurationMinutes": 300,
+    "urn:settings:LogUploadSettings:Message": null,
+    "urn:settings:LogUploadSettings:Name": "Generic",
+    "urn:settings:LogUploadSettings:NumberOfDays": 0,
+    "urn:settings:LogUploadSettings:UploadRepositoryName": "S3",
+    "urn:settings:LogUploadSettings:UploadRepository:URL": "https://upload.test.url",
+    "urn:settings:LogUploadSettings:UploadRepository:uploadProtocol": "HTTP",
+    "urn:settings:LogUploadSettings:UploadOnReboot": false,
+    "urn:settings:LogUploadSettings:UploadImmediately": false,
+    "urn:settings:LogUploadSettings:upload": true,
+    "urn:settings:LogUploadSettings:UploadSchedule:cron": "36 6 * * *",
+    "urn:settings:LogUploadSettings:UploadSchedule:levelone:cron": null,
+    "urn:settings:LogUploadSettings:UploadSchedule:leveltwo:cron": null,
+    "urn:settings:LogUploadSettings:UploadSchedule:levelthree:cron": null,
+    "urn:settings:LogUploadSettings:UploadSchedule:TimeZoneMode": "UTC",
+    "urn:settings:LogUploadSettings:UploadSchedule:DurationMinutes": 240,
+    "urn:settings:VODSettings:Name": null,
+    "urn:settings:VODSettings:LocationsURL": null,
+    "urn:settings:VODSettings:SRMIPList": null,
+    "urn:settings:TelemetryProfile": {
+        "@type": "PermanentTelemetryProfile",
+        "id": "9e9fce57-8053-423e-a647-a537ca8b7899",
+        "telemetryProfile": [
+            {
+                "header": "SYS_ERROR_KernelPanic_reboot",
+                "content": "Received reboot_reason as:kernel-panic",
+                "type": "BootTime.log",
+                "pollingFrequency": "0"
+            },
+            {
+                "header": "SYS_ERROR_PeerDown_reboot",
+                "content": "Received reboot_reason as:Peer_down",
+                "type": "BootTime.log",
+                "pollingFrequency": "0"
+            },
+            {
+                "header": "SYS_ERROR_Thermal_reboot",
+                "content": "Received reboot_reason as:thermal",
+                "type": "BootTime.log",
+                "pollingFrequency": "0"
+            },
+            {
+                "header": "RF_ERROR_Wan_down",
+                "content": "wan_service-status is stopped, take log back up",
+                "type": "Consolelog.txt.0",
+                "pollingFrequency": "0"
+            },
+            {
+                "header": "RF_ERROR_wan_restart",
+                "content": "wan_service-status is started again, upload logs",
+                "type": "Consolelog.txt.0",
+                "pollingFrequency": "0"
+            },
+            {
+                "header": "SYS_ERROR_Drop_cache",
+                "content": "test-and-diagnostic",
+                "type": "<event>",
+                "pollingFrequency": "0"
+            },
+            {
+                "header": "SYS_ERROR_LOGUPLOAD_FAILED",
+                "content": "rdklogger",
+                "type": "<event>",
+                "pollingFrequency": "0"
+            },
+            {
+                "header": "Total_online_clients_split",
+                "content": "ccsp-lm-lite",
+                "type": "<event>",
+                "pollingFrequency": "0"
+            },
+            {
+                "header": "WIFI_INFO_TEST_offline",
+                "content": "test-component",
+                "type": "<event>",
+                "pollingFrequency": "0"
+            },
+            {
+                "header": "WIFI_INFO_TEST_online",
+                "content": "test-component",
+                "type": "<event>",
+                "pollingFrequency": "0"
+            },
+            {
+                "header": "btime_clientconn_split",
+                "content": "ccsp-lm-lite",
+                "type": "<event>",
+                "pollingFrequency": "0"
+            },
+            {
+                "header": "RF_ERROR_IPV4PingFailed",
+                "content": "test-and-diagnostic",
+                "type": "<event>",
+                "pollingFrequency": "0"
+            },
+            {
+                "header": "RF_ERROR_IPV6PingFailed",
+                "content": "test-and-diagnostic",
+                "type": "<event>",
+                "pollingFrequency": "0"
+            },
+            {
+                "header": "RF_ERROR_TEST_stopped",
+                "content": "test-and-diagnostic",
+                "type": "<event>",
+                "pollingFrequency": "0"
+            }
+        ],
+        "schedule": "*/15 * * * *",
+        "expires": 0,
+        "telemetryProfile:name": "Generic_Profile",
+        "uploadRepository:URL": "https://mockxconf:50051/dataLakeMockXconf",
+        "uploadRepository:uploadProtocol": "HTTP"
+    }
+}

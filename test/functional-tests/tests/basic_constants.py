@@ -68,3 +68,1183 @@ T2_REPORT_PROFILE_PARAM_MSG_PCK="Device.X_RDKCENTRAL-COM_T2.ReportProfilesMsgPac
 T2_TEMP_REPORT_PROFILE_PARAM="Device.X_RDKCENTRAL-COM_T2.Temp_ReportProfiles"
 RBUS_EXCEPTION_STRING = "Failed to get the data"
 """
+m_data = '''{ "profiles": [ { "name": "TR_AC1", "hash": "Hash1", "value": { "Name": "RDKB_Profile_1", "Description": "RDKB_Profile", "Version": "0.1", "Protocol": "HTTP", "EncodingType": "JSON", "ActivationTimeout": 1200, "ReportingInterval": 20, "GenerateNow": false, "RootName": "FR2_US_TC3", "TimeReference": "2023-01-25T13:47:00Z", "Parameter": [ { "type": "dataModel", "name": "UPTIME", "reference": "Device.DeviceInfo.UpTime", "use": "absolute" }, { "type": "event", "eventName": "USED_MEM1_split", "component": "sysint", "use": "absolute" }, { "type": "grep", "marker": "SYS_INFO_CrashPortalUpload_success", "search": "Success uploading", "logFile": "core_log.txt", "use": "count" } ], "ReportingAdjustments": [ { "ReportOnUpdate": false, "FirstReportingInterval": 15, "MaxUploadLatency": 20000 } ], "HTTP": { "URL": "https://stbrtl.r53.xcal.tv/", "Compression": "None", "Method": "POST", "RequestURIParameter": [ { "Name": "reportName", "Reference": "Profile.Name" } ] }, "JSONEncoding": { "ReportFormat": "NameValuePair", "ReportTimestamp": "None" } } }, { "name": "TR_AC2", "hash": "Hash2", "value": { "Name": "RDKB_Profile_2", "Description": "RDKB_Profile", "Version": "0.1", "Protocol": "HTTP", "EncodingType": "JSON", "ActivationTimeout": 3600, "ReportingInterval": 35, "GenerateNow": false, "RootName": "FR2_US_TC3", "TimeReference": "2023-01-25T13:47:00Z", "Parameter": [ { "type": "dataModel", "name": "UPTIME", "reference": "Device.DeviceInfo.UpTime", "use": "absolute" }, { "type": "event", "eventName": "USED_MEM2_split", "component": "sysint", "use": "absolute" }, { "type": "grep", "marker": "SYS_INFO_CrashPortal_success", "search": "Success uploading", "logFile": "core_log.txt", "use": "count" } ], "ReportingAdjustments": [ { "ReportOnUpdate": false, "FirstReportingInterval": 15, "MaxUploadLatency": 20000 } ], "HTTP": { "URL": "https://stbrtl.r53.xcal.tv/", "Compression": "None", "Method": "POST", "RequestURIParameter": [ { "Name": "reportName", "Reference": "Profile.Name" } ] }, "JSONEncoding": { "ReportFormat": "NameValuePair", "ReportTimestamp": "None" } } }, { "name": "TR_AC3", "hash": "Hash3", "value": { "Name": "RDKB_Profile_3", "Description": "RDKB_Profile", "Version": "0.1", "Protocol": "HTTP", "EncodingType": "JSON", "ActivationTimeout": 3600, "ReportingInterval": 45, "GenerateNow": false, "RootName": "FR2_US_TC3", "TimeReference": "2023-01-25T13:47:00Z", "Parameter": [ { "type": "dataModel", "name": "UPTIME", "reference": "Device.DeviceInfo.UpTime", "use": "absolute" }, { "type": "event", "eventName": "USED_MEM1_split", "component": "sysint", "use": "absolute" }, { "type": "grep", "marker": "SYS_INFO_CrashPortalUpload_success", "search": "Success uploading", "logFile": "core_log.txt", "use": "count" } ], "ReportingAdjustments": [ { "ReportOnUpdate": false, "FirstReportingInterval": 15, "MaxUploadLatency": 20000 } ], "HTTP": { "URL": "https://stbrtl.r53.xcal.tv/", "Compression": "None", "Method": "POST", "RequestURIParameter": [ { "Name": "reportName", "Reference": "Profile.Name" } ] }, "JSONEncoding": { "ReportFormat": "NameValuePair", "ReportTimestamp": "None" } } } ] }'''
+
+data_without_namefield = '''{
+    "profiles": [
+        {
+            "hash": "Hash7",
+            "value": {
+                "Name": "RDKB_Profile_4",
+                "Description": "RDKB_Profile",
+                "Version": "0.1",
+                "Protocol": "HTTP",
+                "EncodingType": "JSON",
+                "ActivationTimeout": 1200,
+                "ReportingInterval": 20,
+                "GenerateNow": false,
+                "RootName": "FR2_US_TC3",
+                "TimeReference": "2023-01-25T13:47:00Z",
+                "Parameter": [
+                    {
+                        "type": "dataModel",
+                        "name": "UPTIME",
+                        "reference": "Device.DeviceInfo.UpTime",
+                        "use": "absolute"
+                    },
+                    {
+                        "type": "event",
+                        "eventName": "USED_MEM1_split",
+                        "component": "sysint",
+                        "use": "absolute"
+                    },
+                    {
+                        "type": "grep",
+                        "marker": "SYS_INFO_CrashPortalUpload_success",
+                        "search": "Success uploading",
+                        "logFile": "core_log.txt",
+                        "use": "count"
+                    }
+                ],
+                "ReportingAdjustments": [
+                    {
+                        "ReportOnUpdate": false,
+                        "FirstReportingInterval": 15,
+                        "MaxUploadLatency": 20000
+                    }
+                ],
+                "HTTP": {
+                    "URL": "https://stbrtl.r53.xcal.tv/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
+                },
+                "JSONEncoding": {
+                    "ReportFormat": "NameValuePair",
+                    "ReportTimestamp": "None"
+                }
+            }
+        },
+        {
+            "name": "",
+            "hash": "Hash8",
+            "value": {
+                "Name": "RDKB_Profile_7",
+                "Description": "RDKB_Profile",
+                "Version": "0.1",
+                "Protocol": "HTTP",
+                "EncodingType": "JSON",
+                "ActivationTimeout": 1200,
+                "ReportingInterval": 20,
+                "GenerateNow": false,
+                "RootName": "FR2_US_TC3",
+                "TimeReference": "2023-01-25T13:47:00Z",
+                "Parameter": [
+                    {
+                        "type": "dataModel",
+                        "name": "UPTIME",
+                        "reference": "Device.DeviceInfo.UpTime",
+                        "use": "absolute"
+                    },
+                    {
+                        "type": "event",
+                        "eventName": "USED_MEM1_split",
+                        "component": "sysint",
+                        "use": "absolute"
+                    },
+                    {
+                        "type": "grep",
+                        "marker": "SYS_INFO_CrashPortalUpload_success",
+                        "search": "Success uploading",
+                        "logFile": "core_log.txt",
+                        "use": "count"
+                    }
+                ],
+                "ReportingAdjustments": [
+                    {
+                        "ReportOnUpdate": false,
+                        "FirstReportingInterval": 15,
+                        "MaxUploadLatency": 20000
+                    }
+                ],
+                "HTTP": {
+                    "URL": "https://stbrtl.r53.xcal.tv/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
+                },
+                "JSONEncoding": {
+                    "ReportFormat": "NameValuePair",
+                    "ReportTimestamp": "None"
+                }
+            }
+        },
+        {
+            "name": "TR_AC10",
+            "value": {
+                "Name": "RDKB_Profile_10",
+                "Description": "RDKB_Profile",
+                "Version": "0.1",
+                "Protocol": "HTTP",
+                "EncodingType": "JSON",
+                "ActivationTimeout": 1200,
+                "ReportingInterval": 20,
+                "GenerateNow": false,
+                "RootName": "FR2_US_TC3",
+                "TimeReference": "2023-01-25T13:47:00Z",
+                "Parameter": [
+                    {
+                        "type": "dataModel",
+                        "name": "UPTIME",
+                        "reference": "Device.DeviceInfo.UpTime",
+                        "use": "absolute"
+                    },
+                    {
+                        "type": "event",
+                        "eventName": "USED_MEM1_split",
+                        "component": "sysint",
+                        "use": "absolute"
+                    },
+                    {
+                        "type": "grep",
+                        "marker": "SYS_INFO_CrashPortalUpload_success",
+                        "search": "Success uploading",
+                        "logFile": "core_log.txt",
+                        "use": "count"
+                    }
+                ],
+                "ReportingAdjustments": [
+                    {
+                        "ReportOnUpdate": false,
+                        "FirstReportingInterval": 15,
+                        "MaxUploadLatency": 20000
+                    }
+                ],
+                "HTTP": {
+                    "URL": "https://stbrtl.r53.xcal.tv/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
+                },
+                "JSONEncoding": {
+                    "ReportFormat": "NameValuePair",
+                    "ReportTimestamp": "None"
+                }
+            }
+        }
+    ]
+}'''
+
+#TR_AC12 ===> without hash value
+#TR_AC14 ===> without version field
+#TR_AC15 ===> without Protocol field
+data_without_hashvalue = '''{
+    "profiles": [
+        {
+            "name": "TR_AC12",
+            "hash": "",
+            "value": {
+                "Name": "RDKB_Profile_12",
+                "Description": "RDKB_Profile",
+                "Version": "0.1",
+                "Protocol": "HTTP",
+                "EncodingType": "JSON",
+                "ActivationTimeout": 1200,
+                "ReportingInterval": 20,
+                "GenerateNow": false,
+                "RootName": "FR2_US_TC3",
+                "TimeReference": "2023-01-25T13:47:00Z",
+                "Parameter": [
+                    {
+                        "type": "dataModel",
+                        "name": "UPTIME",
+                        "reference": "Device.DeviceInfo.UpTime",
+                        "use": "absolute"
+                    },
+                    {
+                        "type": "event",
+                        "eventName": "USED_MEM1_split",
+                        "component": "sysint",
+                        "use": "absolute"
+                    },
+                    {
+                        "type": "grep",
+                        "marker": "SYS_INFO_CrashPortalUpload_success",
+                        "search": "Success uploading",
+                        "logFile": "core_log.txt",
+                        "use": "count"
+                    }
+                ],
+                "ReportingAdjustments": [
+                    {
+                        "ReportOnUpdate": false,
+                        "FirstReportingInterval": 15,
+                        "MaxUploadLatency": 20000
+                    }
+                ],
+                "HTTP": {
+                    "URL": "https://stbrtl.r53.xcal.tv/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
+                },
+                "JSONEncoding": {
+                    "ReportFormat": "NameValuePair",
+                    "ReportTimestamp": "None"
+                }
+            }
+        },
+        {
+            "name": "TR_AC14",
+            "hash": "Hash14",
+            "value": {
+                "Name": "RDKB_Profile_14",
+                "Description": "RDKB_Profile",
+                "Protocol": "HTTP",
+                "EncodingType": "JSON",
+                "ActivationTimeout": 1200,
+                "ReportingInterval": 20,
+                "GenerateNow": false,
+                "RootName": "FR2_US_TC3",
+                "TimeReference": "2023-01-25T13:47:00Z",
+                "Parameter": [
+                    {
+                        "type": "dataModel",
+                        "name": "UPTIME",
+                        "reference": "Device.DeviceInfo.UpTime",
+                        "use": "absolute"
+                    },
+                    {
+                        "type": "event",
+                        "eventName": "USED_MEM1_split",
+                        "component": "sysint",
+                        "use": "absolute"
+                    },
+                    {
+                        "type": "grep",
+                        "marker": "SYS_INFO_CrashPortalUpload_success",
+                        "search": "Success uploading",
+                        "logFile": "core_log.txt",
+                        "use": "count"
+                    }
+                ],
+                "ReportingAdjustments": [
+                    {
+                        "ReportOnUpdate": false,
+                        "FirstReportingInterval": 15,
+                        "MaxUploadLatency": 20000
+                    }
+                ],
+                "HTTP": {
+                    "URL": "https://stbrtl.r53.xcal.tv/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
+                },
+                "JSONEncoding": {
+                    "ReportFormat": "NameValuePair",
+                    "ReportTimestamp": "None"
+                }
+            }
+        },
+        {
+            "name": "TR_AC15",
+            "hash": "Hash15",
+            "value": {
+                "Name": "RDKB_Profile_15",
+                "Description": "RDKB_Profile",
+                "Version": "0.1",
+                "EncodingType": "JSON",
+                "ActivationTimeout": 3600,
+                "ReportingInterval": 35,
+                "GenerateNow": false,
+                "RootName": "FR2_US_TC3",
+                "TimeReference": "2023-01-25T13:47:00Z",
+                "Parameter": [
+                    {
+                        "type": "dataModel",
+                        "name": "UPTIME",
+                        "reference": "Device.DeviceInfo.UpTime",
+                        "use": "absolute"
+                    },
+                    {
+                        "type": "event",
+                        "eventName": "USED_MEM2_split",
+                        "component": "sysint",
+                        "use": "absolute"
+                    },
+                    {
+                        "type": "grep",
+                        "marker": "SYS_INFO_CrashPortal_success",
+                        "search": "Success uploading",
+                        "logFile": "core_log.txt",
+                        "use": "count"
+                    }
+                ],
+                "ReportingAdjustments": [
+                    {
+                        "ReportOnUpdate": false,
+                        "FirstReportingInterval": 15,
+                        "MaxUploadLatency": 20000
+                    }
+                ],
+                "HTTP": {
+                    "URL": "https://stbrtl.r53.xcal.tv/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
+                },
+                "JSONEncoding": {
+                    "ReportFormat": "NameValuePair",
+                    "ReportTimestamp": "None"
+                }
+            }
+        }
+    ]
+}'''
+
+
+#TR_AC16 ===> with incorrect Protocol
+#TR_AC17 ===> without version value
+#TR_AC13 ===> without Protocol value
+
+data_with_wrong_protocol_value = '''{
+    "profiles": [
+        {
+            "name": "TR_AC16",
+            "hash": "Hash16",
+            "value": {
+                "Name": "RDKB_Profile_1",
+                "Description": "RDKB_Profile",
+                "Version": "0.1",
+                "Protocol": "HTTPS",
+                "EncodingType": "JSON",
+                "ActivationTimeout": 1200,
+                "ReportingInterval": 20,
+                "GenerateNow": false,
+                "RootName": "FR2_US_TC3",
+                "TimeReference": "2023-01-25T13:47:00Z",
+                "Parameter": [
+                    {
+                        "type": "dataModel",
+                        "name": "UPTIME",
+                        "reference": "Device.DeviceInfo.UpTime",
+                        "use": "absolute"
+                    },
+                    {
+                        "type": "event",
+                        "eventName": "USED_MEM1_split",
+                        "component": "sysint",
+                        "use": "absolute"
+                    },
+                    {
+                        "type": "grep",
+                        "marker": "SYS_INFO_CrashPortalUpload_success",
+                        "search": "Success uploading",
+                        "logFile": "core_log.txt",
+                        "use": "count"
+                    }
+                ],
+                "ReportingAdjustments": [
+                    {
+                        "ReportOnUpdate": false,
+                        "FirstReportingInterval": 15,
+                        "MaxUploadLatency": 20000
+                    }
+                ],
+                "HTTP": {
+                    "URL": "https://stbrtl.r53.xcal.tv/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
+                },
+                "JSONEncoding": {
+                    "ReportFormat": "NameValuePair",
+                    "ReportTimestamp": "None"
+                }
+            }
+        },
+        {
+            "name": "TR_AC17",
+            "hash": "Hash17",
+            "value": {
+                "Name": "RDKB_Profile_1",
+                "Description": "RDKB_Profile",
+                "Version": "",
+                "Protocol": "HTTP",
+                "EncodingType": "JSON",
+                "ActivationTimeout": 1200,
+                "ReportingInterval": 20,
+                "GenerateNow": false,
+                "RootName": "FR2_US_TC3",
+                "TimeReference": "2023-01-25T13:47:00Z",
+                "Parameter": [
+                    {
+                        "type": "dataModel",
+                        "name": "UPTIME",
+                        "reference": "Device.DeviceInfo.UpTime",
+                        "use": "absolute"
+                    },
+                    {
+                        "type": "event",
+                        "eventName": "USED_MEM1_split",
+                        "component": "sysint",
+                        "use": "absolute"
+                    },
+                    {
+                        "type": "grep",
+                        "marker": "SYS_INFO_CrashPortalUpload_success",
+                        "search": "Success uploading",
+                        "logFile": "core_log.txt",
+                        "use": "count"
+                    }
+                ],
+                "ReportingAdjustments": [
+                    {
+                        "ReportOnUpdate": false,
+                        "FirstReportingInterval": 15,
+                        "MaxUploadLatency": 20000
+                    }
+                ],
+                "HTTP": {
+                    "URL": "https://stbrtl.r53.xcal.tv/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
+                },
+                "JSONEncoding": {
+                    "ReportFormat": "NameValuePair",
+                    "ReportTimestamp": "None"
+                }
+            }
+        },
+        {
+            "name": "TR_AC13",
+            "hash": "Hash13",
+            "value": {
+                "Name": "RDKB_Profile_2",
+                "Description": "RDKB_Profile",
+                "Version": "0.1",
+                "Protocol": "",
+                "EncodingType": "JSON",
+                "ActivationTimeout": 3600,
+                "ReportingInterval": 35,
+                "GenerateNow": false,
+                "RootName": "FR2_US_TC3",
+                "TimeReference": "2023-01-25T13:47:00Z",
+                "Parameter": [
+                    {
+                        "type": "dataModel",
+                        "name": "UPTIME",
+                        "reference": "Device.DeviceInfo.UpTime",
+                        "use": "absolute"
+                    },
+                    {
+                        "type": "event",
+                        "eventName": "USED_MEM2_split",
+                        "component": "sysint",
+                        "use": "absolute"
+                    },
+                    {
+                        "type": "grep",
+                        "marker": "SYS_INFO_CrashPortal_success",
+                        "search": "Success uploading",
+                        "logFile": "core_log.txt",
+                        "use": "count"
+                    }
+                ],
+                "ReportingAdjustments": [
+                    {
+                        "ReportOnUpdate": false,
+                        "FirstReportingInterval": 15,
+                        "MaxUploadLatency": 20000
+                    }
+                ],
+                "HTTP": {
+                    "URL": "https://stbrtl.r53.xcal.tv/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
+                },
+                "JSONEncoding": {
+                    "ReportFormat": "NameValuePair",
+                    "ReportTimestamp": "None"
+                }
+            }
+        }
+    ]
+}'''
+
+# without EncodingType value
+# without ActivationTimeout value
+# without EncodingType field 
+#without ActivationTimeout Field
+#without reportingInterval Field
+#without GeneratingNow Field
+
+data_without_EncodingType_ActivationTimeout_values = '''{
+    "profiles": [
+        {
+            "name": "TR_AC18",
+            "hash": "Hash18",
+            "value": {
+                "Name": "RDKB_Profile_1",
+                "Description": "RDKB_Profile",
+                "Version": "0.1",
+                "Protocol": "HTTP",
+                "EncodingType": "",
+                "ActivationTimeOut": 1200,
+                "ReportingInterval": 20,
+                "GenerateNow": false,
+                "RootName": "FR2_US_TC3",
+                "TimeReference": "2023-01-25T13:47:00Z",
+                "Parameter": [
+                    {
+                        "type": "dataModel",
+                        "name": "UPTIME",
+                        "reference": "Device.DeviceInfo.UpTime",
+                        "use": "absolute"
+                    },
+                    {
+                        "type": "event",
+                        "eventName": "USED_MEM1_split",
+                        "component": "sysint",
+                        "use": "absolute"
+                    },
+                    {
+                        "type": "grep",
+                        "marker": "SYS_INFO_CrashPortalUpload_success",
+                        "search": "Success uploading",
+                        "logFile": "core_log.txt",
+                        "use": "count"
+                    }
+                ],
+                "ReportingAdjustments": [
+                    {
+                        "ReportOnUpdate": false,
+                        "FirstReportingInterval": 15,
+                        "MaxUploadLatency": 20000
+                    }
+                ],
+                "HTTP": {
+                    "URL": "https://stbrtl.r53.xcal.tv/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
+                },
+                "JSONEncoding": {
+                    "ReportFormat": "NameValuePair",
+                    "ReportTimestamp": "None"
+                }
+            }
+        },
+        {
+            "name": "TR_AC19",
+            "hash": "Hash19",
+            "value": {
+                "Name": "RDKB_Profile_2",
+                "Description": "RDKB_Profile",
+                "Version": "0.1",
+                "Protocol": "HTTP",
+                "EncodingType": "JSON",
+                "ActivationTimeout": "",
+                "ReportingInterval": 35,
+                "GenerateNow": false,
+                "RootName": "FR2_US_TC3",
+                "TimeReference": "2023-01-25T13:47:00Z",
+                "Parameter": [
+                    {
+                        "type": "dataModel",
+                        "name": "UPTIME",
+                        "reference": "Device.DeviceInfo.UpTime",
+                        "use": "absolute"
+                    },
+                    {
+                        "type": "event",
+                        "eventName": "USED_MEM2_split",
+                        "component": "sysint",
+                        "use": "absolute"
+                    },
+                    {
+                        "type": "grep",
+                        "marker": "SYS_INFO_CrashPortal_success",
+                        "search": "Success uploading",
+                        "logFile": "core_log.txt",
+                        "use": "count"
+                    }
+                ],
+                "ReportingAdjustments": [
+                    {
+                        "ReportOnUpdate": false,
+                        "FirstReportingInterval": 15,
+                        "MaxUploadLatency": 20000
+                    }
+                ],
+                "HTTP": {
+                    "URL": "https://stbrtl.r53.xcal.tv/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
+                },
+                "JSONEncoding": {
+                    "ReportFormat": "NameValuePair",
+                    "ReportTimestamp": "None"
+                }
+            }
+        },
+        {
+            "name": "TR_AC20",
+            "hash": "Hash20",
+            "value": {
+                "Name": "RDKB_Profile_1",
+                "Description": "RDKB_Profile",
+                "Version": "0.1",
+                "Protocol": "HTTP",
+                "ActivationTimeOut": 1200,
+                "ReportingInterval": 20,
+                "GenerateNow": false,
+                "RootName": "FR2_US_TC3",
+                "TimeReference": "2023-01-25T13:47:00Z",
+                "Parameter": [
+                    {
+                        "type": "dataModel",
+                        "name": "UPTIME",
+                        "reference": "Device.DeviceInfo.UpTime",
+                        "use": "absolute"
+                    },
+                    {
+                        "type": "event",
+                        "eventName": "USED_MEM1_split",
+                        "component": "sysint",
+                        "use": "absolute"
+                    },
+                    {
+                        "type": "grep",
+                        "marker": "SYS_INFO_CrashPortalUpload_success",
+                        "search": "Success uploading",
+                        "logFile": "core_log.txt",
+                        "use": "count"
+                    }
+                ],
+                "ReportingAdjustments": [
+                    {
+                        "ReportOnUpdate": false,
+                        "FirstReportingInterval": 15,
+                        "MaxUploadLatency": 20000
+                    }
+                ],
+                "HTTP": {
+                    "URL": "https://stbrtl.r53.xcal.tv/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
+                },
+                "JSONEncoding": {
+                    "ReportFormat": "NameValuePair",
+                    "ReportTimestamp": "None"
+                }
+            }
+        },
+        {
+            "name": "TR_AC21",
+            "hash": "Hash21",
+            "value": {
+                "Name": "RDKB_Profile_2",
+                "Description": "RDKB_Profile",
+                "Version": "0.1",
+                "Protocol": "HTTP",
+                "EncodingType": "JSON",
+                "ReportingInterval": 35,
+                "GenerateNow": false,
+                "RootName": "FR2_US_TC3",
+                "TimeReference": "2023-01-25T13:47:00Z",
+                "Parameter": [
+                    {
+                        "type": "dataModel",
+                        "name": "UPTIME",
+                        "reference": "Device.DeviceInfo.UpTime",
+                        "use": "absolute"
+                    },
+                    {
+                        "type": "event",
+                        "eventName": "USED_MEM2_split",
+                        "component": "sysint",
+                        "use": "absolute"
+                    },
+                    {
+                        "type": "grep",
+                        "marker": "SYS_INFO_CrashPortal_success",
+                        "search": "Success uploading",
+                        "logFile": "core_log.txt",
+                        "use": "count"
+                    }
+                ],
+                "ReportingAdjustments": [
+                    {
+                        "ReportOnUpdate": false,
+                        "FirstReportingInterval": 15,
+                        "MaxUploadLatency": 20000
+                    }
+                ],
+                "HTTP": {
+                    "URL": "https://stbrtl.r53.xcal.tv/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
+                },
+                "JSONEncoding": {
+                    "ReportFormat": "NameValuePair",
+                    "ReportTimestamp": "None"
+                }
+            }
+        },
+        {
+            "name": "TR_AC22",
+            "hash": "Hash22",
+            "value": {
+                "Name": "RDKB_Profile_1",
+                "Description": "RDKB_Profile",
+                "Version": "0.1",
+                "Protocol": "HTTP",
+                "EncodingType": "JSON",
+                "ActivationTimeout": 1200,
+                "GenerateNow": false,
+                "RootName": "FR2_US_TC3",
+                "TimeReference": "2023-01-25T13:47:00Z",
+                "Parameter": [
+                    {
+                        "type": "dataModel",
+                        "name": "UPTIME",
+                        "reference": "Device.DeviceInfo.UpTime",
+                        "use": "absolute"
+                    },
+                    {
+                        "type": "event",
+                        "eventName": "USED_MEM1_split",
+                        "component": "sysint",
+                        "use": "absolute"
+                    },
+                    {
+                        "type": "grep",
+                        "marker": "SYS_INFO_CrashPortalUpload_success",
+                        "search": "Success uploading",
+                        "logFile": "core_log.txt",
+                        "use": "count"
+                    }
+                ],
+                "ReportingAdjustments": [
+                    {
+                        "ReportOnUpdate": false,
+                        "FirstReportingInterval": 15,
+                        "MaxUploadLatency": 20000
+                    }
+                ],
+                "HTTP": {
+                    "URL": "https://stbrtl.r53.xcal.tv/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
+                },
+                "JSONEncoding": {
+                    "ReportFormat": "NameValuePair",
+                    "ReportTimestamp": "None"
+                }
+            }
+        },
+        {
+            "name": "TR_AC23",
+            "hash": "Hash23",
+            "value": {
+                "Name": "RDKB_Profile_3",
+                "Description": "RDKB_Profile",
+                "Version": "0.1",
+                "Protocol": "HTTP",
+                "EncodingType": "JSON",
+                "ActivationTimeout": 3600,
+                "ReportingInterval": 45,
+                "RootName": "FR2_US_TC3",
+                "TimeReference": "2023-01-25T13:47:00Z",
+                "Parameter": [
+                    {
+                        "type": "dataModel",
+                        "name": "UPTIME",
+                        "reference": "Device.DeviceInfo.UpTime",
+                        "use": "absolute"
+                    },
+                    {
+                        "type": "event",
+                        "eventName": "USED_MEM1_split",
+                        "component": "sysint",
+                        "use": "count"
+                    },
+                    {
+                        "type": "grep",
+                        "marker": "SYS_INFO_CrashPortalUpload_success",
+                        "search": "Success uploading",
+                        "logFile": "core_log.txt",
+                        "use": "count"
+                    }
+                ],
+                "ReportingAdjustments": [
+                    {
+                        "ReportOnUpdate": false,
+                        "FirstReportingInterval": 15,
+                        "MaxUploadLatency": 20000
+                    }
+                ],
+                "HTTP": {
+                    "URL": "https://stbrtl.r53.xcal.tv/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
+                },
+                "JSONEncoding": {
+                    "ReportFormat": "NameValuePair",
+                    "ReportTimestamp": "None"
+                }
+            }
+        }
+    ]
+}'''
+
+data_with_reporting_interval = '''{ "profiles": [ { "name": "TR_AC23", "hash": "Hash23", "value": { "Name": "RDKB_Profile_3", "Description": "RDKB_Profile", "Version": "0.1", "Protocol": "HTTP", "EncodingType": "JSON", "ActivationTimeout": 3600, "ReportingInterval": 45, "GenerateNow": false, "RootName": "FR2_US_TC3", "TimeReference": "2023-01-25T13:47:00Z", "Parameter": [ { "type": "dataModel", "name": "UPTIME", "reference": "Device.DeviceInfo.UpTime", "use": "absolute" }, { "type": "event", "eventName": "TEST_EVENT_MARKER_1", "component": "sysint", "use": "count" }, { "type": "grep", "marker": "SYS_INFO_CrashPortalUpload_success", "search": "Success uploading", "logFile": "core_log.txt", "use": "count" } ], "ReportingAdjustments": [ { "ReportOnUpdate": false, "FirstReportingInterval": 15, "MaxUploadLatency": 20000 } ], "HTTP": { "URL": "https://stbrtl.r53.xcal.tv/", "Compression": "None", "Method": "POST", "RequestURIParameter": [ { "Name": "reportName", "Reference": "Profile.Name" } ] }, "JSONEncoding": { "ReportFormat": "NameValuePair", "ReportTimestamp": "None" } } } ] }'''
+
+data_with_activation_timeout = '''{
+    "profiles": [
+        {
+            "name": "TR_AC77",
+            "hash": "Hash77",
+            "value": {
+                "Name": "RDKB_Profile_1",
+                "Description": "RDKB_Profile",
+                "Version": "0.1",
+                "Protocol": "HTTP",
+                "EncodingType": "JSON",
+                "ActivationTimeOut": 50,
+                "ReportingInterval": 20,
+                "GenerateNow": true,
+                "RootName": "FR2_US_TC3",
+                "TimeReference": "2023-01-25T13:47:00Z",
+                "Parameter": [
+                    {
+                        "type": "dataModel",
+                        "name": "MODEL_NAME",
+                        "reference": "Device.DeviceInfo.ModelName",
+                        "use": "absolute"
+                    },
+                    {
+                        "type": "event",
+                        "eventName": "USED_MEM1_split",
+                        "component": "sysint",
+                        "use": "absolute"
+                    },
+                    {
+                        "type": "grep",
+                        "marker": "SYS_INFO_CrashPortalUpload_success",
+                        "search": "Success uploading",
+                        "logFile": "core_log.txt",
+                        "use": "count"
+                    }
+                ],
+                "ReportingAdjustments": [
+                    {
+                        "ReportOnUpdate": false,
+                        "FirstReportingInterval": 15,
+                        "MaxUploadLatency": 20000
+                    }
+                ],
+                "HTTP": {
+                    "URL": "https://stbrtl.r53.xcal.tv/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
+                },
+                "JSONEncoding": {
+                    "ReportFormat": "NameValuePair",
+                    "ReportTimestamp": "None"
+                }
+            }
+        }
+    ]
+}'''
+
+data_with_full_log_path = '''{
+    "profiles": [
+        {
+            "name": "TR_AC1000",
+            "hash": "Hash10000",
+            "value": {
+                "Name": "RDKB_Profile_3",
+                "Description": "RDKB_Profile",
+                "Version": "0.1",
+                "Protocol": "HTTP",
+                "EncodingType": "JSON",
+                "ActivationTimeout": 3600,
+                "ReportingInterval": 45,
+                "GenerateNow": true,
+                "RootName": "FR2_US_TC3",
+                "TimeReference": "2023-01-25T13:47:00Z",
+                "Parameter": [
+                    {
+                        "type": "dataModel",
+                        "name": "UPTIME",
+                        "reference": "Device.DeviceInfo.UpTime",
+                        "use": "absolute"
+                    },
+                    {
+                        "type": "event",
+                        "eventName": "TEST_EVENT_MARKER_1",
+                        "component": "sysint",
+                        "use": "count"
+                    },
+                    {
+                        "type": "grep",
+                        "marker": "SYS_INFO_CrashPortalUpload_success",
+                        "search": "Success uploading",
+                        "logFile": "core_log.txt",
+                        "use": "count"
+                    },
+                    {
+                        "type": "grep",
+                        "marker": "SYS_INFO_CrashPortalUpload_success_2",
+                        "search": "random",
+                        "logFile": "/opt/logs/core_log.txt",
+                        "use": "count"
+                    }
+                ],
+                "ReportingAdjustments": [
+                    {
+                        "ReportOnUpdate": false,
+                        "FirstReportingInterval": 15,
+                        "MaxUploadLatency": 20000
+                    }
+                ],
+                "HTTP": {
+                    "URL": "https://stbrtl.r53.xcal.tv/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
+                },
+                "JSONEncoding": {
+                    "ReportFormat": "NameValuePair",
+                    "ReportTimestamp": "None"
+                }
+            }
+        }
+    ]
+}'''
+
+data_with_less_activation_timeout = '''{
+    "profiles": [
+        {
+            "name": "TR_AC88",
+            "hash": "Hash88",
+            "value": {
+                "Name": "RDKB_Profile_1",
+                "Description": "RDKB_Profile",
+                "Version": "0.1",
+                "Protocol": "HTTP",
+                "EncodingType": "JSON",
+                "ActivationTimeOut": 50,
+                "DeleteOnTimeOut": true,
+                "ReportingInterval": 200,
+                "GenerateNow": false,
+                "RootName": "FR2_US_TC3",
+                "TimeReference": "2023-01-25T13:47:00Z",
+                "Parameter": [
+                    {
+                        "type": "dataModel",
+                        "name": "UPTIME",
+                        "reference": "Device.DeviceInfo.UpTime",
+                        "use": "absolute"
+                    },
+                    {
+                        "type": "event",
+                        "eventName": "USED_MEM1_split",
+                        "component": "sysint",
+                        "use": "absolute"
+                    },
+                    {
+                        "type": "grep",
+                        "marker": "SYS_INFO_CrashPortalUpload_success",
+                        "search": "Success uploading",
+                        "logFile": "core_log.txt",
+                        "use": "count"
+                    }
+                ],
+                "ReportingAdjustments": [
+                    {
+                        "ReportOnUpdate": false,
+                        "FirstReportingInterval": 15,
+                        "MaxUploadLatency": 20000
+                    }
+                ],
+                "HTTP": {
+                    "URL": "https://stbrtl.r53.xcal.tv/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
+                },
+                "JSONEncoding": {
+                    "ReportFormat": "NameValuePair",
+                    "ReportTimestamp": "None"
+                }
+            }
+        }
+    ]
+}'''
+
+data_with_delete_on_timeout = '''{
+    "profiles": [
+        {
+            "name": "TR_AC66",
+            "hash": "Hash66",
+            "value": {
+                "Name": "RDKB_Profile_1",
+                "Description": "RDKB_Profile",
+                "Version": "0.1",
+                "Protocol": "HTTP",
+                "EncodingType": "JSON",
+                "ActivationTimeOut": 50,
+                "DeleteOnTimeout": true,
+                "ReportingInterval": 20,
+                "GenerateNow": false,
+                "RootName": "FR2_US_TC3",
+                "TimeReference": "2023-01-25T13:47:00Z",
+                "Parameter": [
+                    {
+                        "type": "dataModel",
+                        "name": "UPTIME",
+                        "reference": "Device.DeviceInfo.UpTime",
+                        "use": "absolute"
+                    },
+                    {
+                        "type": "event",
+                        "eventName": "USED_MEM1_split",
+                        "component": "sysint",
+                        "use": "absolute"
+                    },
+                    {
+                        "type": "grep",
+                        "marker": "SYS_INFO_CrashPortalUpload_success",
+                        "search": "Success uploading",
+                        "logFile": "core_log.txt",
+                        "use": "count"
+                    }
+                ],
+                "ReportingAdjustments": [
+                    {
+                        "ReportOnUpdate": false,
+                        "FirstReportingInterval": 15,
+                        "MaxUploadLatency": 20000
+                    }
+                ],
+                "HTTP": {
+                    "URL": "https://stbrtl.r53.xcal.tv/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
+                },
+                "JSONEncoding": {
+                    "ReportFormat": "NameValuePair",
+                    "ReportTimestamp": "None"
+                }
+            }
+        }
+    ]
+}'''

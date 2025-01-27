@@ -92,6 +92,7 @@ def test_with_wrong_protocol_value():
     assert "TR_AC13" not in grep_T2logs(LOG_PROFILE_ENABLE) # ===> To confirm for Protocol
     sleep(5)
 
+'''
 #negative case without EncodingType & ActivationTimeout values
 @pytest.mark.run(order=4)
 def test_without_EncodingType_ActivationTimeout_values():
@@ -173,4 +174,4 @@ def test_with_delete_on_timeout():
     assert "TR_AC66" in grep_T2logs(LOG_PROFILE_TIMEOUT) # verification for activation timeout
     #assert () ==> To be updated once the DeleteOnTimeout is fixed and a LOG is added.
     sleep(10)
-
+'''

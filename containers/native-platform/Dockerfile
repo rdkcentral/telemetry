@@ -80,6 +80,8 @@ RUN mkdir -p /etc
 RUN echo "BUILD_TYPE=PROD" > /etc/device.properties
 
 RUN echo "DEVICE_NAME=DEVELOPER_CONTAINER" >> /etc/device.properties
+RUN echo "LOG_PATH=/opt/logs/" > /etc/include.properties
+RUN echo "PERSISTENT_PATH=/opt/" >> /etc/include.properties
 RUN echo "imagename=T2_Container_${REVISION}" >> /version.txt
 
 # Custom exepectation from RDK stack to have a timezone file in the stack

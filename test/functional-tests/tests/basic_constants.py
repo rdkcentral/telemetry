@@ -68,7 +68,7 @@ T2_REPORT_PROFILE_PARAM_MSG_PCK="Device.X_RDKCENTRAL-COM_T2.ReportProfilesMsgPac
 T2_TEMP_REPORT_PROFILE_PARAM="Device.X_RDKCENTRAL-COM_T2.Temp_ReportProfiles"
 RBUS_EXCEPTION_STRING = "Failed to get the data"
 """
-m_data = '''{ "profiles": [ { "name": "TR_AC1", "hash": "Hash1", "value": { "Name": "RDKB_Profile_1", "Description": "RDKB_Profile", "Version": "0.1", "Protocol": "HTTP", "EncodingType": "JSON", "ActivationTimeout": 1200, "ReportingInterval": 20, "GenerateNow": false, "RootName": "FR2_US_TC3", "TimeReference": "2023-01-25T13:47:00Z", "Parameter": [ { "type": "dataModel", "name": "UPTIME", "reference": "Device.DeviceInfo.UpTime", "use": "absolute" }, { "type": "event", "eventName": "USED_MEM1_split", "component": "sysint", "use": "absolute" }, { "type": "grep", "marker": "SYS_INFO_CrashPortalUpload_success", "search": "Success uploading", "logFile": "core_log.txt", "use": "count" } ], "ReportingAdjustments": [ { "ReportOnUpdate": false, "FirstReportingInterval": 15, "MaxUploadLatency": 20000 } ], "HTTP": { "URL": "https://stbrtl.r53.xcal.tv/", "Compression": "None", "Method": "POST", "RequestURIParameter": [ { "Name": "reportName", "Reference": "Profile.Name" } ] }, "JSONEncoding": { "ReportFormat": "NameValuePair", "ReportTimestamp": "None" } } }, { "name": "TR_AC2", "hash": "Hash2", "value": { "Name": "RDKB_Profile_2", "Description": "RDKB_Profile", "Version": "0.1", "Protocol": "HTTP", "EncodingType": "JSON", "ActivationTimeout": 3600, "ReportingInterval": 35, "GenerateNow": false, "RootName": "FR2_US_TC3", "TimeReference": "2023-01-25T13:47:00Z", "Parameter": [ { "type": "dataModel", "name": "UPTIME", "reference": "Device.DeviceInfo.UpTime", "use": "absolute" }, { "type": "event", "eventName": "USED_MEM2_split", "component": "sysint", "use": "absolute" }, { "type": "grep", "marker": "SYS_INFO_CrashPortal_success", "search": "Success uploading", "logFile": "core_log.txt", "use": "count" } ], "ReportingAdjustments": [ { "ReportOnUpdate": false, "FirstReportingInterval": 15, "MaxUploadLatency": 20000 } ], "HTTP": { "URL": "https://stbrtl.r53.xcal.tv/", "Compression": "None", "Method": "POST", "RequestURIParameter": [ { "Name": "reportName", "Reference": "Profile.Name" } ] }, "JSONEncoding": { "ReportFormat": "NameValuePair", "ReportTimestamp": "None" } } }, { "name": "TR_AC3", "hash": "Hash3", "value": { "Name": "RDKB_Profile_3", "Description": "RDKB_Profile", "Version": "0.1", "Protocol": "HTTP", "EncodingType": "JSON", "ActivationTimeout": 3600, "ReportingInterval": 45, "GenerateNow": false, "RootName": "FR2_US_TC3", "TimeReference": "2023-01-25T13:47:00Z", "Parameter": [ { "type": "dataModel", "name": "UPTIME", "reference": "Device.DeviceInfo.UpTime", "use": "absolute" }, { "type": "event", "eventName": "USED_MEM1_split", "component": "sysint", "use": "absolute" }, { "type": "grep", "marker": "SYS_INFO_CrashPortalUpload_success", "search": "Success uploading", "logFile": "core_log.txt", "use": "count" } ], "ReportingAdjustments": [ { "ReportOnUpdate": false, "FirstReportingInterval": 15, "MaxUploadLatency": 20000 } ], "HTTP": { "URL": "https://stbrtl.r53.xcal.tv/", "Compression": "None", "Method": "POST", "RequestURIParameter": [ { "Name": "reportName", "Reference": "Profile.Name" } ] }, "JSONEncoding": { "ReportFormat": "NameValuePair", "ReportTimestamp": "None" } } } ] }'''
+m_data = '''{ "profiles": [ { "name": "TR_AC1", "hash": "Hash1", "value": { "Name": "RDKB_Profile_1", "Description": "RDKB_Profile", "Version": "0.1", "Protocol": "HTTP", "EncodingType": "JSON", "ActivationTimeout": 1200, "ReportingInterval": 20, "GenerateNow": false, "RootName": "FR2_US_TC3", "TimeReference": "2023-01-25T13:47:00Z", "Parameter": [ { "type": "dataModel", "name": "UPTIME", "reference": "Device.DeviceInfo.UpTime", "use": "absolute" }, { "type": "event", "eventName": "USED_MEM1_split", "component": "sysint", "use": "absolute" }, { "type": "grep", "marker": "SYS_INFO_CrashPortalUpload_success", "search": "Success uploading", "logFile": "core_log.txt", "use": "count" } ], "ReportingAdjustments": [ { "ReportOnUpdate": false, "FirstReportingInterval": 15, "MaxUploadLatency": 20000 } ], "HTTP": { "URL": "https://mockxconf:50051/dataLakeMock/", "Compression": "None", "Method": "POST", "RequestURIParameter": [ { "Name": "reportName", "Reference": "Profile.Name" } ] }, "JSONEncoding": { "ReportFormat": "NameValuePair", "ReportTimestamp": "None" } } }, { "name": "TR_AC2", "hash": "Hash2", "value": { "Name": "RDKB_Profile_2", "Description": "RDKB_Profile", "Version": "0.1", "Protocol": "HTTP", "EncodingType": "JSON", "ActivationTimeout": 3600, "ReportingInterval": 35, "GenerateNow": false, "RootName": "FR2_US_TC3", "TimeReference": "2023-01-25T13:47:00Z", "Parameter": [ { "type": "dataModel", "name": "UPTIME", "reference": "Device.DeviceInfo.UpTime", "use": "absolute" }, { "type": "event", "eventName": "USED_MEM2_split", "component": "sysint", "use": "absolute" }, { "type": "grep", "marker": "SYS_INFO_CrashPortal_success", "search": "Success uploading", "logFile": "core_log.txt", "use": "count" } ], "ReportingAdjustments": [ { "ReportOnUpdate": false, "FirstReportingInterval": 15, "MaxUploadLatency": 20000 } ], "HTTP": { "URL": "https://mockxconf:50051/dataLakeMock/", "Compression": "None", "Method": "POST", "RequestURIParameter": [ { "Name": "reportName", "Reference": "Profile.Name" } ] }, "JSONEncoding": { "ReportFormat": "NameValuePair", "ReportTimestamp": "None" } } }, { "name": "TR_AC3", "hash": "Hash3", "value": { "Name": "RDKB_Profile_3", "Description": "RDKB_Profile", "Version": "0.1", "Protocol": "HTTP", "EncodingType": "JSON", "ActivationTimeout": 3600, "ReportingInterval": 45, "GenerateNow": false, "RootName": "FR2_US_TC3", "TimeReference": "2023-01-25T13:47:00Z", "Parameter": [ { "type": "dataModel", "name": "UPTIME", "reference": "Device.DeviceInfo.UpTime", "use": "absolute" }, { "type": "event", "eventName": "USED_MEM1_split", "component": "sysint", "use": "absolute" }, { "type": "grep", "marker": "SYS_INFO_CrashPortalUpload_success", "search": "Success uploading", "logFile": "core_log.txt", "use": "count" } ], "ReportingAdjustments": [ { "ReportOnUpdate": false, "FirstReportingInterval": 15, "MaxUploadLatency": 20000 } ], "HTTP": { "URL": "https://mockxconf:50051/dataLakeMock/", "Compression": "None", "Method": "POST", "RequestURIParameter": [ { "Name": "reportName", "Reference": "Profile.Name" } ] }, "JSONEncoding": { "ReportFormat": "NameValuePair", "ReportTimestamp": "None" } } } ] }'''
 
 data_without_namefield = '''{
     "profiles": [
@@ -114,7 +114,7 @@ data_without_namefield = '''{
                     }
                 ],
                 "HTTP": {
-                    "URL": "https://stbrtl.r53.xcal.tv/",
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
                     "Compression": "None",
                     "Method": "POST",
                     "RequestURIParameter": [
@@ -173,7 +173,7 @@ data_without_namefield = '''{
                     }
                 ],
                 "HTTP": {
-                    "URL": "https://stbrtl.r53.xcal.tv/",
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
                     "Compression": "None",
                     "Method": "POST",
                     "RequestURIParameter": [
@@ -231,7 +231,7 @@ data_without_namefield = '''{
                     }
                 ],
                 "HTTP": {
-                    "URL": "https://stbrtl.r53.xcal.tv/",
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
                     "Compression": "None",
                     "Method": "POST",
                     "RequestURIParameter": [
@@ -298,7 +298,7 @@ data_without_hashvalue = '''{
                     }
                 ],
                 "HTTP": {
-                    "URL": "https://stbrtl.r53.xcal.tv/",
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
                     "Compression": "None",
                     "Method": "POST",
                     "RequestURIParameter": [
@@ -356,7 +356,7 @@ data_without_hashvalue = '''{
                     }
                 ],
                 "HTTP": {
-                    "URL": "https://stbrtl.r53.xcal.tv/",
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
                     "Compression": "None",
                     "Method": "POST",
                     "RequestURIParameter": [
@@ -414,7 +414,7 @@ data_without_hashvalue = '''{
                     }
                 ],
                 "HTTP": {
-                    "URL": "https://stbrtl.r53.xcal.tv/",
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
                     "Compression": "None",
                     "Method": "POST",
                     "RequestURIParameter": [
@@ -483,7 +483,7 @@ data_with_wrong_protocol_value = '''{
                     }
                 ],
                 "HTTP": {
-                    "URL": "https://stbrtl.r53.xcal.tv/",
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
                     "Compression": "None",
                     "Method": "POST",
                     "RequestURIParameter": [
@@ -542,7 +542,7 @@ data_with_wrong_protocol_value = '''{
                     }
                 ],
                 "HTTP": {
-                    "URL": "https://stbrtl.r53.xcal.tv/",
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
                     "Compression": "None",
                     "Method": "POST",
                     "RequestURIParameter": [
@@ -601,7 +601,7 @@ data_with_wrong_protocol_value = '''{
                     }
                 ],
                 "HTTP": {
-                    "URL": "https://stbrtl.r53.xcal.tv/",
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
                     "Compression": "None",
                     "Method": "POST",
                     "RequestURIParameter": [
@@ -672,7 +672,7 @@ data_without_EncodingType_ActivationTimeout_values = '''{
                     }
                 ],
                 "HTTP": {
-                    "URL": "https://stbrtl.r53.xcal.tv/",
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
                     "Compression": "None",
                     "Method": "POST",
                     "RequestURIParameter": [
@@ -731,7 +731,7 @@ data_without_EncodingType_ActivationTimeout_values = '''{
                     }
                 ],
                 "HTTP": {
-                    "URL": "https://stbrtl.r53.xcal.tv/",
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
                     "Compression": "None",
                     "Method": "POST",
                     "RequestURIParameter": [
@@ -789,7 +789,7 @@ data_without_EncodingType_ActivationTimeout_values = '''{
                     }
                 ],
                 "HTTP": {
-                    "URL": "https://stbrtl.r53.xcal.tv/",
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
                     "Compression": "None",
                     "Method": "POST",
                     "RequestURIParameter": [
@@ -847,7 +847,7 @@ data_without_EncodingType_ActivationTimeout_values = '''{
                     }
                 ],
                 "HTTP": {
-                    "URL": "https://stbrtl.r53.xcal.tv/",
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
                     "Compression": "None",
                     "Method": "POST",
                     "RequestURIParameter": [
@@ -905,7 +905,7 @@ data_without_EncodingType_ActivationTimeout_values = '''{
                     }
                 ],
                 "HTTP": {
-                    "URL": "https://stbrtl.r53.xcal.tv/",
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
                     "Compression": "None",
                     "Method": "POST",
                     "RequestURIParameter": [
@@ -963,7 +963,7 @@ data_without_EncodingType_ActivationTimeout_values = '''{
                     }
                 ],
                 "HTTP": {
-                    "URL": "https://stbrtl.r53.xcal.tv/",
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
                     "Compression": "None",
                     "Method": "POST",
                     "RequestURIParameter": [
@@ -982,7 +982,7 @@ data_without_EncodingType_ActivationTimeout_values = '''{
     ]
 }'''
 
-data_with_reporting_interval = '''{ "profiles": [ { "name": "TR_AC222", "hash": "Hash222", "value": { "Name": "RDKB_Profile_3", "Description": "RDKB_Profile", "Version": "0.1", "Protocol": "HTTP", "EncodingType": "JSON", "ActivationTimeout": 3600, "ReportingInterval": 45, "GenerateNow": false, "RootName": "FR2_US_TC3", "TimeReference": "2023-01-25T13:47:00Z", "Parameter": [ { "type": "dataModel", "name": "UPTIME", "reference": "Device.DeviceInfo.UpTime", "use": "absolute" }, { "type": "event", "eventName": "TEST_EVENT_MARKER_1", "component": "sysint", "use": "count" }, { "type": "grep", "marker": "SYS_INFO_CrashPortalUpload_success", "search": "Success uploading", "logFile": "core_log.txt", "use": "count" } ], "ReportingAdjustments": [ { "ReportOnUpdate": false, "FirstReportingInterval": 15, "MaxUploadLatency": 20000 } ], "HTTP": { "URL": "https://stbrtl.r53.xcal.tv/", "Compression": "None", "Method": "POST", "RequestURIParameter": [ { "Name": "reportName", "Reference": "Profile.Name" } ] }, "JSONEncoding": { "ReportFormat": "NameValuePair", "ReportTimestamp": "None" } } } ] }'''
+data_with_reporting_interval = '''{ "profiles": [ { "name": "TR_AC222", "hash": "Hash222", "value": { "Name": "RDKB_Profile_3", "Description": "RDKB_Profile", "Version": "0.1", "Protocol": "HTTP", "EncodingType": "JSON", "ActivationTimeout": 3600, "ReportingInterval": 45, "GenerateNow": false, "RootName": "FR2_US_TC3", "TimeReference": "2023-01-25T13:47:00Z", "Parameter": [ { "type": "dataModel", "name": "UPTIME", "reference": "Device.DeviceInfo.UpTime", "use": "absolute" }, { "type": "event", "eventName": "TEST_EVENT_MARKER_1", "component": "sysint", "use": "count" }, { "type": "grep", "marker": "SYS_INFO_CrashPortalUpload_success", "search": "Success uploading", "logFile": "core_log.txt", "use": "count" } ], "ReportingAdjustments": [ { "ReportOnUpdate": false, "FirstReportingInterval": 15, "MaxUploadLatency": 20000 } ], "HTTP": { "URL": "https://mockxconf:50051/dataLakeMock/", "Compression": "None", "Method": "POST", "RequestURIParameter": [ { "Name": "reportName", "Reference": "Profile.Name" } ] }, "JSONEncoding": { "ReportFormat": "NameValuePair", "ReportTimestamp": "None" } } } ] }'''
 
 data_with_activation_timeout = '''{
     "profiles": [
@@ -1028,7 +1028,7 @@ data_with_activation_timeout = '''{
                     }
                 ],
                 "HTTP": {
-                    "URL": "https://stbrtl.r53.xcal.tv/",
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
                     "Compression": "None",
                     "Method": "POST",
                     "RequestURIParameter": [
@@ -1099,7 +1099,7 @@ data_with_full_log_path = '''{
                     }
                 ],
                 "HTTP": {
-                    "URL": "https://stbrtl.r53.xcal.tv/",
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
                     "Compression": "None",
                     "Method": "POST",
                     "RequestURIParameter": [
@@ -1164,7 +1164,7 @@ data_with_less_activation_timeout = '''{
                     }
                 ],
                 "HTTP": {
-                    "URL": "https://stbrtl.r53.xcal.tv/",
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
                     "Compression": "None",
                     "Method": "POST",
                     "RequestURIParameter": [
@@ -1229,7 +1229,7 @@ data_with_delete_on_timeout = '''{
                     }
                 ],
                 "HTTP": {
-                    "URL": "https://stbrtl.r53.xcal.tv/",
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
                     "Compression": "None",
                     "Method": "POST",
                     "RequestURIParameter": [

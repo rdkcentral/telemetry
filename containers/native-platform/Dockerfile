@@ -26,7 +26,7 @@ RUN apt-get update && apt-get install -y \
 RUN add-apt-repository ppa:deadsnakes/ppa && apt-get update && apt-get install -y \
     python3-pytest-bdd
     
-RUN pip3 install requests pytest-ordering pytest-json-report pytest-html
+RUN pip3 install requests pytest-ordering pytest-json-report pytest-html msgpack
 
 # Install CMake
 RUN apt-get update && apt-get install -y cmake
@@ -80,6 +80,8 @@ RUN mkdir -p /etc
 RUN echo "BUILD_TYPE=PROD" > /etc/device.properties
 
 RUN echo "DEVICE_NAME=DEVELOPER_CONTAINER" >> /etc/device.properties
+RUN echo "LOG_PATH=/opt/logs/" > /etc/include.properties
+RUN echo "PERSISTENT_PATH=/opt/" >> /etc/include.properties
 RUN echo "imagename=T2_Container_${REVISION}" >> /version.txt
 
 # Custom exepectation from RDK stack to have a timezone file in the stack

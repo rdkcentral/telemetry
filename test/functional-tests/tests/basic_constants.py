@@ -982,7 +982,7 @@ data_without_EncodingType_ActivationTimeout_values = '''{
     ]
 }'''
 
-data_with_reporting_interval = '''{ "profiles": [ { "name": "TR_AC23", "hash": "Hash23", "value": { "Name": "RDKB_Profile_3", "Description": "RDKB_Profile", "Version": "0.1", "Protocol": "HTTP", "EncodingType": "JSON", "ActivationTimeout": 3600, "ReportingInterval": 45, "GenerateNow": false, "RootName": "FR2_US_TC3", "TimeReference": "2023-01-25T13:47:00Z", "Parameter": [ { "type": "dataModel", "name": "UPTIME", "reference": "Device.DeviceInfo.UpTime", "use": "absolute" }, { "type": "event", "eventName": "TEST_EVENT_MARKER_1", "component": "sysint", "use": "count" }, { "type": "grep", "marker": "SYS_INFO_CrashPortalUpload_success", "search": "Success uploading", "logFile": "core_log.txt", "use": "count" } ], "ReportingAdjustments": [ { "ReportOnUpdate": false, "FirstReportingInterval": 15, "MaxUploadLatency": 20000 } ], "HTTP": { "URL": "https://stbrtl.r53.xcal.tv/", "Compression": "None", "Method": "POST", "RequestURIParameter": [ { "Name": "reportName", "Reference": "Profile.Name" } ] }, "JSONEncoding": { "ReportFormat": "NameValuePair", "ReportTimestamp": "None" } } } ] }'''
+data_with_reporting_interval = '''{ "profiles": [ { "name": "TR_AC222", "hash": "Hash222", "value": { "Name": "RDKB_Profile_3", "Description": "RDKB_Profile", "Version": "0.1", "Protocol": "HTTP", "EncodingType": "JSON", "ActivationTimeout": 3600, "ReportingInterval": 45, "GenerateNow": false, "RootName": "FR2_US_TC3", "TimeReference": "2023-01-25T13:47:00Z", "Parameter": [ { "type": "dataModel", "name": "UPTIME", "reference": "Device.DeviceInfo.UpTime", "use": "absolute" }, { "type": "event", "eventName": "TEST_EVENT_MARKER_1", "component": "sysint", "use": "count" }, { "type": "grep", "marker": "SYS_INFO_CrashPortalUpload_success", "search": "Success uploading", "logFile": "core_log.txt", "use": "count" } ], "ReportingAdjustments": [ { "ReportOnUpdate": false, "FirstReportingInterval": 15, "MaxUploadLatency": 20000 } ], "HTTP": { "URL": "https://stbrtl.r53.xcal.tv/", "Compression": "None", "Method": "POST", "RequestURIParameter": [ { "Name": "reportName", "Reference": "Profile.Name" } ] }, "JSONEncoding": { "ReportFormat": "NameValuePair", "ReportTimestamp": "None" } } } ] }'''
 
 data_with_activation_timeout = '''{
     "profiles": [
@@ -999,7 +999,6 @@ data_with_activation_timeout = '''{
                 "ReportingInterval": 20,
                 "GenerateNow": true,
                 "RootName": "FR2_US_TC3",
-                "TimeReference": "2023-01-25T13:47:00Z",
                 "Parameter": [
                     {
                         "type": "dataModel",

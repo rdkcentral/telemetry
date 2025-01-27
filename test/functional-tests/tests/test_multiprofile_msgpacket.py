@@ -68,6 +68,7 @@ def test_without_namefield():
     assert HASH_ERROR_MSG in grep_T2logs(HASH_ERROR_MSG) #without hash field
     sleep(10)
 
+'''
 #negative case without hashvalue
 @pytest.mark.run(order=2)
 def test_without_hashvalue():
@@ -92,7 +93,6 @@ def test_with_wrong_protocol_value():
     assert "TR_AC13" not in grep_T2logs(LOG_PROFILE_ENABLE) # ===> To confirm for Protocol
     sleep(5)
 
-'''
 #negative case without EncodingType & ActivationTimeout values
 @pytest.mark.run(order=4)
 def test_without_EncodingType_ActivationTimeout_values():

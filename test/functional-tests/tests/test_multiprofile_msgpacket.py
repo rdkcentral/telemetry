@@ -140,7 +140,12 @@ def test_reporting_interval_working():
 # Datamodel validation
 @pytest.mark.run(order=6)
 def test_for_activation_timeout():
-
+    os.makedirs('/opt/logs', exist_ok=True)
+    # Create log file with the logs needed for grep marker
+    with open('/opt/logs/core_log.txt', 'w') as file:
+        file.write("Success uploading report 300\n")
+        file.write("random string1\n")
+        file.write("rando\n")
     LOG_GENERATE_NOW = "Waiting for 0 sec for next TIMEOUT for profile"
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_activation_timeout))
     sleep(10)

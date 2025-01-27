@@ -26,7 +26,7 @@ RUN apt-get update && apt-get install -y \
 RUN add-apt-repository ppa:deadsnakes/ppa && apt-get update && apt-get install -y \
     python3-pytest-bdd
     
-RUN pip3 install requests pytest-ordering pytest-json-report pytest-html msgpack json
+RUN pip3 install requests pytest-ordering pytest-json-report pytest-html msgpack
 
 # Install CMake
 RUN apt-get update && apt-get install -y cmake

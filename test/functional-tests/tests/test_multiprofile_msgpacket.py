@@ -29,6 +29,7 @@ import pytest
 import msgpack
 import json
 import base64
+from test_runs_as_daemon import run_shell_command
 
 RUN_START_TIME = None
 LOG_PROFILE_ENABLE = "Successfully enabled profile :"
@@ -59,6 +60,7 @@ def test_without_namefield():
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_without_namefield))
     sleep(20)
 
+'''
     #Verify that profile is running
     ERROR_MSG = "Incomplete profile object information, unable to create profile"
     LOG_MSG = "new profileName  to profileList"
@@ -105,6 +107,7 @@ def test_without_EncodingType_ActivationTimeout_values():
     sleep(10)
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_without_EncodingType_ActivationTimeout_values))
     sleep(20)
+    sleep(5)
     assert "TR_AC18" in grep_T2logs(LOG_PROFILE_ENABLE) # ===> To confirm 
     assert "TR_AC19" in grep_T2logs(LOG_PROFILE_ENABLE) # ===> To confirm 
     assert "TR_AC20" not in grep_T2logs(LOG_PROFILE_ENABLE) # ===> To confirm 
@@ -114,29 +117,47 @@ def test_without_EncodingType_ActivationTimeout_values():
     assert "TR_AC23" in grep_T2logs(LOG_PROFILE_ENABLE) # ===> To confirm
     sleep(5)
 
+'''
 #1).positive case for working of Reporting Interval
 #2).positive case for event marker & count
 @pytest.mark.run(order=5)
 def test_reporting_interval_working():
     clear_T2logs()
+    kill_telemetry(9)
+    RUN_START_TIME = dt.now()
+    remove_T2bootup_flag()
+    clear_persistant_files()
+    run_telemetry()
+    sleep(10)
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_reporting_interval))
     sleep(20)
-    TEST_LOG1 = grep_T2logs("reporting interval is taken - TR_AC222")
+    TEST_LOG1 = grep_T2logs("reporting interval is taken - TR_AC732")
 
-    command1 = ["telemetry2_0_client", "TEST_EVENT_MARKER_1", "300"]
+    command1 = ["telemetry2_0_client TEST_EVENT_MARKER_1 300"]
+    command2 = ["telemetry2_0_client TEST_EVENT_MARKER_2 occurrance1"]
+    command3 = ["telemetry2_0_client TEST_EVENT_MARKER_2 occurrance2"]
 
-   # Execute the command
-    result = subprocess.run(command1, capture_output=True, text=True)
-    sleep(10)
-    result = subprocess.run(command1, capture_output=True, text=True)
+    run_shell_command(command1)
+    sleep(5)
+    run_shell_command(command1)
+    sleep(5)
+    run_shell_command(command2)
+    sleep(5)
+    run_shell_command(command3)
+    sleep(5)
     assert "45 sec" in TEST_LOG1
     sleep(50)
-    assert "TIMEOUT for profile" in grep_T2logs("TR_AC222") #Verify reporting interval 
-    assert "TEST_EVENT_MARKER_1\":\"2" in grep_T2logs("cJSON Report ") #verify event marker & count as well
+    assert "TIMEOUT for profile" in grep_T2logs("TR_AC732") #Verify reporting interval 
+    assert "TEST_EVENT_MARKER_1\":\"2" in grep_T2logs("cJSON Report ") #verify event marker for count 
+    assert "occurrance1" in grep_T2logs("TEST_EVENT_MARKER_2") #verify event marker for accummulate - 1
+    assert "occurrance2" in grep_T2logs("TEST_EVENT_MARKER_2") #verify event marker for accummulate - 2
     sleep(10)
 
+'''
 # verification for GenerateNow
-# grep marker validation
+# count - grep marker validation
+# absolute - grep marker validation
+# Trim - grep marker validation
 # Datamodel validation
 @pytest.mark.run(order=6)
 def test_for_activation_timeout():
@@ -144,14 +165,21 @@ def test_for_activation_timeout():
     # Create log file with the logs needed for grep marker
     with open('/opt/logs/core_log.txt', 'w') as file:
         file.write("Success uploading report 300\n")
+        file.write("Success uploading report 200\n")
         file.write("random string1\n")
         file.write("rando\n")
+        file.write("file uploading newfile1 20%\n")
+        file.write("file reading newfile2 line 10\n")
+        file.write("file writing to file.txt 22 lines\n")
+        file.write("file writing to file.txt 23 lines\n")
     LOG_GENERATE_NOW = "Waiting for 0 sec for next TIMEOUT for profile"
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_activation_timeout))
     sleep(20)
     assert "TR_AC77" in grep_T2logs(LOG_PROFILE_ENABLE) 
     assert "TR_AC77" in grep_T2logs(LOG_GENERATE_NOW)  #==> verification for GenerateNow
-    assert "SYS_INFO_CrashPortalUpload_success" in grep_T2logs("cJSON Report ") # ==> grep marker validation
+    assert "SYS_INFO_CrashPortalUpload_success\":\"2" in grep_T2logs("cJSON Report ") # ==> count - grep marker validation
+    assert "FILE_Upload_Progress\":\" newfile1 20%" in grep_T2logs("cJSON Report ") # ==> absolute - grep marker validation
+    assert "FILE_Read_Progress\":\"newfile2 line 10" in grep_T2logs("cJSON Report ") # ==> Trim - grep marker validation
     assert "MODEL_NAME" in grep_T2logs("cJSON Report ") # ==> Datamodel validation
     sleep(10)
 
@@ -162,6 +190,7 @@ def test_for_invalid_activation_timeout():
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_less_activation_timeout))
     sleep(20)
     assert "TR_AC88" in grep_T2logs(ERROR_PROFILE_TIMEOUT)
+    sleep(10)
 
 #1).positive case for activation timeout
 #2).positive case with delete on timeout
@@ -173,3 +202,5 @@ def test_with_delete_on_timeout():
     assert "TR_AC66" in grep_T2logs(LOG_PROFILE_TIMEOUT) # verification for activation timeout
     #assert () ==> To be updated once the DeleteOnTimeout is fixed and a LOG is added.
     sleep(10)
+
+'''

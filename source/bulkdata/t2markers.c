@@ -175,7 +175,7 @@ T2ERROR addT2EventMarker(const char* markerName, const char* compName, const cha
     (void) skipFreq;
     pthread_mutex_lock(&t2MarkersMutex);
     T2Marker *t2Marker = (T2Marker *)hash_map_get(markerCompMap, markerName);
-    pthread_mutex_unlock(&t2MarkersMutex);
+    //pthread_mutex_unlock(&t2MarkersMutex); unlock after modification is done on t2Marker
     if(t2Marker)
     {
         T2Debug("Found a matching T2Marker \n");
@@ -197,9 +197,11 @@ T2ERROR addT2EventMarker(const char* markerName, const char* compName, const cha
                 T2Debug("%s already present in eventlist of %s . Ignore updates \n", profileName, markerName);
             }
         }
+	pthread_mutex_unlock(&t2MarkersMutex);
     }
     else
     {
+	pthread_mutex_unlock(&t2MarkersMutex);
         t2Marker = (T2Marker *)malloc(sizeof(T2Marker));
         if(t2Marker != NULL)
         {

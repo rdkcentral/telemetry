@@ -60,7 +60,6 @@ def test_without_namefield():
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_without_namefield))
     sleep(20)
 
-'''
     #Verify that profile is running
     ERROR_MSG = "Incomplete profile object information, unable to create profile"
     LOG_MSG = "new profileName  to profileList"
@@ -117,7 +116,6 @@ def test_without_EncodingType_ActivationTimeout_values():
     assert "TR_AC23" in grep_T2logs(LOG_PROFILE_ENABLE) # ===> To confirm
     sleep(5)
 
-'''
 #1).positive case for working of Reporting Interval
 #2).positive case for event marker & count
 @pytest.mark.run(order=5)
@@ -153,7 +151,6 @@ def test_reporting_interval_working():
     assert "occurrance2" in grep_T2logs("TEST_EVENT_MARKER_2") #verify event marker for accummulate - 2
     sleep(10)
 
-'''
 # verification for GenerateNow
 # count - grep marker validation
 # absolute - grep marker validation
@@ -202,5 +199,3 @@ def test_with_delete_on_timeout():
     assert "TR_AC66" in grep_T2logs(LOG_PROFILE_TIMEOUT) # verification for activation timeout
     #assert () ==> To be updated once the DeleteOnTimeout is fixed and a LOG is added.
     sleep(10)
-
-'''

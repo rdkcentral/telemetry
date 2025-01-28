@@ -67,9 +67,6 @@ def test_without_namefield():
     assert LOG_MSG not in grep_T2logs(LOG_MSG) #Empty string in namefield 
     assert HASH_ERROR_MSG in grep_T2logs(HASH_ERROR_MSG) #without hash field
     sleep(10)
-        # Display the contents of the file at the end of the test case
-    with open('/opt/logs/telemetry2_0.txt.0', 'r') as file:
-        print(file.read())
 
 #negative case without hashvalue
 @pytest.mark.run(order=2)
@@ -81,9 +78,6 @@ def test_without_hashvalue():
     assert "TR_AC14" in grep_T2logs(LOG_PROFILE_ENABLE) # ===> without version field
     assert "TR_AC15" not in grep_T2logs(LOG_PROFILE_ENABLE) # ===> without Protocol field
     sleep(10)
-            # Display the contents of the file at the end of the test case
-    with open('/opt/logs/telemetry2_0.txt.0', 'r') as file:
-        print(file.read())
 
 #negative - random value for Protocol 
 @pytest.mark.run(order=3)
@@ -97,9 +91,6 @@ def test_with_wrong_protocol_value():
     assert "TR_AC17" in grep_T2logs(LOG_PROFILE_ENABLE) # ===> To confirm for version
     assert "TR_AC13" not in grep_T2logs(LOG_PROFILE_ENABLE) # ===> To confirm for Protocol
     sleep(5)
-            # Display the contents of the file at the end of the test case
-    with open('/opt/logs/telemetry2_0.txt.0', 'r') as file:
-        print(file.read())
 
 #negative case without EncodingType & ActivationTimeout values
 @pytest.mark.run(order=4)
@@ -122,9 +113,6 @@ def test_without_EncodingType_ActivationTimeout_values():
     assert "TR_AC22" not in grep_T2logs(LOG_PROFILE_ENABLE) # ===> To confirm 
     assert "TR_AC23" in grep_T2logs(LOG_PROFILE_ENABLE) # ===> To confirm
     sleep(5)
-            # Display the contents of the file at the end of the test case
-    with open('/opt/logs/telemetry2_0.txt.0', 'r') as file:
-        print(file.read())
 
 #1).positive case for working of Reporting Interval
 #2).positive case for event marker & count
@@ -146,9 +134,6 @@ def test_reporting_interval_working():
     assert "TIMEOUT for profile" in grep_T2logs("TR_AC222") #Verify reporting interval 
     assert "TEST_EVENT_MARKER_1\":\"2" in grep_T2logs("cJSON Report ") #verify event marker & count as well
     sleep(10)
-            # Display the contents of the file at the end of the test case
-    with open('/opt/logs/telemetry2_0.txt.0', 'r') as file:
-        print(file.read())
 
 # verification for GenerateNow
 # grep marker validation
@@ -169,20 +154,14 @@ def test_for_activation_timeout():
     assert "SYS_INFO_CrashPortalUpload_success" in grep_T2logs("cJSON Report ") # ==> grep marker validation
     assert "MODEL_NAME" in grep_T2logs("cJSON Report ") # ==> Datamodel validation
     sleep(10)
-            # Display the contents of the file at the end of the test case
-    with open('/opt/logs/telemetry2_0.txt.0', 'r') as file:
-        print(file.read())
 
 #Negative case with activation timeout less than reporting interval
 @pytest.mark.run(order=7)
 def test_for_invalid_activation_timeout():
     ERROR_PROFILE_TIMEOUT = "activationTimeoutPeriod is less than reporting interval. invalid profile: "
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_less_activation_timeout))
-    assert "TR_AC88" in grep_T2logs(ERROR_PROFILE_TIMEOUT)
     sleep(20)
-            # Display the contents of the file at the end of the test case
-    with open('/opt/logs/telemetry2_0.txt.0', 'r') as file:
-        print(file.read())
+    assert "TR_AC88" in grep_T2logs(ERROR_PROFILE_TIMEOUT)
 
 #1).positive case for activation timeout
 #2).positive case with delete on timeout
@@ -194,6 +173,3 @@ def test_with_delete_on_timeout():
     assert "TR_AC66" in grep_T2logs(LOG_PROFILE_TIMEOUT) # verification for activation timeout
     #assert () ==> To be updated once the DeleteOnTimeout is fixed and a LOG is added.
     sleep(10)
-            # Display the contents of the file at the end of the test case
-    with open('/opt/logs/telemetry2_0.txt.0', 'r') as file:
-        print(file.read())

@@ -982,7 +982,62 @@ data_without_EncodingType_ActivationTimeout_values = '''{
     ]
 }'''
 
-data_with_reporting_interval = '''{ "profiles": [ { "name": "TR_AC222", "hash": "Hash222", "value": { "Name": "RDKB_Profile_3", "Description": "RDKB_Profile", "Version": "0.1", "Protocol": "HTTP", "EncodingType": "JSON", "ActivationTimeout": 3600, "ReportingInterval": 45, "GenerateNow": false, "RootName": "FR2_US_TC3", "TimeReference": "2023-01-25T13:47:00Z", "Parameter": [ { "type": "dataModel", "name": "UPTIME", "reference": "Device.DeviceInfo.UpTime", "use": "absolute" }, { "type": "event", "eventName": "TEST_EVENT_MARKER_1", "component": "sysint", "use": "count" }, { "type": "grep", "marker": "SYS_INFO_CrashPortalUpload_success", "search": "Success uploading", "logFile": "core_log.txt", "use": "count" } ], "ReportingAdjustments": [ { "ReportOnUpdate": false, "FirstReportingInterval": 15, "MaxUploadLatency": 20000 } ], "HTTP": { "URL": "https://mockxconf:50051/dataLakeMock/", "Compression": "None", "Method": "POST", "RequestURIParameter": [ { "Name": "reportName", "Reference": "Profile.Name" } ] }, "JSONEncoding": { "ReportFormat": "NameValuePair", "ReportTimestamp": "None" } } } ] }'''
+data_with_reporting_interval = '''{
+    "profiles": [
+        {
+            "name": "TR_AC732",
+            "hash": "Hash732",
+            "value": {
+                "Name": "RDKB_Profile_3",
+                "Description": "RDKB_Profile",
+                "Version": "0.1",
+                "Protocol": "HTTP",
+                "EncodingType": "JSON",
+                "ActivationTimeout": 3600,
+                "ReportingInterval": 45,
+                "GenerateNow": false,
+                "RootName": "FR2_US_TC3",
+                "TimeReference": "2023-01-25T13:47:00Z",
+                "Parameter": [
+                    {
+                        "type": "event",
+                        "eventName": "TEST_EVENT_MARKER_1",
+                        "component": "sysint",
+                        "use": "count"
+                    },
+                    {
+                        "type": "event",
+                        "eventName": "TEST_EVENT_MARKER_2",
+                        "component": "sysint",
+                        "use": "accumulate"
+                    }
+                ],
+                "ReportingAdjustments": [
+                    {
+                        "ReportOnUpdate": false,
+                        "FirstReportingInterval": 15,
+                        "MaxUploadLatency": 20000
+                    }
+                ],
+                "HTTP": {
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
+                },
+                "JSONEncoding": {
+                    "ReportFormat": "NameValuePair",
+                    "ReportTimestamp": "None"
+                }
+            }
+        }
+    ]
+}'''
 
 data_with_activation_timeout = '''{
     "profiles": [
@@ -1018,6 +1073,67 @@ data_with_activation_timeout = '''{
                         "search": "Success uploading",
                         "logFile": "core_log.txt",
                         "use": "count"
+                    },
+                    {
+                        "type": "grep",
+                        "marker": "FILE_Upload_Progress",
+                        "search": "file uploading",
+                        "logFile": "core_log.txt",
+                        "use": "absolute"
+                    }
+                ],
+                "ReportingAdjustments": [
+                    {
+                        "ReportOnUpdate": false,
+                        "FirstReportingInterval": 15,
+                        "MaxUploadLatency": 20000
+                    }
+                ],
+                "HTTP": {
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
+                },
+                "JSONEncoding": {
+                    "ReportFormat": "NameValuePair",
+                    "ReportTimestamp": "None"
+                }
+            }
+        },
+        {
+            "name": "TR_AC777",
+            "hash": "Hash777",
+            "value": {
+                "Name": "RDKB_Profile_1",
+                "Description": "RDKB_Profile",
+                "Version": "0.1",
+                "Protocol": "HTTP",
+                "EncodingType": "JSON",
+                "ActivationTimeOut": 50,
+                "ReportingInterval": 20,
+                "GenerateNow": true,
+                "RootName": "FR2_US_TC3",
+                "Parameter": [
+                    {
+                        "type": "grep",
+                        "marker": "FILE_Read_Progress",
+                        "search": "file reading",
+                        "logFile": "core_log.txt",
+                        "use": "absolute",
+                        "trim":true
+                    },
+                    {
+                        "type": "grep",
+                        "marker": "FILE_Write_Progress",
+                        "search": "file writing",
+                        "logFile": "core_log.txt",
+                        "use": "accumulate"
                     }
                 ],
                 "ReportingAdjustments": [

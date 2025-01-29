@@ -60,7 +60,6 @@ def test_without_namefield():
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_without_namefield))
     sleep(20)
 
-'''
     #Verify that profile is running
     ERROR_MSG = "Incomplete profile object information, unable to create profile"
     LOG_MSG = "new profileName  to profileList"
@@ -189,12 +188,17 @@ def test_for_invalid_activation_timeout():
     sleep(20)
     assert "TR_AC88" in grep_T2logs(ERROR_PROFILE_TIMEOUT)
     sleep(10)
-'''
 
 #1).positive case for activation timeout
 #2).positive case with delete on timeout
 @pytest.mark.run(order=8)
 def test_with_delete_on_timeout():
+    kill_telemetry(9)
+    RUN_START_TIME = dt.now()
+    remove_T2bootup_flag()
+    clear_persistant_files()
+    run_telemetry()
+    sleep(10)
     LOG_PROFILE_TIMEOUT = "Profile activation timeout"
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_delete_on_timeout))
     sleep(5)

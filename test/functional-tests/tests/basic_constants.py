@@ -1310,31 +1310,34 @@ data_with_delete_on_timeout = '''{
                 "Version": "0.1",
                 "Protocol": "HTTP",
                 "EncodingType": "JSON",
-                "ActivationTimeOut": 50,
+                "ActivationTimeOut": 20,
                 "DeleteOnTimeout": true,
-                "ReportingInterval": 20,
+                "ReportingInterval": 15,
                 "GenerateNow": false,
                 "RootName": "FR2_US_TC3",
                 "TimeReference": "2023-01-25T13:47:00Z",
                 "Parameter": [
                     {
                         "type": "dataModel",
-                        "name": "UPTIME",
-                        "reference": "Device.DeviceInfo.UpTime",
-                        "use": "absolute"
+                        "name": "MODEL_NAME",
+                        "reference": "Device.DeviceInfo.ModelName",
+                        "use": "absolute",
+                        "regex":"[A-Z]+"
                     },
                     {
                         "type": "event",
-                        "eventName": "USED_MEM1_split",
+                        "eventName": "TEST_EVENT_MARKER_2",
                         "component": "sysint",
-                        "use": "absolute"
+                        "use": "absolute",
+                        "regex":"[0-9]+"
                     },
                     {
                         "type": "grep",
                         "marker": "SYS_INFO_CrashPortalUpload_success",
                         "search": "Success uploading",
                         "logFile": "core_log.txt",
-                        "use": "count"
+                        "use": "absolute",
+                        "regex":"[0-9]+"
                     }
                 ],
                 "ReportingAdjustments": [

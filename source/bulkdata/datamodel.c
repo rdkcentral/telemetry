@@ -257,7 +257,7 @@ int datamodel_getSavedMsgpackProfilesasString(char** SavedProfiles)
     }
     #endif
     T2Debug("%s --out\n", __FUNCTION__);
-    *SavedProfiles=null;
+    *SavedProfiles=NULL;
     return 0;
 }
 

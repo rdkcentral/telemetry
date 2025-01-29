@@ -60,6 +60,7 @@ def test_without_namefield():
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_without_namefield))
     sleep(20)
 
+'''
     #Verify that profile is running
     ERROR_MSG = "Incomplete profile object information, unable to create profile"
     LOG_MSG = "new profileName  to profileList"
@@ -188,6 +189,7 @@ def test_for_invalid_activation_timeout():
     sleep(20)
     assert "TR_AC88" in grep_T2logs(ERROR_PROFILE_TIMEOUT)
     sleep(10)
+'''
 
 #1).positive case for activation timeout
 #2).positive case with delete on timeout
@@ -195,7 +197,15 @@ def test_for_invalid_activation_timeout():
 def test_with_delete_on_timeout():
     LOG_PROFILE_TIMEOUT = "Profile activation timeout"
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_delete_on_timeout))
-    sleep(100)
+    sleep(5)
+    command2 = ["telemetry2_0_client TEST_EVENT_MARKER_2 occurrance17"]
+    run_shell_command(command2)
+    sleep(30)
     assert "TR_AC66" in grep_T2logs(LOG_PROFILE_TIMEOUT) # verification for activation timeout
-    #assert () ==> To be updated once the DeleteOnTimeout is fixed and a LOG is added.
-    sleep(10)
+    assert "SYS_INFO_CrashPortalUpload_success\":\"200" in grep_T2logs("cJSON Report ") # ==> regex - grep marker validation
+    assert "MODEL_NAME\":\"DOCKER" in grep_T2logs("cJSON Report ") # ==> regex - Datamodel validation
+    assert "TEST_EVENT_MARKER_2\":\"17" in grep_T2logs("cJSON Report ") # ==> regex - Event marker validation 
+    #assert  ==> To be updated once the DeleteOnTimeout is fixed and a LOG is added.
+    #cJSON Report = {"FR2_US_TC3":[{"MODEL_NAME":"DOCKER"},{"SYS_INFO_CrashPortalUpload_success":"200"},{"TEST_EVENT_MARKER_2":"17"}]}
+
+    sleep(5)

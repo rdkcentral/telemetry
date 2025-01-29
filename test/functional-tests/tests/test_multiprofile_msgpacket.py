@@ -25,6 +25,7 @@ import os
 import time
 from basic_constants import *
 from helper_functions import *
+from report_profiles import *
 import pytest
 import msgpack
 import json
@@ -33,6 +34,7 @@ from test_runs_as_daemon import run_shell_command
 
 RUN_START_TIME = None
 LOG_PROFILE_ENABLE = "Successfully enabled profile :"
+LOG_PROFILE_SET = "Successfully set profile :"
 
 def tomsgpack(json_string):
     # Convert JSON string to Python dictionary
@@ -75,9 +77,9 @@ def test_without_hashvalue():
     clear_T2logs()
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_without_hashvalue))
     sleep(20)
-    assert "TR_AC12" in grep_T2logs(LOG_PROFILE_ENABLE) # ===> without hash value
-    assert "TR_AC14" in grep_T2logs(LOG_PROFILE_ENABLE) # ===> without version field
-    assert "TR_AC15" not in grep_T2logs(LOG_PROFILE_ENABLE) # ===> without Protocol field
+    assert "TR_AC12" in grep_T2logs(LOG_PROFILE_ENABLE) #  without hash value
+    assert "TR_AC14" in grep_T2logs(LOG_PROFILE_ENABLE) #  without version field
+    assert "TR_AC15" not in grep_T2logs(LOG_PROFILE_ENABLE) #  without Protocol field
     sleep(10)
 
 #negative - random value for Protocol 
@@ -88,9 +90,9 @@ def test_with_wrong_protocol_value():
     sleep(20)
     ERROR_WRONG_PROTOCOL = "Unsupported report sending protocol"
     assert ERROR_WRONG_PROTOCOL in grep_T2logs(ERROR_WRONG_PROTOCOL)
-    assert "TR_AC16" not in grep_T2logs(LOG_PROFILE_ENABLE) # ===> 
-    assert "TR_AC17" in grep_T2logs(LOG_PROFILE_ENABLE) # ===> To confirm for version
-    assert "TR_AC13" not in grep_T2logs(LOG_PROFILE_ENABLE) # ===> To confirm for Protocol
+    assert "TR_AC16" not in grep_T2logs(LOG_PROFILE_ENABLE) #  
+    assert "TR_AC17" in grep_T2logs(LOG_PROFILE_ENABLE) #  To confirm for version
+    assert "TR_AC13" not in grep_T2logs(LOG_PROFILE_ENABLE) #  To confirm for Protocol
     sleep(5)
 
 #negative case without EncodingType & ActivationTimeout values
@@ -107,13 +109,13 @@ def test_without_EncodingType_ActivationTimeout_values():
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_without_EncodingType_ActivationTimeout_values))
     sleep(20)
     sleep(5)
-    assert "TR_AC18" in grep_T2logs(LOG_PROFILE_ENABLE) # ===> To confirm 
-    assert "TR_AC19" in grep_T2logs(LOG_PROFILE_ENABLE) # ===> To confirm 
-    assert "TR_AC20" not in grep_T2logs(LOG_PROFILE_ENABLE) # ===> To confirm 
-    assert "TR_AC21" in grep_T2logs(LOG_PROFILE_ENABLE) # ===> To confirm
+    assert "TR_AC18" in grep_T2logs(LOG_PROFILE_ENABLE) #  To confirm 
+    assert "TR_AC19" in grep_T2logs(LOG_PROFILE_ENABLE) #  To confirm 
+    assert "TR_AC20" not in grep_T2logs(LOG_PROFILE_ENABLE) #  To confirm 
+    assert "TR_AC21" in grep_T2logs(LOG_PROFILE_ENABLE) #  To confirm
     assert ERROR_REPORTING_INTERVAL in grep_T2logs(ERROR_REPORTING_INTERVAL)
-    assert "TR_AC22" not in grep_T2logs(LOG_PROFILE_ENABLE) # ===> To confirm 
-    assert "TR_AC23" in grep_T2logs(LOG_PROFILE_ENABLE) # ===> To confirm
+    assert "TR_AC22" not in grep_T2logs(LOG_PROFILE_ENABLE) #  To confirm 
+    assert "TR_AC23" in grep_T2logs(LOG_PROFILE_ENABLE) #  To confirm
     sleep(5)
 
 #1).positive case for working of Reporting Interval
@@ -129,7 +131,7 @@ def test_reporting_interval_working():
     sleep(10)
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_reporting_interval))
     sleep(20)
-    TEST_LOG1 = grep_T2logs("reporting interval is taken - TR_AC732")
+    REPORTING_INTERVAL_LOG1 = grep_T2logs("reporting interval is taken - TR_AC732")
 
     command1 = ["telemetry2_0_client TEST_EVENT_MARKER_1 300"]
     command2 = ["telemetry2_0_client TEST_EVENT_MARKER_2 occurrance1"]
@@ -143,7 +145,7 @@ def test_reporting_interval_working():
     sleep(5)
     run_shell_command(command3)
     sleep(5)
-    assert "45 sec" in TEST_LOG1
+    assert "45 sec" in REPORTING_INTERVAL_LOG2
     sleep(50)
     assert "TIMEOUT for profile" in grep_T2logs("TR_AC732") #Verify reporting interval 
     assert "TEST_EVENT_MARKER_1\":\"2" in grep_T2logs("cJSON Report ") #verify event marker for count 
@@ -158,6 +160,13 @@ def test_reporting_interval_working():
 # Datamodel validation
 @pytest.mark.run(order=6)
 def test_for_activation_timeout():
+    clear_T2logs()
+    kill_telemetry(9)
+    RUN_START_TIME = dt.now()
+    remove_T2bootup_flag()
+    clear_persistant_files()
+    run_telemetry()
+    sleep(10)
     os.makedirs('/opt/logs', exist_ok=True)
     # Create log file with the logs needed for grep marker
     with open('/opt/logs/core_log.txt', 'w') as file:
@@ -172,27 +181,37 @@ def test_for_activation_timeout():
     LOG_GENERATE_NOW = "Waiting for 0 sec for next TIMEOUT for profile"
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_activation_timeout))
     sleep(20)
-    assert "TR_AC77" in grep_T2logs(LOG_PROFILE_ENABLE) 
-    assert "TR_AC77" in grep_T2logs(LOG_GENERATE_NOW)  #==> verification for GenerateNow
-    assert "SYS_INFO_CrashPortalUpload_success\":\"2" in grep_T2logs("cJSON Report ") # ==> count - grep marker validation
-    assert "FILE_Upload_Progress\":\" newfile1 20%" in grep_T2logs("cJSON Report ") # ==> absolute - grep marker validation
-    assert "FILE_Read_Progress\":\"newfile2 line 10" in grep_T2logs("cJSON Report ") # ==> Trim - grep marker validation
-    assert "MODEL_NAME" in grep_T2logs("cJSON Report ") # ==> Datamodel validation
+    assert "TR_AC767" in grep_T2logs(LOG_PROFILE_ENABLE) 
+    assert "TR_AC777" in grep_T2logs(LOG_PROFILE_ENABLE) 
+    assert "TR_AC767" in grep_T2logs(LOG_GENERATE_NOW)  # verification for GenerateNow
+    assert "SYS_INFO_CrashPortalUpload_success\":\"2" in grep_T2logs("cJSON Report ") #  count - grep marker validation
+    assert "FILE_Upload_Progress\":\" newfile1 20%" in grep_T2logs("cJSON Report ") #  absolute - grep marker validation
+    assert "FILE_Read_Progress\":\"newfile2 line 10" in grep_T2logs("cJSON Report ") #  Trim - grep marker validation
+    assert "MODEL_NAME" in grep_T2logs("cJSON Report ") #  Datamodel validation
+    #assert "USED_MEM1_split" in grep_T2logs("cJSON Report ") #  TO be Uncommented once reportEmpty is fixed
     sleep(10)
 
 #Negative case with activation timeout less than reporting interval
 @pytest.mark.run(order=7)
 def test_for_invalid_activation_timeout():
     ERROR_PROFILE_TIMEOUT = "activationTimeoutPeriod is less than reporting interval. invalid profile: "
+    REPORTING_INTERVAL_LOG2 = grep_T2logs("reporting interval is taken - Generic_Profile")
+
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_less_activation_timeout))
     sleep(20)
     assert "TR_AC88" in grep_T2logs(ERROR_PROFILE_TIMEOUT)
+    assert "MODEL_NAME\":\"NULL" in grep_T2logs("cJSON Report ") #verify Empty report
+    assert "TR_AC6919" in grep_T2logs("firstreporting interval is given")
+    assert "5 sec" in grep_T2logs("firstreporting interval is given")
+    assert "Generic_Profile" in grep_T2logs(LOG_PROFILE_SET) # Verify DCM profile is set
+    assert "900 sec" in REPORTING_INTERVAL_LOG2 #Verify DCM profile is running
     sleep(10)
 
 #1).positive case for activation timeout
 #2).positive case with delete on timeout
 @pytest.mark.run(order=8)
 def test_with_delete_on_timeout():
+    clear_T2logs()
     kill_telemetry(9)
     RUN_START_TIME = dt.now()
     remove_T2bootup_flag()
@@ -206,10 +225,10 @@ def test_with_delete_on_timeout():
     run_shell_command(command2)
     sleep(30)
     assert "TR_AC66" in grep_T2logs(LOG_PROFILE_TIMEOUT) # verification for activation timeout
-    assert "SYS_INFO_CrashPortalUpload_success\":\"200" in grep_T2logs("cJSON Report ") # ==> regex - grep marker validation
-    assert "MODEL_NAME\":\"DOCKER" in grep_T2logs("cJSON Report ") # ==> regex - Datamodel validation
-    assert "TEST_EVENT_MARKER_2\":\"17" in grep_T2logs("cJSON Report ") # ==> regex - Event marker validation 
-    #assert  ==> To be updated once the DeleteOnTimeout is fixed and a LOG is added.
+    assert "SYS_INFO_CrashPortalUpload_success\":\"200" in grep_T2logs("cJSON Report ") #  regex - grep marker validation
+    assert "MODEL_NAME\":\"DOCKER" in grep_T2logs("cJSON Report ") #  regex - Datamodel validation
+    assert "TEST_EVENT_MARKER_2\":\"17" in grep_T2logs("cJSON Report ") #  regex - Event marker validation 
+    #assert ""  To be updated once the DeleteOnTimeout is fixed and a LOG is added.
     #cJSON Report = {"FR2_US_TC3":[{"MODEL_NAME":"DOCKER"},{"SYS_INFO_CrashPortalUpload_success":"200"},{"TEST_EVENT_MARKER_2":"17"}]}
 
     sleep(5)

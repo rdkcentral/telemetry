@@ -75,6 +75,12 @@ def test_without_namefield():
 @pytest.mark.run(order=2)
 def test_without_hashvalue():
     clear_T2logs()
+    kill_telemetry(9)
+    RUN_START_TIME = dt.now()
+    remove_T2bootup_flag()
+    clear_persistant_files()
+    run_telemetry()
+    sleep(10)
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_without_hashvalue))
     sleep(20)
     assert "TR_AC12" in grep_T2logs(LOG_PROFILE_ENABLE) #  without hash value
@@ -86,6 +92,12 @@ def test_without_hashvalue():
 @pytest.mark.run(order=3)
 def test_with_wrong_protocol_value():
     clear_T2logs()
+    kill_telemetry(9)
+    RUN_START_TIME = dt.now()
+    remove_T2bootup_flag()
+    clear_persistant_files()
+    run_telemetry()
+    sleep(10)
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_wrong_protocol_value))
     sleep(20)
     ERROR_WRONG_PROTOCOL = "Unsupported report sending protocol"
@@ -194,6 +206,13 @@ def test_for_activation_timeout():
 #Negative case with activation timeout less than reporting interval
 @pytest.mark.run(order=7)
 def test_for_invalid_activation_timeout():
+    clear_T2logs()
+    kill_telemetry(9)
+    RUN_START_TIME = dt.now()
+    remove_T2bootup_flag()
+    clear_persistant_files()
+    run_telemetry()
+    sleep(10)
     ERROR_PROFILE_TIMEOUT = "activationTimeoutPeriod is less than reporting interval. invalid profile: "
     REPORTING_INTERVAL_LOG2 = grep_T2logs("reporting interval is taken - Generic_Profile")
 

@@ -145,7 +145,7 @@ def test_reporting_interval_working():
     sleep(5)
     run_shell_command(command3)
     sleep(5)
-    assert "45 sec" in REPORTING_INTERVAL_LOG2
+    assert "45 sec" in REPORTING_INTERVAL_LOG1
     sleep(50)
     assert "TIMEOUT for profile" in grep_T2logs("TR_AC732") #Verify reporting interval 
     assert "TEST_EVENT_MARKER_1\":\"2" in grep_T2logs("cJSON Report ") #verify event marker for count 

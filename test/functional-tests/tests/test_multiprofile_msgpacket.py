@@ -183,7 +183,7 @@ def test_for_activation_timeout():
     sleep(20)
     assert "TR_AC767" in grep_T2logs(LOG_PROFILE_ENABLE) 
     assert "TR_AC777" in grep_T2logs(LOG_PROFILE_ENABLE) 
-    assert "TR_AC767" in grep_T2logs(LOG_GENERATE_NOW)  # verification for GenerateNow
+    assert "TR_AC777" in grep_T2logs(LOG_GENERATE_NOW)  # verification for GenerateNow
     sleep(10)
     assert "SYS_INFO_CrashPortalUpload_success\":\"2" in grep_T2logs("cJSON Report ") #  count - grep marker validation
     assert "FILE_Upload_Progress\":\" newfile1 20%" in grep_T2logs("cJSON Report ") #  absolute - grep marker validation

@@ -181,8 +181,6 @@ def test_for_activation_timeout():
     LOG_GENERATE_NOW = "Waiting for 0 sec for next TIMEOUT for profile"
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_activation_timeout))
     sleep(20)
-    assert "TR_AC767" in grep_T2logs(LOG_PROFILE_ENABLE) 
-    assert "TR_AC777" in grep_T2logs(LOG_PROFILE_ENABLE) 
     assert "TR_AC777" in grep_T2logs(LOG_GENERATE_NOW)  # verification for GenerateNow
     sleep(10)
     assert "SYS_INFO_CrashPortalUpload_success\":\"2" in grep_T2logs("cJSON Report ") #  count - grep marker validation

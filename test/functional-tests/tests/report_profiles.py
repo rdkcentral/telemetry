@@ -258,23 +258,10 @@ data_without_hashvalue = '''{
                 "TimeReference": "2023-01-25T13:47:00Z",
                 "Parameter": [
                     {
-                        "type": "dataModel",
-                        "name": "UPTIME",
-                        "reference": "Device.DeviceInfo.UpTime",
-                        "use": "absolute"
-                    },
-                    {
                         "type": "event",
-                        "eventName": "USED_MEM1_split",
+                        "eventName": "USED_MEM3_split",
                         "component": "sysint",
                         "use": "absolute"
-                    },
-                    {
-                        "type": "grep",
-                        "marker": "SYS_INFO_CrashPortalUpload_success",
-                        "search": "Success uploading",
-                        "logFile": "core_log.txt",
-                        "use": "count"
                     }
                 ],
                 "ReportingAdjustments": [
@@ -316,21 +303,9 @@ data_without_hashvalue = '''{
                 "TimeReference": "2023-01-25T13:47:00Z",
                 "Parameter": [
                     {
-                        "type": "dataModel",
-                        "name": "UPTIME",
-                        "reference": "Device.DeviceInfo.UpTime",
-                        "use": "absolute"
-                    },
-                    {
-                        "type": "event",
-                        "eventName": "USED_MEM2_split",
-                        "component": "sysint",
-                        "use": "absolute"
-                    },
-                    {
                         "type": "grep",
-                        "marker": "SYS_INFO_CrashPortal_success",
-                        "search": "Success uploading",
+                        "marker": "SYS_INFO_CCrashPortal_success",
+                        "search": "Success upliooading",
                         "logFile": "core_log.txt",
                         "use": "count"
                     }

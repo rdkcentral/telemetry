@@ -59,6 +59,7 @@ def test_without_namefield():
     clear_persistant_files()
     run_telemetry()
     sleep(10)
+
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_without_namefield))
     sleep(20)
 
@@ -75,12 +76,6 @@ def test_without_namefield():
 @pytest.mark.run(order=2)
 def test_without_hashvalue():
     clear_T2logs()
-    kill_telemetry(9)
-    RUN_START_TIME = dt.now()
-    remove_T2bootup_flag()
-    clear_persistant_files()
-    run_telemetry()
-    sleep(10)
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_without_hashvalue))
     sleep(20)
     assert "TR_AC12" in grep_T2logs(LOG_PROFILE_ENABLE) #  without hash value
@@ -92,12 +87,6 @@ def test_without_hashvalue():
 @pytest.mark.run(order=3)
 def test_with_wrong_protocol_value():
     clear_T2logs()
-    kill_telemetry(9)
-    RUN_START_TIME = dt.now()
-    remove_T2bootup_flag()
-    clear_persistant_files()
-    run_telemetry()
-    sleep(10)
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_wrong_protocol_value))
     sleep(20)
     ERROR_WRONG_PROTOCOL = "Unsupported report sending protocol"
@@ -106,6 +95,7 @@ def test_with_wrong_protocol_value():
     assert "TR_AC17" in grep_T2logs(LOG_PROFILE_ENABLE) #  To confirm for version
     assert "TR_AC13" not in grep_T2logs(LOG_PROFILE_ENABLE) #  To confirm for Protocol
     sleep(5)
+
 
 #negative case without EncodingType & ActivationTimeout values
 @pytest.mark.run(order=4)
@@ -129,6 +119,7 @@ def test_without_EncodingType_ActivationTimeout_values():
     assert "TR_AC22" not in grep_T2logs(LOG_PROFILE_ENABLE) #  To confirm 
     assert "TR_AC23" in grep_T2logs(LOG_PROFILE_ENABLE) #  To confirm
     sleep(5)
+
 
 #1).positive case for working of Reporting Interval
 #2).positive case for event marker & count
@@ -172,30 +163,28 @@ def test_reporting_interval_working():
 # Datamodel validation
 @pytest.mark.run(order=6)
 def test_for_activation_timeout():
-    clear_T2logs()
-    kill_telemetry(9)
-    RUN_START_TIME = dt.now()
-    remove_T2bootup_flag()
-    clear_persistant_files()
-    run_telemetry()
-    sleep(10)
     os.makedirs('/opt/logs', exist_ok=True)
-    # Create log file with the logs needed for grep marker
-    with open('/opt/logs/core_log.txt', 'w') as file:
-        file.write("Success uploading report 300\n")
-        file.write("Success uploading report 200\n")
-        file.write("random string1\n")
-        file.write("rando\n")
-        file.write("file uploading newfile1 20%\n")
-        file.write("file reading newfile2 line 10\n")
-        file.write("file writing to file.txt 22 lines\n")
-        file.write("file writing to file.txt 23 lines\n")
+	# Create log file with the logs needed for grep marker
+    file = open('/opt/logs/core_log.txt', 'w')
+    file.write(
+	    	"Success uploading report 300\n"
+		    "Success uploading report 200\n"
+    		"random string1\n"
+	    	"rando\n"
+		    "file uploading newfile1 20%\n"
+    		"file reading newfile2 line 10\n"
+    		"file writing to file.txt 22 lines\n"
+    		"file writing to file.txt 23 lines\n"
+	    	)
+    file.close()
+
     LOG_GENERATE_NOW = "Waiting for 0 sec for next TIMEOUT for profile"
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_activation_timeout))
     sleep(20)
     assert "TR_AC767" in grep_T2logs(LOG_PROFILE_ENABLE) 
     assert "TR_AC777" in grep_T2logs(LOG_PROFILE_ENABLE) 
     assert "TR_AC767" in grep_T2logs(LOG_GENERATE_NOW)  # verification for GenerateNow
+    sleep(10)
     assert "SYS_INFO_CrashPortalUpload_success\":\"2" in grep_T2logs("cJSON Report ") #  count - grep marker validation
     assert "FILE_Upload_Progress\":\" newfile1 20%" in grep_T2logs("cJSON Report ") #  absolute - grep marker validation
     assert "FILE_Read_Progress\":\"newfile2 line 10" in grep_T2logs("cJSON Report ") #  Trim - grep marker validation
@@ -206,6 +195,8 @@ def test_for_activation_timeout():
 #Negative case with activation timeout less than reporting interval
 @pytest.mark.run(order=7)
 def test_for_invalid_activation_timeout():
+    ERROR_PROFILE_TIMEOUT = "activationTimeoutPeriod is less than reporting interval. invalid profile: "
+    rbus_set_data("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.ConfigURL", "string", "https://mockxconf:50050/loguploader1/getT2DCMSettings")
     clear_T2logs()
     kill_telemetry(9)
     RUN_START_TIME = dt.now()
@@ -213,17 +204,16 @@ def test_for_invalid_activation_timeout():
     clear_persistant_files()
     run_telemetry()
     sleep(10)
-    ERROR_PROFILE_TIMEOUT = "activationTimeoutPeriod is less than reporting interval. invalid profile: "
-    REPORTING_INTERVAL_LOG2 = grep_T2logs("reporting interval is taken - Generic_Profile")
 
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_less_activation_timeout))
-    sleep(20)
+    sleep(60)
     assert "TR_AC88" in grep_T2logs(ERROR_PROFILE_TIMEOUT)
     assert "MODEL_NAME\":\"NULL" in grep_T2logs("cJSON Report ") #verify Empty report
     assert "TR_AC6919" in grep_T2logs("firstreporting interval is given")
     assert "5 sec" in grep_T2logs("firstreporting interval is given")
-    assert "Generic_Profile" in grep_T2logs(LOG_PROFILE_SET) # Verify DCM profile is set
-    assert "900 sec" in REPORTING_INTERVAL_LOG2 #Verify DCM profile is running
+    assert "NEW TEST PROFILE" in grep_T2logs(LOG_PROFILE_SET) # Verify DCM profile is set
+    assert "60 sec" in grep_T2logs("reporting interval is taken - NEW TEST PROFILE") #Verify DCM profile is running
+    assert "AccountId\":\"Platform_Container_Test_DEVICE" in grep_T2logs("cJSON Report ") #verify report generated for DCM profile
     sleep(10)
 
 #1).positive case for activation timeout

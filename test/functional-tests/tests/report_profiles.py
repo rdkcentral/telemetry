@@ -950,7 +950,7 @@ data_with_reporting_interval = '''{
     ]
 }'''
 
-data_with_activation_timeout = '''{
+data_with_Generate_Now = '''{
     "profiles": [
         {
             "name": "TR_AC767",

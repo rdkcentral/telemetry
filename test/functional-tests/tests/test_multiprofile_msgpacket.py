@@ -234,7 +234,6 @@ def test_for_invalid_activation_timeout():
     assert "AccountId\":\"Platform_Container_Test_DEVICE" in grep_T2logs("cJSON Report ") #verify report generated for DCM profile
     sleep(10)
 
-'''
 #1).positive case for activation timeout
 #2).regex - grep marker validation
 #3).regex - Datamodel validation
@@ -250,6 +249,12 @@ def test_with_delete_on_timeout():
     run_telemetry()
     run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
     sleep(10)
+    os.makedirs('/opt/logs', exist_ok=True)
+    # Create log file with the logs needed for grep marker
+    file = open('/opt/logs/core_log.txt', 'w')
+    file.write("Success uploading report 200\n")
+    file.close()
+    sleep(5)
     LOG_PROFILE_TIMEOUT = "Profile activation timeout"
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_delete_on_timeout))
     sleep(5)
@@ -263,4 +268,3 @@ def test_with_delete_on_timeout():
     #assert ""  To be updated once the DeleteOnTimeout is fixed and a LOG is added.
 
     sleep(5)
-'''

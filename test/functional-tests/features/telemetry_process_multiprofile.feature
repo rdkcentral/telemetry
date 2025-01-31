@@ -20,8 +20,12 @@
 
 Feature: Telemetry multiprofile configuration and report generation
 
-  Scenario: Multiprofile configuration
-    Given When the telemetry daemon is not already running
+  Scenario: Multiprofile configuration with empty name or hash
+    Given When the telemetry daemon is already running
     When a multiprofile is configured with an empty/NULL name or hash value
     Then the multiprofile should not be set and enabled
 
+  Scenario: Multiprofile configuration without name or hash field
+    Given When the telemetry daemon is already running
+    When a multiprofile is configured without a name/hash field
+    Then the multiprofile should not be set and enabled

@@ -77,6 +77,7 @@ def test_without_namefield():
 @pytest.mark.run(order=2)
 def test_without_hashvalue():
     clear_T2logs()
+    run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_without_hashvalue))
     sleep(20)
     assert "TR_AC12" in grep_T2logs(LOG_PROFILE_ENABLE)  # without hash value

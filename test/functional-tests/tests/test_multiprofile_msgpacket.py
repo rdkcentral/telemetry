@@ -58,6 +58,7 @@ def test_without_namefield():
     remove_T2bootup_flag()
     clear_persistant_files()
     run_telemetry()
+    #run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
     sleep(10)
 
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_without_namefield))
@@ -114,6 +115,7 @@ def test_without_EncodingType_ActivationTimeout_values():
     remove_T2bootup_flag()
     clear_persistant_files()
     run_telemetry()
+    run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
     sleep(10)
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_without_EncodingType_ActivationTimeout_values))
     sleep(20)
@@ -138,6 +140,7 @@ def test_reporting_interval_working():
     remove_T2bootup_flag()
     clear_persistant_files()
     run_telemetry()
+    run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
     sleep(10)
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_reporting_interval))
     sleep(20)
@@ -210,6 +213,7 @@ def test_for_invalid_activation_timeout():
     remove_T2bootup_flag()
     clear_persistant_files()
     run_telemetry()
+    run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
     sleep(10)
 
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_less_activation_timeout))
@@ -236,6 +240,7 @@ def test_with_delete_on_timeout():
     remove_T2bootup_flag()
     clear_persistant_files()
     run_telemetry()
+    run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
     sleep(10)
     LOG_PROFILE_TIMEOUT = "Profile activation timeout"
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_delete_on_timeout))

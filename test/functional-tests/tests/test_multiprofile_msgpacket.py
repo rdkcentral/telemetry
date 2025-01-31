@@ -129,6 +129,7 @@ def test_without_EncodingType_ActivationTimeout_values():
     assert "TR_AC22" not in grep_T2logs(LOG_PROFILE_ENABLE) # Verify profile is not enabled without ReportingInterval param
     assert "TR_AC23" in grep_T2logs(LOG_PROFILE_ENABLE) # Verify profile is enabled without GenerateNow param
     sleep(5)
+    clear_T2logs()
 
 #1).positive case for working of Reporting Interval
 #2).positive case for event marker & with count
@@ -174,6 +175,7 @@ def test_reporting_interval_working():
 # Datamodel validation
 @pytest.mark.run(order=6)
 def test_for_Generate_Now():
+    clear_T2logs()
     os.makedirs('/opt/logs', exist_ok=True)
 	# Create log file with the logs needed for grep marker
     file = open('/opt/logs/core_log.txt', 'w')
@@ -200,6 +202,7 @@ def test_for_Generate_Now():
     assert "FILE_Read_Progress\":\"newfile2 line 10" in grep_T2logs("cJSON Report ") #  Trim - grep marker validation
     assert "MODEL_NAME" in grep_T2logs("cJSON Report ") #  Datamodel validation
     sleep(10)
+    clear_T2logs()
 
 # Negative case with activation timeout less than reporting interval
 # Postive case for Empty report sent when reportEmpty is true

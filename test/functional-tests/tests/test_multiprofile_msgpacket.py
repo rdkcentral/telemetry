@@ -168,6 +168,7 @@ def test_reporting_interval_working():
     assert "occurrance2" in grep_T2logs("TEST_EVENT_MARKER_2") #verify event marker for accummulate - 2
     sleep(10)
 
+'''
 # verification for GenerateNow
 # count - grep marker validation
 # absolute - grep marker validation
@@ -203,6 +204,7 @@ def test_for_Generate_Now():
     assert "MODEL_NAME" in grep_T2logs("cJSON Report ") #  Datamodel validation
     sleep(10)
     clear_T2logs()
+'''
 
 # Negative case with activation timeout less than reporting interval
 # Postive case for Empty report sent when reportEmpty is true

@@ -188,6 +188,7 @@ def test_for_Generate_Now():
 	    	)
     file.close()
 
+    sleep(10)
     LOG_GENERATE_NOW = "Waiting for 0 sec for next TIMEOUT for profile"
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_Generate_Now))
     sleep(20)

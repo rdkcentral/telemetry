@@ -767,7 +767,7 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root , bool rprofi
         }
         cJSON* profileObj = cJSON_GetObjectItem(singleProfile, "value");
 
-        if(nameObj == NULL || hashObj == NULL || profileObj == NULL || || strcmp(nameObj->valuestring, "") == 0 || strcmp(hashObj->valuestring, "") == 0 ) {
+        if(nameObj == NULL || hashObj == NULL || profileObj == NULL || strcmp(nameObj->valuestring, "") == 0 || strcmp(hashObj->valuestring, "") == 0 ) {
             T2Error("Incomplete profile object information, unable to create profile\n");
             continue;
         }

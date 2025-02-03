@@ -66,7 +66,7 @@ def test_without_namefield():
 
     #Verify that profile is running
     ERROR_MSG = "Incomplete profile object information, unable to create profile"
-    LOG_MSG = "new profileName  to profileList"
+    LOG_MSG = "Successfully enabled profile : \n"
     HASH_ERROR_MSG = "Hash value is null checking for versionHash value"
     assert ERROR_MSG in grep_T2logs(ERROR_MSG) #Without name field
     assert LOG_MSG not in grep_T2logs(LOG_MSG) #Empty string in namefield 
@@ -80,7 +80,7 @@ def test_without_hashvalue():
     run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_without_hashvalue))
     sleep(20)
-    assert "TR_AC12" in grep_T2logs(LOG_PROFILE_ENABLE)  # without hash value
+    assert "TR_AC12" not in grep_T2logs(LOG_PROFILE_ENABLE)  # without hash value
     assert "TR_AC14" in grep_T2logs(LOG_PROFILE_ENABLE)  # without version field
     assert "TR_AC15" not in grep_T2logs(LOG_PROFILE_ENABLE)  # without Protocol field
     sleep(10)

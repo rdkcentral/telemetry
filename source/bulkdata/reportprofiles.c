@@ -767,7 +767,7 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root , bool rprofi
         }
         cJSON* profileObj = cJSON_GetObjectItem(singleProfile, "value");
 
-        if(nameObj == NULL || hashObj == NULL || profileObj == NULL) {
+        if(nameObj == NULL || hashObj == NULL || profileObj == NULL || || strcmp(nameObj->valuestring, "") == 0 || strcmp(hashObj->valuestring, "") == 0 ) {
             T2Error("Incomplete profile object information, unable to create profile\n");
             continue;
         }
@@ -1129,7 +1129,7 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack)
              hashObj = msgpack_get_map_value(singleProfile, "versionHash");
         }
         msgpack_object* profileObj = msgpack_get_map_value(singleProfile, "value");
-        if(nameObj == NULL || hashObj == NULL || profileObj == NULL) {
+        if(nameObj == NULL || hashObj == NULL || profileObj == NULL || msgpack_strcmp(nameObj, "") == 0 || msgpack_strcmp(hashObj, "") == 0 ) {
             T2Error("Incomplete profile object information, unable to create profile\n");
             continue;
         }

@@ -219,7 +219,7 @@ void datamodel_getSavedJsonProfilesasString(char** SavedProfiles)
 int datamodel_getSavedMsgpackProfilesasString(char** SavedProfiles)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
-    #if defined(FEATURE_SUPPORT_WEBCONFIG)
+    //#if defined(FEATURE_SUPPORT_WEBCONFIG) get should work without the restriction of webconfig
     char filePath[REPORTPROFILES_FILE_PATH_SIZE] = {'\0'};
     snprintf(filePath, sizeof(filePath), "%s%s", REPORTPROFILES_PERSISTENCE_PATH, MSGPACK_REPORTPROFILES_PERSISTENT_FILE);
     FILE *fp;
@@ -255,7 +255,7 @@ int datamodel_getSavedMsgpackProfilesasString(char** SavedProfiles)
         *SavedProfiles=msgpack.msgpack_blob;
         return msgpack.msgpack_blob_size;
     }
-    #endif
+    //#endif
     T2Debug("%s --out\n", __FUNCTION__);
     return 0;
 }

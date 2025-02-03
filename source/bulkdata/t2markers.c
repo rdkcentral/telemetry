@@ -173,6 +173,9 @@ static void updateComponentList(const char* componentName) {
 T2ERROR addT2EventMarker(const char* markerName, const char* compName, const char *profileName, unsigned int skipFreq)
 {
     (void) skipFreq;
+    // To do currently have skip frequency only for the grep markers
+    // It indicates the intervel to check for the marker during reportgeneration
+    // We use this in grep to reduce the log search. we can implement this based on need.
     pthread_mutex_lock(&t2MarkersMutex);
     T2Marker *t2Marker = (T2Marker *)hash_map_get(markerCompMap, markerName);
     //pthread_mutex_unlock(&t2MarkersMutex); unlock after modification is done on t2Marker

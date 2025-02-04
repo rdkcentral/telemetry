@@ -589,7 +589,7 @@ T2ERROR doHttpGet(char* httpsUrl, char **data) {
                 }
             }
 
-#if defined(ENABLE_RDKB_SUPPORT) && !defined(_WNXL11BWL_PRODUCT_REQ_)
+#if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
 
 #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
 /*    char *paramVal = NULL;

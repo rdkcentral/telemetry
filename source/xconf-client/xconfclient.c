@@ -740,7 +740,7 @@ T2ERROR doHttpGet(char* httpsUrl, char **data) {
                     // Read the whole file content
                     if(len <= SIZE_MAX)
                     {
-                        readBytes = fread(*data, len, 1, httpOutput);
+                        fread(*data, len, 1, httpOutput);
                     }
                     if(readBytes == -1) {
                         T2Error("Failed to read from pipe\n");

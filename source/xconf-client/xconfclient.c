@@ -514,7 +514,7 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
         T2Debug("%s --out\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     } 
-#if defined(ENABLE_RDKB_SUPPORT) && !defined(_WNXL11BWL_PRODUCT_REQ_)
+#if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
 
 #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
     char *paramVal = NULL;
@@ -586,7 +586,7 @@ static T2ERROR doHttpGet(char* httpsUrl, char **data) {
             if(code != CURLE_OK) {
                 T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
             }
-#if defined(ENABLE_RDKB_SUPPORT) && !defined(_WNXL11BWL_PRODUCT_REQ_)
+#if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
 
 #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
             code = curl_easy_setopt(curl, CURLOPT_INTERFACE, waninterface);

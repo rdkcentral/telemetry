@@ -80,6 +80,7 @@
 #define TR181_DEVICE_WAN_IPv6                       "Device.DeviceInfo.X_COMCAST-COM_STB_IP"
 #define TR181_DEVICE_CM_MAC                         "Device.DeviceInfo.X_COMCAST-COM_STB_MAC" 
 #define TR181_DEVICE_CM_IP                          "Device.DeviceInfo.X_COMCAST-COM_STB_IP"
+#define TR181_IUI_VERSION                           "Device.DeviceInfo.X_RDKCENTRAL-COM.IUI.Version"
 
 #endif // ENABLE_RDKB_SUPPORT
 

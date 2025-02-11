@@ -473,7 +473,7 @@ static void xcCertSelectorInit()
     }
 }
 #endif
-static T2ERROR doHttpGet(char* httpsUrl, char **data) {
+T2ERROR doHttpGet(char* httpsUrl, char **data) {
 
     T2Debug("%s ++in\n", __FUNCTION__);
 

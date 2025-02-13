@@ -1034,12 +1034,12 @@ T2ERROR registerRbusT2EventListener(TelemetryEventCallback eventCB)
     /**
      * Register data elements with rbus for EVENTS and Profile Updates.
      */
-    rbusDataElement_t dataElements[2] = {
+    rbusDataElement_t dataElements[3] = {
         {T2_EVENT_PARAM, RBUS_ELEMENT_TYPE_PROPERTY, {NULL, t2PropertyDataSetHandler, NULL, NULL, NULL, NULL}},
         {T2_PROFILE_UPDATED_NOTIFY, RBUS_ELEMENT_TYPE_EVENT, {NULL, NULL, NULL, NULL, (rbusEventSubHandler_t)eventSubHandler, NULL}},
 	{T2_READY_TO_RECIEVE, RBUS_ELEMENT_TYPE_PROPERTY, {t2PropertyDataGetHandler, t2PropertyDataSetHandler, NULL, NULL, NULL, NULL}}
     };
-    ret = rbus_regDataElements(t2bus_handle, 2, dataElements);
+    ret = rbus_regDataElements(t2bus_handle, 3, dataElements);
     if(ret != RBUS_ERROR_SUCCESS)
     {
         T2Error("Failed to register T2 data elements with rbus. Error code : %d\n", ret);

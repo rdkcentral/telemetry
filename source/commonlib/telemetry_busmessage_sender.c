@@ -45,6 +45,7 @@
 #define MESSAGE_DELIMITER "<#=#>"
 #define MAX_EVENT_CACHE 200
 #define T2_COMPONENT_READY    "/tmp/.t2ReadyToReceiveEvents"
+#define T2_READY_TO_RECIEVE    "Device.X_RDKCENTRAL-COM_T2.ComponentReady"
 #define T2_SCRIPT_EVENT_COMPONENT "telemetry_client"
 #define SENDER_LOG_FILE "/tmp/t2_sender_debug.log"
 
@@ -557,9 +558,9 @@ static bool isCachingRequired( ) {
 
     // Always check for t2 is ready to accept events. Shutdown target can bring down t2 process at runtime
     char *value;
-    getParamValue( T2_COMPONENT_READY, &value);
+    getParamValue( T2_READY_TO_RECIEVE, &value);
 
-    EVENT_ERROR("value for  %s is : %s\n", T2_COMPONENT_READY, value);
+    EVENT_ERROR("value for  %s is : %s\n", T2_READY_TO_RECIEVE, value);
 
     if(!isRbusEnabled){
         isT2Ready = true;

@@ -561,6 +561,10 @@ static bool isCachingRequired( ) {
     getParamValue( T2_READY_TO_RECIEVE, &value);
 
     EVENT_ERROR("value for  %s is : %s\n", T2_READY_TO_RECIEVE, value);
+    if(strcmp(value,"true")!=0)
+    {
+        return true ;
+    }
 
     if(!isRbusEnabled){
         isT2Ready = true;

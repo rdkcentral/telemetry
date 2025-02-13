@@ -73,6 +73,7 @@ typedef enum
 #define T2_CACHE_FILE    "/tmp/t2_caching_file"
 #define T2_CACHE_LOCK_FILE    "/tmp/t2_lock_file"
 #define T2_CONFIG_READY    "/tmp/.t2ConfigReady"
+#define T2_SET_CONFIG_READY    "Device.X_RDKCENTRAL-COM_T2.ConfigReady"
 
 #ifdef __cplusplus
 }

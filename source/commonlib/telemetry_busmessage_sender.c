@@ -561,7 +561,7 @@ static bool isCachingRequired( ) {
     getParamValue( T2_READY_TO_RECIEVE, &componentStatus);
 
     EVENT_ERROR("value for  %s is : %s\n", T2_READY_TO_RECIEVE, componentStatus);
-    if(strcmp(componentStatus,"true")!=0)url failed: No error
+    if(strcmp(componentStatus,"true")!=0)
     {
         return true ;
     }

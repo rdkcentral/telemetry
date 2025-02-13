@@ -557,11 +557,11 @@ static bool isCachingRequired( ) {
     }
 
     // Always check for t2 is ready to accept events. Shutdown target can bring down t2 process at runtime
-    char *value;
-    getParamValue( T2_READY_TO_RECIEVE, &value);
+    char *componentStatus, *configStatus;
+    getParamValue( T2_READY_TO_RECIEVE, &componentStatus);
 
-    EVENT_ERROR("value for  %s is : %s\n", T2_READY_TO_RECIEVE, value);
-    if(strcmp(value,"true")!=0)
+    EVENT_ERROR("value for  %s is : %s\n", T2_READY_TO_RECIEVE, componentStatus);
+    if(strcmp(componentStatus,"true")!=0)url failed: No error
     {
         return true ;
     }
@@ -573,7 +573,9 @@ static bool isCachingRequired( ) {
     if(!isT2Ready) {
         if(componentName && (0 != strcmp(componentName, "telemetry_client"))) {
             // From other binary applications in rbus mode if t2 daemon is yet to determine state of component specific config from cloud, enable cache
-            if( access( T2_CONFIG_READY, F_OK) == -1 ) {
+            getParamValue( T2_SET_CONFIG_READY, &configStatus);
+            EVENT_ERROR("value for  %s is : %s\n", T2_SET_CONFIG_READY, configStatus);
+            if(strcmp(configStatus,"true")!=0 ) {
                 return true;
             }else {
                 rbusError_t ret = RBUS_ERROR_SUCCESS;

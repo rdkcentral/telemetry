@@ -45,6 +45,7 @@
 #define RBUS_METHOD_TIMEOUT 10
 #define MAX_REPORT_TIMEOUT 50
 #define T2_READY_TO_RECIEVE    "Device.X_RDKCENTRAL-COM_T2.ComponentReady"
+#define T2_SET_CONFIG_READY    "Device.X_RDKCENTRAL-COM_T2.ConfigReady"
 
 static rbusHandle_t t2bus_handle;
 
@@ -64,6 +65,7 @@ static ReportProfilesDeleteDNDCallBack mprofilesDeleteCallBack;
 static char* privacyModeVal = NULL;
 #endif
 static char* t2ComponentReady = NULL ;
+static char* t2ConfigReady = NULL ;
 static char* reportProfileVal = NULL ;
 static char* tmpReportProfileVal = NULL ;
 static char* reportProfilemsgPckVal = NULL ;
@@ -335,6 +337,7 @@ rbusError_t t2PropertyDataSetHandler(rbusHandle_t handle, rbusProperty_t prop, r
     if((strncmp(paramName, T2_EVENT_PARAM, maxParamLen) != 0) && (strncmp(paramName, T2_REPORT_PROFILE_PARAM, maxParamLen) != 0)
             && (strncmp(paramName, T2_REPORT_PROFILE_PARAM_MSG_PCK, maxParamLen) != 0)
 	    && (strncmp(paramName, T2_READY_TO_RECIEVE, maxParamLen) != 0)
+	    && (strncmp(paramName, T2_SET_CONFIG_READY, maxParamLen) != 0)
             && (strncmp(paramName, T2_TEMP_REPORT_PROFILE_PARAM, maxParamLen) != 0) && (strncmp(paramName, T2_TOTAL_MEM_USAGE, maxParamLen) != 0) && (strncmp(paramName, PRIVACYMODES_RFC, maxParamLen) != 0)) {
         T2Debug("Unexpected parameter = %s \n", paramName);
         T2Debug("%s --out\n", __FUNCTION__);
@@ -350,7 +353,27 @@ rbusError_t t2PropertyDataSetHandler(rbusHandle_t handle, rbusProperty_t prop, r
         return RBUS_ERROR_INVALID_INPUT;
 	T2Debug("%s --out\n", __FUNCTION__);
     }
-    if(strncmp(paramName, T2_READY_TO_RECIEVE, maxParamLen) == 0) { 
+
+    if(strncmp(paramName, T2_SET_CONFIG_READY, maxParamLen) == 0) { 
+        T2Debug("Inside datamodel handler for T2 config status \n");
+        if(type_t == RBUS_STRING) {
+            char* data = rbusValue_ToString(paramValue_t, NULL, 0);
+            T2Debug("Received property type as value %s \n", data);
+            if(data)
+            {
+                if(t2ConfigReady)
+                {
+                    free(t2ConfigReady);
+                    t2ConfigReady = NULL;
+                }
+                t2ConfigReady = strdup(data);
+                free(data);
+            }
+        } else {
+            T2Debug("Unexpected value type for property %s \n", paramName);
+        }    
+    }    
+    else if(strncmp(paramName, T2_READY_TO_RECIEVE, maxParamLen) == 0) { 
         T2Debug("Inside datamodel handler for T2 component status \n");
         if(type_t == RBUS_STRING) {
             char* data = rbusValue_ToString(paramValue_t, NULL, 0);
@@ -608,7 +631,8 @@ rbusError_t t2PropertyDataGetHandler(rbusHandle_t handle, rbusProperty_t propert
             rbusValue_SetString(value, "");
         rbusProperty_SetValue(property, value);
         rbusValue_Release(value);
-    }else if(strncmp(propertyName, T2_READY_TO_RECIEVE, maxParamLen) == 0) {
+    }
+    else if(strncmp(propertyName, T2_READY_TO_RECIEVE, maxParamLen) == 0) {
         rbusValue_t value;
         rbusValue_Init(&value);
         if(t2ComponentReady)
@@ -617,7 +641,18 @@ rbusError_t t2PropertyDataGetHandler(rbusHandle_t handle, rbusProperty_t propert
             rbusValue_SetString(value, "false");
         rbusProperty_SetValue(property, value);
         rbusValue_Release(value);
-    }else if(strncmp(propertyName, T2_TOTAL_MEM_USAGE, maxParamLen) == 0) {
+    }
+    else if(strncmp(propertyName, T2_SET_CONFIG_READY, maxParamLen) == 0) {
+        rbusValue_t value;
+        rbusValue_Init(&value);
+        if(t2ConfigReady)
+            rbusValue_SetString(value, t2ConfigReady);
+        else
+            rbusValue_SetString(value, "false");
+        rbusProperty_SetValue(property, value);
+        rbusValue_Release(value);
+    }
+    else if(strncmp(propertyName, T2_TOTAL_MEM_USAGE, maxParamLen) == 0) {
         rbusValue_t value;
         rbusValue_Init(&value);
         profilememUsedCallBack(&t2MemUsage);
@@ -1034,12 +1069,13 @@ T2ERROR registerRbusT2EventListener(TelemetryEventCallback eventCB)
     /**
      * Register data elements with rbus for EVENTS and Profile Updates.
      */
-    rbusDataElement_t dataElements[3] = {
+    rbusDataElement_t dataElements[4] = {
         {T2_EVENT_PARAM, RBUS_ELEMENT_TYPE_PROPERTY, {NULL, t2PropertyDataSetHandler, NULL, NULL, NULL, NULL}},
         {T2_PROFILE_UPDATED_NOTIFY, RBUS_ELEMENT_TYPE_EVENT, {NULL, NULL, NULL, NULL, (rbusEventSubHandler_t)eventSubHandler, NULL}},
-	{T2_READY_TO_RECIEVE, RBUS_ELEMENT_TYPE_PROPERTY, {t2PropertyDataGetHandler, t2PropertyDataSetHandler, NULL, NULL, NULL, NULL}}
+	{T2_READY_TO_RECIEVE, RBUS_ELEMENT_TYPE_PROPERTY, {t2PropertyDataGetHandler, t2PropertyDataSetHandler, NULL, NULL, NULL, NULL}},
+	{T2_SET_CONFIG_READY, RBUS_ELEMENT_TYPE_PROPERTY, {t2PropertyDataGetHandler, t2PropertyDataSetHandler, NULL, NULL, NULL, NULL}}
     };
-    ret = rbus_regDataElements(t2bus_handle, 3, dataElements);
+    ret = rbus_regDataElements(t2bus_handle, 4, dataElements);
     if(ret != RBUS_ERROR_SUCCESS)
     {
         T2Error("Failed to register T2 data elements with rbus. Error code : %d\n", ret);
@@ -1066,6 +1102,29 @@ T2ERROR registerRbusT2EventListener(TelemetryEventCallback eventCB)
 
     T2Debug("%s --out\n", __FUNCTION__);
     return status;
+}
+
+void setRbusParamValue(char *property)
+{
+    T2Debug("%s ++in\n", __FUNCTION__);
+        rbusError_t ret = RBUS_ERROR_SUCCESS;
+        rbusValue_t value;
+        rbusSetOptions_t options = {0}; 
+        options.commit = true;
+
+        rbusValue_Init(&value);
+        rbusValue_SetString(value, "true");
+
+        T2Info("rbus_set with param [%s] with value [%s]\n", property, "true");
+        /*Setting config ready*/
+        ret = rbus_set(t2bus_handle, property, value, &options);
+        if(ret != RBUS_ERROR_SUCCESS) {
+            T2Info("rbus_set Failed for [%s] with error [%d]\n", property, ret);
+            T2Info(" !!! Error !!! rbus_set Failed for [%s] with error [%d]\n", property, ret);
+        }    
+        // Release rbus data structure
+        rbusValue_Release(value);                                                                                                                                  
+    T2Debug("%s ++out\n", __FUNCTION__);                                                                                                                           
 }
 
 T2ERROR unregisterRbusT2EventListener()

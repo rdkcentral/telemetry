@@ -556,9 +556,10 @@ static bool isCachingRequired( ) {
     }
 
     // Always check for t2 is ready to accept events. Shutdown target can bring down t2 process at runtime
-    if(access( T2_COMPONENT_READY, F_OK) == -1) {
-        return true ;
-    }
+    char *value;
+    getParamValue( T2_COMPONENT_READY, &value);
+
+    EVENT_ERROR("value for  %s is : %s\n", T2_COMPONENT_READY, value);
 
     if(!isRbusEnabled){
         isT2Ready = true;

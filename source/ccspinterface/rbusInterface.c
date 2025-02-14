@@ -44,8 +44,6 @@
 
 #define RBUS_METHOD_TIMEOUT 10
 #define MAX_REPORT_TIMEOUT 50
-#define T2_READY_TO_RECIEVE    "Device.X_RDKCENTRAL-COM_T2.ComponentReady"
-#define T2_SET_CONFIG_READY    "Device.X_RDKCENTRAL-COM_T2.ConfigReady"
 
 static rbusHandle_t t2bus_handle;
 

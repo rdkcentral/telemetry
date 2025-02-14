@@ -45,7 +45,6 @@
 #define MESSAGE_DELIMITER "<#=#>"
 #define MAX_EVENT_CACHE 200
 #define T2_COMPONENT_READY    "/tmp/.t2ReadyToReceiveEvents"
-#define T2_READY_TO_RECIEVE    "Device.X_RDKCENTRAL-COM_T2.ComponentReady"
 #define T2_SCRIPT_EVENT_COMPONENT "telemetry_client"
 #define SENDER_LOG_FILE "/tmp/t2_sender_debug.log"
 

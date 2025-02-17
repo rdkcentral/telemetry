@@ -1062,23 +1062,20 @@ void uninitXConfClient()
     {
         T2Debug("XConfClientThread is stopped already\n");
     }
-    if(isXconfInit){
-        pthread_mutex_lock(&xcThreadMutex);
-        isXconfInit = false;
-        pthread_cond_signal(&xcThreadCond);
-        pthread_mutex_unlock(&xcThreadMutex);
-        pthread_join(xcrThread, NULL);
-        pthread_mutex_destroy(&xcMutex);
-        pthread_mutex_destroy(&xcThreadMutex);
-        pthread_cond_destroy(&xcCond);
-        pthread_cond_destroy(&xcThreadCond);
+    pthread_mutex_lock(&xcThreadMutex);
+    isXconfInit = false;
+    pthread_cond_signal(&xcThreadCond);
+    pthread_mutex_unlock(&xcThreadMutex);
+    pthread_join(xcrThread, NULL);
+    pthread_mutex_destroy(&xcMutex);
+    pthread_mutex_destroy(&xcThreadMutex);
+    pthread_cond_destroy(&xcCond);
+    pthread_cond_destroy(&xcThreadCond);
+    bexitDCMThread = false;
+    pthread_join(dcmThread, NULL);
 #ifdef LIBRDKCERTSEL_BUILD
 	xcCertSelectorFree();
 #endif
-    }
-    else{
-        T2Warning("Function : uninitXConfClient is being called multiple times consecutively\n");
-    }
     T2Debug("%s --out\n", __FUNCTION__);
     T2Info("Uninit XConf Client Successful\n");
 }

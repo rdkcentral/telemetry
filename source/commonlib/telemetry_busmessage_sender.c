@@ -558,9 +558,9 @@ static bool isCachingRequired( ) {
     // Always check for t2 is ready to accept events. Shutdown target can bring down t2 process at runtime
     char *t2ComponentStatus;
     int t2ReadyStatus;
-    getParamValue( T2_OPERATIONAL_STATUS, &componentStatus);
+    getParamValue( T2_OPERATIONAL_STATUS, &t2ComponentStatus);
 
-    EVENT_ERROR("value for  %s is : %s\n", T2_OPERATIONAL_STATUS, componentStatus);
+    EVENT_ERROR("value for  %s is : %s\n", T2_OPERATIONAL_STATUS, t2ComponentStatus);
     t2ReadyStatus = atoi(t2ComponentStatus);
     if((t2ReadyStatus&1)==0)
     {

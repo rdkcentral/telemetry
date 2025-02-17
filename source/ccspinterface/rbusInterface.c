@@ -62,8 +62,7 @@ static ReportProfilesDeleteDNDCallBack mprofilesDeleteCallBack;
 #if defined(PRIVACYMODES_CONTROL)
 static char* privacyModeVal = NULL;
 #endif
-static bool t2ComponentReady = false;
-static bool t2ConfigReady = false;
+static int t2ReadyStatus = 0;
 static char* reportProfileVal = NULL ;
 static char* tmpReportProfileVal = NULL ;
 static char* reportProfilemsgPckVal = NULL ;
@@ -590,19 +589,11 @@ rbusError_t t2PropertyDataGetHandler(rbusHandle_t handle, rbusProperty_t propert
         rbusProperty_SetValue(property, value);
         rbusValue_Release(value);
     }
-    else if(strncmp(propertyName, T2_READY_TO_RECIEVE, maxParamLen) == 0) {
+    else if(strncmp(propertyName, T2_OPERATIONAL_STATUS, maxParamLen) == 0) {
         rbusValue_t value;
         rbusValue_Init(&value);
 
-        rbusValue_SetBoolean(value, t2ComponentReady);
-        rbusProperty_SetValue(property, value);
-        rbusValue_Release(value);
-    }
-    else if(strncmp(propertyName, T2_SET_CONFIG_READY, maxParamLen) == 0) {
-        rbusValue_t value;
-        rbusValue_Init(&value);
-
-        rbusValue_SetBoolean(value, t2ConfigReady);
+        rbusValue_SetInt32(value, t2ReadyStatus);
         rbusProperty_SetValue(property, value);
         rbusValue_Release(value);
     }
@@ -1023,13 +1014,12 @@ T2ERROR registerRbusT2EventListener(TelemetryEventCallback eventCB)
     /**
      * Register data elements with rbus for EVENTS and Profile Updates.
      */
-    rbusDataElement_t dataElements[4] = {
+    rbusDataElement_t dataElements[3] = {
         {T2_EVENT_PARAM, RBUS_ELEMENT_TYPE_PROPERTY, {NULL, t2PropertyDataSetHandler, NULL, NULL, NULL, NULL}},
         {T2_PROFILE_UPDATED_NOTIFY, RBUS_ELEMENT_TYPE_EVENT, {NULL, NULL, NULL, NULL, (rbusEventSubHandler_t)eventSubHandler, NULL}},
-	{T2_READY_TO_RECIEVE, RBUS_ELEMENT_TYPE_PROPERTY, {t2PropertyDataGetHandler, NULL, NULL, NULL, NULL, NULL}},
-	{T2_SET_CONFIG_READY, RBUS_ELEMENT_TYPE_PROPERTY, {t2PropertyDataGetHandler, NULL, NULL, NULL, NULL, NULL}}
+	{T2_OPERATIONAL_STATUS, RBUS_ELEMENT_TYPE_PROPERTY, {t2PropertyDataGetHandler, NULL, NULL, NULL, NULL, NULL}}
     };
-    ret = rbus_regDataElements(t2bus_handle, 4, dataElements);
+    ret = rbus_regDataElements(t2bus_handle, 3, dataElements);
     if(ret != RBUS_ERROR_SUCCESS)
     {
         T2Error("Failed to register T2 data elements with rbus. Error code : %d\n", ret);
@@ -1045,15 +1035,15 @@ void setRbusParamValue(char *paramName)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
 
-    if(strncmp(paramName, T2_SET_CONFIG_READY, maxParamLen) == 0 )
+    if(strncmp(paramName, T2_CONFIG_READY, maxParamLen) == 0 )
     {
-        t2ConfigReady=true;
-        T2Info("ConfigReady set as TRUE\n");
+        t2ReadyStatus |= 2;
+        T2Info("ConfigReady added to Telemetry Operational Status\n");
     }
     else
     {
-        T2Info("ComponentReady set as TRUE\n");
-        t2ComponentReady = true;
+        t2ReadyStatus |= 1;
+        T2Info("ComponentReady added to Telemetry Operational Status\n");
     }
 
     T2Debug("%s ++out\n", __FUNCTION__); 

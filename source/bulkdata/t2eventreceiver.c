@@ -213,7 +213,7 @@ T2ERROR T2ER_Init()
     }
 
     system("touch /tmp/.t2ReadyToReceiveEvents");
-    setRbusParamValue(T2_READY_TO_RECIEVE);
+    setRbusParamValue(T2_COMPONENT_READY);
 
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;

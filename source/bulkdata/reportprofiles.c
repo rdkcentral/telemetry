@@ -366,7 +366,7 @@ static void createComponentDataElements() {
     if(cfgReadyFlag){
         fclose(cfgReadyFlag);
     }
-    setRbusParamValue(T2_SET_CONFIG_READY);
+    setRbusParamValue(T2_CONFIG_READY);
 
     T2Debug("%s --out\n", __FUNCTION__);
 }

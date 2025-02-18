@@ -74,7 +74,14 @@ typedef enum
 #define T2_CACHE_FILE    "/tmp/t2_caching_file"
 #define T2_CACHE_LOCK_FILE    "/tmp/t2_lock_file"
 #define T2_CONFIG_READY    "/tmp/.t2ConfigReady"
-#define T2_COMPONENT_READY    "/tmp/.t2ReadyToReceiveEvents"
+
+typedef enum
+{
+    T2_STATE_NOT_READY,
+    T2_STATE_COMPONENT_READY,
+    T2_STATE_CONFIG_READY,
+    T2_STATE_READY
+}T2_OPERATIONAL_STATE;
 
 #ifdef __cplusplus
 }

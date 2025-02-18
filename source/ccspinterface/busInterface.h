@@ -93,7 +93,7 @@ T2ERROR registerForTelemetryEvents(TelemetryEventCallback eventCB);
 // Needs to be called only in rBus mode
 T2ERROR regDEforCompEventList(const char* componentName, T2EventMarkerListCallback callBackHandler) ;
 
-void setRbusParamValue(char *paramName);
+void setT2EventReceiveState(int T2_STATE);
 
 void unregisterDEforCompEventList();
 

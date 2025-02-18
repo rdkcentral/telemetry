@@ -62,7 +62,7 @@ static ReportProfilesDeleteDNDCallBack mprofilesDeleteCallBack;
 #if defined(PRIVACYMODES_CONTROL)
 static char* privacyModeVal = NULL;
 #endif
-static uint32_t t2ReadyStatus = 0;
+static uint32_t t2ReadyStatus = T2_STATE_NOT_READY;;
 static char* reportProfileVal = NULL ;
 static char* tmpReportProfileVal = NULL ;
 static char* reportProfilemsgPckVal = NULL ;
@@ -348,7 +348,6 @@ rbusError_t t2PropertyDataSetHandler(rbusHandle_t handle, rbusProperty_t prop, r
         return RBUS_ERROR_INVALID_INPUT;
 	T2Debug("%s --out\n", __FUNCTION__);
     }
-
     if(strncmp(paramName, T2_EVENT_PARAM, maxParamLen) == 0) {
         if(type_t == RBUS_PROPERTY) {
             T2Debug("Received property type as value \n");
@@ -593,7 +592,7 @@ rbusError_t t2PropertyDataGetHandler(rbusHandle_t handle, rbusProperty_t propert
         rbusValue_t value;
         rbusValue_Init(&value);
 
-        rbusValue_SetInt32(value, t2ReadyStatus);
+        rbusValue_SetUInt32(value, t2ReadyStatus);
         rbusProperty_SetValue(property, value);
         rbusValue_Release(value);
     }
@@ -1031,20 +1030,11 @@ T2ERROR registerRbusT2EventListener(TelemetryEventCallback eventCB)
     return status;
 }
 
-void setRbusParamValue(char *paramName)
+void setT2EventReceiveState(int T2_STATE)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
 
-    if(strncmp(paramName, T2_CONFIG_READY, maxParamLen) == 0 )
-    {
-        t2ReadyStatus |= 2;
-        T2Info("ConfigReady added to Telemetry Operational Status\n");
-    }
-    else
-    {
-        t2ReadyStatus |= 1;
-        T2Info("ComponentReady added to Telemetry Operational Status\n");
-    }
+    t2ReadyStatus |= T2_STATE;
 
     T2Debug("%s ++out\n", __FUNCTION__); 
 }

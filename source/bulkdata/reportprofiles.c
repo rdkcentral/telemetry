@@ -366,7 +366,8 @@ static void createComponentDataElements() {
     if(cfgReadyFlag){
         fclose(cfgReadyFlag);
     }
-    setRbusParamValue(T2_CONFIG_READY);
+    setT2EventReceiveState(T2_STATE_CONFIG_READY);
+    T2Info("T2 is now Ready to be configured for report profiles\n");
 
     T2Debug("%s --out\n", __FUNCTION__);
 }

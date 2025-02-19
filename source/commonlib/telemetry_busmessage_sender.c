@@ -567,7 +567,7 @@ static bool isCachingRequired( ) {
     }                                                                         
     else                                                                      
     {
-        EVENT_ERROR("value for  %s is : %d\n", T2_OPERATIONAL_STATUS, t2ReadyStatus);   
+        EVENT_DEBUG("value for  %s is : %d\n", T2_OPERATIONAL_STATUS, t2ReadyStatus);   
         if((t2ReadyStatus & T2_STATE_COMPONENT_READY)==0)                               
         {                                                                               
             return true;                                                                

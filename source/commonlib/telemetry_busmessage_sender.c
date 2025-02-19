@@ -581,7 +581,7 @@ static bool isCachingRequired( ) {
     if(!isT2Ready) {
         if(componentName && (0 != strcmp(componentName, "telemetry_client"))) {
             // From other binary applications in rbus mode if t2 daemon is yet to determine state of component specific config from cloud, enable cache
-            if((t2ReadyStatus & T2_STATE_COMPONENT_READY)==0)==0) {
+            if((t2ReadyStatus & T2_STATE_COMPONENT_READY)==0) {
                 return true;
             }else {
                 rbusError_t ret = RBUS_ERROR_SUCCESS;

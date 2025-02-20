@@ -594,6 +594,7 @@ rbusError_t t2PropertyDataGetHandler(rbusHandle_t handle, rbusProperty_t propert
 
         rbusValue_SetUInt32(value, t2ReadyStatus);
         rbusProperty_SetValue(property, value);
+	T2Debug(" Test print\n");
         rbusValue_Release(value);
     }
     else if(strncmp(propertyName, T2_TOTAL_MEM_USAGE, maxParamLen) == 0) {

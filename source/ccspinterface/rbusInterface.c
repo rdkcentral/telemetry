@@ -62,6 +62,7 @@ static ReportProfilesDeleteDNDCallBack mprofilesDeleteCallBack;
 #if defined(PRIVACYMODES_CONTROL)
 static char* privacyModeVal = NULL;
 #endif
+static uint32_t t2ReadyStatus = T2_STATE_NOT_READY;;
 static char* reportProfileVal = NULL ;
 static char* tmpReportProfileVal = NULL ;
 static char* reportProfilemsgPckVal = NULL ;
@@ -586,7 +587,16 @@ rbusError_t t2PropertyDataGetHandler(rbusHandle_t handle, rbusProperty_t propert
             rbusValue_SetString(value, "");
         rbusProperty_SetValue(property, value);
         rbusValue_Release(value);
-    }else if(strncmp(propertyName, T2_TOTAL_MEM_USAGE, maxParamLen) == 0) {
+    }
+    else if(strncmp(propertyName, T2_OPERATIONAL_STATUS, maxParamLen) == 0) {
+        rbusValue_t value;
+        rbusValue_Init(&value);
+
+        rbusValue_SetUInt32(value, t2ReadyStatus);
+        rbusProperty_SetValue(property, value);
+        rbusValue_Release(value);
+    }
+    else if(strncmp(propertyName, T2_TOTAL_MEM_USAGE, maxParamLen) == 0) {
         rbusValue_t value;
         rbusValue_Init(&value);
         profilememUsedCallBack(&t2MemUsage);
@@ -1003,11 +1013,12 @@ T2ERROR registerRbusT2EventListener(TelemetryEventCallback eventCB)
     /**
      * Register data elements with rbus for EVENTS and Profile Updates.
      */
-    rbusDataElement_t dataElements[2] = {
+    rbusDataElement_t dataElements[3] = {
         {T2_EVENT_PARAM, RBUS_ELEMENT_TYPE_PROPERTY, {NULL, t2PropertyDataSetHandler, NULL, NULL, NULL, NULL}},
-        {T2_PROFILE_UPDATED_NOTIFY, RBUS_ELEMENT_TYPE_EVENT, {NULL, NULL, NULL, NULL, (rbusEventSubHandler_t)eventSubHandler, NULL}}
+        {T2_PROFILE_UPDATED_NOTIFY, RBUS_ELEMENT_TYPE_EVENT, {NULL, NULL, NULL, NULL, (rbusEventSubHandler_t)eventSubHandler, NULL}},
+	{T2_OPERATIONAL_STATUS, RBUS_ELEMENT_TYPE_PROPERTY, {t2PropertyDataGetHandler, NULL, NULL, NULL, NULL, NULL}}
     };
-    ret = rbus_regDataElements(t2bus_handle, 2, dataElements);
+    ret = rbus_regDataElements(t2bus_handle, 3, dataElements);
     if(ret != RBUS_ERROR_SUCCESS)
     {
         T2Error("Failed to register T2 data elements with rbus. Error code : %d\n", ret);
@@ -1017,6 +1028,15 @@ T2ERROR registerRbusT2EventListener(TelemetryEventCallback eventCB)
 
     T2Debug("%s --out\n", __FUNCTION__);
     return status;
+}
+
+void setT2EventReceiveState(int T2_STATE)
+{
+    T2Debug("%s ++in\n", __FUNCTION__);
+
+    t2ReadyStatus |= T2_STATE;
+
+    T2Debug("%s ++out\n", __FUNCTION__); 
 }
 
 T2ERROR unregisterRbusT2EventListener()

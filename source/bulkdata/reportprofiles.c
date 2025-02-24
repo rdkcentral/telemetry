@@ -536,6 +536,8 @@ T2ERROR initReportProfiles()
             cfgReadyFlag = fopen(T2_CONFIG_READY, "w+");
             if(cfgReadyFlag)
                 fclose(cfgReadyFlag);
+            setT2EventReceiveState(T2_STATE_CONFIG_READY);
+            T2Info("T2 is now Ready to be configured for report profiles\n");
             getMarkerCompRbusSub(true);
         }
         T2ER_StartDispatchThread();

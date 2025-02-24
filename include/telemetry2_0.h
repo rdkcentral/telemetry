@@ -41,12 +41,15 @@ extern "C" {
 #define PRIVACYMODES_RFC "Device.X_RDKCENTRAL-COM_Privacy.PrivacyMode"
 #define T2_ON_DEMAND_REPORT "Device.X_RDKCENTRAL-COM_T2.UploadDCMReport"
 #define T2_ABORT_ON_DEMAND_REPORT "Device.X_RDKCENTRAL-COM_T2.AbortDCMReport"
+
+#ifdef DCMAGENT
 /* DCM Rbus Events */
 #define T2_EVENT_DCM_SETCONF  "Device.DCM.Setconfig"
 #define T2_EVENT_DCM_PROCCONF "Device.DCM.Processconfig"
 #define T2_DCM_RELOAD_EVENT   "Device.X_RDKCENTREL-COM.Reloadconfig"
 #define T2_DCM_SET_CONFIG     "dcmSetConfig"
 #define T2_DCM_START_CONFIG   "dcmStartConfig"
+#endif
 
 #define INFINITE_TIMEOUT      (unsigned int)~0
 

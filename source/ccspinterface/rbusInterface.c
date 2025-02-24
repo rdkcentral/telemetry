@@ -66,7 +66,9 @@ static uint32_t t2ReadyStatus = T2_STATE_NOT_READY;;
 static char* reportProfileVal = NULL ;
 static char* tmpReportProfileVal = NULL ;
 static char* reportProfilemsgPckVal = NULL ;
+#ifdef DCMAGENT
 static bool dcmEventStatus = false;
+#endif
 uint32_t t2MemUsage = 0;
 
 static pthread_mutex_t asyncMutex = PTHREAD_MUTEX_INITIALIZER;
@@ -625,8 +627,10 @@ rbusError_t t2PropertyDataGetHandler(rbusHandle_t handle, rbusProperty_t propert
 #endif
     else {
         // START : Extract component name requesting for event marker list
+        pthread_mutex_lock(&compParamMap);
         if(compTr181ParamMap != NULL)
             componentName = (char*) hash_map_get(compTr181ParamMap, propertyName);
+        pthread_mutex_unlock(&compParamMap); // This needs rework
 
         if(componentName) {
             T2Debug("Component name = %s \n", componentName);
@@ -836,6 +840,7 @@ static rbusError_t dcmOnDemandMethodHandler(rbusHandle_t handle, char const* met
     return RBUS_ERROR_ASYNC_RESPONSE ;
 }
 
+#ifdef DCMAGENT
 static void rbusReloadConf(rbusHandle_t handle,
                            rbusEvent_t const* event,
                            rbusEventSubscription_t* subscription)
@@ -998,7 +1003,7 @@ T2ERROR publishEventsDCMProcConf()
     T2Debug("%s --out\n", __FUNCTION__);
     return status;
 }
-
+#endif
 
 
 T2ERROR registerRbusT2EventListener(TelemetryEventCallback eventCB)
@@ -1137,13 +1142,14 @@ void unregisterDEforCompEventList(){
         return ;
     }
 
+    pthread_mutex_lock(&compParamMap);
+
     if(!compTr181ParamMap) {
         T2Info("No data elements present to unregister");
         T2Debug("%s --out\n", __FUNCTION__);
+        pthread_mutex_unlock(&compParamMap);
         return;
     }
-
-    pthread_mutex_lock(&compParamMap);
 
     count = hash_map_count(compTr181ParamMap);
     T2Debug("compTr181ParamMap has %d components registered \n", count);

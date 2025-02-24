@@ -70,11 +70,14 @@ static const int MAX_URL_ARG_LEN = 128;
 static int xConfRetryCount = 0;
 static bool stopFetchRemoteConfiguration = false;
 static bool isXconfInit = false ;
+
+#ifdef DCMAGENT
 static bool bNotifyDCM = false;
 static bool bexitDCMThread = true;
+static pthread_t dcmThread;
+#endif
 
 static pthread_t xcrThread;
-static pthread_t dcmThread;
 static pthread_mutex_t xcMutex;
 static pthread_mutex_t xcThreadMutex;
 static pthread_cond_t xcCond;
@@ -969,8 +972,10 @@ static void* getUpdatedConfigurationThread(void *data)
                     if(fp)
                         fclose(fp);
 
+                    #ifdef DCMAGENT
                     T2Info("Set DCM flag for sending events\n");
-                    bNotifyDCM = true;                    
+                    bNotifyDCM = true;
+                    #endif
 
                 }
                 if(configData != NULL) {
@@ -1062,25 +1067,29 @@ void uninitXConfClient()
     {
         T2Debug("XConfClientThread is stopped already\n");
     }
-    pthread_mutex_lock(&xcThreadMutex);
-    isXconfInit = false;
-    pthread_cond_signal(&xcThreadCond);
-    pthread_mutex_unlock(&xcThreadMutex);
-    pthread_join(xcrThread, NULL);
-    pthread_mutex_destroy(&xcMutex);
-    pthread_mutex_destroy(&xcThreadMutex);
-    pthread_cond_destroy(&xcCond);
-    pthread_cond_destroy(&xcThreadCond);
-    bexitDCMThread = false;
-    pthread_join(dcmThread, NULL);
+    if(isXconfInit){
+        pthread_mutex_lock(&xcThreadMutex);
+        isXconfInit = false;
+        pthread_cond_signal(&xcThreadCond);
+        pthread_mutex_unlock(&xcThreadMutex);
+        pthread_join(xcrThread, NULL);
+        pthread_mutex_destroy(&xcMutex);
+        pthread_mutex_destroy(&xcThreadMutex);
+        pthread_cond_destroy(&xcCond);
+        pthread_cond_destroy(&xcThreadCond);
+        #ifdef DCMAGENT
+        bexitDCMThread = false;
+        pthread_join(dcmThread, NULL);
+        #endif
 #ifdef LIBRDKCERTSEL_BUILD
-	xcCertSelectorFree();
+	    xcCertSelectorFree();
 #endif
+    }
     T2Debug("%s --out\n", __FUNCTION__);
     T2Info("Uninit XConf Client Successful\n");
 }
 
-
+#ifdef DCMAGENT
 static void* nofifyDCMThread(void *data)
 {
     (void) data; //To avoid compiler warning and use the pthread signature
@@ -1121,11 +1130,14 @@ T2ERROR startDCMClient()
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
+#endif
 
 T2ERROR initXConfClient()
 {
     T2Debug("%s ++in\n", __FUNCTION__);
+    #ifdef DCMAGENT
 	startDCMClient();
+    #endif
     pthread_mutex_init(&xcMutex, NULL);
     pthread_mutex_init(&xcThreadMutex, NULL);
     pthread_cond_init(&xcCond, NULL);

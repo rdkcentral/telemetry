@@ -277,21 +277,17 @@ void* TimeoutThread(void *arg)
             T2Info("Profile activation timeout for %s \n", tProfile->name);
             char *profileName = strdup(tProfile->name);
             tProfile->repeat = false;
+            if(pthread_mutex_unlock(&tProfile->tMutex) != 0){
+                T2Error("tProfile Mutex unlock failed\n");
+		free(profileName);
+                return NULL;
+            }
             if(tProfile->deleteonTime) {
                deleteProfile(profileName);
                if (profileName != NULL) {
                    free(profileName);
                }
-               if(pthread_mutex_unlock(&tProfile->tMutex) != 0){
-                   T2Error("tProfile Mutex unlock failed\n");
-                   return NULL;
-               }
                break;
-            }
-            if(pthread_mutex_unlock(&tProfile->tMutex) != 0){
-                T2Error("tProfile Mutex unlock failed\n");
-		free(profileName);
-                return NULL;
             }
             if(pthread_mutex_lock(&scMutex) != 0){
 		T2Error("scMutex lock failed\n");

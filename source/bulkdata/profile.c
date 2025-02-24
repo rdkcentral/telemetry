@@ -51,9 +51,6 @@ static pthread_mutex_t reportLock;
 
 static pthread_mutex_t triggerConditionQueMutex = PTHREAD_MUTEX_INITIALIZER;
 static queue_t *triggerConditionQueue = NULL;
-#if defined(PRIVACYMODES_CONTROL)
-static char* paramValue = NULL;
-#endif
 
 typedef struct __triggerConditionObj__ {
     char referenceName[MAX_LEN];
@@ -158,6 +155,7 @@ static void freeProfile(void *data)
 
         if(profile->cachedReportList){
             Vector_Destroy(profile->cachedReportList, free);
+            profile->cachedReportList = NULL;
         }
         if(profile->jsonReportObj){
              cJSON_Delete(profile->jsonReportObj);
@@ -1131,13 +1129,16 @@ static void loadReportProfilesFromDisk()
     T2Info("JSON: loadReportProfilesFromDisk \n");
 #endif
 #if defined(PRIVACYMODES_CONTROL)
-    getParameterValue(PRIVACYMODES_RFC, &paramValue);
+    char* paramValue = NULL;
+    getPrivacyMode(&paramValue);
     if(strcmp(paramValue, "DO_NOT_SHARE") == 0){
         T2Warning("PrivacyModes is DO_NOT_SHARE. Reportprofiles is not supported\n");
         free(paramValue);
         paramValue = NULL;
         return;
     }
+    free(paramValue);
+    paramValue = NULL;
 #endif
 
     size_t configIndex = 0;

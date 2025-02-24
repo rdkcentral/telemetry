@@ -24,6 +24,7 @@
 #include "t2collection.h"
 #include "t2eventreceiver.h"
 #include "t2log_wrapper.h"
+#include "rbusInterface.h"
 
 /**
  * Store event markers associated with a component
@@ -283,4 +284,19 @@ T2ERROR getMarkerProfileList(const char* markerName, Vector **profileList)
 
     pthread_mutex_unlock(&t2MarkersMutex);
     return T2ERROR_SUCCESS;
+}
+
+void createComponentDataElements() {
+    T2Debug("%s ++in\n", __FUNCTION__);
+    int i = 0;
+    int length = 0 ;
+    pthread_mutex_lock(&t2CompListMutex);
+    length = Vector_Size(componentList);
+    for (i = 0; i < length; ++i) {
+        char *compName = (char*) Vector_At(componentList,i);
+        if(compName)
+            regDEforCompEventList(compName, getComponentMarkerList);
+    }
+    pthread_mutex_unlock(&t2CompListMutex);
+    T2Debug("%s --out\n", __FUNCTION__);
 }

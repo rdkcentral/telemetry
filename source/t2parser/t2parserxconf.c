@@ -28,6 +28,7 @@
 #include "reportprofiles.h"
 #include "t2log_wrapper.h"
 #include "t2common.h"
+#include "persistence.h"
 
 #if defined (PRIVACYMODES_CONTROL)
 #include "rdkservices_privacyutils.h"
@@ -206,7 +207,7 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
 
 #if defined(PRIVACYMODES_CONTROL)
     char* paramValue = NULL;
-    getParameterValue(PRIVACYMODES_RFC, &paramValue);
+    getPrivacyMode(&paramValue);
     if(strncmp(paramValue, "DO_NOT_SHARE", MAX_PARAM_LEN) == 0){
         addParameter(profile, "PrivacyMode", PRIVACYMODES_RFC, NULL, -1);
     }

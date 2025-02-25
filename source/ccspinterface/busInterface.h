@@ -101,12 +101,14 @@ T2ERROR regDEforProfileDataModel(callBackHandlers* cbHandlers);
 
 T2ERROR publishEventsProfileUpdates() ;
 
+#ifdef DCMAGENT
 /* DCM RBus event Publish functions */
 T2ERROR publishEventsDCMSetConf(char *confPath);
 
 T2ERROR publishEventsDCMProcConf();
 
 int getRbusDCMEventStatus();
+#endif
 
 T2ERROR busUninit() ;
 

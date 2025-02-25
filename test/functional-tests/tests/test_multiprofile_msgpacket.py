@@ -77,6 +77,7 @@ def test_without_namefield():
 @pytest.mark.run(order=2)
 def test_without_hashvalue():
     clear_T2logs()
+    #Adding this to avoid faiure
     kill_telemetry(9)
     remove_T2bootup_flag()
     clear_persistant_files()
@@ -97,6 +98,12 @@ def test_without_hashvalue():
 @pytest.mark.run(order=3)
 def test_with_wrong_protocol_value():
     clear_T2logs()
+    #Adding this to avoid faiure
+    kill_telemetry(9)
+    remove_T2bootup_flag()
+    clear_persistant_files()
+    run_telemetry()
+    sleep(10)
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_wrong_protocol_value))
     sleep(20)
     ERROR_WRONG_PROTOCOL = "Unsupported report sending protocol"

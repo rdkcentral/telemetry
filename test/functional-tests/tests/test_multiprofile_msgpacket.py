@@ -77,6 +77,11 @@ def test_without_namefield():
 @pytest.mark.run(order=2)
 def test_without_hashvalue():
     clear_T2logs()
+    kill_telemetry(9)
+    remove_T2bootup_flag()
+    clear_persistant_files()
+    run_telemetry()
+    sleep(10)
     run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_without_hashvalue))
     sleep(20)

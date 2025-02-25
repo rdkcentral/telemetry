@@ -51,6 +51,9 @@
 #include "telemetry2_0.h"
 #include "t2MtlsUtils.h"
 #include "persistence.h"
+#ifdef LIBRDKCERTSEL_BUILD
+#include "curlinterface.h"
+#endif
 
 #if defined(PRIVACYMODES_CONTROL)
 #include "rdkservices_privacyutils.h"
@@ -366,6 +369,8 @@ static void createComponentDataElements() {
     if(cfgReadyFlag){
         fclose(cfgReadyFlag);
     }
+    setT2EventReceiveState(T2_STATE_CONFIG_READY);
+    T2Info("T2 is now Ready to be configured for report profiles\n");
 
     T2Debug("%s --out\n", __FUNCTION__);
 }
@@ -434,9 +439,11 @@ T2ERROR initReportProfiles()
         T2Error("%s ReportProfiles already initialized - ignoring\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
+#ifndef LIBRDKCERTSEL_BUILD
     if(isMtlsEnabled() == true){
         initMtls();
     }
+#endif
 #if defined (PRIVACYMODES_CONTROL)
     DIR *dir = opendir(PRIVACYMODE_PATH);
     if(dir == NULL){
@@ -584,7 +591,11 @@ T2ERROR ReportProfiles_uninit( ) {
     rpInitialized = false;
     if(isRbusEnabled())
         getMarkerCompRbusSub(false); // remove Rbus subscription
+#ifdef LIBRDKCERTSEL_BUILD
+    curlCertSelectorFree();
+#else
     uninitMtls();
+#endif
     T2ER_Uninit();
     destroyT2MarkerComponentMap();
     uninitScheduler();

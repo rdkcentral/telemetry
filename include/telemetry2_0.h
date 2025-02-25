@@ -31,6 +31,7 @@ extern "C" {
 #define T2_EVENT_LIST_PARAM_SUFFIX ".EventMarkerList"
 #define T2_EVENT_PARAM "Telemetry.ReportProfiles.EventMarker"
 #define T2_PROFILE_UPDATED_NOTIFY "Telemetry.ReportProfiles.ProfilesUpdated"
+#define T2_OPERATIONAL_STATUS "Telemetry.OperationalStatus"
 #define T2_REPORT_PROFILE_PARAM "Device.X_RDKCENTRAL-COM_T2.ReportProfiles"
 #define T2_REPORT_PROFILE_PARAM_MSG_PCK "Device.X_RDKCENTRAL-COM_T2.ReportProfilesMsgPack"
 #define T2_TEMP_REPORT_PROFILE_PARAM "Device.X_RDKCENTRAL-COM_T2.Temp_ReportProfiles"
@@ -73,6 +74,14 @@ typedef enum
 #define T2_CACHE_FILE    "/tmp/t2_caching_file"
 #define T2_CACHE_LOCK_FILE    "/tmp/t2_lock_file"
 #define T2_CONFIG_READY    "/tmp/.t2ConfigReady"
+
+typedef enum
+{
+    T2_STATE_NOT_READY,
+    T2_STATE_COMPONENT_READY,
+    T2_STATE_CONFIG_READY,
+    T2_STATE_READY
+}T2_OPERATIONAL_STATE;
 
 #ifdef __cplusplus
 }

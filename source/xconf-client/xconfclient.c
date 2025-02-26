@@ -307,7 +307,6 @@ T2ERROR appendRequestParams(char *buf, const int maxArgLen) {
           T2Error("Failed to get Value for %s\n", TR181_DEVICE_MODEL);
           goto error;
     }
-#if defined(USE_SERIALIZED_MANUFACTURER_NAME)
     if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_MFR, &paramVal)) {
         memset(tempBuf, 0, MAX_URL_ARG_LEN);
         write_size = snprintf(tempBuf, MAX_URL_ARG_LEN, "manufacturer=%s&", paramVal);
@@ -319,7 +318,6 @@ T2ERROR appendRequestParams(char *buf, const int maxArgLen) {
           T2Error("Failed to get Value for %s\n", TR181_DEVICE_MFR);
           goto error;
     }
-#endif
     if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_PARTNER_ID, &paramVal)) {
         memset(tempBuf, 0, MAX_URL_ARG_LEN);
         write_size = snprintf(tempBuf, MAX_URL_ARG_LEN, "partnerId=%s&", paramVal);

@@ -120,7 +120,10 @@ static void freeProfileXConf()
         }
 
         // Data elements from this list is copied in new profile. So do not destroy the vector
-        free(singleProfile->cachedReportList);
+        if(singleProfile->cachedReportList) {
+            free(singleProfile->cachedReportList);
+            singleProfile->cachedReportList = NULL;
+        }
         free(singleProfile);
         singleProfile = NULL;
     }
@@ -213,9 +216,7 @@ static void* CollectAndReportXconf(void* data)
             }
             if(profile->paramList != NULL && Vector_Size(profile->paramList) > 0)
             {
-                pthread_mutex_unlock(&plMutex);
                 profileParamVals = getProfileParameterValues(profile->paramList);
-                pthread_mutex_lock(&plMutex);
                 T2Info("Fetch complete for TR-181 Object/Parameter Values for parameters \n");
                 if(profileParamVals != NULL)
                 {
@@ -288,9 +289,7 @@ static void* CollectAndReportXconf(void* data)
                     ret = T2ERROR_FAILURE ;
                 } else {
                     T2Debug("Abort upload is not yet set.\n");
-                    pthread_mutex_unlock(&plMutex);
                     ret = sendReportOverHTTP(profile->t2HTTPDest->URL, jsonReport, &xconfReportPid);
-                    pthread_mutex_lock(&plMutex);
                 }
 
                 xconfReportPid = -1 ;
@@ -498,18 +497,18 @@ void ProfileXConf_updateMarkerComponentMap()
         T2Error("profile list is not initialized yet, ignoring\n");
         return ;
     }
-    if(!singleProfile)
-    {
-        T2Error("Profile not found in %s\n", __FUNCTION__);
-        return ;
-    }
     size_t emIndex = 0;
     EventMarker *eMarker = NULL;
     pthread_mutex_lock(&plMutex);
-    for(;emIndex < Vector_Size(singleProfile->eMarkerList); emIndex++)
+    if(singleProfile)
     {
-        eMarker = (EventMarker *)Vector_At(singleProfile->eMarkerList, emIndex);
-        addT2EventMarker(eMarker->markerName, eMarker->compName, singleProfile->name, eMarker->skipFreq);
+        for(;emIndex < Vector_Size(singleProfile->eMarkerList); emIndex++)
+        {
+            eMarker = (EventMarker *)Vector_At(singleProfile->eMarkerList, emIndex);
+            addT2EventMarker(eMarker->markerName, eMarker->compName, singleProfile->name, eMarker->skipFreq);
+        }
+    }else{
+	T2Error("Profile not found in %s\n", __FUNCTION__);
     }
     pthread_mutex_unlock(&plMutex);
     T2Debug("%s --out\n", __FUNCTION__);
@@ -565,9 +564,11 @@ T2ERROR ProfileXConf_delete(ProfileXConf *profile)
         T2Info("Waiting for CollectAndReport to be complete : %s\n", singleProfile->name);
         pthread_mutex_lock(&plMutex);
         initialized=false;
+        T2Info("Sending signal to reuse Thread in CollectAndReportXconf\n");
         pthread_cond_signal(&reuseThread);
         pthread_mutex_unlock(&plMutex);
         pthread_join(singleProfile->reportThread, NULL);
+        T2Info("reportThread exits and initialising the profile list\n");
         reportThreadExits = false;
         initialized=true;
         singleProfile->reportInProgress = false ;
@@ -593,6 +594,7 @@ T2ERROR ProfileXConf_delete(ProfileXConf *profile)
     else{
         if(count > 0){ //Destroy the cachedReportList vector when the profile name is not equal
             Vector_Destroy(singleProfile->cachedReportList, free);
+            singleProfile->cachedReportList = NULL;
         }
     }
     // copy max events irrespective of the profile name

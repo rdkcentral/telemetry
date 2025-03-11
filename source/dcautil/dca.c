@@ -24,6 +24,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <ctype.h>
+#include <pthread.h>
 
 #include <cjson/cJSON.h>
 

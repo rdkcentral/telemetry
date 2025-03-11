@@ -26,14 +26,12 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: 'rdkcentral/rdk_logger'
-          token: ${{ secrets.GH_ACTION_PULL }}
           path : 'telemetry/containers/native-platform/rdk_logger'
 
       - name: Checkout WebconfigFramework 
         uses: actions/checkout@v4
         with:
           repository: 'rdkcentral/WebconfigFramework'
-          token: ${{ secrets.GH_ACTION_PULL }}
           path : 'telemetry/containers/native-platform/WebconfigFramework'
 
       - name: Build Docker image for Mock XCONF Server

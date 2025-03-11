@@ -6,8 +6,8 @@ on:
     paths: ['**/*.c', '**/*.cpp', '**/*.cc', '**/*.cxx', '**/*.h', '**/*.hpp']
 
 jobs:
-  build-common-utilities-on-pr:
-    name: Build common utilitiescomponent in github rdkcentral
+  build-telemetry-coverity-on-pr:
+    name: Build telemetry with coverity in github rdkcentral
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/rdkcentral/docker-rdk-ci:latest

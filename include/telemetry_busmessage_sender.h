@@ -48,7 +48,7 @@ void t2_init(char *component);
  *               value in string
  * RETURN      : 0 on successful sending of the message
  */
-T2ERROR t2_event_s(char* marker, char* value);
+T2ERROR t2_event_s(const char* marker, const char* value);
 
 /*
  * NAME        : t2_event_f
@@ -57,7 +57,7 @@ T2ERROR t2_event_s(char* marker, char* value);
  *               value - floating point value
  * RETURN      : 0 on successful sending of the message
  */
-T2ERROR t2_event_f(char* marker, double value);
+T2ERROR t2_event_f(const char* marker, double value);
 
 
 /*
@@ -67,7 +67,7 @@ T2ERROR t2_event_f(char* marker, double value);
  *               value - integer value
  * RETURN      : 0 on successful sending of the message
 */
-T2ERROR t2_event_d(char* marker, int value);
+T2ERROR t2_event_d(const char* marker, int value);
 
 /*
  * NAME        : t2_uninit

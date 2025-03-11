@@ -213,6 +213,8 @@ T2ERROR T2ER_Init()
     }
 
     system("touch /tmp/.t2ReadyToReceiveEvents");
+    setT2EventReceiveState(T2_STATE_COMPONENT_READY);
+    T2Info("T2 is now Ready to Recieve Events\n");
 
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;

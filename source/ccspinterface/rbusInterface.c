@@ -62,13 +62,17 @@ static ReportProfilesDeleteDNDCallBack mprofilesDeleteCallBack;
 #if defined(PRIVACYMODES_CONTROL)
 static char* privacyModeVal = NULL;
 #endif
+static uint32_t t2ReadyStatus = T2_STATE_NOT_READY;;
 static char* reportProfileVal = NULL ;
 static char* tmpReportProfileVal = NULL ;
 static char* reportProfilemsgPckVal = NULL ;
+#ifdef DCMAGENT
 static bool dcmEventStatus = false;
+#endif
 uint32_t t2MemUsage = 0;
 
 static pthread_mutex_t asyncMutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t compParamMap = PTHREAD_MUTEX_INITIALIZER;
 static rbusMethodAsyncHandle_t onDemandReportCallBackHandler = NULL ;
 
 typedef struct MethodData {
@@ -586,7 +590,16 @@ rbusError_t t2PropertyDataGetHandler(rbusHandle_t handle, rbusProperty_t propert
             rbusValue_SetString(value, "");
         rbusProperty_SetValue(property, value);
         rbusValue_Release(value);
-    }else if(strncmp(propertyName, T2_TOTAL_MEM_USAGE, maxParamLen) == 0) {
+    }
+    else if(strncmp(propertyName, T2_OPERATIONAL_STATUS, maxParamLen) == 0) {
+        rbusValue_t value;
+        rbusValue_Init(&value);
+
+        rbusValue_SetUInt32(value, t2ReadyStatus);
+        rbusProperty_SetValue(property, value);
+        rbusValue_Release(value);
+    }
+    else if(strncmp(propertyName, T2_TOTAL_MEM_USAGE, maxParamLen) == 0) {
         rbusValue_t value;
         rbusValue_Init(&value);
         profilememUsedCallBack(&t2MemUsage);
@@ -614,8 +627,10 @@ rbusError_t t2PropertyDataGetHandler(rbusHandle_t handle, rbusProperty_t propert
 #endif
     else {
         // START : Extract component name requesting for event marker list
+        pthread_mutex_lock(&compParamMap);
         if(compTr181ParamMap != NULL)
             componentName = (char*) hash_map_get(compTr181ParamMap, propertyName);
+        pthread_mutex_unlock(&compParamMap); // This needs rework
 
         if(componentName) {
             T2Debug("Component name = %s \n", componentName);
@@ -825,6 +840,7 @@ static rbusError_t dcmOnDemandMethodHandler(rbusHandle_t handle, char const* met
     return RBUS_ERROR_ASYNC_RESPONSE ;
 }
 
+#ifdef DCMAGENT
 static void rbusReloadConf(rbusHandle_t handle,
                            rbusEvent_t const* event,
                            rbusEventSubscription_t* subscription)
@@ -987,7 +1003,7 @@ T2ERROR publishEventsDCMProcConf()
     T2Debug("%s --out\n", __FUNCTION__);
     return status;
 }
-
+#endif
 
 
 T2ERROR registerRbusT2EventListener(TelemetryEventCallback eventCB)
@@ -1003,11 +1019,12 @@ T2ERROR registerRbusT2EventListener(TelemetryEventCallback eventCB)
     /**
      * Register data elements with rbus for EVENTS and Profile Updates.
      */
-    rbusDataElement_t dataElements[2] = {
+    rbusDataElement_t dataElements[3] = {
         {T2_EVENT_PARAM, RBUS_ELEMENT_TYPE_PROPERTY, {NULL, t2PropertyDataSetHandler, NULL, NULL, NULL, NULL}},
-        {T2_PROFILE_UPDATED_NOTIFY, RBUS_ELEMENT_TYPE_EVENT, {NULL, NULL, NULL, NULL, (rbusEventSubHandler_t)eventSubHandler, NULL}}
+        {T2_PROFILE_UPDATED_NOTIFY, RBUS_ELEMENT_TYPE_EVENT, {NULL, NULL, NULL, NULL, (rbusEventSubHandler_t)eventSubHandler, NULL}},
+	{T2_OPERATIONAL_STATUS, RBUS_ELEMENT_TYPE_PROPERTY, {t2PropertyDataGetHandler, NULL, NULL, NULL, NULL, NULL}}
     };
-    ret = rbus_regDataElements(t2bus_handle, 2, dataElements);
+    ret = rbus_regDataElements(t2bus_handle, 3, dataElements);
     if(ret != RBUS_ERROR_SUCCESS)
     {
         T2Error("Failed to register T2 data elements with rbus. Error code : %d\n", ret);
@@ -1017,6 +1034,15 @@ T2ERROR registerRbusT2EventListener(TelemetryEventCallback eventCB)
 
     T2Debug("%s --out\n", __FUNCTION__);
     return status;
+}
+
+void setT2EventReceiveState(int T2_STATE)
+{
+    T2Debug("%s ++in\n", __FUNCTION__);
+
+    t2ReadyStatus |= T2_STATE;
+
+    T2Debug("%s ++out\n", __FUNCTION__); 
 }
 
 T2ERROR unregisterRbusT2EventListener()
@@ -1040,15 +1066,26 @@ T2ERROR regDEforCompEventList(const char* componentName, T2EventMarkerListCallba
     if(!componentName)
         return status;
 
-    if(compTr181ParamMap == NULL)
-        compTr181ParamMap = hash_map_create();
-
-    snprintf(deNameSpace, 124, "%s%s%s", T2_ROOT_PARAMETER, componentName, T2_EVENT_LIST_PARAM_SUFFIX);
     if(!t2bus_handle && T2ERROR_SUCCESS != rBusInterface_Init()) {
         T2Error("%s Failed in getting bus handles \n", __FUNCTION__);
         T2Debug("%s --out\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
+
+    pthread_mutex_lock(&compParamMap);
+
+    if(compTr181ParamMap == NULL)
+        compTr181ParamMap = hash_map_create();
+    else{
+        char *existingProperty = (char*) hash_map_get(compTr181ParamMap, componentName);
+        if (existingProperty != NULL){
+            T2Warning("The paramenter exist with compName : %s, the registered paramenter is %s, skipping registration to avoid duplicate registration... \n",componentName,existingProperty );
+            pthread_mutex_unlock(&compParamMap);
+            return status;
+        }
+    }
+
+    snprintf(deNameSpace, 124, "%s%s%s", T2_ROOT_PARAMETER, componentName, T2_EVENT_LIST_PARAM_SUFFIX);
 
     rbusDataElement_t dataElements[1] = {
       { deNameSpace, RBUS_ELEMENT_TYPE_PROPERTY, { t2PropertyDataGetHandler, NULL, NULL, NULL,NULL, NULL } }
@@ -1062,6 +1099,8 @@ T2ERROR regDEforCompEventList(const char* componentName, T2EventMarkerListCallba
         T2Error("Failed in registering data element %s \n", deNameSpace);
         status = T2ERROR_FAILURE;
     }
+
+    pthread_mutex_unlock(&compParamMap);
 
     if(!getMarkerListCallBack)
         getMarkerListCallBack = callBackHandler;
@@ -1103,9 +1142,12 @@ void unregisterDEforCompEventList(){
         return ;
     }
 
+    pthread_mutex_lock(&compParamMap);
+
     if(!compTr181ParamMap) {
         T2Info("No data elements present to unregister");
         T2Debug("%s --out\n", __FUNCTION__);
+        pthread_mutex_unlock(&compParamMap);
         return;
     }
 
@@ -1132,6 +1174,8 @@ void unregisterDEforCompEventList(){
     T2Debug("Freeing compTr181ParamMap \n");
     hash_map_destroy(compTr181ParamMap, freeComponentEventList);
     compTr181ParamMap = NULL;
+    pthread_mutex_unlock(&compParamMap);
+
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
@@ -1269,15 +1313,20 @@ void reportEventHandler(
     (void)handle;
     (void)subscription; // To avoid compiler warning
     T2Debug("in Function %s \n", __FUNCTION__);
-    T2Debug("Called the callback for the prop");
+    T2Debug("Call the callback for the prop %s\n", event->name ? event->name : "NONAME");
     const char* eventName = event->name;
+
     rbusValue_t newValue = rbusObject_GetValue(event->data, "value");
-    const char* eventValue = rbusValue_ToString(newValue,NULL,0);
-    eventCallBack((char*) strdup(eventName),(char*) strdup(eventValue) );
+    const char* eventValue = NULL;
+    if(newValue)
+        eventValue = rbusValue_ToString(newValue,NULL,0);
+
+    eventCallBack(eventName? (char*) strdup(eventName) : NULL, eventValue ? (char*) strdup(eventValue) : (char*) strdup("NOVALUE"));
     if(eventValue != NULL){
-       free((char*)eventValue);
-       eventValue = NULL;
+        free((char*)eventValue);
+        eventValue = NULL;
     }
+    T2Debug("exit Function %s \n", __FUNCTION__);
 }
 
 void triggerCondtionReceiveHandler(

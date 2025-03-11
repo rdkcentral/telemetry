@@ -43,4 +43,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char* payload, pid_t* outForkedPid);
 
 T2ERROR sendCachedReportsOverHTTP(char *httpUrl, Vector *reportList);
 
+#ifdef LIBRDKCERTSEL_BUILD
+void curlCertSelectorFree();
+#endif
 #endif /* _CURLINTERFACE_H_ */

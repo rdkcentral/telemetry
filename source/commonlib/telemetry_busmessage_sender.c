@@ -366,7 +366,7 @@ static bool initRFC( ) {
  * In rbus mode, should be using rbus subscribed param
  * from telemetry 2.0 instead of direct api for event sending
  */
-int filtered_event_send(const char* data, char *markerName) {
+int filtered_event_send(const char* data, const char *markerName) {
     rbusError_t ret = RBUS_ERROR_SUCCESS;
     int status = 0 ;
     EVENT_DEBUG("%s ++in\n", __FUNCTION__);
@@ -556,8 +556,22 @@ static bool isCachingRequired( ) {
     }
 
     // Always check for t2 is ready to accept events. Shutdown target can bring down t2 process at runtime
-    if(access( T2_COMPONENT_READY, F_OK) == -1) {
-        return true ;
+    uint32_t t2ReadyStatus;                  
+    rbusError_t retVal = RBUS_ERROR_SUCCESS; 
+
+    retVal = rbus_getUint(bus_handle, T2_OPERATIONAL_STATUS, &t2ReadyStatus); 
+                                                                              
+    if(retVal != RBUS_ERROR_SUCCESS)                                          
+    {                                                                         
+       return true;                                                           
+    }                                                                         
+    else                                                                      
+    {
+        EVENT_DEBUG("value for  %s is : %d\n", T2_OPERATIONAL_STATUS, t2ReadyStatus);   
+        if((t2ReadyStatus & T2_STATE_COMPONENT_READY)==0)                               
+        {                                                                               
+            return true;                                                                
+        }                                                                               
     }
 
     if(!isRbusEnabled){
@@ -567,7 +581,7 @@ static bool isCachingRequired( ) {
     if(!isT2Ready) {
         if(componentName && (0 != strcmp(componentName, "telemetry_client"))) {
             // From other binary applications in rbus mode if t2 daemon is yet to determine state of component specific config from cloud, enable cache
-            if( access( T2_CONFIG_READY, F_OK) == -1 ) {
+            if((t2ReadyStatus & T2_STATE_COMPONENT_READY)==0) {
                 return true;
             }else {
                 rbusError_t ret = RBUS_ERROR_SUCCESS;
@@ -587,7 +601,7 @@ static bool isCachingRequired( ) {
     return false;
 }
 
-static int report_or_cache_data(char* telemetry_data, char* markerName) {
+static int report_or_cache_data(char* telemetry_data, const char* markerName) {
     int ret = 0;
     pthread_t tid;
     pthread_mutex_lock(&eventMutex);
@@ -634,12 +648,12 @@ void t2_uninit(void) {
     uninitMutex();
 }
 
-T2ERROR t2_event_s(char* marker, char* value) {
+T2ERROR t2_event_s(const char* marker, const char* value) {
 
     int ret;
     T2ERROR retStatus = T2ERROR_FAILURE ;
     EVENT_DEBUG("%s ++in\n", __FUNCTION__);
-
+    char* strvalue = NULL;
     if(componentName == NULL){
         EVENT_DEBUG("%s:%d, T2:component with pid = %d is trying to send event %s with value %s without component name \n", __func__, __LINE__, (int) getpid(), marker,value);
         return T2ERROR_COMPONENT_NULL;
@@ -659,10 +673,14 @@ T2ERROR t2_event_s(char* marker, char* value) {
         pthread_mutex_unlock(&sMutex);
         return T2ERROR_SUCCESS;
     }
-    if( value[strlen(value)-1] == '\n' ){
-        value[strlen(value)-1] = '\0';
+    strvalue = strdup(value);
+    if( strvalue[strlen(strvalue)-1] == '\n' ){
+        strvalue[strlen(strvalue)-1] = '\0';
     }
-    ret = report_or_cache_data(value, marker);
+    ret = report_or_cache_data(strvalue, marker);
+    if(strvalue != NULL){
+        free(strvalue);
+    }
     if(ret != -1) {
         retStatus = T2ERROR_SUCCESS;
     }
@@ -671,7 +689,7 @@ T2ERROR t2_event_s(char* marker, char* value) {
     return retStatus;
 }
 
-T2ERROR t2_event_f(char* marker, double value) {
+T2ERROR t2_event_f(const char* marker, double value) {
 
     int ret;
     T2ERROR retStatus = T2ERROR_FAILURE ;
@@ -708,7 +726,7 @@ T2ERROR t2_event_f(char* marker, double value) {
      return retStatus ;
 }
 
-T2ERROR t2_event_d(char* marker, int value) {
+T2ERROR t2_event_d(const char* marker, int value) {
 
     int ret;
     T2ERROR retStatus = T2ERROR_FAILURE ;

@@ -39,7 +39,9 @@ Vector* getRbusProfileParamValues(Vector *paramList);
 
 T2ERROR registerRbusT2EventListener(TelemetryEventCallback eventCB);
 
+#ifdef DCMAGENT
 T2ERROR registerRbusDCMEventListener();
+#endif
 
 T2ERROR unregisterRbusT2EventListener();
 

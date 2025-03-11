@@ -554,7 +554,12 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
                         cJSON_AddItemToObject(arrayItem, eventMarker->markerName_CT, TimevectorToarray);
                     }                  
                     cJSON_AddItemToArray(valArray, arrayItem);
-                    T2Debug("Marker value Array for : %s is %s\n", eventMarker->markerName, cJSON_Print(vectorToarray));
+                    char *temp =  cJSON_Print(vectorToarray);
+                    if(temp)
+                    {
+                        T2Debug("Marker value Array for : %s is %s\n", eventMarker->markerName, temp);
+                        free(temp);
+                    }
                 }
                 break;
 

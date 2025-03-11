@@ -48,4 +48,6 @@ void getComponentsWithEventMarkers(Vector **eventComponentList);
 
 T2ERROR getMarkerProfileList(const char* markerName, Vector **profileList);
 
+void createComponentDataElements();
+
 #endif /* _T2MARKERS_H_ */

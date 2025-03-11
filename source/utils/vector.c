@@ -55,6 +55,7 @@ Vector_Destroy(Vector *v, Vector_Cleanup destroyer)
       }
     }
     free(v->data);
+    v->data = NULL;
   }
   free(v);
   return T2ERROR_SUCCESS;

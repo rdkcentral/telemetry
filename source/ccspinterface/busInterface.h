@@ -93,18 +93,22 @@ T2ERROR registerForTelemetryEvents(TelemetryEventCallback eventCB);
 // Needs to be called only in rBus mode
 T2ERROR regDEforCompEventList(const char* componentName, T2EventMarkerListCallback callBackHandler) ;
 
+void setT2EventReceiveState(int T2_STATE);
+
 void unregisterDEforCompEventList();
 
 T2ERROR regDEforProfileDataModel(callBackHandlers* cbHandlers);
 
 T2ERROR publishEventsProfileUpdates() ;
 
+#ifdef DCMAGENT
 /* DCM RBus event Publish functions */
 T2ERROR publishEventsDCMSetConf(char *confPath);
 
 T2ERROR publishEventsDCMProcConf();
 
 int getRbusDCMEventStatus();
+#endif
 
 T2ERROR busUninit() ;
 

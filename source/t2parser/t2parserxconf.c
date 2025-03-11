@@ -28,6 +28,7 @@
 #include "reportprofiles.h"
 #include "t2log_wrapper.h"
 #include "t2common.h"
+#include "persistence.h"
 
 #if defined (PRIVACYMODES_CONTROL)
 #include "rdkservices_privacyutils.h"
@@ -206,7 +207,7 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
 
 #if defined(PRIVACYMODES_CONTROL)
     char* paramValue = NULL;
-    getParameterValue(PRIVACYMODES_RFC, &paramValue);
+    getPrivacyMode(&paramValue);
     if(strncmp(paramValue, "DO_NOT_SHARE", MAX_PARAM_LEN) == 0){
         addParameter(profile, "PrivacyMode", PRIVACYMODES_RFC, NULL, -1);
     }
@@ -216,6 +217,7 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
         addParameter(profile, "PartnerId", TR181_DEVICE_PARTNER_ID, NULL, -1);
         addParameter(profile, "Version", TR181_DEVICE_FW_VERSION, NULL, -1);
         addParameter(profile, "AccountId", TR181_DEVICE_ACCOUNT_ID, NULL, -1);
+        addParameter(profile, "immui_ver_split", TR181_IUI_VERSION, NULL, -1);
     }
     free(paramValue);
     paramValue = NULL;
@@ -229,6 +231,7 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
     addParameter(profile, "camIpv6", TR181_DEVICE_WAN_IPv6, NULL, -1);
 #else
     addParameter(profile, "StbIp", TR181_DEVICE_WAN_IPv6, NULL, -1);
+    addParameter(profile, "immui_ver_split", TR181_IUI_VERSION, NULL, -1);
 #endif
     addParameter(profile, "PartnerId", TR181_DEVICE_PARTNER_ID, NULL, -1);
     addParameter(profile, "Version", TR181_DEVICE_FW_VERSION, NULL, -1);

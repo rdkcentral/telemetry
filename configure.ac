@@ -40,6 +40,7 @@ GTEST_ENABLE_FLAG =" "
 LIBSYSWRAPPER_FLAG=" "
 IS_LIBSYSWRAPPER_ENABLED=" "
 IS_LIBRDKCONFIG_ENABLED=" "
+IS_LIBRDKCERTSEL_ENABLED=" "
 
 AC_ARG_ENABLE([gtestapp],
              AS_HELP_STRING([--enable-gtestapp],[enable Gtest support (default is no)]),
@@ -193,6 +194,19 @@ AC_ARG_ENABLE([mountutils],
 AM_CONDITIONAL([IS_LIBRDKCONFIG_ENABLED], [test x$IS_LIBRDKCONFIG_ENABLED = xtrue])
 AC_SUBST(LIBRDKCONFIG_FLAG)
 
+AC_ARG_ENABLE([rdkcertselector],
+        AS_HELP_STRING([--enable-rdkcertselector],[enables rdkcertselector replacement (default is no)]),
+        [
+          case "${enableval}" in
+           yes) IS_LIBRDKCERTSEL_ENABLED=true
+                LIBRDKCERTSEL_FLAG=" -DLIBRDKCERTSEL_BUILD ";;
+           no)  IS_LIBRDKCERTSEL_ENABLED=false ;;
+          *) AC_MSG_ERROR([bad value ${enableval} for --enable-rdkcertselector]) ;;
+           esac
+           ],
+        [echo "rdkcertselector is disabled"])
+AM_CONDITIONAL([IS_LIBRDKCERTSEL_ENABLED], [test x$IS_LIBRDKCERTSEL_ENABLED = xtrue])
+AC_SUBST(LIBRDKCERTSEL_FLAG)
 
 AC_CONFIG_FILES([Makefile
                  source/Makefile

@@ -25,7 +25,6 @@
 #include <unistd.h>
 #include <ctype.h>
 
-#include <pthread.h>
 #include <cjson/cJSON.h>
 
 #include "dcalist.h"

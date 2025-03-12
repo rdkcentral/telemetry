@@ -99,20 +99,11 @@ static void drop_root()
 {
     appcaps.caps = NULL;
     appcaps.user_name = NULL;
-    bool ret = false;
-    ret = isBlocklisted();
-    if(ret) 
-    {
-       T2Info("NonRoot feature is disabled\n");
-    }
-    else 
-    {
-       T2Info("NonRoot feature is enabled, dropping root privileges for Telemetry 2.0 Process\n");
-       init_capability();
-       drop_root_caps(&appcaps);
-       if(update_process_caps(&appcaps) != -1)//CID 281096: Unchecked return value (CHECKED_RETURN)
-       read_capability(&appcaps);
-    }
+    T2Info("NonRoot feature is enabled, dropping root privileges for Telemetry 2.0 Process\n");
+    init_capability();
+    drop_root_caps(&appcaps);
+    if(update_process_caps(&appcaps) != -1)//CID 281096: Unchecked return value (CHECKED_RETURN)
+    read_capability(&appcaps);
 }
 #endif
 

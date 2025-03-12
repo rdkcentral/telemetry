@@ -38,9 +38,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <glib.h>
 #include <stdbool.h>
 
+#include "rdk_linkedlist.h"
 #include "vector.h"
 
 typedef enum {
@@ -60,15 +60,15 @@ typedef struct pclist {
   char* regexparam;
 } pcdata_t;
 
-extern GList *pchead;
+extern rdkList_t *pchead;
 
-int insertPCNode(GList **pch, char *pattern, char *header, DType_t dtype, int count, char *data, bool trim, char *regex);
-pcdata_t* searchPCNode(GList *pch, char *pattern);
-void printPCNodes(GList *pch);
-void clearPCNodes(GList **pch);
-gint  comparePattern(gconstpointer np, gconstpointer sp);
-void print_pc_node(gpointer data, gpointer user_data);
-int processTopPattern(GList *pchead, Vector* grepResultList);
+int insertPCNode(rdkList_t **pch, char *pattern, char *header, DType_t dtype, int count, char *data, bool trim, char *regex);
+pcdata_t* searchPCNode(rdkList_t *pch, char *pattern);
+void printPCNodes(rdkList_t *pch);
+void clearPCNodes(rdkList_t **pch);
+int comparePattern(const void *np, const void *sp);
+void print_pc_node(void *data, void *user_data);
+int processTopPattern(rdkList_t *pchead, Vector* grepResultList);
 
 /** @} */
 

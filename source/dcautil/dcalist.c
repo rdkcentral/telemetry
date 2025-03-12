@@ -57,7 +57,7 @@
  *
  * @return  Returns the value of rc.
  */
-int insertPCNode(GList **pch, char *pattern, char *header, DType_t dtype, int count, char *data, bool trim, char* regex)
+int insertPCNode(rdkList_t **pch, char *pattern, char *header, DType_t dtype, int count, char *data, bool trim, char *regex)
 {
   pcdata_t *new = NULL;
   int rc = -1;
@@ -86,7 +86,7 @@ int insertPCNode(GList **pch, char *pattern, char *header, DType_t dtype, int co
     }
     new->trimparam = trim;
     new->regexparam = regex;
-    *pch = g_list_append(*pch , new);
+    *pch = rdk_list_add_node(*pch , new);
     rc = 0;
   }
   return rc;
@@ -101,7 +101,7 @@ int insertPCNode(GList **pch, char *pattern, char *header, DType_t dtype, int co
  * @return  Returns status of the operation.
  * @retval  Returns 0 on success and NULL on failure.
  */
-gint comparePattern(gconstpointer np, gconstpointer sp)
+int comparePattern(const void *np, const void *sp)
 {
   pcdata_t *tmp = (pcdata_t *)np;
   if (tmp && tmp->pattern && (NULL != sp) && (NULL != strstr(sp, tmp->pattern)))  {
@@ -118,15 +118,15 @@ gint comparePattern(gconstpointer np, gconstpointer sp)
  *
  * @return  Returns node on success and NULL on failure.
  */
-pcdata_t* searchPCNode(GList *pch, char *pattern)
+pcdata_t* searchPCNode(rdkList_t *pch, char *pattern)
 {
-  GList *fnode = NULL;
+  rdkList_t *fnode = NULL;
   if(pch == NULL && pattern == NULL){
       return NULL;
   }
-  fnode = g_list_find_custom(pch, pattern, (GCompareFunc)comparePattern);
+  fnode = rdk_list_find_node_custom(pch, pattern, (fnRDKListCustomCompare)comparePattern);
   if (NULL != fnode)
-    return fnode->data;
+    return fnode->m_pUserData;
   else
     return NULL;
 }
@@ -137,7 +137,7 @@ pcdata_t* searchPCNode(GList *pch, char *pattern)
  * @param[in] data       node data 
  * @param[in] user_data  user data
  */
-void print_pc_node(gpointer data, gpointer user_data)
+void print_pc_node(void *data, void *user_data)
 {
   (void) user_data;
   if(data == NULL){
@@ -159,12 +159,12 @@ void print_pc_node(gpointer data, gpointer user_data)
  *
  * @param[in] pch  node head
  */
-void printPCNodes(GList *pch)
+void printPCNodes(rdkList_t *pch)
 {
   if(pch == NULL){
       return;
   }
-  g_list_foreach(pch, (GFunc)print_pc_node, NULL);
+  rdk_list_foreach(pch, (fnRDKListCustomExecute)print_pc_node, NULL);
 }
 
 /**
@@ -172,7 +172,7 @@ void printPCNodes(GList *pch)
  *
  * @param[in] node    Node head.
  */
- void freePCNode(gpointer node)
+ void freePCNode(void *node)
 {
   pcdata_t *tmp = (pcdata_t *)(node);
   if (NULL != tmp)
@@ -200,11 +200,11 @@ void printPCNodes(GList *pch)
  *
  * @param[in]  pch   Node head.
  */
-void clearPCNodes(GList **pch)
+void clearPCNodes(rdkList_t **pch)
 {
   if(pch == NULL)
       return;
-  g_list_free_full(*pch, &freePCNode);
+  rdk_list_free_all_nodes_custom(*pch, &freePCNode);
 }
 
 /** @} */  //END OF GROUP DCA_APIS

@@ -232,7 +232,7 @@ TEST(SEARCHPCNODE, NULL_CHECK)
    EXPECT_EQ(NULL, searchPCNode(NULL, "info is"));
    fnode = g_list_append(fnode, (gpointer)"Hello world!");
    EXPECT_EQ(NULL, searchPCNode(fnode, NULL));
-   g_list_free(fnode);
+   rdk_list_free_all_nodes(fnode);
 }
 
 
@@ -395,7 +395,7 @@ TEST(PROCESSTOPPATTERN, VECTOR_NULL)
     EXPECT_EQ(-1, processTopPattern(tlist, grepResultlist));
     EXPECT_EQ(-1, processTopPattern(NULL, grepResultlist));
     EXPECT_EQ(-1, processTopPattern(tlist, NULL));
-    g_list_free(tlist);
+    rdk_list_free_all_nodes(tlist);
     Vector_Destroy(grepResultlist, free);
     grepResultlist = NULL;
 }

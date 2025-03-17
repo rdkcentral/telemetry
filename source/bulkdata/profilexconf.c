@@ -520,9 +520,12 @@ bool ProfileXConf_isNameEqual(char* profileName)
     pthread_mutex_lock(&plMutex);
     if(initialized)
     {
-        if(singleProfile && !strcmp(singleProfile->name, profileName))
+        if(singleProfile && profileName) 
         {
-            isName = true;
+	    if(!strcmp(singleProfile->name, profileName))
+	    {
+                isName = true;
+	    }
         }
     }
     pthread_mutex_unlock(&plMutex);

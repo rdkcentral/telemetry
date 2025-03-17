@@ -105,8 +105,11 @@ T2ERROR registerForTelemetryEvents(TelemetryEventCallback eventCB)
     if (isRbus) 
     {
     	ret = registerRbusT2EventListener(eventCB);
-		/* Register DCM Events */
+
+        #ifdef DCMAGENT
+        /* Register DCM Events */
 		ret = registerRbusDCMEventListener();
+        #endif
 
     }
 #if defined(CCSP_SUPPORT_ENABLED) 

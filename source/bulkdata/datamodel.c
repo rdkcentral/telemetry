@@ -204,9 +204,7 @@ void datamodel_getSavedJsonProfilesasString(char** SavedProfiles)
             cJSON_AddItemToObject(temparrayItem, "value",tempObject);
             cJSON_AddItemToArray(valArray, temparrayItem);  
         }
-        char* temp = cJSON_PrintUnformatted(jsonObj);
-        *SavedProfiles = strdup(temp);
-        free(temp);
+        *SavedProfiles = cJSON_PrintUnformatted(jsonObj);
         cJSON_Delete(jsonObj);
     }
     Vector_Destroy(configList,free);

@@ -46,7 +46,7 @@ static pthread_mutex_t scMutex;
 static bool sc_initialized = false;
 static bool islogdemand = false;
 
-static bool signalrecived_and_executing=true;
+static volatile bool signalrecived_and_executing=true;// volatile is added to avoid compiler Optimization
 
 bool get_logdemand ()
 {
@@ -195,7 +195,6 @@ void* TimeoutThread(void *arg)
              notifySchedulerstartcb(tProfile->name, true);
              T2Info("Waiting for %d sec for next TIMEOUT for profile as firstreporting interval is given - %s\n", tProfile->firstreportint, tProfile->name);
              n = pthread_cond_timedwait(&tProfile->tCond, &tProfile->tMutex, &_ts);
-	     signalrecived_and_executing = false;
         }
         else{
              if(tProfile->timeOutDuration == UINT_MAX && tProfile->timeRefinSec == 0){
@@ -218,6 +217,7 @@ void* TimeoutThread(void *arg)
         {
             /* CID 175316:- Value not atomically updated (ATOMICITY) */
             T2Info("Interrupted before TIMEOUT for profile : %s \n", tProfile->name);
+	    signalrecived_and_executing = false;
             if(minThresholdTime) 
             {
                  memset(&_MinThresholdTimeTs, 0, sizeof(struct timespec));
@@ -547,8 +547,8 @@ T2ERROR unregisterProfileFromScheduler(const char* profileName)
 		return T2ERROR_FAILURE;
 	    }
             tProfile->terminated = true;
-            pthread_cond_signal(&tProfile->tCond);
 	    signalrecived_and_executing = true;
+            pthread_cond_signal(&tProfile->tCond);
             if(pthread_mutex_unlock(&tProfile->tMutex) != 0){
                 T2Error("tProfile Mutex unlock failed\n");
                 pthread_mutex_unlock(&scMutex);
@@ -559,7 +559,7 @@ T2ERROR unregisterProfileFromScheduler(const char* profileName)
             sched_yield(); // This will give chance for the signal receiving thread to start
             int count = 0;
             while(signalrecived_and_executing){
-                if(count++ > 30){
+                if(count++ > 10){
                     break;
                 }
                 sleep(1);

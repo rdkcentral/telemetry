@@ -564,8 +564,9 @@ T2ERROR unregisterProfileFromScheduler(const char* profileName)
                 }
                 sleep(1);
 	    }
-
+	    pthread_mutex_lock(&tProfile->tMutex);
             Vector_RemoveItem(profileList, tProfile, freeSchedulerProfile);
+            pthread_mutex_unlock(&tProfile->tMutex);
             if(pthread_mutex_unlock(&scMutex) != 0){
                 T2Error("scMutex unlock failed\n");
                 return T2ERROR_FAILURE;

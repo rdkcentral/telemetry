@@ -287,6 +287,10 @@ void* TimeoutThread(void *arg)
 		free(profileName);
                 return NULL;
             }
+            pthread_mutex_lock(&scMutex);
+            Vector_RemoveItem(profileList, tProfile, freeSchedulerProfile);
+	    T2Info("Profile : %s removed from scheduler after Activation timeout\n", tProfile->name);
+            pthread_mutex_unlock(&scMutex);
             if(tProfile->deleteonTime) {
                deleteProfile(profileName);
                if (profileName != NULL) {
@@ -294,19 +298,6 @@ void* TimeoutThread(void *arg)
                }
                break;
             }
-            T2Debug("%s:%d scMutex is locked\n", __FUNCTION__, __LINE__);
-            if(pthread_mutex_lock(&scMutex) != 0){
-		T2Error("scMutex lock failed\n");
-		free(profileName);
-                return NULL;
-            }
-            Vector_RemoveItem(profileList, tProfile, freeSchedulerProfile);
-            T2Debug("%s:%d scMutex is unlocked\n", __FUNCTION__, __LINE__);
-            if(pthread_mutex_unlock(&scMutex) != 0){
-                 T2Error("scMutex unlock failed\n");
-                 free(profileName);
-                 return NULL;
-	    }
             activationTimeoutCb(profileName);
             if(profileName != NULL){
                    free(profileName);

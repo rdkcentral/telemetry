@@ -287,11 +287,13 @@ void* TimeoutThread(void *arg)
 		free(profileName);
                 return NULL;
             }
+#if 0
             pthread_mutex_lock(&scMutex);
             Vector_RemoveItem(profileList, tProfile, freeSchedulerProfile);
 	    T2Info("Profile : %s removed from scheduler after Activation timeout\n", tProfile->name);
             pthread_mutex_unlock(&scMutex);
-            if(tProfile->deleteonTime) {
+#endif
+	    if(tProfile->deleteonTime) {
                deleteProfile(profileName);
                if (profileName != NULL) {
                    free(profileName);

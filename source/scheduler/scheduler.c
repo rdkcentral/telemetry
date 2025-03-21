@@ -289,10 +289,10 @@ void* TimeoutThread(void *arg)
                 return NULL;
             }
 
-	    is_delete_on_timed_out=false;
-	    if(tProfile->deleteonTime) {
-		is_delete_on_timed_out=true;
+            if(tProfile->deleteonTime) {
+	       is_delete_on_timed_out=true;
                deleteProfile(profileName);
+	       is_delete_on_timed_out=false;
                if (profileName != NULL) {
                    free(profileName);
                }

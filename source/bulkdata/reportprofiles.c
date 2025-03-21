@@ -861,6 +861,11 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root , bool rprofi
             } else {
                 T2Error("Unable to parse the profile: %s, invalid configuration\n", profileName);
             }
+	    //CID: 119577 Resource leak
+	    if(profile != NULL)
+            {
+	        free(profile);
+            }
         }
     }
 

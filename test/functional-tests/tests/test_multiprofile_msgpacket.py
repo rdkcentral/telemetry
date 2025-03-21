@@ -268,6 +268,7 @@ def test_with_delete_on_timeout():
     file.close()
     sleep(5)
     LOG_PROFILE_TIMEOUT = "Profile activation timeout"
+    LOG_DELETE_PROFILE = "removing profile :"
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_delete_on_timeout))
     sleep(5)
     command2 = ["telemetry2_0_client TEST_EVENT_MARKER_2 occurrance17"]
@@ -277,6 +278,6 @@ def test_with_delete_on_timeout():
     assert "SYS_INFO_CrashPortalUpload_success\":\"200" in grep_T2logs("cJSON Report ") #  regex - grep marker validation
     assert "MODEL_NAME\":\"DOCKER" in grep_T2logs("cJSON Report ") #  regex - Datamodel validation
     assert "TEST_EVENT_MARKER_2\":\"17" in grep_T2logs("cJSON Report ") #  regex - Event marker validation 
-    #assert ""  To be updated once the DeleteOnTimeout is fixed and a LOG is added.
+    assert "TR_AC66" in grep_T2logs(LOG_DELETE_PROFILE) #verify profile is removed from active profile list if DeleteOnTimeout is true
 
     sleep(5)

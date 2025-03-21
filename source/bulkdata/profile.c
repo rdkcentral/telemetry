@@ -1174,6 +1174,10 @@ static void loadReportProfilesFromDisk()
                  T2Error("Unable to create and add new profile for name : %s\n", config->name);
              }
          }
+	 if(profile != NULL)
+         {
+             free(profile);
+	 }
     }
     T2Info("Completed processing %lu profiles on the disk,trying to fetch new/updated profiles\n", (unsigned long)Vector_Size(configList));
     T2totalmem_calculate();

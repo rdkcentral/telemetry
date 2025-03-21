@@ -190,7 +190,7 @@ static char *getTimezone () {
                   size_t result = fread(jsonDoc, numbytes, 1, file);
 		  if (result != 1) {
 			  T2Debug ("Error reading file \n");
-			  return;
+			  return NULL;
                   }
               }
               fclose(file);
@@ -218,7 +218,7 @@ static char *getTimezone () {
                cJSON_Delete(root);
           } else {
                T2Debug("Error opening File \n");
-	       return;
+	       return NULL;
 	  }
           count++;
          if (count == 10){

@@ -540,7 +540,7 @@ int getCPUInfo(procMemCpuInfo *pInfo) {
         #ifdef LIBSYSWRAPPER_BUILD
             inFp = v_secure_popen("r","cat %s |grep -i '%s'", TOPTEMP, pInfo->processName);
         #else
-            sprintf(command, "cat %s |grep -i '%s'", TOPTEMP, pInfo->processName);
+            snprintf(command, CMD_LEN, "cat %s |grep -i '%s'", TOPTEMP, pInfo->processName);
             inFp = popen(command, "r");
         #endif
 	normalize = TOPITERATION;

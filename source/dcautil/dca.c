@@ -141,7 +141,7 @@ static void appendData(pcdata_t* dst, const char* src) {
         src_len = strlen(src) + 1;
         dst->data = (char*) realloc(dst->data, dst_len + src_len);
         if(NULL != dst->data) {
-            strcat(dst->data, ",");
+            strncat(dst->data, ",", 1);
             snprintf((dst->data) + dst_len, src_len, "%s", src);
         }else {
             T2Debug("Failed to re-allocate memory for telemetry node data\n");

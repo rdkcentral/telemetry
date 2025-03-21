@@ -1504,7 +1504,7 @@ T2ERROR T2RbusConsumer(TriggerCondition *triggerCondition)
         T2Debug("Consumer: rbus_open failed: %d\n", rc);
         return T2ERROR_FAILURE;
     }
-    strcpy(user_data,"Not used");
+    strncpy(user_data,"Not used", sizeof(user_data));
     if(strcmp(triggerCondition->oprator,"any") == 0)
     {
         T2Debug("filterOperator %s , threshold %d \n",triggerCondition->oprator, triggerCondition->threshold);
@@ -1566,7 +1566,7 @@ T2ERROR T2RbusReportEventConsumer(char* reference, bool subscription)
             T2Debug("%s --out\n", __FUNCTION__);
             return T2ERROR_FAILURE;
         }
-        strcpy(user_data,"Not used");
+        strncpy(user_data,"Not used", sizeof(user_data));
         rc = rbusEvent_Subscribe(
         t2bus_handle,
         reference,

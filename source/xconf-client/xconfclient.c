@@ -178,42 +178,48 @@ static char *getTimezone () {
     T2Debug("Reading Timezone value from %s file...\n", jsonpath);
     while ( zoneValue == NULL){
           T2Debug ("timezone retry:%d\n",count);
-          if (access(jsonpath, F_OK) != -1){
-                  file = fopen( jsonpath, "r");
-                  if (file) {
-                        fseek(file, 0, SEEK_END);
-                        long numbytes = ftell(file);
-                        jsonDoc = (char*)malloc(sizeof(char)*(numbytes + 1));
-                        fseek(file, 0, SEEK_SET);
-                        //CID 190258: Argument cannot be negative (NEGATIVE_RETURNS)
-                        if (numbytes >0 ){
-                        fread(jsonDoc, numbytes, 1, file);
-                        }
-                        fclose(file);
-                        cJSON *root = cJSON_Parse(jsonDoc);
-                        if (root != NULL){
-                            cJSON *array = cJSON_GetObjectItem(root, "xmediagateways");
-                            if(array){
-                                 for (i = 0 ; i < cJSON_GetArraySize(array) ; i++)
-                                 {
-                                      cJSON * subarray = cJSON_GetArrayItem(array, i);
-                                      cJSON * timezone = cJSON_GetObjectItem(subarray, "timezone");
-                                      if(timezone){
-                                          char *time = cJSON_GetStringValue(timezone);
-                                          //CID 190236: Resource leak (RESOURCE_LEAK)
-                                          if (zoneValue != NULL){
-                                          free(zoneValue);
-                                          }
-                                          zoneValue = strdup(time);
-                                      }
-                                 }
-                            }
-                        }
-                        free(jsonDoc);
-                        jsonDoc = NULL;
-                        cJSON_Delete(root);
-                 }
-          }
+          file = fopen( jsonpath, "r");
+          if (file) {
+              fseek(file, 0, SEEK_END);
+              long numbytes = ftell(file);
+              jsonDoc = (char*)malloc(sizeof(char)*(numbytes + 1));
+              fseek(file, 0, SEEK_SET);
+              //CID 190258: Argument cannot be negative (NEGATIVE_RETURNS)
+              if (numbytes >0 ){
+		  //CID 190270 Ignoring number of bytes read
+                  size_t result = fread(jsonDoc, numbytes, 1, file);
+		  if (result != 1) {
+			  T2Debug ("Error reading file \n");
+			  return -1;
+                  }
+              }
+              fclose(file);
+              cJSON *root = cJSON_Parse(jsonDoc);
+              if (root != NULL){
+                  cJSON *array = cJSON_GetObjectItem(root, "xmediagateways");
+                  if(array){
+                      for (i = 0 ; i < cJSON_GetArraySize(array) ; i++)
+                      {
+                          cJSON * subarray = cJSON_GetArrayItem(array, i);
+                          cJSON * timezone = cJSON_GetObjectItem(subarray, "timezone");
+                          if(timezone){
+                              char *time = cJSON_GetStringValue(timezone);
+                              //CID 190236: Resource leak (RESOURCE_LEAK)
+                              if (zoneValue != NULL){
+                                  free(zoneValue);
+                              }
+                              zoneValue = strdup(time);
+                          }
+                       }
+                   }
+               }
+               free(jsonDoc);
+               jsonDoc = NULL;
+               cJSON_Delete(root);
+          } else {
+               T2Debug("Error opening File \n");
+	       return -1;
+	  }
           count++;
          if (count == 10){
              T2Debug("Timezone retry count reached the limit . Timezone data source is missing\n");
@@ -229,7 +235,8 @@ static char *getTimezone () {
                               long numbytes = ftell(file);
                               char *zone = (char*)malloc(sizeof(char)*(numbytes + 1));
                               fseek(file, 0, SEEK_SET);
-                              while (fscanf (file, "%s", zone) != EOF){
+			      //CID : 190237 : Calling risky function
+                              while (fgets (zone, sizeof(zone), file) != NULL){
                                         if(zoneValue){
                                             free(zoneValue);
                                             zoneValue = NULL ;

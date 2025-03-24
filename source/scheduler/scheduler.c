@@ -569,7 +569,7 @@ T2ERROR unregisterProfileFromScheduler(const char* profileName)
             sched_yield(); // This will give chance for the signal receiving thread to start
             int count = 0;
             while(signalrecived_and_executing && !is_delete_on_timed_out){
-                if(count++ > 30){
+                if(count++ > 10){
                     break;
                 }
                 sleep(1);

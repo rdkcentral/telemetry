@@ -354,7 +354,8 @@ T2ERROR SendInterruptToTimeoutThread(char* profileName)
                  T2Error("tProfile Mutex locking failed : %d \n",mutex_return);
 		 if(mutex_return == EBUSY)
 		    T2Error("tProfile Mutex is Busy, already the report generation might be in progress \n");
-                 return T2ERROR_FAILURE;
+                 pthread_mutex_unlock(&scMutex);
+		 return T2ERROR_FAILURE;
             }
             pthread_cond_signal(&tProfile->tCond);
             if(pthread_mutex_unlock(&tProfile->tMutex) != 0){

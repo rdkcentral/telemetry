@@ -479,8 +479,23 @@ char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name,int *
                 }
                 if(seek_value <= fileSize) {
                      if(check_rotated_logs){ // considering the rotated log file  within few minutes after bootup, it should check only for the first time
-                         char * rotatedLog = malloc(fileExtn_len);
-                         if(NULL != rotatedLog) {
+                         char * rotatedLog;
+                         size_t name_len = strlen(currentLogFile);
+			 if(name_len > 2 && currentLogFile[name_len-2] == '.' && currentLogFile[name_len-1] == '0') {
+			     rotatedLog = strdup(currentLogFile);
+			     if(NULL != rotatedLog) {
+                                rotatedLog[-1] = '1';
+                                //T2Debug("Log file name seems to be having .0 extension hence Rotated log file name is %s\n", rotatedLog);
+                            }
+			 }else{
+			    rotatedLog = malloc(fileExtn_len);
+			    if(NULL != rotatedLog) {
+			        snprintf(rotatedLog, fileExtn_len, "%s%s%s", logpath, name, fileExtn);
+				//T2Debug("Rotated log file name is %s\n", rotatedLog);
+			    }
+			 }
+
+			 if(NULL != rotatedLog) {
                             snprintf(rotatedLog, fileExtn_len, "%s%s%s", logpath, name, fileExtn);
 
                             fclose(pcurrentLogFile);
@@ -527,7 +542,23 @@ char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name,int *
                             T2Error("Cannot set the file position indicator for the stream pointed to by stream\n");
                         }
                     }else {
-                        char * rotatedLog = malloc(fileExtn_len);
+                        char *rotatedLog;
+			size_t name_len = strlen(currentLogFile);
+
+			if(name_len > 2 && currentLogFile[name_len-2] == '.' && currentLogFile[name_len-1] == '0') {
+			    rotatedLog = strdup(currentLogFile);
+			    if(NULL != rotatedLog) {
+				rotatedLog[-1] = '1';
+				//T2Debug("Log file name seems to be having .0 extension hence Rotated log file name is %s\n", rotatedLog);
+			    }
+			}else{
+			    rotatedLog = malloc(fileExtn_len);
+			    if(NULL != rotatedLog) {
+			        snprintf(rotatedLog, fileExtn_len, "%s%s%s", logpath, name, fileExtn);
+				// T2Debug("Rotated log file name is %s\n", rotatedLog);
+			    }
+			}
+
 
                         if(NULL != rotatedLog) {
                             snprintf(rotatedLog, fileExtn_len, "%s%s%s", logpath, name, fileExtn);

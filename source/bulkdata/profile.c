@@ -373,7 +373,7 @@ static void* CollectAndReport(void* data)
                 }
                 if(profile->gMarkerList != NULL && Vector_Size(profile->gMarkerList) > 0)
                 {
-                    getGrepResults(profile->name, profile->gMarkerList, &grepResultList, profile->bClearSeekMap, false); // Passing 5th argument as false so that it doesn't check rotated logs for the first reporting after bootup for multiprofiles.
+                    getGrepResults(profile->name, profile->gMarkerList, &grepResultList, profile->bClearSeekMap, false, NULL); // Passing 5th argument as false so that it doesn't check rotated logs for the first reporting after bootup for multiprofiles.
                     encodeGrepResultInJSON(valArray, grepResultList);
                     Vector_Destroy(grepResultList, freeGResult);
                 }
@@ -1183,8 +1183,9 @@ static void loadReportProfilesFromDisk()
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
-T2ERROR initProfileList()
+T2ERROR initProfileList(bool checkPreviousSeek)
 {
+    (void) checkPreviousSeek; // To Do previous seek to multi profile
     T2Debug("%s ++in\n", __FUNCTION__);
     if(initialized)
     {

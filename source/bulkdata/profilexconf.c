@@ -193,6 +193,7 @@ static void* CollectAndReportXconf(void* data)
         Vector *grepResultList = NULL;
         cJSON *valArray = NULL;
         char* jsonReport = NULL;
+	char* customLogPath = NULL;
 
         struct timespec startTime;
         struct timespec endTime;
@@ -214,6 +215,18 @@ static void* CollectAndReportXconf(void* data)
                 //return NULL;
                 goto reportXconfThreadEnd;
             }
+
+            #ifdef PERSIST_LOG_MON_REF
+            if(profile->checkPreviousSeek){
+                cJSON *arrayItem = NULL;
+                arrayItem = cJSON_CreateObject();
+                cJSON_AddStringToObject(arrayItem, PREVIOUS_LOG, PREVIOUS_LOGS_VAL);
+                cJSON_AddItemToArray(valArray, arrayItem);
+                customLogPath = PREVIOUS_LOGS_PATH;
+		profile->bClearSeekMap = true;
+            }
+            #endif
+
             if(profile->paramList != NULL && Vector_Size(profile->paramList) > 0)
             {
                 profileParamVals = getProfileParameterValues(profile->paramList);
@@ -226,7 +239,7 @@ static void* CollectAndReportXconf(void* data)
             }
             if(profile->gMarkerList != NULL && Vector_Size(profile->gMarkerList) > 0)
             {
-                getGrepResults(profile->name, profile->gMarkerList, &grepResultList, profile->bClearSeekMap, true); // Passing 5th argument as true to check rotated logs only in case of single profile
+                getGrepResults(profile->name, profile->gMarkerList, &grepResultList, profile->bClearSeekMap, true, customLogPath); // Passing 5th argument as true to check rotated logs only in case of single profile
                 T2Info("Grep complete for %lu markers \n", (unsigned long)Vector_Size(profile->gMarkerList));
                 encodeGrepResultInJSON(valArray, grepResultList);
                 Vector_Destroy(grepResultList, freeGResult);
@@ -295,6 +308,18 @@ static void* CollectAndReportXconf(void* data)
                     ret = sendReportOverHTTP(profile->t2HTTPDest->URL, jsonReport, &xconfReportPid);
                 }
 
+                #ifdef PERSIST_LOG_MON_REF
+                if(profile->saveSeekConfig){
+                    saveSeekConfigtoFile(profile->name);
+                }
+                if(profile->checkPreviousSeek){
+                    T2Info("Previous Logs report is sent clear the previousSeek flag\n");
+                    profile->checkPreviousSeek = false;
+                    customLogPath = NULL;
+		    profile->bClearSeekMap = false;
+                }
+                #endif
+
                 xconfReportPid = -1 ;
                 if(ret == T2ERROR_FAILURE)
                 {
@@ -336,7 +361,16 @@ static void* CollectAndReportXconf(void* data)
         {
             T2Error("Unsupported encoding format : %s\n", profile->encodingType);
         }
-        clock_gettime(CLOCK_REALTIME, &endTime);
+
+        # ifdef PERSIST_LOG_MON_REF
+        if(T2ERROR_SUCCESS == saveSeekConfigtoFile(profile->name)){
+            T2Info("Successfully saved grep config to file for profile: %s\n", profile->name);
+        } else {
+            T2Warning("Failed to save grep config to file for profile: %s\n", profile->name);
+        }
+        #endif
+
+	clock_gettime(CLOCK_REALTIME, &endTime);
         getLapsedTime(&elapsedTime, &endTime, &startTime);
         T2Info("Elapsed Time for : %s = %lu.%lu (Sec.NanoSec)\n", profile->name, (unsigned long)elapsedTime.tv_sec, elapsedTime.tv_nsec);
         if(jsonReport)
@@ -376,7 +410,7 @@ static void* CollectAndReportXconf(void* data)
     return NULL;
 }
 
-T2ERROR ProfileXConf_init()
+T2ERROR ProfileXConf_init(bool checkPreviousSeek)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
     if(!initialized)
@@ -405,7 +439,17 @@ T2ERROR ProfileXConf_init()
           T2Debug("Config Size = %lu\n", (unsigned long)strlen(config->configData));
           if(T2ERROR_SUCCESS == processConfigurationXConf(config->configData, &profile))
           {
-              if(T2ERROR_SUCCESS == ProfileXConf_set(profile))
+              #ifdef PERSIST_LOG_MON_REF
+              if(checkPreviousSeek && loadSavedSeekConfig(profile->name, freeConfig) == T2ERROR_SUCCESS && firstBootStatus()){
+                   profile->checkPreviousSeek=true;
+              }else{
+                   profile->checkPreviousSeek=false;
+              }
+              #else
+              profile->checkPreviousSeek=false;
+              #endif
+		  
+	      if(T2ERROR_SUCCESS == ProfileXConf_set(profile))
               {
                   T2Info("Successfully set new profile: %s\n", profile->name);
                   populateCachedReportList(profile->name, profile->cachedReportList);

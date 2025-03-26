@@ -31,8 +31,6 @@ extern "C" {
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdarg.h>
-#include <glib.h>
-#include <glib/gi18n.h>
 #include "utils/vector.h"
 #include "dcautil/dca.h"
 #include "dcautil/legacyutils.h"
@@ -196,7 +194,7 @@ class dcaTestFixture : public ::testing::Test {
 
 //dcalist.c
 
-GList *pch = NULL;
+rdkList_t *pch = NULL;
 
 TEST(INSERTPCNODE, PATT_NULL)
 {
@@ -222,15 +220,16 @@ TEST(COMPAREPATTERN, NP_SP_NULL_CHECK)
 {
    pcdata_t *sp = (pcdata_t*)"SEARCH_DATA_LIST";
    pcdata_t *np = (pcdata_t*)"POINTER TO BE SEARCHED";
-   EXPECT_EQ(-1, comparePattern(NULL, (gpointer)sp));
+   EXPECT_EQ(-1, comparePattern(NULL, sp));
    EXPECT_EQ(-1, comparePattern(np, NULL));
 }
 
 TEST(SEARCHPCNODE, NULL_CHECK)
 {
-   GList *fnode = NULL;
+   rdkList_t *fnode = NULL;
+   char* message = "Hello world!";
    EXPECT_EQ(NULL, searchPCNode(NULL, "info is"));
-   fnode = g_list_append(fnode, (gpointer)"Hello world!");
+   fnode = rdk_list_add_node(fnode, message);
    EXPECT_EQ(NULL, searchPCNode(fnode, NULL));
    rdk_list_free_all_nodes(fnode);
 }
@@ -388,8 +387,9 @@ TEST(ISPROPSINITIALIZED, TESTING)
 TEST(PROCESSTOPPATTERN, VECTOR_NULL)
 {
     char* logfile = "Consolelog.txt.0";
-    GList *tlist = NULL;
-    tlist =  g_list_append(tlist, (gpointer)"Hello world!");
+    char* message = "Hello world!";
+    rdkList_t *tlist = NULL;
+    tlist =  rdk_list_add_node(tlist, message);
     Vector* grepResultlist = NULL;
     Vector_Create(&grepResultlist);
     EXPECT_EQ(-1, processTopPattern(tlist, grepResultlist));

@@ -52,7 +52,6 @@ typedef struct _ProfileXConf
     bool checkPreviousSeek; // To support Previous_Logs report post reboot
     bool saveSeekConfig; // To save the Seek config to persistant storage
     char* name;
-    char* name;
     char* protocol;
     char* encodingType;
     unsigned int reportingInterval;

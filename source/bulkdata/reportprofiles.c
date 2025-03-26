@@ -95,6 +95,8 @@ static bool isT2MtlsEnable = false;
 static bool initT2MtlsEnable = false;
 struct rusage pusage;
 unsigned int profilemem=0;
+bool previousLogCheck = false;
+
 
 #if defined(DROP_ROOT_PRIV)
 static void drop_root()
@@ -421,6 +423,13 @@ T2ERROR initReportProfiles()
         initMtls();
     }
 #endif
+
+// Drop root before we are creating any folders/flags to avoid access issues
+#if defined(DROP_ROOT_PRIV)
+    // Drop root privileges for Telemetry 2.0, If NonRootSupport RFC is true
+    drop_root();
+#endif
+
 #if defined (PRIVACYMODES_CONTROL)
     DIR *dir = opendir(PRIVACYMODE_PATH);
     if(dir == NULL){
@@ -431,6 +440,23 @@ T2ERROR initReportProfiles()
     }else {
         closedir(dir);
     }
+#endif
+
+
+#ifdef PERSIST_LOG_MON_REF
+    DIR *dir = opendir(SEEKFOLDER);
+    if(dir == NULL){
+        T2Info("SEEKMAP folder %s not present, creating folder\n", SEEKFOLDER);
+        if(mkdir(SEEKFOLDER, S_IRWXU | S_IRWXG | S_IRWXO) != 0) {
+            T2Error("%s,%d: Failed to make directory : %s  \n", __FUNCTION__, __LINE__, SEEKFOLDER);
+        }
+    }else {
+        closedir(dir);
+        previousLogCheck = true;
+        T2Info("SEEKMAP folder is present notify the profiles for saved seekmap\n");
+
+    }
+
 #endif
 
     rpInitialized = true;
@@ -447,17 +473,13 @@ T2ERROR initReportProfiles()
     initT2MarkerComponentMap();
     T2ER_Init();
 
-    #if defined(DROP_ROOT_PRIV)
-    // Drop root privileges for Telemetry 2.0, If NonRootSupport RFC is true
-    drop_root();
-    #endif
     #ifndef DEVICE_EXTENDER
-    ProfileXConf_init();
+    ProfileXConf_init(previousLogCheck);
     #endif
     t2Version = strdup("2.0.1"); // Setting the version to 2.0.1
     {
         T2Debug("T2 Version = %s\n", t2Version);
-        initProfileList();
+        initProfileList(previousLogCheck);
         free(t2Version);
         // Init datamodel processing thread
         if (T2ERROR_SUCCESS == datamodel_init())
@@ -523,6 +545,15 @@ T2ERROR initReportProfiles()
         }
     }
 
+#ifdef PERSIST_LOG_MON_REF
+
+    if(previousLogCheck){
+	//generate previous logs report
+	generateDcaReport(false,false);
+    }
+#endif
+
+
     if(ProfileXConf_isSet() || getProfileCount() > 0) {
 
         if(isRbusEnabled()){
@@ -539,6 +570,10 @@ T2ERROR initReportProfiles()
         T2ER_StartDispatchThread();
 
     }
+
+    // This indicates telemetry has started
+    system(TOUCH_BOOTFLAG);
+    T2Debug("%s Touched \n",BOOTFLAG);
 
     T2Debug("%s --out\n", __FUNCTION__);
     T2Info("Init ReportProfiles Successful\n");

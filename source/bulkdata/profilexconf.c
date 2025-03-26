@@ -297,6 +297,14 @@ static void* CollectAndReportXconf(void* data)
             {
                 T2Warning("Report size is exceeding the max limit : %d\n", DEFAULT_MAX_REPORT_SIZE);
             }
+	    #ifdef PERSIST_LOG_MON_REF
+	    if(profile->checkPreviousSeek){
+		T2Info("This is a Previous Logs Report sleep randomly for 1-100 sec\n");
+		srand(size+1);
+		int random_sleep = (int) rand()%99;
+		sleep(random_sleep);
+	    }
+	    #endif
             if(profile->protocol != NULL && strcmp(profile->protocol, "HTTP") == 0)
             {
                 // If a terminate is initiated, do not attempt to upload report
@@ -440,7 +448,7 @@ T2ERROR ProfileXConf_init(bool checkPreviousSeek)
           if(T2ERROR_SUCCESS == processConfigurationXConf(config->configData, &profile))
           {
               #ifdef PERSIST_LOG_MON_REF
-              if(checkPreviousSeek && loadSavedSeekConfig(profile->name, freeConfig) == T2ERROR_SUCCESS && firstBootStatus()){
+              if(checkPreviousSeek && loadSavedSeekConfig(profile->name) == T2ERROR_SUCCESS && firstBootStatus()){
                    profile->checkPreviousSeek=true;
               }else{
                    profile->checkPreviousSeek=false;

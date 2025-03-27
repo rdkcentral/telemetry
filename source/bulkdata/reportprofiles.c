@@ -70,12 +70,14 @@
 #define WEBCONFIG_BLOB_VERSION "/opt/telemetry_webconfig_blob_version.txt"
 #endif
 
-
 //Used in check_component_crash to inform Webconfig about telemetry component crash
 #define TELEMETRY_INIT_FILE_BOOTUP "/tmp/telemetry_initialized_bootup"
 
 #define MAX_PROFILENAMES_LENGTH 2048
 #define T2_VERSION_DATAMODEL_PARAM  "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.Version"
+
+//Timeout per profile for webconfig
+#define MAXTIMEOUT_PERPROFILE 30
 
 #if defined(DROP_ROOT_PRIV)
 #include "cap.h"
@@ -187,6 +189,10 @@ int tele_web_config_init()
 void ReportProfiles_Interrupt()
 {
     T2Debug("%s ++in\n", __FUNCTION__);
+    
+    // Interrupt the multi profile first as the DCADONE Flag is added from the xconf
+    sendLogUploadInterruptToScheduler();
+    
     char* xconfProfileName = NULL ;
     if (ProfileXConf_isSet()) {
         xconfProfileName = ProfileXconf_getName();
@@ -196,7 +202,6 @@ void ReportProfiles_Interrupt()
         }
     }
 
-    sendLogUploadInterruptToScheduler();
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
@@ -898,7 +903,13 @@ pErr Process_Telemetry_WebConfigRequest(void *Data)
      execRetVal = (pErr ) malloc (sizeof(Err));
      memset(execRetVal,0,(sizeof(Err)));
      T2Info("FILE:%s\t FUNCTION:%s\t LINE:%d Execution in Handler, excuted \n", __FILE__, __FUNCTION__, __LINE__);
+     T2Warning("Set canclable state to false");
+     // no one should be able to cancle a thread executing telemetry code as it leaves it in inconsistent state
+     //int oldtype;
+     //pthread_setcanceltype(PTHREAD_CANCEL_DISABLE, &oldtype);
+     // not using this as of now as the thread calling this can call free resources in such a case it will lead to crash
      int retval=__ReportProfiles_ProcessReportProfilesMsgPackBlob(Data);
+     //pthread_setcanceltype(oldtype,NULL);// do not restore now as we may get memleak from data
      if(retval == T2ERROR_SUCCESS)
      {
      	execRetVal->ErrorCode=BLOB_EXEC_SUCCESS;
@@ -914,6 +925,15 @@ void msgpack_free_blob(void *exec_data)
     __msgpack_free_blob((void *)execDataPf->user_data);
     free(execDataPf);
     execDataPf = NULL;
+}
+
+size_t calculateTimeout(size_t numOfEntries){
+    T2Debug("%s ++in\n", __FUNCTION__);
+    int noOfProfilesInDevice = getProfileCount();
+    size_t timeOut = (noOfProfilesInDevice + 1) * MAXTIMEOUT_PERPROFILE * (numOfEntries + 1);//adding +1 to protect from any value being 0
+    T2Info("Timeout value for Webconfig is calculated with profile count : %d and maxtimeout per profile : %d is %zu \n",noOfProfilesInDevice,MAXTIMEOUT_PERPROFILE,timeOut);
+    T2Debug("%s --out\n", __FUNCTION__);
+    return timeOut;
 }
 
 #endif
@@ -1006,7 +1026,7 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob , int ms
     execDataPf->version = (uint32_t)subdoc_version;
     execDataPf->numOfEntries = 1;
     execDataPf->user_data = (void*)msgpack;
-    execDataPf->calcTimeout = NULL;
+    execDataPf->calcTimeout = calculateTimeout;
     execDataPf->executeBlobRequest = Process_Telemetry_WebConfigRequest;
     execDataPf->rollbackFunc = NULL;
     execDataPf->freeResources = msgpack_free_blob;

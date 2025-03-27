@@ -235,6 +235,9 @@ static void* CollectAndReportXconf(void* data)
                 encodeGrepResultInJSON(valArray, grepResultList);
                 Vector_Destroy(grepResultList, freeGResult);
             }
+
+	    dcaFlagReportCompleation();
+
             if(profile->eMarkerList != NULL && Vector_Size(profile->eMarkerList) > 0)
             {
                 encodeEventMarkersInJSON(valArray, profile->eMarkerList);

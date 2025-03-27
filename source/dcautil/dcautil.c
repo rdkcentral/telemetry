@@ -57,3 +57,15 @@ void removeGrepConfig(char* profileName, bool clearSeekMap, bool clearExecMap) {
     T2Debug("%s ++out\n", __FUNCTION__);
 }
 
+// dcaFlagReportCompleation this function is used to create legacy DCA Flag DCADONEFLAG
+void dcaFlagReportCompleation(){
+	T2Debug("%s --in creating flag %s\n", __FUNCTION__,DCADONEFLAG);
+	FILE *fileCheck = fopen(DCADONEFLAG, "w+");
+	if (fileCheck == NULL ){
+		T2Error(" Error in creating the Flag :  %s\n",DCADONEFLAG);
+	}
+	else{
+		fclose(fileCheck);
+	}
+	T2Debug("%s --out\n", __FUNCTION__);
+}

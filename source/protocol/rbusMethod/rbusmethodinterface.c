@@ -112,11 +112,14 @@ T2ERROR sendReportsOverRBUSMethod(char *methodName, Vector* inputParams, char* p
             }
             else{
                     retry_count++;
-                    sleep(2); // giving 2 seconds sleep for 5 times which will be equal to waiting for RBUS_METHOD_TIMEOUT value // Removing the pthread_mutex_unlock before sleep as rbusmethodmutex will be unlocked by asyncMethodHandler.
-                    if(retry_count == 5){
+                    //sleep(2); // giving 2 seconds sleep for 5 times which will be equal to waiting for RBUS_METHOD_TIMEOUT value // Removing the pthread_mutex_unlock before sleep as rbusmethodmutex will be unlocked by asyncMethodHandler.
+                    if(retry_count == MAX_RETRY_ATTEMPTS){
                         T2Error("Max attempts reached for rbusmethodlock. Unlocking it\n");
                         ret = T2ERROR_NO_RBUS_METHOD_PROVIDER;
+                        break;
                     }
+		    struct timespec sleep_time = {2, 0}; // 2 seconds
+		    nanosleep(&sleep_time, NULL);
             }
         }
     }

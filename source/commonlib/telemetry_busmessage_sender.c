@@ -82,7 +82,11 @@ static void EVENT_DEBUG(char* format, ...) {
     pthread_mutex_lock(&loggerMutex);
     logHandle = fopen(SENDER_LOG_FILE, "a+");
     if(logHandle) {
+#if defined(__aarch64__)
+	int64_t rawtime;
+#else
         time_t rawtime;
+#endif
         struct tm* timeinfo;
 
         time(&rawtime);

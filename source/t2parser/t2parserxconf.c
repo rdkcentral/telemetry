@@ -265,7 +265,8 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
             else
                 skipFrequency = 0 ;
 
-	    if(header != NULL && content != NULL){
+	    //CID 172770 Explicit null dereferenced
+	    if(header != NULL && content != NULL && logfile != NULL){
                 if(skipFrequency > 0)
                 {
                 // T2Debug("Skip Frequency is Present, Need to do grep\n");

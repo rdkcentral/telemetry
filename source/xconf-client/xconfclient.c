@@ -190,6 +190,9 @@ static char *getTimezone () {
                   size_t result = fread(jsonDoc, numbytes, 1, file);
 		  if (result != 1) {
 			  T2Debug ("Error reading file \n");
+			  fclose(file);
+			  free(jsonDoc);
+			  jsonDoc = NULL;
 			  return NULL;
                   }
               }
@@ -236,7 +239,7 @@ static char *getTimezone () {
                               char *zone = (char*)malloc(sizeof(char)*(numbytes + 1));
                               fseek(file, 0, SEEK_SET);
 			      //CID : 190237 : Calling risky function
-                              while (fgets (zone, sizeof(zone), file) != NULL){
+                              while (fgets (zone, numbytes + 1, file) != NULL){
                                         if(zoneValue){
                                             free(zoneValue);
                                             zoneValue = NULL ;

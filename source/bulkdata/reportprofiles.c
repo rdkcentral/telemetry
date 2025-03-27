@@ -431,6 +431,8 @@ T2ERROR initReportProfiles()
 #endif
 
 #if defined (PRIVACYMODES_CONTROL)
+// Define scope
+{
     DIR *dir = opendir(PRIVACYMODE_PATH);
     if(dir == NULL){
         T2Info("Persistence folder %s not present, creating folder\n", PRIVACYMODE_PATH);
@@ -440,10 +442,13 @@ T2ERROR initReportProfiles()
     }else {
         closedir(dir);
     }
+}
 #endif
 
 
 #ifdef PERSIST_LOG_MON_REF
+//Define scope
+{
     DIR *dir = opendir(SEEKFOLDER);
     if(dir == NULL){
         T2Info("SEEKMAP folder %s not present, creating folder\n", SEEKFOLDER);
@@ -456,7 +461,7 @@ T2ERROR initReportProfiles()
         T2Info("SEEKMAP folder is present notify the profiles for saved seekmap\n");
 
     }
-
+}
 #endif
 
     rpInitialized = true;

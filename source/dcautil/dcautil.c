@@ -177,9 +177,9 @@ T2ERROR loadSavedSeekConfig(char *profileName){
 
 bool firstBootStatus(){
     T2Debug("%s ++in\n", __FUNCTION__);
-    bool status = false;
+    bool status = true;
     if(access(BOOTFLAG, F_OK) != -1){
-        status = true;
+        status = false;
     }
     T2Debug("%s --out\n", __FUNCTION__);
     return status;

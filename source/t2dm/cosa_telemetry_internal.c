@@ -56,11 +56,13 @@
 
  **********************************************************************/
 
-ANSC_HANDLE CosaTelemetryCreate( VOID) {
+ANSC_HANDLE CosaTelemetryCreate( VOID)
+{
     PCOSA_DATAMODEL_TELEMETRY pMyObject = (PCOSA_DATAMODEL_TELEMETRY) NULL;
 
     pMyObject = (PCOSA_DATAMODEL_TELEMETRY) AnscAllocateMemory(sizeof(COSA_DATAMODEL_TELEMETRY));
-    if(!pMyObject) {
+    if(!pMyObject)
+    {
         return (ANSC_HANDLE) NULL;
     }
 
@@ -96,7 +98,8 @@ ANSC_HANDLE CosaTelemetryCreate( VOID) {
  return:     operation status.
 
  **********************************************************************/
-ANSC_STATUS CosaTelemetryInitialize(ANSC_HANDLE hThisObject) {
+ANSC_STATUS CosaTelemetryInitialize(ANSC_HANDLE hThisObject)
+{
     PCOSA_DATAMODEL_TELEMETRY pMyObject = (PCOSA_DATAMODEL_TELEMETRY) hThisObject;
     ANSC_STATUS returnStatus = ANSC_STATUS_SUCCESS;
 
@@ -130,18 +133,25 @@ ANSC_STATUS CosaTelemetryInitialize(ANSC_HANDLE hThisObject) {
 
  **********************************************************************/
 
-ANSC_STATUS CosaTelemetryRemove(ANSC_HANDLE hThisObject) {
+ANSC_STATUS CosaTelemetryRemove(ANSC_HANDLE hThisObject)
+{
     ANSC_STATUS returnStatus = ANSC_STATUS_SUCCESS;
     PCOSA_DATAMODEL_TELEMETRY pMyObject = (PCOSA_DATAMODEL_TELEMETRY) hThisObject;
 
     /* Free internal data */
     if (pMyObject->JsonBlob)
+    {
         AnscFreeMemory((ANSC_HANDLE) (pMyObject->JsonBlob));
+    }
 
     if (pMyObject->JsonTmpBlob)
+    {
         AnscFreeMemory((ANSC_HANDLE) (pMyObject->JsonTmpBlob));
+    }
     if (pMyObject->MsgpackBlob)
+    {
         AnscFreeMemory((ANSC_HANDLE) (pMyObject->MsgpackBlob));
+    }
     /* Remove self */
     AnscFreeMemory((ANSC_HANDLE) pMyObject);
 

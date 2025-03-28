@@ -52,7 +52,8 @@ static pthread_mutex_t reportLock;
 static pthread_mutex_t triggerConditionQueMutex = PTHREAD_MUTEX_INITIALIZER;
 static queue_t *triggerConditionQueue = NULL;
 
-typedef struct __triggerConditionObj__ {
+typedef struct __triggerConditionObj__
+{
     char referenceName[MAX_LEN];
     char referenceValue[MAX_LEN];
 } triggerConditionObj ;
@@ -63,11 +64,17 @@ static void freeRequestURIparam(void *data)
     {
         HTTPReqParam *hparam = (HTTPReqParam *)data;
         if(hparam->HttpName)
+        {
             free(hparam->HttpName);
+        }
         if(hparam->HttpRef)
+        {
             free(hparam->HttpRef);
+        }
         if(hparam->HttpValue)
+        {
             free(hparam->HttpValue);
+        }
         free(hparam);
     }
 }
@@ -79,9 +86,13 @@ static void freeReportProfileConfig(void *data)
         Config *config = (Config *)data;
 
         if(config->name)
+        {
             free(config->name);
+        }
         if(config->configData)
+        {
             free(config->configData);
+        }
 
         free(config);
     }
@@ -94,39 +105,60 @@ static void freeProfile(void *data)
     {
         Profile *profile = (Profile *)data;
         if(profile->name)
+        {
             free(profile->name);
+        }
         if(profile->hash)
+        {
             free(profile->hash);
+        }
         if(profile->protocol)
+        {
             free(profile->protocol);
+        }
         if(profile->encodingType)
+        {
             free(profile->encodingType);
-	if(profile->RootName)
-	    free(profile->RootName);
+        }
+        if(profile->RootName)
+        {
+            free(profile->RootName);
+        }
         if(profile->Description)
-             free(profile->Description);
+        {
+            free(profile->Description);
+        }
         if(profile->version)
-             free(profile->version);
+        {
+            free(profile->version);
+        }
         if(profile->jsonEncoding)
+        {
             free(profile->jsonEncoding);
-	if(profile->timeRef){
+        }
+        if(profile->timeRef)
+        {
             free(profile->timeRef);
         }
         if(profile->t2HTTPDest)
         {
             free(profile->t2HTTPDest->URL);
-            if(profile->t2HTTPDest->RequestURIparamList) {
+            if(profile->t2HTTPDest->RequestURIparamList)
+            {
                 Vector_Destroy(profile->t2HTTPDest->RequestURIparamList, freeRequestURIparam);
             }
             free(profile->t2HTTPDest);
         }
-        if(profile->t2RBUSDest){
-            if(profile->t2RBUSDest->rbusMethodName){
-                memset(profile->t2RBUSDest->rbusMethodName , 0 , strlen(profile->t2RBUSDest->rbusMethodName));
+        if(profile->t2RBUSDest)
+        {
+            if(profile->t2RBUSDest->rbusMethodName)
+            {
+                memset(profile->t2RBUSDest->rbusMethodName, 0, strlen(profile->t2RBUSDest->rbusMethodName));
                 free(profile->t2RBUSDest->rbusMethodName);
                 profile->t2RBUSDest->rbusMethodName = NULL ;
             }
-            if(profile->t2RBUSDest->rbusMethodParamList){
+            if(profile->t2RBUSDest->rbusMethodParamList)
+            {
                 // TBD determine whether data is simple string before passing free as cleanup function
                 Vector_Destroy(profile->t2RBUSDest->rbusMethodParamList, free);
             }
@@ -153,13 +185,15 @@ static void freeProfile(void *data)
             Vector_Destroy(profile->triggerConditionList, freeTriggerCondition);
         }
 
-        if(profile->cachedReportList){
+        if(profile->cachedReportList)
+        {
             Vector_Destroy(profile->cachedReportList, free);
             profile->cachedReportList = NULL;
         }
-        if(profile->jsonReportObj){
-             cJSON_Delete(profile->jsonReportObj);
-             profile->jsonReportObj = NULL;
+        if(profile->jsonReportObj)
+        {
+            cJSON_Delete(profile->jsonReportObj);
+            profile->jsonReportObj = NULL;
         }
         free(profile);
     }
@@ -237,33 +271,41 @@ T2ERROR profileWithNameExists(const char *profileName, bool *bProfileExists)
     return T2ERROR_PROFILE_NOT_FOUND;
 }
 
-void getMarkerCompRbusSub(bool subscription){
+void getMarkerCompRbusSub(bool subscription)
+{
     T2Debug("%s ++in\n", __FUNCTION__);
     Vector* eventMarkerListForComponent = NULL;
     getComponentMarkerList(T2REPORTCOMPONENT, (void**)&eventMarkerListForComponent);
     int length = Vector_Size(eventMarkerListForComponent);
     int i;
-        if(length > 0)  {
-            for(i = 0; i < length; ++i ) {
-                char* markerName = (char *) Vector_At(eventMarkerListForComponent, i);
-                if(markerName) {
-                    int ret = T2RbusReportEventConsumer(markerName,subscription);
-                    T2Debug("%d T2RbusEventReg with name = %s: subscription = %s ret %d \n", i, markerName,(subscription?"Subscribe":"Un-Subscribe"),ret);
-                }
-                else {
-                    T2Error("Error while retrieving Marker Name at index : %d \n",i);
-                }
+    if(length > 0)
+    {
+        for(i = 0; i < length; ++i )
+        {
+            char* markerName = (char *) Vector_At(eventMarkerListForComponent, i);
+            if(markerName)
+            {
+                int ret = T2RbusReportEventConsumer(markerName, subscription);
+                T2Debug("%d T2RbusEventReg with name = %s: subscription = %s ret %d \n", i, markerName, (subscription ? "Subscribe" : "Un-Subscribe"), ret);
             }
-            if(eventMarkerListForComponent != NULL){
-                 Vector_Destroy(eventMarkerListForComponent, free);
+            else
+            {
+                T2Error("Error while retrieving Marker Name at index : %d \n", i);
             }
         }
-        //CID 255490: Resource leak (RESOURCE_LEAK)
-        else {
-          if(eventMarkerListForComponent != NULL){
+        if(eventMarkerListForComponent != NULL)
+        {
             Vector_Destroy(eventMarkerListForComponent, free);
-          }
         }
+    }
+    //CID 255490: Resource leak (RESOURCE_LEAK)
+    else
+    {
+        if(eventMarkerListForComponent != NULL)
+        {
+            Vector_Destroy(eventMarkerListForComponent, free);
+        }
+    }
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
@@ -271,16 +313,17 @@ static void* CollectAndReport(void* data)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
     if(data == NULL)
-        {
-            T2Error("data passed is NULL can't identify the profile, existing from CollectAndReport\n");
-            return NULL;
-        }
+    {
+        T2Error("data passed is NULL can't identify the profile, existing from CollectAndReport\n");
+        return NULL;
+    }
     Profile* profile = (Profile *)data;
     pthread_mutex_init(&profile->reuseThreadMutex, NULL);
     pthread_cond_init(&profile->reuseThread, NULL);
     pthread_mutex_lock(&profile->reuseThreadMutex);
     profile->threadExists = true;
-    do{
+    do
+    {
         T2Info("%s while Loop -- START \n", __FUNCTION__);
         profile->reportInProgress = true;
 
@@ -298,14 +341,18 @@ static void* CollectAndReport(void* data)
 
 
         T2ERROR ret = T2ERROR_FAILURE;
-        if( profile->name == NULL || profile->encodingType == NULL || profile->protocol == NULL ){
+        if( profile->name == NULL || profile->encodingType == NULL || profile->protocol == NULL )
+        {
             T2Error("Incomplete profile parameters\n");
-            if(profile->triggerReportOnCondition) {
-                    T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
-                    profile->triggerReportOnCondition = false ;
-                    pthread_mutex_unlock(&profile->triggerCondMutex);
-            } else {
-                    T2Debug(" profile->triggerReportOnCondition is not set \n");
+            if(profile->triggerReportOnCondition)
+            {
+                T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
+                profile->triggerReportOnCondition = false ;
+                pthread_mutex_unlock(&profile->triggerCondMutex);
+            }
+            else
+            {
+                T2Debug(" profile->triggerReportOnCondition is not set \n");
             }
             profile->reportInProgress = false;
             //return NULL;
@@ -323,19 +370,23 @@ static void* CollectAndReport(void* data)
             {
                 //TODO: Support 'ObjectHierarchy' format in RDKB-26154.
                 T2Error("Only JSON name-value pair format is supported \n");
-                if(profile->triggerReportOnCondition) {
+                if(profile->triggerReportOnCondition)
+                {
                     T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
                     profile->triggerReportOnCondition = false ;
                     pthread_mutex_unlock(&profile->triggerCondMutex);
-                } else {
+                }
+                else
+                {
                     T2Debug(" profile->triggerReportOnCondition is not set \n");
                 }
-                 profile->reportInProgress = false;
+                profile->reportInProgress = false;
                 //return NULL;
                 goto reportThreadEnd;
-	    }
+            }
             // pthread_mutex_lock(&profile->triggerCondMutex);
-            if(profile->triggerReportOnCondition && (profile->jsonReportObj != NULL)) {
+            if(profile->triggerReportOnCondition && (profile->jsonReportObj != NULL))
+            {
                 triggercondition = profile->jsonReportObj;
                 profile->jsonReportObj = NULL;
             }
@@ -344,12 +395,15 @@ static void* CollectAndReport(void* data)
                 T2Error("Failed to initialize JSON Report\n");
                 profile->reportInProgress = false;
                 //pthread_mutex_unlock(&profile->triggerCondMutex);
-                if(profile->triggerReportOnCondition) {
+                if(profile->triggerReportOnCondition)
+                {
                     T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
                     profile->triggerReportOnCondition = false;
                     pthread_mutex_unlock(&profile->triggerCondMutex);
                     if(profile->callBackOnReportGenerationComplete)
+                    {
                         profile->callBackOnReportGenerationComplete(profile->name);
+                    }
                 }
                 //return NULL;
                 goto reportThreadEnd;
@@ -383,7 +437,8 @@ static void* CollectAndReport(void* data)
                     encodeEventMarkersInJSON(valArray, profile->eMarkerList);
                     pthread_mutex_unlock(&profile->eventMutex);
                 }
-                if(profile->triggerReportOnCondition && (triggercondition != NULL)){
+                if(profile->triggerReportOnCondition && (triggercondition != NULL))
+                {
                     cJSON_AddItemToArray(valArray, triggercondition);
                 }
                 ret = prepareJSONReport(profile->jsonReportObj, &jsonReport);
@@ -393,13 +448,18 @@ static void* CollectAndReport(void* data)
                 {
                     T2Error("Unable to generate report for : %s\n", profile->name);
                     profile->reportInProgress = false;
-                    if(profile->triggerReportOnCondition) {
+                    if(profile->triggerReportOnCondition)
+                    {
                         profile->triggerReportOnCondition = false ;
                         pthread_mutex_unlock(&profile->triggerCondMutex);
 
                         if(profile->callBackOnReportGenerationComplete)
+                        {
                             profile->callBackOnReportGenerationComplete(profile->name);
-                    } else {
+                        }
+                    }
+                    else
+                    {
                         T2Debug(" profile->triggerReportOnCondition is not set \n");
                     }
                     //return NULL;
@@ -408,18 +468,25 @@ static void* CollectAndReport(void* data)
                 long size = strlen(jsonReport);
                 T2Info("cJSON Report = %s\n", jsonReport);
                 cJSON *root = cJSON_Parse(jsonReport);
-                if(root != NULL) {
+                if(root != NULL)
+                {
                     cJSON *array = cJSON_GetObjectItem(root, profile->RootName);
-                    if(cJSON_GetArraySize(array) == 0) {
+                    if(cJSON_GetArraySize(array) == 0)
+                    {
                         T2Warning("Array size of Report is %d. Report is empty. Cannot send empty report\n", cJSON_GetArraySize(array));
                         profile->reportInProgress = false;
-                        if(profile->triggerReportOnCondition) {
+                        if(profile->triggerReportOnCondition)
+                        {
                             T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
                             profile->triggerReportOnCondition = false ;
                             pthread_mutex_unlock(&profile->triggerCondMutex);
                             if(profile->callBackOnReportGenerationComplete)
+                            {
                                 profile->callBackOnReportGenerationComplete(profile->name);
-                        } else {
+                            }
+                        }
+                        else
+                        {
                             T2Debug(" profile->triggerReportOnCondition is not set \n");
                         }
                         cJSON_Delete(root);
@@ -430,87 +497,64 @@ static void* CollectAndReport(void* data)
                 }
 
                 T2Info("Report Size = %ld\n", size);
-                if(size > DEFAULT_MAX_REPORT_SIZE) {
+                if(size > DEFAULT_MAX_REPORT_SIZE)
+                {
                     T2Warning("Report size is exceeding the max limit : %d\n", DEFAULT_MAX_REPORT_SIZE);
                 }
-                if(profile->maxUploadLatency > 0){
+                if(profile->maxUploadLatency > 0)
+                {
                     memset(&profile->maxlatencyTime, 0, sizeof(struct timespec));
                     memset(&profile->currentTime, 0, sizeof(struct timespec));
                     pthread_cond_init(&profile->reportcond, NULL);
                     clock_gettime(CLOCK_REALTIME, &profile->currentTime);
                     profile->maxlatencyTime.tv_sec = profile->currentTime.tv_sec;
                     srand(time(0)); // Initialise the random number generator
-                    maxuploadinmilliSec = rand()%(profile->maxUploadLatency - 1);
+                    maxuploadinmilliSec = rand() % (profile->maxUploadLatency - 1);
                     maxuploadinSec =  (maxuploadinmilliSec + 1) / 1000;
                 }
-                if( strcmp(profile->protocol, "HTTP") == 0 || strcmp(profile->protocol, "RBUS_METHOD") == 0 ){
+                if( strcmp(profile->protocol, "HTTP") == 0 || strcmp(profile->protocol, "RBUS_METHOD") == 0 )
+                {
                     char *httpUrl = NULL ;
-                    if ( strcmp(profile->protocol, "HTTP") == 0 ) {
+                    if ( strcmp(profile->protocol, "HTTP") == 0 )
+                    {
                         httpUrl = prepareHttpUrl(profile->t2HTTPDest); /* Append URL with http properties */
-                        if(profile->maxUploadLatency > 0){
+                        if(profile->maxUploadLatency > 0)
+                        {
                             pthread_mutex_lock(&profile->reportMutex);
-                            T2Info("waiting for %ld sec of macUploadLatency\n",(long) maxuploadinSec);
-                            profile->maxlatencyTime.tv_sec += maxuploadinSec;
-                            n = pthread_cond_timedwait(&profile->reportcond, &profile->reportMutex, &profile->maxlatencyTime);
-                            if(n == ETIMEDOUT) {
-                                T2Info("TIMEOUT for maxUploadLatency of profile %s\n", profile->name);
-                                ret = sendReportOverHTTP(httpUrl, jsonReport, NULL);
-                            }else {
-                                T2Error("Profile : %s pthread_cond_timedwait ERROR!!!\n", profile->name);
-                                pthread_mutex_unlock(&profile->reportMutex);
-                                pthread_cond_destroy(&profile->reportcond);
-                                if(httpUrl){
-                                    free(httpUrl);
-                                    httpUrl = NULL;
-                                }
-                                profile->reportInProgress = false;
-                                if(profile->triggerReportOnCondition) {
-                                    T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
-                                    profile->triggerReportOnCondition = false ;
-                                    pthread_mutex_unlock(&profile->triggerCondMutex);
-
-                                    if(profile->callBackOnReportGenerationComplete != NULL){
-                                        T2Debug("Calling callback function profile->callBackOnReportGenerationComplete \n");
-                                        profile->callBackOnReportGenerationComplete(profile->name);
-                                    }
-                                } else {
-                                        T2Debug(" profile->triggerReportOnCondition is not set \n");
-                                }
-                                //return NULL;
-				goto reportThreadEnd;
-                            }
-                            pthread_mutex_unlock(&profile->reportMutex);
-                            pthread_cond_destroy(&profile->reportcond);
-                        }else {
-                            ret = sendReportOverHTTP(httpUrl, jsonReport, NULL);
-                        }
-                    } else {
-                        if(profile->maxUploadLatency > 0 ){
-                            pthread_mutex_lock(&profile->reportMutex);
-                            T2Info("waiting for %ld sec of macUploadLatency\n",(long) maxuploadinSec);
+                            T2Info("waiting for %ld sec of macUploadLatency\n", (long) maxuploadinSec);
                             profile->maxlatencyTime.tv_sec += maxuploadinSec;
                             n = pthread_cond_timedwait(&profile->reportcond, &profile->reportMutex, &profile->maxlatencyTime);
                             if(n == ETIMEDOUT)
                             {
-                            T2Info("TIMEOUT for maxUploadLatency of profile %s\n",profile->name);
-                            ret = sendReportsOverRBUSMethod(profile->t2RBUSDest->rbusMethodName, profile->t2RBUSDest->rbusMethodParamList, jsonReport);
+                                T2Info("TIMEOUT for maxUploadLatency of profile %s\n", profile->name);
+                                ret = sendReportOverHTTP(httpUrl, jsonReport, NULL);
                             }
-                            else{
+                            else
+                            {
                                 T2Error("Profile : %s pthread_cond_timedwait ERROR!!!\n", profile->name);
                                 pthread_mutex_unlock(&profile->reportMutex);
                                 pthread_cond_destroy(&profile->reportcond);
+                                if(httpUrl)
+                                {
+                                    free(httpUrl);
+                                    httpUrl = NULL;
+                                }
                                 profile->reportInProgress = false;
-                                if(profile->triggerReportOnCondition) {
+                                if(profile->triggerReportOnCondition)
+                                {
                                     T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
                                     profile->triggerReportOnCondition = false ;
                                     pthread_mutex_unlock(&profile->triggerCondMutex);
 
-                                    if(profile->callBackOnReportGenerationComplete){
+                                    if(profile->callBackOnReportGenerationComplete != NULL)
+                                    {
                                         T2Debug("Calling callback function profile->callBackOnReportGenerationComplete \n");
                                         profile->callBackOnReportGenerationComplete(profile->name);
                                     }
-                                } else {
-                                        T2Debug(" profile->triggerReportOnCondition is not set \n");
+                                }
+                                else
+                                {
+                                    T2Debug(" profile->triggerReportOnCondition is not set \n");
                                 }
                                 //return NULL;
                                 goto reportThreadEnd;
@@ -518,23 +562,73 @@ static void* CollectAndReport(void* data)
                             pthread_mutex_unlock(&profile->reportMutex);
                             pthread_cond_destroy(&profile->reportcond);
                         }
-                        else{
+                        else
+                        {
+                            ret = sendReportOverHTTP(httpUrl, jsonReport, NULL);
+                        }
+                    }
+                    else
+                    {
+                        if(profile->maxUploadLatency > 0 )
+                        {
+                            pthread_mutex_lock(&profile->reportMutex);
+                            T2Info("waiting for %ld sec of macUploadLatency\n", (long) maxuploadinSec);
+                            profile->maxlatencyTime.tv_sec += maxuploadinSec;
+                            n = pthread_cond_timedwait(&profile->reportcond, &profile->reportMutex, &profile->maxlatencyTime);
+                            if(n == ETIMEDOUT)
+                            {
+                                T2Info("TIMEOUT for maxUploadLatency of profile %s\n", profile->name);
+                                ret = sendReportsOverRBUSMethod(profile->t2RBUSDest->rbusMethodName, profile->t2RBUSDest->rbusMethodParamList, jsonReport);
+                            }
+                            else
+                            {
+                                T2Error("Profile : %s pthread_cond_timedwait ERROR!!!\n", profile->name);
+                                pthread_mutex_unlock(&profile->reportMutex);
+                                pthread_cond_destroy(&profile->reportcond);
+                                profile->reportInProgress = false;
+                                if(profile->triggerReportOnCondition)
+                                {
+                                    T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
+                                    profile->triggerReportOnCondition = false ;
+                                    pthread_mutex_unlock(&profile->triggerCondMutex);
+
+                                    if(profile->callBackOnReportGenerationComplete)
+                                    {
+                                        T2Debug("Calling callback function profile->callBackOnReportGenerationComplete \n");
+                                        profile->callBackOnReportGenerationComplete(profile->name);
+                                    }
+                                }
+                                else
+                                {
+                                    T2Debug(" profile->triggerReportOnCondition is not set \n");
+                                }
+                                //return NULL;
+                                goto reportThreadEnd;
+                            }
+                            pthread_mutex_unlock(&profile->reportMutex);
+                            pthread_cond_destroy(&profile->reportcond);
+                        }
+                        else
+                        {
                             ret = sendReportsOverRBUSMethod(profile->t2RBUSDest->rbusMethodName, profile->t2RBUSDest->rbusMethodParamList, jsonReport);
                         }
                     }
-                    if((ret == T2ERROR_FAILURE && strcmp(profile->protocol, "HTTP") == 0) || ret == T2ERROR_NO_RBUS_METHOD_PROVIDER) {
+                    if((ret == T2ERROR_FAILURE && strcmp(profile->protocol, "HTTP") == 0) || ret == T2ERROR_NO_RBUS_METHOD_PROVIDER)
+                    {
                         T2Debug("Vector list size = %lu\n",  (unsigned long) Vector_Size(profile->cachedReportList));
-                        if(profile->cachedReportList != NULL && Vector_Size(profile->cachedReportList) >= MAX_CACHED_REPORTS) {
-                            while(Vector_Size(profile->cachedReportList) > MAX_CACHED_REPORTS){
+                        if(profile->cachedReportList != NULL && Vector_Size(profile->cachedReportList) >= MAX_CACHED_REPORTS)
+                        {
+                            while(Vector_Size(profile->cachedReportList) > MAX_CACHED_REPORTS)
+                            {
                                 int pos = Vector_Size(profile->cachedReportList);
                                 T2Info("Max Cached Reports Limit Exceeded, Removing the extra reports\n");
                                 char *extraCachedreport =  (char*) Vector_At(profile->cachedReportList, (pos - 1));
-                                Vector_RemoveItem(profile->cachedReportList,(void*) extraCachedreport, NULL);
+                                Vector_RemoveItem(profile->cachedReportList, (void*) extraCachedreport, NULL);
                                 free(extraCachedreport);
                             }
                             T2Info("Max Cached Reports Limit Reached, Overwriting third recent report\n");
                             char *thirdCachedReport = (char*) Vector_At(profile->cachedReportList, MAX_CACHED_REPORTS - 3);
-                            Vector_RemoveItem(profile->cachedReportList,(void*) thirdCachedReport, NULL);
+                            Vector_RemoveItem(profile->cachedReportList, (void*) thirdCachedReport, NULL);
                             free(thirdCachedReport);
                         }
                         Vector_PushBack(profile->cachedReportList, jsonReport);
@@ -543,22 +637,30 @@ static void* CollectAndReport(void* data)
                         // Save messages from profile->cachedReportList to a file in persistent location .
                         saveCachedReportToPersistenceFolder(profile->name, profile->cachedReportList);
 
-                        if(strcmp(profile->protocol, "RBUS_METHOD") == 0) {
+                        if(strcmp(profile->protocol, "RBUS_METHOD") == 0)
+                        {
                             profile->SendErr++;
-                            if(profile->SendErr > 3 && !(rbusCheckMethodExists(profile->t2RBUSDest->rbusMethodName))) { //to delete the profile in the next CollectAndReport or triggercondition
+                            if(profile->SendErr > 3 && !(rbusCheckMethodExists(profile->t2RBUSDest->rbusMethodName)))   //to delete the profile in the next CollectAndReport or triggercondition
+                            {
                                 T2Debug("RBUS_METHOD doesn't exists after 3 retries\n");
                                 profile->reportInProgress = false;
-                                if(profile->triggerReportOnCondition) {
+                                if(profile->triggerReportOnCondition)
+                                {
                                     profile->triggerReportOnCondition = false ;
                                     pthread_mutex_unlock(&profile->triggerCondMutex);
                                     if(profile->callBackOnReportGenerationComplete)
+                                    {
                                         profile->callBackOnReportGenerationComplete(profile->name);
-                                } else {
+                                    }
+                                }
+                                else
+                                {
                                     T2Debug(" profile->triggerReportOnCondition is not set \n");
                                 }
                                 T2Error("ERROR: no method provider; profile will be deleted: %s %s\n", profile->name,
                                         profile->t2RBUSDest->rbusMethodName);
-                                if(T2ERROR_SUCCESS != deleteProfile(profile->name)) {
+                                if(T2ERROR_SUCCESS != deleteProfile(profile->name))
+                                {
                                     T2Error("Failed to delete profile after RBUS_METHOD failures: %s\n", profile->name);
                                     T2Info("%s --out\n", __FUNCTION__);
                                     //return NULL;
@@ -569,56 +671,73 @@ static void* CollectAndReport(void* data)
                                 goto reportThreadEnd;
                             }
                         }
-                    }else if(profile->cachedReportList != NULL && Vector_Size(profile->cachedReportList) > 0) {
+                    }
+                    else if(profile->cachedReportList != NULL && Vector_Size(profile->cachedReportList) > 0)
+                    {
                         T2Info("Trying to send  %lu cached reports\n", (unsigned long )Vector_Size(profile->cachedReportList));
-                        if(strcmp(profile->protocol, "HTTP") == 0) {
+                        if(strcmp(profile->protocol, "HTTP") == 0)
+                        {
                             ret = sendCachedReportsOverHTTP(httpUrl, profile->cachedReportList);
-                        }else {
+                        }
+                        else
+                        {
                             ret = sendCachedReportsOverRBUSMethod(profile->t2RBUSDest->rbusMethodName, profile->t2RBUSDest->rbusMethodParamList,
-                                    profile->cachedReportList);
+                                                                  profile->cachedReportList);
                         }
 
-                        if(ret == T2ERROR_SUCCESS) {
+                        if(ret == T2ERROR_SUCCESS)
+                        {
                             removeProfileFromDisk(CACHED_MESSAGE_PATH, profile->name);
                         }
                     }
-                    if(httpUrl) {
+                    if(httpUrl)
+                    {
                         free(httpUrl);
                         httpUrl = NULL;
                     }
-                }else {
+                }
+                else
+                {
                     T2Error("Unsupported report send protocol : %s\n", profile->protocol);
                 }
             }
-        }else {
+        }
+        else
+        {
             T2Error("Unsupported encoding format : %s\n", profile->encodingType);
         }
         clock_gettime(CLOCK_REALTIME, &endTime);
         getLapsedTime(&elapsedTime, &endTime, &startTime);
         T2Info("Elapsed Time for : %s = %lu.%lu (Sec.NanoSec)\n", profile->name, (unsigned long )elapsedTime.tv_sec, elapsedTime.tv_nsec);
-        if(ret == T2ERROR_SUCCESS && jsonReport) {
+        if(ret == T2ERROR_SUCCESS && jsonReport)
+        {
             free(jsonReport);
             jsonReport = NULL;
         }
 
         profile->reportInProgress = false;
-        if(profile->triggerReportOnCondition) {
+        if(profile->triggerReportOnCondition)
+        {
             T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
             profile->triggerReportOnCondition = false ;
             pthread_mutex_unlock(&profile->triggerCondMutex);
 
-            if(profile->callBackOnReportGenerationComplete){
+            if(profile->callBackOnReportGenerationComplete)
+            {
                 T2Debug("Calling callback function profile->callBackOnReportGenerationComplete \n");
                 profile->callBackOnReportGenerationComplete(profile->name);
             }
-        } else {
+        }
+        else
+        {
             T2Debug(" profile->triggerReportOnCondition is not set \n");
         }
-        reportThreadEnd :
+reportThreadEnd :
         T2Info("%s while Loop -- END; wait for restart event\n", __FUNCTION__);
-	T2Info("%s --out\n", __FUNCTION__);
+        T2Info("%s --out\n", __FUNCTION__);
         pthread_cond_wait(&profile->reuseThread, &profile->reuseThreadMutex);
-    }while(profile->enable);
+    }
+    while(profile->enable);
     T2Info("%s --out Exiting collect and report Thread\n", __FUNCTION__);
     profile->threadExists = false;
     pthread_mutex_unlock(&profile->reuseThreadMutex);
@@ -646,14 +765,17 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
     {
         profile->bClearSeekMap = isClearSeekMap;
         /* To avoid previous report thread to go into zombie state, mark it detached. */
-        if (profile->threadExists){
+        if (profile->threadExists)
+        {
             T2Info("Signal Thread To restart\n");
             pthread_mutex_lock(&profile->reuseThreadMutex);
             pthread_cond_signal(&profile->reuseThread);
             pthread_mutex_unlock(&profile->reuseThreadMutex);
         }
         else
+        {
             pthread_create(&profile->reportThread, NULL, CollectAndReport, (void*)profile);
+        }
     }
     else
     {
@@ -702,93 +824,113 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
         pthread_mutex_lock(&profile->eventMutex);
         switch(lookupEvent->mType)
         {
-            case MTYPE_COUNTER:
-                lookupEvent->u.count++;
-                T2Debug("Increment marker count to : %d\n", lookupEvent->u.count);
-                if(lookupEvent->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH){
-                    if(lookupEvent->timestamp) {
-                        free(lookupEvent->timestamp);
-                        lookupEvent->timestamp = NULL;
-                    }
+        case MTYPE_COUNTER:
+            lookupEvent->u.count++;
+            T2Debug("Increment marker count to : %d\n", lookupEvent->u.count);
+            if(lookupEvent->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH)
+            {
+                if(lookupEvent->timestamp)
+                {
+                    free(lookupEvent->timestamp);
+                    lookupEvent->timestamp = NULL;
+                }
 
+                timestamp = time(NULL);
+                if(lookupEvent->markerName_CT == NULL)
+                {
+                    if(lookupEvent->alias != NULL)
+                    {
+                        snprintf(buf, MAX_LEN, "%s_CT", lookupEvent->alias);
+                    }
+                    else
+                    {
+                        snprintf(buf, MAX_LEN, "%s_CT", lookupEvent->markerName);
+                    }
+                    lookupEvent->markerName_CT = strdup(buf);
+                }
+                snprintf(timebuf, MAX_LEN, "%ld", (long) timestamp);
+                lookupEvent->timestamp = strdup(timebuf);
+                T2Debug("Timestamp for %s is %s\n", lookupEvent->markerName_CT, lookupEvent->timestamp);
+            }
+            break;
+
+        case MTYPE_ACCUMULATE:
+            T2Debug("Marker type is ACCUMULATE Event Value : %s\n", eventInfo->value);
+            arraySize = Vector_Size(lookupEvent->u.accumulatedValues);
+            T2Debug("Current array size : %d \n", arraySize);
+            if( arraySize < MAX_ACCUMULATE)
+            {
+                Vector_PushBack(lookupEvent->u.accumulatedValues, strdup(eventInfo->value));
+                T2Debug("Sucessfully added value into vector New Size : %d\n", ++arraySize);
+                if(lookupEvent->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH)
+                {
                     timestamp = time(NULL);
-                    if(lookupEvent->markerName_CT == NULL){
-                        if(lookupEvent->alias != NULL){
+                    if(lookupEvent->markerName_CT == NULL)
+                    {
+                        if(lookupEvent->alias != NULL)
+                        {
                             snprintf(buf, MAX_LEN, "%s_CT", lookupEvent->alias);
                         }
-                        else{
+                        else
+                        {
                             snprintf(buf, MAX_LEN, "%s_CT", lookupEvent->markerName);
                         }
                         lookupEvent->markerName_CT = strdup(buf);
                     }
-                    snprintf(timebuf, MAX_LEN, "%ld",(long) timestamp);
-                    lookupEvent->timestamp = strdup(timebuf);
-                    T2Debug("Timestamp for %s is %s\n", lookupEvent->markerName_CT, lookupEvent->timestamp);
+                    snprintf(timebuf, MAX_LEN, "%ld", (long) timestamp);
+                    T2Debug("Timestamp for %s is %ld\n", lookupEvent->markerName_CT, (long) timestamp);
+                    Vector_PushBack(lookupEvent->accumulatedTimestamp,  strdup(timebuf));
+                    T2Debug("Vector_PushBack for accumulatedTimestamp is done\n");
                 }
-                break;
+            }
+            else if ( arraySize == MAX_ACCUMULATE )
+            {
+                T2Warning("Max size of the array has been reached appending warning message : %s\n", MAX_ACCUMULATE_MSG);
+                Vector_PushBack(lookupEvent->u.accumulatedValues, strdup(MAX_ACCUMULATE_MSG));
+                T2Debug("Sucessfully added warning message into vector New Size : %d\n", ++arraySize);
+            }
+            else
+            {
+                T2Warning("Max size of the array has been reached Ignore New Value\n");
+            }
+            break;
 
-            case MTYPE_ACCUMULATE:
-                T2Debug("Marker type is ACCUMULATE Event Value : %s\n",eventInfo->value);
-                arraySize = Vector_Size(lookupEvent->u.accumulatedValues);
-                T2Debug("Current array size : %d \n", arraySize);
-                if( arraySize < MAX_ACCUMULATE){
-                    Vector_PushBack(lookupEvent->u.accumulatedValues, strdup(eventInfo->value));
-                    T2Debug("Sucessfully added value into vector New Size : %d\n", ++arraySize);
-                    if(lookupEvent->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH){
-                        timestamp = time(NULL);
-                        if(lookupEvent->markerName_CT == NULL){
-                            if(lookupEvent->alias != NULL){
-                                snprintf(buf, MAX_LEN, "%s_CT", lookupEvent->alias);
-                            }
-                            else{
-                                snprintf(buf, MAX_LEN, "%s_CT", lookupEvent->markerName);
-                            }
-                            lookupEvent->markerName_CT = strdup(buf);
-                        }
-                        snprintf(timebuf, MAX_LEN, "%ld",(long) timestamp);
-                        T2Debug("Timestamp for %s is %ld\n", lookupEvent->markerName_CT,(long) timestamp);
-                        Vector_PushBack(lookupEvent->accumulatedTimestamp,  strdup(timebuf));
-                        T2Debug("Vector_PushBack for accumulatedTimestamp is done\n");
+        case MTYPE_ABSOLUTE:
+        default:
+            if(lookupEvent->u.markerValue)
+            {
+                free(lookupEvent->u.markerValue);
+                lookupEvent->u.markerValue = NULL;
+            }
+
+            lookupEvent->u.markerValue = strdup(eventInfo->value);
+            T2Debug("New marker value saved : %s\n", lookupEvent->u.markerValue);
+            if(lookupEvent->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH)
+            {
+                if(lookupEvent->timestamp)
+                {
+                    free(lookupEvent->timestamp);
+                    lookupEvent->timestamp = NULL;
+                }
+
+                timestamp = time(NULL);
+                if(lookupEvent->markerName_CT == NULL)
+                {
+                    if(lookupEvent->alias != NULL)
+                    {
+                        snprintf(buf, MAX_LEN, "%s_CT", lookupEvent->alias);
                     }
-                } else if ( arraySize == MAX_ACCUMULATE ){
-                    T2Warning("Max size of the array has been reached appending warning message : %s\n", MAX_ACCUMULATE_MSG);
-                    Vector_PushBack(lookupEvent->u.accumulatedValues, strdup(MAX_ACCUMULATE_MSG));
-                    T2Debug("Sucessfully added warning message into vector New Size : %d\n", ++arraySize);
-                } else{
-                    T2Warning("Max size of the array has been reached Ignore New Value\n");
-                }
-                break;
-
-            case MTYPE_ABSOLUTE:
-            default:
-                if(lookupEvent->u.markerValue){
-                    free(lookupEvent->u.markerValue);
-                    lookupEvent->u.markerValue = NULL;
-                }
-
-                lookupEvent->u.markerValue = strdup(eventInfo->value);
-                T2Debug("New marker value saved : %s\n", lookupEvent->u.markerValue);
-                if(lookupEvent->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH){
-                    if(lookupEvent->timestamp) {
-                        free(lookupEvent->timestamp);
-                        lookupEvent->timestamp = NULL;
+                    else
+                    {
+                        snprintf(buf, MAX_LEN, "%s_CT", lookupEvent->markerName);
                     }
-
-                    timestamp = time(NULL);
-                    if(lookupEvent->markerName_CT == NULL){
-                        if(lookupEvent->alias != NULL){
-                            snprintf(buf, MAX_LEN, "%s_CT", lookupEvent->alias);
-                        }
-                        else{
-                            snprintf(buf, MAX_LEN, "%s_CT", lookupEvent->markerName);
-                        }
-                        lookupEvent->markerName_CT = strdup(buf);
-                    }
-                    snprintf(timebuf, MAX_LEN, "%ld", (long)timestamp);
-                    lookupEvent->timestamp = strdup(timebuf);
-                    T2Debug("Timestamp for %s is %s\n", lookupEvent->markerName_CT, lookupEvent->timestamp);
+                    lookupEvent->markerName_CT = strdup(buf);
                 }
-                break;
+                snprintf(timebuf, MAX_LEN, "%ld", (long)timestamp);
+                lookupEvent->timestamp = strdup(timebuf);
+                T2Debug("Timestamp for %s is %s\n", lookupEvent->markerName_CT, lookupEvent->timestamp);
+            }
+            break;
         }
         pthread_mutex_unlock(&profile->eventMutex);
     }
@@ -844,7 +986,8 @@ T2ERROR enableProfile(const char *profileName)
     else
     {
         profile->enable = true;
-        if(pthread_mutex_init(&profile->triggerCondMutex, NULL) != 0){
+        if(pthread_mutex_init(&profile->triggerCondMutex, NULL) != 0)
+        {
             T2Error(" %s Mutex init has failed\n", __FUNCTION__);
             pthread_mutex_unlock(&plMutex);
             return T2ERROR_FAILURE;
@@ -852,7 +995,7 @@ T2ERROR enableProfile(const char *profileName)
 
         size_t emIndex = 0;
         EventMarker *eMarker = NULL;
-        for(;emIndex < Vector_Size(profile->eMarkerList); emIndex++)
+        for(; emIndex < Vector_Size(profile->eMarkerList); emIndex++)
         {
             eMarker = (EventMarker *)Vector_At(profile->eMarkerList, emIndex);
             addT2EventMarker(eMarker->markerName, eMarker->compName, profile->name, eMarker->skipFreq);
@@ -890,7 +1033,7 @@ void updateMarkerComponentMap()
             T2Debug("Updating component map for profile %s \n", tempProfile->name);
             size_t emIndex = 0;
             EventMarker *eMarker = NULL;
-            for(;emIndex < Vector_Size(tempProfile->eMarkerList); emIndex++)
+            for(; emIndex < Vector_Size(tempProfile->eMarkerList); emIndex++)
             {
                 eMarker = (EventMarker *)Vector_At(tempProfile->eMarkerList, emIndex);
                 addT2EventMarker(eMarker->markerName, eMarker->compName, tempProfile->name, eMarker->skipFreq);
@@ -901,7 +1044,8 @@ void updateMarkerComponentMap()
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
-T2ERROR disableProfile(const char *profileName, bool *isDeleteRequired) {
+T2ERROR disableProfile(const char *profileName, bool *isDeleteRequired)
+{
     T2Debug("%s ++in \n", __FUNCTION__);
 
     if(!initialized)
@@ -919,9 +1063,12 @@ T2ERROR disableProfile(const char *profileName, bool *isDeleteRequired) {
         return T2ERROR_FAILURE;
     }
 
-    if (profile->generateNow) {
+    if (profile->generateNow)
+    {
         *isDeleteRequired = true;
-    } else {
+    }
+    else
+    {
         profile->enable = false;
     }
     profile->isSchedulerstarted = false;
@@ -931,7 +1078,8 @@ T2ERROR disableProfile(const char *profileName, bool *isDeleteRequired) {
     return T2ERROR_SUCCESS;
 }
 
-T2ERROR deleteAllProfiles(bool delFromDisk) {
+T2ERROR deleteAllProfiles(bool delFromDisk)
+{
     T2Debug("%s ++in\n", __FUNCTION__);
 
     int count = 0;
@@ -957,29 +1105,34 @@ T2ERROR deleteAllProfiles(bool delFromDisk) {
         tempProfile->isSchedulerstarted = false;
         pthread_mutex_unlock(&plMutex);
 
-	if(T2ERROR_SUCCESS != unregisterProfileFromScheduler(tempProfile->name))
+        if(T2ERROR_SUCCESS != unregisterProfileFromScheduler(tempProfile->name))
         {
             T2Error("Profile : %s failed to  unregister from scheduler\n", tempProfile->name);
         }
 
         pthread_mutex_lock(&plMutex);
-        if (tempProfile->threadExists){
+        if (tempProfile->threadExists)
+        {
             pthread_mutex_lock(&tempProfile->reuseThreadMutex);
             pthread_cond_signal(&tempProfile->reuseThread);
             pthread_mutex_unlock(&tempProfile->reuseThreadMutex);
             pthread_join(tempProfile->reportThread, NULL);
-            tempProfile->threadExists=false;
+            tempProfile->threadExists = false;
         }
         if (Vector_Size(tempProfile->gMarkerList) > 0)
+        {
             removeGrepConfig(tempProfile->name, true, true);
+        }
         pthread_mutex_unlock(&plMutex);
-        if(delFromDisk == true){
-           removeProfileFromDisk(REPORTPROFILES_PERSISTENCE_PATH, tempProfile->name);
-	}   
+        if(delFromDisk == true)
+        {
+            removeProfileFromDisk(REPORTPROFILES_PERSISTENCE_PATH, tempProfile->name);
+        }
     }
-    if(delFromDisk == true){
-       removeProfileFromDisk(REPORTPROFILES_PERSISTENCE_PATH, MSGPACK_REPORTPROFILES_PERSISTENT_FILE);
-    }   
+    if(delFromDisk == true)
+    {
+        removeProfileFromDisk(REPORTPROFILES_PERSISTENCE_PATH, MSGPACK_REPORTPROFILES_PERSISTENT_FILE);
+    }
 
     pthread_mutex_lock(&plMutex);
     T2Debug("Deleting all profiles from the profileList\n");
@@ -995,20 +1148,20 @@ T2ERROR deleteAllProfiles(bool delFromDisk) {
 
 bool isProfileEnabled(const char *profileName)
 {
-     bool is_profile_enable = false; 
-     Profile *get_profile = NULL;
-     pthread_mutex_lock(&plMutex);
-     if(T2ERROR_SUCCESS != getProfile(profileName, &get_profile))
-     {
-         T2Error("Profile : %s not found\n", profileName);
-         T2Debug("%s --out\n", __FUNCTION__);
-         pthread_mutex_unlock(&plMutex);
-         return false;
-     }
-     is_profile_enable = get_profile->enable;
-     T2Debug("is_profile_enable = %d \n",is_profile_enable);
-     pthread_mutex_unlock(&plMutex);
-     return is_profile_enable;
+    bool is_profile_enable = false;
+    Profile *get_profile = NULL;
+    pthread_mutex_lock(&plMutex);
+    if(T2ERROR_SUCCESS != getProfile(profileName, &get_profile))
+    {
+        T2Error("Profile : %s not found\n", profileName);
+        T2Debug("%s --out\n", __FUNCTION__);
+        pthread_mutex_unlock(&plMutex);
+        return false;
+    }
+    is_profile_enable = get_profile->enable;
+    T2Debug("is_profile_enable = %d \n", is_profile_enable);
+    pthread_mutex_unlock(&plMutex);
+    return is_profile_enable;
 }
 
 
@@ -1031,9 +1184,13 @@ T2ERROR deleteProfile(const char *profileName)
     }
 
     if(profile->enable)
+    {
         profile->enable = false;
+    }
     if(profile->isSchedulerstarted)
-        profile->isSchedulerstarted = false; 
+    {
+        profile->isSchedulerstarted = false;
+    }
     pthread_mutex_unlock(&plMutex);
     if(T2ERROR_SUCCESS != unregisterProfileFromScheduler(profileName))
     {
@@ -1042,20 +1199,24 @@ T2ERROR deleteProfile(const char *profileName)
 
     T2Info("Waiting for CollectAndReport to be complete : %s\n", profileName);
     pthread_mutex_lock(&plMutex);
-    if (profile->threadExists) {
+    if (profile->threadExists)
+    {
         pthread_mutex_lock(&profile->reuseThreadMutex);
         pthread_cond_signal(&profile->reuseThread);
         pthread_mutex_unlock(&profile->reuseThreadMutex);
         pthread_join(profile->reportThread, NULL);
-        profile->threadExists=false;
+        profile->threadExists = false;
     }
 
-    if(Vector_Size(profile->triggerConditionList) > 0){
+    if(Vector_Size(profile->triggerConditionList) > 0)
+    {
         rbusT2ConsumerUnReg(profile->triggerConditionList);
     }
 
     if (Vector_Size(profile->gMarkerList) > 0)
+    {
         removeGrepConfig((char*)profileName, true, true);
+    }
 
     T2Info("removing profile : %s from profile list\n", profile->name);
     Vector_RemoveItem(profileList, profile, freeProfile);
@@ -1086,7 +1247,7 @@ void sendLogUploadInterruptToScheduler()
 
 static void loadReportProfilesFromDisk()
 {
-    fetchLocalConfigs(SHORTLIVED_PROFILES_PATH , NULL);  //API used for creating /tmp/t2reportprofiles dir
+    fetchLocalConfigs(SHORTLIVED_PROFILES_PATH, NULL);   //API used for creating /tmp/t2reportprofiles dir
 #if defined(FEATURE_SUPPORT_WEBCONFIG)
     T2Info("loadReportProfilesFromDisk \n");
     char filePath[REPORTPROFILES_FILE_PATH_SIZE] = {'\0'};
@@ -1094,31 +1255,33 @@ static void loadReportProfilesFromDisk()
     /* CID: 157386 Time of check time of use (TOCTOU) */
     FILE *fp;
     fp = fopen (filePath, "rb");
-    if(fp != NULL){
+    if(fp != NULL)
+    {
         T2Info("Msgpack: loadReportProfilesFromDisk \n");
         struct __msgpack__ msgpack;
         fseek(fp, 0L, SEEK_END);
         msgpack.msgpack_blob_size = ftell(fp);
         if(msgpack.msgpack_blob_size < 0)
         {
-          T2Error("Unable to detect the file pointer position for file %s\n", filePath);
-          fclose(fp);
-          return;
+            T2Error("Unable to detect the file pointer position for file %s\n", filePath);
+            fclose(fp);
+            return;
         }
         msgpack.msgpack_blob = malloc(sizeof(char) * msgpack.msgpack_blob_size);
-        if (NULL == msgpack.msgpack_blob) {
-          T2Error("Unable to allocate %d bytes of memory at Line %d on %s \n",
+        if (NULL == msgpack.msgpack_blob)
+        {
+            T2Error("Unable to allocate %d bytes of memory at Line %d on %s \n",
                     msgpack.msgpack_blob_size, __LINE__, __FILE__);
-          fclose (fp);
-          return;
+            fclose (fp);
+            return;
         }
         fseek(fp, 0L, SEEK_SET);
         if(fread(msgpack.msgpack_blob, sizeof(char), msgpack.msgpack_blob_size, fp) < (size_t) msgpack.msgpack_blob_size)
         {
-          T2Error("fread is returning fewer bytes than expected from the file %s\n", filePath);
-          free(msgpack.msgpack_blob);
-          fclose(fp);
-          return;
+            T2Error("fread is returning fewer bytes than expected from the file %s\n", filePath);
+            free(msgpack.msgpack_blob);
+            fclose(fp);
+            return;
         }
         fclose (fp);
         __ReportProfiles_ProcessReportProfilesMsgPackBlob((void *)&msgpack);
@@ -1131,7 +1294,8 @@ static void loadReportProfilesFromDisk()
 #if defined(PRIVACYMODES_CONTROL)
     char* paramValue = NULL;
     getPrivacyMode(&paramValue);
-    if(strcmp(paramValue, "DO_NOT_SHARE") == 0){
+    if(strcmp(paramValue, "DO_NOT_SHARE") == 0)
+    {
         T2Warning("PrivacyModes is DO_NOT_SHARE. Reportprofiles is not supported\n");
         free(paramValue);
         paramValue = NULL;
@@ -1151,29 +1315,31 @@ static void loadReportProfilesFromDisk()
 
     for(; configIndex < Vector_Size(configList); configIndex++)
     {
-         config = Vector_At(configList, configIndex);
-         Profile *profile = 0;
-         T2Debug("Processing config with name : %s\n", config->name);
-         T2Debug("Config Size = %lu\n", (unsigned long)strlen(config->configData));
+        config = Vector_At(configList, configIndex);
+        Profile *profile = 0;
+        T2Debug("Processing config with name : %s\n", config->name);
+        T2Debug("Config Size = %lu\n", (unsigned long)strlen(config->configData));
 
-         if(T2ERROR_SUCCESS == processConfiguration(&config->configData, config->name, NULL, &profile))
-         {
-             if(T2ERROR_SUCCESS == addProfile(profile))
-             {
-                 T2Info("Successfully created/added new profile : %s\n", profile->name);
-                 if(T2ERROR_SUCCESS != enableProfile(profile->name))
-                 {
-                     T2Error("Failed to enable profile name : %s\n", profile->name);
-                 } else{
-                     // Load the cached messages from previous boot, if any
-                     populateCachedReportList(profile->name, profile->cachedReportList);
-                 }
-             }
-             else
-             {
-                 T2Error("Unable to create and add new profile for name : %s\n", config->name);
-             }
-         }
+        if(T2ERROR_SUCCESS == processConfiguration(&config->configData, config->name, NULL, &profile))
+        {
+            if(T2ERROR_SUCCESS == addProfile(profile))
+            {
+                T2Info("Successfully created/added new profile : %s\n", profile->name);
+                if(T2ERROR_SUCCESS != enableProfile(profile->name))
+                {
+                    T2Error("Failed to enable profile name : %s\n", profile->name);
+                }
+                else
+                {
+                    // Load the cached messages from previous boot, if any
+                    populateCachedReportList(profile->name, profile->cachedReportList);
+                }
+            }
+            else
+            {
+                T2Error("Unable to create and add new profile for name : %s\n", config->name);
+            }
+        }
     }
     T2Info("Completed processing %lu profiles on the disk,trying to fetch new/updated profiles\n", (unsigned long)Vector_Size(configList));
     T2totalmem_calculate();
@@ -1192,11 +1358,13 @@ T2ERROR initProfileList()
         return T2ERROR_SUCCESS;
     }
     initialized = true;
-    if(pthread_mutex_init(&plMutex, NULL) != 0){
+    if(pthread_mutex_init(&plMutex, NULL) != 0)
+    {
         T2Error("%s mutex init has failed\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
-    if(pthread_mutex_init(&reportLock, NULL) != 0 ){
+    if(pthread_mutex_init(&reportLock, NULL) != 0 )
+    {
         T2Error("%s mutex init has failed\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
@@ -1264,10 +1432,13 @@ T2ERROR uninitProfileList()
 
     initialized = false;
     deleteAllProfiles(false); // avoid removing multiProfiles from Disc
-	
-    if(!pthread_mutex_trylock(&triggerConditionQueMutex)){
+
+    if(!pthread_mutex_trylock(&triggerConditionQueMutex))
+    {
         if(triggerConditionQueue)
+        {
             t2_queue_destroy(triggerConditionQueue, free);
+        }
 
         pthread_mutex_unlock(&triggerConditionQueMutex);
     }
@@ -1283,7 +1454,7 @@ T2ERROR registerTriggerConditionConsumer()
 {
 
     T2Debug("%s ++in\n", __FUNCTION__);
-    #define MAX_RETRY_COUNT 3
+#define MAX_RETRY_COUNT 3
     size_t profileIndex = 0;
     int retry_count = 0;
     int retry = 0;
@@ -1291,35 +1462,41 @@ T2ERROR registerTriggerConditionConsumer()
     int ret = T2ERROR_SUCCESS;
     Profile *tempProfile = NULL;
 
-    while(retry_count <= MAX_RETRY_COUNT){
+    while(retry_count <= MAX_RETRY_COUNT)
+    {
         pthread_mutex_lock(&plMutex);
-	profileIndex = 0;
+        profileIndex = 0;
         for(; profileIndex < Vector_Size(profileList); profileIndex++)
         {
             tempProfile = (Profile *)Vector_At(profileList, profileIndex);
             if(tempProfile->triggerConditionList)
             {
-               ret = rbusT2ConsumerReg(tempProfile->triggerConditionList);
-               T2Debug("rbusT2ConsumerReg return = %d\n", ret);
-	       if(ret != T2ERROR_SUCCESS){
-	           retry = 1;
-	       }   
+                ret = rbusT2ConsumerReg(tempProfile->triggerConditionList);
+                T2Debug("rbusT2ConsumerReg return = %d\n", ret);
+                if(ret != T2ERROR_SUCCESS)
+                {
+                    retry = 1;
+                }
             }
 
         }
         pthread_mutex_unlock(&plMutex);
-	if(retry == 1){
-	   if(retry_count >= MAX_RETRY_COUNT)
-	      break;
-           T2Debug("Retry Consumer Registration in %d sec\n", timer);		
-	   retry_count++;
-           retry = 0;
-	   sleep(timer);
-	   timer = timer/2;
+        if(retry == 1)
+        {
+            if(retry_count >= MAX_RETRY_COUNT)
+            {
+                break;
+            }
+            T2Debug("Retry Consumer Registration in %d sec\n", timer);
+            retry_count++;
+            retry = 0;
+            sleep(timer);
+            timer = timer / 2;
         }
-        else{
-	   break;  
-        }		
+        else
+        {
+            break;
+        }
     }
     T2Debug("%s --out\n", __FUNCTION__);
     return ret;
@@ -1334,16 +1511,18 @@ void NotifySchedulerstart(char* profileName, bool isschedulerstarted)
     for(; profileIndex < Vector_Size(profileList); profileIndex++)
     {
         tempProfile = (Profile *)Vector_At(profileList, profileIndex);
-        if(strncmp(tempProfile->name, profileName, strlen(profileName) + 1) == 0){
+        if(strncmp(tempProfile->name, profileName, strlen(profileName) + 1) == 0)
+        {
             tempProfile->isSchedulerstarted = isschedulerstarted;
-	}
+        }
     }
     pthread_mutex_unlock(&plMutex);
     T2Debug("plMutex is unlocked  %s\n", __FUNCTION__);
     return;
 }
 
-T2ERROR appendTriggerCondition (Profile *tempProfile, const char *referenceName, const char *referenceValue){
+T2ERROR appendTriggerCondition (Profile *tempProfile, const char *referenceName, const char *referenceValue)
+{
     T2Debug("%s ++in\n", __FUNCTION__);
 
     T2ERROR status = T2ERROR_SUCCESS ;
@@ -1351,28 +1530,34 @@ T2ERROR appendTriggerCondition (Profile *tempProfile, const char *referenceName,
     // triggerCondMutex is purposefully left unlocked from this function.
     // It gets released from CollectAndReport thread once trigger condition based report is sent out.
     // Reports from multiple trigger condition has to be sent mutually exclusively as separate reports.
-    if(!pthread_mutex_trylock(&tempProfile->triggerCondMutex)) {
+    if(!pthread_mutex_trylock(&tempProfile->triggerCondMutex))
+    {
         T2Debug("%s : Lock acquisition succeeded for tempProfile->triggerCondMutex\n ", __FUNCTION__);
         cJSON *temparrayItem = cJSON_CreateObject();
-        cJSON_AddStringToObject(temparrayItem, "reference",referenceName);
+        cJSON_AddStringToObject(temparrayItem, "reference", referenceName);
         cJSON_AddStringToObject(temparrayItem, "value", referenceValue);
         cJSON *temparrayItem1 = cJSON_CreateObject();
 
         cJSON_AddItemToObject(temparrayItem1, "TriggerConditionResult", temparrayItem);
-        tempProfile->jsonReportObj=temparrayItem1;
+        tempProfile->jsonReportObj = temparrayItem1;
         //pthread_mutex_unlock(&tempProfile->triggerCondMutex);
 
-    }else {
+    }
+    else
+    {
         T2Warning("%s : Failed to get a lock on tempProfile->triggerCondMutex for condition %s \n ", __FUNCTION__, referenceName);
         status =  T2ERROR_FAILURE;
         // Push this trigger condition to a que.
         // Implement a callback function to trigger report generation for referenceName & value
 
-        if(!pthread_mutex_trylock(&triggerConditionQueMutex)) {
+        if(!pthread_mutex_trylock(&triggerConditionQueMutex))
+        {
             T2Debug("%s : Lock on triggerConditionQueMutex\n", __FUNCTION__);
-            if(NULL == triggerConditionQueue) {
+            if(NULL == triggerConditionQueue)
+            {
                 triggerConditionQueue = t2_queue_create();
-                if(!triggerConditionQueue){
+                if(!triggerConditionQueue)
+                {
                     T2Error("Failed to create triggerConditionQueue, not proceeding further\n");
                     T2Debug("%s : Unlock on triggerConditionQueMutex\n", __FUNCTION__);
                     pthread_mutex_unlock(&triggerConditionQueMutex);
@@ -1382,33 +1567,41 @@ T2ERROR appendTriggerCondition (Profile *tempProfile, const char *referenceName,
                 T2Debug("%s : Que for storing the trigger conditions is created \n", __FUNCTION__);
             }
             triggerConditionObj *triggerCond = (triggerConditionObj*) malloc(sizeof(triggerConditionObj));
-            if(triggerCond) {
-                if(NULL != referenceName && NULL != referenceValue) {
+            if(triggerCond)
+            {
+                if(NULL != referenceName && NULL != referenceValue)
+                {
                     T2Info("%s : Push referenceName = %s  & referenceValue = %s to que \n ", __FUNCTION__, referenceName, referenceValue);
                     memset(triggerCond, 0, sizeof(triggerConditionObj));
                     strncpy(triggerCond->referenceName, referenceName, (MAX_LEN - 1));
                     strncpy(triggerCond->referenceValue, referenceValue, (MAX_LEN - 1));
                     t2_queue_push(triggerConditionQueue, (void*) triggerCond);
-                }else {
+                }
+                else
+                {
                     T2Warning("%s : referenceName or referenceValue is published as null, ignoring trigger condition \n ", __FUNCTION__);
                 }
 
-            }else {
+            }
+            else
+            {
                 T2Error("Failed to allocate memory for triggerConditionObj\n");
             }
 
             T2Debug("%s : Unlock on triggerConditionQueMutex\n", __FUNCTION__);
             pthread_mutex_unlock(&triggerConditionQueMutex);
-            
-            /* ref RDKB-55438 Commenting following code as this is causing crash, we can't free triggerCond here as this 
-            has been added to the queue, this is freed in the reportGenerationCompleteReceiver function after queue pop 
-            
+
+            /* ref RDKB-55438 Commenting following code as this is causing crash, we can't free triggerCond here as this
+            has been added to the queue, this is freed in the reportGenerationCompleteReceiver function after queue pop
+
             if(triggerCond != NULL) {
             free(triggerCond);//CID 335291: Resource leak (RESOURCE_LEAK)
             }
             */
 
-        } else {
+        }
+        else
+        {
             T2Warning("%s : Failed to get a lock on triggerConditionQueMutex for condition %s \n ", __FUNCTION__, referenceName);
 
         }
@@ -1418,35 +1611,48 @@ T2ERROR appendTriggerCondition (Profile *tempProfile, const char *referenceName,
     return status;
 }
 
-void reportGenerationCompleteReceiver(char *profileName) {
+void reportGenerationCompleteReceiver(char *profileName)
+{
 
     T2Debug("%s ++in\n", __FUNCTION__);
     T2Info("%s called with argument %s\n", __FUNCTION__, profileName);
 
-    if(!pthread_mutex_lock(&triggerConditionQueMutex)) {
-        if(NULL != triggerConditionQueue) {
+    if(!pthread_mutex_lock(&triggerConditionQueMutex))
+    {
+        if(NULL != triggerConditionQueue)
+        {
             T2Info("%s : %d report generating triggers pending in que \n ", __FUNCTION__, t2_queue_count(triggerConditionQueue));
-            if(t2_queue_count(triggerConditionQueue) > 0) {
+            if(t2_queue_count(triggerConditionQueue) > 0)
+            {
                 triggerConditionObj *triggerCond = (triggerConditionObj*) t2_queue_pop(triggerConditionQueue);
-                if(triggerCond) {
+                if(triggerCond)
+                {
                     // Que has to be unlocked before generating a trigger condition
                     pthread_mutex_unlock(&triggerConditionQueMutex);
                     triggerReportOnCondtion(triggerCond->referenceName, triggerCond->referenceValue);
                     free(triggerCond);
                     triggerCond = NULL;
-                }else{
+                }
+                else
+                {
                     T2Debug("%s : Trigger condition is null \n", __FUNCTION__);
                     pthread_mutex_unlock(&triggerConditionQueMutex);
                 }
-            }else {
+            }
+            else
+            {
                 T2Debug("%s : Unlock on triggerConditionQueMutex\n", __FUNCTION__);
                 pthread_mutex_unlock(&triggerConditionQueMutex);
                 T2Debug("No more report on condition events present in que \n");
             }
-        }else {
+        }
+        else
+        {
             pthread_mutex_unlock(&triggerConditionQueMutex);
         }
-    }else {
+    }
+    else
+    {
         T2Error("Failed to get lock on triggerConditionQueMutex \n");
     }
 
@@ -1456,23 +1662,27 @@ void reportGenerationCompleteReceiver(char *profileName) {
 T2ERROR triggerReportOnCondtion(const char *referenceName, const char *referenceValue)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
-	
-	T2Debug("referenceName = %s  referenceValue = %s \n", referenceName, referenceValue);
+
+    T2Debug("referenceName = %s  referenceValue = %s \n", referenceName, referenceValue);
 
     size_t j, profileIndex = 0;
     Profile *tempProfile = NULL;
-   
+
     pthread_mutex_lock(&plMutex);
     for(; profileIndex < Vector_Size(profileList); profileIndex++)
     {
         tempProfile = (Profile *)Vector_At(profileList, profileIndex);
         if(tempProfile->triggerConditionList && (tempProfile->triggerConditionList->count > 0))
         {
-             for( j = 0; j < tempProfile->triggerConditionList->count; j++ ) {
+            for( j = 0; j < tempProfile->triggerConditionList->count; j++ )
+            {
                 TriggerCondition *triggerCondition = ((TriggerCondition *) Vector_At(tempProfile->triggerConditionList, j));
-                if(strcmp(triggerCondition->reference, referenceName) == 0) {
-                    if(triggerCondition->report) {
-                        if ( T2ERROR_SUCCESS == appendTriggerCondition(tempProfile, referenceName, referenceValue)){
+                if(strcmp(triggerCondition->reference, referenceName) == 0)
+                {
+                    if(triggerCondition->report)
+                    {
+                        if ( T2ERROR_SUCCESS == appendTriggerCondition(tempProfile, referenceName, referenceValue))
+                        {
                             tempProfile->triggerReportOnCondition = true;
                             tempProfile->minThresholdDuration = triggerCondition->minThresholdDuration;
                             T2Debug("%s : Assign callback function as reportGenerationCompleteReceiver \n", __FUNCTION__);
@@ -1484,11 +1694,13 @@ T2ERROR triggerReportOnCondtion(const char *referenceName, const char *reference
                             T2Debug("%s : Release lock on &plMutex\n ", __FUNCTION__);
                             pthread_mutex_unlock(&plMutex);
                             T2Info("Triggering report on condition for %s with %s operator, %d threshold\n", triggerCondition->reference,
-                                                        triggerCondition->oprator, triggerCondition->threshold);
-                            if(tempProfile->isSchedulerstarted){
+                                   triggerCondition->oprator, triggerCondition->threshold);
+                            if(tempProfile->isSchedulerstarted)
+                            {
                                 SendInterruptToTimeoutThread(tempProfilename);
                             }
-                            else{
+                            else
+                            {
                                 T2Info("For Profile %s scheduler is not enabled yet so triggering the condition is ignored now\n", tempProfilename);
                                 tempProfile->triggerReportOnCondition = false;
                                 pthread_mutex_unlock(&tempProfile->triggerCondMutex);
@@ -1496,7 +1708,9 @@ T2ERROR triggerReportOnCondtion(const char *referenceName, const char *reference
                             }
                             free(tempProfilename); //RDKB-42640
                             return T2ERROR_SUCCESS ;
-                        } else {
+                        }
+                        else
+                        {
                             T2Info("Report generation will take place by popping up from the que by callback function \n");
                             T2Debug("%s : Release lock on &plMutex\n ", __FUNCTION__);
                             pthread_mutex_unlock(&plMutex);
@@ -1504,7 +1718,7 @@ T2ERROR triggerReportOnCondtion(const char *referenceName, const char *reference
                         }
                     }
                 }
-             }
+            }
         }
     }
     pthread_mutex_unlock(&plMutex);
@@ -1514,23 +1728,23 @@ T2ERROR triggerReportOnCondtion(const char *referenceName, const char *reference
 
 unsigned int getMinThresholdDuration(char *profileName)
 {
-     unsigned int minThresholdDuration = 0;
-     Profile *get_profile = NULL;
-     T2Debug("%s --in\n", __FUNCTION__);
-     pthread_mutex_lock(&plMutex);
-     if(T2ERROR_SUCCESS != getProfile(profileName, &get_profile))
-     {
-         T2Error("Profile : %s not found\n", profileName);
-         T2Debug("%s --out\n", __FUNCTION__);
-         pthread_mutex_unlock(&plMutex);
-         return 0;
-     }
-     minThresholdDuration = get_profile->minThresholdDuration;
-     get_profile->minThresholdDuration = 0; // reinit the value
-     T2Debug("minThresholdDuration = %u \n",minThresholdDuration);
-     pthread_mutex_unlock(&plMutex);
-     T2Debug("%s --out\n", __FUNCTION__);
-     return minThresholdDuration;
+    unsigned int minThresholdDuration = 0;
+    Profile *get_profile = NULL;
+    T2Debug("%s --in\n", __FUNCTION__);
+    pthread_mutex_lock(&plMutex);
+    if(T2ERROR_SUCCESS != getProfile(profileName, &get_profile))
+    {
+        T2Error("Profile : %s not found\n", profileName);
+        T2Debug("%s --out\n", __FUNCTION__);
+        pthread_mutex_unlock(&plMutex);
+        return 0;
+    }
+    minThresholdDuration = get_profile->minThresholdDuration;
+    get_profile->minThresholdDuration = 0; // reinit the value
+    T2Debug("minThresholdDuration = %u \n", minThresholdDuration);
+    pthread_mutex_unlock(&plMutex);
+    T2Debug("%s --out\n", __FUNCTION__);
+    return minThresholdDuration;
 }
 
 

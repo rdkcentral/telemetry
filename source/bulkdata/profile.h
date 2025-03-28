@@ -36,7 +36,7 @@ typedef struct _JSONEncoding
 {
     JSONFormat reportFormat;
     TimeStampFormat tsFormat;
-}JSONEncoding;
+} JSONEncoding;
 
 typedef struct _Profile
 {
@@ -86,7 +86,7 @@ typedef struct _Profile
     pthread_cond_t reuseThread;
     pthread_mutex_t reuseThreadMutex;
     bool threadExists;
-}Profile;
+} Profile;
 
 T2ERROR initProfileList();
 

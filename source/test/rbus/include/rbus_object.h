@@ -23,13 +23,13 @@
  * @defgroup    rbusObject
  * @brief       An rbus object is a named collection of properties.
  *
- * An rbusObject_t is a reference counted handle to an rbus object.  
- * 
- * This API is not thread-safe.  
+ * An rbusObject_t is a reference counted handle to an rbus object.
+ *
+ * This API is not thread-safe.
  * All instances of types rbusValue_t, rbusProperty_t, and rbusObject_t are referenced counted.
  * Instances of these types may have private references to other instances of these types.
  * There are read methods in this api that return references to these private instances.
- * There are write methods in this api that release current references and retain new ones. 
+ * There are write methods in this api that release current references and retain new ones.
  * When this happens any reference held by the user becomes unlinked from the parent instance.
  * The instance will also be destroyed unless the user retains it for themselves.
  * @{
@@ -47,7 +47,7 @@ typedef enum _rbusObjectType
 {
     RBUS_OBJECT_SINGLE_INSTANCE,
     RBUS_OBJECT_MULTI_INSTANCE
-}rbusObjectType_t;
+} rbusObjectType_t;
 
 /**
  * @brief       A handle to an rbus object.
@@ -57,12 +57,12 @@ typedef struct _rbusObject* rbusObject_t;
 /** @fn void rbusObject_Init(rbusObject_t* object, char const* name)
  *  @brief  Allocate, initialize, and take ownershipt of an object.
  *
- *  This automatically retains ownership of the object. 
+ *  This automatically retains ownership of the object.
  *  It's the caller's responsibility to release ownership by
  *  calling rbusObject_Release once it's done with it.
  *  @param  pobject reference to an address where the new object will be assigned.
  *          The caller is responsible for releasing the object with rbusObject_Release
- *  @param  name  optional name to assign the object.  The name is dublicated/copied.  
+ *  @param  name  optional name to assign the object.  The name is dublicated/copied.
  *          If NULL is passed the object's name will be NULL.
  */
 rbusObject_t rbusObject_Init(rbusObject_t* pobject, char const* name);
@@ -94,7 +94,7 @@ void rbusObject_Releases(int count, ...);
  *  @param object1 the first object to compare
  *  @param object2 the second object to compare
  *  @param recursive compare all child and their descendants objects
- *  @return The compare result where 0 is equal and non-zero if not equal.  
+ *  @return The compare result where 0 is equal and non-zero if not equal.
  */
 int rbusObject_Compare(rbusObject_t object1, rbusObject_t object2, bool recursive);
 
@@ -109,14 +109,14 @@ char const* rbusObject_GetName(rbusObject_t object);
  *  @brief Set the name of a object.
  *  @param object An object.
  *  @param name the name to set which will be duplicated/copied
- */ 
+ */
 void rbusObject_SetName(rbusObject_t object, char const* name);
 
 /** @fn rbusProperty_t rbusObject_GetProperties(rbusObject_t object)
  *  @brief Get the property list of an object.
  *  @param object An object.
  *  @return The property list of the object.
- */ 
+ */
 rbusProperty_t rbusObject_GetProperties(rbusObject_t object);
 
 /** @fn void rbusObject_SetProperties(rbusObject_t object, rbusProperty_t properties)
@@ -133,7 +133,7 @@ void rbusObject_SetProperties(rbusObject_t object, rbusProperty_t properties);
  *  @param object An object.
  *  @param name The name of the property to get.
  *  @return The property matching the name, or NULL if no match found.
- */ 
+ */
 rbusProperty_t rbusObject_GetProperty(rbusObject_t object, char const* name);
 
 /** @fn void rbusObject_SetProperty(rbusObject_t object, rbusProperty_t property)
@@ -151,7 +151,7 @@ void rbusObject_SetProperty(rbusObject_t object, rbusProperty_t property);
  *  @param object An object.
  *  @param name The name of the property to get the value of.
  *  @return The value of the property matching the name, or NULL if no match found.
- */ 
+ */
 rbusValue_t rbusObject_GetValue(rbusObject_t object, char const* name);
 rbusValue_t rbusObject_GetPropertyValue(rbusObject_t object, char const* name);
 
@@ -169,7 +169,7 @@ void rbusObject_SetPropertyValue(rbusObject_t object, char const* name, rbusValu
 
 /** @name rbusObject_GetValue[Type]
  *  @brief These functions get the type specific value of a property by name on an object.
- * 
+ *
  *  In order to prevent crashes, if the property name doesn't exist in the object,
  *  a warning will be logged and a default empty data will be returned.
  *  @param object An object.
@@ -198,9 +198,9 @@ rbusValueError_t rbusObject_GetPropertyByte(rbusObject_t object, char const* nam
 ///@}
 
 /** @name rbusObject_SetValue[Type]
- *  @brief These functions set the value of a property by name on an object, 
+ *  @brief These functions set the value of a property by name on an object,
  * where the value is internally initialized with the corresponding type and data.
- * 
+ *
  * If a property with the same name does not exist, a new property is created.
  * Ownership of any previous property/value will be released.
  *  @param object An object.

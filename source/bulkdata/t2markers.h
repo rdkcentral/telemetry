@@ -32,7 +32,7 @@ typedef struct _T2Marker
     char* markerName;
     char* componentName;
     Vector *profileList;
-}T2Marker;
+} T2Marker;
 
 T2ERROR initT2MarkerComponentMap();
 

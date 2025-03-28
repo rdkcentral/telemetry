@@ -22,7 +22,7 @@
 #define DEBUG_INI_NAME  "/etc/debug.ini"
 
 #if defined(RDK_LOGGER)
-    #include "rdk_debug.h"
+#include "rdk_debug.h"
 #else
 typedef enum
 {
@@ -67,7 +67,7 @@ typedef enum
 void LOGInit();
 
 void T2Log(unsigned int level, const char *msg, ...)
-    __attribute__((format (printf, 2, 3)));
+__attribute__((format (printf, 2, 3)));
 
 #endif
 

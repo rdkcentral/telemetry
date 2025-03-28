@@ -19,13 +19,13 @@
 
 /**********************************************************************
    Copyright [2014] [Cisco Systems, Inc.]
- 
+
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
    You may obtain a copy of the License at
- 
+
        http://www.apache.org/licenses/LICENSE-2.0
- 
+
    Unless required by applicable law or agreed to in writing, software
    distributed under the License is distributed on an "AS IS" BASIS,
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -48,7 +48,7 @@
 
         *   ssp_T2Mbi_MessageBusEngage
         *   ssp_T2Mbi_EventCallback
-        
+
     ---------------------------------------------------------------
 
     environment:
@@ -75,12 +75,12 @@ extern  char                g_Subsystem[32];
 extern  PCOMPONENT_COMMON_DM g_pComponent_Common_Dm;
 
 BOOLEAN waitConditionReady
-    (
-        void*                           hMBusHandle,
-        const char*                     dst_component_id,
-        char*                           dbus_path,
-        char*                           src_component_id
-    );
+(
+    void*                           hMBusHandle,
+    const char*                     dst_component_id,
+    char*                           dbus_path,
+    char*                           src_component_id
+);
 
 int ssp_T2Mbi_GetHealth ( )
 {
@@ -89,14 +89,14 @@ int ssp_T2Mbi_GetHealth ( )
 
 ANSC_STATUS
 ssp_T2Mbi_MessageBusEngage
-    (
-        char * component_id,
-        char * config_file,
-        char * path
-    )
+(
+    char * component_id,
+    char * config_file,
+    char * path
+)
 {
     ANSC_STATUS                 returnStatus       = ANSC_STATUS_SUCCESS;
-    
+
     char PsmName[256];
 
     if ( ! component_id || ! path )
@@ -108,14 +108,14 @@ ssp_T2Mbi_MessageBusEngage
     if (bus_handle == NULL)
     {
         /* Connect to message bus */
-        returnStatus = 
+        returnStatus =
             CCSP_Message_Bus_Init
             (
-             component_id,
-             config_file,
-             &bus_handle,
-             (CCSP_MESSAGE_BUS_MALLOC)Ansc_AllocateMemory_Callback,       /* mallocfc, use default */
-             Ansc_FreeMemory_Callback            /* freefc,   use default */
+                component_id,
+                config_file,
+                &bus_handle,
+                (CCSP_MESSAGE_BUS_MALLOC)Ansc_AllocateMemory_Callback,       /* mallocfc, use default */
+                Ansc_FreeMemory_Callback            /* freefc,   use default */
             );
 
         if ( returnStatus != ANSC_STATUS_SUCCESS )
@@ -126,7 +126,7 @@ ssp_T2Mbi_MessageBusEngage
         }
     }
 
-    _ansc_snprintf(PsmName, sizeof(PsmName), "%s%s", g_Subsystem,CCSP_DBUS_PSM);
+    _ansc_snprintf(PsmName, sizeof(PsmName), "%s%s", g_Subsystem, CCSP_DBUS_PSM);
 
     /* Wait for PSM */
     waitConditionReady(bus_handle, PsmName, CCSP_DBUS_PATH_PSM, component_id);
@@ -153,12 +153,12 @@ ssp_T2Mbi_MessageBusEngage
     /* Register service callback functions */
     returnStatus =
         CCSP_Message_Bus_Register_Path
-            (
-                bus_handle,
-                path,
-                T2_path_message_func,
-                bus_handle
-            );
+        (
+            bus_handle,
+            path,
+            T2_path_message_func,
+            bus_handle
+        );
 
     if ( returnStatus != CCSP_Message_Bus_OK )
     {
@@ -169,13 +169,13 @@ ssp_T2Mbi_MessageBusEngage
 
 
     /* Register event/signal */
-    returnStatus = 
+    returnStatus =
         CcspBaseIf_Register_Event
-            (
-                bus_handle,
-                0,
-                "currentSessionIDSignal"
-            );
+        (
+            bus_handle,
+            0,
+            "currentSessionIDSignal"
+        );
 
     if ( returnStatus != CCSP_Message_Bus_OK )
     {
@@ -189,13 +189,13 @@ ssp_T2Mbi_MessageBusEngage
 
 DBusHandlerResult
 T2_path_message_func
-    (
-        DBusConnection  *conn,
-        DBusMessage     *message,
-        void            *user_data
-    )
+(
+    DBusConnection  *conn,
+    DBusMessage     *message,
+    void            *user_data
+)
 {
-    CCSP_MESSAGE_BUS_INFO *bus_info =(CCSP_MESSAGE_BUS_INFO *) user_data;
+    CCSP_MESSAGE_BUS_INFO *bus_info = (CCSP_MESSAGE_BUS_INFO *) user_data;
     const char *interface = dbus_message_get_interface(message);
     const char *method   = dbus_message_get_member(message);
     DBusMessage *reply;
@@ -206,32 +206,32 @@ T2_path_message_func
     }
 
     return CcspBaseIf_base_path_message_func
-               (
-                   conn,
-                   message,
-                   reply,
-                   interface,
-                   method,
-                   bus_info
-               );
+           (
+               conn,
+               message,
+               reply,
+               interface,
+               method,
+               bus_info
+           );
 }
 
 int
 ssp_T2Mbi_Initialize
-    (
-        void * user_data
-    )
+(
+    void * user_data
+)
 {
     printf("In %s()\n", __FUNCTION__);
-    
+
     return 0;
 }
 
 int
 ssp_T2Mbi_Finalize
-    (
-        void * user_data
-    )
+(
+    void * user_data
+)
 {
     printf("In %s()\n", __FUNCTION__);
 
@@ -241,9 +241,9 @@ ssp_T2Mbi_Finalize
 
 int
 ssp_T2Mbi_Buscheck
-    (
-        void * user_data
-    )
+(
+    void * user_data
+)
 {
     printf("In %s()\n", __FUNCTION__);
 
@@ -253,10 +253,10 @@ ssp_T2Mbi_Buscheck
 
 int
 ssp_T2Mbi_FreeResources
-    (
-        int priority,
-        void * user_data
-    )
+(
+    int priority,
+    void * user_data
+)
 {
     printf("In %s()\n", __FUNCTION__);
 

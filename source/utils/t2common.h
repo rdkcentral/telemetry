@@ -37,13 +37,13 @@ typedef enum
     MTYPE_COUNTER,
     MTYPE_ABSOLUTE,
     MTYPE_ACCUMULATE
-}MarkerType;
+} MarkerType;
 
 typedef enum
 {
     REPORTTIMESTAMP_UNIXEPOCH = 1,
     REPORTTIMESTAMP_NONE
-}reportTimestampFormat;
+} reportTimestampFormat;
 
 typedef struct _Param
 {
@@ -53,14 +53,14 @@ typedef struct _Param
     const char* alias;
     bool trimParam;
     char* regexParam;
-}Param;
+} Param;
 
 typedef struct _StaticParam
 {
     char* paramType;
     char* name;
     char* value;
-}StaticParam;
+} StaticParam;
 
 typedef struct _EventMarker
 {
@@ -75,14 +75,15 @@ typedef struct _EventMarker
     char* markerName_CT;
     char* regexParam;
     MarkerType mType;
-    union{
+    union
+    {
         unsigned int count;
         char* markerValue;
         Vector* accumulatedValues;
-    }u;
+    } u;
     Vector* accumulatedTimestamp;
     unsigned int skipFreq;
-}EventMarker;
+} EventMarker;
 
 
 typedef struct _GrepMarker
@@ -95,13 +96,14 @@ typedef struct _GrepMarker
     char* logFile;
     char* regexParam;
     MarkerType mType;
-    union{
+    union
+    {
         unsigned int count;
         char* markerValue;
-    }u;
+    } u;
     unsigned int skipFreq;
     int firstSeekFromEOF;
-}GrepMarker;
+} GrepMarker;
 
 typedef struct _TriggerCondition
 {
@@ -112,7 +114,7 @@ typedef struct _TriggerCondition
     char* reference;
     bool isSubscribed;
     bool report;
-}TriggerCondition;
+} TriggerCondition;
 
 void freeParam(void *data);
 

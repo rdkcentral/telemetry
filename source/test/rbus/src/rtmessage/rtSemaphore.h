@@ -28,7 +28,7 @@
 extern "C" {
 #endif
 
-/* simple unnamed single process semaphore 
+/* simple unnamed single process semaphore
  * all function will return RT_OK on success
  * or RT_ERROR for any error except as noted below
  */
@@ -50,7 +50,7 @@ rtError rtSemaphore_Create(rtSemaphore* sem);
 rtError rtSemaphore_Destroy(rtSemaphore sem);
 
 /** @fn rtError rtSemaphore_Post(rtSemaphore sem)
- *  @brief increment the samephore value by 1 and 
+ *  @brief increment the samephore value by 1 and
  *         wake up any thread waiting on the semaphore
  *  @param sem  a semaphore to post to
  */

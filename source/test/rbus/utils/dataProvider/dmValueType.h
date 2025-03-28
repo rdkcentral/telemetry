@@ -23,19 +23,19 @@
 
 enum dmValueType
 {
-  dmValueType_Int8,
-  dmValueType_Int16,
-  dmValueType_Int32,
-  dmValueType_Int64,
-  dmValueType_UInt8,
-  dmValueType_UInt16,
-  dmValueType_UInt32,
-  dmValueType_UInt64,
-  dmValueType_String,
-  dmValueType_Single,
-  dmValueType_Double,
-  dmValueType_Boolean,
-  dmValueType_Unknown
+    dmValueType_Int8,
+    dmValueType_Int16,
+    dmValueType_Int32,
+    dmValueType_Int64,
+    dmValueType_UInt8,
+    dmValueType_UInt16,
+    dmValueType_UInt32,
+    dmValueType_UInt64,
+    dmValueType_String,
+    dmValueType_Single,
+    dmValueType_Double,
+    dmValueType_Boolean,
+    dmValueType_Unknown
 };
 
 dmValueType

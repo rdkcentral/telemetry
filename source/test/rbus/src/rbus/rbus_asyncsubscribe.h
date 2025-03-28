@@ -15,20 +15,24 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 #ifndef RBUS_ASYNCSUBSCRIBE_H
 #define RBUS_ASYNCSUBSCRIBE_H
 
-#include <rbuscore.h>
 #include "rbus.h"
+#include <rbuscore.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void rbusAsyncSubscribe_AddSubscription(rbusEventSubscription_t* subscription, rbusMessage payload);
-bool rbusAsyncSubscribe_RemoveSubscription(rbusEventSubscription_t* subscription);
-bool rbusAsyncSubscribe_GetSubscription(rbusHandle_t handle, char const* eventName, rbusFilter_t filter);
+void rbusAsyncSubscribe_AddSubscription(rbusEventSubscription_t *subscription,
+                                        rbusMessage payload);
+bool rbusAsyncSubscribe_RemoveSubscription(
+    rbusEventSubscription_t *subscription);
+bool rbusAsyncSubscribe_GetSubscription(rbusHandle_t handle,
+                                        char const *eventName,
+                                        rbusFilter_t filter);
 void rbusAsyncSubscribe_CloseHandle(rbusHandle_t handle);
 
 #ifdef __cplusplus

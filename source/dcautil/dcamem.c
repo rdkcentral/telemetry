@@ -29,9 +29,9 @@
  * @{
  **/
 
-//cpu and free memory
-#include <stdio.h>
+// cpu and free memory
 #include "t2log_wrapper.h"
+#include <stdio.h>
 
 #define MAXLEN 512
 
@@ -42,16 +42,16 @@ int getMemoryUsage(char *memoryUtilization);
  * @{
  */
 
-int main( ) {
+int main() {
 
-    char memoryUtilization[MAXLEN] = { '\0' };
+  char memoryUtilization[MAXLEN] = {'\0'};
 
-    if(getMemoryUsage(memoryUtilization)) {
-        printf("USED_MEM:%s\n", memoryUtilization);
-    }else {
-        printf("USED_MEM:NOT AVAILABLE\n");
-    }
-    return 0;
+  if (getMemoryUsage(memoryUtilization)) {
+    printf("USED_MEM:%s\n", memoryUtilization);
+  } else {
+    printf("USED_MEM:NOT AVAILABLE\n");
+  }
+  return 0;
 }
 
 /**
@@ -63,50 +63,50 @@ int main( ) {
  * @retval  Return 1 on success.
  */
 int getMemoryUsage(char *memoryUtilization) {
-    FILE *memoryinfo;
-    char line[MAXLEN];
-    char tmp[MAXLEN];
-    long long memTotal = 0;
-    long long memFree = 0;
-    long long memoryInUse = 0;
-    int Total_flag = 0;
-    int Free_flag = 0;
+  FILE *memoryinfo;
+  char line[MAXLEN];
+  char tmp[MAXLEN];
+  long long memTotal = 0;
+  long long memFree = 0;
+  long long memoryInUse = 0;
+  int Total_flag = 0;
+  int Free_flag = 0;
 
-    /* Open /proc/cpuinfo file*/
-    if((memoryinfo = fopen("/proc/meminfo", "r")) == NULL) {
-        printf("Failed to get Memory Utilization mode\n");
-        return 0;
-    }
+  /* Open /proc/cpuinfo file*/
+  if ((memoryinfo = fopen("/proc/meminfo", "r")) == NULL) {
+    printf("Failed to get Memory Utilization mode\n");
+    return 0;
+  }
 
-    /* Search until the "MemTotal" entry is found*/
-    while(fgets(line, MAXLEN, memoryinfo)) {
-        sscanf(line, "%s", tmp);
-        if((strcmp(tmp, "MemTotal:") == 0)) {
-            sscanf(line, "%*s %s", tmp);
-            memTotal = atoll(tmp);
-            Total_flag = 1;
-        }else if((strcmp(tmp, "MemFree:") == 0)) {
-            sscanf(line, "%*s %s", tmp);
-            memFree = atoll(tmp);
-            Free_flag = 1;
-        }
-        if(Total_flag == 1 && Free_flag == 1) {
-            break;
-        }
+  /* Search until the "MemTotal" entry is found*/
+  while (fgets(line, MAXLEN, memoryinfo)) {
+    sscanf(line, "%s", tmp);
+    if ((strcmp(tmp, "MemTotal:") == 0)) {
+      sscanf(line, "%*s %s", tmp);
+      memTotal = atoll(tmp);
+      Total_flag = 1;
+    } else if ((strcmp(tmp, "MemFree:") == 0)) {
+      sscanf(line, "%*s %s", tmp);
+      memFree = atoll(tmp);
+      Free_flag = 1;
     }
+    if (Total_flag == 1 && Free_flag == 1) {
+      break;
+    }
+  }
 
-    fclose(memoryinfo);
-    memoryInUse = (memTotal - memFree);
-    if(memoryUtilization) {
-        sprintf(memoryUtilization, "%lld", memoryInUse);
-    }else {
-        printf("Exit from get Memory Utilization due to NULL pointer");
-        return 0;
-    }
-    return 1;
+  fclose(memoryinfo);
+  memoryInUse = (memTotal - memFree);
+  if (memoryUtilization) {
+    sprintf(memoryUtilization, "%lld", memoryInUse);
+  } else {
+    printf("Exit from get Memory Utilization due to NULL pointer");
+    return 0;
+  }
+  return 1;
 }
 
-/** @} */  //END OF GROUP DCA_APIS
+/** @} */ // END OF GROUP DCA_APIS
 /** @} */
 
 /** @} */

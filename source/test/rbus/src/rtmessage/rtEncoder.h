@@ -28,15 +28,15 @@
 extern "C" {
 #endif
 
-rtError rtEncoder_EncodeInt32(uint8_t** itr, int32_t n);
-rtError rtEncoder_DecodeInt32(uint8_t const** itr, int32_t* n);
-rtError rtEncoder_EncodeUInt32(uint8_t** itr, uint32_t n);
-rtError rtEncoder_DecodeUInt32(uint8_t const** itr, uint32_t* n);
-rtError rtEncoder_EncodeUInt16(uint8_t** itr, uint16_t n);
-rtError rtEncoder_DecodeUInt16(uint8_t const** itr, uint16_t* n);
-rtError rtEncoder_DecodeStr(uint8_t const** itr, char* s, uint32_t len);
-rtError rtEncoder_EncodeString(uint8_t** itr, char const* s, uint32_t* n);
-rtError rtEncoder_DecodeString(uint8_t const** itr, char* s, uint32_t* n);
+rtError rtEncoder_EncodeInt32(uint8_t **itr, int32_t n);
+rtError rtEncoder_DecodeInt32(uint8_t const **itr, int32_t *n);
+rtError rtEncoder_EncodeUInt32(uint8_t **itr, uint32_t n);
+rtError rtEncoder_DecodeUInt32(uint8_t const **itr, uint32_t *n);
+rtError rtEncoder_EncodeUInt16(uint8_t **itr, uint16_t n);
+rtError rtEncoder_DecodeUInt16(uint8_t const **itr, uint16_t *n);
+rtError rtEncoder_DecodeStr(uint8_t const **itr, char *s, uint32_t len);
+rtError rtEncoder_EncodeString(uint8_t **itr, char const *s, uint32_t *n);
+rtError rtEncoder_DecodeString(uint8_t const **itr, char *s, uint32_t *n);
 
 #ifdef __cplusplus
 }

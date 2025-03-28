@@ -15,23 +15,21 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
-#include <gtest/gtest.h>
-#include <gmock/gmock.h>
 #include "telemetry2_0.h"
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
-class T2parserInterface
-{
-    public:
-        virtual ~T2parserInterface() {}
-	virtual T2ERROR getParameterValue(const char* paramName, char **paramValue) = 0;
+class T2parserInterface {
+public:
+  virtual ~T2parserInterface() {}
+  virtual T2ERROR getParameterValue(const char *paramName,
+                                    char **paramValue) = 0;
 };
 
-class T2parserMock: public T2parserInterface
-{
-    public:
-        virtual ~T2parserMock() {}
-	MOCK_METHOD2(getParameterValue, T2ERROR(const char*, char **));
+class T2parserMock : public T2parserInterface {
+public:
+  virtual ~T2parserMock() {}
+  MOCK_METHOD2(getParameterValue, T2ERROR(const char *, char **));
 };
-

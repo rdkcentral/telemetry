@@ -21,16 +21,17 @@
 
 #define _T2PARSER_H_
 
+#include "msgpack.h"
+#include "profile.h"
+#include "telemetry2_0.h"
+#include <cjson/cJSON.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <cjson/cJSON.h>
-#include "telemetry2_0.h"
-#include "profile.h"
-#include "msgpack.h"
 
-#define T2REPORTCOMPONENT "RBUS_SUBSCRIPTION" //TR-181 event's component name
+#define T2REPORTCOMPONENT "RBUS_SUBSCRIPTION" // TR-181 event's component name
 
-T2ERROR processConfiguration(char** configData, char* profileName, char* profileHash, Profile **localProfile);
+T2ERROR processConfiguration(char **configData, char *profileName,
+                             char *profileHash, Profile **localProfile);
 
 msgpack_object *msgpack_get_map_value(msgpack_object *obj, char *key);
 
@@ -42,6 +43,7 @@ void msgpack_print(msgpack_object *obj, char *obj_name);
 
 int msgpack_strcmp(msgpack_object *obj, char *str);
 
-T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile **profile_dp);
+T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map,
+                                    Profile **profile_dp);
 
 #endif /* _T2PARSER_H_ */

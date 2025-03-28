@@ -15,13 +15,13 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 #ifndef _RBUSINTERFACE_H_
 #define _RBUSINTERFACE_H_
 
-#include <stdio.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <vector.h>
 #ifdef GTEST_ENABLE
 #include "test/rbus/include/rbus.h"
@@ -31,11 +31,14 @@
 #include "busInterface.h"
 #include "telemetry2_0.h"
 
-typedef void (*rbusMethodCallBackPtr) (rbusHandle_t handle, char const* methodName, rbusError_t retStatus, rbusObject_t params);
+typedef void (*rbusMethodCallBackPtr)(rbusHandle_t handle,
+                                      char const *methodName,
+                                      rbusError_t retStatus,
+                                      rbusObject_t params);
 
-T2ERROR getRbusParameterVal(const char* paramName, char **paramValue);
+T2ERROR getRbusParameterVal(const char *paramName, char **paramValue);
 
-Vector* getRbusProfileParamValues(Vector *paramList);
+Vector *getRbusProfileParamValues(Vector *paramList);
 
 T2ERROR registerRbusT2EventListener(TelemetryEventCallback eventCB);
 
@@ -49,10 +52,12 @@ T2ERROR rbusT2ConsumerReg(Vector *triggerConditionList);
 
 T2ERROR rbusT2ConsumerUnReg(Vector *triggerConditionList);
 
-T2ERROR rbusMethodCaller(char *methodName, rbusObject_t* inputParams, char* payload, rbusMethodCallBackPtr rbusMethodCallBack );
+T2ERROR rbusMethodCaller(char *methodName, rbusObject_t *inputParams,
+                         char *payload,
+                         rbusMethodCallBackPtr rbusMethodCallBack);
 
-bool rbusCheckMethodExists(const char* rbusMethodName) ;
+bool rbusCheckMethodExists(const char *rbusMethodName);
 
-T2ERROR T2RbusReportEventConsumer(char* reference, bool subscription);
+T2ERROR T2RbusReportEventConsumer(char *reference, bool subscription);
 
 #endif

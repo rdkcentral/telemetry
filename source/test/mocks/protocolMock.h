@@ -15,23 +15,20 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 #include <curl/curl.h>
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
-class ProtocolInterface
-{
-    public:
-        virtual ~ProtocolInterface() {}
-        virtual bool isMtlsEnabled() = 0;
+class ProtocolInterface {
+public:
+  virtual ~ProtocolInterface() {}
+  virtual bool isMtlsEnabled() = 0;
 };
 
-class ProtocolMock: public ProtocolInterface
-{
-    public:
-        virtual ~ProtocolMock() {}
-	MOCK_METHOD0(isMtlsEnabled, bool());
+class ProtocolMock : public ProtocolInterface {
+public:
+  virtual ~ProtocolMock() {}
+  MOCK_METHOD0(isMtlsEnabled, bool());
 };
-

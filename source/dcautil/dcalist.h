@@ -17,15 +17,10 @@
  * limitations under the License.
  */
 
-
-
 /**
  * @defgroup dca
  * @{
  **/
-
-
-
 
 /**
  * @defgroup dca
@@ -34,19 +29,16 @@
  * @{
  **/
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <stdbool.h>
 
 #include "rdk_linkedlist.h"
 #include "vector.h"
 
-typedef enum {
-  OCCURENCE,
-  STR
-} DType_t;
+typedef enum { OCCURENCE, STR } DType_t;
 
 typedef struct pclist {
   char *header;
@@ -57,26 +49,25 @@ typedef struct pclist {
     char *data;
   };
   bool trimparam;
-  char* regexparam;
+  char *regexparam;
 } pcdata_t;
 
 extern rdkList_t *pchead;
 
-int insertPCNode(rdkList_t **pch, char *pattern, char *header, DType_t dtype, int count, char *data, bool trim, char *regex);
-pcdata_t* searchPCNode(rdkList_t *pch, char *pattern);
+int insertPCNode(rdkList_t **pch, char *pattern, char *header, DType_t dtype,
+                 int count, char *data, bool trim, char *regex);
+pcdata_t *searchPCNode(rdkList_t *pch, char *pattern);
 void printPCNodes(rdkList_t *pch);
 void clearPCNodes(rdkList_t **pch);
 int comparePattern(const void *np, const void *sp);
 void print_pc_node(void *data, void *user_data);
-int processTopPattern(rdkList_t *pchead, Vector* grepResultList);
+int processTopPattern(rdkList_t *pchead, Vector *grepResultList);
 
 /** @} */
 
-
 /** @} */
 /** @} */
 /** @} */
-
 
 /** @} */
 /** @} */

@@ -15,78 +15,76 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 #ifndef _PROFILE_H_
 #define _PROFILE_H_
 
-#include <stdbool.h>
-#include <pthread.h>
 #include <cjson/cJSON.h>
+#include <pthread.h>
+#include <stdbool.h>
 
-#include "t2collection.h"
-#include "telemetry2_0.h"
-#include "reportprofiles.h"
-#include "t2eventreceiver.h"
-#include "t2common.h"
-#include "vector.h"
 #include "reportgen.h"
+#include "reportprofiles.h"
+#include "t2collection.h"
+#include "t2common.h"
+#include "t2eventreceiver.h"
+#include "telemetry2_0.h"
+#include "vector.h"
 
-typedef struct _JSONEncoding
-{
-    JSONFormat reportFormat;
-    TimeStampFormat tsFormat;
-}JSONEncoding;
+typedef struct _JSONEncoding {
+  JSONFormat reportFormat;
+  TimeStampFormat tsFormat;
+} JSONEncoding;
 
-typedef struct _Profile
-{
-    bool enable;
-    bool isSchedulerstarted;
-    bool isUpdated;
-    bool reportInProgress;
-    bool generateNow;
-    bool deleteonTimeout;
-    bool bClearSeekMap;
-    bool triggerReportOnCondition;
-    bool trim;
-    void (*callBackOnReportGenerationComplete)(char*);
-    char* hash;
-    char* name;
-    char* protocol;
-    char* encodingType;
-    char* Description;
-    char* version;
-    char* RootName;
-    char* timeRef;
-    JSONEncoding *jsonEncoding;
-    bool reportOnUpdate;
-    unsigned int firstReportingInterval;
-    unsigned int SendErr;
-    unsigned int reportingInterval;
-    unsigned int activationTimeoutPeriod;
-    unsigned int maxUploadLatency;
-    unsigned int paramNumOfEntries;
-    unsigned int minThresholdDuration;
-    Vector *paramList;
-    Vector *staticParamList;
-    T2HTTP *t2HTTPDest;
-    T2RBUS *t2RBUSDest;
-    Vector *eMarkerList;
-    Vector *gMarkerList;
-    Vector *cachedReportList;
-    cJSON *jsonReportObj;
-    pthread_t reportThread;
-    pthread_mutex_t triggerCondMutex;
-    pthread_mutex_t eventMutex;
-    pthread_mutex_t reportMutex;
-    pthread_cond_t reportcond;
-    struct timespec currentTime;
-    struct timespec maxlatencyTime;
-    Vector *triggerConditionList;
-    pthread_cond_t reuseThread;
-    pthread_mutex_t reuseThreadMutex;
-    bool threadExists;
-}Profile;
+typedef struct _Profile {
+  bool enable;
+  bool isSchedulerstarted;
+  bool isUpdated;
+  bool reportInProgress;
+  bool generateNow;
+  bool deleteonTimeout;
+  bool bClearSeekMap;
+  bool triggerReportOnCondition;
+  bool trim;
+  void (*callBackOnReportGenerationComplete)(char *);
+  char *hash;
+  char *name;
+  char *protocol;
+  char *encodingType;
+  char *Description;
+  char *version;
+  char *RootName;
+  char *timeRef;
+  JSONEncoding *jsonEncoding;
+  bool reportOnUpdate;
+  unsigned int firstReportingInterval;
+  unsigned int SendErr;
+  unsigned int reportingInterval;
+  unsigned int activationTimeoutPeriod;
+  unsigned int maxUploadLatency;
+  unsigned int paramNumOfEntries;
+  unsigned int minThresholdDuration;
+  Vector *paramList;
+  Vector *staticParamList;
+  T2HTTP *t2HTTPDest;
+  T2RBUS *t2RBUSDest;
+  Vector *eMarkerList;
+  Vector *gMarkerList;
+  Vector *cachedReportList;
+  cJSON *jsonReportObj;
+  pthread_t reportThread;
+  pthread_mutex_t triggerCondMutex;
+  pthread_mutex_t eventMutex;
+  pthread_mutex_t reportMutex;
+  pthread_cond_t reportcond;
+  struct timespec currentTime;
+  struct timespec maxlatencyTime;
+  Vector *triggerConditionList;
+  pthread_cond_t reuseThread;
+  pthread_mutex_t reuseThreadMutex;
+  bool threadExists;
+} Profile;
 
 T2ERROR initProfileList();
 
@@ -114,7 +112,7 @@ hash_map_t *getProfileHashMap();
 
 void sendLogUploadInterruptToScheduler();
 
-void NotifyTimeout(const char* profileName, bool isClearSeekMap);
+void NotifyTimeout(const char *profileName, bool isClearSeekMap);
 
 void getMarkerCompRbusSub(bool subscription);
 
@@ -122,11 +120,12 @@ bool isProfileEnabled(const char *profileName);
 
 T2ERROR registerTriggerConditionConsumer();
 
-T2ERROR triggerReportOnCondtion(const char *referenceName, const char *referenceValue);
+T2ERROR triggerReportOnCondtion(const char *referenceName,
+                                const char *referenceValue);
 
 unsigned int getMinThresholdDuration(char *profileName);
 
-void reportGenerationCompleteReceiver(char* profileName);
+void reportGenerationCompleteReceiver(char *profileName);
 
-void NotifySchedulerstart(char* profileName, bool isschedulerstarted);
+void NotifySchedulerstart(char *profileName, bool isschedulerstarted);
 #endif /* _PROFILE_H_ */

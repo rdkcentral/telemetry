@@ -15,57 +15,56 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <unistd.h>
-#include "dca.h"
 #include "dcautil.h"
-#include "telemetry2_0.h"
-#include "t2log_wrapper.h"
-#include "t2common.h"
+#include "dca.h"
 #include "legacyutils.h"
-
-
+#include "t2common.h"
+#include "t2log_wrapper.h"
+#include "telemetry2_0.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 T2ERROR
-getGrepResults (char *profileName, Vector *markerList, Vector **grepResultList, bool isClearSeekMap, bool check_rotated) {
-    T2Debug("%s ++in\n", __FUNCTION__);
-    if(profileName == NULL || markerList == NULL || grepResultList == NULL){
-        T2Error("Invalid Args or Args are NULL\n");
-        return T2ERROR_FAILURE;
-    }
+getGrepResults(char *profileName, Vector *markerList, Vector **grepResultList,
+               bool isClearSeekMap, bool check_rotated) {
+  T2Debug("%s ++in\n", __FUNCTION__);
+  if (profileName == NULL || markerList == NULL || grepResultList == NULL) {
+    T2Error("Invalid Args or Args are NULL\n");
+    return T2ERROR_FAILURE;
+  }
 
-    getDCAResultsInVector(profileName, markerList, grepResultList, check_rotated);
-    if (isClearSeekMap) {
-        removeProfileFromSeekMap(profileName);
-    }
+  getDCAResultsInVector(profileName, markerList, grepResultList, check_rotated);
+  if (isClearSeekMap) {
+    removeProfileFromSeekMap(profileName);
+  }
 
-    T2Debug("%s --out\n", __FUNCTION__);
-    return T2ERROR_SUCCESS;
+  T2Debug("%s --out\n", __FUNCTION__);
+  return T2ERROR_SUCCESS;
 }
 
-void removeGrepConfig(char* profileName, bool clearSeekMap, bool clearExecMap) {
-    T2Debug("%s ++in\n", __FUNCTION__);
+void removeGrepConfig(char *profileName, bool clearSeekMap, bool clearExecMap) {
+  T2Debug("%s ++in\n", __FUNCTION__);
 
-    if(clearSeekMap)
-        removeProfileFromSeekMap(profileName);
+  if (clearSeekMap)
+    removeProfileFromSeekMap(profileName);
 
-    if (clearExecMap)
-        removeProfileFromExecMap(profileName);
-    T2Debug("%s ++out\n", __FUNCTION__);
+  if (clearExecMap)
+    removeProfileFromExecMap(profileName);
+  T2Debug("%s ++out\n", __FUNCTION__);
 }
 
-// dcaFlagReportCompleation this function is used to create legacy DCA Flag DCADONEFLAG
-void dcaFlagReportCompleation(){
-	T2Debug("%s --in creating flag %s\n", __FUNCTION__,DCADONEFLAG);
-	FILE *fileCheck = fopen(DCADONEFLAG, "w+");
-	if (fileCheck == NULL ){
-		T2Error(" Error in creating the Flag :  %s\n",DCADONEFLAG);
-	}
-	else{
-		fclose(fileCheck);
-	}
-	T2Debug("%s --out\n", __FUNCTION__);
+// dcaFlagReportCompleation this function is used to create legacy DCA Flag
+// DCADONEFLAG
+void dcaFlagReportCompleation() {
+  T2Debug("%s --in creating flag %s\n", __FUNCTION__, DCADONEFLAG);
+  FILE *fileCheck = fopen(DCADONEFLAG, "w+");
+  if (fileCheck == NULL) {
+    T2Error(" Error in creating the Flag :  %s\n", DCADONEFLAG);
+  } else {
+    fclose(fileCheck);
+  }
+  T2Debug("%s --out\n", __FUNCTION__);
 }

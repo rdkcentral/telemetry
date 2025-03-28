@@ -15,18 +15,19 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 #ifndef _T2PARSERXCONF_H_
 #define _T2PARSERXCONF_H_
 
+#include <cjson/cJSON.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <cjson/cJSON.h>
 
-#include "telemetry2_0.h"
 #include "profilexconf.h"
+#include "telemetry2_0.h"
 
-T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile);
+T2ERROR processConfigurationXConf(char *configData,
+                                  ProfileXConf **localProfile);
 
 #endif /* _T2PARSER_H_ */

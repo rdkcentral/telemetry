@@ -15,104 +15,95 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 #ifndef _T2COMMON_H_
 #define _T2COMMON_H_
 
+#include "vector.h"
+#include <regex.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <regex.h>
-#include "vector.h"
 
 #define MAX_ACCUMULATE 20
 #define MAX_ACCUMULATE_MSG "maximum accumulation reached"
 #define MAX_DEVICE_PROP_BUFF_SIZE 80
-#define DEVICE_PROPERTIES_FILE  "/etc/device.properties"
+#define DEVICE_PROPERTIES_FILE "/etc/device.properties"
 
+typedef enum {
+  MTYPE_NONE,
+  MTYPE_COUNTER,
+  MTYPE_ABSOLUTE,
+  MTYPE_ACCUMULATE
+} MarkerType;
 
-typedef enum
-{
-    MTYPE_NONE,
-    MTYPE_COUNTER,
-    MTYPE_ABSOLUTE,
-    MTYPE_ACCUMULATE
-}MarkerType;
+typedef enum {
+  REPORTTIMESTAMP_UNIXEPOCH = 1,
+  REPORTTIMESTAMP_NONE
+} reportTimestampFormat;
 
-typedef enum
-{
-    REPORTTIMESTAMP_UNIXEPOCH = 1,
-    REPORTTIMESTAMP_NONE
-}reportTimestampFormat;
+typedef struct _Param {
+  bool reportEmptyParam;
+  char *paramType;
+  char *name;
+  const char *alias;
+  bool trimParam;
+  char *regexParam;
+} Param;
 
-typedef struct _Param
-{
-    bool reportEmptyParam;
-    char* paramType;
-    char* name;
-    const char* alias;
-    bool trimParam;
-    char* regexParam;
-}Param;
+typedef struct _StaticParam {
+  char *paramType;
+  char *name;
+  char *value;
+} StaticParam;
 
-typedef struct _StaticParam
-{
-    char* paramType;
-    char* name;
-    char* value;
-}StaticParam;
+typedef struct _EventMarker {
+  bool reportEmptyParam;
+  bool trimParam;
+  char *alias;
+  char *paramType;
+  char *markerName;
+  char *compName;
+  reportTimestampFormat reportTimestampParam;
+  char *timestamp;
+  char *markerName_CT;
+  char *regexParam;
+  MarkerType mType;
+  union {
+    unsigned int count;
+    char *markerValue;
+    Vector *accumulatedValues;
+  } u;
+  Vector *accumulatedTimestamp;
+  unsigned int skipFreq;
+} EventMarker;
 
-typedef struct _EventMarker
-{
-    bool reportEmptyParam;
-    bool trimParam;
-    char* alias;
-    char* paramType;
-    char* markerName;
-    char* compName;
-    reportTimestampFormat reportTimestampParam;
-    char* timestamp;
-    char* markerName_CT;
-    char* regexParam;
-    MarkerType mType;
-    union{
-        unsigned int count;
-        char* markerValue;
-        Vector* accumulatedValues;
-    }u;
-    Vector* accumulatedTimestamp;
-    unsigned int skipFreq;
-}EventMarker;
+typedef struct _GrepMarker {
+  bool reportEmptyParam;
+  bool trimParam;
+  char *paramType;
+  char *markerName;
+  char *searchString;
+  char *logFile;
+  char *regexParam;
+  MarkerType mType;
+  union {
+    unsigned int count;
+    char *markerValue;
+  } u;
+  unsigned int skipFreq;
+  int firstSeekFromEOF;
+} GrepMarker;
 
-
-typedef struct _GrepMarker
-{
-    bool reportEmptyParam;
-    bool trimParam;
-    char* paramType;
-    char* markerName;
-    char* searchString;
-    char* logFile;
-    char* regexParam;
-    MarkerType mType;
-    union{
-        unsigned int count;
-        char* markerValue;
-    }u;
-    unsigned int skipFreq;
-    int firstSeekFromEOF;
-}GrepMarker;
-
-typedef struct _TriggerCondition
-{
-    char* type;
-    char* oprator;
-    int threshold;
-    int minThresholdDuration;
-    char* reference;
-    bool isSubscribed;
-    bool report;
-}TriggerCondition;
+typedef struct _TriggerCondition {
+  char *type;
+  char *oprator;
+  int threshold;
+  int minThresholdDuration;
+  char *reference;
+  bool isSubscribed;
+  bool report;
+} TriggerCondition;
 
 void freeParam(void *data);
 
@@ -128,6 +119,7 @@ void freeAccumulatedParam(void *data);
 
 int compareLogFileNames(const void *g1, const void *g2);
 
-bool getDevicePropertyData(const char *dev_prop_name, char *out_data, unsigned int buff_size);
+bool getDevicePropertyData(const char *dev_prop_name, char *out_data,
+                           unsigned int buff_size);
 
 #endif /* _T2COMMON_H_ */

@@ -15,18 +15,17 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 #ifndef _T2EVENTRECEIVER_H_
 #define _T2EVENTRECEIVER_H_
 
 #include "telemetry2_0.h"
 
-typedef struct _T2Event
-{
-    char* name;
-    char* value;
-}T2Event;
+typedef struct _T2Event {
+  char *name;
+  char *value;
+} T2Event;
 
 T2ERROR T2ER_Init();
 

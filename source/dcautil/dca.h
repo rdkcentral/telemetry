@@ -15,19 +15,21 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 #ifndef SRC_DCA_H_
 #define SRC_DCA_H_
-#include <cjson/cJSON.h>
 #include "vector.h"
+#include <cjson/cJSON.h>
 #include <stdbool.h>
 
 /**
  * Caller should be freeing vectorMarkerList and grepResultList
  */
-int getDCAResultsInJson(char* profileName, void* vectorMarkerList, cJSON** grepResultList);
+int getDCAResultsInJson(char *profileName, void *vectorMarkerList,
+                        cJSON **grepResultList);
 
-int getDCAResultsInVector(char* profileName, Vector* vectorMarkerList, Vector** grepResultList, bool check_rotated);
+int getDCAResultsInVector(char *profileName, Vector *vectorMarkerList,
+                          Vector **grepResultList, bool check_rotated);
 
 char *strSplit(char *str, char *delim);
 

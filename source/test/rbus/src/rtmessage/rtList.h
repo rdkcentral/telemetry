@@ -29,38 +29,44 @@ extern "C" {
 #endif
 
 struct _rtList;
-typedef struct _rtList* rtList;
+typedef struct _rtList *rtList;
 
 struct _rtListItem;
-typedef struct _rtListItem* rtListItem;
+typedef struct _rtListItem *rtListItem;
 
 typedef void (*rtList_Cleanup)(void *);
 typedef int (*rtList_Compare)(const void *, const void *);
 
-extern void* rtListReuseData;
+extern void *rtListReuseData;
 
-rtError rtList_Create(rtList* plist);
+rtError rtList_Create(rtList *plist);
 rtError rtList_Destroy(rtList list, rtList_Cleanup destroyer);
-rtError rtList_PushFront(rtList list, void* data, rtListItem* pitem);
-rtError rtList_PushBack(rtList list, void* data, rtListItem* pitem);
-rtError rtList_InsertBefore(rtList list, void* data, rtListItem at, rtListItem* pitem);
-rtError rtList_InsertAfter(rtList list, void* data, rtListItem at, rtListItem* pitem);
-rtError rtList_RemoveItem(rtList list, rtListItem item, rtList_Cleanup destroyer);
-rtError rtList_RemoveItemWithData(rtList list, void* data, rtList_Cleanup destroyer);
-rtError rtList_RemoveItemByCompare(rtList list, const void* comparison, rtList_Compare compare, rtList_Cleanup destroyer);
+rtError rtList_PushFront(rtList list, void *data, rtListItem *pitem);
+rtError rtList_PushBack(rtList list, void *data, rtListItem *pitem);
+rtError rtList_InsertBefore(rtList list, void *data, rtListItem at,
+                            rtListItem *pitem);
+rtError rtList_InsertAfter(rtList list, void *data, rtListItem at,
+                           rtListItem *pitem);
+rtError rtList_RemoveItem(rtList list, rtListItem item,
+                          rtList_Cleanup destroyer);
+rtError rtList_RemoveItemWithData(rtList list, void *data,
+                                  rtList_Cleanup destroyer);
+rtError rtList_RemoveItemByCompare(rtList list, const void *comparison,
+                                   rtList_Compare compare,
+                                   rtList_Cleanup destroyer);
 rtError rtList_RemoveAllItems(rtList list, rtList_Cleanup destroyer);
-int     rtList_HasItem(rtList list, const void* comparison, rtList_Compare compare);
-void*   rtList_Find(rtList list, const void* comparison, rtList_Compare compare);
-rtError rtList_GetSize(rtList list, size_t* size);
-rtError rtList_GetFront(rtList list, rtListItem* pitem);
-rtError rtList_GetBack(rtList list, rtListItem* pitem);
-rtError rtListItem_GetData(rtListItem item, void** data);
-rtError rtListItem_SetData(rtListItem item, void* data);
-rtError rtListItem_GetNext(rtListItem item, rtListItem* pitem);
-rtError rtListItem_GetPrev(rtListItem item, rtListItem* pitem);
+int rtList_HasItem(rtList list, const void *comparison, rtList_Compare compare);
+void *rtList_Find(rtList list, const void *comparison, rtList_Compare compare);
+rtError rtList_GetSize(rtList list, size_t *size);
+rtError rtList_GetFront(rtList list, rtListItem *pitem);
+rtError rtList_GetBack(rtList list, rtListItem *pitem);
+rtError rtListItem_GetData(rtListItem item, void **data);
+rtError rtListItem_SetData(rtListItem item, void *data);
+rtError rtListItem_GetNext(rtListItem item, rtListItem *pitem);
+rtError rtListItem_GetPrev(rtListItem item, rtListItem *pitem);
 
-void rtList_Cleanup_Free(void* item);
-int rtList_Compare_String(const void* left, const void* right);
+void rtList_Cleanup_Free(void *item);
+int rtList_Compare_String(const void *left, const void *right);
 
 #ifdef __cplusplus
 }

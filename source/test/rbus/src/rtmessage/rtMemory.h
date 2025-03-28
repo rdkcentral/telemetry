@@ -23,13 +23,18 @@
 
 #define rt_malloc(size) rt_malloc_at((size), __FILE__, __LINE__, 1)
 #define rt_calloc(num, size) rt_calloc_at((num), (size), __FILE__, __LINE__, 1)
-#define rt_realloc(ptr, new_size) rt_realloc_at((ptr), (new_size), __FILE__, __LINE__, 1)
+#define rt_realloc(ptr, new_size)                                              \
+  rt_realloc_at((ptr), (new_size), __FILE__, __LINE__, 1)
 #define rt_try_malloc(size) rt_malloc_at((size), __FILE__, __LINE__, 0)
-#define rt_try_calloc(num, size) rt_calloc_at((num), (size), __FILE__, __LINE__, 0)
-#define rt_try_realloc(ptr, new_size) rt_realloc_at((ptr), (new_size), __FILE__, __LINE__, 0)
+#define rt_try_calloc(num, size)                                               \
+  rt_calloc_at((num), (size), __FILE__, __LINE__, 0)
+#define rt_try_realloc(ptr, new_size)                                          \
+  rt_realloc_at((ptr), (new_size), __FILE__, __LINE__, 0)
 #define rt_free(ptr) rt_free_at((ptr), __FILE__, __LINE__, 0)
 
-void* rt_malloc_at(size_t size, char const* file, int line, int do_abort);
-void* rt_calloc_at(size_t num, size_t size, char const* file, int line, int do_abort);
-void* rt_realloc_at(void* ptr, size_t new_size, char const* file, int line, int do_abort);
-void rt_free_at(void* ptr, char const* file, int line, int do_abort);
+void *rt_malloc_at(size_t size, char const *file, int line, int do_abort);
+void *rt_calloc_at(size_t num, size_t size, char const *file, int line,
+                   int do_abort);
+void *rt_realloc_at(void *ptr, size_t new_size, char const *file, int line,
+                    int do_abort);
+void rt_free_at(void *ptr, char const *file, int line, int do_abort);

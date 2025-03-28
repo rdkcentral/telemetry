@@ -15,50 +15,57 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 #ifndef _SCHEDULER_H_
 #define _SCHEDULER_H_
 
-#include <sys/time.h>
-#include <pthread.h>
 #include "telemetry2_0.h"
+#include <pthread.h>
 #include <stdbool.h>
+#include <sys/time.h>
 
-typedef struct _SchedulerProfile
-{
-    char* name;
-    char* timeRef;
-    unsigned int timeOutDuration;
-    unsigned int timeToLive;
-    unsigned int timeRefinSec;
-    bool repeat;
-    bool terminated;
-    bool deleteonTime;
-    bool reportonupdate;
-    unsigned int firstreportint;
-    bool firstexecution;
-    pthread_t tId;
-    pthread_mutex_t tMutex;
-    pthread_cond_t tCond;
+typedef struct _SchedulerProfile {
+  char *name;
+  char *timeRef;
+  unsigned int timeOutDuration;
+  unsigned int timeToLive;
+  unsigned int timeRefinSec;
+  bool repeat;
+  bool terminated;
+  bool deleteonTime;
+  bool reportonupdate;
+  unsigned int firstreportint;
+  bool firstexecution;
+  pthread_t tId;
+  pthread_mutex_t tMutex;
+  pthread_cond_t tCond;
 
-}SchedulerProfile;
+} SchedulerProfile;
 
-typedef void (*TimeoutNotificationCB)(const char* profileName, bool isClearSeekMap);
-typedef void (*ActivationTimeoutCB)(const char* profileName);
-typedef void (*NotifySchedulerstartCB)(char* profileName, bool isschedulerstarted);
+typedef void (*TimeoutNotificationCB)(const char *profileName,
+                                      bool isClearSeekMap);
+typedef void (*ActivationTimeoutCB)(const char *profileName);
+typedef void (*NotifySchedulerstartCB)(char *profileName,
+                                       bool isschedulerstarted);
 
-int getLapsedTime (struct timespec *result, struct timespec *x, struct timespec *y);
+int getLapsedTime(struct timespec *result, struct timespec *x,
+                  struct timespec *y);
 
-T2ERROR initScheduler(TimeoutNotificationCB notificationCb, ActivationTimeoutCB activationCB, NotifySchedulerstartCB notifyschedulerCB);
+T2ERROR initScheduler(TimeoutNotificationCB notificationCb,
+                      ActivationTimeoutCB activationCB,
+                      NotifySchedulerstartCB notifyschedulerCB);
 
 void uninitScheduler();
 
-T2ERROR registerProfileWithScheduler(const char* profileName, unsigned int timeInterval, unsigned int activationTimeout, bool deleteonTimout, bool repeat, bool reportOnUpdate, unsigned int firstReportingInterval, char *timeRef);
+T2ERROR registerProfileWithScheduler(
+    const char *profileName, unsigned int timeInterval,
+    unsigned int activationTimeout, bool deleteonTimout, bool repeat,
+    bool reportOnUpdate, unsigned int firstReportingInterval, char *timeRef);
 
-T2ERROR unregisterProfileFromScheduler(const char* profileName);
+T2ERROR unregisterProfileFromScheduler(const char *profileName);
 
-T2ERROR SendInterruptToTimeoutThread(char* profileName);
+T2ERROR SendInterruptToTimeoutThread(char *profileName);
 
 bool get_logdemand();
 

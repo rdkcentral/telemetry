@@ -15,7 +15,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 #ifndef _PERSISTENCE_H_
 #define _PERSISTENCE_H_
@@ -34,39 +34,42 @@
 #if defined(DEVICE_EXTENDER)
 #define XCONFPROFILE_PERSISTENCE_PATH ""
 #else
-#define XCONFPROFILE_PERSISTENCE_PATH PERSISTENCE_PATH"/.t2persistentfolder/"
+#define XCONFPROFILE_PERSISTENCE_PATH PERSISTENCE_PATH "/.t2persistentfolder/"
 #endif
-#define REPORTPROFILES_PERSISTENCE_PATH PERSISTENCE_PATH"/.t2reportprofiles/"
+#define REPORTPROFILES_PERSISTENCE_PATH PERSISTENCE_PATH "/.t2reportprofiles/"
 
-#define SHORTLIVED_PROFILES_PATH               "/tmp/t2reportprofiles/"
+#define SHORTLIVED_PROFILES_PATH "/tmp/t2reportprofiles/"
 #define MSGPACK_REPORTPROFILES_PERSISTENT_FILE "profiles.msgpack"
 #define REPORTPROFILES_FILE_PATH_SIZE 256
 
-#define CACHED_MESSAGE_PATH PERSISTENCE_PATH"/.t2cachedmessages/"
+#define CACHED_MESSAGE_PATH PERSISTENCE_PATH "/.t2cachedmessages/"
 
-typedef struct _Config
-{
-    char* name;
-    char* configData;
-}Config;
+typedef struct _Config {
+  char *name;
+  char *configData;
+} Config;
 
-T2ERROR fetchLocalConfigs(const char* path, Vector *configList);
+T2ERROR fetchLocalConfigs(const char *path, Vector *configList);
 
-T2ERROR saveConfigToFile(const char* path, const char *profileName, const char* configuration);
+T2ERROR saveConfigToFile(const char *path, const char *profileName,
+                         const char *configuration);
 
-T2ERROR saveCachedReportToPersistenceFolder(const char *profileName, Vector *reportList);
+T2ERROR saveCachedReportToPersistenceFolder(const char *profileName,
+                                            Vector *reportList);
 
-T2ERROR populateCachedReportList(const char *profileName, Vector *outReportList);
+T2ERROR populateCachedReportList(const char *profileName,
+                                 Vector *outReportList);
 
-void clearPersistenceFolder(const char* path); //change in all places
+void clearPersistenceFolder(const char *path); // change in all places
 
-void removeProfileFromDisk(const char* path, const char* profileName);
+void removeProfileFromDisk(const char *path, const char *profileName);
 
-T2ERROR MsgPackSaveConfig(const char* path, const char *fileName, const char *msgpack_blob, size_t blob_size);
+T2ERROR MsgPackSaveConfig(const char *path, const char *fileName,
+                          const char *msgpack_blob, size_t blob_size);
 
-//Privacy mode
+// Privacy mode
 
-#define PRIVACYMODE_PATH PERSISTENCE_PATH"/.t2privacymodes"
+#define PRIVACYMODE_PATH PERSISTENCE_PATH "/.t2privacymodes"
 
 T2ERROR getPrivacyModeFromPersistentFolder(char **data);
 

@@ -24,19 +24,21 @@
 #include "rtError.h"
 #include <stddef.h>
 
-#define RT_ERROR_THREADPOOL_TASKS_CANCELLED   3000
-#define RT_ERROR_THREADPOOL_TASK_PENDING      3001
+#define RT_ERROR_THREADPOOL_TASKS_CANCELLED 3000
+#define RT_ERROR_THREADPOOL_TASK_PENDING 3001
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef struct _rtThreadPool* rtThreadPool;
-typedef void (*rtThreadPoolFunc)(void* userData);
+typedef struct _rtThreadPool *rtThreadPool;
+typedef void (*rtThreadPoolFunc)(void *userData);
 
-rtError rtThreadPool_Create(rtThreadPool* ppool, size_t maxThreadCount, size_t stackSize, int expireTime);
+rtError rtThreadPool_Create(rtThreadPool *ppool, size_t maxThreadCount,
+                            size_t stackSize, int expireTime);
 rtError rtThreadPool_Destroy(rtThreadPool pool, int waitTimeMS);
-rtError rtThreadPool_RunTask(rtThreadPool pool, rtThreadPoolFunc func, void* userData);
+rtError rtThreadPool_RunTask(rtThreadPool pool, rtThreadPoolFunc func,
+                             void *userData);
 
 #ifdef __cplusplus
 }

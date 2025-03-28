@@ -27,7 +27,7 @@
 extern "C" {
 #endif
 
-void rtDebug_PrintBuffer(char const* label, uint8_t* p, int n);
+void rtDebug_PrintBuffer(char const *label, uint8_t *p, int n);
 
 #ifdef __cplusplus
 }

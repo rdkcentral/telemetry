@@ -28,20 +28,20 @@
 extern "C" {
 #endif
 
-/* simple unnamed single process semaphore 
+/* simple unnamed single process semaphore
  * all function will return RT_OK on success
  * or RT_ERROR for any error except as noted below
  */
 
 struct _rtSemaphore;
-typedef struct _rtSemaphore* rtSemaphore;
+typedef struct _rtSemaphore *rtSemaphore;
 
 /** @fn rtError rtSemaphore_Create(rtSemaphore* sem, int, unsigned int)
  *  @brief Create an unnamed single process semaphore with
  *         an initial value of 0.
  *  @param sem  the semaphore to init
  */
-rtError rtSemaphore_Create(rtSemaphore* sem);
+rtError rtSemaphore_Create(rtSemaphore *sem);
 
 /** @fn rtError rtSemaphore_Destroy(rtSemaphore sem)
  *  @brief Destroy a semophore
@@ -50,7 +50,7 @@ rtError rtSemaphore_Create(rtSemaphore* sem);
 rtError rtSemaphore_Destroy(rtSemaphore sem);
 
 /** @fn rtError rtSemaphore_Post(rtSemaphore sem)
- *  @brief increment the samephore value by 1 and 
+ *  @brief increment the samephore value by 1 and
  *         wake up any thread waiting on the semaphore
  *  @param sem  a semaphore to post to
  */
@@ -61,7 +61,7 @@ rtError rtSemaphore_Post(rtSemaphore sem);
  *  @param sem  a semaphore
  *  @param val  out param to pass the value
  */
-rtError rtSemaphore_GetValue(rtSemaphore sem, int* val);
+rtError rtSemaphore_GetValue(rtSemaphore sem, int *val);
 
 /** @fn rtError rtSemaphore_Wait(rtSemaphore sem)
  *  @brief Wait for the semaphore to obtain a value > 0
@@ -74,9 +74,10 @@ rtError rtSemaphore_Wait(rtSemaphore sem);
  *  @brief Wait a period of time for the semaphore to obtain a value > 0
  *  @param sem  a semaphore
  *  @param t  the future monotonic time to wait until (e.g. the timeout)
- *  @return RT_OK if success, RT_ERROR if fail, RT_ERROR_TIMEOUT is timeout reached
+ *  @return RT_OK if success, RT_ERROR if fail, RT_ERROR_TIMEOUT is timeout
+ * reached
  */
-rtError rtSemaphore_TimedWait(rtSemaphore sem, struct timespec* t);
+rtError rtSemaphore_TimedWait(rtSemaphore sem, struct timespec *t);
 
 #ifdef __cplusplus
 }

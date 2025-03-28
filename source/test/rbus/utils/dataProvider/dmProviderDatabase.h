@@ -21,31 +21,38 @@
 #ifndef __DM_PROVIDER_DATABASE_H__
 #define __DM_PROVIDER_DATABASE_H__
 
-#include "dmProviderInfo.h"
-#include "dmQuery.h"
-#include "dmProviderOperation.h"
 #include "dmPropertyInfo.h"
+#include "dmProviderInfo.h"
+#include "dmProviderOperation.h"
+#include "dmQuery.h"
 
 #include <map>
 #include <string>
 #include <vector>
 
-class dmProviderDatabase
-{
+class dmProviderDatabase {
 public:
-  dmProviderDatabase(std::string const& dir);
+  dmProviderDatabase(std::string const &dir);
 
-  dmQuery* createQuery();
-  dmQuery* createQuery(dmProviderOperation op, char const* s);
-  std::shared_ptr<dmProviderInfo> getProviderByProviderName(std::string const& s) const;
-  std::shared_ptr<dmProviderInfo> getProviderByModelName(std::string const& s) const;
-  std::shared_ptr<dmProviderInfo> getProviderByPropertyName(std::string const& s, bool* isListItem=nullptr) const;
-  std::shared_ptr<dmProviderInfo> getProviderByObjectName(std::string const& s, bool* isListItem=nullptr) const;
+  dmQuery *createQuery();
+  dmQuery *createQuery(dmProviderOperation op, char const *s);
+  std::shared_ptr<dmProviderInfo>
+  getProviderByProviderName(std::string const &s) const;
+  std::shared_ptr<dmProviderInfo>
+  getProviderByModelName(std::string const &s) const;
+  std::shared_ptr<dmProviderInfo>
+  getProviderByPropertyName(std::string const &s,
+                            bool *isListItem = nullptr) const;
+  std::shared_ptr<dmProviderInfo>
+  getProviderByObjectName(std::string const &s,
+                          bool *isListItem = nullptr) const;
+
 private:
-  void loadFromDir(std::string const& dir);
-  void loadFile(std::string const& dir, char const* fname);
-  std::shared_ptr<dmProviderInfo> makeProviderInfo(char const* json);
+  void loadFromDir(std::string const &dir);
+  void loadFile(std::string const &dir, char const *fname);
+  std::shared_ptr<dmProviderInfo> makeProviderInfo(char const *json);
   void buildProviderTree();
+
 private:
   std::string m_modelDirectory;
 };

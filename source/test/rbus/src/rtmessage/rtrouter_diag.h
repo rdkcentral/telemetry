@@ -24,21 +24,21 @@
 #define RTROUTER_DIAG_CMD_KEY "_RTROUTED.INBOX.DIAG.KEY"
 #define RTROUTER_DIAG_CMD_VALUE "_RTROUTED.INBOX.DIAG.VALUE"
 
-#define RTROUTER_DIAG_CMD_ENABLE_VERBOSE_LOGS       "enableVerboseLogs"
-#define RTROUTER_DIAG_CMD_DISABLE_VERBOSE_LOGS      "disableVerboseLogs"
+#define RTROUTER_DIAG_CMD_ENABLE_VERBOSE_LOGS "enableVerboseLogs"
+#define RTROUTER_DIAG_CMD_DISABLE_VERBOSE_LOGS "disableVerboseLogs"
 
-#define RTROUTER_DIAG_CMD_LOG_ROUTING_STATS         "logRoutingStats"
-#define RTROUTER_DIAG_CMD_LOG_ROUTING_TOPICS        "logRoutingTopics"
-#define RTROUTER_DIAG_CMD_LOG_ROUTING_ROUTES        "logRoutingRoutes"
+#define RTROUTER_DIAG_CMD_LOG_ROUTING_STATS "logRoutingStats"
+#define RTROUTER_DIAG_CMD_LOG_ROUTING_TOPICS "logRoutingTopics"
+#define RTROUTER_DIAG_CMD_LOG_ROUTING_ROUTES "logRoutingRoutes"
 
-#define RTROUTER_DIAG_CMD_ENABLE_TRAFFIC_MONITOR    "enableTrafficMonitor"
-#define RTROUTER_DIAG_CMD_DISABLE_TRAFFIC_MONITOR   "disableTrafficMonitor"
+#define RTROUTER_DIAG_CMD_ENABLE_TRAFFIC_MONITOR "enableTrafficMonitor"
+#define RTROUTER_DIAG_CMD_DISABLE_TRAFFIC_MONITOR "disableTrafficMonitor"
 
-#define RTROUTER_DIAG_CMD_RESET_BENCHMARKING_DATA   "resetBenchmarkData"
-#define RTROUTER_DIAG_CMD_DUMP_BENCHMARKING_DATA    "dumpBenchmarkData"
+#define RTROUTER_DIAG_CMD_RESET_BENCHMARKING_DATA "resetBenchmarkData"
+#define RTROUTER_DIAG_CMD_DUMP_BENCHMARKING_DATA "dumpBenchmarkData"
 
-#define RTROUTER_DIAG_CMD_ADD_NEW_LISTENER          "addNewListener"
-#define RTROUTER_DIAG_CMD_SHUTDOWN                  "shutdown"
-#define RTROUTER_DIAG_CMD_HEARTBEAT                 "heartbeat"
+#define RTROUTER_DIAG_CMD_ADD_NEW_LISTENER "addNewListener"
+#define RTROUTER_DIAG_CMD_SHUTDOWN "shutdown"
+#define RTROUTER_DIAG_CMD_HEARTBEAT "heartbeat"
 
 #endif

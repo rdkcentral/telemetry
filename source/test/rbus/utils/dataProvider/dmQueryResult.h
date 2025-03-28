@@ -21,21 +21,20 @@
 #ifndef __DM_QUERY_RESULT_H__
 #define __DM_QUERY_RESULT_H__
 
-#include "dmValue.h"
 #include "dmPropertyInfo.h"
+#include "dmValue.h"
 
 #include <vector>
 
 class dmProviderDatabase;
 
-class dmQueryResult
-{
+class dmQueryResult {
   friend class dmProviderDatabase;
 
 public:
-  struct Param
-  {
-    Param(int code, char const* msg, dmValue const& val, dmPropertyInfo const& info);
+  struct Param {
+    Param(int code, char const *msg, dmValue const &val,
+          dmPropertyInfo const &info);
 
     int StatusCode;
     std::string StatusMessage;
@@ -46,24 +45,21 @@ public:
   dmQueryResult();
 
   void clear();
-  void merge(dmQueryResult const& resuls);
+  void merge(dmQueryResult const &resuls);
   void setStatus(int status);
-  void setStatusMsg(std::string const& statusmsg);
-  void addValue(dmPropertyInfo const& prop, dmValue const& val, 
-    int code = 0, char const* message = nullptr);
-  void setObjectName(std::string const& name);
+  void setStatusMsg(std::string const &statusmsg);
+  void addValue(dmPropertyInfo const &prop, dmValue const &val, int code = 0,
+                char const *message = nullptr);
+  void setObjectName(std::string const &name);
 
-  inline int status() const
-    { return m_status; }
+  inline int status() const { return m_status; }
 
-  inline std::vector<Param> const& values() const
-    { return m_values; }
+  inline std::vector<Param> const &values() const { return m_values; }
 
-  inline std::string const& statusMsg() const
-    { return m_statusMsg; }
+  inline std::string const &statusMsg() const { return m_statusMsg; }
 
-  inline std::string const& objectName() const
-    { return m_objectName; }
+  inline std::string const &objectName() const { return m_objectName; }
+
 private:
   int m_status;
   std::vector<Param> m_values;

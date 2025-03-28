@@ -28,37 +28,38 @@
 #include <map>
 #include <vector>
 
-class dmProvider
-{
+class dmProvider {
 public:
   dmProvider();
-  dmProvider(const char* alias);
+  dmProvider(const char *alias);
   virtual ~dmProvider();
 
-  virtual void doGet(std::vector<dmPropertyInfo> const& params, dmQueryResult& result);
-  virtual void doSet(std::vector<dmNamedValue> const& params, dmQueryResult& result);
+  virtual void doGet(std::vector<dmPropertyInfo> const &params,
+                     dmQueryResult &result);
+  virtual void doSet(std::vector<dmNamedValue> const &params,
+                     dmQueryResult &result);
 
 protected:
-  virtual void doGet(dmPropertyInfo const& param, dmQueryResult& result);
-  virtual void doSet(dmPropertyInfo const& info, dmValue const& value, dmQueryResult& result);
+  virtual void doGet(dmPropertyInfo const &param, dmQueryResult &result);
+  virtual void doSet(dmPropertyInfo const &info, dmValue const &value,
+                     dmQueryResult &result);
 
-  using getter_function = std::function<dmValue (void)>;
-  using setter_function = std::function<void (dmValue const& value)>;
+  using getter_function = std::function<dmValue(void)>;
+  using setter_function = std::function<void(dmValue const &value)>;
 
-  void onGet(std::string const& propertyName, getter_function func);
-  void onSet(std::string const& propertyName, setter_function func);
+  void onGet(std::string const &propertyName, getter_function func);
+  void onSet(std::string const &propertyName, setter_function func);
 
-  virtual void beginTransaction(){}
-  virtual void endTransaction(){}
-  bool isTransaction() const 
-    { return m_isTransaction; }
+  virtual void beginTransaction() {}
+  virtual void endTransaction() {}
+  bool isTransaction() const { return m_isTransaction; }
+
 private:
-  struct provider_functions
-  {
+  struct provider_functions {
     getter_function getter;
     setter_function setter;
   };
-  std::map< std::string, provider_functions > m_provider_functions;
+  std::map<std::string, provider_functions> m_provider_functions;
   bool m_isTransaction;
 };
 

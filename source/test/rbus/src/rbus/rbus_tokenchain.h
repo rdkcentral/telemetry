@@ -15,7 +15,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 #ifndef RBUS_TOKENCHAIN_H
 #define RBUS_TOKENCHAIN_H
@@ -26,40 +26,38 @@
 extern "C" {
 #endif
 
-typedef enum TokenType
-{
-    TokenNonRow,
-    TokenAlias,
-    TokenInstNum,
-    TokenWildcard
+typedef enum TokenType {
+  TokenNonRow,
+  TokenAlias,
+  TokenInstNum,
+  TokenWildcard
 } TokenType;
 
-typedef struct Token
-{
-    char* text;         /* text of token. e.g. the 'WiFi' in 'Device.WiFi.Radio.1' */
-    elementNode* node;  /* the corresponding registration node in the element tree */
-    TokenType type;     /* type of expression used to identify a row instance*/
-    struct Token* prev; /* the previous token in list */
-    struct Token* next; /* the next token in list */
+typedef struct Token {
+  char *text; /* text of token. e.g. the 'WiFi' in 'Device.WiFi.Radio.1' */
+  elementNode
+      *node;      /* the corresponding registration node in the element tree */
+  TokenType type; /* type of expression used to identify a row instance*/
+  struct Token *prev; /* the previous token in list */
+  struct Token *next; /* the next token in list */
 } Token;
 
-typedef struct TokenChain
-{
-    Token* first;       /* first token in chain */
-    Token* last;        /* last token in chain -- if you want to go backwards through list */
+typedef struct TokenChain {
+  Token *first; /* first token in chain */
+  Token *last;  /* last token in chain -- if you want to go backwards through
+                   list */
 } TokenChain;
 
-TokenChain* TokenChain_create(char const* sourceName, elementNode* regNode);
+TokenChain *TokenChain_create(char const *sourceName, elementNode *regNode);
 
-void TokenChain_destroy(TokenChain* chain);
+void TokenChain_destroy(TokenChain *chain);
 
-bool TokenChain_match(TokenChain* chain, elementNode* instNode);
+bool TokenChain_match(TokenChain *chain, elementNode *instNode);
 
-void TokenChain_print(TokenChain* chain);
+void TokenChain_print(TokenChain *chain);
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif
-

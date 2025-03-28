@@ -15,7 +15,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 #ifndef RBUS_HANDLE_H
 #define RBUS_HANDLE_H
 
@@ -36,44 +36,42 @@ extern "C" {
     1 inbox (registered on first rbus_open)
     1 advisory (also registered on the first rbus_open)
     16 component names (registered on each rbus_open call)
-    46 additional listeners which can be used by the rbus_message api, other rtConnection clients or for rbus future requirements
+    46 additional listeners which can be used by the rbus_message api, other
+  rtConnection clients or for rbus future requirements
 */
 #define RBUS_MAX_HANDLES 16
-typedef enum _rbusHandleType
-{
-    RBUS_HWDL_TYPE_REGULAR = 0xD0D0,
-    RBUS_HWDL_TYPE_DIRECT = 0xE0E0,
-    RBUS_HWDL_TYPE_UNKNOWN = 0xB0DE
+typedef enum _rbusHandleType {
+  RBUS_HWDL_TYPE_REGULAR = 0xD0D0,
+  RBUS_HWDL_TYPE_DIRECT = 0xE0E0,
+  RBUS_HWDL_TYPE_UNKNOWN = 0xB0DE
 } rbusHandleType_t;
 
+struct _rbusHandle {
+  char *componentName;
+  int32_t componentId;
+  elementNode *elementRoot;
 
-struct _rbusHandle
-{
-  char*                 componentName;
-  int32_t               componentId;
-  elementNode*          elementRoot;
-
-  /* consumer side subscriptions FIXME - 
+  /* consumer side subscriptions FIXME -
     this needs to be an associative map instead of list/vector*/
-  rtVector              eventSubs; 
+  rtVector eventSubs;
 
   /* provider side subscriptions */
-  rbusSubscriptions_t   subscriptions; 
+  rbusSubscriptions_t subscriptions;
 
-  rtVector              messageCallbacks;
-  rtConnection          m_connection;
-  rbusHandleType_t      m_handleType;
-  pthread_mutex_t       handle_eventSubsMutex;
-  pthread_mutex_t       handle_subsMutex;
+  rtVector messageCallbacks;
+  rtConnection m_connection;
+  rbusHandleType_t m_handleType;
+  pthread_mutex_t handle_eventSubsMutex;
+  pthread_mutex_t handle_subsMutex;
 };
 
-void rbusHandleList_Add(struct _rbusHandle* handle);
-void rbusHandleList_Remove(struct _rbusHandle* handle);
+void rbusHandleList_Add(struct _rbusHandle *handle);
+void rbusHandleList_Remove(struct _rbusHandle *handle);
 bool rbusHandleList_IsEmpty();
 bool rbusHandleList_IsFull();
-void rbusHandleList_ClientDisconnect(char const* clientListener);
-struct _rbusHandle* rbusHandleList_GetByComponentID(int32_t componentId);
-struct _rbusHandle* rbusHandleList_GetByName(char const* componentName);
+void rbusHandleList_ClientDisconnect(char const *clientListener);
+struct _rbusHandle *rbusHandleList_GetByComponentID(int32_t componentId);
+struct _rbusHandle *rbusHandleList_GetByName(char const *componentName);
 
 #ifdef __cplusplus
 }

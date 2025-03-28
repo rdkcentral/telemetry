@@ -22,39 +22,35 @@
 #define __DM_PROVIDER_HOST_H__
 
 #include "dmPropertyInfo.h"
-#include "dmQueryResult.h"
 #include "dmProviderDatabase.h"
+#include "dmQueryResult.h"
 
+#include <list>
 #include <map>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
-#include <list>
 
 class dmProvider;
 class dmPropertyInfo;
 class dmProviderDatabase;
 
-class dmProviderHost
-{
+class dmProviderHost {
 public:
-  dmProviderHost()
-  {
-    #ifdef DEFAULT_DATAMODELDIR
+  dmProviderHost() {
+#ifdef DEFAULT_DATAMODELDIR
     std::string datamodel_dir = DEFAULT_DATAMODELDIR;
-    #else
+#else
     std::string datamodel_dir;
-    #endif
+#endif
 
     db = new dmProviderDatabase(datamodel_dir);
   }
 
-  virtual ~dmProviderHost()
-  {
-    if (db)
-    {
+  virtual ~dmProviderHost() {
+    if (db) {
       delete db;
       db = nullptr;
     }
@@ -66,25 +62,26 @@ public:
   virtual void run() = 0;
 
 public:
-  static dmProviderHost* create();
+  static dmProviderHost *create();
 
 public:
-  bool registerProvider(char const* object, std::unique_ptr<dmProvider> provider);
+  bool registerProvider(char const *object,
+                        std::unique_ptr<dmProvider> provider);
 
 protected:
-  virtual bool providerRegistered(std::string const& name) = 0;
+  virtual bool providerRegistered(std::string const &name) = 0;
 
-  void doGet(std::string const& providerName, std::vector<dmPropertyInfo> const& params,
-    dmQueryResult& result);
+  void doGet(std::string const &providerName,
+             std::vector<dmPropertyInfo> const &params, dmQueryResult &result);
 
-  void doSet(std::string const& providerName, std::vector<dmNamedValue> const& params,
-    dmQueryResult& result);
+  void doSet(std::string const &providerName,
+             std::vector<dmNamedValue> const &params, dmQueryResult &result);
 
-  dmProviderDatabase* db;
+  dmProviderDatabase *db;
 
 private:
-  std::map< std::string, std::unique_ptr<dmProvider> > m_providers;
-  std::map< std::string, std::list<std::string> > m_lists;
+  std::map<std::string, std::unique_ptr<dmProvider>> m_providers;
+  std::map<std::string, std::list<std::string>> m_lists;
   std::string m_providername;
 };
 

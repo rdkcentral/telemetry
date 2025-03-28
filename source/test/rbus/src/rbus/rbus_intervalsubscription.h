@@ -15,7 +15,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 #ifndef RBUS_INTERVAL_H
 #define RBUS_INTERVAL_H
@@ -26,8 +26,12 @@
 extern "C" {
 #endif
 
-rbusError_t rbusInterval_AddSubscriptionRecord(rbusHandle_t handle, elementNode* propNode, rbusSubscription_t* sub);
-void rbusInterval_RemoveSubscriptionRecord(rbusHandle_t handle, elementNode* propNode, rbusSubscription_t* sub);
+rbusError_t rbusInterval_AddSubscriptionRecord(rbusHandle_t handle,
+                                               elementNode *propNode,
+                                               rbusSubscription_t *sub);
+void rbusInterval_RemoveSubscriptionRecord(rbusHandle_t handle,
+                                           elementNode *propNode,
+                                           rbusSubscription_t *sub);
 
 #ifdef __cplusplus
 }

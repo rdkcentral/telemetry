@@ -15,7 +15,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 #include <stdio.h>
 #include <telemetry_busmessage_sender.h>
@@ -23,11 +23,11 @@
 #define COMP_NAME "telemetry_client"
 
 int main(int argc, char *argv[]) {
-    (void) argc;// To fix compiler warning
-    t2_init(COMP_NAME);
-	t2_event_s(argv[1], argv[2]);
+  (void)argc; // To fix compiler warning
+  t2_init(COMP_NAME);
+  t2_event_s(argv[1], argv[2]);
 
-    t2_uninit();
+  t2_uninit();
 
-	return 0;
+  return 0;
 }

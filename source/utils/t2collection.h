@@ -15,34 +15,33 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 #ifndef _T2COLLECTION_H_
 #define _T2COLLECTION_H_
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #define MAX_KEY_LEN 512
 
 typedef struct element {
-    void *data;
-    struct element *next;
+  void *data;
+  struct element *next;
 } element_t;
 
 typedef struct {
-    void    *data;
-    char    *key;
+  void *data;
+  char *key;
 } hash_element_t;
 
 typedef struct {
-    element_t   *head;
+  element_t *head;
 } queue_t;
 
-typedef struct{
-    queue_t *queue;
+typedef struct {
+  queue_t *queue;
 } hash_map_t;
-
 
 typedef void (*queue_cleanup)(void *);
 typedef void (*hashelement_data_cleanup)(void *);
@@ -55,11 +54,11 @@ void *t2_queue_remove(queue_t *q, uint32_t n);
 void *t2_queue_peek(queue_t *q, uint32_t n);
 uint32_t t2_queue_count(queue_t *q);
 
-
 // hash map operations, currently hash map is flat there are no buckets
 hash_map_t *hash_map_create(void);
 void hash_map_destroy(hash_map_t *map, queue_cleanup freeItem);
-int8_t hash_map_put(hash_map_t *map, char *key, void *data, hashelement_data_cleanup freeItem);
+int8_t hash_map_put(hash_map_t *map, char *key, void *data,
+                    hashelement_data_cleanup freeItem);
 void *hash_map_get(hash_map_t *map, const char *key);
 void *hash_map_remove(hash_map_t *map, const char *key);
 void *hash_map_lookup(hash_map_t *map, uint32_t n);

@@ -15,7 +15,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 #ifndef _RBUS_METHOD_INTERFACE_H_
 #define _RBUS_METHOD_INTERFACE_H_
@@ -23,8 +23,10 @@
 #include "telemetry2_0.h"
 #include "vector.h"
 
-T2ERROR sendReportsOverRBUSMethod(char *methodName, Vector* inputParams, char* payload);
+T2ERROR sendReportsOverRBUSMethod(char *methodName, Vector *inputParams,
+                                  char *payload);
 
-T2ERROR sendCachedReportsOverRBUSMethod(char *methodName, Vector* inputParams, Vector* reportList);
+T2ERROR sendCachedReportsOverRBUSMethod(char *methodName, Vector *inputParams,
+                                        Vector *reportList);
 
 #endif /* _RBUS_METHOD_INTERFACE_H_ */

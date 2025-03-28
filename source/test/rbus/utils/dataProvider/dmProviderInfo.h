@@ -24,50 +24,42 @@
 #include "dmPropertyInfo.h"
 #include "rtLog.h"
 
+#include <memory>
 #include <string>
 #include <vector>
-#include <memory>
 
 class dmProviderDatabase;
 class dmPropertyInfo;
 
-class dmProviderInfo
-{
+class dmProviderInfo {
   friend class dmProviderDatabase;
 
 public:
-  inline std::string const& objectName() const
-    { return m_objectName; }
+  inline std::string const &objectName() const { return m_objectName; }
 
-  inline std::string const& providerName() const
-    { return m_providerName; }
+  inline std::string const &providerName() const { return m_providerName; }
 
-  inline std::vector<dmPropertyInfo> const& properties() const
-    { return m_props; }
-
-  dmPropertyInfo getPropertyInfo(char const* s) const;
-
-  bool isList() const 
-    { return m_isList; }
-
-  void setIsList(bool b)
-    { m_isList = b; }
-
-  std::weak_ptr<dmProviderInfo> getParent()
-  {
-    return m_parent;
+  inline std::vector<dmPropertyInfo> const &properties() const {
+    return m_props;
   }
 
-  std::vector< std::weak_ptr<dmProviderInfo> > const& getChildren()
-  {
+  dmPropertyInfo getPropertyInfo(char const *s) const;
+
+  bool isList() const { return m_isList; }
+
+  void setIsList(bool b) { m_isList = b; }
+
+  std::weak_ptr<dmProviderInfo> getParent() { return m_parent; }
+
+  std::vector<std::weak_ptr<dmProviderInfo>> const &getChildren() {
     return m_children;
   }
 
 private:
   dmProviderInfo();
-  void setProviderName(std::string const& name);
-  void setObjectName(std::string const& name);
-  void addProperty(dmPropertyInfo const& propInfo);
+  void setProviderName(std::string const &name);
+  void setObjectName(std::string const &name);
+  void addProperty(dmPropertyInfo const &propInfo);
 
 private:
   std::string m_objectName;
@@ -75,6 +67,6 @@ private:
   std::vector<dmPropertyInfo> m_props;
   bool m_isList;
   std::weak_ptr<dmProviderInfo> m_parent;
-  std::vector< std::weak_ptr<dmProviderInfo> > m_children;
+  std::vector<std::weak_ptr<dmProviderInfo>> m_children;
 };
 #endif

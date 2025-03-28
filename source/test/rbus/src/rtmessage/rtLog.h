@@ -17,8 +17,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ##########################################################################
-# This file contains material from pxCore which is Copyright 2005-2018 John Robinson
-# Licensed under the Apache-2.0 license.
+# This file contains material from pxCore which is Copyright 2005-2018 John
+Robinson # Licensed under the Apache-2.0 license.
 */
 #ifndef RT_LOG_H_
 #define RT_LOG_H_
@@ -39,26 +39,22 @@ typedef int32_t rtThreadId;
 extern "C" {
 #endif
 
-typedef enum
-{
+typedef enum {
   RT_LOG_DEBUG = 0,
-  RT_LOG_INFO  = 1,
-  RT_LOG_WARN  = 2,
+  RT_LOG_INFO = 1,
+  RT_LOG_WARN = 2,
   RT_LOG_ERROR = 3,
   RT_LOG_FATAL = 4
 } rtLogLevel;
 
-typedef enum
-{
-  RT_USE_RTLOGGER,
-  RT_USE_RDKLOGGER
-}rtLoggerSelection;
+typedef enum { RT_USE_RTLOGGER, RT_USE_RDKLOGGER } rtLoggerSelection;
 
 /*rdkc compatibility fix*/
 #define rdkLog RT_USE_RDKLOGGER
 #define rtLog RT_USE_RTLOGGER
 
-typedef void (*rtLogHandler)(rtLogLevel level, const char* file, int line, int threadId, char* message);
+typedef void (*rtLogHandler)(rtLogLevel level, const char *file, int line,
+                             int threadId, char *message);
 
 void rtLog_SetLevel(rtLogLevel l);
 rtLogLevel rtLog_GetLevel();
@@ -66,34 +62,44 @@ rtLogLevel rtLog_GetLevel();
 void rtLogSetLogHandler(rtLogHandler logHandler);
 rtLogHandler rtLogGetLogHandler();
 
-const char* rtLogLevelToString(rtLogLevel level);
-rtLogLevel  rtLogLevelFromString(const char* s);
+const char *rtLogLevelToString(rtLogLevel level);
+rtLogLevel rtLogLevelFromString(const char *s);
 
 void rtLog_SetOption(rtLoggerSelection option);
 rtLoggerSelection rtLog_GetOption();
 
 #ifdef __GNUC__
-#define RT_PRINTF_FORMAT(IDX, FIRST) __attribute__ ((format (printf, IDX, FIRST)))
+#define RT_PRINTF_FORMAT(IDX, FIRST) __attribute__((format(printf, IDX, FIRST)))
 #else
 #define RT_PRINTF_FORMAT(IDX, FIRST)
 #endif
 
-void rtLogPrintf(rtLogLevel level, const char* pModule, const char* file, int line, const char* format, ...) RT_PRINTF_FORMAT(5, 6);
+void rtLogPrintf(rtLogLevel level, const char *pModule, const char *file,
+                 int line, const char *format, ...) RT_PRINTF_FORMAT(5, 6);
 
-#define rtLog_DebugPrint(mod,FORMAT...)  rtLogPrintf(RT_LOG_DEBUG, mod,__FILE__, __LINE__, FORMAT)
-#define rtLog_InfoPrint(mod,FORMAT...)   rtLogPrintf(RT_LOG_INFO, mod, __FILE__, __LINE__, FORMAT)
-#define rtLog_WarnPrint(mod,FORMAT...)   rtLogPrintf(RT_LOG_WARN, mod, __FILE__, __LINE__, FORMAT)
-#define rtLog_ErrorPrint(mod,FORMAT...)  rtLogPrintf(RT_LOG_ERROR, mod, __FILE__, __LINE__, FORMAT)
-#define rtLog_FatalPrint(mod,FORMAT...)  rtLogPrintf(RT_LOG_FATAL, mod, __FILE__, __LINE__, FORMAT)
+#define rtLog_DebugPrint(mod, FORMAT...)                                       \
+  rtLogPrintf(RT_LOG_DEBUG, mod, __FILE__, __LINE__, FORMAT)
+#define rtLog_InfoPrint(mod, FORMAT...)                                        \
+  rtLogPrintf(RT_LOG_INFO, mod, __FILE__, __LINE__, FORMAT)
+#define rtLog_WarnPrint(mod, FORMAT...)                                        \
+  rtLogPrintf(RT_LOG_WARN, mod, __FILE__, __LINE__, FORMAT)
+#define rtLog_ErrorPrint(mod, FORMAT...)                                       \
+  rtLogPrintf(RT_LOG_ERROR, mod, __FILE__, __LINE__, FORMAT)
+#define rtLog_FatalPrint(mod, FORMAT...)                                       \
+  rtLogPrintf(RT_LOG_FATAL, mod, __FILE__, __LINE__, FORMAT)
 
-#define rtLog_Debug(FORMAT,...) rtLog_DebugPrint("RTMESSAGE",FORMAT"\n", ##__VA_ARGS__)
-#define rtLog_Info(FORMAT,...)  rtLog_InfoPrint("RTMESSAGE",FORMAT"\n", ##__VA_ARGS__)
-#define rtLog_Warn(FORMAT,...)  rtLog_WarnPrint("RTMESSAGE",FORMAT"\n", ##__VA_ARGS__)
-#define rtLog_Error(FORMAT,...) rtLog_ErrorPrint("RTMESSAGE",FORMAT"\n", ##__VA_ARGS__)
-#define rtLog_Fatal(FORMAT,...) rtLog_FatalPrint("RTMESSAGE",FORMAT"\n", ##__VA_ARGS__)
+#define rtLog_Debug(FORMAT, ...)                                               \
+  rtLog_DebugPrint("RTMESSAGE", FORMAT "\n", ##__VA_ARGS__)
+#define rtLog_Info(FORMAT, ...)                                                \
+  rtLog_InfoPrint("RTMESSAGE", FORMAT "\n", ##__VA_ARGS__)
+#define rtLog_Warn(FORMAT, ...)                                                \
+  rtLog_WarnPrint("RTMESSAGE", FORMAT "\n", ##__VA_ARGS__)
+#define rtLog_Error(FORMAT, ...)                                               \
+  rtLog_ErrorPrint("RTMESSAGE", FORMAT "\n", ##__VA_ARGS__)
+#define rtLog_Fatal(FORMAT, ...)                                               \
+  rtLog_FatalPrint("RTMESSAGE", FORMAT "\n", ##__VA_ARGS__)
 
 #ifdef __cplusplus
 }
 #endif
-#endif 
-
+#endif

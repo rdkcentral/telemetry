@@ -17,40 +17,43 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ##########################################################################
-# This file contains material from pxCore which is Copyright 2005-2018 John Robinson
-# Licensed under the Apache-2.0 license.
+# This file contains material from pxCore which is Copyright 2005-2018 John
+Robinson # Licensed under the Apache-2.0 license.
 */
 // rtError.h
 
 #ifndef RT_ERROR_H
 #define RT_ERROR_H
 
-#include <stdint.h>
 #include <errno.h>
+#include <stdint.h>
 
 #ifdef RT_DEBUG
 #include <assert.h>
 #define RT_ASSERT(X) assert((X))
 #else
-#define RT_ASSERT(X) if (!(X)) rtLogError("rt assert: '%s' failed", #X);
+#define RT_ASSERT(X)                                                           \
+  if (!(X))                                                                    \
+    rtLogError("rt assert: '%s' failed", #X);
 #endif
 
-// TODO review base numbering scheme for different error classes... general vs rtremote vs... 
+// TODO review base numbering scheme for different error classes... general vs
+// rtremote vs...
 #define RT_ERROR_CLASS_SYSERROR 0x8000
 #define RT_ERROR_CLASS_BUILTIN 0x00000000
 
-#define RT_OK                           0
-#define RT_ERROR                        1
-#define RT_FAIL                         1
-#define RT_ERROR_NOT_ENOUGH_ARGS        2
-#define RT_ERROR_INVALID_ARG            3
-#define RT_PROP_NOT_FOUND               4
-#define RT_OBJECT_NOT_INITIALIZED       5
-#define RT_PROPERTY_NOT_FOUND           6
-#define RT_OBJECT_NO_LONGER_AVAILABLE   7
+#define RT_OK 0
+#define RT_ERROR 1
+#define RT_FAIL 1
+#define RT_ERROR_NOT_ENOUGH_ARGS 2
+#define RT_ERROR_INVALID_ARG 3
+#define RT_PROP_NOT_FOUND 4
+#define RT_OBJECT_NOT_INITIALIZED 5
+#define RT_PROPERTY_NOT_FOUND 6
+#define RT_OBJECT_NO_LONGER_AVAILABLE 7
 
-#define RT_RESOURCE_NOT_FOUND		8
-#define RT_NO_CONNECTION		9
+#define RT_RESOURCE_NOT_FOUND 8
+#define RT_NO_CONNECTION 9
 #define RT_ERROR_NOT_IMPLEMENTED 10
 #define RT_ERROR_TYPE_MISMATCH 11
 
@@ -64,10 +67,16 @@
 #define RT_ERROR_QUEUE_EMPTY 1006
 #define RT_ERROR_STREAM_CLOSED 1007
 
-#define RT_CHECK(X) if(!(X)){return;}
-#define RT_CHECK_R(X,Y) if(!(X)){return Y;}
-#define RT_CHECK_INVALID_ARG(X) RT_CHECK_R(X,RT_ERROR_INVALID_ARG);
-#define RT_CHECK_NO_MEM(X) RT_CHECK_R(X,rtErrorFromErrno(ENOMEM));
+#define RT_CHECK(X)                                                            \
+  if (!(X)) {                                                                  \
+    return;                                                                    \
+  }
+#define RT_CHECK_R(X, Y)                                                       \
+  if (!(X)) {                                                                  \
+    return Y;                                                                  \
+  }
+#define RT_CHECK_INVALID_ARG(X) RT_CHECK_R(X, RT_ERROR_INVALID_ARG);
+#define RT_CHECK_NO_MEM(X) RT_CHECK_R(X, rtErrorFromErrno(ENOMEM));
 
 typedef uint32_t rtError;
 
@@ -75,11 +84,11 @@ typedef uint32_t rtError;
 extern "C" {
 #endif
 
-const char* rtStrError(rtError e);
+const char *rtStrError(rtError e);
 
 rtError rtErrorGetLastError();
 rtError rtErrorFromErrno(int err);
-void    rtErrorSetLastError(rtError e);
+void rtErrorSetLastError(rtError e);
 
 #ifdef __cplusplus
 }

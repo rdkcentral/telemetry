@@ -30,10 +30,13 @@
 extern "C" {
 #endif
 
-rtError rtSocket_GetLocalEndpoint(int fd, struct sockaddr_storage* endpoint);
-rtError rtSocketStorage_GetLength(struct sockaddr_storage* endpoint, socklen_t* len);
-rtError rtSocketStorage_ToString(struct sockaddr_storage* endpoint, char* buff, int n, uint16_t* port);
-rtError rtSocketStorage_FromString(struct sockaddr_storage* soc, char const* path);
+rtError rtSocket_GetLocalEndpoint(int fd, struct sockaddr_storage *endpoint);
+rtError rtSocketStorage_GetLength(struct sockaddr_storage *endpoint,
+                                  socklen_t *len);
+rtError rtSocketStorage_ToString(struct sockaddr_storage *endpoint, char *buff,
+                                 int n, uint16_t *port);
+rtError rtSocketStorage_FromString(struct sockaddr_storage *soc,
+                                   char const *path);
 
 #ifdef __cplusplus
 }

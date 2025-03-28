@@ -21,48 +21,41 @@
 #ifndef __DM_UTILITY_H__
 #define __DM_UTILITY_H__
 
-#include <string>
-#include <string.h>
-#include <sstream>
 #include "rtLog.h"
+#include <sstream>
+#include <string.h>
+#include <string>
 
-class dmUtility
-{
+class dmUtility {
 public:
-  static void splitQuery(char const* query, char* parameter)
-  {
+  static void splitQuery(char const *query, char *parameter) {
     std::string str(query);
     std::size_t position = str.find_last_of(".\\");
 
-    parameter[0]= '\0';
+    parameter[0] = '\0';
     strcat(parameter, str.substr(position + 1).c_str());
     str.clear();
   }
 
-  static bool has_suffix(const std::string &str, const std::string &suffix)
-  {
-    return str.size() >= suffix.size() && str.find(suffix, str.size() - suffix.size()) != str.npos;
+  static bool has_suffix(const std::string &str, const std::string &suffix) {
+    return str.size() >= suffix.size() &&
+           str.find(suffix, str.size() - suffix.size()) != str.npos;
   }
 
-  static bool isWildcard(char const* s)
-  {
+  static bool isWildcard(char const *s) {
     if (!s)
       return false;
-    return (s[strlen(s) -1 ] == '.');
+    return (s[strlen(s) - 1] == '.');
   }
 
-  static std::string trimWildcard(std::string const& s)
-  {
+  static std::string trimWildcard(std::string const &s) {
     if (s.empty())
       return s;
 
-    return (s[s.size() -1] == '.')
-      ? s.substr(0, s.size() -1)
-      : s;
+    return (s[s.size() - 1] == '.') ? s.substr(0, s.size() - 1) : s;
   }
 
-  static std::string trimProperty(std::string const& s)
-  {
+  static std::string trimProperty(std::string const &s) {
     std::string t;
     std::string::size_type idx = s.rfind('.');
     if (idx != std::string::npos)
@@ -72,8 +65,7 @@ public:
     return t;
   }
 
-  static std::string trimPropertyName(std::string const &s)
-  {
+  static std::string trimPropertyName(std::string const &s) {
     std::string t;
     std::string::size_type idx = s.rfind('.');
     if (idx != std::string::npos)
@@ -83,30 +75,30 @@ public:
     return t;
   }
 
-  static std::string trimSetProperty(std::string const &s)
-  {
+  static std::string trimSetProperty(std::string const &s) {
     std::string::size_type idx = s.find('=');
-    //check for multi setter in this form Parent.ObjectName={prop1=blah..} 
-    if(idx != std::string::npos && s.length() > idx+1 && s.at(idx+1) == '{' && s.back() == '}')
+    // check for multi setter in this form Parent.ObjectName={prop1=blah..}
+    if (idx != std::string::npos && s.length() > idx + 1 &&
+        s.at(idx + 1) == '{' && s.back() == '}')
       return s.substr(0, idx);
-    else//so must be in form: Parent.ObjectName.PropName=blah
+    else // so must be in form: Parent.ObjectName.PropName=blah
       return trimProperty(s);
   }
 
-  static bool parseMultisetValue(std::string const& s, std::vector< std::pair<std::string,std::string> >& nameVals)
-  {
-    if(s.length() < 2 || s.front() != '{' || s.back() != '}')
+  static bool parseMultisetValue(
+      std::string const &s,
+      std::vector<std::pair<std::string, std::string>> &nameVals) {
+    if (s.length() < 2 || s.front() != '{' || s.back() != '}')
       return false;
     std::string s2 = s;
-    s2.erase(0,1);
+    s2.erase(0, 1);
     s2.pop_back();
     std::vector<std::string> pairs;
     dmUtility::splitString(s2, ',', pairs);
-    for (std::string const& pair : pairs)
-    {
+    for (std::string const &pair : pairs) {
       std::vector<std::string> args;
       dmUtility::splitString(pair, '=', args);
-      if(args.size() == 2)
+      if (args.size() == 2)
         nameVals.push_back(std::make_pair(args[0], args[1]));
       else
         rtLog_Debug("Invalide multiset value");
@@ -114,17 +106,16 @@ public:
     return true;
   }
 
-  static void splitString(std::string const& s, char delim, std::vector<std::string>& out)
-  {
+  static void splitString(std::string const &s, char delim,
+                          std::vector<std::string> &out) {
     size_t n1 = 0;
     size_t n2 = s.find(delim);
-    while(true)
-    {
-      std::string token = s.substr(n1, n2-n1);
+    while (true) {
+      std::string token = s.substr(n1, n2 - n1);
       out.push_back(token);
-      if(n2 == std::string::npos || n2 > s.length()-1)
+      if (n2 == std::string::npos || n2 > s.length() - 1)
         break;
-      n1 = n2+1;
+      n1 = n2 + 1;
       n2 = s.find(delim, n1);
     }
   }

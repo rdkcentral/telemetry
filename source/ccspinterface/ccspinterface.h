@@ -15,7 +15,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 #if defined(CCSP_SUPPORT_ENABLED)
 
@@ -31,11 +31,11 @@
 
 bool isCCSPInitialized();
 
-T2ERROR getCCSPParamVal(const char* paramName, char **paramValue);
+T2ERROR getCCSPParamVal(const char *paramName, char **paramValue);
 
-Vector* getCCSPProfileParamValues(Vector *paramList);
+Vector *getCCSPProfileParamValues(Vector *paramList);
 
 T2ERROR registerCcspT2EventListener(TelemetryEventCallback eventCB);
 
 #endif
-#endif // CCSP_SUPPORT_ENABLED 
+#endif // CCSP_SUPPORT_ENABLED

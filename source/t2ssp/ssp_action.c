@@ -15,17 +15,17 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 /**********************************************************************
    Copyright [2014] [Cisco Systems, Inc.]
- 
+
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
    You may obtain a copy of the License at
- 
+
        http://www.apache.org/licenses/LICENSE-2.0
- 
+
    Unless required by applicable law or agreed to in writing, software
    distributed under the License is distributed on an "AS IS" BASIS,
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -80,335 +80,248 @@
 
 **********************************************************************/
 
-#include "ssp_global.h"
 #include "ccsp_trace.h"
 #include "dm_pack_create_func.h"
-extern ULONG                            g_ulAllocatedSizePeak;
+#include "ssp_global.h"
+extern ULONG g_ulAllocatedSizePeak;
 
-extern  PDSLH_CPE_CONTROLLER_OBJECT     pDslhCpeController;
-extern  PDSLH_DATAMODEL_AGENT_OBJECT    g_DslhDataModelAgent;
-extern  PCOMPONENT_COMMON_DM            g_pComponent_Common_Dm;
-extern  PCCSP_FC_CONTEXT                pT2FcContext;
-extern  PCCSP_CCD_INTERFACE             pT2CcdIf;
-extern  ANSC_HANDLE                     bus_handle;
-extern char                             g_Subsystem[32];
-
+extern PDSLH_CPE_CONTROLLER_OBJECT pDslhCpeController;
+extern PDSLH_DATAMODEL_AGENT_OBJECT g_DslhDataModelAgent;
+extern PCOMPONENT_COMMON_DM g_pComponent_Common_Dm;
+extern PCCSP_FC_CONTEXT pT2FcContext;
+extern PCCSP_CCD_INTERFACE pT2CcdIf;
+extern ANSC_HANDLE bus_handle;
+extern char g_Subsystem[32];
 
 ANSC_STATUS
-ssp_create_t2
-    (
-        PCCSP_COMPONENT_CFG         pStartCfg
-    )
-{
-    /* Create component common data model object */
+ssp_create_t2(PCCSP_COMPONENT_CFG pStartCfg) {
+  /* Create component common data model object */
 
-    g_pComponent_Common_Dm = (PCOMPONENT_COMMON_DM)AnscAllocateMemory(sizeof(COMPONENT_COMMON_DM));
+  g_pComponent_Common_Dm =
+      (PCOMPONENT_COMMON_DM)AnscAllocateMemory(sizeof(COMPONENT_COMMON_DM));
 
-    if ( !g_pComponent_Common_Dm )
-    {
-        return ANSC_STATUS_RESOURCES;
+  if (!g_pComponent_Common_Dm) {
+    return ANSC_STATUS_RESOURCES;
+  }
+
+  ComponentCommonDmInit(g_pComponent_Common_Dm);
+
+  g_pComponent_Common_Dm->Name = AnscCloneString(pStartCfg->ComponentName);
+  g_pComponent_Common_Dm->Version = 1;
+  g_pComponent_Common_Dm->Author = AnscCloneString("CCSP");
+
+  /* Create ComponentCommonDatamodel interface*/
+  if (!pT2CcdIf) {
+    pT2CcdIf =
+        (PCCSP_CCD_INTERFACE)AnscAllocateMemory(sizeof(CCSP_CCD_INTERFACE));
+
+    if (!pT2CcdIf) {
+      return ANSC_STATUS_RESOURCES;
+    } else {
+      AnscCopyString(pT2CcdIf->Name, CCSP_CCD_INTERFACE_NAME);
+
+      pT2CcdIf->InterfaceId = CCSP_CCD_INTERFACE_ID;
+      pT2CcdIf->hOwnerContext = NULL;
+      pT2CcdIf->Size = sizeof(CCSP_CCD_INTERFACE);
+
+      pT2CcdIf->GetComponentName = ssp_T2CCDmGetComponentName;
+      pT2CcdIf->GetComponentVersion = ssp_T2CCDmGetComponentVersion;
+      pT2CcdIf->GetComponentAuthor = ssp_T2CCDmGetComponentAuthor;
+      pT2CcdIf->GetComponentHealth = ssp_T2CCDmGetComponentHealth;
+      pT2CcdIf->GetComponentState = ssp_T2CCDmGetComponentState;
+      pT2CcdIf->GetLoggingEnabled = ssp_T2CCDmGetLoggingEnabled;
+      pT2CcdIf->SetLoggingEnabled = ssp_T2CCDmSetLoggingEnabled;
+      pT2CcdIf->GetLoggingLevel = ssp_T2CCDmGetLoggingLevel;
+      pT2CcdIf->SetLoggingLevel = ssp_T2CCDmSetLoggingLevel;
+      pT2CcdIf->GetMemMaxUsage = ssp_T2CCDmGetMemMaxUsage;
+      pT2CcdIf->GetMemMinUsage = ssp_T2CCDmGetMemMinUsage;
+      pT2CcdIf->GetMemConsumed = ssp_T2CCDmGetMemConsumed;
+      pT2CcdIf->ApplyChanges = ssp_T2CCDmApplyChanges;
     }
+  }
 
-    ComponentCommonDmInit(g_pComponent_Common_Dm);
+  /* Create context used by data model */
+  pT2FcContext = (PCCSP_FC_CONTEXT)AnscAllocateMemory(sizeof(CCSP_FC_CONTEXT));
 
-    g_pComponent_Common_Dm->Name     = AnscCloneString(pStartCfg->ComponentName);
-    g_pComponent_Common_Dm->Version  = 1;
-    g_pComponent_Common_Dm->Author   = AnscCloneString("CCSP");
+  if (!pT2FcContext) {
+    return ANSC_STATUS_RESOURCES;
+  }
 
-    /* Create ComponentCommonDatamodel interface*/
-    if ( !pT2CcdIf )
-    {
-        pT2CcdIf = (PCCSP_CCD_INTERFACE)AnscAllocateMemory(sizeof(CCSP_CCD_INTERFACE));
+  pDslhCpeController = DslhCreateCpeController(NULL, NULL, NULL);
 
-        if ( !pT2CcdIf )
-        {
-            return ANSC_STATUS_RESOURCES;
-        }
-        else
-        {
-            AnscCopyString(pT2CcdIf->Name, CCSP_CCD_INTERFACE_NAME);
+  if (!pDslhCpeController) {
+    CcspTraceWarning(("CANNOT Create pDslhCpeController... Exit!\n"));
 
-            pT2CcdIf->InterfaceId              = CCSP_CCD_INTERFACE_ID;
-            pT2CcdIf->hOwnerContext            = NULL;
-            pT2CcdIf->Size                     = sizeof(CCSP_CCD_INTERFACE);
+    return ANSC_STATUS_RESOURCES;
+  }
 
-            pT2CcdIf->GetComponentName         = ssp_T2CCDmGetComponentName;
-            pT2CcdIf->GetComponentVersion      = ssp_T2CCDmGetComponentVersion;
-            pT2CcdIf->GetComponentAuthor       = ssp_T2CCDmGetComponentAuthor;
-            pT2CcdIf->GetComponentHealth       = ssp_T2CCDmGetComponentHealth;
-            pT2CcdIf->GetComponentState        = ssp_T2CCDmGetComponentState;
-            pT2CcdIf->GetLoggingEnabled        = ssp_T2CCDmGetLoggingEnabled;
-            pT2CcdIf->SetLoggingEnabled        = ssp_T2CCDmSetLoggingEnabled;
-            pT2CcdIf->GetLoggingLevel          = ssp_T2CCDmGetLoggingLevel;
-            pT2CcdIf->SetLoggingLevel          = ssp_T2CCDmSetLoggingLevel;
-            pT2CcdIf->GetMemMaxUsage           = ssp_T2CCDmGetMemMaxUsage;
-            pT2CcdIf->GetMemMinUsage           = ssp_T2CCDmGetMemMinUsage;
-            pT2CcdIf->GetMemConsumed           = ssp_T2CCDmGetMemConsumed;
-            pT2CcdIf->ApplyChanges             = ssp_T2CCDmApplyChanges;
-        }
-    }
+  return ANSC_STATUS_SUCCESS;
+}
 
-    /* Create context used by data model */
-    pT2FcContext = (PCCSP_FC_CONTEXT)AnscAllocateMemory(sizeof(CCSP_FC_CONTEXT));
+ANSC_STATUS
+ssp_engage_t2(PCCSP_COMPONENT_CFG pStartCfg) {
+  ANSC_STATUS returnStatus = ANSC_STATUS_SUCCESS;
+  char CrName[256] = {0};
 
-    if ( !pT2FcContext )
-    {
-        return ANSC_STATUS_RESOURCES;
-    }
+  g_pComponent_Common_Dm->Health = CCSP_COMMON_COMPONENT_HEALTH_Yellow;
 
-    pDslhCpeController = DslhCreateCpeController(NULL, NULL, NULL);
+  if (pT2CcdIf) {
+    pT2FcContext->hCcspCcdIf = (ANSC_HANDLE)pT2CcdIf;
+    pT2FcContext->hMessageBus = bus_handle;
+  }
 
-    if ( !pDslhCpeController )
-    {
-        CcspTraceWarning(("CANNOT Create pDslhCpeController... Exit!\n"));
+  g_DslhDataModelAgent->SetFcContext((ANSC_HANDLE)g_DslhDataModelAgent,
+                                     (ANSC_HANDLE)pT2FcContext);
 
-        return ANSC_STATUS_RESOURCES;
-    }
+  pDslhCpeController->AddInterface(
+      (ANSC_HANDLE)pDslhCpeController,
+      (ANSC_HANDLE)MsgHelper_CreateCcdMbiIf((void *)bus_handle, g_Subsystem));
+  pDslhCpeController->AddInterface((ANSC_HANDLE)pDslhCpeController,
+                                   (ANSC_HANDLE)pT2CcdIf);
+  pDslhCpeController->SetDbusHandle((ANSC_HANDLE)pDslhCpeController,
+                                    bus_handle);
+  pDslhCpeController->Engage((ANSC_HANDLE)pDslhCpeController);
 
+  _ansc_snprintf(CrName, sizeof(CrName), "%s%s", g_Subsystem,
+                 CCSP_DBUS_INTERFACE_CR);
+
+  returnStatus = pDslhCpeController->RegisterCcspDataModel2(
+      (ANSC_HANDLE)pDslhCpeController, CrName, /* CCSP CR ID */
+      DMPackCreateDataModelXML, /* Comcast generated code to create XML. */
+      pStartCfg->ComponentName, /* Component Name    */
+      pStartCfg->Version,       /* Component Version */
+      pStartCfg->DbusPath,      /* Component Path    */
+      g_Subsystem               /* Component Prefix  */
+  );
+
+  if (returnStatus == ANSC_STATUS_SUCCESS || returnStatus == CCSP_SUCCESS) {
+    /* System is fully initialized */
+    CcspTraceWarning(("T2:%s Telemetry 2.0 registered with CR ,setting the "
+                      "health to Green...\n",
+                      __FUNCTION__));
+    g_pComponent_Common_Dm->Health = CCSP_COMMON_COMPONENT_HEALTH_Green;
+  } else {
+    CcspTraceWarning(
+        ("T2:%s Telemetry 2.0 registartion with CR fails...\n", __FUNCTION__));
+  }
+
+  return ANSC_STATUS_SUCCESS;
+}
+
+ANSC_STATUS
+ssp_cancel_t2(PCCSP_COMPONENT_CFG pStartCfg) {
+  int nRet = 0;
+  char CrName[256];
+  char CpName[256];
+
+  if (pDslhCpeController == NULL) {
     return ANSC_STATUS_SUCCESS;
+  }
+
+  _ansc_snprintf(CrName, sizeof(CrName), "%s%s", g_Subsystem,
+                 CCSP_DBUS_INTERFACE_CR);
+  _ansc_snprintf(CpName, sizeof(CpName), "%s%s", g_Subsystem,
+                 pStartCfg->ComponentName);
+  /* unregister component */
+  nRet = CcspBaseIf_unregisterComponent(bus_handle, CrName, CpName);
+  AnscTrace("unregisterComponent returns %d\n", nRet);
+
+  pDslhCpeController->Cancel((ANSC_HANDLE)pDslhCpeController);
+  AnscFreeMemory(pDslhCpeController);
+  pDslhCpeController = NULL;
+
+  return ANSC_STATUS_SUCCESS;
 }
 
+char *ssp_T2CCDmGetComponentName(ANSC_HANDLE hThisObject) {
+  return g_pComponent_Common_Dm->Name;
+}
+
+ULONG
+ssp_T2CCDmGetComponentVersion(ANSC_HANDLE hThisObject) {
+  return g_pComponent_Common_Dm->Version;
+}
+
+char *ssp_T2CCDmGetComponentAuthor(ANSC_HANDLE hThisObject) {
+  return g_pComponent_Common_Dm->Author;
+}
+
+ULONG
+ssp_T2CCDmGetComponentHealth(ANSC_HANDLE hThisObject) {
+  return g_pComponent_Common_Dm->Health;
+}
+
+ULONG
+ssp_T2CCDmGetComponentState(ANSC_HANDLE hThisObject) {
+  return g_pComponent_Common_Dm->State;
+}
+
+BOOL ssp_T2CCDmGetLoggingEnabled(ANSC_HANDLE hThisObject) {
+  return g_pComponent_Common_Dm->LogEnable;
+}
 
 ANSC_STATUS
-ssp_engage_t2
-    (
-        PCCSP_COMPONENT_CFG         pStartCfg
-    )
-{
-    ANSC_STATUS                     returnStatus    = ANSC_STATUS_SUCCESS;
-    char                            CrName[256]     = {0};
-
-    g_pComponent_Common_Dm->Health = CCSP_COMMON_COMPONENT_HEALTH_Yellow;
-
-    if ( pT2CcdIf )
-    {
-        pT2FcContext->hCcspCcdIf = (ANSC_HANDLE)pT2CcdIf;
-        pT2FcContext->hMessageBus = bus_handle;
-    }
-
-    g_DslhDataModelAgent->SetFcContext((ANSC_HANDLE)g_DslhDataModelAgent, (ANSC_HANDLE)pT2FcContext);
-
-    pDslhCpeController->AddInterface((ANSC_HANDLE)pDslhCpeController, (ANSC_HANDLE)MsgHelper_CreateCcdMbiIf((void*)bus_handle,g_Subsystem));
-    pDslhCpeController->AddInterface((ANSC_HANDLE)pDslhCpeController, (ANSC_HANDLE)pT2CcdIf);
-    pDslhCpeController->SetDbusHandle((ANSC_HANDLE)pDslhCpeController, bus_handle);
-    pDslhCpeController->Engage((ANSC_HANDLE)pDslhCpeController);
-
-     _ansc_snprintf(CrName, sizeof(CrName), "%s%s", g_Subsystem, CCSP_DBUS_INTERFACE_CR);
-
-    returnStatus =
-        pDslhCpeController->RegisterCcspDataModel2
-            (
-                (ANSC_HANDLE)pDslhCpeController,
-                CrName,                             /* CCSP CR ID */
-                DMPackCreateDataModelXML,           /* Comcast generated code to create XML. */
-                pStartCfg->ComponentName,           /* Component Name    */
-                pStartCfg->Version,                 /* Component Version */
-                pStartCfg->DbusPath,                /* Component Path    */
-                g_Subsystem                         /* Component Prefix  */
-            );
-
-    if ( returnStatus == ANSC_STATUS_SUCCESS || returnStatus == CCSP_SUCCESS )
-    {
-        /* System is fully initialized */
-        CcspTraceWarning(("T2:%s Telemetry 2.0 registered with CR ,setting the health to Green...\n",__FUNCTION__));
-        g_pComponent_Common_Dm->Health = CCSP_COMMON_COMPONENT_HEALTH_Green;
-    }
-    else
-    {
-	CcspTraceWarning(("T2:%s Telemetry 2.0 registartion with CR fails...\n",__FUNCTION__));
-    }
-
+ssp_T2CCDmSetLoggingEnabled(ANSC_HANDLE hThisObject, BOOL bEnabled) {
+  /*CommonDm.LogEnable = bEnabled;*/
+  if (g_pComponent_Common_Dm->LogEnable == bEnabled)
     return ANSC_STATUS_SUCCESS;
+  g_pComponent_Common_Dm->LogEnable = bEnabled;
+
+  if (!bEnabled)
+    AnscSetTraceLevel(CCSP_TRACE_INVALID_LEVEL);
+  else
+    AnscSetTraceLevel(g_pComponent_Common_Dm->LogLevel);
+
+  return ANSC_STATUS_SUCCESS;
 }
 
+ULONG
+ssp_T2CCDmGetLoggingLevel(ANSC_HANDLE hThisObject) {
+  return g_pComponent_Common_Dm->LogLevel;
+}
 
 ANSC_STATUS
-ssp_cancel_t2
-    (
-        PCCSP_COMPONENT_CFG         pStartCfg
-    )
-{
-	int                             nRet  = 0;
-    char                            CrName[256];
-    char                            CpName[256];
-
-    if( pDslhCpeController == NULL)
-    {
-        return ANSC_STATUS_SUCCESS;
-    }
-
-    _ansc_snprintf(CrName, sizeof(CrName), "%s%s", g_Subsystem, CCSP_DBUS_INTERFACE_CR);
-    _ansc_snprintf(CpName, sizeof(CpName), "%s%s", g_Subsystem, pStartCfg->ComponentName);
-    /* unregister component */
-    nRet = CcspBaseIf_unregisterComponent(bus_handle, CrName, CpName );
-    AnscTrace("unregisterComponent returns %d\n", nRet);
-
-
-    pDslhCpeController->Cancel((ANSC_HANDLE)pDslhCpeController);
-    AnscFreeMemory(pDslhCpeController);
-    pDslhCpeController = NULL;
-
+ssp_T2CCDmSetLoggingLevel(ANSC_HANDLE hThisObject, ULONG LogLevel) {
+  /*CommonDm.LogLevel = LogLevel; */
+  if (g_pComponent_Common_Dm->LogLevel == LogLevel)
     return ANSC_STATUS_SUCCESS;
+  g_pComponent_Common_Dm->LogLevel = LogLevel;
+
+  if (g_pComponent_Common_Dm->LogEnable)
+    AnscSetTraceLevel(LogLevel);
+
+  return ANSC_STATUS_SUCCESS;
 }
-
-
-char*
-ssp_T2CCDmGetComponentName
-    (
-        ANSC_HANDLE                     hThisObject
-    )
-{
-    return g_pComponent_Common_Dm->Name;
-}
-
 
 ULONG
-ssp_T2CCDmGetComponentVersion
-    (
-        ANSC_HANDLE                     hThisObject
-    )
-{
-    return g_pComponent_Common_Dm->Version;
+ssp_T2CCDmGetMemMaxUsage(ANSC_HANDLE hThisObject) {
+  return g_ulAllocatedSizePeak;
 }
-
-
-char*
-ssp_T2CCDmGetComponentAuthor
-    (
-        ANSC_HANDLE                     hThisObject
-    )
-{
-    return g_pComponent_Common_Dm->Author;
-}
-
 
 ULONG
-ssp_T2CCDmGetComponentHealth
-    (
-        ANSC_HANDLE                     hThisObject
-    )
-{
-    return g_pComponent_Common_Dm->Health;
+ssp_T2CCDmGetMemMinUsage(ANSC_HANDLE hThisObject) {
+  return g_pComponent_Common_Dm->MemMinUsage;
 }
-
 
 ULONG
-ssp_T2CCDmGetComponentState
-    (
-        ANSC_HANDLE                     hThisObject
-    )
-{
-    return g_pComponent_Common_Dm->State;
+ssp_T2CCDmGetMemConsumed(ANSC_HANDLE hThisObject) {
+  LONG size = 0;
+
+  size = AnscGetComponentMemorySize(gpT2StartCfg->ComponentName);
+  if (size == -1)
+    size = 0;
+
+  return size;
 }
-
-
-
-BOOL
-ssp_T2CCDmGetLoggingEnabled
-    (
-        ANSC_HANDLE                     hThisObject
-    )
-{
-    return g_pComponent_Common_Dm->LogEnable;
-}
-
 
 ANSC_STATUS
-ssp_T2CCDmSetLoggingEnabled
-    (
-        ANSC_HANDLE                     hThisObject,
-        BOOL                            bEnabled
-    )
-{
-    /*CommonDm.LogEnable = bEnabled;*/
-    if(g_pComponent_Common_Dm->LogEnable == bEnabled) return ANSC_STATUS_SUCCESS;
-    g_pComponent_Common_Dm->LogEnable = bEnabled;
+ssp_T2CCDmApplyChanges(ANSC_HANDLE hThisObject) {
+  ANSC_STATUS returnStatus = ANSC_STATUS_SUCCESS;
+  /* Assume the parameter settings are committed immediately. */
+  /*g_pComponent_Common_Dm->LogEnable = CommonDm.LogEnable;
+  g_pComponent_Common_Dm->LogLevel  = CommonDm.LogLevel;
 
-    if (!bEnabled)
-        AnscSetTraceLevel(CCSP_TRACE_INVALID_LEVEL);
-    else
-        AnscSetTraceLevel(g_pComponent_Common_Dm->LogLevel);
+  AnscSetTraceLevel((INT)g_pComponent_Common_Dm->LogLevel);*/
 
-    return ANSC_STATUS_SUCCESS;
-}
-
-
-ULONG
-ssp_T2CCDmGetLoggingLevel
-    (
-        ANSC_HANDLE                     hThisObject
-    )
-{
-    return g_pComponent_Common_Dm->LogLevel;
-}
-
-
-ANSC_STATUS
-ssp_T2CCDmSetLoggingLevel
-    (
-        ANSC_HANDLE                     hThisObject,
-        ULONG                           LogLevel
-    )
-{
-    /*CommonDm.LogLevel = LogLevel; */
-    if(g_pComponent_Common_Dm->LogLevel == LogLevel) return ANSC_STATUS_SUCCESS;
-    g_pComponent_Common_Dm->LogLevel = LogLevel;
-
-    if (g_pComponent_Common_Dm->LogEnable)
-        AnscSetTraceLevel(LogLevel);        
-
-    return ANSC_STATUS_SUCCESS;
-}
-
-
-ULONG
-ssp_T2CCDmGetMemMaxUsage
-    (
-        ANSC_HANDLE                     hThisObject
-    )
-{
-    return g_ulAllocatedSizePeak;
-}
-
-
-ULONG
-ssp_T2CCDmGetMemMinUsage
-    (
-        ANSC_HANDLE                     hThisObject
-    )
-{
-    return g_pComponent_Common_Dm->MemMinUsage;
-}
-
-
-ULONG
-ssp_T2CCDmGetMemConsumed
-    (
-        ANSC_HANDLE                     hThisObject
-    )
-{
-    LONG             size = 0;
-
-    size = AnscGetComponentMemorySize(gpT2StartCfg->ComponentName);
-    if (size == -1 )
-        size = 0;
-
-    return size;
-}
-
-
-ANSC_STATUS
-ssp_T2CCDmApplyChanges
-    (
-        ANSC_HANDLE                     hThisObject
-    )
-{
-    ANSC_STATUS                         returnStatus    = ANSC_STATUS_SUCCESS;
-    /* Assume the parameter settings are committed immediately. */
-    /*g_pComponent_Common_Dm->LogEnable = CommonDm.LogEnable;
-    g_pComponent_Common_Dm->LogLevel  = CommonDm.LogLevel;
-
-    AnscSetTraceLevel((INT)g_pComponent_Common_Dm->LogLevel);*/
-
-    return returnStatus;
+  return returnStatus;
 }

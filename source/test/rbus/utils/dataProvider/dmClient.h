@@ -21,33 +21,38 @@
 #ifndef __DM_CLIENT_H__
 #define __DM_CLIENT_H__
 
-#include "dmQueryResult.h"
 #include "dmProviderOperation.h"
+#include "dmQueryResult.h"
 #include "rtLog.h"
 
-class dmProviderProxy
-{
+class dmProviderProxy {
 public:
 private:
 };
 
-class dmClientNotifier
-{
+class dmClientNotifier {
 public:
-  virtual void onResult(const dmQueryResult& result) = 0;//1 onResult for non list query.  1 for each list item in a list query.
-  virtual void onError(int status, std::string const& message) = 0;//1 onError if error for non list, 1 for each list item query that fails.
+  virtual void onResult(
+      const dmQueryResult &result) = 0; // 1 onResult for non list query.  1 for
+                                        // each list item in a list query.
+  virtual void onError(
+      int status,
+      std::string const &message) = 0; // 1 onError if error for non list, 1 for
+                                       // each list item query that fails.
 };
 
-class dmClient
-{
+class dmClient {
 public:
-  virtual ~dmClient() { }
-  virtual bool runQuery(dmProviderOperation operation, std::string const& parameter, bool recursive, dmClientNotifier* notifier) = 0;
+  virtual ~dmClient() {}
+  virtual bool runQuery(dmProviderOperation operation,
+                        std::string const &parameter, bool recursive,
+                        dmClientNotifier *notifier) = 0;
 
-  static dmClient* create(std::string const& datamodelDir, rtLogLevel logLevel = RT_LOG_WARN);
-  static void destroy(dmClient* client);
+  static dmClient *create(std::string const &datamodelDir,
+                          rtLogLevel logLevel = RT_LOG_WARN);
+  static void destroy(dmClient *client);
+
 private:
 };
-
 
 #endif

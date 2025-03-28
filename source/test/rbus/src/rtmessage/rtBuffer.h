@@ -28,17 +28,17 @@ extern "C" {
 #endif
 
 struct _rtBuffer;
-typedef struct _rtBuffer* rtBuffer;
+typedef struct _rtBuffer *rtBuffer;
 
-rtError rtBuffer_Create(rtBuffer* buff);
-rtError rtBuffer_CreateFromBytes(rtBuffer* buff, uint8_t* b, int n);
+rtError rtBuffer_Create(rtBuffer *buff);
+rtError rtBuffer_CreateFromBytes(rtBuffer *buff, uint8_t *b, int n);
 rtError rtBuffer_Destroy(rtBuffer buff);
 rtError rtBuffer_Retain(rtBuffer buff);
 rtError rtBuffer_Release(rtBuffer buff);
 rtError rtBuffer_WriteInt32(rtBuffer buff, int32_t n);
-rtError rtBuffer_WriteString(rtBuffer buff, char const* s, int n);
-rtError rtBuffer_ReadInt32(rtBuffer buff, int32_t* n);
-rtError rtBuffer_ReadString(rtBuffer buff, char** s, int* n);
+rtError rtBuffer_WriteString(rtBuffer buff, char const *s, int n);
+rtError rtBuffer_ReadInt32(rtBuffer buff, int32_t *n);
+rtError rtBuffer_ReadString(rtBuffer buff, char **s, int *n);
 
 #ifdef __cplusplus
 }

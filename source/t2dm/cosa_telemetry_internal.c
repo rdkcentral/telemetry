@@ -32,8 +32,8 @@
  limitations under the License.
  **********************************************************************/
 
-#include "plugin_main_apis.h"
 #include "cosa_telemetry_internal.h"
+#include "plugin_main_apis.h"
 
 /**********************************************************************
 
@@ -56,21 +56,22 @@
 
  **********************************************************************/
 
-ANSC_HANDLE CosaTelemetryCreate( VOID) {
-    PCOSA_DATAMODEL_TELEMETRY pMyObject = (PCOSA_DATAMODEL_TELEMETRY) NULL;
+ANSC_HANDLE CosaTelemetryCreate(VOID) {
+  PCOSA_DATAMODEL_TELEMETRY pMyObject = (PCOSA_DATAMODEL_TELEMETRY)NULL;
 
-    pMyObject = (PCOSA_DATAMODEL_TELEMETRY) AnscAllocateMemory(sizeof(COSA_DATAMODEL_TELEMETRY));
-    if(!pMyObject) {
-        return (ANSC_HANDLE) NULL;
-    }
+  pMyObject = (PCOSA_DATAMODEL_TELEMETRY)AnscAllocateMemory(
+      sizeof(COSA_DATAMODEL_TELEMETRY));
+  if (!pMyObject) {
+    return (ANSC_HANDLE)NULL;
+  }
 
-    pMyObject->Oid = COSA_DATAMODEL_TELEMETRY_OID;
-    pMyObject->Create = CosaTelemetryCreate;
-    pMyObject->Remove = CosaTelemetryRemove;
-    pMyObject->Initialize = CosaTelemetryInitialize;
+  pMyObject->Oid = COSA_DATAMODEL_TELEMETRY_OID;
+  pMyObject->Create = CosaTelemetryCreate;
+  pMyObject->Remove = CosaTelemetryRemove;
+  pMyObject->Initialize = CosaTelemetryInitialize;
 
-    pMyObject->Initialize((ANSC_HANDLE) pMyObject);
-    return (ANSC_HANDLE) pMyObject;
+  pMyObject->Initialize((ANSC_HANDLE)pMyObject);
+  return (ANSC_HANDLE)pMyObject;
 }
 
 /**********************************************************************
@@ -97,13 +98,13 @@ ANSC_HANDLE CosaTelemetryCreate( VOID) {
 
  **********************************************************************/
 ANSC_STATUS CosaTelemetryInitialize(ANSC_HANDLE hThisObject) {
-    PCOSA_DATAMODEL_TELEMETRY pMyObject = (PCOSA_DATAMODEL_TELEMETRY) hThisObject;
-    ANSC_STATUS returnStatus = ANSC_STATUS_SUCCESS;
+  PCOSA_DATAMODEL_TELEMETRY pMyObject = (PCOSA_DATAMODEL_TELEMETRY)hThisObject;
+  ANSC_STATUS returnStatus = ANSC_STATUS_SUCCESS;
 
-    pMyObject->JsonBlob = NULL;
-    pMyObject->JsonTmpBlob = NULL;
-    pMyObject->MsgpackBlob = NULL;
-    return returnStatus;
+  pMyObject->JsonBlob = NULL;
+  pMyObject->JsonTmpBlob = NULL;
+  pMyObject->MsgpackBlob = NULL;
+  return returnStatus;
 }
 
 /**********************************************************************
@@ -131,20 +132,19 @@ ANSC_STATUS CosaTelemetryInitialize(ANSC_HANDLE hThisObject) {
  **********************************************************************/
 
 ANSC_STATUS CosaTelemetryRemove(ANSC_HANDLE hThisObject) {
-    ANSC_STATUS returnStatus = ANSC_STATUS_SUCCESS;
-    PCOSA_DATAMODEL_TELEMETRY pMyObject = (PCOSA_DATAMODEL_TELEMETRY) hThisObject;
+  ANSC_STATUS returnStatus = ANSC_STATUS_SUCCESS;
+  PCOSA_DATAMODEL_TELEMETRY pMyObject = (PCOSA_DATAMODEL_TELEMETRY)hThisObject;
 
-    /* Free internal data */
-    if (pMyObject->JsonBlob)
-        AnscFreeMemory((ANSC_HANDLE) (pMyObject->JsonBlob));
+  /* Free internal data */
+  if (pMyObject->JsonBlob)
+    AnscFreeMemory((ANSC_HANDLE)(pMyObject->JsonBlob));
 
-    if (pMyObject->JsonTmpBlob)
-        AnscFreeMemory((ANSC_HANDLE) (pMyObject->JsonTmpBlob));
-    if (pMyObject->MsgpackBlob)
-        AnscFreeMemory((ANSC_HANDLE) (pMyObject->MsgpackBlob));
-    /* Remove self */
-    AnscFreeMemory((ANSC_HANDLE) pMyObject);
+  if (pMyObject->JsonTmpBlob)
+    AnscFreeMemory((ANSC_HANDLE)(pMyObject->JsonTmpBlob));
+  if (pMyObject->MsgpackBlob)
+    AnscFreeMemory((ANSC_HANDLE)(pMyObject->MsgpackBlob));
+  /* Remove self */
+  AnscFreeMemory((ANSC_HANDLE)pMyObject);
 
-    return returnStatus;
+  return returnStatus;
 }
-

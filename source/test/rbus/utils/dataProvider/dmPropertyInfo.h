@@ -27,40 +27,34 @@
 
 class dmProviderDatabase;
 
-class dmPropertyInfo
-{
+class dmPropertyInfo {
   friend class dmProviderDatabase;
+
 public:
-  inline std::string const& name() const
-    { return m_name; }
+  inline std::string const &name() const { return m_name; }
 
-  inline dmValueType type() const
-    { return m_type; }
+  inline dmValueType type() const { return m_type; }
 
-  inline bool isOptional() const
-    { return m_optional; }
+  inline bool isOptional() const { return m_optional; }
 
-  inline bool isWritable() const
-    { return m_writable; }
+  inline bool isWritable() const { return m_writable; }
 
-  inline std::string const& fullName() const
-    { return m_full_name; }
+  inline std::string const &fullName() const { return m_full_name; }
 
 public:
   dmPropertyInfo();
-  void setName(std::string const& name);
+  void setName(std::string const &name);
   void setType(dmValueType t);
   void setIsOptional(bool b);
   void setIsWritable(bool b);
-  void setFullName(std::string const& name);
+  void setFullName(std::string const &name);
 
 private:
   std::string m_name;
   dmValueType m_type;
-  bool        m_optional;
-  bool        m_writable;
+  bool m_optional;
+  bool m_writable;
   std::string m_full_name;
 };
-
 
 #endif

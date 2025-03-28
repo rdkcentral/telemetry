@@ -15,18 +15,17 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 #ifndef _BUS_INTERFACE_TESTS_H_
 #define _BUS_INTERFACE_TESTS_H_
 
 /**
  * Performs tests related sub module ccspinterface .
- * Primary focus is on ensuring that CCSP vs rbus porting efforts to make sure nothing is broken
+ * Primary focus is on ensuring that CCSP vs rbus porting efforts to make sure
+ * nothing is broken
  *
  */
 void testBusInterface();
-
-
 
 #endif

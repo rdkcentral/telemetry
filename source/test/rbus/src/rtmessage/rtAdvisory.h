@@ -27,11 +27,7 @@
 extern "C" {
 #endif
 
-typedef enum
-{
-  rtAdviseClientConnect,
-  rtAdviseClientDisconnect
-} rtAdviseEvent;
+typedef enum { rtAdviseClientConnect, rtAdviseClientDisconnect } rtAdviseEvent;
 
 #define RTMSG_ADVISE_EVENT "event"
 #define RTMSG_ADVISE_INBOX "inbox"

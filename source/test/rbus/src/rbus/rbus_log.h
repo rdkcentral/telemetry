@@ -15,28 +15,35 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 /**
  * @file        rbus_log.h
- * @brief       rbusLog 
+ * @brief       rbusLog
  * @defgroup    rbusLog
- * @brief       An rbusLog is a method to print the logs and also providers the users of the library to override log handler.
+ * @brief       An rbusLog is a method to print the logs and also providers the
+ * users of the library to override log handler.
  * @{
  */
 
-#ifndef RBUS_LOG_H 
+#ifndef RBUS_LOG_H
 #define RBUS_LOG_H
 
-#include <stdarg.h>
 #include "rtLog.h"
+#include <stdarg.h>
 
-#define RBUSLOG_TRACE(format, ...)       rtLog_DebugPrint("RBUS", format"\n", ##__VA_ARGS__)
-#define RBUSLOG_DEBUG(format, ...)       rtLog_DebugPrint("RBUS", format"\n", ##__VA_ARGS__)
-#define RBUSLOG_INFO(format, ...)        rtLog_InfoPrint("RBUS", format"\n", ##__VA_ARGS__)
-#define RBUSLOG_WARN(format, ...)        rtLog_WarnPrint("RBUS", format"\n", ##__VA_ARGS__)
-#define RBUSLOG_ERROR(format, ...)       rtLog_ErrorPrint("RBUS", format"\n", ##__VA_ARGS__)
-#define RBUSLOG_FATAL(format, ...)       rtLog_FatalPrint("RBUS", format"\n", ##__VA_ARGS__)
+#define RBUSLOG_TRACE(format, ...)                                             \
+  rtLog_DebugPrint("RBUS", format "\n", ##__VA_ARGS__)
+#define RBUSLOG_DEBUG(format, ...)                                             \
+  rtLog_DebugPrint("RBUS", format "\n", ##__VA_ARGS__)
+#define RBUSLOG_INFO(format, ...)                                              \
+  rtLog_InfoPrint("RBUS", format "\n", ##__VA_ARGS__)
+#define RBUSLOG_WARN(format, ...)                                              \
+  rtLog_WarnPrint("RBUS", format "\n", ##__VA_ARGS__)
+#define RBUSLOG_ERROR(format, ...)                                             \
+  rtLog_ErrorPrint("RBUS", format "\n", ##__VA_ARGS__)
+#define RBUSLOG_FATAL(format, ...)                                             \
+  rtLog_FatalPrint("RBUS", format "\n", ##__VA_ARGS__)
 
 #endif
 

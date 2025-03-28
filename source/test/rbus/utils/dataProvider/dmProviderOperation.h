@@ -21,10 +21,6 @@
 #ifndef __DM_PROVIDER_OPERATION_H__
 #define __DM_PROVIDER_OPERATION_H__
 
-enum dmProviderOperation
-{
-  dmProviderOperation_Get,
-  dmProviderOperation_Set
-};
+enum dmProviderOperation { dmProviderOperation_Get, dmProviderOperation_Set };
 
 #endif

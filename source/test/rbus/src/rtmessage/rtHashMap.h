@@ -29,34 +29,32 @@ extern "C" {
 #endif
 
 struct _rtHashMap;
-typedef struct _rtHashMap* rtHashMap;
+typedef struct _rtHashMap *rtHashMap;
 
-typedef uint32_t (*rtHashMap_Hash_Func)(rtHashMap, const void*);
+typedef uint32_t (*rtHashMap_Hash_Func)(rtHashMap, const void *);
 typedef int (*rtHashMap_Compare_Func)(const void *, const void *);
-typedef const void* (*rtHashMap_Copy_Func)(const void *);
+typedef const void *(*rtHashMap_Copy_Func)(const void *);
 typedef void (*rtHashMap_Destroy_Func)(void *);
 
-void rtHashMap_Create(rtHashMap* phashmap);
-void rtHashMap_CreateEx(
-  rtHashMap* phashmap, 
-  float load_factor,
-  rtHashMap_Hash_Func key_hasher, 
-  rtHashMap_Compare_Func key_comparer, 
-  rtHashMap_Copy_Func key_copier,
-  rtHashMap_Destroy_Func key_destroyer, 
-  rtHashMap_Copy_Func val_copier,
-  rtHashMap_Destroy_Func val_destroyer);
+void rtHashMap_Create(rtHashMap *phashmap);
+void rtHashMap_CreateEx(rtHashMap *phashmap, float load_factor,
+                        rtHashMap_Hash_Func key_hasher,
+                        rtHashMap_Compare_Func key_comparer,
+                        rtHashMap_Copy_Func key_copier,
+                        rtHashMap_Destroy_Func key_destroyer,
+                        rtHashMap_Copy_Func val_copier,
+                        rtHashMap_Destroy_Func val_destroyer);
 void rtHashMap_Destroy(rtHashMap hashmap);
-void rtHashMap_Set(rtHashMap hashmap, const void* key, const void* value);
-void* rtHashMap_Get(rtHashMap hashmap, const void* key);
+void rtHashMap_Set(rtHashMap hashmap, const void *key, const void *value);
+void *rtHashMap_Get(rtHashMap hashmap, const void *key);
 size_t rtHashMap_GetSize(rtHashMap hashmap);
-int rtHashMap_Contains(rtHashMap hashmap, const void* key);
-int rtHashMap_Remove(rtHashMap hashmap, const void* key);
+int rtHashMap_Contains(rtHashMap hashmap, const void *key);
+int rtHashMap_Remove(rtHashMap hashmap, const void *key);
 
-uint32_t rtHashMap_Hash_Func_String(rtHashMap hashmap, const void* key);
-int rtHashMap_Compare_Func_String(const void* left, const void* right);
-const void* rtHashMap_Copy_Func_String(const void* data);
-void rtHashMap_Destroy_Func_Free(void* data);
+uint32_t rtHashMap_Hash_Func_String(rtHashMap hashmap, const void *key);
+int rtHashMap_Compare_Func_String(const void *left, const void *right);
+const void *rtHashMap_Copy_Func_String(const void *data);
+void rtHashMap_Destroy_Func_Free(void *data);
 
 void rtHashMap_LogDebugStats(rtHashMap hashmap);
 

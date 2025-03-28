@@ -15,23 +15,23 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
-#ifndef  _DATAMODEL_H_
-#define  _DATAMODEL_H_
+#ifndef _DATAMODEL_H_
+#define _DATAMODEL_H_
 
-#include <stdbool.h>
 #include "telemetry2_0.h"
+#include <stdbool.h>
 
 T2ERROR datamodel_init(void);
 
 void datamodel_unInit(void);
 
-T2ERROR datamodel_processProfile(char *JsonBlob , bool rprofiletypes);
+T2ERROR datamodel_processProfile(char *JsonBlob, bool rprofiletypes);
 
-void datamodel_getSavedJsonProfilesasString(char** SavedProfiles);
+void datamodel_getSavedJsonProfilesasString(char **SavedProfiles);
 
-int datamodel_getSavedMsgpackProfilesasString(char** SavedProfiles);
+int datamodel_getSavedMsgpackProfilesasString(char **SavedProfiles);
 
-T2ERROR datamodel_MsgpackProcessProfile(char *str , int strSize);
+T2ERROR datamodel_MsgpackProcessProfile(char *str, int strSize);
 #endif

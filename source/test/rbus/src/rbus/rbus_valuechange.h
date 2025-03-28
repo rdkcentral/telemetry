@@ -15,7 +15,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 #ifndef RBUS_VALUECHANGE_H
 #define RBUS_VALUECHANGE_H
@@ -26,8 +26,10 @@
 extern "C" {
 #endif
 
-void rbusValueChange_AddPropertyNode(rbusHandle_t handle, elementNode* propNode);
-void rbusValueChange_RemovePropertyNode(rbusHandle_t handle, elementNode* propNode);
+void rbusValueChange_AddPropertyNode(rbusHandle_t handle,
+                                     elementNode *propNode);
+void rbusValueChange_RemovePropertyNode(rbusHandle_t handle,
+                                        elementNode *propNode);
 void rbusValueChange_CloseHandle(rbusHandle_t handle);
 
 #ifdef __cplusplus

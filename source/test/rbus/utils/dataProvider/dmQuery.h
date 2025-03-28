@@ -21,18 +21,17 @@
 #ifndef __DM_QUERY_H__
 #define __DM_QUERY_H__
 
-#include "dmValue.h"
 #include "dmProviderOperation.h"
 #include "dmQueryResult.h"
+#include "dmValue.h"
 
-class dmQuery
-{
+class dmQuery {
 public:
-  virtual ~dmQuery() { }
+  virtual ~dmQuery() {}
   virtual bool exec() = 0;
   virtual void reset() = 0;
-  virtual bool setQueryString(dmProviderOperation op, char const* s) = 0;
-  virtual dmQueryResult const& results() = 0;
+  virtual bool setQueryString(dmProviderOperation op, char const *s) = 0;
+  virtual dmQueryResult const &results() = 0;
 };
 
 #endif

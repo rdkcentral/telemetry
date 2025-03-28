@@ -15,13 +15,13 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 #ifndef _T2UTILS_H_
 #define _T2UTILS_H_
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "telemetry2_0.h"
 
@@ -35,4 +35,3 @@ T2ERROR getMtlsCerts(char **certName, char **phrase);
 double get_system_uptime();
 
 #endif // _T2UTILS_H_
-

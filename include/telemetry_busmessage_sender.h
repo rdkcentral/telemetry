@@ -15,16 +15,16 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 #ifndef MESSAGESENDER_H_
 #define MESSAGESENDER_H_
 
-#include <stdio.h>
 #include <stdbool.h>
+#include <stdio.h>
 
-#include <unistd.h>
 #include <fcntl.h>
+#include <unistd.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -38,7 +38,7 @@ extern "C" {
  *               with a unique name over the entire system
  * ARGUMENTS   : copmponent
  *               Name of the component value in string
-*/
+ */
 void t2_init(char *component);
 
 /*
@@ -48,7 +48,7 @@ void t2_init(char *component);
  *               value in string
  * RETURN      : 0 on successful sending of the message
  */
-T2ERROR t2_event_s(const char* marker, const char* value);
+T2ERROR t2_event_s(const char *marker, const char *value);
 
 /*
  * NAME        : t2_event_f
@@ -57,8 +57,7 @@ T2ERROR t2_event_s(const char* marker, const char* value);
  *               value - floating point value
  * RETURN      : 0 on successful sending of the message
  */
-T2ERROR t2_event_f(const char* marker, double value);
-
+T2ERROR t2_event_f(const char *marker, double value);
 
 /*
  * NAME        : t2_log_d
@@ -66,13 +65,13 @@ T2ERROR t2_event_f(const char* marker, double value);
  * ARGUMENTS   : marker name in string
  *               value - integer value
  * RETURN      : 0 on successful sending of the message
-*/
-T2ERROR t2_event_d(const char* marker, int value);
+ */
+T2ERROR t2_event_d(const char *marker, int value);
 
 /*
  * NAME        : t2_uninit
  * DESCRIPTION : Uninitializes the event sending module
- *               
+ *
  */
 void t2_uninit(void);
 

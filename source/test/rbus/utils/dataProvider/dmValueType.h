@@ -21,8 +21,7 @@
 #ifndef __DM_VALUE_TYPE_H__
 #define __DM_VALUE_TYPE_H__
 
-enum dmValueType
-{
+enum dmValueType {
   dmValueType_Int8,
   dmValueType_Int16,
   dmValueType_Int32,
@@ -38,10 +37,8 @@ enum dmValueType
   dmValueType_Unknown
 };
 
-dmValueType
-dmValueType_fromString(char const* s);
+dmValueType dmValueType_fromString(char const *s);
 
-char const*
-dmValueType_toString(dmValueType t);
+char const *dmValueType_toString(dmValueType t);
 
 #endif

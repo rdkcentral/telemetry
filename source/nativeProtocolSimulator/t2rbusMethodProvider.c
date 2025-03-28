@@ -17,147 +17,159 @@
  * limitations under the License.
  */
 
-#include <stdio.h>
+#include <getopt.h>
+#include <pthread.h>
+#include <rbus.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <pthread.h>
 #include <sys/time.h>
 #include <time.h>
 #include <unistd.h>
-#include <string.h>
-#include <getopt.h>
-#include <rbus.h>
 
 int loopFor = 10;
 rbusHandle_t handle;
 
 static bool returnStatus = true;
-static char* simulateMethodName = NULL;
+static char *simulateMethodName = NULL;
 
 typedef struct MethodData {
-    rbusMethodAsyncHandle_t asyncHandle;
-    rbusObject_t inParams;
+  rbusMethodAsyncHandle_t asyncHandle;
+  rbusObject_t inParams;
 } MethodData;
 
-static void* asyncSimulatorImpl(void *p) {
+static void *asyncSimulatorImpl(void *p) {
 
-    MethodData* data;
-    rbusObject_t outParams;
-    rbusValue_t value;
-    rbusError_t err;
+  MethodData *data;
+  rbusObject_t outParams;
+  rbusValue_t value;
+  rbusError_t err;
 
-    printf("%s enter\n", __FUNCTION__);
+  printf("%s enter\n", __FUNCTION__);
 
-    data = p;
+  data = p;
 
-    rbusValue_Init(&value);
-    rbusValue_SetString(value, "Async method response from t2 simulator");
+  rbusValue_Init(&value);
+  rbusValue_SetString(value, "Async method response from t2 simulator");
 
-    rbusObject_Init(&outParams, NULL);
-    rbusObject_SetValue(outParams, "value", value);
-    rbusValue_Release(value);
+  rbusObject_Init(&outParams, NULL);
+  rbusObject_SetValue(outParams, "value", value);
+  rbusValue_Release(value);
 
-    if(returnStatus) {
-        printf("%s sending response as success \n", __FUNCTION__);
-        err = rbusMethod_SendAsyncResponse(data->asyncHandle, RBUS_ERROR_SUCCESS, outParams);
-    } else {
-        printf("%s sending response as failure \n", __FUNCTION__);
-        err = rbusMethod_SendAsyncResponse(data->asyncHandle, RBUS_ERROR_INVALID_RESPONSE_FROM_DESTINATION, outParams);
-    }
+  if (returnStatus) {
+    printf("%s sending response as success \n", __FUNCTION__);
+    err = rbusMethod_SendAsyncResponse(data->asyncHandle, RBUS_ERROR_SUCCESS,
+                                       outParams);
+  } else {
+    printf("%s sending response as failure \n", __FUNCTION__);
+    err = rbusMethod_SendAsyncResponse(
+        data->asyncHandle, RBUS_ERROR_INVALID_RESPONSE_FROM_DESTINATION,
+        outParams);
+  }
 
-    if(err != RBUS_ERROR_SUCCESS) {
-        printf("%s rbusMethod_SendAsyncResponse failed err:%d\n", __FUNCTION__, err);
-    }
+  if (err != RBUS_ERROR_SUCCESS) {
+    printf("%s rbusMethod_SendAsyncResponse failed err:%d\n", __FUNCTION__,
+           err);
+  }
 
-    rbusObject_Release(data->inParams);
-    rbusObject_Release(outParams);
+  rbusObject_Release(data->inParams);
+  rbusObject_Release(outParams);
 
-    free(data);
+  free(data);
 
-    printf("%s exit\n", __FUNCTION__);
+  printf("%s exit\n", __FUNCTION__);
 
-    return NULL;
+  return NULL;
 }
 
-static rbusError_t simulateHandler(rbusHandle_t handle, char const* methodName, rbusObject_t inParams, rbusObject_t outParams,
-        rbusMethodAsyncHandle_t asyncHandle) {
-    (void) handle;
-    (void) outParams;
-    printf("methodHandler called: %s\n", methodName);
-    rbusObject_fwrite(inParams, 1, stdout);
+static rbusError_t simulateHandler(rbusHandle_t handle, char const *methodName,
+                                   rbusObject_t inParams,
+                                   rbusObject_t outParams,
+                                   rbusMethodAsyncHandle_t asyncHandle) {
+  (void)handle;
+  (void)outParams;
+  printf("methodHandler called: %s\n", methodName);
+  rbusObject_fwrite(inParams, 1, stdout);
 
-    if(strcmp(methodName, simulateMethodName) == 0) {
-        pthread_t pid;
-        MethodData* data = malloc(sizeof(MethodData));
-        data->asyncHandle = asyncHandle;
-        data->inParams = inParams;
+  if (strcmp(methodName, simulateMethodName) == 0) {
+    pthread_t pid;
+    MethodData *data = malloc(sizeof(MethodData));
+    data->asyncHandle = asyncHandle;
+    data->inParams = inParams;
 
-        rbusObject_Retain(inParams);
+    rbusObject_Retain(inParams);
 
-        if(pthread_create(&pid, NULL, asyncSimulatorImpl, data) || pthread_detach(pid)) {
-            printf("%s failed to spawn thread\n", __FUNCTION__);
-            return RBUS_ERROR_BUS_ERROR;
-        }
-        return RBUS_ERROR_ASYNC_RESPONSE;
-    }else {
-        return RBUS_ERROR_BUS_ERROR;
+    if (pthread_create(&pid, NULL, asyncSimulatorImpl, data) ||
+        pthread_detach(pid)) {
+      printf("%s failed to spawn thread\n", __FUNCTION__);
+      return RBUS_ERROR_BUS_ERROR;
     }
+    return RBUS_ERROR_ASYNC_RESPONSE;
+  } else {
+    return RBUS_ERROR_BUS_ERROR;
+  }
 }
 
-static void printHelp( ) {
-    printf("Invalid arguments\n");
-    printf("Invoke :\n t2rbusMethodSimulator <mehodName> <true/false> <keep alive in seconds> \n");
-
+static void printHelp() {
+  printf("Invalid arguments\n");
+  printf("Invoke :\n t2rbusMethodSimulator <mehodName> <true/false> <keep "
+         "alive in seconds> \n");
 }
 
 int main(int argc, char *argv[]) {
 
-    if(argc < 4) {
-        printHelp();
-        return -1;
-    }
+  if (argc < 4) {
+    printHelp();
+    return -1;
+  }
 
-    int rc = RBUS_ERROR_SUCCESS;
+  int rc = RBUS_ERROR_SUCCESS;
 
-    char componentName[] = "t2NativeMethodSimulator";
-    simulateMethodName = argv[1];
-    if(strcmp(argv[2], "true") == 0 ) {
-        printf("Setting return status to true \n");
-        returnStatus = true;
-    }else {
-        printf("Setting return status to false \n");
-        returnStatus = false;
-    }
-    loopFor = atoi(argv[3]);
+  char componentName[] = "t2NativeMethodSimulator";
+  simulateMethodName = argv[1];
+  if (strcmp(argv[2], "true") == 0) {
+    printf("Setting return status to true \n");
+    returnStatus = true;
+  } else {
+    printf("Setting return status to false \n");
+    returnStatus = false;
+  }
+  loopFor = atoi(argv[3]);
 
-    printf("Simulating %s method provider returning %s status for next %d seconds ... \n", simulateMethodName,
-            returnStatus ? "SUCCESS" : "FAILURE", loopFor);
+  printf("Simulating %s method provider returning %s status for next %d "
+         "seconds ... \n",
+         simulateMethodName, returnStatus ? "SUCCESS" : "FAILURE", loopFor);
 
-    rbusDataElement_t dataElements[1] = { { simulateMethodName, RBUS_ELEMENT_TYPE_METHOD, { NULL, NULL, NULL, NULL, NULL, simulateHandler } } };
+  rbusDataElement_t dataElements[1] = {
+      {simulateMethodName,
+       RBUS_ELEMENT_TYPE_METHOD,
+       {NULL, NULL, NULL, NULL, NULL, simulateHandler}}};
 
-    printf("provider: start\n");
+  printf("provider: start\n");
 
-    rc = rbus_open(&handle, componentName);
-    if(rc != RBUS_ERROR_SUCCESS) {
-        printf("provider: rbus_open failed: %d\n", rc);
-        goto exit2;
-    }
+  rc = rbus_open(&handle, componentName);
+  if (rc != RBUS_ERROR_SUCCESS) {
+    printf("provider: rbus_open failed: %d\n", rc);
+    goto exit2;
+  }
 
-    rc = rbus_regDataElements(handle, 1, dataElements);
-    if(rc != RBUS_ERROR_SUCCESS) {
-        printf("provider: rbus_regDataElements failed: %d\n", rc);
-        goto exit1;
-    }
+  rc = rbus_regDataElements(handle, 1, dataElements);
+  if (rc != RBUS_ERROR_SUCCESS) {
+    printf("provider: rbus_regDataElements failed: %d\n", rc);
+    goto exit1;
+  }
 
-    while(loopFor != 0) {
-        printf("provider: exiting in %d seconds\n", loopFor);
-        sleep(1);
-        loopFor--;
-    }
+  while (loopFor != 0) {
+    printf("provider: exiting in %d seconds\n", loopFor);
+    sleep(1);
+    loopFor--;
+  }
 
-    rbus_unregDataElements(handle, 1, dataElements);
-    exit1: rbus_close(handle);
-    exit2: printf("provider: exit\n");
-    return rc;
+  rbus_unregDataElements(handle, 1, dataElements);
+exit1:
+  rbus_close(handle);
+exit2:
+  printf("provider: exit\n");
+  return rc;
 }

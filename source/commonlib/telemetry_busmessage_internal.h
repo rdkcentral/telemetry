@@ -15,7 +15,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 #ifndef SOURCE_COMMONLIB_TELEMETRY_BUSMESSAGE_INTERNAL_H_
 #define SOURCE_COMMONLIB_TELEMETRY_BUSMESSAGE_INTERNAL_H_
@@ -25,10 +25,9 @@
 const char destCompName[64] = "eRT.com.cisco.spvtg.ccsp.pam";
 const char destCompPath[64] = "/com/cisco/spvtg/ccsp/pam";
 
-
-#define EVENT_ERROR(format, ...) \
-    fprintf(stderr, "T2ERROR:%s %s:%d: ", __func__ , __FILE__, __LINE__ ); \
-    fprintf(stderr, (format), ##__VA_ARGS__ ); \
-    fprintf(stderr, "\n" );
+#define EVENT_ERROR(format, ...)                                               \
+  fprintf(stderr, "T2ERROR:%s %s:%d: ", __func__, __FILE__, __LINE__);         \
+  fprintf(stderr, (format), ##__VA_ARGS__);                                    \
+  fprintf(stderr, "\n");
 
 #endif /* SOURCE_COMMONLIB_TELEMETRY_BUSMESSAGE_INTERNAL_H_ */

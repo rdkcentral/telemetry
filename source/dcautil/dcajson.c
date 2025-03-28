@@ -41,62 +41,66 @@
 /**
  * @brief This API creates "searchResult" JSON array.
  *
- * The search result list contains collection of telemetry marker headers with their value.
+ * The search result list contains collection of telemetry marker headers with
+ * their value.
  *
- * Eg: {"searchResult":[{"MOCA_INFO_pnc_enabled":"1"},{"samv2_boardver_split":" V3.0 ##"},{"RF_ERR_DS_lockfail":"1"},{"RF_ERR_T3_timeout":"2"}]}
+ * Eg: {"searchResult":[{"MOCA_INFO_pnc_enabled":"1"},{"samv2_boardver_split":"
+ * V3.0 ##"},{"RF_ERR_DS_lockfail":"1"},{"RF_ERR_T3_timeout":"2"}]}
  *
- * @param[out] root  JSON object 
+ * @param[out] root  JSON object
  * @param[in]  sr    Search result JSON array
  */
 
-// {"searchResult":[{}]}  Telemetry 2.0 is not bound to any such data type - Get rid of this !!!
+// {"searchResult":[{}]}  Telemetry 2.0 is not bound to any such data type - Get
+// rid of this !!!
 void initSearchResultJson(cJSON **root, cJSON **sr) {
-    T2Debug("%s ++in \n", __FUNCTION__);
-    *root = cJSON_CreateObject();
-    if(NULL != *root) {
-        cJSON_AddItemToObject(*root, "searchResult", *sr = cJSON_CreateArray());
-    }
-    T2Debug("%s --out \n", __FUNCTION__);
+  T2Debug("%s ++in \n", __FUNCTION__);
+  *root = cJSON_CreateObject();
+  if (NULL != *root) {
+    cJSON_AddItemToObject(*root, "searchResult", *sr = cJSON_CreateArray());
+  }
+  T2Debug("%s --out \n", __FUNCTION__);
 }
 
 /**
- * @brief This API is to append the key/value pair to the SearchResult JSON array .
+ * @brief This API is to append the key/value pair to the SearchResult JSON
+ * array .
  *
- * @param[in]  key     marker name 
+ * @param[in]  key     marker name
  * @param[in]  value   metric count
  */
 void addToSearchResult(char *key, char *value) {
-    T2Debug("%s ++in \n", __FUNCTION__);
-    if(key == NULL || value == NULL){
-        T2Error("Key or Value is NULL\n");
-        return;
+  T2Debug("%s ++in \n", __FUNCTION__);
+  if (key == NULL || value == NULL) {
+    T2Error("Key or Value is NULL\n");
+    return;
+  }
+  if (NULL != SEARCH_RESULT_JSON) {
+    cJSON *obj = cJSON_CreateObject();
+    if (NULL != obj) {
+      cJSON_AddStringToObject(obj, key, value);
+      cJSON_AddItemToArray(SEARCH_RESULT_JSON, obj);
     }
-    if(NULL != SEARCH_RESULT_JSON) {
-        cJSON *obj = cJSON_CreateObject();
-        if(NULL != obj) {
-            cJSON_AddStringToObject(obj, key, value);
-            cJSON_AddItemToArray(SEARCH_RESULT_JSON, obj);
-        }
-    }
-    T2Debug("%s --out \n", __FUNCTION__);
+  }
+  T2Debug("%s --out \n", __FUNCTION__);
 }
 
 /**
  * @brief This API deletes the result JSON object.
  *
- * @param[in]  root JSON object to be deleted. 
+ * @param[in]  root JSON object to be deleted.
  */
 void clearSearchResultJson(cJSON **root) {
-    T2Debug("%s ++in \n", __FUNCTION__);
-    if(root == NULL){
-        T2Error("root is NULL, can't be deleted\n");
-        return;
-    }
-    cJSON_Delete(*root);
-    T2Debug("%s --out \n", __FUNCTION__);
+  T2Debug("%s ++in \n", __FUNCTION__);
+  if (root == NULL) {
+    T2Error("root is NULL, can't be deleted\n");
+    return;
+  }
+  cJSON_Delete(*root);
+  T2Debug("%s --out \n", __FUNCTION__);
 }
 
-/** @} */  //END OF GROUP DCA_APIS
+/** @} */ // END OF GROUP DCA_APIS
 /** @} */
 
 /** @} */

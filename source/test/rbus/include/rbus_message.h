@@ -15,7 +15,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 /**
  * @file        rubs_message.h
@@ -39,42 +39,39 @@ extern "C" {
  * @struct      rbusMessage_t
  * @brief       The data associated with a sent message
  */
-typedef struct
-{
-    char const*     topic;      /**< The topic the message is sent to */
-    uint8_t const*  data;       /**< The binary data being sent */
-    int             length;     /**< The binary data length */
+typedef struct {
+  char const *topic;   /**< The topic the message is sent to */
+  uint8_t const *data; /**< The binary data being sent */
+  int length;          /**< The binary data length */
 } rbusMessage_t;
 
 /**
  * @enum        rbusMessageOption_t
  * @brief       Option which controls how messages are sendt
  */
-typedef enum
-{
+typedef enum {
   RBUS_MESSAGE_NONE = 0, /**< The message is sent non-blocking with no
                                          confirmation of delivery */
-  RBUS_MESSAGE_CONFIRM_RECEIPT = 1     /**< The message is sent, blocking until a response
-                                         returns indicating whether the message
-                                         was received by a listener or not */
+  RBUS_MESSAGE_CONFIRM_RECEIPT =
+      1 /**< The message is sent, blocking until a response
+          returns indicating whether the message
+          was received by a listener or not */
 } rbusMessageSendOptions_t;
 
 /** @fn typedef void (*rbusMessageHandler_t)(
- *          rbusHandle_t handle, 
- *          rbusMessage_t message, 
+ *          rbusHandle_t handle,
+ *          rbusMessage_t message,
  *          void* userData)
- *  @brief A component will receive this API callback when a message is received.
- *  This callback is registered with rbusMessage_AddListener.\n
- *  Used by: Any component that listens for messages.
+ *  @brief A component will receive this API callback when a message is
+ * received. This callback is registered with rbusMessage_AddListener.\n Used
+ * by: Any component that listens for messages.
  *  @param handle Bus Handle
  *  @param message The message being sent to the listener
  *  @param userData The user data set when adding the listener
  *  @return void
  */
-typedef void (*rbusMessageHandler_t)(
-    rbusHandle_t handle, 
-    rbusMessage_t* message, 
-    void* userData);
+typedef void (*rbusMessageHandler_t)(rbusHandle_t handle,
+                                     rbusMessage_t *message, void *userData);
 
 /** @fn rbusError_t rbusMessage_AddListener(
  *          rbusHandle_t handle,
@@ -89,11 +86,9 @@ typedef void (*rbusMessageHandler_t)(
  *  @return RBus error code as defined by rbusError_t.
  *  Possible errors are: RBUS_ERROR_BUS_ERROR
  */
-rbusError_t rbusMessage_AddListener(
-    rbusHandle_t handle,
-    char const* expression,
-    rbusMessageHandler_t handler,
-    void* userData);
+rbusError_t rbusMessage_AddListener(rbusHandle_t handle, char const *expression,
+                                    rbusMessageHandler_t handler,
+                                    void *userData);
 
 /** @fn rbusError_t rbusMessage_RemoveListener(
  *          rbusHandle_t handle,
@@ -104,9 +99,8 @@ rbusError_t rbusMessage_AddListener(
  *  @return RBus error code as defined by rbusError_t.
  *  Possible errors are: RBUS_ERROR_BUS_ERROR
  */
-rbusError_t rbusMessage_RemoveListener(
-    rbusHandle_t handle,
-    char const* expression);
+rbusError_t rbusMessage_RemoveListener(rbusHandle_t handle,
+                                       char const *expression);
 
 /** @fn rbusError_t rbusMessage_RemoveAllListeners(
  *          rbusHandle_t handle,
@@ -116,8 +110,7 @@ rbusError_t rbusMessage_RemoveListener(
  *  @return RBus error code as defined by rbusError_t.
  *  Possible errors are: RBUS_ERROR_BUS_ERROR
  */
-rbusError_t rbusMessage_RemoveAllListeners(
-    rbusHandle_t handle);
+rbusError_t rbusMessage_RemoveAllListeners(rbusHandle_t handle);
 
 /** @fn rbusError_t rbusMessage_Send(
  *          rbusHandle_t handle,
@@ -130,10 +123,8 @@ rbusError_t rbusMessage_RemoveAllListeners(
  *  @return RBus error code as defined by rbusError_t.
  *  Possible errors are: RBUS_ERROR_BUS_ERROR, RBUS_ERROR_DESTINATION_NOT_FOUND
  */
-rbusError_t rbusMessage_Send(
-    rbusHandle_t handle,
-    rbusMessage_t* message,
-    rbusMessageSendOptions_t opts);
+rbusError_t rbusMessage_Send(rbusHandle_t handle, rbusMessage_t *message,
+                             rbusMessageSendOptions_t opts);
 
 #ifdef __cplusplus
 }

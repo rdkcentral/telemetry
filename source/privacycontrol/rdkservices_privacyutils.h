@@ -15,7 +15,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 #ifndef _RDKSERVICES_T2UTILS_H_
 #define _RDKSERVICES_T2UTILS_H_
@@ -23,6 +23,6 @@
 #include "telemetry2_0.h"
 
 void getPrivacyMode(char **privMode);
-T2ERROR setPrivacyMode(char* data);
+T2ERROR setPrivacyMode(char *data);
 
 #endif

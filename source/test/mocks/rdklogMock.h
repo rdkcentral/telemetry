@@ -15,27 +15,23 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 typedef unsigned int uint32_t;
 typedef uint32_t rdk_Error;
-#define RDK_SUCCESS          0
+#define RDK_SUCCESS 0
 
-
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
-class rdklogInterface
-{
-    public:
-        virtual ~rdklogInterface() {}
-	virtual rdk_Error rdk_logger_init(const char *) = 0;
+class rdklogInterface {
+public:
+  virtual ~rdklogInterface() {}
+  virtual rdk_Error rdk_logger_init(const char *) = 0;
 };
 
-class rdklogMock: public rdklogInterface
-{
-    public:
-        virtual ~rdklogMock() {}
-	MOCK_METHOD1(rdk_logger_init, rdk_Error(const char*));
+class rdklogMock : public rdklogInterface {
+public:
+  virtual ~rdklogMock() {}
+  MOCK_METHOD1(rdk_logger_init, rdk_Error(const char *));
 };
-

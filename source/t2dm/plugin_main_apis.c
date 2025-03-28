@@ -19,13 +19,13 @@
 
 /**********************************************************************
  Copyright [2014] [Cisco Systems, Inc.]
- 
+
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
  You may obtain a copy of the License at
- 
+
  http://www.apache.org/licenses/LICENSE-2.0
- 
+
  Unless required by applicable law or agreed to in writing, software
  distributed under the License is distributed on an "AS IS" BASIS,
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -33,13 +33,13 @@
  limitations under the License.
  **********************************************************************/
 
-/*********************************************************************** 
+/***********************************************************************
 
  module: plugin_main_apis.c
 
  Implement COSA Data Model Library Init and Unload apis.
  This files will hold all data in it.
- 
+
  ---------------------------------------------------------------
 
  description:
@@ -65,13 +65,13 @@
 #include "plugin_main_apis.h"
 #include "cosa_telemetry_internal.h"
 
-COSAGetInterfaceByNameProc         g_GetInterfaceByName;
-COSAGetHandleProc                  g_GetMessageBusHandle;
-COSAGetSubsystemPrefixProc         g_GetSubsystemPrefix;
-PCCSP_CCD_INTERFACE                g_pT2CcdIf;
-ANSC_HANDLE                        g_MessageBusHandle;
-char*                              g_SubsystemPrefix;
-COSARegisterCallBackAfterInitDmlProc  g_RegisterCallBackAfterInitDml;
+COSAGetInterfaceByNameProc g_GetInterfaceByName;
+COSAGetHandleProc g_GetMessageBusHandle;
+COSAGetSubsystemPrefixProc g_GetSubsystemPrefix;
+PCCSP_CCD_INTERFACE g_pT2CcdIf;
+ANSC_HANDLE g_MessageBusHandle;
+char *g_SubsystemPrefix;
+COSARegisterCallBackAfterInitDmlProc g_RegisterCallBackAfterInitDml;
 
 /**********************************************************************
 
@@ -94,28 +94,30 @@ COSARegisterCallBackAfterInitDmlProc  g_RegisterCallBackAfterInitDml;
 
  **********************************************************************/
 
-ANSC_HANDLE CosaBackEndManagerCreate( VOID) {
-    PCOSA_BACKEND_MANAGER_OBJECT pMyObject = (PCOSA_BACKEND_MANAGER_OBJECT) NULL;
+ANSC_HANDLE CosaBackEndManagerCreate(VOID) {
+  PCOSA_BACKEND_MANAGER_OBJECT pMyObject = (PCOSA_BACKEND_MANAGER_OBJECT)NULL;
 
-    /*
-     * We create object by first allocating memory for holding the variables and member functions.
-     */
-    pMyObject = (PCOSA_BACKEND_MANAGER_OBJECT) AnscAllocateMemory(sizeof(COSA_BACKEND_MANAGER_OBJECT));
+  /*
+   * We create object by first allocating memory for holding the variables and
+   * member functions.
+   */
+  pMyObject = (PCOSA_BACKEND_MANAGER_OBJECT)AnscAllocateMemory(
+      sizeof(COSA_BACKEND_MANAGER_OBJECT));
 
-    if(!pMyObject) {
-        return (ANSC_HANDLE) NULL;
-    }
+  if (!pMyObject) {
+    return (ANSC_HANDLE)NULL;
+  }
 
-    /*
-     * Initialize the common variables and functions for a container object.
-     */
-    pMyObject->Oid               = COSA_DATAMODEL_BASE_OID;
-    pMyObject->Create            = CosaBackEndManagerCreate;
-    pMyObject->Remove            = CosaBackEndManagerRemove;
-    pMyObject->Initialize        = CosaBackEndManagerInitialize;
-    /*pMyObject->Initialize   ((ANSC_HANDLE)pMyObject);*/
+  /*
+   * Initialize the common variables and functions for a container object.
+   */
+  pMyObject->Oid = COSA_DATAMODEL_BASE_OID;
+  pMyObject->Create = CosaBackEndManagerCreate;
+  pMyObject->Remove = CosaBackEndManagerRemove;
+  pMyObject->Initialize = CosaBackEndManagerInitialize;
+  /*pMyObject->Initialize   ((ANSC_HANDLE)pMyObject);*/
 
-    return  (ANSC_HANDLE)pMyObject;
+  return (ANSC_HANDLE)pMyObject;
 }
 
 /**********************************************************************
@@ -143,17 +145,18 @@ ANSC_HANDLE CosaBackEndManagerCreate( VOID) {
  **********************************************************************/
 
 ANSC_STATUS CosaBackEndManagerInitialize(ANSC_HANDLE hThisObject) {
-    ANSC_STATUS returnStatus = ANSC_STATUS_SUCCESS;
-    PCOSA_BACKEND_MANAGER_OBJECT pMyObject = (PCOSA_BACKEND_MANAGER_OBJECT) hThisObject;
+  ANSC_STATUS returnStatus = ANSC_STATUS_SUCCESS;
+  PCOSA_BACKEND_MANAGER_OBJECT pMyObject =
+      (PCOSA_BACKEND_MANAGER_OBJECT)hThisObject;
 
-    AnscTraceWarning(("%s...\n", __FUNCTION__));
-    printf("Telemetry DM initialize...\n");
+  AnscTraceWarning(("%s...\n", __FUNCTION__));
+  printf("Telemetry DM initialize...\n");
 
-    /* Create DM object */
-    pMyObject->hTelemetry = (ANSC_HANDLE) CosaTelemetryCreate();
-    AnscTraceWarning(("  CosaBackEndManagerInitialize done!\n"));
+  /* Create DM object */
+  pMyObject->hTelemetry = (ANSC_HANDLE)CosaTelemetryCreate();
+  AnscTraceWarning(("  CosaBackEndManagerInitialize done!\n"));
 
-    return returnStatus;
+  return returnStatus;
 }
 
 /**********************************************************************
@@ -181,16 +184,16 @@ ANSC_STATUS CosaBackEndManagerInitialize(ANSC_HANDLE hThisObject) {
  **********************************************************************/
 
 ANSC_STATUS CosaBackEndManagerRemove(ANSC_HANDLE hThisObject) {
-    ANSC_STATUS returnStatus = ANSC_STATUS_SUCCESS;
-    PCOSA_BACKEND_MANAGER_OBJECT pMyObject = (PCOSA_BACKEND_MANAGER_OBJECT) hThisObject;
+  ANSC_STATUS returnStatus = ANSC_STATUS_SUCCESS;
+  PCOSA_BACKEND_MANAGER_OBJECT pMyObject =
+      (PCOSA_BACKEND_MANAGER_OBJECT)hThisObject;
 
-    /* Remove all objects */
-    if(pMyObject->hTelemetry) {
-        CosaTelemetryRemove(pMyObject->hTelemetry);
-    }
+  /* Remove all objects */
+  if (pMyObject->hTelemetry) {
+    CosaTelemetryRemove(pMyObject->hTelemetry);
+  }
 
-    AnscFreeMemory((ANSC_HANDLE) pMyObject);
+  AnscFreeMemory((ANSC_HANDLE)pMyObject);
 
-    return returnStatus;
+  return returnStatus;
 }
-

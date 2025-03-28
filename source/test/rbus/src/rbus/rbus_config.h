@@ -15,7 +15,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 #ifndef RBUS_CONFIG_H
 #define RBUS_CONFIG_H
@@ -26,19 +26,20 @@
 extern "C" {
 #endif
 
-typedef struct _rbusConfig_t
-{
-    char*           tmpDir;             /* temp directory where rbus can persist data*/
-    int             subscribeTimeout;   /* max time to attempt subscribe retries in milisecond*/
-    int             subscribeMaxWait;   /* max time to wait between subscribe retries in miliseconds*/
-    int             valueChangePeriod;  /* polling period for valuechange detector in miliseconds*/
-    int             getTimeout;         /* default timeout in miliseconds for GET API*/
-    int             setTimeout;         /* default timeout in miliseconds for SET API*/
+typedef struct _rbusConfig_t {
+  char *tmpDir;         /* temp directory where rbus can persist data*/
+  int subscribeTimeout; /* max time to attempt subscribe retries in milisecond*/
+  int subscribeMaxWait; /* max time to wait between subscribe retries in
+                           miliseconds*/
+  int valueChangePeriod; /* polling period for valuechange detector in
+                            miliseconds*/
+  int getTimeout;        /* default timeout in miliseconds for GET API*/
+  int setTimeout;        /* default timeout in miliseconds for SET API*/
 } rbusConfig_t;
 
 void rbusConfig_CreateOnce();
 void rbusConfig_Destroy();
-rbusConfig_t* rbusConfig_Get();
+rbusConfig_t *rbusConfig_Get();
 int rbusConfig_ReadGetTimeout();
 int rbusConfig_ReadSetTimeout();
 

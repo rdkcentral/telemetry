@@ -15,7 +15,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 #ifndef _REPORTGEN_H_
 #define _REPORTGEN_H_
@@ -24,50 +24,39 @@
 
 #include "vector.h"
 
-typedef struct _HTTPReqParam
-{
-    char* HttpName;
-    char* HttpRef;
-    char* HttpValue;
-}HTTPReqParam;
+typedef struct _HTTPReqParam {
+  char *HttpName;
+  char *HttpRef;
+  char *HttpValue;
+} HTTPReqParam;
 
-typedef struct _RBUSMethodParam
-{
-    char* name;
-    char* value;
-}RBUSMethodParam;
+typedef struct _RBUSMethodParam {
+  char *name;
+  char *value;
+} RBUSMethodParam;
 
-typedef enum
-{
-    HTTP_PUT,
-    HTTP_POST
-}HTTPMethod;
+typedef enum { HTTP_PUT, HTTP_POST } HTTPMethod;
 
-typedef enum
-{
-    COMP_NONE
-}HTTPComp;
+typedef enum { COMP_NONE } HTTPComp;
 
-typedef struct _T2HTTP
-{
-    char *URL;
-    HTTPComp Compression;
-    HTTPMethod Method;
-    Vector *RequestURIparamList;
-}T2HTTP;
+typedef struct _T2HTTP {
+  char *URL;
+  HTTPComp Compression;
+  HTTPMethod Method;
+  Vector *RequestURIparamList;
+} T2HTTP;
 
+typedef struct _T2RBUS {
+  char *rbusMethodName;
+  Vector *rbusMethodParamList;
+} T2RBUS;
 
-typedef struct _T2RBUS
-{
-    char *rbusMethodName;
-    Vector *rbusMethodParamList;
-}T2RBUS;
-
-void freeProfileValues(void* data);
+void freeProfileValues(void *data);
 
 T2ERROR destroyJSONReport(cJSON *jsonObj);
 
-T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *paramValueList);
+T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList,
+                                Vector *paramValueList);
 
 T2ERROR encodeStaticParamsInJSON(cJSON *valArray, Vector *staticParamList);
 
@@ -75,7 +64,7 @@ T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepResult);
 
 T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList);
 
-T2ERROR prepareJSONReport(cJSON* jsonObj, char** reportBuff);
+T2ERROR prepareJSONReport(cJSON *jsonObj, char **reportBuff);
 
 char *prepareHttpUrl(T2HTTP *http);
 

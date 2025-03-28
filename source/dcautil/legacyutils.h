@@ -29,17 +29,16 @@
  * @{
  **/
 
+#include <cjson/cJSON.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <stdbool.h>
-#include <cjson/cJSON.h>
 
 #include "t2collection.h"
-#include "vector.h"
 #include "telemetry2_0.h"
-
+#include "vector.h"
 
 #define MAXLINE 1024
 #define MAXLEN 512
@@ -60,28 +59,31 @@
 #endif
 
 typedef struct _GrepSeekProfile {
-    hash_map_t *logFileSeekMap;
-    int execCounter;
-}GrepSeekProfile;
+  hash_map_t *logFileSeekMap;
+  int execCounter;
+} GrepSeekProfile;
 
 extern cJSON *SEARCH_RESULT_JSON;
 extern cJSON *ROOT_JSON;
 
 /* utility functions */
-int getLoadAvg(Vector* grepResultList, bool trim, char* regex);
+int getLoadAvg(Vector *grepResultList, bool trim, char *regex);
 
 void removeProfileFromSeekMap(char *profileName);
 
 void removeProfileFromExecMap(char *profileName);
 
-GrepSeekProfile *addToProfileSeekMap(char* profileName);
+GrepSeekProfile *addToProfileSeekMap(char *profileName);
 
-GrepSeekProfile *getLogSeekMapForProfile(char* profileName);
+GrepSeekProfile *getLogSeekMapForProfile(char *profileName);
 
 /**
  * Get log line from log file including the rotated log file if applicable
  */
-char* getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name, int *seekFromEOF, bool check_rotated_logs); //SERXIONE-4074: Missing markers in telemetry json
+char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name,
+                 int *seekFromEOF,
+                 bool check_rotated_logs); // SERXIONE-4074: Missing markers in
+                                           // telemetry json
 
 void clearConfVal(void);
 
@@ -91,7 +93,8 @@ void initProperties(char *logpath, char *perspath);
 
 T2ERROR updateLogSeek(hash_map_t *logSeekMap, char *name);
 
-void updateLastSeekval(hash_map_t *logSeekMap, char **prev_file, char* filename);
+void updateLastSeekval(hash_map_t *logSeekMap, char **prev_file,
+                       char *filename);
 
 /* JSON functions */
 void initSearchResultJson(cJSON **root, cJSON **sr);
@@ -100,7 +103,8 @@ void addToSearchResult(char *key, char *value);
 
 void clearSearchResultJson(cJSON **root);
 
-int getProcUsage(char *processName, Vector* grepResultList, bool trim, char* regex);
+int getProcUsage(char *processName, Vector *grepResultList, bool trim,
+                 char *regex);
 
 bool isPropsInitialized();
 

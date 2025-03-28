@@ -33,12 +33,13 @@ extern "C" {
 #endif
 
 struct _rtConnection;
-typedef struct _rtConnection* rtConnection;
+typedef struct _rtConnection *rtConnection;
 
-typedef void (*rtMessageCallback)(rtMessageHeader const* hdr, uint8_t const* buff, uint32_t n, void* closure);
+typedef void (*rtMessageCallback)(rtMessageHeader const *hdr,
+                                  uint8_t const *buff, uint32_t n,
+                                  void *closure);
 
-typedef enum
-{
+typedef enum {
   rtConnectionState_ReadHeaderPreamble,
   rtConnectionState_ReadHeader,
   rtConnectionState_ReadPayload
@@ -51,8 +52,8 @@ typedef enum
  * @param router_config
  * @return error
  */
-rtError
-rtConnection_Create(rtConnection* con, char const* application_name, char const* router_config);
+rtError rtConnection_Create(rtConnection *con, char const *application_name,
+                            char const *router_config);
 
 /**
  * Creates an rtConnection from a Config file
@@ -60,16 +61,14 @@ rtConnection_Create(rtConnection* con, char const* application_name, char const*
  * @param conf
  * @return error
  */
-rtError
-rtConnection_CreateWithConfig(rtConnection* con, rtMessage const conf);
+rtError rtConnection_CreateWithConfig(rtConnection *con, rtMessage const conf);
 
 /**
  * Destroy an rtConnection
  * @param con
  * @return error
  */
-rtError
-rtConnection_Destroy(rtConnection con);
+rtError rtConnection_Destroy(rtConnection con);
 
 /******************************************************************************************
  *  rtMessage(struct) based API
@@ -82,19 +81,19 @@ rtConnection_Destroy(rtConnection con);
  * @param topic
  * @return error
  */
-rtError
-rtConnection_SendMessage(rtConnection con, rtMessage msg, char const* topic);
+rtError rtConnection_SendMessage(rtConnection con, rtMessage msg,
+                                 char const *topic);
 
 /**
  * Send a message to a specific listener on a topic
  * @param con
  * @param msg
  * @param topic
- * @param sender 
+ * @param sender
  * @return error
  */
-rtError
-rtConnection_SendMessageDirect(rtConnection con, rtMessage msg, char const* topic, char const* listener);
+rtError rtConnection_SendMessageDirect(rtConnection con, rtMessage msg,
+                                       char const *topic, char const *listener);
 
 /**
  * Sends a request and receive a response
@@ -105,9 +104,9 @@ rtConnection_SendMessageDirect(rtConnection con, rtMessage msg, char const* topi
  * @param timeout
  * @return error
  */
-rtError
-rtConnection_SendRequest(rtConnection con, rtMessage const req, char const* topic,
-  rtMessage* res, int32_t timeout);
+rtError rtConnection_SendRequest(rtConnection con, rtMessage const req,
+                                 char const *topic, rtMessage *res,
+                                 int32_t timeout);
 
 /**
  * Sends a response to a request
@@ -117,9 +116,9 @@ rtConnection_SendRequest(rtConnection con, rtMessage const req, char const* topi
  * @param timeout
  * @return error
  */
-rtError
-rtConnection_SendResponse(rtConnection con, rtMessageHeader const* request_hdr, rtMessage const res,
-  int32_t timeout);
+rtError rtConnection_SendResponse(rtConnection con,
+                                  rtMessageHeader const *request_hdr,
+                                  rtMessage const res, int32_t timeout);
 
 /******************************************************************************************
  *  Binary based API
@@ -133,19 +132,20 @@ rtConnection_SendResponse(rtConnection con, rtMessageHeader const* request_hdr, 
  * @param length of buffer
  * @return error
  */
-rtError
-rtConnection_SendBinary(rtConnection con, uint8_t const* p, uint32_t n, char const* topic);
+rtError rtConnection_SendBinary(rtConnection con, uint8_t const *p, uint32_t n,
+                                char const *topic);
 
 /**
  * Send a message to a specific listener on a topic
  * @param con
  * @param msg
  * @param topic
- * @param sender 
+ * @param sender
  * @return error
  */
-rtError
-rtConnection_SendBinaryDirect(rtConnection con, uint8_t const* p, uint32_t n, char const* topic, char const* listener);
+rtError rtConnection_SendBinaryDirect(rtConnection con, uint8_t const *p,
+                                      uint32_t n, char const *topic,
+                                      char const *listener);
 
 /**
  * Sends a request and receive a response
@@ -156,9 +156,10 @@ rtConnection_SendBinaryDirect(rtConnection con, uint8_t const* p, uint32_t n, ch
  * @param timeout
  * @return error
  */
-rtError
-rtConnection_SendBinaryRequest(rtConnection con, uint8_t const* pReq, uint32_t nReq, char const* topic,
-  uint8_t** pRes, uint32_t* nRes, int32_t timeout);
+rtError rtConnection_SendBinaryRequest(rtConnection con, uint8_t const *pReq,
+                                       uint32_t nReq, char const *topic,
+                                       uint8_t **pRes, uint32_t *nRes,
+                                       int32_t timeout);
 
 /**
  * Sends a response to a request
@@ -168,9 +169,10 @@ rtConnection_SendBinaryRequest(rtConnection con, uint8_t const* pReq, uint32_t n
  * @param timeout
  * @return error
  */
-rtError
-rtConnection_SendBinaryResponse(rtConnection con, rtMessageHeader const* request_hdr, uint8_t const* p, uint32_t n,
-  int32_t timeout);
+rtError rtConnection_SendBinaryResponse(rtConnection con,
+                                        rtMessageHeader const *request_hdr,
+                                        uint8_t const *p, uint32_t n,
+                                        int32_t timeout);
 
 /*
  *  End Binary based API
@@ -184,9 +186,8 @@ rtConnection_SendBinaryResponse(rtConnection con, rtMessageHeader const* request
  * @param closure
  * @return error
  */
-rtError
-rtConnection_AddListener(rtConnection con, char const* expression,
-  rtMessageCallback callback, void* closure);
+rtError rtConnection_AddListener(rtConnection con, char const *expression,
+                                 rtMessageCallback callback, void *closure);
 
 /**
  * Remove a callback listener
@@ -194,28 +195,27 @@ rtConnection_AddListener(rtConnection con, char const* expression,
  * @param topic expression
  * @return error
  */
-rtError
-rtConnection_RemoveListener(rtConnection con, char const* expression);
+rtError rtConnection_RemoveListener(rtConnection con, char const *expression);
 
 /**
  * Add an alias to an existing listener
  * @param con
- * @param existing listener 
- * @param alias 
+ * @param existing listener
+ * @param alias
  * @return error
  */
-rtError
-rtConnection_AddAlias(rtConnection con, char const* existing, const char *alias);
+rtError rtConnection_AddAlias(rtConnection con, char const *existing,
+                              const char *alias);
 
 /**
  * Remove an alias to an existing listener
  * @param con
- * @param existing listener 
- * @param alias 
+ * @param existing listener
+ * @param alias
  * @return error
  */
-rtError
-rtConnection_RemoveAlias(rtConnection con, char const* existing, const char *alias);
+rtError rtConnection_RemoveAlias(rtConnection con, char const *existing,
+                                 const char *alias);
 
 /**
  * Register a callback for message receipt
@@ -224,31 +224,29 @@ rtConnection_RemoveAlias(rtConnection con, char const* existing, const char *ali
  * @param callback handler
  * @return error
  */
-rtError
-rtConnection_AddDefaultListener(rtConnection con, rtMessageCallback callback, void* closure);
+rtError rtConnection_AddDefaultListener(rtConnection con,
+                                        rtMessageCallback callback,
+                                        void *closure);
 
 /**
- * Get return address for this connection. 
+ * Get return address for this connection.
  * @param con
- * return address 
+ * return address
  */
-const char *
-rtConnection_GetReturnAddress(rtConnection con);
+const char *rtConnection_GetReturnAddress(rtConnection con);
 
 /**
- * Leftover after merging rdkb to rdkc.  Will now just sleep.  TODO: Must update several rdkc components to remove this method
+ * Leftover after merging rdkb to rdkc.  Will now just sleep.  TODO: Must update
+ * several rdkc components to remove this method
  * @param con
  * @return error
  */
-rtError
-rtConnection_Dispatch(rtConnection con);
+rtError rtConnection_Dispatch(rtConnection con);
 
 /*Private declarations below*/
-rtError
-_rtConnection_ReadAndDropBytes(int fd, unsigned int bytes_to_read);
+rtError _rtConnection_ReadAndDropBytes(int fd, unsigned int bytes_to_read);
 
-void
-_rtConnection_TaintMessages(int i);
+void _rtConnection_TaintMessages(int i);
 
 #ifdef __cplusplus
 }

@@ -50,7 +50,6 @@ jobs:
             echo "Code formatting errors found. Please run below code to clang-format in your local workspace and commit"
             echo "find . -name '*.c' -o -name '*.h' | xargs astyle --options=.astylerc"
             echo "find . -name '*.orig' -type f -delete"
-            echo "After running the above command, you will see some files with .orig extension. These are the original files before formatting."
             exit 1
           else
             echo "Code formatting errors not found."

@@ -22,12 +22,13 @@
 
 #define COMP_NAME "telemetry_client"
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
     (void) argc;// To fix compiler warning
     t2_init(COMP_NAME);
-	t2_event_s(argv[1], argv[2]);
+    t2_event_s(argv[1], argv[2]);
 
     t2_uninit();
 
-	return 0;
+    return 0;
 }

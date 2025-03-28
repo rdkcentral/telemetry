@@ -25,10 +25,10 @@
 
 typedef struct _Vector
 {
-  void** data;
-  size_t capacity;
-  size_t count;
-}Vector;
+    void** data;
+    size_t capacity;
+    size_t count;
+} Vector;
 
 
 typedef void (*Vector_Cleanup)(void *);

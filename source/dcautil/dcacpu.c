@@ -47,18 +47,18 @@ int getCpuUsage(char * cpuUtil);
  */
 int main()
 {
-	 char cpuUsage[MAXLEN] = {'\0'};
+    char cpuUsage[MAXLEN] = {'\0'};
 
-	 if(getCpuUsage(cpuUsage))
-	 {
-	     printf("USED_CPU:%s\n", cpuUsage);
-	 }
-	 else
-	 {
-	     printf("USED_CPU:NOT AVAILABLE\n");
-	 }
+    if(getCpuUsage(cpuUsage))
+    {
+        printf("USED_CPU:%s\n", cpuUsage);
+    }
+    else
+    {
+        printf("USED_CPU:NOT AVAILABLE\n");
+    }
 
-	 return 0;
+    return 0;
 }
 
 /**
@@ -71,43 +71,44 @@ int main()
  */
 int getCpuUsage(char * cpuUtil)
 {
-	long double a[10], b[10],usr_cpu,total_time;
-	FILE *fp;
-	int i=0;
-        if(cpuUtil == NULL){
-             printf("Exit from getCPUusage due to NULL pointer\n");
-             return 0;
+    long double a[10], b[10], usr_cpu, total_time;
+    FILE *fp;
+    int i = 0;
+    if(cpuUtil == NULL)
+    {
+        printf("Exit from getCPUusage due to NULL pointer\n");
+        return 0;
+    }
+    for(i = 0; i < 5; i++)
+    {
+        fp = fopen("/proc/stat", "r");
+        if(!fp)
+        {
+            return 0;
         }
-	for(i=0; i<5; i++)
-	{
-		fp = fopen("/proc/stat","r");
-                if(!fp)
-                {
-                        return 0;
-                }
-                fscanf(fp,"%*s %Lf %Lf %Lf %Lf %Lf %Lf %Lf %Lf %Lf %Lf",
-		&a[0],&a[1],&a[2],&a[3],&a[4],&a[5],&a[6],&a[7],&a[8],&a[9]);
-		fclose(fp);
-		sleep(1);
+        fscanf(fp, "%*s %Lf %Lf %Lf %Lf %Lf %Lf %Lf %Lf %Lf %Lf",
+               &a[0], &a[1], &a[2], &a[3], &a[4], &a[5], &a[6], &a[7], &a[8], &a[9]);
+        fclose(fp);
+        sleep(1);
 
-		fp = fopen("/proc/stat","r");
-		if(!fp)
-		{
-			return 0;
-		}
+        fp = fopen("/proc/stat", "r");
+        if(!fp)
+        {
+            return 0;
+        }
 
-		fscanf(fp,"%*s %Lf %Lf %Lf %Lf %Lf %Lf %Lf %Lf %Lf %Lf",
-		&b[0],&b[1],&b[2],&b[3],&b[4],&b[5],&b[6],&b[7],&b[8],&b[9]);
-		fclose(fp);
+        fscanf(fp, "%*s %Lf %Lf %Lf %Lf %Lf %Lf %Lf %Lf %Lf %Lf",
+               &b[0], &b[1], &b[2], &b[3], &b[4], &b[5], &b[6], &b[7], &b[8], &b[9]);
+        fclose(fp);
 
-		total_time=(b[0]+b[1]+b[2]+b[3]+b[4]+b[5]+b[6]+b[7]+b[8]+b[9])
-				-
-			(a[0]+a[1]+a[2]+a[3]+a[4]+a[5]+a[6]+a[7]+a[8]+a[9]);
+        total_time = (b[0] + b[1] + b[2] + b[3] + b[4] + b[5] + b[6] + b[7] + b[8] + b[9])
+                     -
+                     (a[0] + a[1] + a[2] + a[3] + a[4] + a[5] + a[6] + a[7] + a[8] + a[9]);
 
-		usr_cpu=((b[0]-a[0])/total_time)*100;
-	}
-        sprintf(cpuUtil,"%Lf",usr_cpu);
-        return 1;
+        usr_cpu = ((b[0] - a[0]) / total_time) * 100;
+    }
+    sprintf(cpuUtil, "%Lf", usr_cpu);
+    return 1;
 }
 
 /** @} */  //END OF GROUP DCA_APIS

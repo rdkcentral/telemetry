@@ -72,7 +72,7 @@ typedef enum
     T2ERROR_INTERNAL_ERROR,
     T2ERROR_NO_RBUS_METHOD_PROVIDER,
     T2ERROR_COMPONENT_NULL
-}T2ERROR;
+} T2ERROR;
 
 #define T2_CACHE_FILE    "/tmp/t2_caching_file"
 #define T2_CACHE_LOCK_FILE    "/tmp/t2_lock_file"
@@ -84,7 +84,7 @@ typedef enum
     T2_STATE_COMPONENT_READY,
     T2_STATE_CONFIG_READY,
     T2_STATE_READY
-}T2_OPERATIONAL_STATE;
+} T2_OPERATIONAL_STATE;
 
 #ifdef __cplusplus
 }

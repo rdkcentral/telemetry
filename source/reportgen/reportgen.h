@@ -29,24 +29,24 @@ typedef struct _HTTPReqParam
     char* HttpName;
     char* HttpRef;
     char* HttpValue;
-}HTTPReqParam;
+} HTTPReqParam;
 
 typedef struct _RBUSMethodParam
 {
     char* name;
     char* value;
-}RBUSMethodParam;
+} RBUSMethodParam;
 
 typedef enum
 {
     HTTP_PUT,
     HTTP_POST
-}HTTPMethod;
+} HTTPMethod;
 
 typedef enum
 {
     COMP_NONE
-}HTTPComp;
+} HTTPComp;
 
 typedef struct _T2HTTP
 {
@@ -54,14 +54,14 @@ typedef struct _T2HTTP
     HTTPComp Compression;
     HTTPMethod Method;
     Vector *RequestURIparamList;
-}T2HTTP;
+} T2HTTP;
 
 
 typedef struct _T2RBUS
 {
     char *rbusMethodName;
     Vector *rbusMethodParamList;
-}T2RBUS;
+} T2RBUS;
 
 void freeProfileValues(void* data);
 

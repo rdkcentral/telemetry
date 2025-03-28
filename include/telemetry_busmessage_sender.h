@@ -72,7 +72,7 @@ T2ERROR t2_event_d(const char* marker, int value);
 /*
  * NAME        : t2_uninit
  * DESCRIPTION : Uninitializes the event sending module
- *               
+ *
  */
 void t2_uninit(void);
 

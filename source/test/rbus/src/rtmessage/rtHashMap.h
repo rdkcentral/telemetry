@@ -38,14 +38,14 @@ typedef void (*rtHashMap_Destroy_Func)(void *);
 
 void rtHashMap_Create(rtHashMap* phashmap);
 void rtHashMap_CreateEx(
-  rtHashMap* phashmap, 
-  float load_factor,
-  rtHashMap_Hash_Func key_hasher, 
-  rtHashMap_Compare_Func key_comparer, 
-  rtHashMap_Copy_Func key_copier,
-  rtHashMap_Destroy_Func key_destroyer, 
-  rtHashMap_Copy_Func val_copier,
-  rtHashMap_Destroy_Func val_destroyer);
+    rtHashMap* phashmap,
+    float load_factor,
+    rtHashMap_Hash_Func key_hasher,
+    rtHashMap_Compare_Func key_comparer,
+    rtHashMap_Copy_Func key_copier,
+    rtHashMap_Destroy_Func key_destroyer,
+    rtHashMap_Copy_Func val_copier,
+    rtHashMap_Destroy_Func val_destroyer);
 void rtHashMap_Destroy(rtHashMap hashmap);
 void rtHashMap_Set(rtHashMap hashmap, const void* key, const void* value);
 void* rtHashMap_Get(rtHashMap hashmap, const void* key);

@@ -26,10 +26,10 @@
 
 /**
  * @mainpage RDK Bus (RBus)
- * RDK Bus (RBus) is a lightweight, fast and efficient bus messaging system. 
+ * RDK Bus (RBus) is a lightweight, fast and efficient bus messaging system.
  * It allows interprocess communication (IPC) and remote procedure call (RPC)
  * between multiple process running on a hardware device.  It supports the
- * creation and use of a data model, which is a hierarchical tree of named 
+ * creation and use of a data model, which is a hierarchical tree of named
  * objects with properties, events, and methods.
  *
  * From a developer perspective, there are providers and clients.
@@ -56,7 +56,7 @@
  * RBus supports the naming convention defined by TR-069, where a name has a hierarchical structure
  * like a file directory structure, with each level of the hierarchy separated by a dot ('.'), and where
  * object instances and denoted using brace({}).
- * 
+ *
  * The RBus API is intended, but not limited, to allow the implementation of a TR-181 data model.
  */
 
@@ -249,7 +249,7 @@ typedef struct _rbusEventSubscription rbusEventSubscription_t;
  *  @return void
  */
 typedef void (*rbusSubscribeAsyncRespHandler_t)(
-    rbusHandle_t handle, 
+    rbusHandle_t handle,
     rbusEventSubscription_t* subscription,
     rbusError_t error);
 
@@ -282,7 +282,7 @@ typedef void (*rbusEventHandlerRawData_t)(
 typedef struct _rbusEventSubscription
 {
     char const*         eventName;  /** Fully qualified event name */
-    rbusFilter_t        filter;     /** Optional filter that the client would like 
+    rbusFilter_t        filter;     /** Optional filter that the client would like
                                         the sender to apply before sending the event
                                       */
     uint32_t             interval;   /**< Total interval period after which
@@ -290,9 +290,9 @@ typedef struct _rbusEventSubscription
                                          be in multiples of minInterval
                                       */
     uint32_t            duration;   /** Optional maximum duration in seconds until which
-                                        the subscription should be in effect. Beyond this 
-                                        duration, the event would be unsubscribed automatically. 
-                                        Pass "0" for indefinite event subscription which requires 
+                                        the subscription should be in effect. Beyond this
+                                        duration, the event would be unsubscribed automatically.
+                                        Pass "0" for indefinite event subscription which requires
                                         the rbusEvent_Unsubscribe API to be called explicitly.
                                       */
     void*               handler;    /** fixme rbusEventHandler_t internal*/
@@ -323,7 +323,7 @@ typedef struct _rbusRowName
  *          rbusHandle_t handle,
  *          char* methodName
  *          rbusObject_t params)
- *  @brief A component will receive this API callback when the result of 
+ *  @brief A component will receive this API callback when the result of
  *  and asynchronous method invoked with rbusMethod_InvokeAsync is ready.\n
  *  Used by: Any component that calls rbusMethod_InvokeAsync.
  *  @param rbusHandle Bus Handle
@@ -334,36 +334,36 @@ typedef struct _rbusRowName
  *  @ingroup Methods
  */
 typedef void (*rbusMethodAsyncRespHandler_t)(
-    rbusHandle_t handle, 
-    char const* methodName, 
+    rbusHandle_t handle,
+    char const* methodName,
     rbusError_t error,
     rbusObject_t params
 );
 
 /** @addtogroup Providers
-  * @{ 
+  * @{
   */
 
 /// @brief rbusElementType_t indicates the type of data elements which can be registered with RBus
-typedef enum 
+typedef enum
 {
-    RBUS_ELEMENT_TYPE_PROPERTY = 1,     /**< Property Element. 
-                                             Sample names: x.y, p.q.{i}.r, aaa, etc 
-                                             Can also be monitored and event 
-                                             notifications be obtained in the 
+    RBUS_ELEMENT_TYPE_PROPERTY = 1,     /**< Property Element.
+                                             Sample names: x.y, p.q.{i}.r, aaa, etc
+                                             Can also be monitored and event
+                                             notifications be obtained in the
                                              form of events                   */
     RBUS_ELEMENT_TYPE_TABLE,            /**< Table (e.g. multi-instance object)
                                              Sample names: a.b.{i}, a.b.{i}.x.y.{i} */
-                                           
-    RBUS_ELEMENT_TYPE_EVENT,            /**< (Exclusive) Event Element 
+
+    RBUS_ELEMENT_TYPE_EVENT,            /**< (Exclusive) Event Element
                                              Sample names: a.b.c!, zzzz!      */
-                                           
-    RBUS_ELEMENT_TYPE_METHOD            /**< Method Element                   
+
+    RBUS_ELEMENT_TYPE_METHOD            /**< Method Element
                                              Sample names: m.n.o(), dddddd()  */
 } rbusElementType_t;
 
 /** @fn typedef rbusError_t (*rbusGetHandler_t)(
- *          rbusHandle_t handle, 
+ *          rbusHandle_t handle,
  *          rbusProperty_t property)
  *  @brief  A property get callback handler.
  *
@@ -375,18 +375,18 @@ typedef enum
  * use rbusTable_addRow to add rows and instead will handle partial path queries
  * through this get handler.
  *  @param      handle          the rbus handle the property is registered to.
- *  @param      property        the property whose value must be set by the handler. 
+ *  @param      property        the property whose value must be set by the handler.
  *  @param      options         the additional information that to be used for GET.
  *  @return                     RBus error code as defined by rbusError_t.
  */
 typedef rbusError_t (*rbusGetHandler_t)(
-    rbusHandle_t handle, 
+    rbusHandle_t handle,
     rbusProperty_t property,
     rbusGetHandlerOptions_t* options
 );
 
 /** @fn typedef rbusError_t (*rbusSetHandler_t)(
- *          rbusHandle_t handle, 
+ *          rbusHandle_t handle,
  *          rbusProperty_t property,
  *          rbusSetHandlerOptions_t* options)
  *  @brief  A property set callback handler.
@@ -399,13 +399,13 @@ typedef rbusError_t (*rbusGetHandler_t)(
  * occur.  It is the provider's responsibility to set its internal representation
  * of that property's value with the value contained within the property parameter.
  *  @param      handle          the rbus handle the property is registered to.
- *  @param      property        the property whose value must be set by the handler. 
+ *  @param      property        the property whose value must be set by the handler.
  *  @param      options         the additional information that to be used for SET.
  *  @return                     RBus error code as defined by rbusError_t.
  */
 typedef rbusError_t (*rbusSetHandler_t)(
-    rbusHandle_t handle, 
-    rbusProperty_t property, 
+    rbusHandle_t handle,
+    rbusProperty_t property,
     rbusSetHandlerOptions_t* options
 );
 
@@ -417,10 +417,10 @@ typedef rbusError_t (*rbusSetHandler_t)(
  *  @brief A table row add callback handler
  *
  * A provider must implement this handler to allow rows to be added to a table.
- * The tableName parameter will end in "." such as "Device.IP.Interface." 
+ * The tableName parameter will end in "." such as "Device.IP.Interface."
  * The aliasName parameter can optionally be used to specify a unique name for the row.
  * A new row should be assigned a unique instance number and this number should be
- * returned in the instNum output parameter.  
+ * returned in the instNum output parameter.
  *  @param  handle          Bus Handle
  *  @param  tableName       The name of a table (e.g. "Device.IP.Interface.")
  *  @param  aliasName       An optional name for the new row.  Must be unique in the table.  Can be NULL.
@@ -452,18 +452,18 @@ typedef rbusError_t (*rbusTableRemoveRowHandler_t)(
     char const* rowName);
 
 /** @fn typedef rbusError_t (*rbusMethodHandler_t)(
- *          rbusHandle_t handle, 
- *          char const* methodName, 
+ *          rbusHandle_t handle,
+ *          char const* methodName,
  *          rbusObject_t inParams,
  *          rbusObject_t outParams
  *          rbusMethodAsyncHandle_t asyncHandle)
  *  @brief A method invocation callback handler
  *
- * A provider must implement this handler to support methods.  
+ * A provider must implement this handler to support methods.
  * There are two ways to return a response to the method.
  * The first is to set outParams in the handler and return RBUS_ERROR_SUCCESS.
  * The second is to send the response later by storing the asyncHandle,
- * returning RBUS_ERROR_ASYNC_RESPONSE from the handler, and later 
+ * returning RBUS_ERROR_ASYNC_RESPONSE from the handler, and later
  * calling rbusMethod_SendAsyncResponse, passing the asyncHandle and output params.
  *  @param  handle          Bus Handle
  *  @param  methodName      The name of the method being invoked ( e.g. "Device.Foo.SomeFunc()");
@@ -474,8 +474,8 @@ typedef rbusError_t (*rbusTableRemoveRowHandler_t)(
  *  Possible values are: RBUS_ERROR_INVALID_INPUT
  */
 typedef rbusError_t (*rbusMethodHandler_t)(
-    rbusHandle_t handle, 
-    char const* methodName, 
+    rbusHandle_t handle,
+    char const* methodName,
     rbusObject_t inParams,
     rbusObject_t outParams,
     rbusMethodAsyncHandle_t asyncHandle);
@@ -491,17 +491,17 @@ typedef rbusError_t (*rbusMethodHandler_t)(
  *
  * A provider will receive this callback when the first client subscribes
  * to an event/filter pair or the last client unsubscribes to an event/filter
- * pair or all subscribers have timed out due to max duration. 
- * Distribution of the event to multiple subscribers will be transparently 
- * handled by the library. 
+ * pair or all subscribers have timed out due to max duration.
+ * Distribution of the event to multiple subscribers will be transparently
+ * handled by the library.
  *  @param      handle          the rbus handle the event is registered to.
  *  @param      action          whether the event is being subscribed or unsubscribe to.
  *  @param      eventName       the fully qualified event name.
  *  @param      filter          an the filter the subscriber would like the provider to
  *                              use to decide when the event can be sent.  This can be NULL
- *                              if no filter was specified by the client. 
+ *                              if no filter was specified by the client.
  *  @param      interval        if non-zero, indicates that the event should be publish
- *                              repeatedly every 'interval' seconds.  if a filter is 
+ *                              repeatedly every 'interval' seconds.  if a filter is
  *                              also provided, it would publish only when the filter is triggered
  *  @param      autoPublish     output parameter used to disable the default behaviour
  *                              where rbus automatically publishing events for provider
@@ -575,7 +575,7 @@ typedef struct
     rbusElementType_t       type;       /**< Type of an element      */
     rbusCallbackTable_t     cbTable;    /**< Element Handler table. A specific
                                              callback can be NULL, if no usage*/
-}rbusDataElement_t;
+} rbusDataElement_t;
 
 /** @} */
 
@@ -593,11 +593,11 @@ typedef enum
 
 typedef enum
 {
-  RBUS_LOG_DEBUG = 0,
-  RBUS_LOG_INFO  = 1,
-  RBUS_LOG_WARN  = 2,
-  RBUS_LOG_ERROR = 3,
-  RBUS_LOG_FATAL = 4
+    RBUS_LOG_DEBUG = 0,
+    RBUS_LOG_INFO  = 1,
+    RBUS_LOG_WARN  = 2,
+    RBUS_LOG_ERROR = 3,
+    RBUS_LOG_FATAL = 4
 } rbusLogLevel_t;
 
 typedef rbusLogLevel_t rbusLogLevel;
@@ -634,12 +634,12 @@ typedef void (*rbusLogHandler)(
 
 typedef enum
 {
-        RBUS_ACCESS_GET = 1,
-        RBUS_ACCESS_SET = 2,
-        RBUS_ACCESS_ADDROW = 4,
-        RBUS_ACCESS_REMOVEROW = 8,
-        RBUS_ACCESS_SUBSCRIBE = 16,
-        RBUS_ACCESS_INVOKE = 32
+    RBUS_ACCESS_GET = 1,
+    RBUS_ACCESS_SET = 2,
+    RBUS_ACCESS_ADDROW = 4,
+    RBUS_ACCESS_REMOVEROW = 8,
+    RBUS_ACCESS_SUBSCRIBE = 16,
+    RBUS_ACCESS_INVOKE = 32
 } rbusAccess_t;
 
 typedef struct _rbusElementInfo
@@ -648,7 +648,7 @@ typedef struct _rbusElementInfo
     char const* component;          /** Name of the component providing this element */
     rbusElementType_t type;         /** The type of element */
     uint32_t access;                /** rbusAccess_t flags OR'd*/
-    struct _rbusElementInfo* next;  /** The next name in this list */    
+    struct _rbusElementInfo* next;  /** The next name in this list */
 } rbusElementInfo_t;
 
 /** @} */
@@ -670,7 +670,7 @@ rbusStatus_t rbus_checkStatus(
     void);
 
 /** @fn rbusError_t rbus_open(
- *          rbusHandle_t* handle, 
+ *          rbusHandle_t* handle,
  *          char const* componentName)
  *  @brief  Open a bus connection for a software component.
  *  If multiple components share a software process, the first component that
@@ -692,7 +692,7 @@ rbusStatus_t rbus_checkStatus(
  *  RBUS_ERROR_BUS_ERROR: Indicates there is some bus error. Try later.
  */
 rbusError_t rbus_open(
-    rbusHandle_t* handle, 
+    rbusHandle_t* handle,
     char const* componentName);
 
 /** @fn rbusError_t rbus_close(
@@ -757,9 +757,9 @@ rbusError_t rbusHandle_GetTraceContextAsString(
  */
 /** @fn rbusError_t rbus_discoverComponentName (
  *          rbusHandle_t handle,
- *          int numElements, 
+ *          int numElements,
  *          char const** elementNames,
- *          int *numComponents, 
+ *          int *numComponents,
  *          char **componentName)
  *  @brief This allows a component to get a list of components that provide
  *  a set of data elements name(s).  The requesting component provides the
@@ -814,12 +814,12 @@ rbusError_t rbus_discoverComponentDataElements(
 /** @} */
 
 /** @addtogroup Providers
-  * @{ 
+  * @{
   */
 
 /** @fn rbusError_t rbus_regDataElements(
  *          rbusHandle_t handle,
- *          int numDataElements, 
+ *          int numDataElements,
  *          rbusDataElement_t *elements)
  *  @brief  A Component uses this API to register one or more named Data
  *  Elements (i.e., parameters and/or event names) that will be accessible /
@@ -863,7 +863,7 @@ rbusError_t rbus_unregDataElements (
 /** @} */
 
 /** @addtogroup Consumers
-  * @{ 
+  * @{
   */
 
 /** @fn rbusError_t rbus_get(
@@ -883,7 +883,7 @@ rbusError_t rbus_unregDataElements (
  *  RBUS_ERROR_ELEMENT_DOES_NOT_EXIST: Data Element was not previously registered.
  */
 rbusError_t rbus_get(
-    rbusHandle_t handle, 
+    rbusHandle_t handle,
     char const* name,
     rbusValue_t* value);
 
@@ -1031,7 +1031,7 @@ rbusError_t rbus_getStr (
  *  @param      handle          Bus Handle
  *  @param      name            The name of the parameter to set.
  *  @param      value           The value to set the parameter to.
- *  @param      opts            Extra options such as session info. 
+ *  @param      opts            Extra options such as session info.
  *                              Set NULL if not needed, in which case a session
  *                              is not used and the set is commited immediately.
  *  @return RBus error code as defined by rbusError_t.
@@ -1058,7 +1058,7 @@ rbusError_t rbus_set(
  *                              For each parameter, a property should
  *                              be created which contains the parameter's name and
  *                              the respective value to set that parameter to.
- *  @param      opts            Extra options such as session info. 
+ *  @param      opts            Extra options such as session info.
  *                              Set NULL if not needed, in which case a session
  *                              is not used and the set is commited immediately.
  *  @return RBus error code as defined by rbusError_t.
@@ -1093,8 +1093,8 @@ rbusError_t rbus_setBoolean(
     bool paramVal);
 
 /** @fn rbusError_t rbus_setInt(
- *          rbusHandle_t handle, 
- *          char const* paramName, 
+ *          rbusHandle_t handle,
+ *          char const* paramName,
  *          int paramVal)
  *  @brief A component uses this to perform a simple set operation on an
  *  integer parameter and commit the operation. \n
@@ -1107,8 +1107,8 @@ rbusError_t rbus_setBoolean(
  *  RBUS_ERROR_ACCESS_NOT_ALLOWED: Access to requested parameter is not permitted
  */
 rbusError_t rbus_setInt(
-    rbusHandle_t handle, 
-    char const* paramName, 
+    rbusHandle_t handle,
+    char const* paramName,
     int paramVal);
 
 /** @fn rbusError_t rbus_setUInt(
@@ -1151,15 +1151,15 @@ rbusError_t rbus_setStr(
     char const* paramVal);
 
 /** @fn rbusError_t rbusTable_addRow(
- *          busHandle handle, 
+ *          busHandle handle,
  *          char const* tableName,
  *          char const* aliasName,
  *          uint32_t* instNum)
  *  @brief Add a new row to a table
  *
- * This API adds a new row to a table. The tableName parameter must end in ".", 
- * such as "Device.IP.Interface." The aliasName parameter can optionally be used to 
- * specify a unique name for the row.  Any additional properties on the row must be 
+ * This API adds a new row to a table. The tableName parameter must end in ".",
+ * such as "Device.IP.Interface." The aliasName parameter can optionally be used to
+ * specify a unique name for the row.  Any additional properties on the row must be
  * updated separately using set operations.  Each new row gets a unique instance number
  * assigned to it and this is returned in the instNum output parameter.  Consumers can
  * use either the optionally set aliasName or the returned instNum to identify the new row.
@@ -1180,7 +1180,7 @@ rbusError_t rbusTable_addRow(
     uint32_t* instNum);
 
 /** @fn rbusError_t rbusTable_removeRow(
- *          busHandle handle, 
+ *          busHandle handle,
  *          char const* rowName)
  *  @brief Remove a row from a table
  *
@@ -1196,10 +1196,10 @@ rbusError_t rbusTable_addRow(
  */
 rbusError_t rbusTable_removeRow(
     rbusHandle_t handle,
-    char const* rowName); 
+    char const* rowName);
 
 /** @fn rbusError_t rbusTable_getRowNames(
- *          busHandle handle, 
+ *          busHandle handle,
  *          char const* tableName,
  *          rbusRowName_t** rowNames)
  *  @brief Get a list of the row names in a table
@@ -1219,7 +1219,7 @@ rbusError_t rbusTable_getRowNames(
     rbusRowName_t** rowNames);
 
 /** @fn rbusError_t rbusTable_FreeRowNames(
- *          rbusHandle handle, 
+ *          rbusHandle handle,
  *          rbusRowName_t* rows)
  *  @brief Free the row name list returned from rbusTable_getRowNames
  *
@@ -1232,17 +1232,17 @@ rbusError_t rbusTable_getRowNames(
  *  @ingroup Tables
  */
 rbusError_t rbusTable_freeRowNames(
-    rbusHandle_t handle, 
+    rbusHandle_t handle,
     rbusRowName_t* rows);
 
 /** @fn rbusError_t rbusElementInfo_get(
- *          busHandle handle, 
+ *          busHandle handle,
  *          char const* elemName,
  *          int depth,
  *          rbusElementInfo_t** elemInfo);
  *  @brief Get a info on the elements at or inside the give
  *
- * This method allows a consumer to get the information on all elements inside an object.  
+ * This method allows a consumer to get the information on all elements inside an object.
   * Used by:  Any component that needs to know the info on the elements inside an object.
  *  @param  handle          Bus Handle
  *  @param  elemName        The name of the element to start from
@@ -1262,7 +1262,7 @@ rbusError_t rbusElementInfo_get(
     rbusElementInfo_t** elemInfo);
 
 /** @fn rbusError_t rbusElementInfo_free(
- *          busHandle handle, 
+ *          busHandle handle,
  *          busElementInfo_t* elemInfo);
  *  @brief Free the list element info list returned from rbusElementInfo_get
  *
@@ -1274,17 +1274,17 @@ rbusError_t rbusElementInfo_get(
  *  Possible values are: RBUS_ERROR_INVALID_INPUT
  */
 rbusError_t rbusElementInfo_free(
-    rbusHandle_t handle, 
+    rbusHandle_t handle,
     rbusElementInfo_t* elemInfo);
 
 /** @} */
 
 /** @addtogroup Providers
-  * @{ 
+  * @{
   */
 
 /** @fn rbusError_t rbusTable_registerRow(
- *          busHandle handle, 
+ *          busHandle handle,
  *          char const* tableName,
   *         uint32_t instNum,
   *         char const* aliasName)
@@ -1310,7 +1310,7 @@ rbusError_t rbusTable_registerRow(
     char const* aliasName);
 
 /** @fn rbusError_t rbusTable_unregisterRow(
- *          busHandle handle, 
+ *          busHandle handle,
  *          char const* rowName)
  *  @brief Unregister a row that the provider has removed from its own table.
  *
@@ -1333,7 +1333,7 @@ rbusError_t rbusTable_unregisterRow(
 /** @} */
 
 /** @addtogroup Consumers
-  * @{ 
+  * @{
   */
 
 /** @fn bool rbusEvent_IsSubscriptionExist(
@@ -1363,12 +1363,12 @@ bool  rbusEvent_IsSubscriptionExist(
  *          int                 timeout)
  *  @brief Subscribe to a single event.  \n
  *  Used by: Components that need to subscribe to an event.
- * The handler will be called back when the event is generated. 
- * The type of event and when the event is generated is based 
+ * The handler will be called back when the event is generated.
+ * The type of event and when the event is generated is based
  * on the type of data element eventName refers to.
- * If eventName is the name of a general event, the event is 
+ * If eventName is the name of a general event, the event is
  * generated when the provider of the event, publishes it.
- * If eventName is the name of a parameter, the event is 
+ * If eventName is the name of a parameter, the event is
  * generated when the value of that parameter changes.
  * If eventName is the name of a table, the event is generated
  * when a row is added or deleted from that table.
@@ -1398,10 +1398,10 @@ rbusError_t  rbusEvent_Subscribe(
  *          rbusEventHandler_t  handler,
  *          void*               userData,
  *          int                 timeout)
- *  @brief Subscribe to a single event using rawdata method, with reduced memory and 
+ *  @brief Subscribe to a single event using rawdata method, with reduced memory and
  *  cpu footprint.
  *  Used by: Components that need to subscribe to an event.
- * The handler will be called back when the event is generated. 
+ * The handler will be called back when the event is generated.
  * If timeout is positive, internal retries will be attempted if the subscription
  * cannot be routed to an existing provider, and the retries will continue until
  * either a provider is found, an unrecoverable error occurs, or retry timeout reached.
@@ -1431,19 +1431,19 @@ rbusError_t  rbusEvent_SubscribeRawData(
  *          int                             timeout)
  *  @brief Subscribe asynchronously to a single event.  \n
  *  Used by: Components that need to subscribe asynchronously to an event.
- * The handler will be called back when the event is generated. 
- * The type of event and when the event is generated is based 
+ * The handler will be called back when the event is generated.
+ * The type of event and when the event is generated is based
  * on the type of data element eventName refers to.
- * If eventName is the name of a general event, the event is 
+ * If eventName is the name of a general event, the event is
  * generated when the provider of the event, publishes it.
- * If eventName is the name of a parameter, the event is 
+ * If eventName is the name of a parameter, the event is
  * generated when the value of that parameter changes.
  * If eventName is the name of a table, the event is generated
  * when a row is added or deleted from that table.
- * The subscribeHandler is called when either a provider responds to the 
+ * The subscribeHandler is called when either a provider responds to the
  * subscription request, an unrecoverable error occurs, or retry timeout reached.
- * If timeout is positive, internal retries will be attempted if the subscription 
- * cannot be routed to an existing provider, and the retries will continue until 
+ * If timeout is positive, internal retries will be attempted if the subscription
+ * cannot be routed to an existing provider, and the retries will continue until
  * either a provider is found, an unrecoverable error occurs, or retry timeout reached.
  * A component should call rbusEvent_Unsubscribe to stop receiving the event.
  *  @param      handle            Bus Handle
@@ -1470,7 +1470,7 @@ rbusError_t  rbusEvent_SubscribeAsync(
  *  @brief Unsubscribe from a single event.  \n
  *  Used by: Components that need to unsubscribe from an event.
  *
- * The eventName should be a name which was previously subscribed 
+ * The eventName should be a name which was previously subscribed
  * to with either rbusEvent_Subscribe or rbusEvent_SubscribeEx.
  *  @param      handle          Bus Handle
  *  @param      eventName       The fully qualified name of the event.
@@ -1489,7 +1489,7 @@ rbusError_t rbusEvent_Unsubscribe(
  *  Used by: Components that need to unsubscribe from an event subscribed using
  *  rbusEvent_SubscribeRawData.
  *
- * The eventName should be a name which was previously subscribed 
+ * The eventName should be a name which was previously subscribed
  * to with either rbusEvent_Subscribe or rbusEvent_SubscribeEx.
  *  @param      handle          Bus Handle
  *  @param      eventName       The fully qualified name of the event.
@@ -1510,9 +1510,9 @@ rbusError_t rbusEvent_UnsubscribeRawData(
  *  @brief  Subscribe to one or more events with the option to add extra attributes
  *          to each subscription through the rbusEventSubscription_t structure\n
  *  Used by: Components that need to subscribe to events.
- * For each rbusEventSubscription_t subscription, the eventName and handler 
+ * For each rbusEventSubscription_t subscription, the eventName and handler
  * are required to be set.  Other options may be set to NULL or 0 if not needed.
- * Subscribing to all items in the subscription array is transactional.  
+ * Subscribing to all items in the subscription array is transactional.
  * That is, all must succeed to subscribe or none will be subscribed.
  * If timeout is positive, internal retries will be attempted if the subscription
  * cannot be routed to an existing provider, and the retries will continue until
@@ -1538,11 +1538,11 @@ rbusError_t rbusEvent_SubscribeEx(
  *          int timeout)
  *  @brief  Subscribe to one or more events with the option to add extra attributes
  *          to each subscription through the rbusEventSubscription_t structure\n
- *  Used by: Components that need to subscribe to events using rawdata method, with 
+ *  Used by: Components that need to subscribe to events using rawdata method, with
  *  reduced memory and cpu footprint.
- * For each rbusEventSubscription_t subscription, the eventName and handler 
+ * For each rbusEventSubscription_t subscription, the eventName and handler
  * are required to be set.  Other options may be set to NULL or 0 if not needed.
- * Subscribing to all items in the subscription array is transactional.  
+ * Subscribing to all items in the subscription array is transactional.
  * That is, all must succeed to subscribe or none will be subscribed.
  * If timeout is positive, internal retries will be attempted if the subscription
  * cannot be routed to an existing provider, and the retries will continue until
@@ -1570,15 +1570,15 @@ rbusError_t rbusEvent_SubscribeExRawData(
  *  @brief  Subscribe asynchronously to one or more events with the option to add extra
  *          attributes to each subscription through the rbusEventSubscription_t structure\n
  *  Used by: Components that need to subscribe asynchronously to events.
- * For each rbusEventSubscription_t subscription, the eventName and handler 
+ * For each rbusEventSubscription_t subscription, the eventName and handler
  * are required to be set.  Other options may be set to NULL or 0 if not needed.
- * Subscribing to all items in the subscription array is transactional.  
+ * Subscribing to all items in the subscription array is transactional.
  * That is, all must succeed to subscribe or none will be subscribed.
- * The subscribeHandler is called after either all subscriptions were successfully 
- * made to providers, any one subscriptions received an error response from a provider, 
+ * The subscribeHandler is called after either all subscriptions were successfully
+ * made to providers, any one subscriptions received an error response from a provider,
  * an unrecoverable error occurs, or retry timeout reached.
  * If timeout is positive, internal retries will be attempted for each subscription that
- * cannot be routed to an existing provider, and the retries will continue until 
+ * cannot be routed to an existing provider, and the retries will continue until
  * either a provider is found, an unrecoverable error occurs, or retry timeout reached.
  *  @param      handle            Bus Handle
  *  @param      subscription      The array of subscriptions to register to
@@ -1597,7 +1597,7 @@ rbusError_t rbusEvent_SubscribeExAsync(
     int                             timeout);
 
 /** @fn rbusError_t  rbusEvent_UnsubscribeEx(
- *          rbusHandle_t handle, 
+ *          rbusHandle_t handle,
  *          rbusEventSubscription_t* subscriptions,
  *          int numSubscriptions)
  *  @brief  Unsubscribe from one or more events\n
@@ -1605,7 +1605,7 @@ rbusError_t rbusEvent_SubscribeExAsync(
  * For each rbusEventSubscription_t subscription, the eventName is required to be set.
  * Other options may be set NULL or 0.
  * The subscriptions pointer can be the same as that passed to rbusEvent_SubscribeEx, or it
- * can be a different list; however, the eventName for each subsription must be one 
+ * can be a different list; however, the eventName for each subsription must be one
  * previously subscribed to with either rbusEvent_Subscribe or rbusEvent_SubscribeEx.
  *  @param      handle          Bus Handle
  *  @param      subscriptions   The array of subscriptions to unregister from
@@ -1620,16 +1620,16 @@ rbusError_t rbusEvent_UnsubscribeEx(
     int numSubscriptions);
 
 /** @fn rbusError_t  rbusEvent_UnsubscribeExRawData(
- *          rbusHandle_t handle, 
+ *          rbusHandle_t handle,
  *          rbusEventSubscription_t* subscriptions,
  *          int numSubscriptions)
  *  @brief  Unsubscribe from one or more events\n
- *          Used by: Components that need to unsubscribe from events subscribed with 
+ *          Used by: Components that need to unsubscribe from events subscribed with
  * rawdata method.
  * For each rbusEventSubscription_t subscription, the eventName is required to be set.
  * Other options may be set NULL or 0.
  * The subscriptions pointer can be the same as that passed to rbusEvent_SubscribeEx, or it
- * can be a different list; however, the eventName for each subsription must be one 
+ * can be a different list; however, the eventName for each subsription must be one
  * previously subscribed to with either rbusEvent_Subscribe or rbusEvent_SubscribeEx.
  *  @param      handle          Bus Handle
  *  @param      subscriptions   The array of subscriptions to unregister from
@@ -1646,20 +1646,20 @@ rbusError_t rbusEvent_UnsubscribeExRawData(
 /** @} */
 
 /** @addtogroup Providers
-  * @{ 
+  * @{
   */
 
 /** @fn rbusError_t  rbusEvent_Publish (
  *          rbusHandle_t handle,
  *          rbusEvent_t* eventData)
  *  @brief Publish an event.
- *  
- *  Publishes an event which will be sent to all subscribers of this event. 
+ *
+ *  Publishes an event which will be sent to all subscribers of this event.
  *  This library keeps state of all event subscriptions and duplicates event
  *  messages as needed for distribution. \n
  *  Used by: Components that provide events
  *  @param      handle          Bus Handle
- *  @param      eventData       The event data. 
+ *  @param      eventData       The event data.
  *  @return RBus error code as defined by rbusError_t.
  *  Possible values are: RBUS_ERROR_INVALID_EVENT
  *  @ingroup Events
@@ -1672,35 +1672,35 @@ rbusError_t  rbusEvent_Publish(
  *          rbusHandle_t handle,
  *          rbusEvent_t* eventData)
  *  @brief Publish an event.
- *  
- *  Publishes an event which will be sent to all subscribers of this event. 
+ *
+ *  Publishes an event which will be sent to all subscribers of this event.
  *  This library keeps state of all event subscriptions and duplicates event
  *  messages as needed for distribution. \n
  *  Used by: Components that provide events and want to publish with reduced
  *  memory and cpu footprints
  *  @param      handle          Bus Handle
- *  @param      eventData       The event data. 
+ *  @param      eventData       The event data.
  *  @return RBus error code as defined by rbusError_t.
  *  Possible values are: RBUS_ERROR_INVALID_EVENT
  *  @ingroup Events
  */
 rbusError_t  rbusEvent_PublishRawData(
-  rbusHandle_t          handle,
-  rbusEventRawData_t*    eventData);
+    rbusHandle_t          handle,
+    rbusEventRawData_t*    eventData);
 
 /** @} */
 
 /** @addtogroup Consumers
-  * @{ 
+  * @{
   */
 
 /** @fn rbusError_t rbusMethod_Invoke(
- *          rbusHandle_t handle, 
- *          char const* methodName, 
- *          rbusObject_t inParams, 
+ *          rbusHandle_t handle,
+ *          char const* methodName,
+ *          rbusObject_t inParams,
  *          rbusObject_t* outParams)
  *  @brief Invoke a remote method.
- *  
+ *
  *  Invokes a remote method and blocks waiting for the result.
  *  @param      handle      Bus Handle
  *  @param      methodName  Method name
@@ -1718,20 +1718,20 @@ rbusError_t  rbusEvent_PublishRawData(
  *  @ingroup Methods
  */
 rbusError_t rbusMethod_Invoke(
-    rbusHandle_t handle, 
-    char const* methodName, 
-    rbusObject_t inParams, 
+    rbusHandle_t handle,
+    char const* methodName,
+    rbusObject_t inParams,
     rbusObject_t* outParams);
 
 /** @fn rbusError_t rbusMethod_InvokeAsync(
- *          rbusHandle_t handle, 
- *          char* methodName, 
- *          rbusObject_t inParams, 
- *          rbusMethodAsyncRespHandler_t callback, 
+ *          rbusHandle_t handle,
+ *          char* methodName,
+ *          rbusObject_t inParams,
+ *          rbusMethodAsyncRespHandler_t callback,
  *          int timeout)
  *  @brief Invokes a remote method, non-blocking, with an asynchronous return callback.
- *  
- *  Invokes a remote method without blocking.  
+ *
+ *  Invokes a remote method without blocking.
  * The return params of the method will be received asynchronously by the callback provided.
  * inParams will be retained and used to invoke the method on a background thread; therefore,
  * inParams should not be altered by the calling program until the callback complete.
@@ -1745,29 +1745,29 @@ rbusError_t rbusMethod_Invoke(
  *  @ingroup Methods
  */
 rbusError_t rbusMethod_InvokeAsync(
-    rbusHandle_t handle, 
-    char const* methodName, 
-    rbusObject_t inParams, 
-    rbusMethodAsyncRespHandler_t callback, 
+    rbusHandle_t handle,
+    char const* methodName,
+    rbusObject_t inParams,
+    rbusMethodAsyncRespHandler_t callback,
     int timeout);
 
 /** @} */
 
 /** @addtogroup Providers
-  * @{ 
+  * @{
   */
 
 /** @fn rbusError_t rbusMethod_SendAsyncResponse(
- *          rbusMethodAsyncHandle_t asyncHandle, 
- *          rbusError_t error, 
+ *          rbusMethodAsyncHandle_t asyncHandle,
+ *          rbusError_t error,
  *          rbusObject_t outParams)
  *  @brief Send the response to an invoked method.
- *  
- * Providers can use this method to send the result of an invoke method asynchronously.  
- * The asyncHandle is provided when the provider's MethodHandler is called.  
+ *
+ * Providers can use this method to send the result of an invoke method asynchronously.
+ * The asyncHandle is provided when the provider's MethodHandler is called.
  * The outParams param should be initialized and released by the provider.  outParams can be NULL.
- * The error params should be set to RBUS_ERROR_SUCCESS if the method was successful, 
- * or to an approprioate error if the method fails.  
+ * The error params should be set to RBUS_ERROR_SUCCESS if the method was successful,
+ * or to an approprioate error if the method fails.
  *  @param      asyncHandle     Async handle
  *  @param      error           Any error that occured
  *  @param      outParams       The returned params of the method
@@ -1782,7 +1782,7 @@ rbusError_t rbusMethod_SendAsyncResponse(
 /** @} */
 
 /** @addtogroup Consumers
-  * @{ 
+  * @{
   */
 
 /** @fn rbusError_t rbus_createSession(

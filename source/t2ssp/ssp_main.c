@@ -19,13 +19,13 @@
 
 /**********************************************************************
    Copyright [2014] [Cisco Systems, Inc.]
- 
+
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
    You may obtain a copy of the License at
- 
+
        http://www.apache.org/licenses/LICENSE-2.0
- 
+
    Unless required by applicable law or agreed to in writing, software
    distributed under the License is distributed on an "AS IS" BASIS,
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -72,11 +72,11 @@ int  cmd_dispatch(int  command)
     _ansc_snprintf(CName, sizeof(CName), "%s%s", g_Subsystem, gpT2StartCfg->ComponentId);
 
     ssp_T2Mbi_MessageBusEngage
-        ( 
-         CName,
-         CCSP_MSG_BUS_CFG,
-         gpT2StartCfg->DbusPath
-        );
+    (
+        CName,
+        CCSP_MSG_BUS_CFG,
+        gpT2StartCfg->DbusPath
+    );
 
     ssp_create_t2(gpT2StartCfg);
     ssp_engage_t2(gpT2StartCfg);
@@ -107,7 +107,7 @@ char *getComponentId()
 
     if (gpT2StartCfg->ComponentId[0] != '\0')
     {
-        int id_len = strlen(gpT2StartCfg->ComponentId)+strlen("eRT.")+1;
+        int id_len = strlen(gpT2StartCfg->ComponentId) + strlen("eRT.") + 1;
         componentId = malloc(id_len);
         if (componentId)
         {
@@ -129,7 +129,7 @@ int initTR181_dm()
     if (gpT2StartCfg == NULL)
     {
         gpT2StartCfg = (PCCSP_COMPONENT_CFG)AnscAllocateMemory(sizeof(CCSP_COMPONENT_CFG));
-    
+
         if ( gpT2StartCfg )
         {
             CcspComponentLoadCfg(CCSP_T2_START_CFG_FILE, gpT2StartCfg);
@@ -141,7 +141,7 @@ int initTR181_dm()
             return -1;
         }
     }
-    
+
     /* Set the global pComponentName */
     pComponentName = gpT2StartCfg->ComponentName;
 
@@ -153,7 +153,7 @@ int initTR181_dm()
     if (err != CCSP_SUCCESS)
     {
         fprintf(stderr, "Cdm_Init: %s\n", Cdm_StrError(err));
-	CcspTraceError(("RDKB_SYSTEM_BOOT_UP_LOG : Error in Cdm_Init in telemetry \n"));
+        CcspTraceError(("RDKB_SYSTEM_BOOT_UP_LOG : Error in Cdm_Init in telemetry \n"));
         return -1;
     }
 
@@ -168,7 +168,8 @@ int unInitTR181_dm()
         fprintf(stderr, "Cdm_Term: %s\n", Cdm_StrError(err));
         exit(1);
     }
-    if (g_bActive) {
+    if (g_bActive)
+    {
         ssp_cancel_t2(gpT2StartCfg);
         g_bActive = FALSE;
     }

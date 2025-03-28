@@ -42,28 +42,28 @@ typedef struct _ProfilexConf
     Vector *cachedReportList;
     cJSON *jsonReportObj;
     pthread_t reportThread;
-}ProfilexConf;
+} ProfilexConf;
 
 class XconfclientInterface
 {
-    public:
-        virtual ~XconfclientInterface() {}
-        virtual bool isMtlsEnabled() = 0;
-        virtual bool ProfileXConf_isSet() = 0;
-        virtual T2ERROR processConfigurationXConf(char* , ProfilexConf **) = 0;
-        virtual bool ProfileXConf_isNameEqual(char*) = 0;
-        virtual T2ERROR ReportProfiles_deleteProfileXConf(ProfilexConf *) = 0;
-        virtual T2ERROR ReportProfiles_setProfileXConf(ProfilexConf *) = 0;
+public:
+    virtual ~XconfclientInterface() {}
+    virtual bool isMtlsEnabled() = 0;
+    virtual bool ProfileXConf_isSet() = 0;
+    virtual T2ERROR processConfigurationXConf(char*, ProfilexConf **) = 0;
+    virtual bool ProfileXConf_isNameEqual(char*) = 0;
+    virtual T2ERROR ReportProfiles_deleteProfileXConf(ProfilexConf *) = 0;
+    virtual T2ERROR ReportProfiles_setProfileXConf(ProfilexConf *) = 0;
 };
 
 class XconfclientMock: public XconfclientInterface
 {
-    public:
-        virtual ~XconfclientMock() {}
-        MOCK_METHOD0(isMtlsEnabled, bool());
-        MOCK_METHOD0(ProfileXConf_isSet, bool());
-	MOCK_METHOD2(processConfigurationXConf, T2ERROR(char* , ProfilexConf **));
-        MOCK_METHOD1(ProfileXConf_isNameEqual, bool(char*));
-        MOCK_METHOD1(ReportProfiles_deleteProfileXConf, T2ERROR(ProfilexConf *));
-        MOCK_METHOD1(ReportProfiles_setProfileXConf, T2ERROR(ProfilexConf *));
+public:
+    virtual ~XconfclientMock() {}
+    MOCK_METHOD0(isMtlsEnabled, bool());
+    MOCK_METHOD0(ProfileXConf_isSet, bool());
+    MOCK_METHOD2(processConfigurationXConf, T2ERROR(char*, ProfilexConf **));
+    MOCK_METHOD1(ProfileXConf_isNameEqual, bool(char*));
+    MOCK_METHOD1(ReportProfiles_deleteProfileXConf, T2ERROR(ProfilexConf *));
+    MOCK_METHOD1(ReportProfiles_setProfileXConf, T2ERROR(ProfilexConf *));
 };

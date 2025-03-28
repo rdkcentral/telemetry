@@ -23,15 +23,15 @@
 
 class T2parserInterface
 {
-    public:
-        virtual ~T2parserInterface() {}
-	virtual T2ERROR getParameterValue(const char* paramName, char **paramValue) = 0;
+public:
+    virtual ~T2parserInterface() {}
+    virtual T2ERROR getParameterValue(const char* paramName, char **paramValue) = 0;
 };
 
 class T2parserMock: public T2parserInterface
 {
-    public:
-        virtual ~T2parserMock() {}
-	MOCK_METHOD2(getParameterValue, T2ERROR(const char*, char **));
+public:
+    virtual ~T2parserMock() {}
+    MOCK_METHOD2(getParameterValue, T2ERROR(const char*, char **));
 };
 

@@ -23,19 +23,19 @@
 
 class SchedulerInterface
 {
-    public:
-        virtual ~SchedulerInterface() {}
-	virtual T2ERROR deleteProfile(const char* profileName) = 0;
-	virtual unsigned int getMinThresholdDuration(char *profileName) = 0;
-	virtual  T2ERROR registerTriggerConditionConsumer() = 0;
+public:
+    virtual ~SchedulerInterface() {}
+    virtual T2ERROR deleteProfile(const char* profileName) = 0;
+    virtual unsigned int getMinThresholdDuration(char *profileName) = 0;
+    virtual  T2ERROR registerTriggerConditionConsumer() = 0;
 };
 
 class SchedulerMock: public SchedulerInterface
 {
-    public:
-        virtual ~SchedulerMock() {}
-        MOCK_METHOD0(registerTriggerConditionConsumer,  T2ERROR());
-	MOCK_METHOD1(getMinThresholdDuration, unsigned int(char*));
-	MOCK_METHOD1(deleteProfile, T2ERROR(const char*));
+public:
+    virtual ~SchedulerMock() {}
+    MOCK_METHOD0(registerTriggerConditionConsumer,  T2ERROR());
+    MOCK_METHOD1(getMinThresholdDuration, unsigned int(char*));
+    MOCK_METHOD1(deleteProfile, T2ERROR(const char*));
 };
 

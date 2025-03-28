@@ -24,12 +24,12 @@
  * @brief       An rbus filter represents a value test placed on an event that must be met before the event is published.
  *
  * The filter contains an expression which evaluates to a boolean result when a test value is applied to it.
- * There are 2 types of filter : relation and logic.  These are tantamount to the relation and logic operators in C/C++.  
+ * There are 2 types of filter : relation and logic.  These are tantamount to the relation and logic operators in C/C++.
  * Relation operator are: >, >=, <, <=, ==, and !=.  Logic operators are: &&, ||, and !.
  * Relation filters are created with rbusFilter_InitRelation and are what an event value is tested with.
  * They are defined with an operator (e.g. >) and a value (e.g. 10) to form an expression such as: (X > 10).
- * Logic filters are created with rbusFilter_InitLogic and are applied on relation filters to AND, OR, or NOT them, 
- * such as ((X > 10) || (X < -10)). Additionally, Logic filters can be applied to other 
+ * Logic filters are created with rbusFilter_InitLogic and are applied on relation filters to AND, OR, or NOT them,
+ * such as ((X > 10) || (X < -10)). Additionally, Logic filters can be applied to other
  * logic filters to created nested logic such as: ((X > 10) || (X < -10)) || ((X > -5) && (X < 5)).
  * After a filter is created, its expression can be evaluate using a given value (a given X) by calling rbusFilter_Apply.
  * For example, given X=3, the last expression would evaluate to true.
@@ -133,9 +133,9 @@ void rbusFilter_InitLogic(
     rbusFilter_t right);
 
 /** @fn void rbusFilter_Retain(rbusFilter_t filter)
- *  @brief Take shared ownership of the filter.  This allows a filter to have 
+ *  @brief Take shared ownership of the filter.  This allows a filter to have
  *         multiple owners.  The first owner obtains ownership with rbusFilter_Init....
- *         Additional owners can be assigned afterwards with rbusFilter_Retain.  
+ *         Additional owners can be assigned afterwards with rbusFilter_Retain.
  *         Each owner must call rbusFilter_Release once done using the filter.
  *  @param filter       The filter to retain
  */
@@ -182,7 +182,7 @@ rbusFilter_t rbusFilter_GetLogicRight(rbusFilter_t filter);
  *  @brief Compare two filters for equality.
  *  @param filter1 the first filter to compare
  *  @param filter2 the second filter to compare
- *  @return The compare result where 0 is equal and non-zero if not equal. 
+ *  @return The compare result where 0 is equal and non-zero if not equal.
  */
 int rbusFilter_Compare(rbusFilter_t filter1, rbusFilter_t filter2);
 

@@ -44,62 +44,62 @@ extern "C" {
 
 typedef struct _rtCipher rtCipher;
 
-rtError 
+rtError
 rtCipher_CreateCipherSpake2Plus(
-  rtCipher** cipher, 
-  rtMessage const opts);
+    rtCipher** cipher,
+    rtMessage const opts);
 
-rtError 
+rtError
 rtCipher_Destroy(
-  rtCipher* cipher);
+    rtCipher* cipher);
 
-rtError 
+rtError
 rtCipher_Encrypt(
-  rtCipher* cipher, 
-  uint8_t const* data, 
-  uint32_t data_length, 
-  uint8_t* encrypted, 
-  uint32_t encrypted_max_length, 
-  uint32_t* encrypted_length);
+    rtCipher* cipher,
+    uint8_t const* data,
+    uint32_t data_length,
+    uint8_t* encrypted,
+    uint32_t encrypted_max_length,
+    uint32_t* encrypted_length);
 
-rtError 
+rtError
 rtCipher_EncryptWithKey(
-  uint8_t* key, 
-  uint8_t const* data, 
-  uint32_t data_length, 
-  uint8_t* encrypted, 
-  uint32_t encrypted_max_length, 
-  uint32_t* encrypted_length);
+    uint8_t* key,
+    uint8_t const* data,
+    uint32_t data_length,
+    uint8_t* encrypted,
+    uint32_t encrypted_max_length,
+    uint32_t* encrypted_length);
 
-rtError 
+rtError
 rtCipher_Decrypt(
-  rtCipher* cipher, 
-  uint8_t const* encrypted, 
-  uint32_t encrypted_length, 
-  uint8_t* decrypted, 
-  uint32_t decrypted_max_length, 
-  uint32_t* decrypted_length);
+    rtCipher* cipher,
+    uint8_t const* encrypted,
+    uint32_t encrypted_length,
+    uint8_t* decrypted,
+    uint32_t decrypted_max_length,
+    uint32_t* decrypted_length);
 
-rtError 
+rtError
 rtCipher_DecryptWithKey(
-  uint8_t* key, 
-  uint8_t const* encrypted, 
-  uint32_t encrypted_length, 
-  uint8_t* decrypted, 
-  uint32_t decrypted_max_length, 
-  uint32_t* decrypted_length);
+    uint8_t* key,
+    uint8_t const* encrypted,
+    uint32_t encrypted_length,
+    uint8_t* decrypted,
+    uint32_t decrypted_max_length,
+    uint32_t* decrypted_length);
 
-rtError 
+rtError
 rtCipher_RunKeyExchangeClient(
-  rtCipher* cipher, 
-  rtConnection con);
+    rtCipher* cipher,
+    rtConnection con);
 
-rtError 
+rtError
 rtCipher_RunKeyExchangeServer(
-  rtCipher* cipher, 
-  rtMessage request, 
-  rtMessage* response, 
-  uint8_t** key);
+    rtCipher* cipher,
+    rtMessage request,
+    rtMessage* response,
+    uint8_t** key);
 
 #ifdef __cplusplus
 }

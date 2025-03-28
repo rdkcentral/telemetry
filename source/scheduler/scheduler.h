@@ -42,7 +42,7 @@ typedef struct _SchedulerProfile
     pthread_mutex_t tMutex;
     pthread_cond_t tCond;
 
-}SchedulerProfile;
+} SchedulerProfile;
 
 typedef void (*TimeoutNotificationCB)(const char* profileName, bool isClearSeekMap);
 typedef void (*ActivationTimeoutCB)(const char* profileName);

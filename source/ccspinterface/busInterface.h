@@ -39,15 +39,15 @@ typedef struct _profileValues
 {
     tr181ValStruct_t **paramValues;  // CCSP Base Api Object
     int paramValueCount;
-}profileValues;
+} profileValues;
 
 typedef void (*TelemetryEventCallback)(char* eventInfo, char* user_data);
 
 typedef void (*T2EventMarkerListCallback)(const char* componentName, void **eventMarkerList);
 
-typedef T2ERROR (*dataModelCallBack)(char* dataBlob , bool rprofiletypes);
+typedef T2ERROR (*dataModelCallBack)(char* dataBlob, bool rprofiletypes);
 
-typedef T2ERROR (*dataModelMsgPckCallBack)(char *str , int strSize);
+typedef T2ERROR (*dataModelMsgPckCallBack)(char *str, int strSize);
 
 typedef void (*dataModelSavedJsonCallBack)(char** SavedProfiles);
 
@@ -67,7 +67,8 @@ typedef T2ERROR (*ReportProfilesDeleteDNDCallBack) ();
 
 typedef T2ERROR (*triggerReportOnCondtionCallBack)(const char *referenceName, const char *referenceValue);
 
-typedef struct _callbackhandler {
+typedef struct _callbackhandler
+{
     unsigned short numberOfHandlers;
     dataModelCallBack dmCallBack;
     dataModelMsgPckCallBack dmMsgPckCallBackHandler;

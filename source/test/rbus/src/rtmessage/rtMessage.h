@@ -73,7 +73,7 @@ rtMessage_ToByteArray(rtMessage message, uint8_t** buff, uint32_t* n);
  * gets this right, costly realloc() calls can be avoided.
  * @param extract the data bytes from this message.
  * @param pointer to the byte sequence location
- * @param suggested size of buffer to allocate 
+ * @param suggested size of buffer to allocate
  * @param pointer to number of bytes in the message
  * @return rtError
  **/
@@ -175,7 +175,7 @@ rtMessage_SetInt32(rtMessage message, char const* name, int32_t value);
  * @param message to be modified
  * @param name of the field to be added
  * @param double value of the field to be added
- * @return rtError 
+ * @return rtError
  **/
 rtError
 rtMessage_SetDouble(rtMessage message, char const* name, double value);

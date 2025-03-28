@@ -25,17 +25,17 @@
 
 /*
 
-rtRoutingTree: 
+rtRoutingTree:
     Provides support for vanilla pub/sub with multiple routes assigned to the same topic.
     Provides backward compatibility for rbus which restricts one route per topic.
-    Provides support for tr-069 styles expressions containing wildcard('*') or 
+    Provides support for tr-069 styles expressions containing wildcard('*') or
     instance ids (including aliases "[alias]") in place of the topic name "{i}".
 
     Replace rtree API as follows:
         API name replacements:
             rtRoutingTree_Create                <= rtree_initialize
             rtRoutingTree_AddTopicRoute         <= rtree_set_value
-            rtRoutingTree_GetRouteTopics        <= rtree_get_all_nodes_matching_value 
+            rtRoutingTree_GetRouteTopics        <= rtree_get_all_nodes_matching_value
             rtRoutingTree_GetTopicRoutes        <= rtree_lookup_value
             rtRoutingTree_ResolvePartialPath    <= rtree_get_uniquely_resolvable_endpoints_for_expression
             rtRoutingTree_RemoveRoute           <= rtree_remove_nodes_matching_value
@@ -52,14 +52,14 @@ rtRoutingTree:
     Test result showing difference in API results:
 
         rtRoutingTree_ResolvePartialPath    <= rtree_get_uniquely_resolvable_endpoints_for_expression
-            rtRoutingTree_ResolvePartialPath will return the first topic registered for each route, which 
+            rtRoutingTree_ResolvePartialPath will return the first topic registered for each route, which
                 for the rbus case will be the 'component id' registerd during rbus_open.
             rtree_get_uniquely_resolvable_endpoints_for_expression will return a different topic then the first one
                 registered.
             This should not break anything as the topic being returned is only used to route a request and not
                 used after the route reaches the provider.
-        
-        rtRoutingTree_GetRouteTopics        <= rtree_get_all_nodes_matching_value 
+
+        rtRoutingTree_GetRouteTopics        <= rtree_get_all_nodes_matching_value
             rtRoutingTree_GetRouteTopics will include table topic which have routes registered for them.
             rtree_get_all_nodes_matching_value doesn't include table topics.
 
@@ -72,40 +72,40 @@ rtRoutingTree:
             Return the list of topic names, 1 per route.
             The topic names can be any one, so long as the topic is a part of expressions subtree
             and the topic (and its subtree) is exclusively owned by the route.
- 
+
             One issue with rtree_get_uniquely_resolvable_endpoints_for_expression is that does not have
             any concept of a tr-069 style table, where {i} represents a table row placeholder.
             So a provider might register a topic like "Device.Table.{i}" and the leaf topic node for that table
             will be a literal "{i}".  Any expression that has either a wildcard (Device.Table.*.Foo) or
             and instance ID (Device.Table.1.Foo or Device.Table.[alias].Foo) will fail because
             the rtree does a strcmp on each token in the expression with each topic it walks through.
-            So it will get to the {i} node and do a strcmp(node->name(e.g."{i}") , token(e.g. (*, or 1, or [alias])) 
+            So it will get to the {i} node and do a strcmp(node->name(e.g."{i}") , token(e.g. (*, or 1, or [alias]))
             and fail and then return 0 results.  This type of issue is something we'd like to fix.
 
         To be backward compatible with ccsp we must support how rtree_get_uniquely_resolvable_endpoints_for_expression worked.
             Here is how rtree_get_uniquely_resolvable_endpoints_for_expression is used currently.
             rbus_getExt is called with parameter = "Device.".   This is a partial path query.
-            rbus_resolveWildcardDestinations ("Device.") is called which leads to rtrouted calling 
+            rbus_resolveWildcardDestinations ("Device.") is called which leads to rtrouted calling
             rtree_get_uniquely_resolvable_endpoints_for_expression("Device.")
             Assume Component A has Device.WiFi and a bunch of stuff under it.
             Assume Component B has Device.Moca and a bunch of stuff under it.
-            rbus_resolveWildcardDestinations should return 2 topic names.  
-            One topic name for Component A, which could be Device.WiFi or any topic name under Device.WiFi (e.g. Device.WiFi.A.B.C) as it 
+            rbus_resolveWildcardDestinations should return 2 topic names.
+            One topic name for Component A, which could be Device.WiFi or any topic name under Device.WiFi (e.g. Device.WiFi.A.B.C) as it
             doesn't matter.  And a second topic for component B being Device.Moca or something inside that.
             Lets call these returned topics, destinationTopics.
 
             Next for each destinationTopics topic, rbus_getExt will create an rtMessage containing the actual get parameter ("Device.")
             and call rbus_invokeRemoveMethod(destinationTopics[i], METHOD_GETPARAMETERVALUES, message...)
-            Note that that destinationTopics can be any alias that can route me to each component.  
+            Note that that destinationTopics can be any alias that can route me to each component.
 
         Current API confussion:
-            This style and more specifially the naming syntax can be a little confusing. 
+            This style and more specifially the naming syntax can be a little confusing.
             rbus_resolveWildcardDestinations is really rbus_getRoutesForQuery and it ought to just return a list of routes.
             Instead it returns topics which can be used to find the route when sent to rtrouted.
             If it wants to return aliases/topics then why not just the first one the component registers during rbus_open.
             The fact that the topic returned is seamingly random is confussing until you understand thats its only used
             to route the rbus_invokeRemoteMethod call. But its still confusing because on the provider side, the message header topic
-            will be this random topic name owned by that component. 
+            will be this random topic name owned by that component.
             To be continue ...
 
         This new tree must support multiple listeners on the same topic.
@@ -130,7 +130,7 @@ extern "C" {
 
 typedef struct rtTreeRoute
 {
-    void* route;  
+    void* route;
     rtList topicList;       /*list of rtTreeTopic. list of all topics this route is directly assigned to*/
 } rtTreeRoute;
 

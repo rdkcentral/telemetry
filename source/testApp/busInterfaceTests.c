@@ -34,7 +34,8 @@ static const char* TR181_SYND_SETTINGS = "Device.DeviceInfo.X_RDKCENTRAL-COM_Syn
 
 static const char* TR181_BAD_PARAM = "Device.DeviceInfo.X_RDKCENTRAL-COM" ;
 
-void testGetProfileParameterValues( ) {
+void testGetProfileParameterValues( )
+{
     // Vector* getProfileParameterValues(Vector *paramList)
     printf("\n ====> Inside %s \n\n", __FUNCTION__);
     Vector* paramList = NULL;
@@ -42,46 +43,58 @@ void testGetProfileParameterValues( ) {
     printf("Create vector for paramList \n");
     Vector_Create(&paramList);
 
-    if(!paramList) {
+    if(!paramList)
+    {
         printf("paramList creation failed ... Ignoring tests !!!\n");
         return;
-    }else {
+    }
+    else
+    {
         printf("Create vector for paramList success ... \n");
     }
 
     Param *paramModel = (Param *) malloc(sizeof(Param));
-    if(paramModel) {
+    if(paramModel)
+    {
         memset(paramModel, 0, sizeof(Param));
         paramModel->paramType = strdup("dataModel");
         paramModel->name = TR181_MODEL;
         paramModel->alias = TR181_MODEL;
         //Vector_PushBack(paramList, paramModel); // Push a scalar param
-    }else {
+    }
+    else
+    {
         printf("Unable to allocate memory \n");
     }
     printf("Param paramModel added \n");
 
     Param *paramSyndPartTable = (Param *) malloc(sizeof(Param));
-    if(paramSyndPartTable) {
+    if(paramSyndPartTable)
+    {
         memset(paramSyndPartTable, 0, sizeof(Param));
         paramSyndPartTable->paramType = strdup("dataModel");
         paramSyndPartTable->name = TR181_SYND_SETTINGS;
         paramSyndPartTable->alias = TR181_SYND_SETTINGS;
         Vector_PushBack(paramList, paramSyndPartTable); // Push a table param
 
-    }else {
+    }
+    else
+    {
         printf("Unable to allocate memory \n");
     }
     printf("Param paramSyndPartTable added \n");
 
     Param *paramBad = (Param *) malloc(sizeof(Param));
-    if(paramBad) {
+    if(paramBad)
+    {
         memset(paramBad, 0, sizeof(Param));
         paramSyndPartTable->paramType = strdup("dataModel");
         paramBad->name = TR181_BAD_PARAM;
         paramBad->alias = TR181_BAD_PARAM;
         Vector_PushBack(paramList, paramBad); // Push a bad tr181 param
-    }else {
+    }
+    else
+    {
         printf("Unable to allocate memory \n");
     }
     printf("Param paramBad added \n");
@@ -91,18 +104,25 @@ void testGetProfileParameterValues( ) {
     pValueList = getProfileParameterValues(paramList);
     printf("Expect device model value, syndication partner settings value and again device model value\n\n");
 
-    if(pValueList) {
+    if(pValueList)
+    {
         int i = 0;
-        for( i = 0; i < Vector_Size(paramList); ++i ) {
+        for( i = 0; i < Vector_Size(paramList); ++i )
+        {
             int iterate = 0;
             profileValues* retValObj = (profileValues*) Vector_At(pValueList, i);
-            if(retValObj) {
+            if(retValObj)
+            {
                 int paramValueCount = retValObj->paramValueCount;
                 tr181ValStruct_t** valObjArr = retValObj->paramValues;
-                if(paramValueCount == 0) {
+                if(paramValueCount == 0)
+                {
                     printf("Value for param  %s = %s \n", (valObjArr[0])->parameterName, (valObjArr[0])->parameterValue);
-                }else {
-                    for( iterate = 0; iterate < paramValueCount; ++iterate ) {
+                }
+                else
+                {
+                    for( iterate = 0; iterate < paramValueCount; ++iterate )
+                    {
                         printf("Value for param  %s = %s \n", (valObjArr[iterate])->parameterName, (valObjArr[iterate])->parameterValue);
 
                     }
@@ -111,7 +131,9 @@ void testGetProfileParameterValues( ) {
         }
         // Vector_Destroy(&pValueList, freeProfileValues); // Ignore for testapp due to interdependency
 
-    }else {
+    }
+    else
+    {
         printf("Return value list is null \n");
     }
 
@@ -119,19 +141,27 @@ void testGetProfileParameterValues( ) {
     printf("\n\n Exiting %s ====>\n", __FUNCTION__);
 }
 
-void testGetParameterValue( ) {
+void testGetParameterValue( )
+{
 
     printf("\n ====> Inside %s \n\n", __FUNCTION__);
     char *paramValue = NULL;
     T2ERROR retStatus = T2ERROR_FAILURE;
 
     retStatus = getParameterValue(TR181_PARAM, &paramValue);
-    if(retStatus == T2ERROR_SUCCESS) {
+    if(retStatus == T2ERROR_SUCCESS)
+    {
         if(NULL != paramValue)
+        {
             printf("%s = %s \n\n ", TR181_PARAM, paramValue);
+        }
         else
+        {
             printf("Unable to get value from getParameterValue interface calls \n");
-    }else {
+        }
+    }
+    else
+    {
         printf("Interface calls returns error status \n\n");
     }
     printf("\n\n Exiting %s ====>\n", __FUNCTION__);
@@ -142,7 +172,8 @@ void testGetParameterValue( ) {
  * Primary focus is on ensuring that CCSP vs rbus porting efforts to make sure nothing is broken
  *
  */
-void testBusInterface( ) {
+void testBusInterface( )
+{
 
     testGetParameterValue();
     testGetProfileParameterValues();

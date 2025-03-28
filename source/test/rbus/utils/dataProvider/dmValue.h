@@ -31,81 +31,92 @@
 class dmValue
 {
 public:
-  dmValue(std::string const& s);
-  dmValue(char const* s);
-  dmValue(int8_t n);
-  dmValue(int16_t n);
-  dmValue(int32_t n);
-  dmValue(int64_t n);
-  dmValue(uint8_t n);
-  dmValue(uint16_t n);
-  dmValue(uint32_t n);
-  dmValue(uint64_t n);
-  dmValue(float f);
-  dmValue(double d);
-  dmValue(bool b);
+    dmValue(std::string const& s);
+    dmValue(char const* s);
+    dmValue(int8_t n);
+    dmValue(int16_t n);
+    dmValue(int32_t n);
+    dmValue(int64_t n);
+    dmValue(uint8_t n);
+    dmValue(uint16_t n);
+    dmValue(uint32_t n);
+    dmValue(uint64_t n);
+    dmValue(float f);
+    dmValue(double d);
+    dmValue(bool b);
 
-  std::string toString() const;
+    std::string toString() const;
 
-  inline dmValueType type() const
-    { return m_type; }
+    inline dmValueType type() const
+    {
+        return m_type;
+    }
 
-  operator uint32_t() const
-    { return m_value.uint32Value; }
+    operator uint32_t() const
+    {
+        return m_value.uint32Value;
+    }
 
 private:
-  union value {
-    value() { }
-    value(int8_t n) : int8Value(n) { }
-    value(int16_t n) : int16Value(n) { }
-    value(int32_t n) : int32Value(n) { }
-    value(int64_t n) : int64Value(n) { }
-    value(uint8_t n) : uint64Value(n) { }
-    value(uint16_t n) : uint64Value(n) { }
-    value(uint32_t n) : uint64Value(n) { }
-    value(uint64_t n) : uint64Value(n) { }
-    value(float f) : singleValue(f) { }
-    value(double d) : doubleValue(d) { }
-    value(bool b) : booleanValue(b) { }
-    uint8_t     uint8Value;
-    uint16_t    uint16Value;
-    uint32_t    uint32Value;
-    uint64_t    uint64Value;
-    int8_t      int8Value;
-    int16_t     int16Value;
-    int32_t     int32Value;
-    int64_t     int64Value;
-    float       singleValue;
-    double      doubleValue;
-    bool        booleanValue;
-  };
+    union value
+    {
+        value() { }
+        value(int8_t n) : int8Value(n) { }
+        value(int16_t n) : int16Value(n) { }
+        value(int32_t n) : int32Value(n) { }
+        value(int64_t n) : int64Value(n) { }
+        value(uint8_t n) : uint64Value(n) { }
+        value(uint16_t n) : uint64Value(n) { }
+        value(uint32_t n) : uint64Value(n) { }
+        value(uint64_t n) : uint64Value(n) { }
+        value(float f) : singleValue(f) { }
+        value(double d) : doubleValue(d) { }
+        value(bool b) : booleanValue(b) { }
+        uint8_t     uint8Value;
+        uint16_t    uint16Value;
+        uint32_t    uint32Value;
+        uint64_t    uint64Value;
+        int8_t      int8Value;
+        int16_t     int16Value;
+        int32_t     int32Value;
+        int64_t     int64Value;
+        float       singleValue;
+        double      doubleValue;
+        bool        booleanValue;
+    };
 
-  dmValueType   m_type;
-  std::string   m_string;
-  value         m_value;
+    dmValueType   m_type;
+    std::string   m_string;
+    value         m_value;
 };
 
 class dmNamedValue
 {
 public:
-  dmNamedValue(dmPropertyInfo prop, dmValue const& value)
-    : m_prop(prop)
-    , m_value(value) 
-  {
-  }
+    dmNamedValue(dmPropertyInfo prop, dmValue const& value)
+        : m_prop(prop)
+        , m_value(value)
+    {
+    }
 
-  inline dmPropertyInfo info() const
-    { return m_prop; }
+    inline dmPropertyInfo info() const
+    {
+        return m_prop;
+    }
 
-  inline std::string const& name() const
-    { return m_prop.name(); }
+    inline std::string const& name() const
+    {
+        return m_prop.name();
+    }
 
-  inline dmValue const& value() const
-    { return m_value; }
+    inline dmValue const& value() const
+    {
+        return m_value;
+    }
 
 private:
-  dmPropertyInfo  m_prop;
-  dmValue         m_value;
+    dmPropertyInfo  m_prop;
+    dmValue         m_value;
 };
 
 #endif

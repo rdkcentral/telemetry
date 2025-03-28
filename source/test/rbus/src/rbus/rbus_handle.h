@@ -49,22 +49,22 @@ typedef enum _rbusHandleType
 
 struct _rbusHandle
 {
-  char*                 componentName;
-  int32_t               componentId;
-  elementNode*          elementRoot;
+    char*                 componentName;
+    int32_t               componentId;
+    elementNode*          elementRoot;
 
-  /* consumer side subscriptions FIXME - 
-    this needs to be an associative map instead of list/vector*/
-  rtVector              eventSubs; 
+    /* consumer side subscriptions FIXME -
+      this needs to be an associative map instead of list/vector*/
+    rtVector              eventSubs;
 
-  /* provider side subscriptions */
-  rbusSubscriptions_t   subscriptions; 
+    /* provider side subscriptions */
+    rbusSubscriptions_t   subscriptions;
 
-  rtVector              messageCallbacks;
-  rtConnection          m_connection;
-  rbusHandleType_t      m_handleType;
-  pthread_mutex_t       handle_eventSubsMutex;
-  pthread_mutex_t       handle_subsMutex;
+    rtVector              messageCallbacks;
+    rtConnection          m_connection;
+    rbusHandleType_t      m_handleType;
+    pthread_mutex_t       handle_eventSubsMutex;
+    pthread_mutex_t       handle_subsMutex;
 };
 
 void rbusHandleList_Add(struct _rbusHandle* handle);

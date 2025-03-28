@@ -35,7 +35,7 @@
 #define RT_ASSERT(X) if (!(X)) rtLogError("rt assert: '%s' failed", #X);
 #endif
 
-// TODO review base numbering scheme for different error classes... general vs rtremote vs... 
+// TODO review base numbering scheme for different error classes... general vs rtremote vs...
 #define RT_ERROR_CLASS_SYSERROR 0x8000
 #define RT_ERROR_CLASS_BUILTIN 0x00000000
 

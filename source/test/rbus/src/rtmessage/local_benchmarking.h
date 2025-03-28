@@ -55,7 +55,7 @@
 	} while(0);
 
 #else
-#define CHECKPOINT() 
+#define CHECKPOINT()
 #define INIT_TRACKING()
 #define TRACKING_BOILERPLATE()
 #define STOP_TRACKING_v2()

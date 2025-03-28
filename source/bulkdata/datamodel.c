@@ -65,7 +65,7 @@ static void *process_rp_thread(void *data)
             reportProfiles = (cJSON *)t2_queue_pop(rpQueue);
             if (reportProfiles)
             {
-                ReportProfiles_ProcessReportProfilesBlob(reportProfiles , T2_RP);
+                ReportProfiles_ProcessReportProfilesBlob(reportProfiles, T2_RP);
                 cJSON_Delete(reportProfiles);
                 // Unused value reportProfiles
             }
@@ -95,7 +95,7 @@ static void *process_tmprp_thread(void *data)
             tmpReportProfiles = (cJSON *)t2_queue_pop(tmpRpQueue);
             if (tmpReportProfiles)
             {
-                ReportProfiles_ProcessReportProfilesBlob(tmpReportProfiles , T2_TEMP_RP);
+                ReportProfiles_ProcessReportProfilesBlob(tmpReportProfiles, T2_TEMP_RP);
                 cJSON_Delete(tmpReportProfiles);
                 // Unused value tmpReportProfiles
             }
@@ -112,15 +112,15 @@ static void *process_msg_thread(void *data)
     struct __msgpack__ *msgpack;
     while(!stopProcessing)
     {
-    	pthread_mutex_lock(&rpMsgMutex);
+        pthread_mutex_lock(&rpMsgMutex);
         pthread_cond_wait(&msg_Cond, &rpMsgMutex);
-	    if(t2_queue_count(rpMsgPkgQueue) > 0)
+        if(t2_queue_count(rpMsgPkgQueue) > 0)
         {
             msgpack = (struct __msgpack__ *)t2_queue_pop(rpMsgPkgQueue);
             if (msgpack)
             {
-        	     ReportProfiles_ProcessReportProfilesMsgPackBlob(msgpack->msgpack_blob,msgpack->msgpack_blob_size);
-        	     free(msgpack);
+                ReportProfiles_ProcessReportProfilesMsgPackBlob(msgpack->msgpack_blob, msgpack->msgpack_blob_size);
+                free(msgpack);
             }
         }
         pthread_mutex_unlock(&rpMsgMutex);
@@ -135,7 +135,7 @@ static void *process_msg_thread(void *data)
  * Arguments:
  *      char *JsonBlob         List of active profiles.
  */
-T2ERROR datamodel_processProfile(char *JsonBlob , bool rprofiletypes)
+T2ERROR datamodel_processProfile(char *JsonBlob, bool rprofiletypes)
 {
     cJSON *rootObj = NULL;
     cJSON *profiles = NULL;
@@ -157,13 +157,15 @@ T2ERROR datamodel_processProfile(char *JsonBlob , bool rprofiletypes)
     pthread_mutex_lock(&rpMutex);
     if (!stopProcessing)
     {
-	if(rprofiletypes == T2_RP){
-           t2_queue_push(rpQueue, (void *)rootObj);
-           pthread_cond_signal(&rpCond);
+        if(rprofiletypes == T2_RP)
+        {
+            t2_queue_push(rpQueue, (void *)rootObj);
+            pthread_cond_signal(&rpCond);
         }
-        else if(rprofiletypes == T2_TEMP_RP){
-           t2_queue_push(tmpRpQueue, (void *)rootObj);
-           pthread_cond_signal(&tmpRpCond);
+        else if(rprofiletypes == T2_TEMP_RP)
+        {
+            t2_queue_push(tmpRpQueue, (void *)rootObj);
+            pthread_cond_signal(&tmpRpCond);
         }
     }
     else
@@ -196,18 +198,18 @@ void datamodel_getSavedJsonProfilesasString(char** SavedProfiles)
             config = Vector_At(configList, configIndex);
             T2Debug("Processing config with name : %s\n", config->name);
             cJSON *temparrayItem = cJSON_CreateObject();
-            cJSON_AddStringToObject(temparrayItem, "name",config->name);
+            cJSON_AddStringToObject(temparrayItem, "name", config->name);
             cJSON *tempObject = cJSON_Parse(config->configData);
-            cJSON *temp = cJSON_GetObjectItem(tempObject , "Hash");
-            cJSON_AddStringToObject(temparrayItem,"Hash", temp->valuestring);
-            cJSON_DeleteItemFromObject(tempObject,"Hash");
-            cJSON_AddItemToObject(temparrayItem, "value",tempObject);
-            cJSON_AddItemToArray(valArray, temparrayItem);  
+            cJSON *temp = cJSON_GetObjectItem(tempObject, "Hash");
+            cJSON_AddStringToObject(temparrayItem, "Hash", temp->valuestring);
+            cJSON_DeleteItemFromObject(tempObject, "Hash");
+            cJSON_AddItemToObject(temparrayItem, "value", tempObject);
+            cJSON_AddItemToArray(valArray, temparrayItem);
         }
         *SavedProfiles = cJSON_PrintUnformatted(jsonObj);
         cJSON_Delete(jsonObj);
     }
-    Vector_Destroy(configList,free);
+    Vector_Destroy(configList, free);
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
@@ -222,35 +224,37 @@ int datamodel_getSavedMsgpackProfilesasString(char** SavedProfiles)
     snprintf(filePath, sizeof(filePath), "%s%s", REPORTPROFILES_PERSISTENCE_PATH, MSGPACK_REPORTPROFILES_PERSISTENT_FILE);
     FILE *fp;
     fp = fopen (filePath, "rb");
-    if(fp != NULL){
+    if(fp != NULL)
+    {
         T2Info("Msgpack: loadReportProfilesFromDisk \n");
         struct __msgpack__ msgpack;
         fseek(fp, 0L, SEEK_END);
         msgpack.msgpack_blob_size = ftell(fp);
         if(msgpack.msgpack_blob_size < 0)
         {
-          T2Error("Unable to detect the file pointer position for file %s\n", filePath);
-          fclose(fp);
-          return 0;
+            T2Error("Unable to detect the file pointer position for file %s\n", filePath);
+            fclose(fp);
+            return 0;
         }
         msgpack.msgpack_blob = malloc(sizeof(char) * msgpack.msgpack_blob_size);
-        if (NULL == msgpack.msgpack_blob) {
-          T2Error("Unable to allocate %d bytes of memory at Line %d on %s \n",
+        if (NULL == msgpack.msgpack_blob)
+        {
+            T2Error("Unable to allocate %d bytes of memory at Line %d on %s \n",
                     msgpack.msgpack_blob_size, __LINE__, __FILE__);
-          fclose (fp);
-          return 0;
+            fclose (fp);
+            return 0;
         }
         fseek(fp, 0L, SEEK_SET);
         if(fread(msgpack.msgpack_blob, sizeof(char), msgpack.msgpack_blob_size, fp) < (size_t)msgpack.msgpack_blob_size)
         {
-          T2Error("fread is returning fewer bytes than expected from the file %s\n", filePath);
-          free(msgpack.msgpack_blob);
-          fclose(fp);
-          return 0;
+            T2Error("fread is returning fewer bytes than expected from the file %s\n", filePath);
+            free(msgpack.msgpack_blob);
+            fclose(fp);
+            return 0;
         }
         fclose (fp);
         T2Debug("%s --out\n", __FUNCTION__);
-        *SavedProfiles=msgpack.msgpack_blob;
+        *SavedProfiles = msgpack.msgpack_blob;
         return msgpack.msgpack_blob_size;
     }
     //#endif
@@ -258,14 +262,14 @@ int datamodel_getSavedMsgpackProfilesasString(char** SavedProfiles)
     return 0;
 }
 
-T2ERROR datamodel_MsgpackProcessProfile(char *str , int strSize)
-{	
+T2ERROR datamodel_MsgpackProcessProfile(char *str, int strSize)
+{
     struct __msgpack__ *msgpack;
     msgpack = (struct __msgpack__ *)malloc(sizeof(struct __msgpack__));
 
     if (msgpack == NULL)
     {
-      return T2ERROR_FAILURE;
+        return T2ERROR_FAILURE;
     }
 
     msgpack->msgpack_blob = str;
@@ -273,14 +277,14 @@ T2ERROR datamodel_MsgpackProcessProfile(char *str , int strSize)
     pthread_mutex_lock(&rpMsgMutex);
     if (!stopProcessing)
     {
-       t2_queue_push(rpMsgPkgQueue, (void *)msgpack);
-       pthread_cond_signal(&msg_Cond);
+        t2_queue_push(rpMsgPkgQueue, (void *)msgpack);
+        pthread_cond_signal(&msg_Cond);
     }
     else
     {
-       free(msgpack->msgpack_blob);
-       free(msgpack);
-       T2Error("Datamodel not initialized, dropping request \n");
+        free(msgpack->msgpack_blob);
+        free(msgpack);
+        T2Error("Datamodel not initialized, dropping request \n");
     }
     pthread_mutex_unlock(&rpMsgMutex);
     return T2ERROR_SUCCESS;

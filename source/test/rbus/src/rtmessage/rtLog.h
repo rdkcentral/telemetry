@@ -41,18 +41,18 @@ extern "C" {
 
 typedef enum
 {
-  RT_LOG_DEBUG = 0,
-  RT_LOG_INFO  = 1,
-  RT_LOG_WARN  = 2,
-  RT_LOG_ERROR = 3,
-  RT_LOG_FATAL = 4
+    RT_LOG_DEBUG = 0,
+    RT_LOG_INFO  = 1,
+    RT_LOG_WARN  = 2,
+    RT_LOG_ERROR = 3,
+    RT_LOG_FATAL = 4
 } rtLogLevel;
 
 typedef enum
 {
-  RT_USE_RTLOGGER,
-  RT_USE_RDKLOGGER
-}rtLoggerSelection;
+    RT_USE_RTLOGGER,
+    RT_USE_RDKLOGGER
+} rtLoggerSelection;
 
 /*rdkc compatibility fix*/
 #define rdkLog RT_USE_RDKLOGGER
@@ -95,5 +95,5 @@ void rtLogPrintf(rtLogLevel level, const char* pModule, const char* file, int li
 #ifdef __cplusplus
 }
 #endif
-#endif 
+#endif
 

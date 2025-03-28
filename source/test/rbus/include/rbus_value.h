@@ -22,13 +22,13 @@
  * @brief       rbusValue
  * @defgroup    rbusValue
  * @brief       An rbus value is a variant data type representing a fundamental piece of data passed through rbus.
- *              An rbusValue_t is a reference counted handle to an rbus value.  
-  * 
- * This API is not thread-safe.  
+ *              An rbusValue_t is a reference counted handle to an rbus value.
+  *
+ * This API is not thread-safe.
  * All instances of types rbusValue_t, rbusProperty_t, and rbusObject_t are referenced counted.
  * Instances of these types may have private references to other instances of these types.
  * There are read methods in this api that return references to these private instances.
- * There are write methods in this api that release current references and retain new ones. 
+ * There are write methods in this api that release current references and retain new ones.
  * When this happens any reference held by the user becomes unlinked from the parent instance.
  * The instance will also be destroyed unless the user retains it for themselves.
  * @{
@@ -82,7 +82,8 @@ typedef enum
     RBUS_VALUE_ERROR_NULL
 } rbusValueError_t;
 
-typedef struct _rbusTimeZone {
+typedef struct _rbusTimeZone
+{
     int32_t m_tzhour;
     int32_t m_tzmin;
     bool m_isWest;
@@ -91,18 +92,19 @@ typedef struct _rbusTimeZone {
 
 struct tm32
 {
-  int32_t tm_sec;			/* Seconds.	[0-60] (1 leap second) */
-  int32_t tm_min;			/* Minutes.	[0-59] */
-  int32_t tm_hour;			/* Hours.	[0-23] */
-  int32_t tm_mday;			/* Day.		[1-31] */
-  int32_t tm_mon;			/* Month.	[0-11] */
-  int32_t tm_year;			/* Year	- 1900.  */
-  int32_t tm_wday;			/* Day of week.	[0-6] */
-  int32_t tm_yday;			/* Days in year.[0-365]	*/
-  int32_t tm_isdst;			/* DST.		[-1/0/1]*/
+    int32_t tm_sec;			/* Seconds.	[0-60] (1 leap second) */
+    int32_t tm_min;			/* Minutes.	[0-59] */
+    int32_t tm_hour;			/* Hours.	[0-23] */
+    int32_t tm_mday;			/* Day.		[1-31] */
+    int32_t tm_mon;			/* Month.	[0-11] */
+    int32_t tm_year;			/* Year	- 1900.  */
+    int32_t tm_wday;			/* Day of week.	[0-6] */
+    int32_t tm_yday;			/* Days in year.[0-365]	*/
+    int32_t tm_isdst;			/* DST.		[-1/0/1]*/
 };
 
-typedef struct _rbusDateTime {
+typedef struct _rbusDateTime
+{
     struct tm32       m_time;
     rbusTimeZone_t  m_tz;
 } rbusDateTime_t;
@@ -127,7 +129,7 @@ typedef struct _rbusProperty* rbusProperty_t;
 /** @fn void rbusValue_Init(rbusValue_t* pvalue)
  *  @brief  Allocate and initialize a value to an empty state
  *          with its type set to RBUS_NONE and data set to NULL.
- *          This automatically retains ownership of the value. 
+ *          This automatically retains ownership of the value.
  *          It's the caller's responsibility to release ownership by
  *          calling rbusValue_Release once it's done with it.
  *  @param  Optional pvalue reference to an address where the new value will be assigned.
@@ -139,12 +141,12 @@ rbusValue_t rbusValue_Init(rbusValue_t* pvalue);
 /** @name rbusValue_Get[Type]
  * @brief These functions returns the data stored in the value according to their type.
  *        The data is not coerced to the type, thus the caller should ensure
- *        the value's actual type matches the function being called.  The caller can 
+ *        the value's actual type matches the function being called.  The caller can
  *        call rbusValue_GetType to get the type.
  * @param value A value to get data from.
- * @return The data as a specific type. This is meant to be a const accessor. 
- *         To avoid large copies, if the type is a buffer or struct type, 
- *         a const pointer to the actual data is returned. 
+ * @return The data as a specific type. This is meant to be a const accessor.
+ *         To avoid large copies, if the type is a buffer or struct type,
+ *         a const pointer to the actual data is returned.
  */
 ///@{
 rbusValue_t rbusValue_InitBoolean(bool b);
@@ -168,9 +170,9 @@ rbusValue_t rbusValue_InitObject(struct _rbusObject* object);
 ///@}
 
 /** @fn void rbusValue_Retain(rbusValue_t value)
- *  @brief Take shared ownership of the value.  This allows a value to have 
+ *  @brief Take shared ownership of the value.  This allows a value to have
  *         multiple owners.  The first owner obtains ownership with rbusValue_Init.
- *         Additional owners can be assigned afterwards with rbusValue_Retain.  
+ *         Additional owners can be assigned afterwards with rbusValue_Retain.
  *         Each owner must call rbusValue_Release once done using the value.
  *  @param value the value to retain
  */
@@ -208,8 +210,8 @@ void rbusValue_SetPointer(rbusValue_t* value1, rbusValue_t value2);
 void rbusValue_Copy(rbusValue_t dest, rbusValue_t source);
 
 /** @fn char* rbusValue_ToString(rbusValue_t value, char* buf, size_t buflen)
- *  @brief Returns a null terminated string representing the data of the value.  
- *         Parameters buf and buflen are optional and allow the caller to pass in a buffer 
+ *  @brief Returns a null terminated string representing the data of the value.
+ *         Parameters buf and buflen are optional and allow the caller to pass in a buffer
  *          to write the string to.  If parameter buf is NULL, this method will allocate a buffer
  *          to write the string to and the caller should call free to deallocate the buffer.
  *          For DateTime datatype, below ISO-8601 formats as per TR-069_Amendment-6 will be used for printing.
@@ -224,8 +226,8 @@ void rbusValue_Copy(rbusValue_t dest, rbusValue_t source);
 char* rbusValue_ToString(rbusValue_t value, char* buf, size_t buflen);
 
 /** @fn char* rbusValue_ToDebugString(rbusValue_t value, char* buf, size_t buflen)
- *  @brief Returns a null terminated string representing the type and data of the value.  
- *         Parameters buf and buflen are optional and allow the caller to pass in a buffer 
+ *  @brief Returns a null terminated string representing the type and data of the value.
+ *         Parameters buf and buflen are optional and allow the caller to pass in a buffer
  *          to write the string to.  If parameter buf is NULL, this method will allocate a buffer
  *          to write the string to and the caller should call free to deallocate the buffer.
  *  @param value the value to convert to a string
@@ -236,21 +238,21 @@ char* rbusValue_ToString(rbusValue_t value, char* buf, size_t buflen);
 char* rbusValue_ToDebugString(rbusValue_t value, char* buf, size_t buflen);
 
 /** @fn char* rbusValue_GetType(rbusValue_t value)
- *  @brief Get the type of a value.  
+ *  @brief Get the type of a value.
  *  @param value A value.
  *  @return The type of the value.
- */ 
+ */
 rbusValueType_t rbusValue_GetType(rbusValue_t value);
 
 /** @name rbusValue_Get[Type]
  * @brief These functions return the data stored in the value by type.
  *        The data is not coerced to the type, thus the caller should ensure
- *        the value's actual type matches the function being called.  The caller can 
+ *        the value's actual type matches the function being called.  The caller can
  *        call rbusValue_GetType to get the type.
  * @param value A value to get data from.
- * @return The data as a specific type. This is meant to be a const accessor. 
- *         To avoid large copies, if the type is a buffer or struct type, 
- *         a const pointer to the actual data is returned. 
+ * @return The data as a specific type. This is meant to be a const accessor.
+ *         To avoid large copies, if the type is a buffer or struct type,
+ *         a const pointer to the actual data is returned.
  */
 ///@{
 bool rbusValue_GetBoolean(rbusValue_t value);
@@ -330,7 +332,7 @@ void rbusValue_SetObject(rbusValue_t value, struct _rbusObject* object);
 
 void rbusValue_Swap(rbusValue_t* v1, rbusValue_t* v2);
 ///  @brief rbusValue_SetFromString sets the value's type to given type and data to appropriate by converting the string
-/** 
+/**
  *  @brief Sets the type and data of a value by converting a string representation of the data to a specific typed data.
  *  @param value A value to set.
  *  @param type The type of data represented by the input string and to which the value will be assigned.

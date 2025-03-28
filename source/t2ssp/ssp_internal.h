@@ -19,13 +19,13 @@
 
 /**********************************************************************
    Copyright [2014] [Cisco Systems, Inc.]
- 
+
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
    You may obtain a copy of the License at
- 
+
        http://www.apache.org/licenses/LICENSE-2.0
- 
+
    Unless required by applicable law or agreed to in writing, software
    distributed under the License is distributed on an "AS IS" BASIS,
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -52,7 +52,7 @@
 extern   PCCSP_COMPONENT_CFG                        gpT2StartCfg;
 
 typedef  struct
-_COMPONENT_COMMON_DM
+    _COMPONENT_COMMON_DM
 {
     char*                           Name;
     ULONG                           Version;
@@ -113,100 +113,100 @@ void load_data_model();
 
 ANSC_STATUS
 ssp_create_t2
-    (
-        PCCSP_COMPONENT_CFG         pStartCfg
-    );
+(
+    PCCSP_COMPONENT_CFG         pStartCfg
+);
 
 ANSC_STATUS
 ssp_engage_t2
-    (
-        PCCSP_COMPONENT_CFG         pStartCfg
-    );
+(
+    PCCSP_COMPONENT_CFG         pStartCfg
+);
 
 ANSC_STATUS
 ssp_cancel_t2
-    (
-        PCCSP_COMPONENT_CFG         pStartCfg
-    );
+(
+    PCCSP_COMPONENT_CFG         pStartCfg
+);
 
 char*
 ssp_T2CCDmGetComponentName
-    (
-        ANSC_HANDLE                     hThisObject
-    );
+(
+    ANSC_HANDLE                     hThisObject
+);
 
 ULONG
 ssp_T2CCDmGetComponentVersion
-    (
-        ANSC_HANDLE                     hThisObject
-    );
+(
+    ANSC_HANDLE                     hThisObject
+);
 
 char*
 ssp_T2CCDmGetComponentAuthor
-    (
-        ANSC_HANDLE                     hThisObject
-    );
+(
+    ANSC_HANDLE                     hThisObject
+);
 
 ULONG
 ssp_T2CCDmGetComponentHealth
-    (
-        ANSC_HANDLE                     hThisObject
-    );
+(
+    ANSC_HANDLE                     hThisObject
+);
 
 ULONG
 ssp_T2CCDmGetComponentState
-    (
-        ANSC_HANDLE                     hThisObject
-    );
+(
+    ANSC_HANDLE                     hThisObject
+);
 
 BOOL
 ssp_T2CCDmGetLoggingEnabled
-    (
-        ANSC_HANDLE                     hThisObject
-    );
+(
+    ANSC_HANDLE                     hThisObject
+);
 
 ANSC_STATUS
 ssp_T2CCDmSetLoggingEnabled
-    (
-        ANSC_HANDLE                     hThisObject,
-        BOOL                            bEnabled
-    );
+(
+    ANSC_HANDLE                     hThisObject,
+    BOOL                            bEnabled
+);
 
 ULONG
 ssp_T2CCDmGetLoggingLevel
-    (
-        ANSC_HANDLE                     hThisObject
-    );
+(
+    ANSC_HANDLE                     hThisObject
+);
 
 ANSC_STATUS
 ssp_T2CCDmSetLoggingLevel
-    (
-        ANSC_HANDLE                     hThisObject,
-        ULONG                           LogLevel
-    );
+(
+    ANSC_HANDLE                     hThisObject,
+    ULONG                           LogLevel
+);
 
 ULONG
 ssp_T2CCDmGetMemMaxUsage
-    (
-        ANSC_HANDLE                     hThisObject
-    );
+(
+    ANSC_HANDLE                     hThisObject
+);
 
 ULONG
 ssp_T2CCDmGetMemMinUsage
-    (
-        ANSC_HANDLE                     hThisObject
-    );
+(
+    ANSC_HANDLE                     hThisObject
+);
 
 ULONG
 ssp_T2CCDmGetMemConsumed
-    (
-        ANSC_HANDLE                     hThisObject
-    );
+(
+    ANSC_HANDLE                     hThisObject
+);
 
 ANSC_STATUS
 ssp_T2CCDmApplyChanges
-    (
-        ANSC_HANDLE                     hThisObject
-    );
+(
+    ANSC_HANDLE                     hThisObject
+);
 
 #endif

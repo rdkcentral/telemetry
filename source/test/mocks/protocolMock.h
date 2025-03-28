@@ -23,15 +23,15 @@
 
 class ProtocolInterface
 {
-    public:
-        virtual ~ProtocolInterface() {}
-        virtual bool isMtlsEnabled() = 0;
+public:
+    virtual ~ProtocolInterface() {}
+    virtual bool isMtlsEnabled() = 0;
 };
 
 class ProtocolMock: public ProtocolInterface
 {
-    public:
-        virtual ~ProtocolMock() {}
-	MOCK_METHOD0(isMtlsEnabled, bool());
+public:
+    virtual ~ProtocolMock() {}
+    MOCK_METHOD0(isMtlsEnabled, bool());
 };
 

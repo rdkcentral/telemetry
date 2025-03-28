@@ -28,11 +28,11 @@
 class dmQuery
 {
 public:
-  virtual ~dmQuery() { }
-  virtual bool exec() = 0;
-  virtual void reset() = 0;
-  virtual bool setQueryString(dmProviderOperation op, char const* s) = 0;
-  virtual dmQueryResult const& results() = 0;
+    virtual ~dmQuery() { }
+    virtual bool exec() = 0;
+    virtual void reset() = 0;
+    virtual bool setQueryString(dmProviderOperation op, char const* s) = 0;
+    virtual dmQueryResult const& results() = 0;
 };
 
 #endif

@@ -19,13 +19,13 @@
 
 /**********************************************************************
  Copyright [2014] [Cisco Systems, Inc.]
- 
+
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
  You may obtain a copy of the License at
- 
+
  http://www.apache.org/licenses/LICENSE-2.0
- 
+
  Unless required by applicable law or agreed to in writing, software
  distributed under the License is distributed on an "AS IS" BASIS,
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -82,18 +82,24 @@ ULONG Telemetry_GetParamStringValue(ANSC_HANDLE hInsContext, char* ParamName, ch
     if (strcmp(ParamName, "ReportProfiles") == 0)
     {
         char* temp = NULL;
-        if (pMyObject->JsonBlob == NULL){
+        if (pMyObject->JsonBlob == NULL)
+        {
             if (pMyObject->MsgpackBlob != NULL)
-		return 0;
-	    datamodel_getSavedJsonProfilesasString(&temp);
-            if (temp != NULL){
+            {
+                return 0;
+            }
+            datamodel_getSavedJsonProfilesasString(&temp);
+            if (temp != NULL)
+            {
                 pMyObject->JsonBlob = (char *)AnscAllocateMemory( AnscSizeOfString(temp) + 1 );
                 strncpy(pMyObject->JsonBlob, temp, strlen(temp));
                 pMyObject->JsonBlob[strlen(temp)] = '\0';
                 free(temp);
             }
-	    else
+            else
+            {
                 return 0;
+            }
         }
         if(*pUlSize < strlen(pMyObject->JsonBlob))
         {
@@ -111,24 +117,30 @@ ULONG Telemetry_GetParamStringValue(ANSC_HANDLE hInsContext, char* ParamName, ch
         char* temp = NULL;
         int size;
 
-        if (pMyObject->MsgpackBlob == NULL){
+        if (pMyObject->MsgpackBlob == NULL)
+        {
             if (pMyObject->JsonBlob != NULL)
-		return 0;
-	    size = datamodel_getSavedMsgpackProfilesasString (&temp);
-            if (temp != NULL && size > 0){
+            {
+                return 0;
+            }
+            size = datamodel_getSavedMsgpackProfilesasString (&temp);
+            if (temp != NULL && size > 0)
+            {
                 ULONG stringSize = size;
                 char* Unpack = AnscBase64Encode(temp, stringSize);
                 pMyObject->MsgpackBlob = (char *)AnscAllocateMemory( AnscSizeOfString(Unpack) + 1 );
                 strncpy(pMyObject->MsgpackBlob, Unpack, strlen(Unpack));
                 pMyObject->MsgpackBlob[strlen(Unpack)] = '\0';
                 free(temp);
-		free(Unpack);
+                free(Unpack);
             }
-	    else{
-               if(temp != NULL){
+            else
+            {
+                if(temp != NULL)
+                {
                     free(temp);
-               }
-               return 0;
+                }
+                return 0;
             }
         }
         if(*pUlSize < strlen(pMyObject->MsgpackBlob))
@@ -145,7 +157,9 @@ ULONG Telemetry_GetParamStringValue(ANSC_HANDLE hInsContext, char* ParamName, ch
     if (strcmp(ParamName, "Temp_ReportProfiles") == 0)
     {
         if (pMyObject->JsonTmpBlob == NULL)
+        {
             return 0;
+        }
 
         if(*pUlSize < strlen(pMyObject->JsonTmpBlob))
         {
@@ -170,12 +184,12 @@ BOOL Telemetry_SetParamStringValue(ANSC_HANDLE hInsContext, char* ParamName, cha
     }
     if (strcmp(ParamName, "ReportProfiles") == 0)
     {
-        if(T2ERROR_SUCCESS != datamodel_processProfile(pString , T2_RP))
+        if(T2ERROR_SUCCESS != datamodel_processProfile(pString, T2_RP))
         {
             return FALSE;
         }
 
-	if (pMyObject->JsonBlob != NULL)
+        if (pMyObject->JsonBlob != NULL)
         {
             AnscFreeMemory((ANSC_HANDLE) (pMyObject->JsonBlob));
             pMyObject->JsonBlob = NULL;
@@ -192,18 +206,18 @@ BOOL Telemetry_SetParamStringValue(ANSC_HANDLE hInsContext, char* ParamName, cha
             AnscFreeMemory((ANSC_HANDLE) (pMyObject->MsgpackBlob));
             pMyObject->MsgpackBlob = NULL;
         }
-	return TRUE;
+        return TRUE;
     }
 
     if (strcmp(ParamName, "ReportProfilesMsgPack") == 0)
     {
         char *webConfigString  = NULL;
         ULONG stringSize = 0;
- 	webConfigString = AnscBase64Decode(pString, &stringSize);
+        webConfigString = AnscBase64Decode(pString, &stringSize);
 
-        if(T2ERROR_SUCCESS != datamodel_MsgpackProcessProfile(webConfigString,stringSize))
+        if(T2ERROR_SUCCESS != datamodel_MsgpackProcessProfile(webConfigString, stringSize))
         {
-        	return FALSE;
+            return FALSE;
         }
 
         if (pMyObject->MsgpackBlob != NULL)
@@ -223,12 +237,12 @@ BOOL Telemetry_SetParamStringValue(ANSC_HANDLE hInsContext, char* ParamName, cha
             AnscFreeMemory((ANSC_HANDLE) (pMyObject->JsonBlob));
             pMyObject->JsonBlob = NULL;
         }
-	return TRUE;
+        return TRUE;
     }
 
     if (strcmp(ParamName, "Temp_ReportProfiles") == 0)
     {
-        if(T2ERROR_SUCCESS != datamodel_processProfile(pString , T2_TEMP_RP))
+        if(T2ERROR_SUCCESS != datamodel_processProfile(pString, T2_TEMP_RP))
         {
             return FALSE;
         }

@@ -36,13 +36,13 @@ typedef enum
     MTYPE_XCONF_COUNTER,
     MTYPE_XCONF_ABSOLUTE,
     MTYPE_XCONF_ACCUMULATE
-}MarkerTypeXConf;
+} MarkerTypeXConf;
 
 typedef struct _JSONEncodingXConf
 {
     JSONFormat reportFormat;
     TimeStampFormat tsFormat;
-}JSONEncodingXConf;
+} JSONEncodingXConf;
 
 typedef struct _ProfileXConf
 {
@@ -62,7 +62,7 @@ typedef struct _ProfileXConf
     Vector *cachedReportList;
     cJSON *jsonReportObj;
     pthread_t reportThread;
-}ProfileXConf;
+} ProfileXConf;
 
 T2ERROR ProfileXConf_init();
 T2ERROR ProfileXConf_uninit();

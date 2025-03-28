@@ -19,13 +19,13 @@
 
 /**********************************************************************
  Copyright [2014] [Cisco Systems, Inc.]
- 
+
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
  You may obtain a copy of the License at
- 
+
  http://www.apache.org/licenses/LICENSE-2.0
- 
+
  Unless required by applicable law or agreed to in writing, software
  distributed under the License is distributed on an "AS IS" BASIS,
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -70,60 +70,60 @@
 
 #define ANSC_EXPORT_API
 
-#ifdef __cplusplus 
+#ifdef __cplusplus
 extern "C" {
 #endif
 
-    /***************************************************************************
-     *
-     *  BMEL stands for "Broadway MIB Extension Library"
-     *
-     ***************************************************************************/
-    int ANSC_EXPORT_API
-    COSA_Init
-    (
-            ULONG uMaxVersionSupported,
-            void* hCosaPlugInfo /* PCOSA_PLUGIN_INFO passed in by the caller */
-    );
-
-    int ANSC_EXPORT_API
-    COSA_Async_Init
-    (
-            ULONG uMaxVersionSupported,
-            void* hCosaPlugInfo /* PCOSA_PLUGIN_INFO passed in by the caller */
-    );
-
-    BOOL ANSC_EXPORT_API
-    COSA_IsObjectSupported
-    (
-            char* pObjName
-    );
-
-    void ANSC_EXPORT_API
-    COSA_Unload
-    (
-            void
-    );
-
-    void ANSC_EXPORT_API
-    COSA_MemoryCheck
-    (
-            void
-    );
-
-    void ANSC_EXPORT_API
-    COSA_MemoryUsage
-    (
-            void
-    );
-
-    void ANSC_EXPORT_API
-COSA_MemoryTable
+/***************************************************************************
+ *
+ *  BMEL stands for "Broadway MIB Extension Library"
+ *
+ ***************************************************************************/
+int ANSC_EXPORT_API
+COSA_Init
 (
-        void
+    ULONG uMaxVersionSupported,
+    void* hCosaPlugInfo /* PCOSA_PLUGIN_INFO passed in by the caller */
 );
 
-#ifdef __cplusplus 
+int ANSC_EXPORT_API
+COSA_Async_Init
+(
+    ULONG uMaxVersionSupported,
+    void* hCosaPlugInfo /* PCOSA_PLUGIN_INFO passed in by the caller */
+);
+
+BOOL ANSC_EXPORT_API
+COSA_IsObjectSupported
+(
+    char* pObjName
+);
+
+void ANSC_EXPORT_API
+COSA_Unload
+(
+    void
+);
+
+void ANSC_EXPORT_API
+COSA_MemoryCheck
+(
+    void
+);
+
+void ANSC_EXPORT_API
+COSA_MemoryUsage
+(
+    void
+);
+
+void ANSC_EXPORT_API
+COSA_MemoryTable
+(
+    void
+);
+
+#ifdef __cplusplus
 }
 #endif
 #endif

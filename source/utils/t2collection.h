@@ -25,21 +25,25 @@
 
 #define MAX_KEY_LEN 512
 
-typedef struct element {
+typedef struct element
+{
     void *data;
     struct element *next;
 } element_t;
 
-typedef struct {
+typedef struct
+{
     void    *data;
     char    *key;
 } hash_element_t;
 
-typedef struct {
+typedef struct
+{
     element_t   *head;
 } queue_t;
 
-typedef struct{
+typedef struct
+{
     queue_t *queue;
 } hash_map_t;
 

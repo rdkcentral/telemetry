@@ -33,31 +33,34 @@ unsigned int rdkLogLevel = RDK_LOG_INFO;
 
 void LOGInit()
 {
-     rdk_logger_init(DEBUG_INI_NAME);
-     if (access( ENABLE_DEBUG_FLAG, F_OK) != -1)
-          rdkLogLevel = RDK_LOG_DEBUG;
+    rdk_logger_init(DEBUG_INI_NAME);
+    if (access( ENABLE_DEBUG_FLAG, F_OK) != -1)
+    {
+        rdkLogLevel = RDK_LOG_DEBUG;
+    }
 }
 
 
-static void eventApiTests() {
+static void eventApiTests()
+{
 
     printf("%s Test Start ... \n\n ", __FUNCTION__);
     printf("====== Sends following events repeatedly : ====== \n");
 
     printf("\t ccsp-wifi-agent \n");
     printf("WIFI_ERROR_PSM_GetRecordFail \n"
-            "5GclientMac_split \n ");
+           "5GclientMac_split \n ");
 
     printf("\t test-and-diagnostic \n");
     printf(
-            "SYS_SH_CMReset_PingFailed \n"
-            "SYS_INFO_Invoke_batterymode \n"
-            "SYS_SH_lighttpdCrash ");
+        "SYS_SH_CMReset_PingFailed \n"
+        "SYS_INFO_Invoke_batterymode \n"
+        "SYS_SH_lighttpdCrash ");
 
     printf("\t TEST_COMP \n");
     printf(
-            "TEST_EVENT_1 \n"
-            "TEST_EVENT_2 \n");
+        "TEST_EVENT_1 \n"
+        "TEST_EVENT_2 \n");
 
     printf("================================================ \n");
 
@@ -97,18 +100,23 @@ static void eventApiTests() {
  *  3] Aggressive tests for memory and cpu evaluation
  *
  */
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
 
     LOGInit();
-    if(argc > 1) {
+    if(argc > 1)
+    {
         t2_init(argv[1]);
-        while(1) {
+        while(1)
+        {
             printf("Initiatized component %s \n ", argv[1]);
             eventApiTests();
             sleep(10);
             eventApiTests();
         }
-    }else {
+    }
+    else
+    {
         printf("Invoke %s with component name ccsp-wifi-agent or test-and-diagnostic or TEST_COMP \n ", argv[0]);
     }
     return 0;

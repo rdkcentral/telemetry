@@ -47,7 +47,9 @@ static T2ERROR CCSPInterface_Init()
 
 
     if (componentId == NULL)
+    {
         componentId = strdup(CCSP_COMPONENT_ID);
+    }
 
     int ret = CCSP_Message_Bus_Init(componentId, pCfg, &bus_handle, (CCSP_MESSAGE_BUS_MALLOC)Ansc_AllocateMemory_Callback, Ansc_FreeMemory_Callback);
     free(componentId);
@@ -63,7 +65,7 @@ static T2ERROR CCSPInterface_Init()
 
 static int findDestComponent(char *paramName, char **destCompName, char **destPath)
 {
-    int ret, size =0;
+    int ret, size = 0;
     char dst_pathname_cr[256] = {0};
     componentStruct_t **ppComponents = NULL;
     T2Debug("%s ++in for paramName : %s\n", __FUNCTION__, paramName);
@@ -77,7 +79,7 @@ static int findDestComponent(char *paramName, char **destCompName, char **destPa
     }
     else
     {
-        T2Error("Failed to get component for %s ret: %d\n",paramName,ret);
+        T2Error("Failed to get component for %s ret: %d\n", paramName, ret);
         return ret;
     }
     free_componentStruct_t(bus_handle, size, ppComponents);
@@ -86,7 +88,8 @@ static int findDestComponent(char *paramName, char **destCompName, char **destPa
     return ret;
 }
 
-bool isCCSPInitialized(){
+bool isCCSPInitialized()
+{
 
     return bus_handle != NULL ? true : false ;
 }
@@ -150,7 +153,7 @@ T2ERROR getParameterNames(const char *objName, parameterInfoStruct_t ***paramNam
     {
         return T2ERROR_FAILURE;
     }
-    else if(objName == NULL || objName[strlen(objName)-1] != '.')
+    else if(objName == NULL || objName[strlen(objName) - 1] != '.')
     {
         T2Error("Invalid objectName, doesn't end with a wildcard '.'\n");
         return T2ERROR_INVALID_ARGS;
@@ -162,7 +165,9 @@ T2ERROR getParameterNames(const char *objName, parameterInfoStruct_t ***paramNam
             T2Error("CcspBaseIf_getParameterValues failed for : %s\n", objName);
         }
         else
+        {
             ret = T2ERROR_SUCCESS;
+        }
     }
     else
     {
@@ -209,7 +214,7 @@ T2ERROR getCCSPParamVal(const char* paramName, char **paramValue)
     {
         T2Error("Unable to get %s\n", paramName);
         free(paramNames[0]);
-	return T2ERROR_FAILURE;
+        return T2ERROR_FAILURE;
     }
     T2Debug("%s = %s\n", paramName, valStructs[0]->parameterValue);
     *paramValue = strdup(valStructs[0]->parameterValue);
@@ -219,74 +224,94 @@ T2ERROR getCCSPParamVal(const char* paramName, char **paramValue)
     return T2ERROR_SUCCESS;
 }
 
-Vector* getCCSPProfileParamValues(Vector *paramList) {
+Vector* getCCSPProfileParamValues(Vector *paramList)
+{
     unsigned int i = 0;
     int count = Vector_Size(paramList);
     Vector *profileValueList = NULL;
     Vector_Create(&profileValueList);
 
     T2Debug("%s ++in\n", __FUNCTION__);
-    if(!bus_handle && T2ERROR_SUCCESS != CCSPInterface_Init()) {
+    if(!bus_handle && T2ERROR_SUCCESS != CCSPInterface_Init())
+    {
         return profileValueList;
     }
 
     char** paramNames = (char **) malloc(count * sizeof(char*));
-    if(!paramNames) {
+    if(!paramNames)
+    {
         T2Error("Unable allocate memory for paramNames\n");
         return profileValueList;
     }
 
     T2Info("TR-181 Param count : %d\n", count);
-    for( ; i < count; i++ ) {
+    for( ; i < count; i++ )
+    {
         tr181ValStruct_t **paramValues = NULL;
         parameterValStruct_t **ccspParamValues = NULL;
         int paramValCount = 0;
         int iterate = 0;
         profileValues *profVals = (profileValues *) malloc(sizeof(profileValues));
-        if(profVals == NULL) {
+        if(profVals == NULL)
+        {
             T2Error("Unable allocate memory for profVals\n");
             continue;
         }
         paramNames[0] = strdup(((Param *) Vector_At(paramList, i))->alias);
-        if(paramNames[0] == NULL) {
+        if(paramNames[0] == NULL)
+        {
             T2Error("Unable allocate memory for paramNames[0]\n");
             free(profVals);
             continue;
         }
-        if(T2ERROR_SUCCESS != ccspGetParameterValues((const char**)paramNames, 1, &ccspParamValues, &paramValCount)) {
+        if(T2ERROR_SUCCESS != ccspGetParameterValues((const char**)paramNames, 1, &ccspParamValues, &paramValCount))
+        {
             T2Error("Failed to retrieve param : %s\n", paramNames[0]);
             paramValCount = 0;
-        }else {
-	    /* CID 175831: Dereference after null check */
+        }
+        else
+        {
+            /* CID 175831: Dereference after null check */
             if(ccspParamValues == NULL)
-	    {
-	       T2Info("unable to get ccspParamValues \n");
-               free(profVals);
-	       return profileValueList;
-	    }
+            {
+                T2Info("unable to get ccspParamValues \n");
+                free(profVals);
+                return profileValueList;
+            }
             if(paramValCount == 0)
+            {
                 T2Info("ParameterName : %s Retrieved value count : %d\n", paramNames[0], paramValCount);
+            }
         }
 
         profVals->paramValueCount = paramValCount;
 
         // Populate bus independent parameter value array
-        if(paramValCount == 0) {
+        if(paramValCount == 0)
+        {
             paramValues = (tr181ValStruct_t**) malloc(sizeof(tr181ValStruct_t*));
-            if(paramValues != NULL) {
+            if(paramValues != NULL)
+            {
                 paramValues[0] = (tr181ValStruct_t*) malloc(sizeof(tr181ValStruct_t));
-                if(paramValues[0] != NULL) {
+                if(paramValues[0] != NULL)
+                {
                     paramValues[0]->parameterName = strdup(paramNames[0]);
                     paramValues[0]->parameterValue = strdup("NULL");
                 }
             }
-        }else {
+        }
+        else
+        {
             paramValues = (tr181ValStruct_t**) malloc(paramValCount * sizeof(tr181ValStruct_t*));
-            if(paramValues != NULL) {
-                for( iterate = 0; iterate < paramValCount; ++iterate ) {
-                    if(ccspParamValues[iterate]) {
+            if(paramValues != NULL)
+            {
+                for( iterate = 0; iterate < paramValCount; ++iterate )
+                {
+                    if(ccspParamValues[iterate])
+                    {
                         paramValues[iterate] = (tr181ValStruct_t*) malloc(sizeof(tr181ValStruct_t));
-                        if(paramValues[iterate]) {
+                        if(paramValues[iterate])
+                        {
                             paramValues[iterate]->parameterName = strdup((ccspParamValues[iterate])->parameterName);
                             paramValues[iterate]->parameterValue = strdup((ccspParamValues[iterate])->parameterValue);
                         }
@@ -305,7 +330,9 @@ Vector* getCCSPProfileParamValues(Vector *paramList) {
         }
     }
     if(paramNames)
+    {
         free(paramNames);
+    }
 
     T2Debug("%s --Out\n", __FUNCTION__);
     return profileValueList;
@@ -321,13 +348,16 @@ T2ERROR registerCcspT2EventListener(TelemetryEventCallback eventCB)
         return T2ERROR_FAILURE;
     }
     CcspBaseIf_SetCallback2(bus_handle, "telemetryDataSignal",
-            eventCB, NULL);
+                            eventCB, NULL);
 
     ret = CcspBaseIf_Register_Event(bus_handle, NULL, "telemetryDataSignal");
-    if (ret != CCSP_Message_Bus_OK) {
+    if (ret != CCSP_Message_Bus_OK)
+    {
         T2Error("CcspBaseIf_Register_Event failed\n");
         return T2ERROR_FAILURE;
-    } else {
+    }
+    else
+    {
         T2Info("Registration with CCSP Bus successful, waiting for Telemetry Events from components...\n");
     }
     T2Debug("%s --out\n", __FUNCTION__);

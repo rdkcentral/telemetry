@@ -48,7 +48,7 @@ typedef struct _Config
 {
     char* name;
     char* configData;
-}Config;
+} Config;
 
 T2ERROR fetchLocalConfigs(const char* path, Vector *configList);
 

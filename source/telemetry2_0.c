@@ -68,11 +68,11 @@ static pid_t DAEMONPID; //static varible store the Main Pid
 T2ERROR initTelemetry()
 {
     T2ERROR ret = T2ERROR_FAILURE;
-    T2Debug("%s ++in\n",__FUNCTION__);
+    T2Debug("%s ++in\n", __FUNCTION__);
 
     if(T2ERROR_SUCCESS == initReportProfiles())
     {
-        #ifndef DEVICE_EXTENDER
+#ifndef DEVICE_EXTENDER
         if(T2ERROR_SUCCESS == initXConfClient())
         {
             ret = T2ERROR_SUCCESS;
@@ -80,18 +80,22 @@ T2ERROR initTelemetry()
             T2Debug("%s --out\n", __FUNCTION__);
         }
         else
+        {
             T2Error("Failed to initializeXConfClient\n");
-        #endif
-        #if defined(DEVICE_EXTENDER)
+        }
+#endif
+#if defined(DEVICE_EXTENDER)
         ret = T2ERROR_SUCCESS;
-        #endif
+#endif
     }
     else
+    {
         T2Error("Failed to initialize ReportProfiles\n");
+    }
 
     initcomplete = 1;
 
-    T2Debug("%s --out\n",__FUNCTION__);
+    T2Debug("%s --out\n", __FUNCTION__);
     return ret;
 }
 
@@ -106,15 +110,18 @@ static void terminate()
         ReportProfiles_uninit();
     }
 
-    if(remove("/tmp/.t2ReadyToReceiveEvents") != 0) {
+    if(remove("/tmp/.t2ReadyToReceiveEvents") != 0)
+    {
         printf("removing the file /tmp/.t2ReadyToReceiveEvents failed!\n");
     }
 
-    if(remove("/tmp/telemetry_initialized_bootup") != 0) {
+    if(remove("/tmp/telemetry_initialized_bootup") != 0)
+    {
         printf("removing the file /tmp/telemetry_initialized_bootup failed!\n");
     }
 
-    if(remove(T2_CONFIG_READY) != 0) {
+    if(remove(T2_CONFIG_READY) != 0)
+    {
         printf("removing the file T2_CONFIG_READY failed!\n");
     }
 }
@@ -132,13 +139,16 @@ static void _print_stack_backtrace(void)
 
     funcNames = backtrace_symbols( tracePtrs, count );
 
-    if ( funcNames ) {
-            // Print the stack trace
+    if ( funcNames )
+    {
+        // Print the stack trace
         for( i = 0; i < count; i++ )
-        printf("%s\n", funcNames[i] );
+        {
+            printf("%s\n", funcNames[i] );
+        }
 
-            // Free the string pointers
-            free( funcNames );
+        // Free the string pointers
+        free( funcNames );
     }
 #endif
 #endif
@@ -147,23 +157,27 @@ static void _print_stack_backtrace(void)
 
 void sig_handler(int sig, siginfo_t* info, void* uc)
 {
-    if(DAEMONPID == getpid()){
+    if(DAEMONPID == getpid())
+    {
         int fd;
         const char *path = "/tmp/telemetry_logupload";
-        if ( sig == SIGINT ) {
+        if ( sig == SIGINT )
+        {
             T2Info(("SIGINT received!\n"));
-            #ifndef DEVICE_EXTENDER
+#ifndef DEVICE_EXTENDER
             uninitXConfClient();
-            #endif
+#endif
             ReportProfiles_uninit();
             exit(0);
         }
-        else if ( sig == SIGUSR1 || sig == LOG_UPLOAD ) {
+        else if ( sig == SIGUSR1 || sig == LOG_UPLOAD )
+        {
             T2Info(("LOG_UPLOAD received!\n"));
             set_logdemand(false);
             ReportProfiles_Interrupt();
         }
-        else if (sig == LOG_UPLOAD_ONDEMAND || sig == SIGIO) {
+        else if (sig == LOG_UPLOAD_ONDEMAND || sig == SIGIO)
+        {
             T2Info(("LOG_UPLOAD_ONDEMAND received!\n"));
             set_logdemand(true);
             ReportProfiles_Interrupt();
@@ -172,20 +186,26 @@ void sig_handler(int sig, siginfo_t* info, void* uc)
         {
             T2Info(("EXEC_RELOAD received!\n"));
             fd = open(path, O_RDONLY | O_CREAT, 0400);
-            if(fd  == -1) {
-                   T2Warning("Failed to open the file\n");
-            }else{
+            if(fd  == -1)
+            {
+                T2Warning("Failed to open the file\n");
+            }
+            else
+            {
                 T2Debug("File is created\n");
                 close(fd);
             }
-            #ifndef DEVICE_EXTENDER
+#ifndef DEVICE_EXTENDER
             stopXConfClient();
-            if(T2ERROR_SUCCESS == startXConfClient()) {
+            if(T2ERROR_SUCCESS == startXConfClient())
+            {
                 T2Info("XCONF config reload - SUCCESS \n");
-            }else {
+            }
+            else
+            {
                 T2Info("XCONF config reload - IN PROGRESS ... Ignore current reload request \n");
             }
-            #endif
+#endif
 
         }
         else if ( sig == SIGTERM || sig == SIGKILL )
@@ -193,26 +213,31 @@ void sig_handler(int sig, siginfo_t* info, void* uc)
             terminate();
             exit(0);
         }
-        else {
+        else
+        {
             /* get stack trace first */
-	    _print_stack_backtrace();
-	    terminate();
-	    T2Warning("[%s][%u] Signal number: %d\n",__FUNCTION__, __LINE__, info->si_signo);
-            T2Warning("[%s][%u] Signal error: %d\n",__FUNCTION__, __LINE__, info->si_errno);
-            T2Warning("[%s][%u] Signal code: %d\n",__FUNCTION__, __LINE__, info->si_code);
-            T2Warning("[%s][%u] Signal value: %d\n",__FUNCTION__, __LINE__, info->si_value.sival_int);
-	    (void)uc;
+            _print_stack_backtrace();
+            terminate();
+            T2Warning("[%s][%u] Signal number: %d\n", __FUNCTION__, __LINE__, info->si_signo);
+            T2Warning("[%s][%u] Signal error: %d\n", __FUNCTION__, __LINE__, info->si_errno);
+            T2Warning("[%s][%u] Signal code: %d\n", __FUNCTION__, __LINE__, info->si_code);
+            T2Warning("[%s][%u] Signal value: %d\n", __FUNCTION__, __LINE__, info->si_value.sival_int);
+            (void)uc;
             exit(0);
         }
-    }else{
-      // This logic is added to terminate child imediately if we get terminate signals eg:SIGTERM / SIGKILL ...
-      if(!(sig == SIGUSR1 || sig == LOG_UPLOAD || sig == LOG_UPLOAD_ONDEMAND || sig == SIGIO || sig == SIGCHLD || sig == SIGPIPE || sig == SIGUSR2 || sig == EXEC_RELOAD || sig == SIGALRM )){
-          exit(0);
-      }
-   }
+    }
+    else
+    {
+        // This logic is added to terminate child imediately if we get terminate signals eg:SIGTERM / SIGKILL ...
+        if(!(sig == SIGUSR1 || sig == LOG_UPLOAD || sig == LOG_UPLOAD_ONDEMAND || sig == SIGIO || sig == SIGCHLD || sig == SIGPIPE || sig == SIGUSR2 || sig == EXEC_RELOAD || sig == SIGALRM ))
+        {
+            exit(0);
+        }
+    }
 }
 
-static void t2DaemonMainModeInit( ) {
+static void t2DaemonMainModeInit( )
+{
 
     /**
      * Signal handling is being used as way to handle log uploads . Double check whether we get minidump events for crashes
@@ -226,7 +251,7 @@ static void t2DaemonMainModeInit( ) {
 #endif
 #endif
     /**
-    * Create a Signal Mask for signals that need to be blocked while using fork 
+    * Create a Signal Mask for signals that need to be blocked while using fork
     */
     struct sigaction act;
     memset (&act, 0, sizeof(act));
@@ -241,7 +266,7 @@ static void t2DaemonMainModeInit( ) {
     sigaddset(&blocking_signal, SIGIO);
 
     DAEMONPID = getpid(); // save the pid of the deamon
-    T2Debug("Telemetry 2.0 Process PID %d\n",(int)DAEMONPID);//Debug line
+    T2Debug("Telemetry 2.0 Process PID %d\n", (int)DAEMONPID); //Debug line
 
     sigaction(SIGTERM, &act, NULL);
     sigaction(SIGUSR1, &act, NULL);
@@ -250,7 +275,8 @@ static void t2DaemonMainModeInit( ) {
     sigaction(LOG_UPLOAD_ONDEMAND, &act, NULL);
     sigaction(SIGIO, &act, NULL);
 
-    if(T2ERROR_SUCCESS != initTelemetry()) {
+    if(T2ERROR_SUCCESS != initTelemetry())
+    {
         T2Error("Failed to initialize Telemetry.. exiting the process\n");
         exit(0);
     }
@@ -258,7 +284,8 @@ static void t2DaemonMainModeInit( ) {
 
     T2Info("Telemetry 2.0 Component Init Success\n");
 
-    while(1) {
+    while(1)
+    {
         sleep(30);
     }
     T2Info("Telemetry 2.0 Process Terminated\n");
@@ -305,10 +332,13 @@ int main()
 
     // Create child process
     process_id = fork();
-    if (process_id < 0) {
+    if (process_id < 0)
+    {
         T2Error("fork failed!\n");
         return 1;
-    } else if (process_id > 0) {
+    }
+    else if (process_id > 0)
+    {
         return 0;
     }
 
@@ -317,18 +347,21 @@ int main()
 
     //set new session
     sid = setsid();
-    if (sid < 0) {
+    if (sid < 0)
+    {
         T2Error("setsid failed!\n");
         return 1;
     }
 
     // Change the current working directory to root.
-    if (chdir("/") < 0) {
+    if (chdir("/") < 0)
+    {
         T2Error("chdir failed!\n");
         return 1;
     }
 
-    if (isDebugEnabled != true) {
+    if (isDebugEnabled != true)
+    {
         // Close stdin. stdout and stderr
         close(STDIN_FILENO);
         close(STDOUT_FILENO);

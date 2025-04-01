@@ -23,8 +23,8 @@
 
 enum dmProviderOperation
 {
-  dmProviderOperation_Get,
-  dmProviderOperation_Set
+    dmProviderOperation_Get,
+    dmProviderOperation_Set
 };
 
 #endif

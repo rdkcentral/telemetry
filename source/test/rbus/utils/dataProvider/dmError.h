@@ -27,19 +27,21 @@
 class dmError : public std::exception
 {
 public:
-  virtual ~dmError() throw();
+    virtual ~dmError() throw();
 
-  virtual char const* what() const throw()
-    { return m_what.c_str(); }
+    virtual char const* what() const throw()
+    {
+        return m_what.c_str();
+    }
 
-  static void throwError(int code, char const* fmt, ...) __attribute__ ((format (printf, 2, 3)));
+    static void throwError(int code, char const* fmt, ...) __attribute__ ((format (printf, 2, 3)));
 
 private:
-  dmError(int code, std::string const& s);
+    dmError(int code, std::string const& s);
 
 private:
-  std::string m_what;
-  int m_code;
+    std::string m_what;
+    int m_code;
 };
 
 #endif

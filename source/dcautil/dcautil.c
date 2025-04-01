@@ -30,15 +30,18 @@
 
 
 T2ERROR
-getGrepResults (char *profileName, Vector *markerList, Vector **grepResultList, bool isClearSeekMap, bool check_rotated) {
+getGrepResults (char *profileName, Vector *markerList, Vector **grepResultList, bool isClearSeekMap, bool check_rotated)
+{
     T2Debug("%s ++in\n", __FUNCTION__);
-    if(profileName == NULL || markerList == NULL || grepResultList == NULL){
+    if(profileName == NULL || markerList == NULL || grepResultList == NULL)
+    {
         T2Error("Invalid Args or Args are NULL\n");
         return T2ERROR_FAILURE;
     }
 
     getDCAResultsInVector(profileName, markerList, grepResultList, check_rotated);
-    if (isClearSeekMap) {
+    if (isClearSeekMap)
+    {
         removeProfileFromSeekMap(profileName);
     }
 
@@ -46,26 +49,34 @@ getGrepResults (char *profileName, Vector *markerList, Vector **grepResultList, 
     return T2ERROR_SUCCESS;
 }
 
-void removeGrepConfig(char* profileName, bool clearSeekMap, bool clearExecMap) {
+void removeGrepConfig(char* profileName, bool clearSeekMap, bool clearExecMap)
+{
     T2Debug("%s ++in\n", __FUNCTION__);
 
     if(clearSeekMap)
+    {
         removeProfileFromSeekMap(profileName);
+    }
 
     if (clearExecMap)
+    {
         removeProfileFromExecMap(profileName);
+    }
     T2Debug("%s ++out\n", __FUNCTION__);
 }
 
 // dcaFlagReportCompleation this function is used to create legacy DCA Flag DCADONEFLAG
-void dcaFlagReportCompleation(){
-	T2Debug("%s --in creating flag %s\n", __FUNCTION__,DCADONEFLAG);
-	FILE *fileCheck = fopen(DCADONEFLAG, "w+");
-	if (fileCheck == NULL ){
-		T2Error(" Error in creating the Flag :  %s\n",DCADONEFLAG);
-	}
-	else{
-		fclose(fileCheck);
-	}
-	T2Debug("%s --out\n", __FUNCTION__);
+void dcaFlagReportCompleation()
+{
+    T2Debug("%s --in creating flag %s\n", __FUNCTION__, DCADONEFLAG);
+    FILE *fileCheck = fopen(DCADONEFLAG, "w+");
+    if (fileCheck == NULL )
+    {
+        T2Error(" Error in creating the Flag :  %s\n", DCADONEFLAG);
+    }
+    else
+    {
+        fclose(fileCheck);
+    }
+    T2Debug("%s --out\n", __FUNCTION__);
 }

@@ -78,7 +78,7 @@
 #define TR181_DEVICE_WAN_MAC                        "Device.DeviceInfo.X_COMCAST-COM_STB_MAC"
 #define TR181_DEVICE_WAN_IPv4                       "Device.DeviceInfo.X_COMCAST-COM_STB_IP"
 #define TR181_DEVICE_WAN_IPv6                       "Device.DeviceInfo.X_COMCAST-COM_STB_IP"
-#define TR181_DEVICE_CM_MAC                         "Device.DeviceInfo.X_COMCAST-COM_STB_MAC" 
+#define TR181_DEVICE_CM_MAC                         "Device.DeviceInfo.X_COMCAST-COM_STB_MAC"
 #define TR181_DEVICE_CM_IP                          "Device.DeviceInfo.X_COMCAST-COM_STB_IP"
 #define TR181_IUI_VERSION                           "Device.DeviceInfo.X_RDKCENTRAL-COM.IUI.Version"
 
@@ -96,7 +96,8 @@
 #define BUILD_TYPE_MAX_LENGTH                       64
 #define DEVICE_IP_MAX_LENGTH                        64
 
-typedef struct _rdk_utils_params {
+typedef struct _rdk_utils_params
+{
     char model[MODEL_MAX_LENGTH];
     char build_type[BUILD_TYPE_MAX_LENGTH];
     char firmware[FW_VERSION_MAX_LENGTH];
@@ -114,7 +115,8 @@ typedef struct _rdk_utils_params {
  * Structure to store the xconf response, this is to manage large responses
  * as curl parses large responses in chunks
  */
-typedef struct _curlResponseData {
+typedef struct _curlResponseData
+{
     char *data;
     size_t size;
 } curlResponseData;

@@ -1046,6 +1046,7 @@ static void* getUpdatedConfigurationThread(void *data)
 {
     (void) data;
     T2ERROR configFetch = T2ERROR_FAILURE;
+    T2ERROR urlFetchStatus;
     T2Debug("%s ++in\n", __FUNCTION__);
     struct timespec _ts;
     struct timespec _now;
@@ -1057,13 +1058,12 @@ static void* getUpdatedConfigurationThread(void *data)
     do
     {
         T2Debug("%s while Loop -- START \n", __FUNCTION__);
-        T2ERROR urlFetchStatus;
+
         while(!stopFetchRemoteConfiguration && (urlFetchStatus = getRemoteConfigURL(&configURL)) != T2ERROR_SUCCESS)
         {
             if (urlFetchStatus == T2ERROR_INVALID_RESPONSE)
             {
                 T2Info("Config URL is not set to valid value. Xconfclient shall not proceed for T1.0 settings fetch attempts \n");
-                stopFetchRemoteConfiguration = true;
                 break;
             }
 
@@ -1092,7 +1092,16 @@ static void* getUpdatedConfigurationThread(void *data)
 
         while(!stopFetchRemoteConfiguration)
         {
-            T2ERROR ret = fetchRemoteConfiguration(configURL, &configData);
+            T2ERROR ret = T2ERROR_FAILURE ;
+            if ( urlFetchStatus == T2ERROR_INVALID_RESPONSE )
+            {
+                ret = T2ERROR_PROFILE_NOT_SET ;
+            }
+            else
+            {
+                ret = fetchRemoteConfiguration(configURL, &configData);
+            }
+
             if(ret == T2ERROR_SUCCESS)
             {
                 ProfileXConf *profile = 0;

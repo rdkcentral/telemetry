@@ -19,13 +19,13 @@
 
 /**
  * @file        rbus_log.h
- * @brief       rbusLog 
+ * @brief       rbusLog
  * @defgroup    rbusLog
  * @brief       An rbusLog is a method to print the logs and also providers the users of the library to override log handler.
  * @{
  */
 
-#ifndef RBUS_LOG_H 
+#ifndef RBUS_LOG_H
 #define RBUS_LOG_H
 
 #include <stdarg.h>

@@ -29,7 +29,7 @@ extern "C" {
 
 typedef struct rtRetainable
 {
-  atomic_int refCount;
+    atomic_int refCount;
 } rtRetainable;
 
 #define rtRetainable_retain(X) if (X) rtRetainable_retainInternal((rtRetainable *)(X))

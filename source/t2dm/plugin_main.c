@@ -19,13 +19,13 @@
 
 /**********************************************************************
  Copyright [2014] [Cisco Systems, Inc.]
- 
+
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
  You may obtain a copy of the License at
- 
+
  http://www.apache.org/licenses/LICENSE-2.0
- 
+
  Unless required by applicable law or agreed to in writing, software
  distributed under the License is distributed on an "AS IS" BASIS,
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -33,12 +33,12 @@
  limitations under the License.
  **********************************************************************/
 
-/*********************************************************************** 
+/***********************************************************************
 
  module: plugin_main.c
 
  Implement COSA Data Model Library Init and Unload apis.
- 
+
  ---------------------------------------------------------------
 
  author:
@@ -67,29 +67,35 @@ extern char                                         g_SubSysPrefix_Irep[32];
 
 int ANSC_EXPORT_API
 COSA_Init(ULONG uMaxVersionSupported, void* hCosaPlugInfo /* PCOSA_PLUGIN_INFO passed in by the caller */
-) {
+         )
+{
     PCOSA_PLUGIN_INFO pPlugInfo = (PCOSA_PLUGIN_INFO) hCosaPlugInfo;
     COSAGetInterfaceByNameProc pGetInterfaceByNameProc = (COSAGetInterfaceByNameProc) NULL;
 
-    if(uMaxVersionSupported < THIS_PLUGIN_VERSION) {
+    if(uMaxVersionSupported < THIS_PLUGIN_VERSION)
+    {
         /* this version is not supported */
         return -1;
-    }   
-    
+    }
+
     pPlugInfo->uPluginVersion       = THIS_PLUGIN_VERSION;
     g_pDslhDmlAgent                 = pPlugInfo->hDmlAgent;
 
     pGetInterfaceByNameProc = (COSAGetInterfaceByNameProc) pPlugInfo->AcquireFunction("COSAGetInterfaceByName");
 
-    if(pGetInterfaceByNameProc != NULL) {
+    if(pGetInterfaceByNameProc != NULL)
+    {
         g_GetInterfaceByName = pGetInterfaceByNameProc;
-    }else {
+    }
+    else
+    {
         goto EXIT;
     }
 
     g_pT2CcdIf = g_GetInterfaceByName(g_pDslhDmlAgent, CCSP_CCD_INTERFACE_NAME);
 
-    if(!g_pT2CcdIf) {
+    if(!g_pT2CcdIf)
+    {
         CcspTraceError(("g_pT2CcdIf is NULL !\n"));
 
         goto EXIT;
@@ -97,24 +103,28 @@ COSA_Init(ULONG uMaxVersionSupported, void* hCosaPlugInfo /* PCOSA_PLUGIN_INFO p
 
     /* Get Message Bus Handle */
     g_GetMessageBusHandle = (COSAGetHandleProc) pPlugInfo->AcquireFunction("COSAGetMessageBusHandle");
-    if(g_GetMessageBusHandle == NULL) {
+    if(g_GetMessageBusHandle == NULL)
+    {
         goto EXIT;
     }
 
     g_MessageBusHandle = (ANSC_HANDLE) g_GetMessageBusHandle(g_pDslhDmlAgent);
-    if(g_MessageBusHandle == NULL) {
+    if(g_MessageBusHandle == NULL)
+    {
         goto EXIT;
     }
     g_MessageBusHandle_Irep = g_MessageBusHandle;
 
     /* Get Subsystem prefix */
     g_GetSubsystemPrefix = (COSAGetSubsystemPrefixProc) pPlugInfo->AcquireFunction("COSAGetSubsystemPrefix");
-    if(g_GetSubsystemPrefix != NULL) {
+    if(g_GetSubsystemPrefix != NULL)
+    {
         char* tmpSubsystemPrefix;
 
-        if((tmpSubsystemPrefix = g_GetSubsystemPrefix(g_pDslhDmlAgent))) {
+        if((tmpSubsystemPrefix = g_GetSubsystemPrefix(g_pDslhDmlAgent)))
+        {
             strncpy(g_SubSysPrefix_Irep, tmpSubsystemPrefix, sizeof(g_SubSysPrefix_Irep) - 1);
-	    g_SubSysPrefix_Irep[sizeof(g_SubSysPrefix_Irep) - 1] = '\0';
+            g_SubSysPrefix_Irep[sizeof(g_SubSysPrefix_Irep) - 1] = '\0';
         }
 
         /* retrieve the subsystem prefix */
@@ -124,31 +134,36 @@ COSA_Init(ULONG uMaxVersionSupported, void* hCosaPlugInfo /* PCOSA_PLUGIN_INFO p
     /* Create backend framework */
     g_pCosaBEManager = (PCOSA_BACKEND_MANAGER_OBJECT) CosaBackEndManagerCreate();
 
-    if(g_pCosaBEManager && g_pCosaBEManager->Initialize) {
+    if(g_pCosaBEManager && g_pCosaBEManager->Initialize)
+    {
         g_pCosaBEManager->hCosaPluginInfo = pPlugInfo;
 
         g_pCosaBEManager->Initialize   ((ANSC_HANDLE)g_pCosaBEManager);
     }
-    
+
     return  0;
 
 EXIT:
 
     return -1;
-    
+
 }
 
 void ANSC_EXPORT_API
-COSA_Unload(void) {
+COSA_Unload(void)
+{
     ANSC_STATUS returnStatus = ANSC_STATUS_SUCCESS;
 
     /* unload the memory here */
 
     returnStatus = CosaBackEndManagerRemove(g_pCosaBEManager);
 
-    if(returnStatus == ANSC_STATUS_SUCCESS) {
+    if(returnStatus == ANSC_STATUS_SUCCESS)
+    {
         g_pCosaBEManager = NULL;
-    }else {
+    }
+    else
+    {
         /* print error trace*/
         g_pCosaBEManager = NULL;
     }

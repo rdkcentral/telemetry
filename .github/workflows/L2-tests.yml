@@ -34,6 +34,28 @@ jobs:
           repository: 'rdkcentral/WebconfigFramework'
           path : 'telemetry/containers/native-platform/WebconfigFramework'
 
+      - name: InstallC astyle 
+        run: |
+            sudo apt-get update
+            sudo apt-get install astyle -y
+
+      - name: Check for formatting errors
+        run: |
+          cd telemetry
+          find . -name '*.c' -o -name '*.h' | xargs astyle --options=.astylerc
+          find . -name '*.orig' -type f -delete
+          git diff --name-only --exit-code
+          if [ $? -ne 0 ]; then
+            echo " !!! WARNING !!! "
+            echo "Code formatting errors found. Please run below code to clang-format in your local workspace and commit"
+            echo "find . -name '*.c' -o -name '*.h' | xargs astyle --options=.astylerc"
+            echo "find . -name '*.orig' -type f -delete"
+            exit 1
+          else
+            echo "Code formatting errors not found."
+          fi
+          cd - 
+ 
       - name: Build Docker image for Mock XCONF Server
         uses: docker/build-push-action@v4
         with:

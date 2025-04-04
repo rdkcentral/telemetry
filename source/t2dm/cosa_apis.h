@@ -19,13 +19,13 @@
 
 /**********************************************************************
  Copyright [2014] [Cisco Systems, Inc.]
- 
+
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
  You may obtain a copy of the License at
- 
+
  http://www.apache.org/licenses/LICENSE-2.0
- 
+
  Unless required by applicable law or agreed to in writing, software
  distributed under the License is distributed on an "AS IS" BASIS,
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -80,7 +80,7 @@ typedef ANSC_STATUS
 (*PFN_COSADM_INITIALIZE)(ANSC_HANDLE hThisObject);
 
 /*
- * the main struct in cosa_xxx_apis.h need includes this struct and realize all functions. 
+ * the main struct in cosa_xxx_apis.h need includes this struct and realize all functions.
  */
 #define  COSA_BASE_CONTENT                                                                  \
     /* start of object class content */                                                     \
@@ -91,7 +91,8 @@ typedef ANSC_STATUS
     PFN_COSADM_REMOVE               Remove;                                                 \
     PFN_COSADM_INITIALIZE           Initialize;                                             \
 
-typedef struct _COSA_BASE_OBJECT {
+typedef struct _COSA_BASE_OBJECT
+{
     COSA_BASE_CONTENT
 } COSA_BASE_OBJECT, *PCOSA_BASE_OBJECT;
 
@@ -107,7 +108,8 @@ typedef struct _COSA_BASE_OBJECT {
          ANSC_HANDLE                      hPoamIrepUpperFo;                                 \
          ANSC_HANDLE                      hPoamIrepFo;                                      \
 
-typedef struct _COSA_CONTEXT_LINK_OBJECT {
+typedef struct _COSA_CONTEXT_LINK_OBJECT
+{
     COSA_CONTEXT_LINK_CLASS_CONTENT
 } COSA_CONTEXT_LINK_OBJECT, *PCOSA_CONTEXT_LINK_OBJECT;
 

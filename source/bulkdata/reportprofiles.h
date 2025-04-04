@@ -43,21 +43,21 @@ typedef enum
     CSV,
     JSON,
     MESSAGE_PACK
-}ENCODING_TYPE;
+} ENCODING_TYPE;
 
 
 typedef enum
 {
     JSONRF_OBJHIERARCHY,
     JSONRF_KEYVALUEPAIR
-}JSONFormat;
+} JSONFormat;
 
 typedef enum
 {
     TIMESTAMP_UNIXEPOCH,
     TIMESTAMP_ISO_8601,
     TIMESTAMP_NONE
-}TimeStampFormat;
+} TimeStampFormat;
 
 typedef struct _BulkData
 {
@@ -68,7 +68,7 @@ typedef struct _BulkData
     bool parameterWildcardSupported;
     int maxNoOfParamReferences;
     unsigned int maxReportSize;
-}BulkData;
+} BulkData;
 
 void ReportProfiles_ActivationTimeoutCb(char* profileName);
 
@@ -78,7 +78,7 @@ typedef struct _ReportProfile
 {
     char *hash;
     char *config;
-}ReportProfile;
+} ReportProfile;
 
 T2ERROR initReportProfiles();
 
@@ -86,7 +86,7 @@ T2ERROR ReportProfiles_uninit();
 
 T2ERROR deleteAllReportProfiles();
 
-void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root , bool rprofiletypes);
+void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofiletypes);
 
 void ReportProfiles_Interrupt();
 
@@ -100,9 +100,9 @@ struct __msgpack__
     int msgpack_blob_size;
 };
 
-int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack);
+int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkPreviousSeek);
 
-void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob , int msgpack_blob_size);
+void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob, int msgpack_blob_size);
 
 bool isMtlsEnabled(void);
 

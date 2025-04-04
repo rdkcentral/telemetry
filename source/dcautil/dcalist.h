@@ -43,21 +43,24 @@
 #include "rdk_linkedlist.h"
 #include "vector.h"
 
-typedef enum {
-  OCCURENCE,
-  STR
+typedef enum
+{
+    OCCURENCE,
+    STR
 } DType_t;
 
-typedef struct pclist {
-  char *header;
-  char *pattern;
-  DType_t d_type;
-  union {
-    int count;
-    char *data;
-  };
-  bool trimparam;
-  char* regexparam;
+typedef struct pclist
+{
+    char *header;
+    char *pattern;
+    DType_t d_type;
+    union
+    {
+        int count;
+        char *data;
+    };
+    bool trimparam;
+    char* regexparam;
 } pcdata_t;
 
 extern rdkList_t *pchead;

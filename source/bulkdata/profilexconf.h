@@ -36,19 +36,21 @@ typedef enum
     MTYPE_XCONF_COUNTER,
     MTYPE_XCONF_ABSOLUTE,
     MTYPE_XCONF_ACCUMULATE
-}MarkerTypeXConf;
+} MarkerTypeXConf;
 
 typedef struct _JSONEncodingXConf
 {
     JSONFormat reportFormat;
     TimeStampFormat tsFormat;
-}JSONEncodingXConf;
+} JSONEncodingXConf;
 
 typedef struct _ProfileXConf
 {
     bool isUpdated;
     bool reportInProgress;
     bool bClearSeekMap;
+    bool checkPreviousSeek; // To support Previous_Logs report post reboot
+    bool saveSeekConfig; // To save the Seek config to persistant storage
     char* name;
     char* protocol;
     char* encodingType;
@@ -62,9 +64,9 @@ typedef struct _ProfileXConf
     Vector *cachedReportList;
     cJSON *jsonReportObj;
     pthread_t reportThread;
-}ProfileXConf;
+} ProfileXConf;
 
-T2ERROR ProfileXConf_init();
+T2ERROR ProfileXConf_init(bool checkPreviousSeek);
 T2ERROR ProfileXConf_uninit();
 T2ERROR ProfileXConf_set(ProfileXConf *profile);
 T2ERROR ProfileXConf_delete(ProfileXConf *profile);

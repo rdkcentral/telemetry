@@ -102,14 +102,6 @@ T2ERROR initTelemetry()
 
 static void terminate()
 {
-    if (initcomplete)
-    {
-#ifndef DEVICE_EXTENDER
-        uninitXConfClient();
-#endif
-        ReportProfiles_uninit();
-    }
-
     if(remove("/tmp/.t2ReadyToReceiveEvents") != 0)
     {
         printf("removing the file /tmp/.t2ReadyToReceiveEvents failed!\n");
@@ -124,6 +116,14 @@ static void terminate()
     {
         printf("removing the file T2_CONFIG_READY failed!\n");
     }
+    if (initcomplete)
+    {
+#ifndef DEVICE_EXTENDER
+        uninitXConfClient();
+#endif
+        ReportProfiles_uninit();
+    }
+
 }
 static void _print_stack_backtrace(void)
 {

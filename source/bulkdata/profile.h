@@ -47,6 +47,8 @@ typedef struct _Profile
     bool generateNow;
     bool deleteonTimeout;
     bool bClearSeekMap;
+    bool checkPreviousSeek; // To support Previous_Logs report post reboot
+    bool saveSeekConfig; // To save the Seek config to persistant storage
     bool triggerReportOnCondition;
     bool trim;
     void (*callBackOnReportGenerationComplete)(char*);
@@ -88,7 +90,7 @@ typedef struct _Profile
     bool threadExists;
 } Profile;
 
-T2ERROR initProfileList();
+T2ERROR initProfileList(bool checkPreviousSeek);
 
 T2ERROR uninitProfileList();
 

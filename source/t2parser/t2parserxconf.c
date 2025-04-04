@@ -326,6 +326,14 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
 
     cJSON_Delete(json_root);
 
+#ifdef PERSIST_LOG_MON_REF
+    profile->saveSeekConfig = true;
+    profile->checkPreviousSeek = false;
+#else
+    profile->saveSeekConfig = false;
+    profile->checkPreviousSeek = false;
+#endif
+
     *localProfile = profile;
 
     T2Debug("%s --out\n", __FUNCTION__);

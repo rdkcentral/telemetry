@@ -354,6 +354,9 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
         gMarker->skipFreq = skipFreq;
         gMarker->firstSeekFromEOF = firstSeekFromEOF;
         Vector_PushBack(profile->gMarkerList, gMarker);
+#ifdef PERSIST_LOG_MON_REF
+        profile->saveSeekConfig = true;
+#endif
     }
 
     profile->paramNumOfEntries++;
@@ -1348,6 +1351,8 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     profile->maxUploadLatency = 0;
     profile->timeRef = NULL;
     profile->isSchedulerstarted = false;
+    profile->saveSeekConfig = false;
+    profile->checkPreviousSeek = false;
     if(jprofileDeleteOnTimeout)
     {
         profile->deleteonTimeout = (cJSON_IsTrue(jprofileDeleteOnTimeout) == 1);
@@ -2433,6 +2438,8 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     profile->maxUploadLatency = 0;
     profile->timeRef = NULL;
     profile->isSchedulerstarted = false;
+    profile->saveSeekConfig = false;
+    profile->checkPreviousSeek = false;
 
     DeleteOnTimout_boolean = msgpack_get_map_value(value_map, "DeleteOnTimeout");
     msgpack_print(DeleteOnTimout_boolean, msgpack_get_obj_name(DeleteOnTimeout_boolean));

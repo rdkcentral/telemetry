@@ -519,7 +519,6 @@ char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name, int 
         T2Debug("Invalid arguments or NULL arguments\n");
         return NULL;
     }
-
     char *logpath = LOG_PATH;
 
     /* If name is already an absolute path then prepend empty string instead of LOG_PATH */
@@ -574,11 +573,28 @@ char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name, int 
                 {
                     if(check_rotated_logs)  // considering the rotated log file  within few minutes after bootup, it should check only for the first time
                     {
-                        char * rotatedLog = malloc(fileExtn_len);
+                        char * rotatedLog;
+                        size_t name_len = strlen(currentLogFile);
+                        if(name_len > 2 && currentLogFile[name_len - 2] == '.' && currentLogFile[name_len - 1] == '0')
+                        {
+                            rotatedLog = strdup(currentLogFile);
+                            if(NULL != rotatedLog)
+                            {
+                                rotatedLog[-1] = '1';
+                                //T2Debug("Log file name seems to be having .0 extension hence Rotated log file name is %s\n", rotatedLog);
+                            }
+                        }
+                        else
+                        {
+                            rotatedLog = malloc(fileExtn_len);
+                            if(NULL != rotatedLog)
+                            {
+                                snprintf(rotatedLog, fileExtn_len, "%s%s%s", logpath, name, fileExtn);
+                                //T2Debug("Rotated log file name is %s\n", rotatedLog);
+                            }
+                        }
                         if(NULL != rotatedLog)
                         {
-                            snprintf(rotatedLog, fileExtn_len, "%s%s%s", logpath, name, fileExtn);
-
                             fclose(pcurrentLogFile);
                             pcurrentLogFile = NULL;
                             pcurrentLogFile = fopen(rotatedLog, "rb");
@@ -622,10 +638,6 @@ char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name, int 
                 }
                 else
                 {
-                    if(currentLogFile != NULL)
-                    {
-                        free(currentLogFile);
-                    }
                     if((NULL != DEVICE_TYPE) && (0 == strcmp("broadband", DEVICE_TYPE)))
                     {
                         T2Debug("Telemetry file pointer corrupted");
@@ -633,15 +645,40 @@ char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name, int 
                         {
                             T2Error("Cannot set the file position indicator for the stream pointed to by stream\n");
                         }
+                        if(currentLogFile != NULL)
+                        {
+                            free(currentLogFile);
+                        }
                     }
                     else
                     {
-                        char * rotatedLog = malloc(fileExtn_len);
+                        char * rotatedLog;
+                        size_t name_len = strlen(currentLogFile);
+                        if(name_len > 2 && currentLogFile[name_len - 2] == '.' && currentLogFile[name_len - 1] == '0')
+                        {
+                            rotatedLog = strdup(currentLogFile);
+                            if(NULL != rotatedLog)
+                            {
+                                rotatedLog[-1] = '1';
+                                //T2Debug("Log file name seems to be having .0 extension hence Rotated log file name is %s\n", rotatedLog);
+                            }
+                        }
+                        else
+                        {
+                            rotatedLog = malloc(fileExtn_len);
+                            if(NULL != rotatedLog)
+                            {
+                                snprintf(rotatedLog, fileExtn_len, "%s%s%s", logpath, name, fileExtn);
+                                //T2Debug("Rotated log file name is %s\n", rotatedLog);
+                            }
+                        }
+                        if(currentLogFile != NULL)
+                        {
+                            free(currentLogFile);
+                        }
 
                         if(NULL != rotatedLog)
                         {
-                            snprintf(rotatedLog, fileExtn_len, "%s%s%s", logpath, name, fileExtn);
-
                             fclose(pcurrentLogFile);
                             pcurrentLogFile = NULL;
                             pcurrentLogFile = fopen(rotatedLog, "rb");

@@ -100,7 +100,7 @@ struct __msgpack__
     int msgpack_blob_size;
 };
 
-int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack);
+int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkPreviousSeek);
 
 void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob, int msgpack_blob_size);
 

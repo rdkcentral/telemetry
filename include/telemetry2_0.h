@@ -51,6 +51,9 @@ extern "C" {
 #define T2_DCM_START_CONFIG   "dcmStartConfig"
 #endif
 
+#define BOOTFLAG "/tmp/.t2bootup"
+//#define TOUCH_BOOTFLAG "touch "BOOTFLAG
+
 #define INFINITE_TIMEOUT      (unsigned int)~0
 
 #define T2_RP       0

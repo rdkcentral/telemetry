@@ -49,6 +49,8 @@ typedef struct _ProfileXConf
     bool isUpdated;
     bool reportInProgress;
     bool bClearSeekMap;
+    bool checkPreviousSeek; // To support Previous_Logs report post reboot
+    bool saveSeekConfig; // To save the Seek config to persistant storage
     char* name;
     char* protocol;
     char* encodingType;
@@ -64,7 +66,7 @@ typedef struct _ProfileXConf
     pthread_t reportThread;
 } ProfileXConf;
 
-T2ERROR ProfileXConf_init();
+T2ERROR ProfileXConf_init(bool checkPreviousSeek);
 T2ERROR ProfileXConf_uninit();
 T2ERROR ProfileXConf_set(ProfileXConf *profile);
 T2ERROR ProfileXConf_delete(ProfileXConf *profile);

@@ -27,6 +27,10 @@
 #define TOPTEMP "/tmp/.t2toplog"
 #define DCADONEFLAG "/tmp/.dca_done"
 
+#define PREVIOUS_LOG "PREVIOUS_LOG"
+#define PREVIOUS_LOGS_VAL  "1"
+#define PREVIOUS_LOGS_PATH "/opt/logs/PreviousLogs/"
+
 typedef struct _GrepResult
 {
     const char* markerName;
@@ -43,7 +47,7 @@ void removeTopOutput();
 void removeGrepConfig(char* profileName, bool clearSeek, bool clearExec);
 void freeGResult(void *data);
 T2ERROR saveGrepConfig(char *name, Vector* grepMarkerList);
-T2ERROR getGrepResults(char* profileName, Vector *markerList, Vector **grepResultList, bool isClearSeekMap, bool check_rotated);
+T2ERROR getGrepResults(char* profileName, Vector *markerList, Vector **grepResultList, bool isClearSeekMap, bool check_rotated, char *customLogPath);
 #define PREFIX_SIZE 5
 #define BUF_LEN 16
 
@@ -71,6 +75,14 @@ int getMemInfo(procMemCpuInfo *pmInfo);
 int getCPUInfo(procMemCpuInfo *pInfo);
 int getProcPidStat(int pid, procinfo * pinfo);
 int getTotalCpuTimes(int * totalTime);
+
+
+#ifdef PERSIST_LOG_MON_REF
+typedef void (*freeconfigdata)(void *data);
+T2ERROR saveSeekConfigtoFile(char* profileName);
+T2ERROR loadSavedSeekConfig(char *profileName);
+bool firstBootStatus();
+#endif
 
 void dcaFlagReportCompleation();
 #endif /* _DCAUTIL_H_ */

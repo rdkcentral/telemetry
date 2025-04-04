@@ -519,7 +519,6 @@ char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name, int 
         T2Debug("Invalid arguments or NULL arguments\n");
         return NULL;
     }
-
     char *logpath = LOG_PATH;
 
     /* If name is already an absolute path then prepend empty string instead of LOG_PATH */
@@ -574,11 +573,26 @@ char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name, int 
                 {
                     if(check_rotated_logs)  // considering the rotated log file  within few minutes after bootup, it should check only for the first time
                     {
-                        char * rotatedLog = malloc(fileExtn_len);
+                        char * rotatedLog;
+                        size_t name_len = strlen(currentLogFile);
+                        if(name_len > 2 && currentLogFile[name_len - 2] == '.' && currentLogFile[name_len - 1] == '0')
+                        {
+                            rotatedLog = strdup(currentLogFile);
+                            if(NULL != rotatedLog)
+                            {
+                                rotatedLog[-1] = '1';
+                            }
+                        }
+                        else
+                        {
+                            rotatedLog = malloc(fileExtn_len);
+                            if(NULL != rotatedLog)
+                            {
+                                snprintf(rotatedLog, fileExtn_len, "%s%s%s", logpath, name, fileExtn);
+                            }
+                        }
                         if(NULL != rotatedLog)
                         {
-                            snprintf(rotatedLog, fileExtn_len, "%s%s%s", logpath, name, fileExtn);
-
                             fclose(pcurrentLogFile);
                             pcurrentLogFile = NULL;
                             pcurrentLogFile = fopen(rotatedLog, "rb");
@@ -636,12 +650,27 @@ char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name, int 
                     }
                     else
                     {
-                        char * rotatedLog = malloc(fileExtn_len);
+                        char * rotatedLog;
+                        size_t name_len = strlen(currentLogFile);
+                        if(name_len > 2 && currentLogFile[name_len - 2] == '.' && currentLogFile[name_len - 1] == '0')
+                        {
+                            rotatedLog = strdup(currentLogFile);
+                            if(NULL != rotatedLog)
+                            {
+                                rotatedLog[-1] = '1';
+                            }
+                        }
+                        else
+                        {
+                            rotatedLog = malloc(fileExtn_len);
+                            if(NULL != rotatedLog)
+                            {
+                                snprintf(rotatedLog, fileExtn_len, "%s%s%s", logpath, name, fileExtn);
+                            }
+                        }
 
                         if(NULL != rotatedLog)
                         {
-                            snprintf(rotatedLog, fileExtn_len, "%s%s%s", logpath, name, fileExtn);
-
                             fclose(pcurrentLogFile);
                             pcurrentLogFile = NULL;
                             pcurrentLogFile = fopen(rotatedLog, "rb");

@@ -338,6 +338,7 @@ static void* CollectAndReport(void* data)
         struct timespec startTime;
         struct timespec endTime;
         struct timespec elapsedTime;
+        char* customLogPath = NULL;
 
 
         T2ERROR ret = T2ERROR_FAILURE;
@@ -410,6 +411,17 @@ static void* CollectAndReport(void* data)
             }
             else
             {
+#ifdef PERSIST_LOG_MON_REF
+                if(profile->checkPreviousSeek)
+                {
+                    cJSON *arrayItem = NULL;
+                    arrayItem = cJSON_CreateObject();
+                    cJSON_AddStringToObject(arrayItem, PREVIOUS_LOG, PREVIOUS_LOGS_VAL);
+                    cJSON_AddItemToArray(valArray, arrayItem);
+                    customLogPath = PREVIOUS_LOGS_PATH;
+                    profile->bClearSeekMap = true;
+                }
+#endif
                 if(profile->staticParamList != NULL && Vector_Size(profile->staticParamList) > 0)
                 {
                     T2Debug(" Adding static Parameter Values to Json report\n");
@@ -427,7 +439,8 @@ static void* CollectAndReport(void* data)
                 }
                 if(profile->gMarkerList != NULL && Vector_Size(profile->gMarkerList) > 0)
                 {
-                    getGrepResults(profile->name, profile->gMarkerList, &grepResultList, profile->bClearSeekMap, false); // Passing 5th argument as false so that it doesn't check rotated logs for the first reporting after bootup for multiprofiles.
+                    printf("custom path = %s\n", customLogPath);
+                    getGrepResults(profile->name, profile->gMarkerList, &grepResultList, profile->bClearSeekMap, false, customLogPath); // Passing 5th argument as false so that it doesn't check rotated logs for the first reporting after bootup for multiprofiles.
                     encodeGrepResultInJSON(valArray, grepResultList);
                     Vector_Destroy(grepResultList, freeGResult);
                 }
@@ -465,6 +478,19 @@ static void* CollectAndReport(void* data)
                     //return NULL;
                     goto reportThreadEnd;
                 }
+#ifdef PERSIST_LOG_MON_REF
+                if(profile->saveSeekConfig)
+                {
+                    saveSeekConfigtoFile(profile->name);
+                }
+                if(profile->checkPreviousSeek)
+                {
+                    T2Info("Previous Logs report is sent clear the previousSeek flag\n");
+                    profile->checkPreviousSeek = false;
+                    customLogPath = NULL;
+                    profile->bClearSeekMap = false;
+                }
+#endif
                 long size = strlen(jsonReport);
                 T2Info("cJSON Report = %s\n", jsonReport);
                 cJSON *root = cJSON_Parse(jsonReport);
@@ -1071,6 +1097,9 @@ T2ERROR disableProfile(const char *profileName, bool *isDeleteRequired)
     {
         profile->enable = false;
     }
+#ifdef PERSIST_LOG_MON_REF
+    removeProfileFromDisk(SEEKFOLDER, profile->name);
+#endif
     profile->isSchedulerstarted = false;
     pthread_mutex_unlock(&plMutex);
     T2Debug("%s --out\n", __FUNCTION__);
@@ -1127,6 +1156,9 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
         if(delFromDisk == true)
         {
             removeProfileFromDisk(REPORTPROFILES_PERSISTENCE_PATH, tempProfile->name);
+#ifdef PERSIST_LOG_MON_REF
+            removeProfileFromDisk(SEEKFOLDER, tempProfile->name);
+#endif
         }
     }
     if(delFromDisk == true)
@@ -1219,6 +1251,9 @@ T2ERROR deleteProfile(const char *profileName)
     }
 
     T2Info("removing profile : %s from profile list\n", profile->name);
+#ifdef PERSIST_LOG_MON_REF
+    removeProfileFromDisk(SEEKFOLDER, profile->name);
+#endif
     Vector_RemoveItem(profileList, profile, freeProfile);
 
     pthread_mutex_unlock(&plMutex);
@@ -1245,8 +1280,9 @@ void sendLogUploadInterruptToScheduler()
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
-static void loadReportProfilesFromDisk()
+static void loadReportProfilesFromDisk(bool checkPreviousSeek)
 {
+    (void)checkPreviousSeek;
     fetchLocalConfigs(SHORTLIVED_PROFILES_PATH, NULL);   //API used for creating /tmp/t2reportprofiles dir
 #if defined(FEATURE_SUPPORT_WEBCONFIG)
     T2Info("loadReportProfilesFromDisk \n");
@@ -1284,7 +1320,7 @@ static void loadReportProfilesFromDisk()
             return;
         }
         fclose (fp);
-        __ReportProfiles_ProcessReportProfilesMsgPackBlob((void *)&msgpack);
+        __ReportProfiles_ProcessReportProfilesMsgPackBlob((void *)&msgpack, checkPreviousSeek);
         free(msgpack.msgpack_blob);
         clearPersistenceFolder(CACHED_MESSAGE_PATH);
         return;
@@ -1324,6 +1360,18 @@ static void loadReportProfilesFromDisk()
         {
             if(T2ERROR_SUCCESS == addProfile(profile))
             {
+#ifdef PERSIST_LOG_MON_REF
+                if(checkPreviousSeek && profile->generateNow == false && profile->triggerConditionList == NULL && loadSavedSeekConfig(profile->name) == T2ERROR_SUCCESS && firstBootStatus() )
+                {
+                    profile->checkPreviousSeek = true;
+                }
+                else
+                {
+                    profile->checkPreviousSeek = false;
+                }
+#else
+                profile->checkPreviousSeek = false;
+#endif
                 T2Info("Successfully created/added new profile : %s\n", profile->name);
                 if(T2ERROR_SUCCESS != enableProfile(profile->name))
                 {
@@ -1349,7 +1397,7 @@ static void loadReportProfilesFromDisk()
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
-T2ERROR initProfileList()
+T2ERROR initProfileList(bool checkPreviousSeek)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
     if(initialized)
@@ -1375,7 +1423,7 @@ T2ERROR initProfileList()
 
     registerConditionalReportCallBack(&triggerReportOnCondtion);
 
-    loadReportProfilesFromDisk();
+    loadReportProfilesFromDisk(checkPreviousSeek);
 
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;

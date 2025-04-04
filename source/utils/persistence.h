@@ -44,6 +44,10 @@
 
 #define CACHED_MESSAGE_PATH PERSISTENCE_PATH"/.t2cachedmessages/"
 
+#ifdef PERSIST_LOG_MON_REF
+#define SEEKFOLDER PERSISTENCE_PATH"/.t2seekmap/"
+#endif
+
 typedef struct _Config
 {
     char* name;

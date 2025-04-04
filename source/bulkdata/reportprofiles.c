@@ -59,6 +59,9 @@
 #include "rdkservices_privacyutils.h"
 #endif
 
+#include "dcautil.h"
+
+
 //Including Webconfig Framework For Telemetry 2.0 As part of RDKB-28897
 #define SUBDOC_COUNT    1
 #define SUBDOC_NAME "telemetry"
@@ -95,6 +98,8 @@ static bool isT2MtlsEnable = false;
 static bool initT2MtlsEnable = false;
 struct rusage pusage;
 unsigned int profilemem = 0;
+bool previousLogCheck = false;
+
 
 #if defined(DROP_ROOT_PRIV)
 static void drop_root()
@@ -470,19 +475,52 @@ T2ERROR initReportProfiles()
         initMtls();
     }
 #endif
+
+// Drop root before we are creating any folders/flags to avoid access issues
+#if defined(DROP_ROOT_PRIV)
+    // Drop root privileges for Telemetry 2.0, If NonRootSupport RFC is true
+    drop_root();
+#endif
+
 #if defined (PRIVACYMODES_CONTROL)
-    DIR *dir = opendir(PRIVACYMODE_PATH);
-    if(dir == NULL)
+// Define scope
     {
-        T2Info("Persistence folder %s not present, creating folder\n", PRIVACYMODE_PATH);
-        if(mkdir(PRIVACYMODE_PATH, S_IRWXU | S_IRWXG | S_IRWXO) != 0)
+        DIR *dir = opendir(PRIVACYMODE_PATH);
+        if(dir == NULL)
         {
-            T2Error("%s,%d: Failed to make directory : %s  \n", __FUNCTION__, __LINE__, PRIVACYMODE_PATH);
+            T2Info("Persistence folder %s not present, creating folder\n", PRIVACYMODE_PATH);
+            if(mkdir(PRIVACYMODE_PATH, S_IRWXU | S_IRWXG | S_IRWXO) != 0)
+            {
+                T2Error("%s,%d: Failed to make directory : %s  \n", __FUNCTION__, __LINE__, PRIVACYMODE_PATH);
+            }
+        }
+        else
+        {
+            closedir(dir);
         }
     }
-    else
+#endif
+
+
+#ifdef PERSIST_LOG_MON_REF
+//Define scope
     {
-        closedir(dir);
+        DIR *dir = opendir(SEEKFOLDER);
+        if(dir == NULL)
+        {
+            T2Info("SEEKMAP folder %s not present, creating folder\n", SEEKFOLDER);
+            if(mkdir(SEEKFOLDER, S_IRWXU | S_IRWXG | S_IRWXO) != 0)
+            {
+                T2Error("%s,%d: Failed to make directory : %s  \n", __FUNCTION__, __LINE__, SEEKFOLDER);
+            }
+        }
+        else
+        {
+            closedir(dir);
+            previousLogCheck = true;
+            T2Info("SEEKMAP folder is present notify the profiles for saved seekmap\n");
+
+        }
     }
 #endif
 
@@ -500,17 +538,13 @@ T2ERROR initReportProfiles()
     initT2MarkerComponentMap();
     T2ER_Init();
 
-#if defined(DROP_ROOT_PRIV)
-    // Drop root privileges for Telemetry 2.0, If NonRootSupport RFC is true
-    drop_root();
-#endif
 #ifndef DEVICE_EXTENDER
-    ProfileXConf_init();
+    ProfileXConf_init(previousLogCheck);
 #endif
     t2Version = strdup("2.0.1"); // Setting the version to 2.0.1
     {
         T2Debug("T2 Version = %s\n", t2Version);
-        initProfileList();
+        initProfileList(previousLogCheck);
         free(t2Version);
         // Init datamodel processing thread
         if (T2ERROR_SUCCESS == datamodel_init())
@@ -581,6 +615,18 @@ T2ERROR initReportProfiles()
         }
     }
 
+#ifdef PERSIST_LOG_MON_REF
+
+    if(previousLogCheck)
+    {
+        //generate previous logs report
+        generateDcaReport(false, false);
+        T2Info("Previous Log check is enabled sending Interrupt to scheduler \n");
+        sendLogUploadInterruptToScheduler();
+    }
+#endif
+
+
     if(ProfileXConf_isSet() || getProfileCount() > 0)
     {
 
@@ -602,6 +648,19 @@ T2ERROR initReportProfiles()
 
     }
 
+    // This indicates telemetry has started
+    FILE* bootFlag = NULL ;
+    bootFlag = fopen(BOOTFLAG, "w+");
+    if(bootFlag)
+    {
+        T2Debug("%s Touched \n", BOOTFLAG);
+        fclose(bootFlag);
+    }
+    else
+    {
+        T2Error("Failed to create T2 bootflag %s \n", BOOTFLAG);
+    }
+
     T2Debug("%s --out\n", __FUNCTION__);
     T2Info("Init ReportProfiles Successful\n");
     return T2ERROR_SUCCESS;
@@ -620,7 +679,11 @@ void generateDcaReport(bool isDelayed, bool isOnDemand)
         if(isDelayed)
         {
             T2Info("Triggering XCONF report generation during boot with delay \n");
-            sleep(120);
+#ifdef PERSIST_LOG_MON_REF
+            sleep(180); // increase the delay if we are reporting previous logs
+#else
+            sleep(120); // 2 minutes delay
+#endif
         }
         else
         {
@@ -1042,7 +1105,7 @@ pErr Process_Telemetry_WebConfigRequest(void *Data)
     //int oldtype;
     //pthread_setcanceltype(PTHREAD_CANCEL_DISABLE, &oldtype);
     // not using this as of now as the thread calling this can call free resources in such a case it will lead to crash
-    int retval = __ReportProfiles_ProcessReportProfilesMsgPackBlob(Data);
+    int retval = __ReportProfiles_ProcessReportProfilesMsgPackBlob(Data, false);
     //pthread_setcanceltype(oldtype,NULL);// do not restore now as we may get memleak from data
     if(retval == T2ERROR_SUCCESS)
     {
@@ -1135,7 +1198,7 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob, int msg
     if (NULL == subdoc_name || NULL == transaction_id || NULL == version)
     {
         /* dmcli flow */
-        __ReportProfiles_ProcessReportProfilesMsgPackBlob((void *)msgpack);
+        __ReportProfiles_ProcessReportProfilesMsgPackBlob((void *)msgpack, false);
         __msgpack_free_blob((void *)msgpack);
         msgpack_unpacked_destroy(&result);
         T2Debug("%s --out\n", __FUNCTION__);
@@ -1182,8 +1245,9 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob, int msg
     return;
 }
 
-int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack)
+int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkPreviousSeek)
 {
+    (void) checkPreviousSeek;
 #if defined(PRIVACYMODES_CONTROL)
     char* paramValue = NULL;
     getPrivacyMode(&paramValue);
@@ -1317,6 +1381,19 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack)
             if(T2ERROR_SUCCESS == processMsgPackConfiguration(singleProfile, &profile))
             {
                 ReportProfiles_addReportProfile(profile);
+#ifdef PERSIST_LOG_MON_REF
+                if(checkPreviousSeek && profile->generateNow == false && profile->triggerConditionList == NULL && loadSavedSeekConfig(profile->name) == T2ERROR_SUCCESS && firstBootStatus() )
+                {
+                    T2Info("Previous seek is enabled for profile %s \n", profile->name);
+                    profile->checkPreviousSeek = true;
+                }
+                else
+                {
+                    profile->checkPreviousSeek = false;
+                }
+#else
+                profile->checkPreviousSeek = false;
+#endif
                 populateCachedReportList(profileName, profile->cachedReportList);
                 save_flag = true;
             }

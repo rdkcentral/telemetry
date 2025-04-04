@@ -962,7 +962,7 @@ int getDCAResultsInJson(char* profileName, void* markerList, cJSON** grepResultL
 }
 
 
-int getDCAResultsInVector(char* profileName, Vector* vecMarkerList, Vector** grepResultList, bool check_rotated)
+int getDCAResultsInVector(char* profileName, Vector* vecMarkerList, Vector** grepResultList, bool check_rotated, char* customLogPath)
 {
 
     T2Debug("%s ++in \n", __FUNCTION__);
@@ -982,10 +982,19 @@ int getDCAResultsInVector(char* profileName, Vector* vecMarkerList, Vector** gre
             initProperties(logPath, persistentPath);
         }
 
+        if (customLogPath)
+        {
+            initProperties(customLogPath, persistentPath);
+        }
+
         Vector_Create(grepResultList);
         if( (rc = parseMarkerList(profileName, vecMarkerList, *grepResultList, check_rotated)) == -1 )
         {
             T2Debug("Error in fetching grep results\n");
+        }
+        if (customLogPath)
+        {
+            initProperties(logPath, persistentPath);
         }
     }
     pthread_mutex_unlock(&dcaMutex);

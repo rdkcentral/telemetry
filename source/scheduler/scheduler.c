@@ -473,8 +473,8 @@ void uninitScheduler()
         //pthread_join(tProfile->tId, NULL); // pthread_detach in freeSchedulerProfile will detach the thread
         T2Info("Profile %s successfully removed from Scheduler\n", tProfile->name);
     }
-    Vector_Destroy(profileList, freeSchedulerProfile);
-    profileList = NULL;
+    // Vector_Destroy(profileList, freeSchedulerProfile); This is not needed here as we will clear
+    // profileList = NULL; the structure from unregisterProfileFromScheduler from TimeoutThread
     if(pthread_mutex_unlock(&scMutex) != 0)
     {
         T2Error("scMutex unlock failed\n");

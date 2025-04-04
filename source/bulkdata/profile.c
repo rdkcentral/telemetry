@@ -420,6 +420,7 @@ static void* CollectAndReport(void* data)
                     cJSON_AddItemToArray(valArray, arrayItem);
                     customLogPath = PREVIOUS_LOGS_PATH;
                     profile->bClearSeekMap = true;
+                    T2Debug("Adding Previous Logs Header to JSON report\n");
                 }
 #endif
                 if(profile->staticParamList != NULL && Vector_Size(profile->staticParamList) > 0)
@@ -439,7 +440,6 @@ static void* CollectAndReport(void* data)
                 }
                 if(profile->gMarkerList != NULL && Vector_Size(profile->gMarkerList) > 0)
                 {
-                    printf("custom path = %s\n", customLogPath);
                     getGrepResults(profile->name, profile->gMarkerList, &grepResultList, profile->bClearSeekMap, false, customLogPath); // Passing 5th argument as false so that it doesn't check rotated logs for the first reporting after bootup for multiprofiles.
                     encodeGrepResultInJSON(valArray, grepResultList);
                     Vector_Destroy(grepResultList, freeGResult);

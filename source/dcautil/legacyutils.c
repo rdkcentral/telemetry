@@ -581,6 +581,7 @@ char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name, int 
                             if(NULL != rotatedLog)
                             {
                                 rotatedLog[-1] = '1';
+                                //T2Debug("Log file name seems to be having .0 extension hence Rotated log file name is %s\n", rotatedLog);
                             }
                         }
                         else
@@ -589,6 +590,7 @@ char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name, int 
                             if(NULL != rotatedLog)
                             {
                                 snprintf(rotatedLog, fileExtn_len, "%s%s%s", logpath, name, fileExtn);
+                                //T2Debug("Rotated log file name is %s\n", rotatedLog);
                             }
                         }
                         if(NULL != rotatedLog)
@@ -636,16 +638,16 @@ char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name, int 
                 }
                 else
                 {
-                    if(currentLogFile != NULL)
-                    {
-                        free(currentLogFile);
-                    }
                     if((NULL != DEVICE_TYPE) && (0 == strcmp("broadband", DEVICE_TYPE)))
                     {
                         T2Debug("Telemetry file pointer corrupted");
                         if(fseek(pcurrentLogFile, 0, 0) != 0)
                         {
                             T2Error("Cannot set the file position indicator for the stream pointed to by stream\n");
+                        }
+                        if(currentLogFile != NULL)
+                        {
+                            free(currentLogFile);
                         }
                     }
                     else
@@ -658,6 +660,7 @@ char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name, int 
                             if(NULL != rotatedLog)
                             {
                                 rotatedLog[-1] = '1';
+                                //T2Debug("Log file name seems to be having .0 extension hence Rotated log file name is %s\n", rotatedLog);
                             }
                         }
                         else
@@ -666,7 +669,12 @@ char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name, int 
                             if(NULL != rotatedLog)
                             {
                                 snprintf(rotatedLog, fileExtn_len, "%s%s%s", logpath, name, fileExtn);
+                                //T2Debug("Rotated log file name is %s\n", rotatedLog);
                             }
+                        }
+                        if(currentLogFile != NULL)
+                        {
+                            free(currentLogFile);
                         }
 
                         if(NULL != rotatedLog)

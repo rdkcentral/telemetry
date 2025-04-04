@@ -246,6 +246,7 @@ static void* CollectAndReportXconf(void* data)
                 customLogPath = PREVIOUS_LOGS_PATH;
                 profile->bClearSeekMap = true;
                 checkRotated = false;
+                T2Debug("Adding Previous Logs Header to JSON report\n");
             }
 #endif
 

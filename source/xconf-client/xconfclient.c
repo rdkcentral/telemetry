@@ -97,36 +97,6 @@ typedef enum _IFADDRESS_TYPE
     ADDR_IPV6
 } IFADDRESS_TYPE;
 
-#if 0
-static IFADDRESS_TYPE getAddressType(const char *cif)
-{
-    struct ifaddrs *ifap, *ifa;
-    IFADDRESS_TYPE addressType = 0;
-
-    getifaddrs(&ifap);
-    for (ifa = ifap; ifa; ifa = ifa->ifa_next)
-    {
-        if (ifa->ifa_name == NULL || strcmp(ifa->ifa_name, cif))
-        {
-            continue;
-        }
-
-        if (ifa->ifa_addr->sa_family == AF_INET)
-        {
-            addressType = ADDR_IPV4;
-        }
-        else
-        {
-            addressType = ADDR_IPV6;
-        }
-
-        break;
-    }
-
-    freeifaddrs(ifap);
-    return addressType;
-}
-#endif
 
 T2ERROR getBuildType(char* buildType)
 {
@@ -1025,32 +995,49 @@ T2ERROR getRemoteConfigURL(char **configURL)
     }
 #endif
 
-    if (T2ERROR_SUCCESS == getParameterValue(TR181_CONFIG_URL, &paramVal))
+    int retryCount = 0;
+    do
     {
-        if (NULL != paramVal)
+        if (T2ERROR_SUCCESS == getParameterValue(TR181_CONFIG_URL, &paramVal))
         {
-            if ((strlen(paramVal) > 8) && (0 == strncmp(paramVal, "https://", 8)))   // Enforcing https for new endpoints
+            if (NULL != paramVal)
             {
-                T2Info("Setting config URL base location to : %s\n", paramVal);
-                *configURL = paramVal;
-                ret = T2ERROR_SUCCESS ;
+                if ((strlen(paramVal) > 8) && (0 == strncmp(paramVal, "https://", 8)))   // Enforcing https for new endpoints
+                {
+                    T2Info("Setting config URL base location to : %s\n", paramVal);
+                    *configURL = paramVal;
+                    ret = T2ERROR_SUCCESS;
+                    break;
+                }
+                else
+                {
+                    T2Error("URL doesn't start with https or is invalid !!! URL value received : %s .\n", paramVal);
+                    free(paramVal);
+                    ret = T2ERROR_INVALID_RESPONSE;
+                }
+
             }
             else
             {
-                T2Error("URL doesn't start with https or is invalid !!! URL value received : %s .\n", paramVal);
-                free(paramVal);
+                ret = T2ERROR_FAILURE;
+                break;
             }
         }
         else
         {
+            T2Error("Failed to fetch value for parameter %s \n", TR181_CONFIG_URL);
             ret = T2ERROR_FAILURE;
+            break;
+        }
+
+        if (ret == T2ERROR_INVALID_RESPONSE)
+        {
+            retryCount++;
+            T2Info("Retrying to fetch config URL, attempt %d\n", retryCount);
+            sleep(3); // Adding a small delay before retry
         }
     }
-    else
-    {
-        T2Error("Failed to fetch value for parameter %s \n", TR181_CONFIG_URL);
-        ret = T2ERROR_FAILURE ;
-    }
+    while (ret == T2ERROR_INVALID_RESPONSE && retryCount < 3);   // Recovery for any transient errors from TR181 provider
     T2Debug("%s --out\n", __FUNCTION__);
     return ret;
 }
@@ -1059,6 +1046,7 @@ static void* getUpdatedConfigurationThread(void *data)
 {
     (void) data;
     T2ERROR configFetch = T2ERROR_FAILURE;
+    T2ERROR urlFetchStatus;
     T2Debug("%s ++in\n", __FUNCTION__);
     struct timespec _ts;
     struct timespec _now;
@@ -1070,8 +1058,15 @@ static void* getUpdatedConfigurationThread(void *data)
     do
     {
         T2Debug("%s while Loop -- START \n", __FUNCTION__);
-        while(!stopFetchRemoteConfiguration && T2ERROR_SUCCESS != getRemoteConfigURL(&configURL))
+
+        while(!stopFetchRemoteConfiguration && (urlFetchStatus = getRemoteConfigURL(&configURL)) != T2ERROR_SUCCESS)
         {
+            if (urlFetchStatus == T2ERROR_INVALID_RESPONSE)
+            {
+                T2Info("Config URL is not set to valid value. Xconfclient shall not proceed for T1.0 settings fetch attempts \n");
+                break;
+            }
+
             pthread_mutex_lock(&xcMutex);
             memset(&_ts, 0, sizeof(struct timespec));
             memset(&_now, 0, sizeof(struct timespec));
@@ -1097,7 +1092,16 @@ static void* getUpdatedConfigurationThread(void *data)
 
         while(!stopFetchRemoteConfiguration)
         {
-            T2ERROR ret = fetchRemoteConfiguration(configURL, &configData);
+            T2ERROR ret = T2ERROR_FAILURE ;
+            if ( urlFetchStatus == T2ERROR_INVALID_RESPONSE )
+            {
+                ret = T2ERROR_PROFILE_NOT_SET ;
+            }
+            else
+            {
+                ret = fetchRemoteConfiguration(configURL, &configData);
+            }
+
             if(ret == T2ERROR_SUCCESS)
             {
                 ProfileXConf *profile = 0;

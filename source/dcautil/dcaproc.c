@@ -648,8 +648,8 @@ int getCPUInfo(procMemCpuInfo *pInfo)
     {
         T2Debug("failed in closing pipe! ret %d\n", pclose_ret);
     }
-    return ret;
     T2Debug("--out %s", __FUNCTION__);
+    return ret;
 
 }
 

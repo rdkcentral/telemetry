@@ -437,8 +437,8 @@ static void* reportOnDemand(void *input)
         T2Warning("Unkown action - %s \n", action);
     }
 
-    return NULL;
     T2Debug("%s --out\n", __FUNCTION__);
+    return NULL;
 }
 
 T2ERROR privacymode_do_not_share ()

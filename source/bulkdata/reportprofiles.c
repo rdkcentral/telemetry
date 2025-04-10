@@ -615,18 +615,6 @@ T2ERROR initReportProfiles()
         }
     }
 
-#ifdef PERSIST_LOG_MON_REF
-
-    if(previousLogCheck)
-    {
-        //generate previous logs report
-        generateDcaReport(false, false);
-        T2Info("Previous Log check is enabled sending Interrupt to scheduler \n");
-        sendLogUploadInterruptToScheduler();
-    }
-#endif
-
-
     if(ProfileXConf_isSet() || getProfileCount() > 0)
     {
 
@@ -1386,6 +1374,8 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
                 {
                     T2Info("Previous seek is enabled for profile %s \n", profile->name);
                     profile->checkPreviousSeek = true;
+                    T2Info("Previous Seek is enabled so generate the report for %s\n", profile->name);
+                    NotifyTimeout(profile->name, true);
                 }
                 else
                 {

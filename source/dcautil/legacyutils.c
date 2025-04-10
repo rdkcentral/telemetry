@@ -580,8 +580,8 @@ char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name, int 
                             rotatedLog = strdup(currentLogFile);
                             if(NULL != rotatedLog)
                             {
-                                rotatedLog[-1] = '1';
-                                //T2Debug("Log file name seems to be having .0 extension hence Rotated log file name is %s\n", rotatedLog);
+                                rotatedLog[name_len - 1] = '1';
+                                T2Debug("Log file name seems to be having .0 extension hence Rotated log file name is %s\n", rotatedLog);
                             }
                         }
                         else
@@ -590,7 +590,7 @@ char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name, int 
                             if(NULL != rotatedLog)
                             {
                                 snprintf(rotatedLog, fileExtn_len, "%s%s%s", logpath, name, fileExtn);
-                                //T2Debug("Rotated log file name is %s\n", rotatedLog);
+                                T2Debug("Rotated log file name is %s\n", rotatedLog);
                             }
                         }
                         if(NULL != rotatedLog)
@@ -659,8 +659,8 @@ char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name, int 
                             rotatedLog = strdup(currentLogFile);
                             if(NULL != rotatedLog)
                             {
-                                rotatedLog[-1] = '1';
-                                //T2Debug("Log file name seems to be having .0 extension hence Rotated log file name is %s\n", rotatedLog);
+                                rotatedLog[name_len - 1] = '1';
+                                T2Debug("Log file name seems to be having .0 extension hence Rotated log file name is %s\n", rotatedLog);
                             }
                         }
                         else
@@ -669,7 +669,7 @@ char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name, int 
                             if(NULL != rotatedLog)
                             {
                                 snprintf(rotatedLog, fileExtn_len, "%s%s%s", logpath, name, fileExtn);
-                                //T2Debug("Rotated log file name is %s\n", rotatedLog);
+                                T2Debug("Rotated log file name is %s\n", rotatedLog);
                             }
                         }
                         if(currentLogFile != NULL)

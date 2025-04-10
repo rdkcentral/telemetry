@@ -1356,7 +1356,7 @@ void unregisterDEforCompEventList()
 
     if(!compTr181ParamMap)
     {
-        T2Info("No data elements present to unregister");
+        T2Info("No data elements present to unregister\n");
         T2Debug("%s --out\n", __FUNCTION__);
         pthread_mutex_unlock(&compParamMap);
         return;

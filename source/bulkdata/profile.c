@@ -1379,6 +1379,12 @@ static void loadReportProfilesFromDisk(bool checkPreviousSeek)
                 }
                 else
                 {
+#ifdef PERSIST_LOG_MON_REF
+                    if(profile->checkPreviousSeek){
+                        T2Info("Previous Seek is enabled so generate the report for %s",profile->name);
+                        NotifyTimeout(profile->name,true);
+                    }
+#endif
                     // Load the cached messages from previous boot, if any
                     populateCachedReportList(profile->name, profile->cachedReportList);
                 }

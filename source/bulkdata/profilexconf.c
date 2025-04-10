@@ -512,6 +512,14 @@ T2ERROR ProfileXConf_init(bool checkPreviousSeek)
                 if(T2ERROR_SUCCESS == ProfileXConf_set(profile))
                 {
                     T2Info("Successfully set new profile: %s\n", profile->name);
+
+#ifdef PERSIST_LOG_MON_REF
+                    if(profile->checkPreviousSeek = true){
+                        T2Info("Previous Seek is enabled so generate the report");
+                        ProfileXConf_notifyTimeout(true, true);
+                    }
+#endif
+
                     populateCachedReportList(profile->name, profile->cachedReportList);
                 }
                 else

@@ -25,7 +25,8 @@
 #ifndef _RDK_LINKEDLIST_H_
 #define _RDK_LINKEDLIST_H_
 
-typedef struct rdkList_t {
+typedef struct rdkList_t
+{
     struct rdkList_t* m_pForward;
     struct rdkList_t* m_pBackward;
     void* m_pUserData;

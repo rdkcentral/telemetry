@@ -61,7 +61,7 @@ static char *getTimeStamp (void)
         time_t timeObj = time(NULL);
         struct tm *tmInfo = gmtime(&timeObj);
         // Format -  yyyy-mm-dd hh:mm:ss
-        if (strftime(timeStamp, MAX_TIME_INFO_LEN, "%F %H:%M:%S" , tmInfo) == 0)
+        if (strftime(timeStamp, MAX_TIME_INFO_LEN, "%F %H:%M:%S", tmInfo) == 0)
         {
             free(timeStamp);
             timeStamp = NULL;
@@ -78,9 +78,13 @@ static void freeConfig(void *data)
         Config *config = (Config *)data;
 
         if(config->name)
+        {
             free(config->name);
+        }
         if(config->configData)
+        {
             free(config->configData);
+        }
 
         free(config);
     }
@@ -91,11 +95,17 @@ static void freeProfileXConf()
     if(singleProfile != NULL)
     {
         if(singleProfile->name)
+        {
             free(singleProfile->name);
+        }
         if(singleProfile->protocol)
+        {
             free(singleProfile->protocol);
+        }
         if(singleProfile->encodingType)
+        {
             free(singleProfile->encodingType);
+        }
         if(singleProfile->t2HTTPDest)
         {
             free(singleProfile->t2HTTPDest->URL);
@@ -114,13 +124,15 @@ static void freeProfileXConf()
             Vector_Destroy(singleProfile->paramList, freeParam);
         }
 
-        if(singleProfile->jsonReportObj) {
+        if(singleProfile->jsonReportObj)
+        {
             cJSON_Delete(singleProfile->jsonReportObj);
             singleProfile->jsonReportObj = NULL;
         }
 
         // Data elements from this list is copied in new profile. So do not destroy the vector
-        if(singleProfile->cachedReportList) {
+        if(singleProfile->cachedReportList)
+        {
             free(singleProfile->cachedReportList);
             singleProfile->cachedReportList = NULL;
         }
@@ -162,11 +174,14 @@ static T2ERROR initJSONReportXconf(cJSON** jsonObj, cJSON **valArray)
 
     currenTime = getTimeStamp();
     arrayItem = cJSON_CreateObject( );
-    if (NULL != currenTime) {
+    if (NULL != currenTime)
+    {
         cJSON_AddStringToObject(arrayItem, "Time", currenTime);
         free(currenTime);
         currenTime = NULL;
-    } else {
+    }
+    else
+    {
         cJSON_AddStringToObject(arrayItem, "Time", "Unknown");
     }
     cJSON_AddItemToArray(*valArray, arrayItem);
@@ -179,20 +194,24 @@ static void* CollectAndReportXconf(void* data)
     (void) data;// To fix compiler warning
     pthread_mutex_lock(&plMutex);
     ProfileXConf* profile = singleProfile;
-    if(profile == NULL){
+    if(profile == NULL)
+    {
         T2Error("profile is NULL\n");
         pthread_mutex_unlock(&plMutex);
         return NULL;
     }
     pthread_cond_init(&reuseThread, NULL);
     reportThreadExits = true;
-    do {
+    do
+    {
         T2Info("%s while Loop -- START \n", __FUNCTION__);
         profile = singleProfile;
-	Vector *profileParamVals = NULL;
+        Vector *profileParamVals = NULL;
         Vector *grepResultList = NULL;
         cJSON *valArray = NULL;
         char* jsonReport = NULL;
+        char* customLogPath = NULL;
+        bool checkRotated = true;
 
         struct timespec startTime;
         struct timespec endTime;
@@ -200,7 +219,9 @@ static void* CollectAndReportXconf(void* data)
 
         T2ERROR ret = T2ERROR_FAILURE;
         if(profile->name != NULL)
+        {
             T2Info("%s ++in profileName : %s\n", __FUNCTION__, profile->name);
+        }
 
 
         clock_gettime(CLOCK_REALTIME, &startTime);
@@ -214,6 +235,21 @@ static void* CollectAndReportXconf(void* data)
                 //return NULL;
                 goto reportXconfThreadEnd;
             }
+
+#ifdef PERSIST_LOG_MON_REF
+            if(profile->checkPreviousSeek)
+            {
+                cJSON *arrayItem = NULL;
+                arrayItem = cJSON_CreateObject();
+                cJSON_AddStringToObject(arrayItem, PREVIOUS_LOG, PREVIOUS_LOGS_VAL);
+                cJSON_AddItemToArray(valArray, arrayItem);
+                customLogPath = PREVIOUS_LOGS_PATH;
+                profile->bClearSeekMap = true;
+                checkRotated = false;
+                T2Debug("Adding Previous Logs Header to JSON report\n");
+            }
+#endif
+
             if(profile->paramList != NULL && Vector_Size(profile->paramList) > 0)
             {
                 profileParamVals = getProfileParameterValues(profile->paramList);
@@ -226,13 +262,13 @@ static void* CollectAndReportXconf(void* data)
             }
             if(profile->gMarkerList != NULL && Vector_Size(profile->gMarkerList) > 0)
             {
-                getGrepResults(profile->name, profile->gMarkerList, &grepResultList, profile->bClearSeekMap, true); // Passing 5th argument as true to check rotated logs only in case of single profile
+                getGrepResults(profile->name, profile->gMarkerList, &grepResultList, profile->bClearSeekMap, checkRotated, customLogPath); // Passing 5th argument as true to check rotated logs only in case of single profile
                 T2Info("Grep complete for %lu markers \n", (unsigned long)Vector_Size(profile->gMarkerList));
                 encodeGrepResultInJSON(valArray, grepResultList);
                 Vector_Destroy(grepResultList, freeGResult);
             }
 
-	    dcaFlagReportCompleation();
+            dcaFlagReportCompleation();
 
             if(profile->eMarkerList != NULL && Vector_Size(profile->eMarkerList) > 0)
             {
@@ -257,24 +293,26 @@ static void* CollectAndReportXconf(void* data)
             {
                 T2Info("Profile is udpated, report is cached to send with updated Profile TIMEOUT\n");
                 T2Debug("Vector list size = %lu\n",  (unsigned long) Vector_Size(profile->cachedReportList));
-                if(profile->cachedReportList != NULL && Vector_Size(profile->cachedReportList) >= MAX_CACHED_REPORTS) {
-                    while(Vector_Size(profile->cachedReportList) > MAX_CACHED_REPORTS){
+                if(profile->cachedReportList != NULL && Vector_Size(profile->cachedReportList) >= MAX_CACHED_REPORTS)
+                {
+                    while(Vector_Size(profile->cachedReportList) > MAX_CACHED_REPORTS)
+                    {
                         int pos = Vector_Size(profile->cachedReportList);
                         T2Info("Max Cached Reports Limit Exceeded, Removing the extra reports\n");
                         char *extraCachedreport =  (char*) Vector_At(profile->cachedReportList, (pos - 1));
-                        Vector_RemoveItem(profile->cachedReportList,(void*) extraCachedreport, NULL);
+                        Vector_RemoveItem(profile->cachedReportList, (void*) extraCachedreport, NULL);
                         free(extraCachedreport);
                     }
                     T2Info("Max Cached Reports Limit Reached, Overwriting third recent report\n");
                     char *thirdCachedReport = (char*) Vector_At(profile->cachedReportList, MAX_CACHED_REPORTS - 3);
-                    Vector_RemoveItem(profile->cachedReportList,(void*) thirdCachedReport, NULL);
+                    Vector_RemoveItem(profile->cachedReportList, (void*) thirdCachedReport, NULL);
                     free(thirdCachedReport);
                 }
                 Vector_PushBack(profile->cachedReportList, strdup(jsonReport));
                 profile->reportInProgress = false;
                 /* CID 187010: Dereference before null check */
                 free(jsonReport);
-                jsonReport= NULL;
+                jsonReport = NULL;
                 T2Debug("%s --out\n", __FUNCTION__);
                 //pthread_mutex_unlock(&plMutex);
                 //return NULL;
@@ -284,31 +322,59 @@ static void* CollectAndReportXconf(void* data)
             {
                 T2Warning("Report size is exceeding the max limit : %d\n", DEFAULT_MAX_REPORT_SIZE);
             }
+#ifdef PERSIST_LOG_MON_REF
+            if(profile->checkPreviousSeek)
+            {
+                T2Info("This is a Previous Logs Report sleep randomly for 1-100 sec\n");
+                srand(size + 1);
+                int random_sleep = (int) rand() % 99;
+                sleep(random_sleep);
+            }
+#endif
             if(profile->protocol != NULL && strcmp(profile->protocol, "HTTP") == 0)
             {
                 // If a terminate is initiated, do not attempt to upload report
-                if(isAbortTriggered) {
+                if(isAbortTriggered)
+                {
                     T2Info("On-demand report upload has been aborted. Skip report upload \n");
                     ret = T2ERROR_FAILURE ;
-                } else {
+                }
+                else
+                {
                     T2Debug("Abort upload is not yet set.\n");
                     ret = sendReportOverHTTP(profile->t2HTTPDest->URL, jsonReport, &xconfReportPid);
                 }
 
+#ifdef PERSIST_LOG_MON_REF
+                if(profile->saveSeekConfig)
+                {
+                    saveSeekConfigtoFile(profile->name);
+                }
+                if(profile->checkPreviousSeek)
+                {
+                    T2Info("Previous Logs report is sent clear the previousSeek flag\n");
+                    profile->checkPreviousSeek = false;
+                    customLogPath = NULL;
+                    profile->bClearSeekMap = false;
+                }
+#endif
+
                 xconfReportPid = -1 ;
                 if(ret == T2ERROR_FAILURE)
                 {
-                    if(profile->cachedReportList != NULL && Vector_Size(profile->cachedReportList) >= MAX_CACHED_REPORTS) {
-                        while(Vector_Size(profile->cachedReportList) > MAX_CACHED_REPORTS){
+                    if(profile->cachedReportList != NULL && Vector_Size(profile->cachedReportList) >= MAX_CACHED_REPORTS)
+                    {
+                        while(Vector_Size(profile->cachedReportList) > MAX_CACHED_REPORTS)
+                        {
                             int pos = Vector_Size(profile->cachedReportList);
                             T2Info("Max Cached Reports Limit Exceeded, Removing the extra reports\n");
                             char *extraCachedreport =  (char*) Vector_At(profile->cachedReportList, (pos - 1));
-                            Vector_RemoveItem(profile->cachedReportList,(void*) extraCachedreport, NULL);
+                            Vector_RemoveItem(profile->cachedReportList, (void*) extraCachedreport, NULL);
                             free(extraCachedreport);
                         }
                         T2Info("Max Cached Reports Limit Reached, Overwriting third recent report\n");
                         char *thirdCachedReport = (char*) Vector_At(profile->cachedReportList, MAX_CACHED_REPORTS - 3);
-                        Vector_RemoveItem(profile->cachedReportList,(void*) thirdCachedReport, NULL);
+                        Vector_RemoveItem(profile->cachedReportList, (void*) thirdCachedReport, NULL);
                         free(thirdCachedReport);
                     }
                     Vector_PushBack(profile->cachedReportList, strdup(jsonReport));
@@ -321,7 +387,8 @@ static void* CollectAndReportXconf(void* data)
                 {
                     T2Info("Trying to send  %lu cached reports\n", (unsigned long)Vector_Size(profile->cachedReportList));
                     ret = sendCachedReportsOverHTTP(profile->t2HTTPDest->URL, profile->cachedReportList);
-                    if(ret == T2ERROR_SUCCESS){
+                    if(ret == T2ERROR_SUCCESS)
+                    {
                         // Do not get misleaded by function name. Call is to delete the directory for storing cached reports
                         removeProfileFromDisk(CACHED_MESSAGE_PATH, profile->name);
                     }
@@ -336,6 +403,18 @@ static void* CollectAndReportXconf(void* data)
         {
             T2Error("Unsupported encoding format : %s\n", profile->encodingType);
         }
+
+# ifdef PERSIST_LOG_MON_REF
+        if(T2ERROR_SUCCESS == saveSeekConfigtoFile(profile->name))
+        {
+            T2Info("Successfully saved grep config to file for profile: %s\n", profile->name);
+        }
+        else
+        {
+            T2Warning("Failed to save grep config to file for profile: %s\n", profile->name);
+        }
+#endif
+
         clock_gettime(CLOCK_REALTIME, &endTime);
         getLapsedTime(&elapsedTime, &endTime, &startTime);
         T2Info("Elapsed Time for : %s = %lu.%lu (Sec.NanoSec)\n", profile->name, (unsigned long)elapsedTime.tv_sec, elapsedTime.tv_nsec);
@@ -346,29 +425,39 @@ static void* CollectAndReportXconf(void* data)
         }
 
         // Notify status of upload in case of on demand report upload.
-        if(isOnDemandReport) {
-            if(ret == T2ERROR_FAILURE){
+        if(isOnDemandReport)
+        {
+            if(ret == T2ERROR_FAILURE)
+            {
                 if(isAbortTriggered)
+                {
                     publishReportUploadStatus("ABORTED");
+                }
                 else
+                {
                     publishReportUploadStatus("FAILURE");
-            } else {
+                }
+            }
+            else
+            {
                 publishReportUploadStatus("SUCCESS");
             }
         }
 
         // Reset the abort trigger flags
-        if(isAbortTriggered == true) {
+        if(isAbortTriggered == true)
+        {
             isAbortTriggered = false ;
         }
 
         profile->reportInProgress = false;
         //pthread_mutex_unlock(&plMutex);
-    reportXconfThreadEnd :
+reportXconfThreadEnd :
         T2Info("%s while Loop -- END \n", __FUNCTION__);
         T2Info("%s --out\n", __FUNCTION__);
         pthread_cond_wait(&reuseThread, &plMutex);
-    } while(initialized);
+    }
+    while(initialized);
     reportThreadExits = false;
     pthread_mutex_unlock(&plMutex);
     pthread_cond_destroy(&reuseThread);
@@ -376,8 +465,9 @@ static void* CollectAndReportXconf(void* data)
     return NULL;
 }
 
-T2ERROR ProfileXConf_init()
+T2ERROR ProfileXConf_init(bool checkPreviousSeek)
 {
+    (void) checkPreviousSeek; // To fix compiler warning
     T2Debug("%s ++in\n", __FUNCTION__);
     if(!initialized)
     {
@@ -385,7 +475,8 @@ T2ERROR ProfileXConf_init()
         Config *config = NULL;
 
         initialized = true;
-        if(pthread_mutex_init(&plMutex, NULL) != 0){
+        if(pthread_mutex_init(&plMutex, NULL) != 0)
+        {
             T2Error("%s Mutex init has failed\n", __FUNCTION__);
             return T2ERROR_FAILURE;
         }
@@ -394,27 +485,49 @@ T2ERROR ProfileXConf_init()
 
         if(Vector_Size(configList) > 1) // This is to address corner cases where if multiple configs are saved, we ignore them and wait for new config.
         {
-          T2Info("Found multiple saved profiles, removing all from the disk and waiting for updated configuration\n");
-          clearPersistenceFolder(XCONFPROFILE_PERSISTENCE_PATH);
+            T2Info("Found multiple saved profiles, removing all from the disk and waiting for updated configuration\n");
+            clearPersistenceFolder(XCONFPROFILE_PERSISTENCE_PATH);
         }
         else if(Vector_Size(configList) == 1)
         {
-          config = Vector_At(configList, 0);
-          ProfileXConf *profile = 0;
-          T2Debug("Processing config with name : %s\n", config->name);
-          T2Debug("Config Size = %lu\n", (unsigned long)strlen(config->configData));
-          if(T2ERROR_SUCCESS == processConfigurationXConf(config->configData, &profile))
-          {
-              if(T2ERROR_SUCCESS == ProfileXConf_set(profile))
-              {
-                  T2Info("Successfully set new profile: %s\n", profile->name);
-                  populateCachedReportList(profile->name, profile->cachedReportList);
-              }
-              else
-              {
-                  T2Error("Failed to set new profile: %s\n", profile->name);
-              }
-          }
+            config = Vector_At(configList, 0);
+            ProfileXConf *profile = 0;
+            T2Debug("Processing config with name : %s\n", config->name);
+            T2Debug("Config Size = %lu\n", (unsigned long)strlen(config->configData));
+            if(T2ERROR_SUCCESS == processConfigurationXConf(config->configData, &profile))
+            {
+#ifdef PERSIST_LOG_MON_REF
+                if(checkPreviousSeek && loadSavedSeekConfig(profile->name) == T2ERROR_SUCCESS && firstBootStatus())
+                {
+                    profile->checkPreviousSeek = true;
+                }
+                else
+                {
+                    profile->checkPreviousSeek = false;
+                }
+#else
+                profile->checkPreviousSeek = false;
+#endif
+
+                if(T2ERROR_SUCCESS == ProfileXConf_set(profile))
+                {
+                    T2Info("Successfully set new profile: %s\n", profile->name);
+
+#ifdef PERSIST_LOG_MON_REF
+                    if(profile->checkPreviousSeek)
+                    {
+                        T2Info("Previous Seek is enabled so generate the Xconf report \n");
+                        // Trigger a xconf report if previous seek is enabled and valid.
+                        ProfileXConf_notifyTimeout(true, true);
+                    }
+#endif
+                    populateCachedReportList(profile->name, profile->cachedReportList);
+                }
+                else
+                {
+                    T2Error("Failed to set new profile: %s\n", profile->name);
+                }
+            }
         }
         Vector_Destroy(configList, freeConfig);
     }
@@ -466,7 +579,7 @@ T2ERROR ProfileXConf_set(ProfileXConf *profile)
         singleProfile->reportInProgress = false ;
         size_t emIndex = 0;
         EventMarker *eMarker = NULL;
-        for(;emIndex < Vector_Size(singleProfile->eMarkerList); emIndex++)
+        for(; emIndex < Vector_Size(singleProfile->eMarkerList); emIndex++)
         {
             eMarker = (EventMarker *)Vector_At(singleProfile->eMarkerList, emIndex);
             addT2EventMarker(eMarker->markerName, eMarker->compName, singleProfile->name, eMarker->skipFreq);
@@ -505,13 +618,15 @@ void ProfileXConf_updateMarkerComponentMap()
     pthread_mutex_lock(&plMutex);
     if(singleProfile)
     {
-        for(;emIndex < Vector_Size(singleProfile->eMarkerList); emIndex++)
+        for(; emIndex < Vector_Size(singleProfile->eMarkerList); emIndex++)
         {
             eMarker = (EventMarker *)Vector_At(singleProfile->eMarkerList, emIndex);
             addT2EventMarker(eMarker->markerName, eMarker->compName, singleProfile->name, eMarker->skipFreq);
         }
-    }else{
-	T2Error("Profile not found in %s\n", __FUNCTION__);
+    }
+    else
+    {
+        T2Error("Profile not found in %s\n", __FUNCTION__);
     }
     pthread_mutex_unlock(&plMutex);
     T2Debug("%s --out\n", __FUNCTION__);
@@ -542,7 +657,7 @@ T2ERROR ProfileXConf_delete(ProfileXConf *profile)
     }
 
     bool isNameEqual = ProfileXConf_isNameEqual(profile->name);
-  
+
     pthread_mutex_lock(&plMutex);
     if(!singleProfile)
     {
@@ -552,28 +667,34 @@ T2ERROR ProfileXConf_delete(ProfileXConf *profile)
     }
 
     pthread_mutex_unlock(&plMutex);
-    if(isNameEqual){
+    if(isNameEqual)
+    {
         T2Info("Profile exists already, updating the config in file system\n");
-        if(profile->cachedReportList != NULL) {
+        if(profile->cachedReportList != NULL)
+        {
             singleProfile->isUpdated = true;
         }
-    }else {
+    }
+    else
+    {
         if(T2ERROR_SUCCESS != unregisterProfileFromScheduler(singleProfile->name))
+        {
             T2Error("Profile : %s failed to  unregister from scheduler\n", singleProfile->name);
+        }
     }
 
     if(singleProfile->reportInProgress)
     {
         T2Info("Waiting for CollectAndReport to be complete : %s\n", singleProfile->name);
         pthread_mutex_lock(&plMutex);
-        initialized=false;
+        initialized = false;
         T2Info("Sending signal to reuse Thread in CollectAndReportXconf\n");
         pthread_cond_signal(&reuseThread);
         pthread_mutex_unlock(&plMutex);
         pthread_join(singleProfile->reportThread, NULL);
         T2Info("reportThread exits and initialising the profile list\n");
         reportThreadExits = false;
-        initialized=true;
+        initialized = true;
         singleProfile->reportInProgress = false ;
     }
 
@@ -581,72 +702,85 @@ T2ERROR ProfileXConf_delete(ProfileXConf *profile)
 
     size_t count = Vector_Size(singleProfile->cachedReportList);
     // Copy any cached message present in previous single profile to new profile
-    if(isNameEqual) {
+    if(isNameEqual)
+    {
         profile->bClearSeekMap = singleProfile->bClearSeekMap ;
         profile->reportInProgress = false ;
-        if(count > 0 && profile->cachedReportList != NULL) {
+        if(count > 0 && profile->cachedReportList != NULL)
+        {
             T2Info("There are %zu cached reports in the profile \n", count);
             size_t index = 0;
-            while(index < count) {
+            while(index < count)
+            {
                 Vector_PushBack(profile->cachedReportList, (void *) Vector_At(singleProfile->cachedReportList, 0));
                 Vector_RemoveItem(singleProfile->cachedReportList, (void *) Vector_At(singleProfile->cachedReportList, 0), NULL);/*TODO why this instead of Vector_destroy*/
                 index++;
             }
         }
     }
-    else{
-        if(count > 0){ //Destroy the cachedReportList vector when the profile name is not equal
+    else
+    {
+        if(count > 0)  //Destroy the cachedReportList vector when the profile name is not equal
+        {
             Vector_Destroy(singleProfile->cachedReportList, free);
             singleProfile->cachedReportList = NULL;
         }
     }
     // copy max events irrespective of the profile name
     // Copy the event's recived till now and pass it on to the new profile
-    if((Vector_Size(singleProfile->eMarkerList) > 0) && (Vector_Size(profile->eMarkerList) > 0)){
-	size_t i, j;
+    if((Vector_Size(singleProfile->eMarkerList) > 0) && (Vector_Size(profile->eMarkerList) > 0))
+    {
+        size_t i, j;
         T2Info("check the events from the old profile and forward to the new profile \n");
-        for (j=0; j < Vector_Size(profile->eMarkerList);j++){
+        for (j = 0; j < Vector_Size(profile->eMarkerList); j++)
+        {
             EventMarker *eMarkerNew = NULL;
-            eMarkerNew = (EventMarker *)Vector_At(profile->eMarkerList,j);
-            T2Debug("Check the New Event : %s index : %zu \n",eMarkerNew->markerName,j);
-            for (i=0; i < Vector_Size(singleProfile->eMarkerList);i++){
+            eMarkerNew = (EventMarker *)Vector_At(profile->eMarkerList, j);
+            T2Debug("Check the New Event : %s index : %zu \n", eMarkerNew->markerName, j);
+            for (i = 0; i < Vector_Size(singleProfile->eMarkerList); i++)
+            {
                 EventMarker *eMarkerCurrent = NULL;
-                eMarkerCurrent = (EventMarker *)Vector_At(singleProfile->eMarkerList,i);
-                T2Debug("Check the Old Event : %s index : %zu \n",eMarkerCurrent->markerName,i);
-                if((strcmp(eMarkerNew->markerName,eMarkerCurrent->markerName)==0) && eMarkerNew->mType == eMarkerCurrent->mType){
-                    T2Debug("Event marker with name : %s type %d is in both profiles copy the value \n",eMarkerCurrent->markerName,eMarkerCurrent->mType);
-                    switch(eMarkerNew->mType){
-                        case MTYPE_XCONF_COUNTER:
-                            T2Debug("Marker type MTYPE_XCONF_COUNTER and value : %d \n",eMarkerCurrent->u.count);
-                            eMarkerNew->u.count = eMarkerCurrent->u.count;
-                            break;
-                        case MTYPE_XCONF_ABSOLUTE:
-                            T2Debug("Marker type MTYPE_XCONF_ABSOLUTE and value : %s \n",eMarkerCurrent->u.markerValue);
-                            if (eMarkerCurrent->u.markerValue != NULL){
-                                eMarkerNew->u.markerValue = strdup(eMarkerCurrent->u.markerValue);
+                eMarkerCurrent = (EventMarker *)Vector_At(singleProfile->eMarkerList, i);
+                T2Debug("Check the Old Event : %s index : %zu \n", eMarkerCurrent->markerName, i);
+                if((strcmp(eMarkerNew->markerName, eMarkerCurrent->markerName) == 0) && eMarkerNew->mType == eMarkerCurrent->mType)
+                {
+                    T2Debug("Event marker with name : %s type %d is in both profiles copy the value \n", eMarkerCurrent->markerName, eMarkerCurrent->mType);
+                    switch(eMarkerNew->mType)
+                    {
+                    case MTYPE_XCONF_COUNTER:
+                        T2Debug("Marker type MTYPE_XCONF_COUNTER and value : %d \n", eMarkerCurrent->u.count);
+                        eMarkerNew->u.count = eMarkerCurrent->u.count;
+                        break;
+                    case MTYPE_XCONF_ABSOLUTE:
+                        T2Debug("Marker type MTYPE_XCONF_ABSOLUTE and value : %s \n", eMarkerCurrent->u.markerValue);
+                        if (eMarkerCurrent->u.markerValue != NULL)
+                        {
+                            eMarkerNew->u.markerValue = strdup(eMarkerCurrent->u.markerValue);
+                        }
+                        break;
+                    case MTYPE_XCONF_ACCUMULATE:
+                        count =  Vector_Size(eMarkerCurrent->u.accumulatedValues);
+                        T2Debug("Marker type MTYPE_XCONF_ACCUMULATE and count : %zu \n", count);
+                        if(eMarkerCurrent->u.accumulatedValues != NULL && count > 0)
+                        {
+                            size_t index = 0;
+                            while(index < count)
+                            {
+                                Vector_PushBack(eMarkerNew->u.accumulatedValues, (void *) Vector_At(eMarkerCurrent->u.accumulatedValues, 0));
+                                Vector_RemoveItem(eMarkerCurrent->u.accumulatedValues, (void *) Vector_At(eMarkerCurrent->u.accumulatedValues, 0), NULL);
+                                index++;
                             }
-                            break;
-                        case MTYPE_XCONF_ACCUMULATE:
-                            count =  Vector_Size(eMarkerCurrent->u.accumulatedValues);
-                            T2Debug("Marker type MTYPE_XCONF_ACCUMULATE and count : %zu \n",count);
-                            if(eMarkerCurrent->u.accumulatedValues != NULL && count > 0){
-                                size_t index = 0;
-                                while(index < count) {
-                                    Vector_PushBack(eMarkerNew->u.accumulatedValues, (void *) Vector_At(eMarkerCurrent->u.accumulatedValues, 0));
-                                    Vector_RemoveItem(eMarkerCurrent->u.accumulatedValues, (void *) Vector_At(eMarkerCurrent->u.accumulatedValues, 0), NULL);
-                                    index++;
-                                }
-                            }
-                            break;
-                        default:
-                            T2Error("The Marker Type with enum %d is not supported \n",eMarkerNew->mType);
-                            break;
+                        }
+                        break;
+                    default:
+                        T2Error("The Marker Type with enum %d is not supported \n", eMarkerNew->mType);
+                        break;
                     }
                     Vector_RemoveItem(singleProfile->eMarkerList, (void *) eMarkerCurrent, freeEMarker);
                     break;
-                   }
-              }
-         }
+                }
+            }
+        }
     }
 
 
@@ -654,7 +788,15 @@ T2ERROR ProfileXConf_delete(ProfileXConf *profile)
     {
         bool clearSeekMap = true;
         if(isNameEqual)
+        {
             clearSeekMap = false;
+        }
+#ifdef PERSIST_LOG_MON_REF
+        else
+        {
+            removeProfileFromDisk(SEEKFOLDER, singleProfile->name);
+        }
+#endif
         removeGrepConfig(singleProfile->name, clearSeekMap, true);
     }
 
@@ -682,7 +824,8 @@ bool ProfileXConf_isSet()
     return isSet;
 }
 
-char* ProfileXconf_getName() {
+char* ProfileXconf_getName()
+{
     char* profileName = NULL ;
     pthread_mutex_lock(&plMutex);
     if(initialized)
@@ -715,15 +858,22 @@ void ProfileXConf_notifyTimeout(bool isClearSeekMap, bool isOnDemand)
         singleProfile->reportInProgress = true;
 
         if (reportThreadExits)
-            pthread_cond_signal(&reuseThread);    
-        else{
+        {
+            pthread_cond_signal(&reuseThread);
+        }
+        else
+        {
             reportThreadStatus = pthread_create(&singleProfile->reportThread, NULL, CollectAndReportXconf, NULL);
             if ( reportThreadStatus != 0 )
+            {
                 T2Error("Failed to create report thread with error code = %d !!! \n", reportThreadStatus);
+            }
         }
-    }   
+    }
     else
+    {
         T2Warning("Received profileTimeoutCb while previous callback is still in progress - ignoring the request\n");
+    }
 
     pthread_mutex_unlock(&plMutex);
 
@@ -759,34 +909,41 @@ T2ERROR ProfileXConf_storeMarkerEvent(T2Event *eventInfo)
     {
         switch(lookupEvent->mType)
         {
-            case MTYPE_XCONF_COUNTER:
-                lookupEvent->u.count++;
-                T2Debug("Increment marker count to : %d\n", lookupEvent->u.count);
-                break;
+        case MTYPE_XCONF_COUNTER:
+            lookupEvent->u.count++;
+            T2Debug("Increment marker count to : %d\n", lookupEvent->u.count);
+            break;
 
-            case MTYPE_XCONF_ACCUMULATE:
-                T2Debug("Marker type is ACCUMULATE Event Value : %s\n",eventInfo->value);
-                arraySize = Vector_Size(lookupEvent->u.accumulatedValues);
-                T2Debug("Current array size : %d \n", arraySize);
-                if( arraySize < MAX_ACCUMULATE){
-                    Vector_PushBack(lookupEvent->u.accumulatedValues, strdup(eventInfo->value));
-                    T2Debug("Sucessfully added value into vector New Size : %d\n", ++arraySize);
-                } else if ( arraySize == MAX_ACCUMULATE ){
-                    T2Warning("Max size of the array has been reached appending warning message : %s\n", MAX_ACCUMULATE_MSG);
-                    Vector_PushBack(lookupEvent->u.accumulatedValues, strdup(MAX_ACCUMULATE_MSG));
-                    T2Debug("Sucessfully added warning message into vector New Size : %d\n", ++arraySize);
-                } else{
-                    T2Warning("Max size of the array has been reached Ignore New Value\n");
-                }
-                break;
+        case MTYPE_XCONF_ACCUMULATE:
+            T2Debug("Marker type is ACCUMULATE Event Value : %s\n", eventInfo->value);
+            arraySize = Vector_Size(lookupEvent->u.accumulatedValues);
+            T2Debug("Current array size : %d \n", arraySize);
+            if( arraySize < MAX_ACCUMULATE)
+            {
+                Vector_PushBack(lookupEvent->u.accumulatedValues, strdup(eventInfo->value));
+                T2Debug("Sucessfully added value into vector New Size : %d\n", ++arraySize);
+            }
+            else if ( arraySize == MAX_ACCUMULATE )
+            {
+                T2Warning("Max size of the array has been reached appending warning message : %s\n", MAX_ACCUMULATE_MSG);
+                Vector_PushBack(lookupEvent->u.accumulatedValues, strdup(MAX_ACCUMULATE_MSG));
+                T2Debug("Sucessfully added warning message into vector New Size : %d\n", ++arraySize);
+            }
+            else
+            {
+                T2Warning("Max size of the array has been reached Ignore New Value\n");
+            }
+            break;
 
-            case MTYPE_XCONF_ABSOLUTE:
-            default:
-                if(lookupEvent->u.markerValue)
-                    free(lookupEvent->u.markerValue);
-                lookupEvent->u.markerValue = strdup(eventInfo->value);
-                T2Debug("New marker value saved : %s\n", lookupEvent->u.markerValue);
-                break;
+        case MTYPE_XCONF_ABSOLUTE:
+        default:
+            if(lookupEvent->u.markerValue)
+            {
+                free(lookupEvent->u.markerValue);
+            }
+            lookupEvent->u.markerValue = strdup(eventInfo->value);
+            T2Debug("New marker value saved : %s\n", lookupEvent->u.markerValue);
+            break;
         }
     }
     else
@@ -804,29 +961,38 @@ T2ERROR ProfileXConf_storeMarkerEvent(T2Event *eventInfo)
 }
 
 
-T2ERROR ProfileXConf_terminateReport(){
+T2ERROR ProfileXConf_terminateReport()
+{
 
     T2ERROR ret = T2ERROR_FAILURE;
 
-    if(!singleProfile) {
+    if(!singleProfile)
+    {
         T2Error("Xconf profile is not set.\n");
         return ret;
     }
 
     // Check whether any XconfReport is in progress
-    if(singleProfile->reportInProgress) {
+    if(singleProfile->reportInProgress)
+    {
         isAbortTriggered = true;
         // Check if a child pid is still alive
-        if((xconfReportPid > 0) && !kill(xconfReportPid, 0)) {
+        if((xconfReportPid > 0) && !kill(xconfReportPid, 0))
+        {
             T2Info("Report upload in progress, terminating the forked reporting child : %d \n", xconfReportPid);
-            if(!kill(xconfReportPid, SIGKILL)) {
+            if(!kill(xconfReportPid, SIGKILL))
+            {
                 ret = T2ERROR_SUCCESS;
             }
-        }else {
+        }
+        else
+        {
             T2Info(" Report upload has net yet started, set the abort flag \n");
             ret = T2ERROR_SUCCESS;
         }
-    }else {
+    }
+    else
+    {
         T2Info("No report generation in progress. No further action required for abort.\n");
     }
 

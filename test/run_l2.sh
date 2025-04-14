@@ -22,6 +22,16 @@
 export top_srcdir=`pwd`
 RESULT_DIR="/tmp/l2_test_report"
 mkdir -p "$RESULT_DIR"
+
+if ! grep -q "LOG_PATH=/opt/logs/" /etc/include.properties; then
+    echo "LOG_PATH=/opt/logs/" >> /etc/include.properties
+fi
+
+if ! grep -q "PERSISTENT_PATH=/opt/" /etc/include.properties; then
+    echo "PERSISTENT_PATH=/opt/" >> /etc/include.properties
+fi
+
+
 # removing --exitfirst flag as it is causing the test to exit after first failure
 pytest -v --json-report --json-report-summary --json-report-file $RESULT_DIR/runs_as_daemon.json test/functional-tests/tests/test_runs_as_daemon.py 
 pytest -v --json-report --json-report-summary --json-report-file $RESULT_DIR/bootup_sequence.json test/functional-tests/tests/test_bootup_sequence.py 

@@ -71,9 +71,11 @@ static pthread_mutex_t FileCacheMutex ;
 static pthread_mutex_t markerListMutex ;
 static pthread_mutex_t loggerMutex ;
 
-static void EVENT_DEBUG(char* format, ...) {
+static void EVENT_DEBUG(char* format, ...)
+{
 
-    if(access(ENABLE_DEBUG_FLAG, F_OK) == -1) {
+    if(access(ENABLE_DEBUG_FLAG, F_OK) == -1)
+    {
         return;
     }
 
@@ -81,7 +83,8 @@ static void EVENT_DEBUG(char* format, ...) {
 
     pthread_mutex_lock(&loggerMutex);
     logHandle = fopen(SENDER_LOG_FILE, "a+");
-    if(logHandle) {
+    if(logHandle)
+    {
         time_t rawtime;
         struct tm* timeinfo;
 
@@ -100,9 +103,11 @@ static void EVENT_DEBUG(char* format, ...) {
 
 }
 
-static void initMutex() {
+static void initMutex()
+{
     pthread_mutex_lock(&initMtx);
-    if ( !isMutexInitialized ) {
+    if ( !isMutexInitialized )
+    {
         isMutexInitialized = true ;
         pthread_mutexattr_init(&mutexAttr);
         pthread_mutexattr_settype(&mutexAttr, PTHREAD_MUTEX_RECURSIVE);
@@ -118,9 +123,11 @@ static void initMutex() {
     pthread_mutex_unlock(&initMtx);
 }
 
-static void uninitMutex() {
+static void uninitMutex()
+{
     pthread_mutex_lock(&initMtx);
-    if ( isMutexInitialized ) {
+    if ( isMutexInitialized )
+    {
         isMutexInitialized = false ;
 
         pthread_mutex_destroy(&sMutex);
@@ -138,16 +145,18 @@ static void uninitMutex() {
 #if defined(CCSP_SUPPORT_ENABLED)
 T2ERROR getParamValues(char **paramNames, const int paramNamesCount, parameterValStruct_t ***valStructs, int *valSize)
 {
-    if (paramNames == NULL || paramNamesCount <= 0) {
+    if (paramNames == NULL || paramNamesCount <= 0)
+    {
         EVENT_ERROR("paramNames is NULL or paramNamesCount <= 0 - returning\n");
         return T2ERROR_INVALID_ARGS;
     }
 
     int ret = CcspBaseIf_getParameterValues(bus_handle, destCompName, (char*)destCompPath, paramNames,
                                             paramNamesCount, valSize, valStructs);
-    if (ret != CCSP_SUCCESS) {
+    if (ret != CCSP_SUCCESS)
+    {
         EVENT_ERROR("CcspBaseIf_getParameterValues failed for : %s with ret = %d\n", paramNames[0],
-                ret);
+                    ret);
         return T2ERROR_FAILURE;
     }
     return T2ERROR_SUCCESS;
@@ -177,11 +186,13 @@ static T2ERROR getCCSPParamVal(const char* paramName, char **paramValue)
 #endif
 
 
-static void rBusInterface_Uninit( ) {
+static void rBusInterface_Uninit( )
+{
     rbus_close(bus_handle);
 }
 
-static T2ERROR initMessageBus( ) {
+static T2ERROR initMessageBus( )
+{
     // EVENT_DEBUG("%s ++in\n", __FUNCTION__);
     T2ERROR status = T2ERROR_SUCCESS;
     char* component_id = (char*)CCSP_FIXED_COMP_ID;
@@ -194,26 +205,34 @@ static T2ERROR initMessageBus( ) {
         // EVENT_DEBUG("%s:%d, T2:rbus is enabled\n", __func__, __LINE__);
         char commonLibName[124] = { '\0' };
         // Bus handles should be unique across the system
-        if(componentName) {
+        if(componentName)
+        {
             snprintf(commonLibName, 124, "%s%s", "t2_lib_", componentName);
-        }else {
+        }
+        else
+        {
             snprintf(commonLibName, 124, "%s", component_id);
         }
         rbusError_t status_rbus =  rbus_open((rbusHandle_t*) &bus_handle, commonLibName);
-        if(status_rbus != RBUS_ERROR_SUCCESS) {
+        if(status_rbus != RBUS_ERROR_SUCCESS)
+        {
             EVENT_ERROR("%s:%d, init using component name %s failed with error code %d \n", __func__, __LINE__, commonLibName, status);
             status = T2ERROR_FAILURE;
         }
         isRbusEnabled = true;
     }
-#if defined(CCSP_SUPPORT_ENABLED) 
-    else {
+#if defined(CCSP_SUPPORT_ENABLED)
+    else
+    {
         int ret = 0 ;
         ret = CCSP_Message_Bus_Init(component_id, pCfg, &bus_handle, (CCSP_MESSAGE_BUS_MALLOC)Ansc_AllocateMemory_Callback, Ansc_FreeMemory_Callback);
-        if(ret == -1) {
+        if(ret == -1)
+        {
             EVENT_ERROR("%s:%d, T2:initMessageBus failed\n", __func__, __LINE__);
             status = T2ERROR_FAILURE ;
-        } else {
+        }
+        else
+        {
             status = T2ERROR_SUCCESS ;
         }
     }
@@ -222,8 +241,9 @@ static T2ERROR initMessageBus( ) {
     return status;
 }
 
-static T2ERROR getRbusParameterVal(const char* paramName, char **paramValue) {
-  
+static T2ERROR getRbusParameterVal(const char* paramName, char **paramValue)
+{
+
     rbusError_t ret = RBUS_ERROR_SUCCESS;
     rbusValue_t paramValue_t;
     rbusValueType_t rbusValueType ;
@@ -233,23 +253,31 @@ static T2ERROR getRbusParameterVal(const char* paramName, char **paramValue) {
     opts.commit = true;
 #endif
 
-    if(!bus_handle && T2ERROR_SUCCESS != initMessageBus()) {
+    if(!bus_handle && T2ERROR_SUCCESS != initMessageBus())
+    {
         return T2ERROR_FAILURE;
     }
 
     ret = rbus_get(bus_handle, paramName, &paramValue_t);
-    if(ret != RBUS_ERROR_SUCCESS) {
+    if(ret != RBUS_ERROR_SUCCESS)
+    {
         EVENT_ERROR("Unable to get %s\n", paramName);
         return T2ERROR_FAILURE;
     }
     rbusValueType = rbusValue_GetType(paramValue_t);
-    if(rbusValueType == RBUS_BOOLEAN) {
-        if (rbusValue_GetBoolean(paramValue_t)){
+    if(rbusValueType == RBUS_BOOLEAN)
+    {
+        if (rbusValue_GetBoolean(paramValue_t))
+        {
             stringValue = strdup("true");
-        } else {
+        }
+        else
+        {
             stringValue = strdup("false");
         }
-    } else {
+    }
+    else
+    {
         stringValue = rbusValue_ToString(paramValue_t, NULL, 0);
     }
     *paramValue = stringValue;
@@ -262,10 +290,14 @@ T2ERROR getParamValue(const char* paramName, char **paramValue)
 {
     T2ERROR ret = T2ERROR_FAILURE ;
     if(isRbusEnabled)
-        ret = getRbusParameterVal(paramName,paramValue);
+    {
+        ret = getRbusParameterVal(paramName, paramValue);
+    }
 #if defined(CCSP_SUPPORT_ENABLED)
     else
+    {
         ret = getCCSPParamVal(paramName, paramValue);
+    }
 #endif
 
     return ret;
@@ -273,87 +305,99 @@ T2ERROR getParamValue(const char* paramName, char **paramValue)
 
 void *cacheEventToFile(void *arg)
 {
-	char *telemetry_data = (char *)arg;
-        int fd;
-        struct flock fl;
-        fl.l_type = F_WRLCK;
-        fl.l_whence = SEEK_SET;
-        fl.l_start = 0;
-        fl.l_len = 0;
-        fl.l_pid = 0;
-        FILE *fs = NULL;
-        char path[100];
-        pthread_detach(pthread_self());
-        EVENT_ERROR("%s:%d, Caching the event to File\n", __func__, __LINE__);
-	if(telemetry_data == NULL)
-	{
-		EVENT_ERROR("%s:%d, Data is NULL\n", __func__, __LINE__);
-                return NULL;
-	}
-        pthread_mutex_lock(&FileCacheMutex);
+    char *telemetry_data = (char *)arg;
+    int fd;
+    struct flock fl;
+    fl.l_type = F_WRLCK;
+    fl.l_whence = SEEK_SET;
+    fl.l_start = 0;
+    fl.l_len = 0;
+    fl.l_pid = 0;
+    FILE *fs = NULL;
+    char path[100];
+    pthread_detach(pthread_self());
+    EVENT_ERROR("%s:%d, Caching the event to File\n", __func__, __LINE__);
+    if(telemetry_data == NULL)
+    {
+        EVENT_ERROR("%s:%d, Data is NULL\n", __func__, __LINE__);
+        return NULL;
+    }
+    pthread_mutex_lock(&FileCacheMutex);
 
-        if ((fd = open(T2_CACHE_LOCK_FILE, O_RDWR | O_CREAT, 0666)) == -1)
+    if ((fd = open(T2_CACHE_LOCK_FILE, O_RDWR | O_CREAT, 0666)) == -1)
+    {
+        EVENT_ERROR("%s:%d, T2:open failed\n", __func__, __LINE__);
+        pthread_mutex_unlock(&FileCacheMutex);
+        free(telemetry_data);
+        return NULL;
+    }
+
+    if(fcntl(fd, F_SETLKW, &fl) == -1)  /* set the lock */
+    {
+        EVENT_ERROR("%s:%d, T2:fcntl failed\n", __func__, __LINE__);
+        pthread_mutex_unlock(&FileCacheMutex);
+        int ret = close(fd);
+        if (ret != 0)
         {
-                EVENT_ERROR("%s:%d, T2:open failed\n", __func__, __LINE__);
-                pthread_mutex_unlock(&FileCacheMutex);
-		free(telemetry_data);
-                return NULL;
+            EVENT_ERROR("%s:%d, T2:close failed with error %d\n", __func__, __LINE__, ret);
         }
+        free(telemetry_data);
+        return NULL;
+    }
 
-        if(fcntl(fd, F_SETLKW, &fl) == -1)  /* set the lock */
-        {
-                EVENT_ERROR("%s:%d, T2:fcntl failed\n", __func__, __LINE__);
-                pthread_mutex_unlock(&FileCacheMutex);
-                int ret = close(fd);
-                if (ret != 0){
-                    EVENT_ERROR("%s:%d, T2:close failed with error %d\n", __func__, __LINE__,ret);
-                }  
-		free(telemetry_data);
-                return NULL;
-        }
-
-        FILE *fp = fopen(T2_CACHE_FILE, "a");
-        if (fp == NULL) {
-               EVENT_ERROR("%s: File open error %s\n", __FUNCTION__, T2_CACHE_FILE);
-               goto unlock;
-        }
-        fs = popen ("cat /tmp/t2_caching_file | wc -l","r");
-        if(fs != NULL){
-            fgets(path,100,fs);
-            count = atoi ( path );
-            pclose(fs);
-        }
-        if(count < MAX_EVENT_CACHE){
-            fprintf(fp, "%s\n", telemetry_data);
-        }else{
-            EVENT_DEBUG("Reached Max cache limit of 200, Caching is not done\n");
-        }
-        fclose(fp);
+    FILE *fp = fopen(T2_CACHE_FILE, "a");
+    if (fp == NULL)
+    {
+        EVENT_ERROR("%s: File open error %s\n", __FUNCTION__, T2_CACHE_FILE);
+        goto unlock;
+    }
+    fs = popen ("cat /tmp/t2_caching_file | wc -l", "r");
+    if(fs != NULL)
+    {
+        fgets(path, 100, fs);
+        count = atoi ( path );
+        pclose(fs);
+    }
+    if(count < MAX_EVENT_CACHE)
+    {
+        fprintf(fp, "%s\n", telemetry_data);
+    }
+    else
+    {
+        EVENT_DEBUG("Reached Max cache limit of 200, Caching is not done\n");
+    }
+    fclose(fp);
 
 unlock:
 
-        fl.l_type = F_UNLCK;  /* set to unlock same region */
-        if (fcntl(fd, F_SETLK, &fl) == -1) {
-                EVENT_ERROR("fcntl failed \n");
-        }
-        int ret = close(fd);
-        if (ret != 0){
-            EVENT_ERROR("%s:%d, T2:close failed with error %d\n", __func__, __LINE__,ret);
-        }
-        pthread_mutex_unlock(&FileCacheMutex);
-	free(telemetry_data);
-        return NULL;
+    fl.l_type = F_UNLCK;  /* set to unlock same region */
+    if (fcntl(fd, F_SETLK, &fl) == -1)
+    {
+        EVENT_ERROR("fcntl failed \n");
+    }
+    int ret = close(fd);
+    if (ret != 0)
+    {
+        EVENT_ERROR("%s:%d, T2:close failed with error %d\n", __func__, __LINE__, ret);
+    }
+    pthread_mutex_unlock(&FileCacheMutex);
+    free(telemetry_data);
+    return NULL;
 }
 
-static bool initRFC( ) {
+static bool initRFC( )
+{
     bool status = true ;
     // Check for RFC and proceed - if true - else return now .
-    if(!bus_handle) {
-        if(initMessageBus() != 0) {
+    if(!bus_handle)
+    {
+        if(initMessageBus() != 0)
+        {
             EVENT_ERROR("initMessageBus failed\n");
             status = false ;
         }
-        else {
+        else
+        {
             status = true;
         }
         isRFCT2Enable = true;
@@ -366,11 +410,13 @@ static bool initRFC( ) {
  * In rbus mode, should be using rbus subscribed param
  * from telemetry 2.0 instead of direct api for event sending
  */
-int filtered_event_send(const char* data, const char *markerName) {
+int filtered_event_send(const char* data, const char *markerName)
+{
     rbusError_t ret = RBUS_ERROR_SUCCESS;
     int status = 0 ;
     EVENT_DEBUG("%s ++in\n", __FUNCTION__);
-    if(!bus_handle) {
+    if(!bus_handle)
+    {
         EVENT_ERROR("bus_handle is null .. exiting !!! \n");
         return ret;
     }
@@ -379,22 +425,28 @@ int filtered_event_send(const char* data, const char *markerName) {
     {
 
         // Filter data from marker list
-        if(componentName && (0 != strcmp(componentName, T2_SCRIPT_EVENT_COMPONENT))) { // Events from scripts needs to be sent without filtering
+        if(componentName && (0 != strcmp(componentName, T2_SCRIPT_EVENT_COMPONENT)))   // Events from scripts needs to be sent without filtering
+        {
 
             EVENT_DEBUG("%s markerListMutex lock & get list of marker for component %s \n", __FUNCTION__, componentName);
             pthread_mutex_lock(&markerListMutex);
             bool isEventingEnabled = false;
-            if(markerName && eventMarkerMap) {
-                if(hash_map_get(eventMarkerMap, markerName)) {
+            if(markerName && eventMarkerMap)
+            {
+                if(hash_map_get(eventMarkerMap, markerName))
+                {
                     isEventingEnabled = true;
                 }
-            } else {
-                EVENT_DEBUG("%s eventMarkerMap for component %s is empty \n", __FUNCTION__ , componentName );
+            }
+            else
+            {
+                EVENT_DEBUG("%s eventMarkerMap for component %s is empty \n", __FUNCTION__, componentName );
             }
             EVENT_DEBUG("%s markerListMutex unlock\n", __FUNCTION__ );
             pthread_mutex_unlock(&markerListMutex);
-            if(!isEventingEnabled) {
-                EVENT_DEBUG("%s markerName %s not found in event list for component %s . Unlock markerListMutex . \n", __FUNCTION__ , markerName , componentName);
+            if(!isEventingEnabled)
+            {
+                EVENT_DEBUG("%s markerName %s not found in event list for component %s . Unlock markerListMutex . \n", __FUNCTION__, markerName, componentName);
                 return status;
             }
         }
@@ -414,11 +466,14 @@ int filtered_event_send(const char* data, const char *markerName) {
 
         EVENT_DEBUG("rbus_set with param [%s] with %s and value [%s]\n", T2_EVENT_PARAM, markerName, data);
         ret = rbus_set(bus_handle, T2_EVENT_PARAM, value, &options);
-        if(ret != RBUS_ERROR_SUCCESS) {
+        if(ret != RBUS_ERROR_SUCCESS)
+        {
             EVENT_ERROR("rbus_set Failed for [%s] with error [%d]\n", T2_EVENT_PARAM, ret);
             EVENT_DEBUG(" !!! Error !!! rbus_set Failed for [%s] with error [%d]\n", T2_EVENT_PARAM, ret);
             status = -1 ;
-        }else {
+        }
+        else
+        {
             status = 0 ;
         }
         // Release all rbus data structures
@@ -428,16 +483,22 @@ int filtered_event_send(const char* data, const char *markerName) {
 
     }
 #if defined(CCSP_SUPPORT_ENABLED)
-    else {
+    else
+    {
         int eventDataLen = strlen(markerName) + strlen(data) + strlen(MESSAGE_DELIMITER) + 1;
         char* buffer = (char*) malloc(eventDataLen * sizeof(char));
-        if(buffer) {
+        if(buffer)
+        {
             snprintf(buffer, eventDataLen, "%s%s%s", markerName, MESSAGE_DELIMITER, data);
             ret = CcspBaseIf_SendTelemetryDataSignal(bus_handle, buffer);
             if(ret != CCSP_SUCCESS)
+            {
                 status = -1;
+            }
             free(buffer);
-        }else {
+        }
+        else
+        {
             EVENT_ERROR("Unable to allocate meory for event [%s]\n", markerName);
             status = -1 ;
         }
@@ -451,18 +512,22 @@ int filtered_event_send(const char* data, const char *markerName) {
  * Receives an rbus object as value which conatins a list of rbusPropertyObject
  * rbusProperty name will the eventName and value will be null
  */
-static T2ERROR doPopulateEventMarkerList( ) {
+static T2ERROR doPopulateEventMarkerList( )
+{
 
     T2ERROR status = T2ERROR_SUCCESS;
     char deNameSpace[1][124] = {{ '\0' }};
     if(!isRbusEnabled)
+    {
         return T2ERROR_SUCCESS;
+    }
 
     EVENT_DEBUG("%s ++in\n", __FUNCTION__);
     rbusError_t ret = RBUS_ERROR_SUCCESS;
     rbusValue_t paramValue_t;
 
-    if(!bus_handle && T2ERROR_SUCCESS != initMessageBus()) {
+    if(!bus_handle && T2ERROR_SUCCESS != initMessageBus())
+    {
         EVENT_ERROR("Unable to get message bus handles \n");
         EVENT_DEBUG("%s --out\n", __FUNCTION__);
         return T2ERROR_FAILURE;
@@ -473,13 +538,15 @@ static T2ERROR doPopulateEventMarkerList( ) {
 
     pthread_mutex_lock(&markerListMutex);
     EVENT_DEBUG("Lock markerListMutex & Clean up eventMarkerMap \n");
-    if(eventMarkerMap != NULL){
+    if(eventMarkerMap != NULL)
+    {
         hash_map_destroy(eventMarkerMap, free);
         eventMarkerMap = NULL;
     }
 
     ret = rbus_get(bus_handle, deNameSpace[0], &paramValue_t);
-    if(ret != RBUS_ERROR_SUCCESS) {
+    if(ret != RBUS_ERROR_SUCCESS)
+    {
         EVENT_ERROR("rbus mode : No event list configured in profiles %s and return value %d\n", deNameSpace[0], ret);
         pthread_mutex_unlock(&markerListMutex);
         EVENT_DEBUG("rbus mode : No event list configured in profiles %s and return value %d. Unlock markerListMutex\n", deNameSpace[0], ret);
@@ -488,7 +555,8 @@ static T2ERROR doPopulateEventMarkerList( ) {
     }
 
     rbusValueType_t type_t = rbusValue_GetType(paramValue_t);
-    if(type_t != RBUS_OBJECT) {
+    if(type_t != RBUS_OBJECT)
+    {
         EVENT_ERROR("rbus mode : Unexpected data object received for %s get query \n", deNameSpace[0]);
         rbusValue_Release(paramValue_t);
         pthread_mutex_unlock(&markerListMutex);
@@ -498,19 +566,24 @@ static T2ERROR doPopulateEventMarkerList( ) {
     }
 
     rbusObject_t objectValue = rbusValue_GetObject(paramValue_t);
-    if(objectValue) {
+    if(objectValue)
+    {
         eventMarkerMap = hash_map_create();
         rbusProperty_t rbusPropertyList = rbusObject_GetProperties(objectValue);
         EVENT_DEBUG("\t rbus mode :  Update event map for component %s with below events : \n", componentName);
-        while(NULL != rbusPropertyList) {
+        while(NULL != rbusPropertyList)
+        {
             const char* eventname = rbusProperty_GetName(rbusPropertyList);
-            if(eventname && strlen(eventname) > 0) {
+            if(eventname && strlen(eventname) > 0)
+            {
                 EVENT_DEBUG("\t %s\n", eventname);
                 hash_map_put(eventMarkerMap, (void*) strdup(eventname), (void*) strdup(eventname), free);
             }
             rbusPropertyList = rbusProperty_GetNext(rbusPropertyList);
         }
-    }else {
+    }
+    else
+    {
         EVENT_ERROR("rbus mode : No configured event markers for %s \n", componentName);
     }
     EVENT_DEBUG("Unlock markerListMutex\n");
@@ -521,79 +594,98 @@ static T2ERROR doPopulateEventMarkerList( ) {
 
 }
 
-static void rbusEventReceiveHandler(rbusHandle_t handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription) {
+static void rbusEventReceiveHandler(rbusHandle_t handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription)
+{
     (void)handle;//To fix compiler warning.
     (void)subscription;//To fix compiler warning.
     const char* eventName = event->name;
-    if(eventName) {
+    if(eventName)
+    {
         if(0 == strcmp(eventName, T2_PROFILE_UPDATED_NOTIFY))
+        {
             doPopulateEventMarkerList();
-    }else {
+        }
+    }
+    else
+    {
         EVENT_ERROR("eventName is null \n");
     }
 }
 
-static bool isCachingRequired( ) {
+static bool isCachingRequired( )
+{
 
     /**
      * Attempts to read from PAM before its ready creates deadlock .
      * PAM not ready is a definite case for caching the event and avoid bus traffic
      * */
-    #if defined(ENABLE_RDKB_SUPPORT)
-    if (access( "/tmp/pam_initialized", F_OK ) != 0) {
+#if defined(ENABLE_RDKB_SUPPORT)
+    if (access( "/tmp/pam_initialized", F_OK ) != 0)
+    {
         return true;
     }
-    #endif
+#endif
 
-    if(!initRFC()) {
+    if(!initRFC())
+    {
         EVENT_ERROR("initRFC failed - cache the events\n");
         return true;
     }
 
     // If feature is disabled by RFC, caching is always disabled
-    if(!isRFCT2Enable) {
+    if(!isRFCT2Enable)
+    {
         return false ;
     }
 
     // Always check for t2 is ready to accept events. Shutdown target can bring down t2 process at runtime
-    uint32_t t2ReadyStatus;                  
-    rbusError_t retVal = RBUS_ERROR_SUCCESS; 
+    uint32_t t2ReadyStatus;
+    rbusError_t retVal = RBUS_ERROR_SUCCESS;
 
-    retVal = rbus_getUint(bus_handle, T2_OPERATIONAL_STATUS, &t2ReadyStatus); 
-                                                                              
-    if(retVal != RBUS_ERROR_SUCCESS)                                          
-    {                                                                         
-       return true;                                                           
-    }                                                                         
-    else                                                                      
+    retVal = rbus_getUint(bus_handle, T2_OPERATIONAL_STATUS, &t2ReadyStatus);
+
+    if(retVal != RBUS_ERROR_SUCCESS)
     {
-        EVENT_DEBUG("value for  %s is : %d\n", T2_OPERATIONAL_STATUS, t2ReadyStatus);   
-        if((t2ReadyStatus & T2_STATE_COMPONENT_READY)==0)                               
-        {                                                                               
-            return true;                                                                
-        }                                                                               
+        return true;
+    }
+    else
+    {
+        EVENT_DEBUG("value for  %s is : %d\n", T2_OPERATIONAL_STATUS, t2ReadyStatus);
+        if((t2ReadyStatus & T2_STATE_COMPONENT_READY) == 0)
+        {
+            return true;
+        }
     }
 
-    if(!isRbusEnabled){
+    if(!isRbusEnabled)
+    {
         isT2Ready = true;
     }
 
-    if(!isT2Ready) {
-        if(componentName && (0 != strcmp(componentName, "telemetry_client"))) {
+    if(!isT2Ready)
+    {
+        if(componentName && (0 != strcmp(componentName, "telemetry_client")))
+        {
             // From other binary applications in rbus mode if t2 daemon is yet to determine state of component specific config from cloud, enable cache
-            if((t2ReadyStatus & T2_STATE_COMPONENT_READY)==0) {
+            if((t2ReadyStatus & T2_STATE_COMPONENT_READY) == 0)
+            {
                 return true;
-            }else {
+            }
+            else
+            {
                 rbusError_t ret = RBUS_ERROR_SUCCESS;
                 doPopulateEventMarkerList();
                 ret = rbusEvent_Subscribe(bus_handle, T2_PROFILE_UPDATED_NOTIFY, rbusEventReceiveHandler, "T2Event", 0);
-                if(ret != RBUS_ERROR_SUCCESS) {
+                if(ret != RBUS_ERROR_SUCCESS)
+                {
                     EVENT_ERROR("Unable to subscribe to event %s with rbus error code : %d\n", T2_PROFILE_UPDATED_NOTIFY, ret);
                     EVENT_DEBUG("Unable to subscribe to event %s with rbus error code : %d\n", T2_PROFILE_UPDATED_NOTIFY, ret);
                 }
                 isT2Ready = true;
             }
-        }else {
+        }
+        else
+        {
             isT2Ready = true;
         }
     }
@@ -601,15 +693,18 @@ static bool isCachingRequired( ) {
     return false;
 }
 
-static int report_or_cache_data(char* telemetry_data, const char* markerName) {
+static int report_or_cache_data(char* telemetry_data, const char* markerName)
+{
     int ret = 0;
     pthread_t tid;
     pthread_mutex_lock(&eventMutex);
-    if(isCachingRequired()) {
+    if(isCachingRequired())
+    {
         EVENT_DEBUG("Caching the event : %s \n", telemetry_data);
         int eventDataLen = strlen(markerName) + strlen(telemetry_data) + strlen(MESSAGE_DELIMITER) + 1;
         char* buffer = (char*) malloc(eventDataLen * sizeof(char));
-        if(buffer) {
+        if(buffer)
+        {
             // Caching format needs to be same for operation between rbus/dbus modes across reboots
             snprintf(buffer, eventDataLen, "%s%s%s", markerName, MESSAGE_DELIMITER, telemetry_data);
             pthread_create(&tid, NULL, cacheEventToFile, (void *)buffer);
@@ -619,10 +714,12 @@ static int report_or_cache_data(char* telemetry_data, const char* markerName) {
     }
     pthread_mutex_unlock(&eventMutex);
 
-    if(isT2Ready) {
+    if(isT2Ready)
+    {
         // EVENT_DEBUG("T2: Sending event : %s\n", telemetry_data);
         ret = filtered_event_send(telemetry_data, markerName);
-        if(0 != ret) {
+        if(0 != ret)
+        {
             EVENT_ERROR("%s:%d, T2:telemetry data send failed, status = %d \n", __func__, __LINE__, ret);
         }
     }
@@ -632,35 +729,43 @@ static int report_or_cache_data(char* telemetry_data, const char* markerName) {
 /**
  * Initialize the component name with unique name
  */
-void t2_init(char *component) {
+void t2_init(char *component)
+{
     componentName = strdup(component);
 }
 
-void t2_uninit(void) {
-    if(componentName) {
+void t2_uninit(void)
+{
+    if(componentName)
+    {
         free(componentName);
         componentName = NULL ;
     }
 
     if(isRbusEnabled)
+    {
         rBusInterface_Uninit();
+    }
 
     uninitMutex();
 }
 
-T2ERROR t2_event_s(const char* marker, const char* value) {
+T2ERROR t2_event_s(const char* marker, const char* value)
+{
 
     int ret;
     T2ERROR retStatus = T2ERROR_FAILURE ;
     EVENT_DEBUG("%s ++in\n", __FUNCTION__);
     char* strvalue = NULL;
-    if(componentName == NULL){
-        EVENT_DEBUG("%s:%d, T2:component with pid = %d is trying to send event %s with value %s without component name \n", __func__, __LINE__, (int) getpid(), marker,value);
+    if(componentName == NULL)
+    {
+        EVENT_DEBUG("%s:%d, T2:component with pid = %d is trying to send event %s with value %s without component name \n", __func__, __LINE__, (int) getpid(), marker, value);
         return T2ERROR_COMPONENT_NULL;
     }
     initMutex();
     pthread_mutex_lock(&sMutex);
-    if ( NULL == marker || NULL == value) {
+    if ( NULL == marker || NULL == value)
+    {
         EVENT_ERROR("%s:%d Error in input parameters \n", __func__, __LINE__);
         pthread_mutex_unlock(&sMutex);
         EVENT_DEBUG("%s --out\n", __FUNCTION__);
@@ -669,19 +774,23 @@ T2ERROR t2_event_s(const char* marker, const char* value) {
 
     EVENT_DEBUG("marker = %s : value = %s \n", marker, value);
     // If data is empty should not be sending the empty marker over bus
-    if ( 0 == strlen(value) || strcmp(value, "0") == 0 ) {
+    if ( 0 == strlen(value) || strcmp(value, "0") == 0 )
+    {
         pthread_mutex_unlock(&sMutex);
         return T2ERROR_SUCCESS;
     }
     strvalue = strdup(value);
-    if( strvalue[strlen(strvalue)-1] == '\n' ){
-        strvalue[strlen(strvalue)-1] = '\0';
+    if( strvalue[strlen(strvalue) - 1] == '\n' )
+    {
+        strvalue[strlen(strvalue) - 1] = '\0';
     }
     ret = report_or_cache_data(strvalue, marker);
-    if(strvalue != NULL){
+    if(strvalue != NULL)
+    {
         free(strvalue);
     }
-    if(ret != -1) {
+    if(ret != -1)
+    {
         retStatus = T2ERROR_SUCCESS;
     }
     pthread_mutex_unlock(&sMutex);
@@ -689,84 +798,99 @@ T2ERROR t2_event_s(const char* marker, const char* value) {
     return retStatus;
 }
 
-T2ERROR t2_event_f(const char* marker, double value) {
+T2ERROR t2_event_f(const char* marker, double value)
+{
 
     int ret;
     T2ERROR retStatus = T2ERROR_FAILURE ;
     EVENT_DEBUG("%s ++in\n", __FUNCTION__);
 
-    if(componentName == NULL){
-        EVENT_DEBUG("%s:%d, T2:component with pid = %d is trying to send event %s with value %lf without component name \n", __func__, __LINE__, (int) getpid(), marker,value);
+    if(componentName == NULL)
+    {
+        EVENT_DEBUG("%s:%d, T2:component with pid = %d is trying to send event %s with value %lf without component name \n", __func__, __LINE__, (int) getpid(), marker, value);
         return T2ERROR_COMPONENT_NULL;
     }
 
-     initMutex();
-     pthread_mutex_lock(&fMutex);
-     if ( NULL == marker ) {
-         EVENT_ERROR("%s:%d Error in input parameters \n", __func__, __LINE__);
-         pthread_mutex_unlock(&fMutex);
-         EVENT_DEBUG("%s --out\n", __FUNCTION__);
-         return T2ERROR_FAILURE;
-     }
+    initMutex();
+    pthread_mutex_lock(&fMutex);
+    if ( NULL == marker )
+    {
+        EVENT_ERROR("%s:%d Error in input parameters \n", __func__, __LINE__);
+        pthread_mutex_unlock(&fMutex);
+        EVENT_DEBUG("%s --out\n", __FUNCTION__);
+        return T2ERROR_FAILURE;
+    }
 
-     EVENT_DEBUG("marker = %s : value = %f \n", marker, value);
-     char *buffer = (char*) malloc(MAX_DATA_LEN * sizeof(char));
-     if (NULL != buffer) {
-         snprintf(buffer, MAX_DATA_LEN, "%f", value);
-         ret = report_or_cache_data(buffer, marker);
-         if (ret != -1) {
-             retStatus = T2ERROR_SUCCESS ;
-         }
-         free(buffer);
-     } else {
-         EVENT_ERROR("%s:%d Error unable to allocate memory \n", __func__, __LINE__);
-     }
-     pthread_mutex_unlock(&fMutex);
-     EVENT_DEBUG("%s --out\n", __FUNCTION__);
-     return retStatus ;
+    EVENT_DEBUG("marker = %s : value = %f \n", marker, value);
+    char *buffer = (char*) malloc(MAX_DATA_LEN * sizeof(char));
+    if (NULL != buffer)
+    {
+        snprintf(buffer, MAX_DATA_LEN, "%f", value);
+        ret = report_or_cache_data(buffer, marker);
+        if (ret != -1)
+        {
+            retStatus = T2ERROR_SUCCESS ;
+        }
+        free(buffer);
+    }
+    else
+    {
+        EVENT_ERROR("%s:%d Error unable to allocate memory \n", __func__, __LINE__);
+    }
+    pthread_mutex_unlock(&fMutex);
+    EVENT_DEBUG("%s --out\n", __FUNCTION__);
+    return retStatus ;
 }
 
-T2ERROR t2_event_d(const char* marker, int value) {
+T2ERROR t2_event_d(const char* marker, int value)
+{
 
     int ret;
     T2ERROR retStatus = T2ERROR_FAILURE ;
     EVENT_DEBUG("%s ++in\n", __FUNCTION__);
 
-    if(componentName == NULL){
-        EVENT_DEBUG("%s:%d, T2:component with pid = %d is trying to send event %s with value %d without component name \n", __func__, __LINE__, (int) getpid(), marker,value);
+    if(componentName == NULL)
+    {
+        EVENT_DEBUG("%s:%d, T2:component with pid = %d is trying to send event %s with value %d without component name \n", __func__, __LINE__, (int) getpid(), marker, value);
         return T2ERROR_COMPONENT_NULL;
     }
 
-     initMutex();
-     pthread_mutex_lock(&dMutex);
-     if ( NULL == marker ) {
-         EVENT_ERROR("%s:%d Error in input parameters \n", __func__, __LINE__);
-         pthread_mutex_unlock(&dMutex);
-         EVENT_DEBUG("%s --out\n", __FUNCTION__);
-         return T2ERROR_FAILURE;
-     }
+    initMutex();
+    pthread_mutex_lock(&dMutex);
+    if ( NULL == marker )
+    {
+        EVENT_ERROR("%s:%d Error in input parameters \n", __func__, __LINE__);
+        pthread_mutex_unlock(&dMutex);
+        EVENT_DEBUG("%s --out\n", __FUNCTION__);
+        return T2ERROR_FAILURE;
+    }
 
-     EVENT_DEBUG("marker = %s : value = %d \n", marker, value);
+    EVENT_DEBUG("marker = %s : value = %d \n", marker, value);
 
-     if (value == 0) {  // Requirement from field triage to ignore reporting 0 values
-         pthread_mutex_unlock(&dMutex);
-         EVENT_DEBUG("%s Value is 0 , do not event .\n", __FUNCTION__);
-         EVENT_DEBUG("%s --out\n", __FUNCTION__);
-         return T2ERROR_SUCCESS;
-     }
+    if (value == 0)    // Requirement from field triage to ignore reporting 0 values
+    {
+        pthread_mutex_unlock(&dMutex);
+        EVENT_DEBUG("%s Value is 0 , do not event .\n", __FUNCTION__);
+        EVENT_DEBUG("%s --out\n", __FUNCTION__);
+        return T2ERROR_SUCCESS;
+    }
 
-     char *buffer = (char*) malloc(MAX_DATA_LEN * sizeof(char));
-     if (NULL != buffer) {
-         snprintf(buffer, MAX_DATA_LEN, "%d", value);
-         ret = report_or_cache_data(buffer, marker);
-         if (ret != -1) {
-             retStatus = T2ERROR_SUCCESS ;
-         }
-         free(buffer);
-     } else {
-         EVENT_ERROR("%s:%d Error unable to allocate memory \n", __func__, __LINE__);
-     }
-     EVENT_DEBUG("%s --out\n", __FUNCTION__);
-     pthread_mutex_unlock(&dMutex);
-     return retStatus ;
+    char *buffer = (char*) malloc(MAX_DATA_LEN * sizeof(char));
+    if (NULL != buffer)
+    {
+        snprintf(buffer, MAX_DATA_LEN, "%d", value);
+        ret = report_or_cache_data(buffer, marker);
+        if (ret != -1)
+        {
+            retStatus = T2ERROR_SUCCESS ;
+        }
+        free(buffer);
+    }
+    else
+    {
+        EVENT_ERROR("%s:%d Error unable to allocate memory \n", __func__, __LINE__);
+    }
+    EVENT_DEBUG("%s --out\n", __FUNCTION__);
+    pthread_mutex_unlock(&dMutex);
+    return retStatus ;
 }

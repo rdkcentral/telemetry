@@ -19,13 +19,13 @@
 
 /**********************************************************************
  Copyright [2014] [Cisco Systems, Inc.]
- 
+
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
  You may obtain a copy of the License at
- 
+
  http://www.apache.org/licenses/LICENSE-2.0
- 
+
  Unless required by applicable law or agreed to in writing, software
  distributed under the License is distributed on an "AS IS" BASIS,
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -33,13 +33,13 @@
  limitations under the License.
  **********************************************************************/
 
-/*********************************************************************** 
+/***********************************************************************
 
  module: plugin_main_apis.c
 
  Implement COSA Data Model Library Init and Unload apis.
  This files will hold all data in it.
- 
+
  ---------------------------------------------------------------
 
  description:
@@ -94,7 +94,8 @@ COSARegisterCallBackAfterInitDmlProc  g_RegisterCallBackAfterInitDml;
 
  **********************************************************************/
 
-ANSC_HANDLE CosaBackEndManagerCreate( VOID) {
+ANSC_HANDLE CosaBackEndManagerCreate( VOID)
+{
     PCOSA_BACKEND_MANAGER_OBJECT pMyObject = (PCOSA_BACKEND_MANAGER_OBJECT) NULL;
 
     /*
@@ -102,7 +103,8 @@ ANSC_HANDLE CosaBackEndManagerCreate( VOID) {
      */
     pMyObject = (PCOSA_BACKEND_MANAGER_OBJECT) AnscAllocateMemory(sizeof(COSA_BACKEND_MANAGER_OBJECT));
 
-    if(!pMyObject) {
+    if(!pMyObject)
+    {
         return (ANSC_HANDLE) NULL;
     }
 
@@ -142,7 +144,8 @@ ANSC_HANDLE CosaBackEndManagerCreate( VOID) {
 
  **********************************************************************/
 
-ANSC_STATUS CosaBackEndManagerInitialize(ANSC_HANDLE hThisObject) {
+ANSC_STATUS CosaBackEndManagerInitialize(ANSC_HANDLE hThisObject)
+{
     ANSC_STATUS returnStatus = ANSC_STATUS_SUCCESS;
     PCOSA_BACKEND_MANAGER_OBJECT pMyObject = (PCOSA_BACKEND_MANAGER_OBJECT) hThisObject;
 
@@ -180,12 +183,14 @@ ANSC_STATUS CosaBackEndManagerInitialize(ANSC_HANDLE hThisObject) {
 
  **********************************************************************/
 
-ANSC_STATUS CosaBackEndManagerRemove(ANSC_HANDLE hThisObject) {
+ANSC_STATUS CosaBackEndManagerRemove(ANSC_HANDLE hThisObject)
+{
     ANSC_STATUS returnStatus = ANSC_STATUS_SUCCESS;
     PCOSA_BACKEND_MANAGER_OBJECT pMyObject = (PCOSA_BACKEND_MANAGER_OBJECT) hThisObject;
 
     /* Remove all objects */
-    if(pMyObject->hTelemetry) {
+    if(pMyObject->hTelemetry)
+    {
         CosaTelemetryRemove(pMyObject->hTelemetry);
     }
 

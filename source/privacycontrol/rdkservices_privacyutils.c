@@ -31,9 +31,10 @@
 
 // This Function is used to set the privacyMode and save the value to persistant storage
 
-T2ERROR setPrivacyMode(char* data){
+T2ERROR setPrivacyMode(char* data)
+{
     T2Debug("%s ++in\n", __FUNCTION__);
-    T2Warning("%s function is called at stub implementation please check the implementation \n ",__FUNCTION__);
+    T2Warning("%s function is called at stub implementation please check the implementation \n ", __FUNCTION__);
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 
@@ -44,9 +45,10 @@ T2ERROR setPrivacyMode(char* data){
 // Next Preference contacts Rdkservices to fetch the value
 // Finally we will try to get the data from the persistant storage it will return SHARE on ERROR
 
-void getPrivacyMode(char** privMode){
+void getPrivacyMode(char** privMode)
+{
     T2Debug("%s ++in\n", __FUNCTION__);
-    T2Warning("%s function is called at stub implementation please check the implementation returning SHARE \n ",__FUNCTION__);
+    T2Warning("%s function is called at stub implementation please check the implementation returning SHARE \n ", __FUNCTION__);
     *privMode = strdup("SHARE");
     T2Debug("%s --out\n", __FUNCTION__);
     return;

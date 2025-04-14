@@ -33,23 +33,31 @@
 static bool isRbus = false ;
 static bool isBusInit = false ;
 
-bool isRbusEnabled( ) {
+bool isRbusEnabled( )
+{
     T2Debug("%s ++in \n", __FUNCTION__);
-    if(RBUS_ENABLED == rbus_checkStatus()) {
+    if(RBUS_ENABLED == rbus_checkStatus())
+    {
         isRbus = true;
-    } else {
+    }
+    else
+    {
         isRbus = false;
     }
-    T2Debug("RBUS mode active status = %s \n", isRbus ? "true":"false");
+    T2Debug("RBUS mode active status = %s \n", isRbus ? "true" : "false");
     T2Debug("%s --out \n", __FUNCTION__);
     return isRbus;
 }
 
-static bool busInit( ) {
+static bool busInit( )
+{
     T2Debug("%s ++in \n", __FUNCTION__);
-    if(!isBusInit) {
+    if(!isBusInit)
+    {
         if (isRbusEnabled())
-	    T2Debug("%s --RBUS mode is active \n", __FUNCTION__); //CID 158206:Unchecked return value
+        {
+            T2Debug("%s --RBUS mode is active \n", __FUNCTION__);    //CID 158206:Unchecked return value
+        }
         isBusInit = true;
     }
     T2Debug("%s --out \n", __FUNCTION__);
@@ -61,13 +69,19 @@ T2ERROR getParameterValue(const char* paramName, char **paramValue)
     T2Debug("%s ++in \n", __FUNCTION__);
     T2ERROR ret = T2ERROR_FAILURE ;
     if(!isBusInit)
+    {
         busInit();
+    }
 
     if(isRbus)
-        ret = getRbusParameterVal(paramName,paramValue);
+    {
+        ret = getRbusParameterVal(paramName, paramValue);
+    }
 #if defined(CCSP_SUPPORT_ENABLED)
     else
+    {
         ret = getCCSPParamVal(paramName, paramValue);
+    }
 #endif
 
     T2Debug("%s --out \n", __FUNCTION__);
@@ -79,13 +93,19 @@ Vector* getProfileParameterValues(Vector *paramList)
     T2Debug("%s ++in\n", __FUNCTION__);
     Vector *profileValueList = NULL;
     if(!isBusInit)
+    {
         busInit();
+    }
 
     if(isRbus)
-    	profileValueList = getRbusProfileParamValues(paramList);
+    {
+        profileValueList = getRbusProfileParamValues(paramList);
+    }
 #if defined(CCSP_SUPPORT_ENABLED)
     else
+    {
         profileValueList = getCCSPProfileParamValues(paramList);
+    }
 #endif
 
     T2Debug("%s --Out\n", __FUNCTION__);
@@ -97,24 +117,27 @@ Vector* getProfileParameterValues(Vector *paramList)
  */
 T2ERROR registerForTelemetryEvents(TelemetryEventCallback eventCB)
 {
-	T2ERROR ret = T2ERROR_FAILURE;
+    T2ERROR ret = T2ERROR_FAILURE;
     T2Debug("%s ++in\n", __FUNCTION__);
     if(!isBusInit)
-        busInit();
-
-    if (isRbus) 
     {
-    	ret = registerRbusT2EventListener(eventCB);
+        busInit();
+    }
 
-        #ifdef DCMAGENT
+    if (isRbus)
+    {
+        ret = registerRbusT2EventListener(eventCB);
+
+#ifdef DCMAGENT
         /* Register DCM Events */
-		ret = registerRbusDCMEventListener();
-        #endif
+        ret = registerRbusDCMEventListener();
+#endif
 
     }
-#if defined(CCSP_SUPPORT_ENABLED) 
-    else {
-    	ret = registerCcspT2EventListener(eventCB);
+#if defined(CCSP_SUPPORT_ENABLED)
+    else
+    {
+        ret = registerCcspT2EventListener(eventCB);
     }
 #endif
 
@@ -132,7 +155,7 @@ T2ERROR busUninit()
 {
     if (isRbus)
     {
-    	unregisterRbusT2EventListener();
+        unregisterRbusT2EventListener();
     }
     return T2ERROR_SUCCESS;
 }

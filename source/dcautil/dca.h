@@ -27,7 +27,7 @@
  */
 int getDCAResultsInJson(char* profileName, void* vectorMarkerList, cJSON** grepResultList);
 
-int getDCAResultsInVector(char* profileName, Vector* vectorMarkerList, Vector** grepResultList, bool check_rotated);
+int getDCAResultsInVector(char* profileName, Vector* vectorMarkerList, Vector** grepResultList, bool check_rotated, char* customLogPath);
 
 char *strSplit(char *str, char *delim);
 

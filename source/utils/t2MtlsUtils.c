@@ -56,42 +56,51 @@ static char* dynamicMtlsCert = "";
 static char* dynamicPassPhrase = "";
 #endif
 
-void initMtls() {
+void initMtls()
+{
     T2Debug("%s ++in\n", __FUNCTION__);
     // Prepare certs required for mTls commmunication
-    #if !defined (MTLS_FROM_ENV)
+#if !defined (MTLS_FROM_ENV)
     char UseHWBasedCert[8] = { '\0' };
     bool ret = false;
     ret = getDevicePropertyData("UseSEBasedCert", UseHWBasedCert, sizeof(UseHWBasedCert));
-    if (ret == true) {
+    if (ret == true)
+    {
         T2Info("UseSEBasedCert = %s\n", UseHWBasedCert);
-        if((strncasecmp(UseHWBasedCert, "true", 4) == 0)) {
+        if((strncasecmp(UseHWBasedCert, "true", 4) == 0))
+        {
             UsedynamicMtlsCert2 = true;
         }
-    } else {
+    }
+    else
+    {
         T2Info("getDevicePropertyData() failed for UseSEBasedCert\n");
     }
-    #endif
+#endif
     T2Debug("%s --out\n", __FUNCTION__);
 
 }
 
-void uninitMtls() {
+void uninitMtls()
+{
     T2Debug("%s ++in\n", __FUNCTION__);
 
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
 /**
- * read system uptime 
+ * read system uptime
  */
-double get_system_uptime() {
-    double uptime=0.0;
+double get_system_uptime()
+{
+    double uptime = 0.0;
     FILE* uptime_file = fopen("/proc/uptime", "r");
-    if (uptime_file != NULL) {
-        if (fscanf(uptime_file, "%lf", &uptime) == 1) {
-        fclose(uptime_file);
-        return uptime;
+    if (uptime_file != NULL)
+    {
+        if (fscanf(uptime_file, "%lf", &uptime) == 1)
+        {
+            fclose(uptime_file);
+            return uptime;
         }
         fclose(uptime_file);
     }
@@ -104,38 +113,48 @@ double get_system_uptime() {
  * So there are two variants of the same function depending on the logic used to retrieve values.
  */
 #if defined (MTLS_FROM_ENV)
-T2ERROR getMtlsCerts(char **certName, char **phrase) {
+T2ERROR getMtlsCerts(char **certName, char **phrase)
+{
     T2ERROR ret = T2ERROR_FAILURE;
     T2Debug("%s ++in\n", __FUNCTION__);
 
     char buf[124];
     memset(buf, 0, sizeof(buf));
-    
-    if(getenv("XPKI") != NULL) {
+
+    if(getenv("XPKI") != NULL)
+    {
         dynamicMtlsCert = getenv("XPKI_CERT");
-        if (dynamicMtlsCert != NULL) { // Dynamic cert
+        if (dynamicMtlsCert != NULL)   // Dynamic cert
+        {
             *certName = strdup(dynamicMtlsCert);
             T2Info("Using xpki Dynamic Certs connection certname: %s\n", dynamicMtlsCert);
 
             dynamicPassPhrase = getenv("XPKI_PASS");
-            if (dynamicPassPhrase != NULL){
+            if (dynamicPassPhrase != NULL)
+            {
                 *phrase = strdup(dynamicPassPhrase);
                 ret = T2ERROR_SUCCESS;
             }
         }
-    } else if (getenv("STATICXPKI") != NULL) {
+    }
+    else if (getenv("STATICXPKI") != NULL)
+    {
         staticMtlsCert = getenv("STATIC_XPKI_CERT");
-        if (staticMtlsCert != NULL) { // Static cert
+        if (staticMtlsCert != NULL)   // Static cert
+        {
             *certName = strdup(staticMtlsCert);
             T2Info("Using xpki Static Certs connection certname: %s\n", staticMtlsCert);
 
             staticPassPhrase = getenv("STATIC_XPKI_PASS");
-            if(staticPassPhrase != NULL){ 
+            if(staticPassPhrase != NULL)
+            {
                 *phrase = strdup(staticPassPhrase);
                 ret = T2ERROR_SUCCESS;
             }
         }
-    } else {
+    }
+    else
+    {
         T2Error("Certs not found\n");
     }
     T2Debug("%s --out\n", __FUNCTION__);
@@ -143,7 +162,8 @@ T2ERROR getMtlsCerts(char **certName, char **phrase) {
 }
 
 #else
-T2ERROR getMtlsCerts(char **certName, char **phrase) {
+T2ERROR getMtlsCerts(char **certName, char **phrase)
+{
 
     T2ERROR ret = T2ERROR_FAILURE;
 
@@ -155,47 +175,55 @@ T2ERROR getMtlsCerts(char **certName, char **phrase) {
 #endif
 
 
-    if( certName == NULL || phrase == NULL ){
+    if( certName == NULL || phrase == NULL )
+    {
         T2Error("Input args are NULL \n");
         T2Debug("%s --out\n", __FUNCTION__);
         return ret;
     }
 
-    if(access(dynamicMtlsCert, F_OK) != -1) { // Dynamic cert
+    if(access(dynamicMtlsCert, F_OK) != -1)   // Dynamic cert
+    {
         *certName = strdup(dynamicMtlsCert);
         T2Info("Using xpki Dynamic Certs connection certname: %s\n", dynamicMtlsCert);
-      #ifdef LIBRDKCONFIG_BUILD
-        if(rdkconfig_get(&MtlsBuf, &MtlsSize, dynamicMtlsDestFile) == RDKCONFIG_FAIL) {
+#ifdef LIBRDKCONFIG_BUILD
+        if(rdkconfig_get(&MtlsBuf, &MtlsSize, dynamicMtlsDestFile) == RDKCONFIG_FAIL)
+        {
             T2Error("%s,%d: Failed to extract cfgDynamicxpki cred\n", __FUNCTION__, __LINE__);
             return T2ERROR_FAILURE;
         }
         MtlsBuf[strcspn((char *)MtlsBuf, "\n")] = '\0';
         *phrase = (char *) MtlsBuf;
-      #else
+#else
         T2Info("rdkconfig is not available - %s will act as pass through call. \n", __FUNCTION__);
-      #endif
-        
+#endif
+
         ret = T2ERROR_SUCCESS;
-    }else if(access(staticMtlsCert, F_OK) != -1) { // Static cert
+    }
+    else if(access(staticMtlsCert, F_OK) != -1)    // Static cert
+    {
         T2Info("Using xpki Static Certs connection certname: %s\n", staticMtlsCert);
-        T2Info("xPKIStaticCert: /etc/ssl/certs/staticDeviceCert.pk12 uptime %.2lf seconds,telemetry",get_system_uptime());
+        T2Info("xPKIStaticCert: /etc/ssl/certs/staticDeviceCert.pk12 uptime %.2lf seconds,telemetry", get_system_uptime());
         *certName = strdup(staticMtlsCert);
-      #ifdef LIBRDKCONFIG_BUILD
-           
-	/* CID: 189984 Time of check time of use (TOCTOU) */
-        if(rdkconfig_get(&MtlsBuf, &MtlsSize, staticMtlsDestFile) == RDKCONFIG_FAIL) {
+#ifdef LIBRDKCONFIG_BUILD
+
+        /* CID: 189984 Time of check time of use (TOCTOU) */
+        if(rdkconfig_get(&MtlsBuf, &MtlsSize, staticMtlsDestFile) == RDKCONFIG_FAIL)
+        {
             T2Error("%s,%d: Failed to extract cfgStaticxpki cred\n", __FUNCTION__, __LINE__);
             return T2ERROR_FAILURE;
         }
 
         MtlsBuf[strcspn((char *)MtlsBuf, "\n")] = '\0';
-       *phrase = (char *)MtlsBuf;
-      #else
+        *phrase = (char *)MtlsBuf;
+#else
         T2Info("rdkconfig is not available - %s will act as pass through call. \n", __FUNCTION__);
-      #endif
+#endif
 
         ret = T2ERROR_SUCCESS;
-    }else {
+    }
+    else
+    {
         T2Error("Certs not found\n");
     }
 

@@ -325,7 +325,12 @@ T2ERROR appendRequestParams(char *buf, const int maxArgLen)
     if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_MFR, &paramVal))
     {
         memset(tempBuf, 0, MAX_URL_ARG_LEN);
-        for(char *p = paramVal; (p = strchr(p, ' ')) != NULL; *p = '-');
+        for(int i = 0; paramVal[i] != '\0'; i++)
+        {
+           if(paramVal[i] == ' '){
+              paramVal[i] = '_';
+           }
+        }
         write_size = snprintf(tempBuf, MAX_URL_ARG_LEN, "manufacturer=%s&", paramVal);
         strncat(buf, tempBuf, avaBufSize);
         avaBufSize = avaBufSize - write_size;

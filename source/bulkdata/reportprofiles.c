@@ -1466,6 +1466,8 @@ bool isMtlsEnabled(void)
             T2Error("getParameterValue failed\n");
         }
     }
+
+
     if(isT2MtlsEnable != true)
     {
         if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_PARTNER_ID, &paramValue))
@@ -1484,10 +1486,11 @@ bool isMtlsEnabled(void)
                 {
                     free(paramValue);
                 }
-                T2Error("getParameterValue partner id failed\n");
+                T2Debug("getParameterValue partner not in default mTLS enabled list\n");
             }
         }
     }
+    
     return isT2MtlsEnable;
 #else
     /* Enabling Mtls by default for RDKC */

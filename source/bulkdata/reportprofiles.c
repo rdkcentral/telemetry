@@ -252,7 +252,6 @@ void ReportProfiles_ActivationTimeoutCb(char* profileName)
 
         if (isDeleteRequired)
         {
-            removeProfileFromDisk(REPORTPROFILES_PERSISTENCE_PATH, profileName);
             if (T2ERROR_SUCCESS != deleteProfile(profileName))
             {
                 T2Error("Failed to delete profile after timeout: %s \n", profileName);

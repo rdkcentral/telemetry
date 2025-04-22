@@ -258,13 +258,13 @@ void ReportProfiles_ActivationTimeoutCb(char* profileName)
                 T2Error("Failed to delete profile after timeout: %s \n", profileName);
             }
         }
-	else
-	{
-	    if(T2ERROR_SUCCESS != unregisterProfileFromScheduler(profileName))
+        else
+        {
+            if(T2ERROR_SUCCESS != unregisterProfileFromScheduler(profileName))
             {
                 T2Info("Profile : %s already removed from scheduler\n", profileName);
             }
-	}
+        }
 
         T2ER_StopDispatchThread();
         clearT2MarkerComponentMap();

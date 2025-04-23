@@ -26,7 +26,7 @@ typedef struct _T2Event
 {
     char* name;
     char* value;
-}T2Event;
+} T2Event;
 
 T2ERROR T2ER_Init();
 

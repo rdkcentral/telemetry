@@ -52,16 +52,16 @@ typedef struct
  */
 typedef enum
 {
-  RBUS_MESSAGE_NONE = 0, /**< The message is sent non-blocking with no
+    RBUS_MESSAGE_NONE = 0, /**< The message is sent non-blocking with no
                                          confirmation of delivery */
-  RBUS_MESSAGE_CONFIRM_RECEIPT = 1     /**< The message is sent, blocking until a response
+    RBUS_MESSAGE_CONFIRM_RECEIPT = 1     /**< The message is sent, blocking until a response
                                          returns indicating whether the message
                                          was received by a listener or not */
 } rbusMessageSendOptions_t;
 
 /** @fn typedef void (*rbusMessageHandler_t)(
- *          rbusHandle_t handle, 
- *          rbusMessage_t message, 
+ *          rbusHandle_t handle,
+ *          rbusMessage_t message,
  *          void* userData)
  *  @brief A component will receive this API callback when a message is received.
  *  This callback is registered with rbusMessage_AddListener.\n
@@ -72,8 +72,8 @@ typedef enum
  *  @return void
  */
 typedef void (*rbusMessageHandler_t)(
-    rbusHandle_t handle, 
-    rbusMessage_t* message, 
+    rbusHandle_t handle,
+    rbusMessage_t* message,
     void* userData);
 
 /** @fn rbusError_t rbusMessage_AddListener(

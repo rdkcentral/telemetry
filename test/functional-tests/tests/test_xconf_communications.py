@@ -40,8 +40,20 @@ def test_precondition():
     run_telemetry()
     sleep(10)
 
-# Test Xconf Communication is only using https
+
 @pytest.mark.run(order=2)
+def test_xconf_connection_with_empty_url():
+    clear_T2logs()
+    rbus_set_data("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.ConfigURL", "string", " ")
+    kill_telemetry(12)
+    sleep(120)
+    ERROR_MSG = "URL doesn't start with https or is invalid"
+    ERROR_MSG1 = "Config URL is not set to valid value. Xconfclient shall not proceed for T1.0 settings fetch attempts"
+    assert ERROR_MSG in grep_T2logs(ERROR_MSG)
+    assert ERROR_MSG1 in grep_T2logs(ERROR_MSG1)
+
+# Test Xconf Communication is only using https
+@pytest.mark.run(order=3)
 def test_xconf_http():
     rbus_set_data("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.ConfigURL", "string", "http://mockxconf:50050/loguploader/getT2DCMSettings")
     ERROR_MSG = "URL doesn't start with https or is invalid"

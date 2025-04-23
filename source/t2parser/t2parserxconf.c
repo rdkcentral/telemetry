@@ -42,18 +42,22 @@
 #define ACCUMULATE_MARKER_SUFFIX  "_accum"
 #define MAX_PARAM_LEN 15
 
-static int getScheduleInSeconds(const char* cronPattern) {
+static int getScheduleInSeconds(const char* cronPattern)
+{
     unsigned int scheduleIntervalInMin = 15; // Default value from field settings
     unsigned int scheduleIntervalInSec = 0 ;
     char* input = NULL;
-    if (NULL != cronPattern) {
+    if (NULL != cronPattern)
+    {
         input = strdup(cronPattern);
         char* inputMatchPattern = strstr(input, "/");
-        if (NULL != inputMatchPattern) {
+        if (NULL != inputMatchPattern)
+        {
             inputMatchPattern = inputMatchPattern + 1; // 1 offset value
             int inputMatchSize = strlen(inputMatchPattern);
             char *discardPattern = strstr(inputMatchPattern, " *");
-            if (NULL != discardPattern) {
+            if (NULL != discardPattern)
+            {
                 int discardPatternLen = 0;
                 discardPatternLen = strlen(discardPattern);
                 int timeInMinDataLen = inputMatchSize - discardPatternLen;
@@ -63,7 +67,7 @@ static int getScheduleInSeconds(const char* cronPattern) {
             }
 
         }
-	/* CID 159640 -Dereference before null check */
+        /* CID 159640 -Dereference before null check */
         free(input);
     }
     // Convert minutes to seconds
@@ -80,7 +84,7 @@ static T2ERROR addParameter(ProfileXConf *profile, const char* name, const char*
         memset(param, 0, sizeof(Param));
         param->name = strdup(name);
         param->alias = strdup(ref);
-        param->regexParam = NULL; 
+        param->regexParam = NULL;
 
         Vector_PushBack(profile->paramList, param);
     }
@@ -145,13 +149,14 @@ static T2ERROR addParameter(ProfileXConf *profile, const char* name, const char*
     return T2ERROR_SUCCESS;
 }
 
-T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile) {
+T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
+{
     // configData is the raw data from curl http get request to xconf
 
     T2Debug("%s ++in\n", __FUNCTION__);
 
     T2ERROR ret = T2ERROR_SUCCESS;
-    int marker_count =0;
+    int marker_count = 0;
     T2Debug("config data = %s\n", configData);
     cJSON *json_root = cJSON_Parse(configData);
     cJSON *telemetry_data = cJSON_GetObjectItem(json_root, "urn:settings:TelemetryProfile");
@@ -164,16 +169,22 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
     cJSON *profileData = cJSON_GetObjectItem(telemetry_data, "telemetryProfile");
     if(profileData != NULL)
     {
-       marker_count = cJSON_GetArraySize(profileData);
+        marker_count = cJSON_GetArraySize(profileData);
     }
 //    if(jprofileID)
 //        T2Debug("profile id = %s\n", jprofileID->valuestring);
     if(jprofileName)
+    {
         T2Debug("profile name = %s\n", jprofileName->valuestring);
+    }
     if(juploadUrl)
+    {
         T2Debug("upload url = %s\n", juploadUrl->valuestring);
+    }
     if(jschedule)
+    {
         T2Debug("schedule = %s\n", jschedule->valuestring);
+    }
     T2Debug("marker count = %d\n", marker_count);
 //    if(jprofileID == NULL || jprofileName == NULL || juploadUrl == NULL || jschedule == NULL || profileData == NULL || marker_count == 0)
     if(jprofileName == NULL || juploadUrl == NULL || jschedule == NULL || profileData == NULL || marker_count == 0)
@@ -208,10 +219,12 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
 #if defined(PRIVACYMODES_CONTROL)
     char* paramValue = NULL;
     getPrivacyMode(&paramValue);
-    if(strncmp(paramValue, "DO_NOT_SHARE", MAX_PARAM_LEN) == 0){
+    if(strncmp(paramValue, "DO_NOT_SHARE", MAX_PARAM_LEN) == 0)
+    {
         addParameter(profile, "PrivacyMode", PRIVACYMODES_RFC, NULL, -1);
     }
-    else{
+    else
+    {
         addParameter(profile, "mac", TR181_DEVICE_WAN_MAC, NULL, -1);
         addParameter(profile, "StbIp", TR181_DEVICE_WAN_IPv6, NULL, -1);
         addParameter(profile, "PartnerId", TR181_DEVICE_PARTNER_ID, NULL, -1);
@@ -243,33 +256,45 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
     char* logfile = NULL;
     int skipFrequency = 0;
     size_t profileParamCount = 0;
-    for (markerIndex = 0; markerIndex < marker_count; markerIndex++) {
+    for (markerIndex = 0; markerIndex < marker_count; markerIndex++)
+    {
 
         cJSON* pSubitem = cJSON_GetArrayItem(profileData, markerIndex);
-        if (pSubitem != NULL) {
+        if (pSubitem != NULL)
+        {
             cJSON* jHeader = cJSON_GetObjectItem(pSubitem, "header");
             cJSON* jContent = cJSON_GetObjectItem(pSubitem, "content");
             cJSON* jLogfile = cJSON_GetObjectItem(pSubitem, "type");
             cJSON* jSkipFrequency = cJSON_GetObjectItem(pSubitem, "pollingFrequency");
             if(jHeader)
+            {
                 header = jHeader->valuestring;
+            }
 
             if(jContent)
+            {
                 content = jContent->valuestring;
+            }
 
             if(jLogfile)
+            {
                 logfile = jLogfile->valuestring;
+            }
 
             if(jSkipFrequency)
+            {
                 skipFrequency = atoi(jSkipFrequency->valuestring);
+            }
             else
+            {
                 skipFrequency = 0 ;
+            }
 
 	    //CID 172770 Explicit null dereferenced
 	    if(header != NULL && content != NULL && logfile != NULL){
                 if(skipFrequency > 0)
                 {
-                // T2Debug("Skip Frequency is Present, Need to do grep\n");
+                    // T2Debug("Skip Frequency is Present, Need to do grep\n");
 
                     ret = addParameter(profile, header, content, logfile, skipFrequency);
                 }
@@ -286,7 +311,8 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
                     ret = addParameter(profile, header, content, logfile, skipFrequency);
                 }
             }
-            if (ret != T2ERROR_SUCCESS) {
+            if (ret != T2ERROR_SUCCESS)
+            {
                 T2Error("%s Error in adding parameter to profile %s \n", __FUNCTION__, profile->name);
                 continue;
             }
@@ -296,9 +322,17 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
     // Legacy DCA utils expects the list to be sorted based on logfile names
     Vector_Sort(profile->gMarkerList,  sizeof(GrepMarker*), compareLogFileNames);
 
-   T2Info("Number of tr181params/markers successfully added in profile = %lu \n", (unsigned long)profileParamCount);
+    T2Info("Number of tr181params/markers successfully added in profile = %lu \n", (unsigned long)profileParamCount);
 
     cJSON_Delete(json_root);
+
+#ifdef PERSIST_LOG_MON_REF
+    profile->saveSeekConfig = true;
+    profile->checkPreviousSeek = false;
+#else
+    profile->saveSeekConfig = false;
+    profile->checkPreviousSeek = false;
+#endif
 
     *localProfile = profile;
 

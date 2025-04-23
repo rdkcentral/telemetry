@@ -57,7 +57,7 @@ extern "C" {
 typedef struct elementNode elementNode;
 typedef struct _rbusSubscription rbusSubscription_t;
 
-typedef struct elementNode 
+typedef struct elementNode
 {
     char*                   name;           /* relative name of element */
     char*                   fullName;       /* full name/path of element */

@@ -36,15 +36,21 @@ static void insertNode(rdkList_t* new, rdkList_t* tail)
 static void removeNode(rdkList_t* node)
 {
     if(node->m_pForward == NULL && node->m_pBackward == NULL)
+    {
         return;
+    }
     else if(node->m_pForward == NULL)
+    {
         node->m_pBackward->m_pForward = NULL;
+    }
     else if(node->m_pBackward == NULL)
+    {
         node->m_pForward->m_pBackward = NULL;
+    }
     else
     {
-         node->m_pBackward->m_pForward  = node->m_pForward;
-         node->m_pForward->m_pBackward = node->m_pBackward;
+        node->m_pBackward->m_pForward  = node->m_pForward;
+        node->m_pForward->m_pBackward = node->m_pBackward;
     }
     node->m_pForward = NULL;
     node->m_pBackward = NULL;
@@ -56,22 +62,30 @@ rdkList_t* rdk_list_add_node (rdkList_t* rdkListHndl, void* pData)
     tmpHndl = (rdkList_t*) malloc (sizeof(rdkList_t));
     rdkList_t* tail = NULL;
     if (!tmpHndl)
+    {
         printf ("Failed to allocate memory\n");
+    }
     else
+    {
         tmpHndl->m_pUserData = pData;
+    }
 
     if (rdkListHndl)
     {
         tail = rdkListHndl;
         while (tail->m_pForward)
+        {
             tail = tail->m_pForward;
+        }
     }
 
     /* Add to List */
     insertNode(tmpHndl, tail);
 
     if (!rdkListHndl)
+    {
         rdkListHndl = tmpHndl;
+    }
 
     return rdkListHndl;
 }
@@ -97,7 +111,9 @@ rdkList_t* rdk_list_prepend_node (rdkList_t* rdkListHndl, void* pData)
         tmpHndl->m_pForward = rdkListHndl;
         tmpHndl->m_pBackward = rdkListHndl->m_pBackward;
         if (rdkListHndl->m_pBackward)
+        {
             rdkListHndl->m_pBackward->m_pForward = tmpHndl;
+        }
         rdkListHndl->m_pBackward = tmpHndl;
     }
 
@@ -124,24 +140,32 @@ rdkList_t* rdk_list_add_node_before(rdkList_t* rdkListHndl, rdkList_t* sibling, 
     {
         rdkListHndl = tmpHndl;
         if (NULL != sibling)
+        {
             printf("rdk_list_add_node_before(): sibling not NULL for an empty list\n");
+        }
     }
     else if (sibling)
     {
         tmpHndl->m_pForward = sibling;
         tmpHndl->m_pBackward = sibling->m_pBackward;
         if (sibling->m_pBackward)
+        {
             sibling->m_pBackward->m_pForward = tmpHndl;
+        }
         sibling->m_pBackward = tmpHndl;
 
         if (!tmpHndl->m_pBackward)
+        {
             rdkListHndl = tmpHndl;
+        }
     }
     else
     {
         rdkList_t* tail = rdkListHndl;
         while (tail->m_pForward)
+        {
             tail = tail->m_pForward;
+        }
         insertNode(tmpHndl, tail);
     }
 
@@ -156,18 +180,24 @@ void rdk_list_delete_node (rdkList_t* rdkListHndl)
         free (rdkListHndl);
     }
     else
-        printf("rdk_list_delete_node(): invalid pointer provided\n"); 
+    {
+        printf("rdk_list_delete_node(): invalid pointer provided\n");
+    }
 }
 
 rdkList_t* rdk_list_remove_node (rdkList_t* rdkListHndl, rdkList_t* node)
 {
     if (!rdkListHndl)
+    {
         return rdkListHndl;
+    }
 
     removeNode(node);
 
     if (node == rdkListHndl)
+    {
         rdkListHndl = rdkListHndl->m_pForward;
+    }
 
     return rdkListHndl;
 }
@@ -198,7 +228,9 @@ rdkList_t* rdk_list_find_first_node (rdkList_t* rdkListHndl)
     if (rdkListHndl)
     {
         while (rdkListHndl->m_pBackward)
+        {
             rdkListHndl = rdkListHndl->m_pBackward;
+        }
     }
     return rdkListHndl;
 }
@@ -233,7 +265,8 @@ rdkList_t* rdk_list_find_node_custom (rdkList_t* rdkListHndl, void* pData, fnRDK
                 return tmpHndl;
             }
             tmpHndl = tmpHndl->m_pBackward;
-        } while(tmpHndl);
+        }
+        while(tmpHndl);
         rdkListHndl = rdkListHndl->m_pForward;
         while (rdkListHndl)
         {
@@ -260,7 +293,8 @@ void rdk_list_free_all_nodes (rdkList_t* rdkListHndl)
             free(backTmpHndl);
             backTmpHndl = tmpHndl;
 
-        } while (backTmpHndl);
+        }
+        while (backTmpHndl);
         while (rdkListHndl)
         {
             rdkList_t* tmpHndl = rdkListHndl;
@@ -282,7 +316,8 @@ void rdk_list_foreach (rdkList_t* rdkListHndl, fnRDKListCustomExecute executeFun
             executeFunction(backTmpHndl->m_pUserData, pUserActionData);
             backTmpHndl = tmpHndl;
 
-        } while (backTmpHndl);
+        }
+        while (backTmpHndl);
         rdkListHndl = rdkListHndl->m_pForward;
         while (rdkListHndl)
         {
@@ -307,7 +342,8 @@ void rdk_list_free_all_nodes_custom (rdkList_t* rdkListHndl, fnRDKListCustomFree
             free(backTmpHndl);
             backTmpHndl = tmpHndl;
 
-        } while (backTmpHndl);
+        }
+        while (backTmpHndl);
         while (rdkListHndl)
         {
             rdkList_t* tmpHndl = rdkListHndl->m_pForward;

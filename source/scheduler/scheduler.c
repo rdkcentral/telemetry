@@ -316,17 +316,6 @@ void* TimeoutThread(void *arg)
                 free(profileName);
                 return NULL;
             }
-
-            if(tProfile->deleteonTime)
-            {
-                deleteProfile(profileName);
-                is_activation_time_out = false;
-                if (profileName != NULL)
-                {
-                    free(profileName);
-                }
-                break;
-            }
             activationTimeoutCb(profileName);
             is_activation_time_out = false;
             if(profileName != NULL)

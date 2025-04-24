@@ -1091,7 +1091,10 @@ T2ERROR disableProfile(const char *profileName, bool *isDeleteRequired)
 
     if (profile->generateNow || profile->deleteonTimeout)
     {
-        profile->generateNow?removeProfileFromDisk(REPORTPROFILES_PERSISTENCE_PATH, profileName):1;
+        if (profile->generateNow)
+        {
+            removeProfileFromDisk(REPORTPROFILES_PERSISTENCE_PATH, profileName);
+        }
         *isDeleteRequired = true;
     }
     else

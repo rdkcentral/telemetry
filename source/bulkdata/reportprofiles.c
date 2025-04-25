@@ -252,17 +252,11 @@ void ReportProfiles_ActivationTimeoutCb(char* profileName)
 
         if (isDeleteRequired)
         {
-            if (T2ERROR_SUCCESS != deleteProfile(profileName))
-            {
-                T2Error("Failed to delete profile after timeout: %s \n", profileName);
-            }
+            removeProfileFromDisk(REPORTPROFILES_PERSISTENCE_PATH, profileName);
         }
-        else
+        if (T2ERROR_SUCCESS != deleteProfile(profileName))
         {
-            if(T2ERROR_SUCCESS != unregisterProfileFromScheduler(profileName))
-            {
-                T2Info("Profile : %s already removed from scheduler\n", profileName);
-            }
+            T2Error("Failed to delete profile after timeout: %s \n", profileName);
         }
 
         T2ER_StopDispatchThread();

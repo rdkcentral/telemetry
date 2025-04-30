@@ -47,7 +47,7 @@ static bool sc_initialized = false;
 static bool islogdemand = false;
 
 static bool signalrecived_and_executing = true;
-static bool is_delete_on_timed_out = false;
+static bool is_activation_time_out = false;
 
 bool get_logdemand ()
 {
@@ -210,10 +210,10 @@ void* TimeoutThread(void *arg)
                 T2Info("Waiting for %d sec for next TIMEOUT for profile as reporting interval is taken - %s\n", tProfile->timeOutDuration, tProfile->name);
             }
         }
+        notifySchedulerstartcb(tProfile->name, true);
         //When first reporting interval is given waiting for first report int vale
         if(tProfile->firstreportint > 0 && tProfile->firstexecution == true )
         {
-            notifySchedulerstartcb(tProfile->name, true);
             T2Info("Waiting for %d sec for next TIMEOUT for profile as firstreporting interval is given - %s\n", tProfile->firstreportint, tProfile->name);
             n = pthread_cond_timedwait(&tProfile->tCond, &tProfile->tMutex, &_ts);
         }
@@ -221,13 +221,11 @@ void* TimeoutThread(void *arg)
         {
             if(tProfile->timeOutDuration == UINT_MAX && tProfile->timeRefinSec == 0)
             {
-                notifySchedulerstartcb(tProfile->name, true);
                 T2Info("Waiting for condition as reporting interval is not configured for profile - %s\n", tProfile->name);
                 n = pthread_cond_wait(&tProfile->tCond, &tProfile->tMutex);
             }
             else
             {
-                notifySchedulerstartcb(tProfile->name, true);
                 T2Info("Waiting for timeref or reporting interval for the profile - %s is started\n", tProfile->name);
                 n = pthread_cond_timedwait(&tProfile->tCond, &tProfile->tMutex, &_ts);
             }
@@ -267,7 +265,7 @@ void* TimeoutThread(void *arg)
                 }
                 if(tProfile->terminated)
                 {
-                    T2Error("Profile : %s is being removed from scheduler \n", tProfile->name);
+                    T2Warning("Profile : %s is being removed from scheduler \n", tProfile->name);
                     if(pthread_mutex_unlock(&tProfile->tMutex) != 0)
                     {
                         T2Error("tProfile Mutex unlock failed\n");
@@ -307,6 +305,7 @@ void* TimeoutThread(void *arg)
         if (tProfile->timeOutDuration == 0 || tProfile->timeToLive < tProfile->timeOutDuration)
         {
             T2Info("Profile activation timeout for %s \n", tProfile->name);
+            is_activation_time_out = true;
             char *profileName = strdup(tProfile->name);
             tProfile->repeat = false;
             if(pthread_mutex_unlock(&tProfile->tMutex) != 0)
@@ -315,34 +314,8 @@ void* TimeoutThread(void *arg)
                 free(profileName);
                 return NULL;
             }
-
-            if(tProfile->deleteonTime)
-            {
-                is_delete_on_timed_out = true;
-                deleteProfile(profileName);
-                is_delete_on_timed_out = false;
-                if (profileName != NULL)
-                {
-                    free(profileName);
-                }
-                break;
-            }
-            T2Debug("%s:%d scMutex is locked\n", __FUNCTION__, __LINE__);
-            if(pthread_mutex_lock(&scMutex) != 0)
-            {
-                T2Error("scMutex lock failed\n");
-                free(profileName);
-                return NULL;
-            }
-            Vector_RemoveItem(profileList, tProfile, freeSchedulerProfile);
-            T2Debug("%s:%d scMutex is unlocked\n", __FUNCTION__, __LINE__);
-            if(pthread_mutex_unlock(&scMutex) != 0)
-            {
-                T2Error("scMutex unlock failed\n");
-                free(profileName);
-                return NULL;
-            }
             activationTimeoutCb(profileName);
+            is_activation_time_out = false;
             if(profileName != NULL)
             {
                 free(profileName);
@@ -632,7 +605,7 @@ T2ERROR unregisterProfileFromScheduler(const char* profileName)
             // pthread_join(tProfile->tId, NULL); // pthread_detach in freeSchedulerProfile will detach the thread
             sched_yield(); // This will give chance for the signal receiving thread to start
             int count = 0;
-            while(signalrecived_and_executing && !is_delete_on_timed_out)
+            while(signalrecived_and_executing && !is_activation_time_out)
             {
                 if(count++ > 10)
                 {

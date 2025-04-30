@@ -1568,9 +1568,12 @@ void NotifySchedulerstart(char* profileName, bool isschedulerstarted)
     for(; profileIndex < Vector_Size(profileList); profileIndex++)
     {
         tempProfile = (Profile *)Vector_At(profileList, profileIndex);
-        if(strncmp(tempProfile->name, profileName, strlen(profileName) + 1) == 0)
+        if(tempProfile != NULL)
         {
-            tempProfile->isSchedulerstarted = isschedulerstarted;
+            if(strncmp(tempProfile->name, profileName, strlen(profileName) + 1) == 0)
+            {
+                tempProfile->isSchedulerstarted = isschedulerstarted;
+            }
         }
     }
     pthread_mutex_unlock(&plMutex);

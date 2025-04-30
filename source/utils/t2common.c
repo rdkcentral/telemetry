@@ -29,13 +29,21 @@ void freeParam(void *data)
     {
         Param *param = (Param *)data;
         if(param->name)
+        {
             free(param->name);
+        }
         if(param->alias)
+        {
             free((char*)param->alias);
+        }
         if(param->paramType)
+        {
             free(param->paramType);
+        }
         if(param->regexParam)
+        {
             free(param->regexParam);
+        }
         free(param);
     }
 }
@@ -46,11 +54,17 @@ void freeStaticParam(void *data)
     {
         StaticParam *sparam = (StaticParam *)data;
         if(sparam->name)
+        {
             free(sparam->name);
+        }
         if (sparam->paramType)
+        {
             free(sparam->paramType);
+        }
         if (sparam->value)
+        {
             free(sparam->value);
+        }
 
         free(sparam);
     }
@@ -62,29 +76,45 @@ void freeEMarker(void *data)
     {
         EventMarker *eMarker = (EventMarker *)data;
         if(eMarker->alias)
+        {
             free(eMarker->alias);
+        }
         if(eMarker->compName)
+        {
             free(eMarker->compName);
+        }
         if(eMarker->markerName)
+        {
             free(eMarker->markerName);
+        }
         if(eMarker->paramType)
+        {
             free(eMarker->paramType);
-        if(eMarker->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH) {
-            if(eMarker->markerName_CT != NULL){
+        }
+        if(eMarker->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH)
+        {
+            if(eMarker->markerName_CT != NULL)
+            {
                 free(eMarker->markerName_CT);
             }
-            if(eMarker->timestamp != NULL){
+            if(eMarker->timestamp != NULL)
+            {
                 free(eMarker->timestamp);
             }
         }
-        if(eMarker->regexParam != NULL){
+        if(eMarker->regexParam != NULL)
+        {
             free(eMarker->regexParam);
         }
         if(eMarker->mType == MTYPE_ABSOLUTE && eMarker->u.markerValue)
+        {
             free(eMarker->u.markerValue);
-        if(eMarker->mType == MTYPE_ACCUMULATE && eMarker->u.accumulatedValues) {
+        }
+        if(eMarker->mType == MTYPE_ACCUMULATE && eMarker->u.accumulatedValues)
+        {
             Vector_Destroy(eMarker->u.accumulatedValues, freeAccumulatedParam);
-            if(eMarker->accumulatedTimestamp != NULL && eMarker->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH) {
+            if(eMarker->accumulatedTimestamp != NULL && eMarker->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH)
+            {
                 Vector_Destroy(eMarker->accumulatedTimestamp, freeAccumulatedParam);
             }
         }
@@ -94,7 +124,8 @@ void freeEMarker(void *data)
 
 void freeAccumulatedParam(void* data)
 {
-    if(data != NULL){
+    if(data != NULL)
+    {
         char* dataStr = data;
         free(dataStr);
     }
@@ -106,17 +137,29 @@ void freeGMarker(void *data)
     {
         GrepMarker *gMarker = (GrepMarker *)data;
         if(gMarker->logFile)
+        {
             free(gMarker->logFile);
+        }
         if(gMarker->markerName)
+        {
             free(gMarker->markerName);
+        }
         if(gMarker->searchString)
-        	free(gMarker->searchString);
+        {
+            free(gMarker->searchString);
+        }
         if(gMarker->paramType)
+        {
             free(gMarker->paramType);
+        }
         if(gMarker->mType == MTYPE_ABSOLUTE && gMarker->u.markerValue)
+        {
             free(gMarker->u.markerValue);
+        }
         if(gMarker->regexParam != NULL)
+        {
             free(gMarker->regexParam);
+        }
         free(gMarker);
     }
 }
@@ -126,15 +169,18 @@ void freeGMarker(void *data)
  */
 int compareLogFileNames(const void *g1, const void *g2)
 {
-   GrepMarker** p1 = (GrepMarker**) g1 ;
-   GrepMarker** p2 = (GrepMarker**) g2 ;
+    GrepMarker** p1 = (GrepMarker**) g1 ;
+    GrepMarker** p2 = (GrepMarker**) g2 ;
 
-   if ( NULL != p1 && NULL != p2) {
-       return strcmp((*p1)->logFile, (*p2)->logFile);
-   } else {
-       T2Error("compareLogFileNames : either p1 or p2 is NULL \n");
-       return -1 ;
-   }
+    if ( NULL != p1 && NULL != p2)
+    {
+        return strcmp((*p1)->logFile, (*p2)->logFile);
+    }
+    else
+    {
+        T2Error("compareLogFileNames : either p1 or p2 is NULL \n");
+        return -1 ;
+    }
 }
 
 void freeTriggerCondition(void *data)
@@ -143,12 +189,18 @@ void freeTriggerCondition(void *data)
     {
         TriggerCondition *tCondition = (TriggerCondition *)data;
         if(tCondition->type)
+        {
             free(tCondition->type);
+        }
         if(tCondition->oprator)
+        {
             free(tCondition->oprator);
+        }
         if(tCondition->reference)
+        {
             free(tCondition->reference);
-        free(tCondition); 
+        }
+        free(tCondition);
     }
 }
 
@@ -158,10 +210,14 @@ void freeGResult(void *data)
     {
         GrepResult *grepResult = (GrepResult *) data;
         if(grepResult->markerName)
+        {
             free((char*)grepResult->markerName);
+        }
 
         if(grepResult->markerValue)
+        {
             free((char*)grepResult->markerValue);
+        }
 
         free(grepResult);
         grepResult = NULL;
@@ -180,33 +236,42 @@ bool getDevicePropertyData(const char *dev_prop_name, char *out_data, unsigned i
     char tbuff[MAX_DEVICE_PROP_BUFF_SIZE];
     char *tmp;
     int index;
-    if (out_data == NULL || dev_prop_name == NULL) {
-       T2Error("%s : parameter is NULL\n", __FUNCTION__);
-           return ret;
+    if (out_data == NULL || dev_prop_name == NULL)
+    {
+        T2Error("%s : parameter is NULL\n", __FUNCTION__);
+        return ret;
     }
-    if (buff_size == 0 || buff_size > MAX_DEVICE_PROP_BUFF_SIZE) {
+    if (buff_size == 0 || buff_size > MAX_DEVICE_PROP_BUFF_SIZE)
+    {
         T2Error("%s : buff size not in the range. size should be < %d\n", __FUNCTION__, MAX_DEVICE_PROP_BUFF_SIZE);
         return ret;
     }
     T2Debug("%s : Trying device property data for %s and buf size=%u\n", __FUNCTION__, dev_prop_name, buff_size);
     fp = fopen(DEVICE_PROPERTIES_FILE, "r");
-    if(fp == NULL) {
+    if(fp == NULL)
+    {
         T2Error("%s : device.property File not found\n", __FUNCTION__);
         return ret;
     }
-    while((fgets(tbuff, sizeof(tbuff), fp) != NULL)) {
-        if(strstr(tbuff, dev_prop_name)) {
+    while((fgets(tbuff, sizeof(tbuff), fp) != NULL))
+    {
+        if(strstr(tbuff, dev_prop_name))
+        {
             index = strcspn(tbuff, "\n");
-            if (index > 0) {
+            if (index > 0)
+            {
                 tbuff[index] = '\0';
             }
             tmp = strchr(tbuff, '=');
-            if(tmp != NULL) {
-                snprintf(out_data, buff_size, "%s", tmp+1);
+            if(tmp != NULL)
+            {
+                snprintf(out_data, buff_size, "%s", tmp + 1);
                 T2Debug("%s : %s=%s\n", __FUNCTION__, dev_prop_name, out_data);
                 ret = true;
                 break;
-            } else {
+            }
+            else
+            {
                 T2Error("%s : strchr failed. '=' not found. str=%s\n", __FUNCTION__, tbuff);
             }
         }

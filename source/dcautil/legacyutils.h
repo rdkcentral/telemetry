@@ -59,10 +59,11 @@
 #define DEFAULT_LOG_PATH "/opt/logs/"
 #endif
 
-typedef struct _GrepSeekProfile {
+typedef struct _GrepSeekProfile
+{
     hash_map_t *logFileSeekMap;
     int execCounter;
-}GrepSeekProfile;
+} GrepSeekProfile;
 
 extern cJSON *SEARCH_RESULT_JSON;
 extern cJSON *ROOT_JSON;

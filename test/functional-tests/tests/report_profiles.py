@@ -1270,7 +1270,7 @@ data_with_delete_on_timeout = '''{
                 "EncodingType": "JSON",
                 "ActivationTimeOut": 20,
                 "DeleteOnTimeout": true,
-                "ReportingInterval": 15,
+                "ReportingInterval": 10,
                 "GenerateNow": false,
                 "RootName": "FR2_US_TC3",
                 "TimeReference": "2023-01-25T13:47:00Z",

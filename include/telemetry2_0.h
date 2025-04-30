@@ -51,6 +51,9 @@ extern "C" {
 #define T2_DCM_START_CONFIG   "dcmStartConfig"
 #endif
 
+#define BOOTFLAG "/tmp/.t2bootup"
+//#define TOUCH_BOOTFLAG "touch "BOOTFLAG
+
 #define INFINITE_TIMEOUT      (unsigned int)~0
 
 #define T2_RP       0
@@ -69,10 +72,11 @@ typedef enum
     T2ERROR_MAX_PROFILES_REACHED,
     T2ERROR_MEMALLOC_FAILED,
     T2ERROR_INVALID_ARGS,
+    T2ERROR_INVALID_RESPONSE,
     T2ERROR_INTERNAL_ERROR,
     T2ERROR_NO_RBUS_METHOD_PROVIDER,
     T2ERROR_COMPONENT_NULL
-}T2ERROR;
+} T2ERROR;
 
 #define T2_CACHE_FILE    "/tmp/t2_caching_file"
 #define T2_CACHE_LOCK_FILE    "/tmp/t2_lock_file"
@@ -84,7 +88,7 @@ typedef enum
     T2_STATE_COMPONENT_READY,
     T2_STATE_CONFIG_READY,
     T2_STATE_READY
-}T2_OPERATIONAL_STATE;
+} T2_OPERATIONAL_STATE;
 
 #ifdef __cplusplus
 }

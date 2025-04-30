@@ -42,7 +42,8 @@
  */
 
 // TODO add asserts for future and plugin fixed sample log files
-void logGrepTest1() {
+void logGrepTest1()
+{
     printf("%s ++in \n", __FUNCTION__ );
 
     T2ERROR ret = T2ERROR_FAILURE ;
@@ -93,27 +94,41 @@ void logGrepTest1() {
     Vector* grepResultList = NULL ;
 
     if (T2ERROR_FAILURE == Vector_Create(&markerlist))
-        printf("%s %d %s \n", __FUNCTION__ , __LINE__, "Error creating markerlist<GrepMarker> vector");
+    {
+        printf("%s %d %s \n", __FUNCTION__, __LINE__, "Error creating markerlist<GrepMarker> vector");
+    }
 
     if (T2ERROR_FAILURE == Vector_Create(&grepResultList))
-            printf("%s %d %s \n", __FUNCTION__ , __LINE__, "Error creating grepResultList<GrepResult> vector");
+    {
+        printf("%s %d %s \n", __FUNCTION__, __LINE__, "Error creating grepResultList<GrepResult> vector");
+    }
 
     if (T2ERROR_FAILURE == Vector_PushBack(markerlist, gMarker1))
-        printf("%s %d %s \n", __FUNCTION__ , __LINE__, "Error pushing entry1 to vector markerlist");
+    {
+        printf("%s %d %s \n", __FUNCTION__, __LINE__, "Error pushing entry1 to vector markerlist");
+    }
 
     if (T2ERROR_FAILURE == Vector_PushBack(markerlist, gMarker2))
-            printf("%s %d %s \n", __FUNCTION__ , __LINE__, "Error pushing entry2 to vector markerlist");
+    {
+        printf("%s %d %s \n", __FUNCTION__, __LINE__, "Error pushing entry2 to vector markerlist");
+    }
 
 
     if (T2ERROR_FAILURE == Vector_PushBack(markerlist, gMarker4))
-                printf("%s %d %s \n", __FUNCTION__ , __LINE__, "Error pushing entry4 to vector markerlist");
+    {
+        printf("%s %d %s \n", __FUNCTION__, __LINE__, "Error pushing entry4 to vector markerlist");
+    }
 
 
     if (T2ERROR_FAILURE == Vector_PushBack(markerlist, gMarker5))
-                    printf("%s %d %s \n", __FUNCTION__ , __LINE__, "Error pushing entry5 to vector markerlist");
+    {
+        printf("%s %d %s \n", __FUNCTION__, __LINE__, "Error pushing entry5 to vector markerlist");
+    }
 
     if (T2ERROR_FAILURE == Vector_PushBack(markerlist, gMarker3))
-            printf("%s %d %s \n", __FUNCTION__ , __LINE__, "Error pushing entry3 to vector markerlist");
+    {
+        printf("%s %d %s \n", __FUNCTION__, __LINE__, "Error pushing entry3 to vector markerlist");
+    }
 
 
     time_t now;
@@ -123,20 +138,25 @@ void logGrepTest1() {
     ret = getGrepResults("profile1", markerlist, &grepResultList, false);
     printf("End time %s \n", ctime(&now));
 
-    if (ret == T2ERROR_SUCCESS) {
+    if (ret == T2ERROR_SUCCESS)
+    {
         int resultSize = Vector_Size(grepResultList);
         int var = 0 ;
-        for (var = 0; var < resultSize; ++var) {
+        for (var = 0; var < resultSize; ++var)
+        {
             GrepResult* result = (GrepResult *) Vector_At(grepResultList, var);
             printf(" Marker = %s , Value = %s \n", result->markerName, result->markerValue);
         }
 
-    } else {
-        printf("\n\n\n  %s %d %s \n\n\n", __FUNCTION__ , __LINE__, "Something quite not right .... Debug now !!!!");
+    }
+    else
+    {
+        printf("\n\n\n  %s %d %s \n\n\n", __FUNCTION__, __LINE__, "Something quite not right .... Debug now !!!!");
     }
 
     printf("End of test set ################## \n\n\n");
-    if (grepResultList) {
+    if (grepResultList)
+    {
         // TODO Free up the nodes
         free(grepResultList);
         grepResultList = NULL ;
@@ -150,21 +170,26 @@ void logGrepTest1() {
     ret = getGrepResults("profile1", markerlist, &grepResultList, false);
     printf("End time %s \n", ctime(&now));
     printf("!!! Results should be absolutely nothing else !!! \n");
-    if (ret == T2ERROR_SUCCESS) {
+    if (ret == T2ERROR_SUCCESS)
+    {
         int resultSize = Vector_Size(grepResultList);
-        printf("%s 2nd set of tests with continuous exec Got results .. loop and print data of size = %d\n", __FUNCTION__ , resultSize);
+        printf("%s 2nd set of tests with continuous exec Got results .. loop and print data of size = %d\n", __FUNCTION__, resultSize);
         int var = 0 ;
-        for (var = 0; var < resultSize; ++var) {
+        for (var = 0; var < resultSize; ++var)
+        {
             GrepResult* result = (GrepResult *) Vector_At(grepResultList, var);
-            printf(" Marker = %s , Value = %s \n",result->markerName, result->markerValue);
+            printf(" Marker = %s , Value = %s \n", result->markerName, result->markerValue);
         }
 
-    } else {
+    }
+    else
+    {
         printf("%s \n", "Something quite not right .... Debug now !!!!");
     }
     printf("End of test set ################## \n\n\n");
 
-    if (grepResultList) {
+    if (grepResultList)
+    {
         // TODO Free up the nodes
         free(grepResultList);
         grepResultList = NULL ;
@@ -177,15 +202,19 @@ void logGrepTest1() {
     printf("Start time %s \n", ctime(&now));
     ret = getGrepResults("profile1", markerlist, &grepResultList, false);
     printf("End time %s \n", ctime(&now));
-    if (ret == T2ERROR_SUCCESS) {
+    if (ret == T2ERROR_SUCCESS)
+    {
         int resultSize = Vector_Size(grepResultList);
-        printf("%s 3nd set of tests with continuous exec Got results. Result size = %d\n", __FUNCTION__ , resultSize);
+        printf("%s 3nd set of tests with continuous exec Got results. Result size = %d\n", __FUNCTION__, resultSize);
         int var = 0 ;
-        for (var = 0; var < resultSize; ++var) {
+        for (var = 0; var < resultSize; ++var)
+        {
             GrepResult* result = (GrepResult *) Vector_At(grepResultList, var);
-            printf(" Marker = %s , Value = %s \n",result->markerName, result->markerValue);
+            printf(" Marker = %s , Value = %s \n", result->markerName, result->markerValue);
         }
-    } else {
+    }
+    else
+    {
         printf("%s \n", "Something quite not right .... Debug now !!!!");
     }
 
@@ -196,7 +225,8 @@ void logGrepTest1() {
 /**
  * Run same tests repeated for a different profile name
  */
-void logGrepTest2() {
+void logGrepTest2()
+{
     printf("%s %d ++in \n", __FUNCTION__ );
 
     T2ERROR ret = T2ERROR_FAILURE ;
@@ -247,27 +277,41 @@ void logGrepTest2() {
     Vector* grepResultList = NULL ;
 
     if (T2ERROR_FAILURE == Vector_Create(&markerlist))
-        printf("%s %d %s \n", __FUNCTION__ , __LINE__, "Error creating markerlist<GrepMarker> vector");
+    {
+        printf("%s %d %s \n", __FUNCTION__, __LINE__, "Error creating markerlist<GrepMarker> vector");
+    }
 
     if (T2ERROR_FAILURE == Vector_Create(&grepResultList))
-            printf("%s %d %s \n", __FUNCTION__ , __LINE__, "Error creating grepResultList<GrepResult> vector");
+    {
+        printf("%s %d %s \n", __FUNCTION__, __LINE__, "Error creating grepResultList<GrepResult> vector");
+    }
 
     if (T2ERROR_FAILURE == Vector_PushBack(markerlist, gMarker1))
-        printf("%s %d %s \n", __FUNCTION__ , __LINE__, "Error pushing entry1 to vector markerlist");
+    {
+        printf("%s %d %s \n", __FUNCTION__, __LINE__, "Error pushing entry1 to vector markerlist");
+    }
 
     if (T2ERROR_FAILURE == Vector_PushBack(markerlist, gMarker2))
-            printf("%s %d %s \n", __FUNCTION__ , __LINE__, "Error pushing entry2 to vector markerlist");
+    {
+        printf("%s %d %s \n", __FUNCTION__, __LINE__, "Error pushing entry2 to vector markerlist");
+    }
 
 
     if (T2ERROR_FAILURE == Vector_PushBack(markerlist, gMarker4))
-                printf("%s %d %s \n", __FUNCTION__ , __LINE__, "Error pushing entry4 to vector markerlist");
+    {
+        printf("%s %d %s \n", __FUNCTION__, __LINE__, "Error pushing entry4 to vector markerlist");
+    }
 
 
     if (T2ERROR_FAILURE == Vector_PushBack(markerlist, gMarker5))
-                    printf("%s %d %s \n", __FUNCTION__ , __LINE__, "Error pushing entry5 to vector markerlist");
+    {
+        printf("%s %d %s \n", __FUNCTION__, __LINE__, "Error pushing entry5 to vector markerlist");
+    }
 
     if (T2ERROR_FAILURE == Vector_PushBack(markerlist, gMarker3))
-            printf("%s %d %s \n", __FUNCTION__ , __LINE__, "Error pushing entry3 to vector markerlist");
+    {
+        printf("%s %d %s \n", __FUNCTION__, __LINE__, "Error pushing entry3 to vector markerlist");
+    }
 
 
     time_t now;
@@ -276,20 +320,25 @@ void logGrepTest2() {
     ret = getGrepResults("profile2", markerlist, &grepResultList, false);
     printf("End time %s \n", ctime(&now));
 
-    if (ret == T2ERROR_SUCCESS) {
+    if (ret == T2ERROR_SUCCESS)
+    {
         int resultSize = Vector_Size(grepResultList);
-        printf("\n\n\n %s Got results .. loop and print data of size = %d \n\n\n", __FUNCTION__ , resultSize);
+        printf("\n\n\n %s Got results .. loop and print data of size = %d \n\n\n", __FUNCTION__, resultSize);
         int var = 0 ;
-        for (var = 0; var < resultSize; ++var) {
+        for (var = 0; var < resultSize; ++var)
+        {
             GrepResult* result = (GrepResult *) Vector_At(grepResultList, var);
             printf(" Marker = %s , Value = %s \n", result->markerName, result->markerValue);
         }
 
-    } else {
-        printf("\n\n\n  %s %d %s \n\n\n", __FUNCTION__ , __LINE__, "Something quite not right .... Debug now !!!!");
+    }
+    else
+    {
+        printf("\n\n\n  %s %d %s \n\n\n", __FUNCTION__, __LINE__, "Something quite not right .... Debug now !!!!");
     }
     printf("\n\n End of test set ################## \n\n\n");
-    if (grepResultList) {
+    if (grepResultList)
+    {
         // TODO Free up the nodes
         free(grepResultList);
         grepResultList = NULL ;
@@ -303,20 +352,25 @@ void logGrepTest2() {
     printf("Start time %s \n", ctime(&now));
     ret = getGrepResults("profile3", markerlist, &grepResultList, false);
     printf("End time %s \n", ctime(&now));
-    if (ret == T2ERROR_SUCCESS) {
+    if (ret == T2ERROR_SUCCESS)
+    {
         int resultSize = Vector_Size(grepResultList);
-        printf("%s 2nd set of tests with continuous exec Got results .. loop and print data of size = %d\n", __FUNCTION__ , resultSize);
+        printf("%s 2nd set of tests with continuous exec Got results .. loop and print data of size = %d\n", __FUNCTION__, resultSize);
         int var = 0 ;
-        for (var = 0; var < resultSize; ++var) {
+        for (var = 0; var < resultSize; ++var)
+        {
             GrepResult* result = (GrepResult *) Vector_At(grepResultList, var);
-            printf(" Marker = %s , Value = %s \n",result->markerName, result->markerValue);
+            printf(" Marker = %s , Value = %s \n", result->markerName, result->markerValue);
         }
 
-    } else {
+    }
+    else
+    {
         printf("%s \n", "Something quite not right .... Debug now !!!!");
     }
     printf("End of test set ################## \n\n\n");
-    if (grepResultList) {
+    if (grepResultList)
+    {
         // TODO Free up the nodes
         free(grepResultList);
         grepResultList = NULL ;
@@ -329,23 +383,28 @@ void logGrepTest2() {
     printf("Start time %s \n", ctime(&now));
     ret = getGrepResults("profile4", markerlist, &grepResultList, false);
     printf("End time %s \n", ctime(&now));
-    if (ret == T2ERROR_SUCCESS) {
+    if (ret == T2ERROR_SUCCESS)
+    {
         int resultSize = Vector_Size(grepResultList);
-        printf("%s 3rd set of tests with continuous exec Got results. Result size = %d\n", __FUNCTION__ , resultSize);
+        printf("%s 3rd set of tests with continuous exec Got results. Result size = %d\n", __FUNCTION__, resultSize);
         int var = 0 ;
-        for (var = 0; var < resultSize; ++var) {
+        for (var = 0; var < resultSize; ++var)
+        {
             GrepResult* result = (GrepResult *) Vector_At(grepResultList, var);
-            printf(" Marker = %s , Value = %s \n",result->markerName, result->markerValue);
+            printf(" Marker = %s , Value = %s \n", result->markerName, result->markerValue);
         }
-    } else {
+    }
+    else
+    {
         printf("%s \n", "Something quite not right .... Debug now !!!!");
     }
     printf("End of test set ################## \n\n\n");
-    printf("%s %d ++out \n", __FUNCTION__ , __LINE__);
+    printf("%s %d ++out \n", __FUNCTION__, __LINE__);
     return ;
 }
 
-static void logGrepTests() {
+static void logGrepTests()
+{
 
     printf("Validating dcautils test cases .... \n \n");
 
@@ -357,13 +416,14 @@ static void logGrepTests() {
 
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
 
-        LOGInit();
+    LOGInit();
 
-        // logGrepTests() ;
+    // logGrepTests() ;
 
-        testBusInterface();
+    testBusInterface();
 
-        return 0;
+    return 0;
 }

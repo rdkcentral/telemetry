@@ -30,7 +30,7 @@
 
 #define RTMSG_HEADER_MAX_TOPIC_LENGTH 128
 
-// size of all fields in 
+// size of all fields in
 // #define RTMSG_HEADER_SIZE (24 + (2 * RTMSG_HEADER_MAX_TOPIC_LENGTH))
 
 #ifdef __cplusplus
@@ -43,32 +43,32 @@ extern "C" {
 #define RTMESSAGEHEADER_HDR_LENGTH_OFFSET 4
 typedef enum
 {
-  rtMessageFlags_Request = 0x01,
-  rtMessageFlags_Response = 0x02,
-  rtMessageFlags_Undeliverable = 0x04,
-  rtMessageFlags_Tainted = 0x08,
-  rtMessageFlags_RawBinary = 0x10,
-  rtMessageFlags_Encrypted = 0x20
+    rtMessageFlags_Request = 0x01,
+    rtMessageFlags_Response = 0x02,
+    rtMessageFlags_Undeliverable = 0x04,
+    rtMessageFlags_Tainted = 0x08,
+    rtMessageFlags_RawBinary = 0x10,
+    rtMessageFlags_Encrypted = 0x20
 } rtMessageFlags;
 
 typedef struct
 {
-  uint16_t version;
-  uint16_t header_length;
-  uint32_t sequence_number;
-  uint32_t flags;
-  uint32_t control_data;
-  uint32_t payload_length;
-  uint32_t topic_length;
-  char     topic[RTMSG_HEADER_MAX_TOPIC_LENGTH];
-  uint32_t reply_topic_length;
-  char     reply_topic[RTMSG_HEADER_MAX_TOPIC_LENGTH];
+    uint16_t version;
+    uint16_t header_length;
+    uint32_t sequence_number;
+    uint32_t flags;
+    uint32_t control_data;
+    uint32_t payload_length;
+    uint32_t topic_length;
+    char     topic[RTMSG_HEADER_MAX_TOPIC_LENGTH];
+    uint32_t reply_topic_length;
+    char     reply_topic[RTMSG_HEADER_MAX_TOPIC_LENGTH];
 #ifdef MSG_ROUNDTRIP_TIME
-  time_t   T1; /* Time at which consumer sends the request to daemon */
-  time_t   T2; /* Time at which daemon receives the message from consumer */
-  time_t   T3; /* Time at which daemon writes to provider socket */
-  time_t   T4; /* Time at which provider sends back the response */
-  time_t   T5; /* Time at which daemon received the response */
+    time_t   T1; /* Time at which consumer sends the request to daemon */
+    time_t   T2; /* Time at which daemon receives the message from consumer */
+    time_t   T3; /* Time at which daemon writes to provider socket */
+    time_t   T4; /* Time at which provider sends back the response */
+    time_t   T5; /* Time at which daemon received the response */
 #endif
 } rtMessageHeader;
 

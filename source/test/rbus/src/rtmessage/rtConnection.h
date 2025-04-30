@@ -39,9 +39,9 @@ typedef void (*rtMessageCallback)(rtMessageHeader const* hdr, uint8_t const* buf
 
 typedef enum
 {
-  rtConnectionState_ReadHeaderPreamble,
-  rtConnectionState_ReadHeader,
-  rtConnectionState_ReadPayload
+    rtConnectionState_ReadHeaderPreamble,
+    rtConnectionState_ReadHeader,
+    rtConnectionState_ReadPayload
 } rtConnectionState;
 
 /**
@@ -90,7 +90,7 @@ rtConnection_SendMessage(rtConnection con, rtMessage msg, char const* topic);
  * @param con
  * @param msg
  * @param topic
- * @param sender 
+ * @param sender
  * @return error
  */
 rtError
@@ -107,7 +107,7 @@ rtConnection_SendMessageDirect(rtConnection con, rtMessage msg, char const* topi
  */
 rtError
 rtConnection_SendRequest(rtConnection con, rtMessage const req, char const* topic,
-  rtMessage* res, int32_t timeout);
+                         rtMessage* res, int32_t timeout);
 
 /**
  * Sends a response to a request
@@ -119,7 +119,7 @@ rtConnection_SendRequest(rtConnection con, rtMessage const req, char const* topi
  */
 rtError
 rtConnection_SendResponse(rtConnection con, rtMessageHeader const* request_hdr, rtMessage const res,
-  int32_t timeout);
+                          int32_t timeout);
 
 /******************************************************************************************
  *  Binary based API
@@ -141,7 +141,7 @@ rtConnection_SendBinary(rtConnection con, uint8_t const* p, uint32_t n, char con
  * @param con
  * @param msg
  * @param topic
- * @param sender 
+ * @param sender
  * @return error
  */
 rtError
@@ -158,7 +158,7 @@ rtConnection_SendBinaryDirect(rtConnection con, uint8_t const* p, uint32_t n, ch
  */
 rtError
 rtConnection_SendBinaryRequest(rtConnection con, uint8_t const* pReq, uint32_t nReq, char const* topic,
-  uint8_t** pRes, uint32_t* nRes, int32_t timeout);
+                               uint8_t** pRes, uint32_t* nRes, int32_t timeout);
 
 /**
  * Sends a response to a request
@@ -170,7 +170,7 @@ rtConnection_SendBinaryRequest(rtConnection con, uint8_t const* pReq, uint32_t n
  */
 rtError
 rtConnection_SendBinaryResponse(rtConnection con, rtMessageHeader const* request_hdr, uint8_t const* p, uint32_t n,
-  int32_t timeout);
+                                int32_t timeout);
 
 /*
  *  End Binary based API
@@ -186,7 +186,7 @@ rtConnection_SendBinaryResponse(rtConnection con, rtMessageHeader const* request
  */
 rtError
 rtConnection_AddListener(rtConnection con, char const* expression,
-  rtMessageCallback callback, void* closure);
+                         rtMessageCallback callback, void* closure);
 
 /**
  * Remove a callback listener
@@ -200,8 +200,8 @@ rtConnection_RemoveListener(rtConnection con, char const* expression);
 /**
  * Add an alias to an existing listener
  * @param con
- * @param existing listener 
- * @param alias 
+ * @param existing listener
+ * @param alias
  * @return error
  */
 rtError
@@ -210,8 +210,8 @@ rtConnection_AddAlias(rtConnection con, char const* existing, const char *alias)
 /**
  * Remove an alias to an existing listener
  * @param con
- * @param existing listener 
- * @param alias 
+ * @param existing listener
+ * @param alias
  * @return error
  */
 rtError
@@ -228,9 +228,9 @@ rtError
 rtConnection_AddDefaultListener(rtConnection con, rtMessageCallback callback, void* closure);
 
 /**
- * Get return address for this connection. 
+ * Get return address for this connection.
  * @param con
- * return address 
+ * return address
  */
 const char *
 rtConnection_GetReturnAddress(rtConnection con);

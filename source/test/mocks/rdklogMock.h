@@ -27,15 +27,15 @@ typedef uint32_t rdk_Error;
 
 class rdklogInterface
 {
-    public:
-        virtual ~rdklogInterface() {}
-	virtual rdk_Error rdk_logger_init(const char *) = 0;
+public:
+    virtual ~rdklogInterface() {}
+    virtual rdk_Error rdk_logger_init(const char *) = 0;
 };
 
 class rdklogMock: public rdklogInterface
 {
-    public:
-        virtual ~rdklogMock() {}
-	MOCK_METHOD1(rdk_logger_init, rdk_Error(const char*));
+public:
+    virtual ~rdklogMock() {}
+    MOCK_METHOD1(rdk_logger_init, rdk_Error(const char*));
 };
 

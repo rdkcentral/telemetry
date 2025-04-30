@@ -210,10 +210,10 @@ void* TimeoutThread(void *arg)
                 T2Info("Waiting for %d sec for next TIMEOUT for profile as reporting interval is taken - %s\n", tProfile->timeOutDuration, tProfile->name);
             }
         }
+        notifySchedulerstartcb(tProfile->name, true);
         //When first reporting interval is given waiting for first report int vale
         if(tProfile->firstreportint > 0 && tProfile->firstexecution == true )
         {
-            notifySchedulerstartcb(tProfile->name, true);
             T2Info("Waiting for %d sec for next TIMEOUT for profile as firstreporting interval is given - %s\n", tProfile->firstreportint, tProfile->name);
             n = pthread_cond_timedwait(&tProfile->tCond, &tProfile->tMutex, &_ts);
         }
@@ -221,13 +221,11 @@ void* TimeoutThread(void *arg)
         {
             if(tProfile->timeOutDuration == UINT_MAX && tProfile->timeRefinSec == 0)
             {
-                notifySchedulerstartcb(tProfile->name, true);
                 T2Info("Waiting for condition as reporting interval is not configured for profile - %s\n", tProfile->name);
                 n = pthread_cond_wait(&tProfile->tCond, &tProfile->tMutex);
             }
             else
             {
-                notifySchedulerstartcb(tProfile->name, true);
                 T2Info("Waiting for timeref or reporting interval for the profile - %s is started\n", tProfile->name);
                 n = pthread_cond_timedwait(&tProfile->tCond, &tProfile->tMutex, &_ts);
             }

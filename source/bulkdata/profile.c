@@ -1568,7 +1568,8 @@ void NotifySchedulerstart(char* profileName, bool isschedulerstarted)
     for(; profileIndex < Vector_Size(profileList); profileIndex++)
     {
         tempProfile = (Profile *)Vector_At(profileList, profileIndex);
-        if(tempProfile != NULL){
+        if(tempProfile != NULL)
+        {
             if(strncmp(tempProfile->name, profileName, strlen(profileName) + 1) == 0)
             {
                 tempProfile->isSchedulerstarted = isschedulerstarted;

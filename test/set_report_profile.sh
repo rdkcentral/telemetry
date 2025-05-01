@@ -19,11 +19,64 @@
 # limitations under the License.
 ####################################################################################
 
-
-
 INPUT=$1
 
-EXAMPLE_REPORT_PROFILE='{"profiles":[{"name":"EncodingCheck","hash":"Hash77","value":{"Name":"EncodingCheck2","Description":"RDKB_Profile","Version":"0.1","Protocol":"HTTP","EncodingType":"JSON","ActivationTimeOut":40,"DeleteOnTimeout":true,"ReportingInterval":10,"GenerateNow":false,"RootName":"FR2_US_TC3","TimeReference":"2023-01-25T13:47:00Z","Parameter":[{"type":"dataModel","name":"MODEL_NAME","reference":"Device.DeviceInfo.ModelName","use":"absolute","regex":"[A-Z]+"},{"type":"event","eventName":"TEST_EVENT_MARKER_2","component":"sysint","use":"absolute","regex":"[0-9]+"},{"type":"grep","marker":"SYS_INFO_CrashPortalUpload_success","search":"Success uploading","logFile":"core_log.txt","use":"absolute"}],"ReportingAdjustments":{"ReportOnUpdate":true,"FirstReportingInterval":5,"MaxUploadLatency":10},"HTTP":{"URL":"https://mockxconf:50051/dataLakeMock","Compression":"None","Method":"POST","RequestURIParameter":[{"Name":"reportName","Reference":"Profile.Name"}]},"JSONEncoding":{"ReportFormat":"NameValuePair","ReportTimestamp":"None"}}}]}'
+EXAMPLE_REPORT_PROFILE='{
+    "profiles": [
+        {
+            "name": "EncodingCheck",
+            "hash": "Hash77",
+            "value": {
+                "Name": "EncodingCheck2",
+                "Description": "RDKB_Profile",
+                "Version": "0.1",
+                "Protocol": "HTTP",
+                "EncodingType": "JSON",
+                "ReportingInterval": 10,
+                "GenerateNow": false,
+                "RootName": "searchResult",
+                "TimeReference": "2023-01-25T13:47:00Z",
+                "Parameter": [
+                    {
+                        "type": "dataModel",
+                        "name": "MODEL_NAME",
+                        "reference": "Device.DeviceInfo.ModelName",
+                        "use": "absolute",
+                        "regex": "[A-Z]+"
+                    },
+                    {
+                        "type": "event",
+                        "eventName": "TEST_EVENT_MARKER_2",
+                        "component": "sysint",
+                        "use": "absolute",
+                        "regex": "[0-9]+"
+                    },
+                    {
+                        "type": "grep",
+                        "marker": "SYS_INFO_CrashPortalUpload_success",
+                        "search": "Success uploading",
+                        "logFile": "core_log.txt",
+                        "use": "absolute"
+                    }
+                ],
+                "HTTP": {
+                    "URL": "https://mockxconf:50051/dataLakeMock",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter":[{"Name":"reportName","Reference":"Profile.Name"}]
+                 },
+
+                "JSONEncoding": {
+                    "ReportFormat": "NameValuePair",
+                    "ReportTimestamp": "None"
+                }
+            }
+        }
+    ]
+}'
+
+
+#EXAMPLE_REPORT_PROFILE='{"profiles":[{"name":"EncodingCheck","hash":"Hash77","value":{"Name":"EncodingCheck2","Description":"RDKB_Profile","Version":"0.1","Protocol":"HTTP","EncodingType":"JSON","ActivationTimeOut":40,"DeleteOnTimeout":true,"ReportingInterval":10,"GenerateNow":false,"RootName":"FR2_US_TC3","TimeReference":"2023-01-25T13:47:00Z","Parameter":[{"type":"dataModel","name":"MODEL_NAME","reference":"Device.DeviceInfo.ModelName","use":"absolute","regex":"[A-Z]+"},{"type":"event","eventName":"TEST_EVENT_MARKER_2","component":"sysint","use":"absolute","regex":"[0-9]+"},{"type":"grep","marker":"SYS_INFO_CrashPortalUpload_success","search":"Success uploading","logFile":"core_log.txt","use":"absolute"}],"ReportingAdjustments":{"ReportOnUpdate":true,"FirstReportingInterval":5,"MaxUploadLatency":10},"HTTP":{"URL":"https://mockxconf:50051/dataLakeMock","Compression":"None","Method":"POST","RequestURIParameter":[{"Name":"reportName","Reference":"Profile.Name"}]},"JSONEncoding":{"ReportFormat":"NameValuePair","ReportTimestamp":"None"}}}]}'
 
 if [ -z "$INPUT" ]; then
     echo "Usage: $0 ${EXAMPLE_REPORT_PROFILE}"
@@ -36,4 +89,4 @@ elif [ "$INPUT" = "empty" ]; then
     INPUT='{"profiles":[]}'
 fi
 
-rbuscli setv "Device.X_RDKCENTRAL-COM_T2.Temp_ReportProfiles" string "$INPUT"
+rbuscli setv "Device.X_RDKCENTRAL-COM_T2.ReportProfiles" string "$INPUT"

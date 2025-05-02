@@ -1,0 +1,66 @@
+
+sequenceDiagram
+    participant system
+    box lightyellow
+    participant T2Daemon
+    participant bulkdata
+    participant webconfigFramework
+    participant t2parser
+    participant XconfClient
+    participant reportgenerator
+    participant protocol
+    participant scheduler
+    participant busInterface
+    end
+    
+   
+    participant rbus
+    participant persistance
+    participant webconfigClient
+    participant XC as Xconf Cloud
+
+
+    T2Daemon->>bulkdata: initTelemetry()
+    bulkdata->>bulkdata: initReportProfiles()
+    activate scheduler
+    bulkdata->>scheduler: initScheduler()
+    scheduler->>bulkdata: init complete
+    deactivate scheduler
+
+    activate busInterface
+    bulkdata->>busInterface: initBusInterface()
+    busInterface-->>rbus: Register DML  : Device.X_RDKCENTRAL-COM_T2.ReportProfiles, Temp_ReportProfiles, ReportProfilesMsgPack
+    rbus-->>busInterface: Registration complete 
+    busInterface-->>bulkdata: SUCCESS
+    deactivate busInterface
+
+    bulkdata->>webconfigFramework: initwebconfigFramework()
+    webconfigFramework-->webconfigClient: Register handles
+    bulkdata->>persistance: checkReportProfiles()
+    persistance->>bulkdata: persistedReportProfiles
+
+    activate t2parser
+    bulkdata->>t2parser: messagePackProcessor()
+    t2parser-->>t2parser: parseReportProfiles()
+    t2parser->>bulkdata: list of report profiles
+    deactivate t2parser
+
+    bulkdata-->>scheduler: schedule report profiles
+    scheduler->>bulkdata: schedule complete
+
+
+    bulkdata->>persistance: checkXconfProfiles()
+    persistance->>bulkdata: persistedXconfProfiles
+    activate t2parser
+    bulkdata->>t2parser: parseXconfProfiles()
+    t2parser->>bulkdata: DCM profile object
+    deactivate t2parser
+    bulkdata->>scheduler: scheduleXconfProfiles()
+
+    bulkdata->>XconfClient: initXconfCloud()
+    activate XconfClient
+    XconfClient->>XC: getXconfProfiles()
+    XC->>XconfClient: DCM JSON blob
+    deactivate XconfClient
+    bulkdata->>XconfClient: initXConfClient() 
+     

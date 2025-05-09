@@ -605,6 +605,8 @@ T2ERROR unregisterProfileFromScheduler(const char* profileName)
             // pthread_join(tProfile->tId, NULL); // pthread_detach in freeSchedulerProfile will detach the thread
             sched_yield(); // This will give chance for the signal receiving thread to start
             int count = 0;
+            //In case of activation timeout, the thread doesn't have to wait for report generation to be triggered,
+            //as the report generation is already triggered in the timeout thread.
             while(signalrecived_and_executing && !is_activation_time_out)
             {
                 if(count++ > 10)

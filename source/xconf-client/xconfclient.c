@@ -232,7 +232,11 @@ static char *getTimezone ()
             long numbytes = ftell(file);
             char *zone = (char*)malloc(sizeof(char) * (numbytes + 1));
             fseek(file, 0, SEEK_SET);
-            while (fscanf (file, "%s", zone) != EOF)
+
+            char fmt[32];
+            snprintf(fmt, sizeof(fmt), "%%%lds", numbytes); //using numbytes as the length for reading the file
+
+            while (fscanf(file, fmt, zone) != EOF)
             {
                 if(zoneValue)
                 {

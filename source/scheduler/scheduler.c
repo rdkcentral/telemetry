@@ -127,7 +127,11 @@ int getLapsedTime (struct timespec *output, struct timespec *time1, struct times
 static unsigned int getSchdInSec(char* timeRef)
 {
     struct tm timeptr, currtimeptr;
+#if defined(aarch64)
+    int64_t timeref = 0, timenow = 0, curtime;
+#else
     time_t timeref = 0, timenow = 0, curtime;
+#endif
     char * currtime = NULL;
     memset(&timeptr, '\0', sizeof(timeptr));
     memset(&currtimeptr, '\0', sizeof(currtimeptr));

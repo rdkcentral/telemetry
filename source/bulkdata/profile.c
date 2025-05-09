@@ -332,8 +332,13 @@ static void* CollectAndReport(void* data)
         cJSON *valArray = NULL;
         char* jsonReport = NULL;
         cJSON *triggercondition = NULL;
+#if defined(__aarch64__)
+	    int64_t maxuploadinSec = 0;
+	    int64_t maxuploadinmilliSec = 0;
+#else
         time_t maxuploadinSec = 0;
         time_t maxuploadinmilliSec = 0;
+#endif
         int n = 0;
         struct timespec startTime;
         struct timespec endTime;
@@ -846,7 +851,11 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
     {
         char buf[256] = {'\0'};
         char timebuf[256] = {'\0'};
+#if defined(__aarch64__)
+        int64_t timestamp = 0;
+#else
         time_t timestamp = 0;
+#endif 
         pthread_mutex_lock(&profile->eventMutex);
         switch(lookupEvent->mType)
         {

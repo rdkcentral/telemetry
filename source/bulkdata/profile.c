@@ -1404,7 +1404,8 @@ static void loadReportProfilesFromDisk(bool checkPreviousSeek)
             else
             {
                 T2Error("Unable to create and add new profile for name : %s\n", config->name);
-                if (profile != NULL) {
+                if (profile != NULL)
+                {
                     freeProfile(profile);
                     profile = NULL;
                 }

@@ -58,11 +58,7 @@ static char *getTimeStamp (void)
     timeStamp = malloc(MAX_TIME_INFO_LEN);
     if (timeStamp)
     {
-#if defined(__aarch64__)
-        int64_t timeObj = time(NULL);
-#else
         time_t timeObj = time(NULL);
-#endif
         struct tm *tmInfo = gmtime(&timeObj);
         // Format -  yyyy-mm-dd hh:mm:ss
         if (strftime(timeStamp, MAX_TIME_INFO_LEN, "%F %H:%M:%S", tmInfo) == 0)

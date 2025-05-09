@@ -290,7 +290,7 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
                 skipFrequency = 0 ;
             }
 
-            if(header != NULL && content != NULL)
+            if(header != NULL && content != NULL && logfile != NULL)
             {
                 if(skipFrequency > 0)
                 {

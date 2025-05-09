@@ -178,7 +178,14 @@ static char *getTimezone ()
             //CID 190258: Argument cannot be negative (NEGATIVE_RETURNS)
             if (numbytes > 0 )
             {
-                fread(jsonDoc, numbytes, 1, file);
+                if (fread(jsonDoc, numbytes, 1, file) != 1)
+                {
+                    fclose(file);
+                    free(jsonDoc);
+                    jsonDoc = NULL;
+                    T2Debug("Failed to read Timezone value from %s file...\n", jsonpath);
+                    continue;
+                }
             }
             fclose(file);
             cJSON *root = cJSON_Parse(jsonDoc);

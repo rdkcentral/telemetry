@@ -27,8 +27,13 @@ autoreconf --install
 # FLags to print compiler warnings
 DEBUG_CFLAGS="-Wall -Werror -Wextra"
 
+# Flags to print function call traces
+# DEBUG_CFLAGS="${DEBUG_CFLAGS} -finstrument-functions"
+DEBUG_CFLAGS="${DEBUG_CFLAGS} -g -pg" 
+
+
 export CFLAGS=" ${DEBUG_CFLAGS} -I${INSTALL_DIR}/include/rtmessage -I${INSTALL_DIR}/include/msgpack -I${INSTALL_DIR}/include/rbus -I${INSTALL_DIR}/include -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/local/include -DFEATURE_SUPPORT_WEBCONFIG -DRDK_LOGGER" 
 
-export LDFLAGS="-L/usr/lib/x86_64-linux-gnu -lglib-2.0"
+export LDFLAGS="-L/usr/lib/x86_64-linux-gnu -lglib-2.0 -pg"
 
 ./configure --prefix=${INSTALL_DIR} && make && make install

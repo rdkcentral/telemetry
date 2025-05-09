@@ -7,10 +7,10 @@ sequenceDiagram
     participant webconfigFramework
     participant t2parser
     participant XconfClient
-    participant reportgenerator
+    participant reportgen
     participant protocol
     participant scheduler
-    participant busInterface
+    participant ccspinterface
     end
     
    
@@ -27,12 +27,12 @@ sequenceDiagram
     scheduler->>bulkdata: init complete
     deactivate scheduler
 
-    activate busInterface
-    bulkdata->>busInterface: initBusInterface()
-    busInterface-->>rbus: Register DML  : Device.X_RDKCENTRAL-COM_T2.ReportProfiles, Temp_ReportProfiles, ReportProfilesMsgPack
-    rbus-->>busInterface: Registration complete 
-    busInterface-->>bulkdata: SUCCESS
-    deactivate busInterface
+    activate ccspinterface
+    bulkdata->>ccspinterface: initccspinterface()
+    ccspinterface-->>rbus: Register DML  : Device.X_RDKCENTRAL-COM_T2.ReportProfiles, Temp_ReportProfiles, ReportProfilesMsgPack
+    rbus-->>ccspinterface: Registration complete 
+    ccspinterface-->>bulkdata: SUCCESS
+    deactivate ccspinterface
 
     bulkdata->>webconfigFramework: initwebconfigFramework()
     webconfigFramework-->webconfigClient: Register handles

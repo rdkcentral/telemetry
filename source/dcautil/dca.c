@@ -158,9 +158,8 @@ static void appendData(pcdata_t* dst, const char* src)
         dst_len = strlen(dst->data) + 1;
         src_len = strlen(src) + 1;
         dst->data = (char*) realloc(dst->data, dst_len + src_len);
-        if(NULL != dst->data)
-        {
-            strcat(dst->data, ",");
+        if(NULL != dst->data) {
+            strncat(dst->data, ",", sizeof(dst->data) - strlen(dst->data) - 1);
             snprintf((dst->data) + dst_len, src_len, "%s", src);
         }
         else

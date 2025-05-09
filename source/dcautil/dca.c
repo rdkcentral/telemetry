@@ -161,7 +161,7 @@ static void appendData(pcdata_t* dst, const char* src)
         if(NULL != dst->data)
         {
             dst->data[dst_len - 1] = ',';
-            dst->data[dst_len] = '\0'; 
+            dst->data[dst_len] = '\0';
             snprintf((dst->data) + dst_len, src_len, "%s", src);
         }
         else

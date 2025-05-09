@@ -168,48 +168,45 @@ static char *getTimezone ()
     while ( zoneValue == NULL)
     {
         T2Debug ("timezone retry:%d\n", count);
-        if (access(jsonpath, F_OK) != -1)
+        file = fopen(jsonpath, "r");
+        if (file)
         {
-            file = fopen( jsonpath, "r");
-            if (file)
+            fseek(file, 0, SEEK_END);
+            long numbytes = ftell(file);
+            jsonDoc = (char*)malloc(sizeof(char) * (numbytes + 1));
+            fseek(file, 0, SEEK_SET);
+            //CID 190258: Argument cannot be negative (NEGATIVE_RETURNS)
+            if (numbytes > 0 )
             {
-                fseek(file, 0, SEEK_END);
-                long numbytes = ftell(file);
-                jsonDoc = (char*)malloc(sizeof(char) * (numbytes + 1));
-                fseek(file, 0, SEEK_SET);
-                //CID 190258: Argument cannot be negative (NEGATIVE_RETURNS)
-                if (numbytes > 0 )
+                fread(jsonDoc, numbytes, 1, file);
+            }
+            fclose(file);
+            cJSON *root = cJSON_Parse(jsonDoc);
+            if (root != NULL)
+            {
+                cJSON *array = cJSON_GetObjectItem(root, "xmediagateways");
+                if(array)
                 {
-                    fread(jsonDoc, numbytes, 1, file);
-                }
-                fclose(file);
-                cJSON *root = cJSON_Parse(jsonDoc);
-                if (root != NULL)
-                {
-                    cJSON *array = cJSON_GetObjectItem(root, "xmediagateways");
-                    if(array)
+                    for (i = 0 ; i < cJSON_GetArraySize(array) ; i++)
                     {
-                        for (i = 0 ; i < cJSON_GetArraySize(array) ; i++)
+                        cJSON * subarray = cJSON_GetArrayItem(array, i);
+                        cJSON * timezone = cJSON_GetObjectItem(subarray, "timezone");
+                        if(timezone)
                         {
-                            cJSON * subarray = cJSON_GetArrayItem(array, i);
-                            cJSON * timezone = cJSON_GetObjectItem(subarray, "timezone");
-                            if(timezone)
+                            char *time = cJSON_GetStringValue(timezone);
+                            //CID 190236: Resource leak (RESOURCE_LEAK)
+                            if (zoneValue != NULL)
                             {
-                                char *time = cJSON_GetStringValue(timezone);
-                                //CID 190236: Resource leak (RESOURCE_LEAK)
-                                if (zoneValue != NULL)
-                                {
-                                    free(zoneValue);
-                                }
-                                zoneValue = strdup(time);
+                                free(zoneValue);
                             }
+                            zoneValue = strdup(time);
                         }
                     }
                 }
-                free(jsonDoc);
-                jsonDoc = NULL;
-                cJSON_Delete(root);
             }
+            free(jsonDoc);
+            jsonDoc = NULL;
+            cJSON_Delete(root);
         }
         count++;
         if (count == 10)
@@ -221,27 +218,24 @@ static char *getTimezone ()
     if ( zoneValue == NULL)
     {
         T2Debug("Timezone value from %s is empty, Reading from  /opt/persistent/timeZoneDST file...\n", jsonpath);
-        if (access("/opt/persistent/timeZoneDST", F_OK) != -1)
+        file = fopen("/opt/persistent/timeZoneDST", "r");
+        if (NULL != file)
         {
-            file = fopen ("/opt/persistent/timeZoneDST", "r");
-            if (NULL != file)
+            fseek(file, 0, SEEK_END);
+            long numbytes = ftell(file);
+            char *zone = (char*)malloc(sizeof(char) * (numbytes + 1));
+            fseek(file, 0, SEEK_SET);
+            while (fgets(zone, numbytes + 1, file) != NULL)
             {
-                fseek(file, 0, SEEK_END);
-                long numbytes = ftell(file);
-                char *zone = (char*)malloc(sizeof(char) * (numbytes + 1));
-                fseek(file, 0, SEEK_SET);
-                while (fgets(zone, numbytes + 1, file) != NULL)
+                if(zoneValue)
                 {
-                    if(zoneValue)
-                    {
-                        free(zoneValue);
-                        zoneValue = NULL ;
-                    }
-                    zoneValue = strdup(zone);
+                    free(zoneValue);
+                    zoneValue = NULL ;
                 }
-                fclose(file);
-                free(zone);
+                zoneValue = strdup(zone);
             }
+            fclose(file);
+            free(zone);
         }
 
     }

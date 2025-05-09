@@ -1404,6 +1404,10 @@ static void loadReportProfilesFromDisk(bool checkPreviousSeek)
             else
             {
                 T2Error("Unable to create and add new profile for name : %s\n", config->name);
+                if (profile != NULL) {
+                    freeProfile(profile);
+                    profile = NULL;
+                }
             }
         }
     }
@@ -1645,6 +1649,7 @@ T2ERROR appendTriggerCondition (Profile *tempProfile, const char *referenceName,
                     strncpy(triggerCond->referenceName, referenceName, (MAX_LEN - 1));
                     strncpy(triggerCond->referenceValue, referenceValue, (MAX_LEN - 1));
                     t2_queue_push(triggerConditionQueue, (void*) triggerCond);
+                    // Ownership of triggerCond is transferred to triggerConditionQueue and will be freed after being popped.
                 }
                 else
                 {

@@ -626,6 +626,8 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
                 if(regaccumulateValues != NULL && Vector_Size(regaccumulateValues) > 0)
                 {
                     convertVectorToJson(vectorToarray, regaccumulateValues);
+                    Vector_Clear(regaccumulateValues, NULL);
+                    free(regaccumulateValues);
                 }
                 else
                 {

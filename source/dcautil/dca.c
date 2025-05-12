@@ -123,6 +123,24 @@ int processTopPattern(rdkList_t *pchead, Vector* grepResultList)
     return 0;
 }
 
+/** 
+ * @brief This API updates the filename if it is different from the current one.
+ * @param currentFile The current filename.
+ * @param newFile The new filename to update to.
+ * @return The updated filename.
+ */
+
+static char* updateFilename(char* currentFile, const char* newFile) {
+    if (currentFile == NULL || strcmp(currentFile, newFile) != 0) {
+        free(currentFile);
+        currentFile = strdup(newFile);
+        if (currentFile == NULL) {
+            T2Error("Insufficient memory to allocate string %s\n", newFile);
+        }
+    }
+    return currentFile;
+}
+
 /** @brief This API appends tr181 object value to telemetry node.
  *
  *  @param[in] dst  Object node
@@ -628,78 +646,56 @@ static int processCountPattern(hash_map_t *logSeekMap, char *logfile, rdkList_t 
  *
  * @param[in]  prev_file    The previous log file.
  * @param[in]  logfile      The current log file.
- * @param[in]  rdkec_head   RDK errorcode head
+ * @param[in]  rdk_error_code_head   RDK errorcode head
  * @param[in]  pchead       Node head
  * @param[in]  pcIndex      Node count
  *
  * @return Returns status on operation.
  * @retval Returns 0 upon success.
  */
-static int processPattern(char **prev_file, char *logfile, rdkList_t **rdkec_head, rdkList_t *pchead, Vector *grepResultList, hash_map_t* logSeekMap, int *firstSeekFromEOF, bool check_rotated_logs)
+static int processPattern(char **prev_file, char *logfile, rdkList_t **rdk_error_code_head, rdkList_t *pchead, Vector *grepResultList, hash_map_t* logSeekMap, int *firstSeekFromEOF, bool check_rotated_logs)
 {
 
     T2Debug("%s ++in\n", __FUNCTION__);
-    if(NULL != logfile)
+    if(NULL == prev_file || NULL == logfile || NULL == rdk_error_code_head || NULL == pchead || NULL == grepResultList)
     {
-
-        if((NULL == *prev_file) || (strcmp(*prev_file, logfile) != 0))
-        {
-            if(NULL == *prev_file)
-            {
-                *prev_file = strdup(logfile);
-                if(*prev_file == NULL)
-                {
-                    T2Error("Insufficient memory available to allocate duplicate string %s\n", logfile);
-                }
-            }
-            else
-            {
-                updateLogSeek(logSeekMap, *prev_file);
-                free(*prev_file);
-                *prev_file = strdup(logfile);
-                if(*prev_file == NULL)
-                {
-                    T2Error("Insufficient memory available to allocate duplicate string %s\n", logfile);
-                }
-            }
-        }
-        // Process
-        if(NULL != pchead)
-        {
-            if(0 == strcmp(logfile, "top_log.txt"))
-            {
-                if(grepResultList != NULL)
-                {
-                    processTopPattern(pchead, grepResultList);
-                }
-            }
-            else if(0 == strcmp(logfile, "<message_bus>"))
-            {
-                processTr181Objects( pchead);
-                if (grepResultList != NULL)
-                {
-                    addToVector(pchead, grepResultList);
-                }
-                else
-                {
-                    addToJson(pchead);
-                }
-            }
-            else
-            {
-                processCountPattern(logSeekMap, logfile, pchead, rdkec_head, firstSeekFromEOF, check_rotated_logs);
-                if (grepResultList != NULL)
-                {
-                    addToVector(pchead, grepResultList);
-                }
-                else
-                {
-                    addToJson(pchead);
-                }
-            }
-        }
-        clearPCNodes(&pchead);
+        T2Error("Invalid arguments for %s\n", __FUNCTION__);
+        return -1;
     }
+
+
+    if((NULL == *prev_file) || (strcmp(*prev_file, logfile) != 0))
+    {
+        if(*prev_file != NULL)
+        {
+            updateLogSeek(logSeekMap, *prev_file);
+            free(*prev_file);
+        }
+        *prev_file = strdup(logfile);
+        if(*prev_file == NULL)
+        {
+            T2Error("Insufficient memory available to allocate duplicate string %s\n", logfile);
+        }
+    }
+    // Based on the logfile name, processing varies. 
+    // Message bus still landing on the legacy utils is a case which has a non-zero skip frequency value 
+    if(0 == strcmp(logfile, "top_log.txt"))
+    {
+        processTopPattern(pchead, grepResultList);
+    }
+    else if(0 == strcmp(logfile, "<message_bus>"))
+    {
+        processTr181Objects(pchead);
+        addToVector(pchead, grepResultList);
+    }
+    else
+    {
+        // This is the function which does actual loggrep for the pattern
+        // It will also handle the rotated log files if the flag is set
+        processCountPattern(logSeekMap, logfile, pchead, rdk_error_code_head, firstSeekFromEOF, check_rotated_logs);
+        addToVector(pchead, grepResultList);
+    }
+    clearPCNodes(&pchead);
     T2Debug("%s --out\n", __FUNCTION__);
     return 0;
 }
@@ -769,7 +765,7 @@ void getDType(char *filename, MarkerType mType, DType_t *dtype)
  *  @param filename
  *  @return -1 on failure, 0 on success
  */
-static int parseMarkerList(char* profileName, Vector* vMarkerList, Vector* grepResultList, bool check_rotated)
+static int parseMarkerList(char* profileName, Vector* ip_vMarkerList, Vector* op_grepResultList, bool check_rotated)
 {
     T2Debug("%s ++in \n", __FUNCTION__);
 
@@ -778,7 +774,7 @@ static int parseMarkerList(char* profileName, Vector* vMarkerList, Vector* grepR
     GrepSeekProfile* gsProfile = NULL;
     size_t var = 0;
 
-    size_t vCount = Vector_Size(vMarkerList);
+    size_t vCount = Vector_Size(ip_vMarkerList);
     T2Debug("vMarkerList for profile %s is of count = %lu \n", profileName, (unsigned long )vCount);
 
     // Get logfile -> seek value map associated with the profile
@@ -796,7 +792,9 @@ static int parseMarkerList(char* profileName, Vector* vMarkerList, Vector* grepR
     }
 
     int profileExecCounter = gsProfile->execCounter;
-    if((gsProfile->execCounter == 1) && (firstreport_after_bootup == false))  //checking the execution count and first report after bootup because after config reload again execution count will get initialised and again reaches 1. check_rotated logs flag is to check the rotated log files even when seekvalue is less than filesize for the first time.
+    // checking the execution count and first report after bootup because after config reload again execution count will get initialised and again reaches 1. 
+    // check_rotated logs flag is to check the rotated log files even when seekvalue is less than filesize for the first time.
+    if((gsProfile->execCounter == 1) && (firstreport_after_bootup == false))  
     {
         check_rotated_logs = check_rotated;
         firstreport_after_bootup = true;
@@ -807,10 +805,18 @@ static int parseMarkerList(char* profileName, Vector* vMarkerList, Vector* grepR
     }
 
     // Traverse through marker list
-    for( var = 0; var < vCount; ++var )
-    {
+    for (var = 0; var < vCount; ++var) {
+        GrepMarker* markerList = (GrepMarker*) Vector_At(ip_vMarkerList, var);
+        if (!markerList || !markerList->logFile || !markerList->searchString || !markerList->markerName) {
+            continue;
+        }
+        if (strcmp(markerList->searchString, "") == 0 || strcmp(markerList->logFile, "") == 0) {
+            continue;
+        }
+        if (strcasecmp(markerList->logFile, "snmp") == 0) {
+            continue;
+        }
 
-        GrepMarker* markerList = (GrepMarker*) Vector_At(vMarkerList, var);
         int tmp_skip_interval, is_skip_param;
 
         char *temp_header = markerList->markerName;
@@ -821,22 +827,6 @@ static int parseMarkerList(char* profileName, Vector* vMarkerList, Vector* grepR
         tmp_skip_interval = markerList->skipFreq;
 
         DType_t dtype;
-
-        if(NULL == temp_file || NULL == temp_pattern || NULL == temp_header)
-        {
-            continue;
-        }
-
-        if((0 == strcmp(temp_pattern, "")) || (0 == strcmp(temp_file, "")))
-        {
-            continue;
-        }
-
-        if(0 == strcasecmp(temp_file, "snmp"))
-        {
-            continue;
-        }
-
         getDType(temp_file, markerList->mType, &dtype);
 
         if(tmp_skip_interval <= 0)
@@ -853,33 +843,14 @@ static int parseMarkerList(char* profileName, Vector* vMarkerList, Vector* grepR
             is_skip_param = 1;
         }
 
-        if(NULL == filename)
-        {
-            filename = strdup(temp_file);
-            if(filename == NULL)
-            {
-                T2Error("Insufficient memory available to allocate duplicate string %s\n", temp_file);
-            }
-        }
-        else
-        {
-            if(0 != strcmp(filename, temp_file))
-            {
-                free(filename);
-                filename = strdup(temp_file);
-                if(filename == NULL)
-                {
-                    T2Error("Insufficient memory available to allocate duplicate string %s\n", temp_file);
-                }
-            }
-        }
+        filename = updateFilename(filename, temp_file);
 
         // TODO optimize the list search in US
         if(is_skip_param == 0)
         {
             if(0 == insertPCNode(&pchead, temp_pattern, temp_header, dtype, 0, NULL, trim, regex))
             {
-                processPattern(&prevfile, filename, &rdkec_head, pchead, grepResultList, gsProfile->logFileSeekMap, &(markerList->firstSeekFromEOF), check_rotated_logs);
+                processPattern(&prevfile, filename, &rdkec_head, pchead, op_grepResultList, gsProfile->logFileSeekMap, &(markerList->firstSeekFromEOF), check_rotated_logs);
                 pchead = NULL;
             }
         }
@@ -1001,7 +972,6 @@ int getDCAResultsInVector(char* profileName, Vector* vecMarkerList, Vector** gre
     T2Debug("%s --out \n", __FUNCTION__);
     return rc;
 }
-
 
 /** @} */
 

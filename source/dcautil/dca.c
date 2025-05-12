@@ -347,6 +347,26 @@ static void addToJson(rdkList_t *pchead)
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
+static GrepResult* createGrepResult(const char* markerName, const char* markerValue, bool trimParameter, char* regexParameter)
+{
+    GrepResult* grepResult = (GrepResult*) malloc(sizeof(GrepResult));
+    if (grepResult == NULL) {
+        T2Error("Failed to allocate memory for GrepResult\n");
+        return NULL;
+    }
+    grepResult->markerName = strdup(markerName);
+    grepResult->markerValue = strdup(markerValue);
+    grepResult->trimParameter = trimParameter;
+    if (regexParameter != NULL)
+    {
+        grepResult->regexParameter = strdup(regexParameter);
+    }
+    else
+    {
+        grepResult->regexParameter = NULL;
+    }
+    return grepResult;
+}
 
 /**
  * @brief This function adds the value to the telemetry output vector object.
@@ -370,64 +390,64 @@ static int addToVector(rdkList_t *pchead, Vector* grepResultList)
     while(NULL != tlist)
     {
         tmp = tlist->m_pUserData;
-        if(NULL != tmp)
+        if (NULL == tmp)
         {
+            T2Debug("tmp is NULL for %s\n", __FUNCTION__);
+            tlist = rdk_list_find_next_node(tlist);
+            continue;
+            
+        }
 
-            if(tmp->pattern && grepResultList != NULL )
+        if(tmp->pattern)
+        {
+            if(tmp->d_type == OCCURENCE)
             {
-                if(tmp->d_type == OCCURENCE)
+                if(tmp->count != 0)
                 {
-                    if(tmp->count != 0)
+                    char tmp_str[5] = { 0 };
+                    if(tmp->count > 9999)
                     {
-                        char tmp_str[5] = { 0 };
-                        if(tmp->count > 9999)
-                        {
-                            T2Debug("Count value is %d higher than limit of 9999 changing the value to %d to track buffer overflow", tmp->count, INVALID_COUNT);
-                            tmp->count = INVALID_COUNT;
-                        }
-                        snprintf(tmp_str, sizeof(tmp_str), "%d", tmp->count);
-                        GrepResult* grepResult = (GrepResult*) malloc(sizeof(GrepResult));
-                        grepResult->markerName = strdup(tmp->header);
-                        grepResult->markerValue = strdup(tmp_str);
-                        grepResult->trimParameter = tmp->trimparam;
-                        grepResult->regexParameter = tmp->regexparam;
-                        if(tmp->header)
-                        {
-                            free(tmp->header);
-                            tmp->header = NULL;
-                        }
-                        T2Debug("Adding OCCURENCE to result list %s : %s \n", grepResult->markerName, grepResult->markerValue);
-                        Vector_PushBack(grepResultList, grepResult);
+                        T2Debug("Count value is %d higher than limit of 9999 changing the value to %d to track buffer overflow", tmp->count, INVALID_COUNT);
+                        tmp->count = INVALID_COUNT;
                     }
-                }
-                else if(tmp->d_type == STR)
-                {
-                    if(NULL != tmp->data && (strcmp(tmp->data, "0") != 0))
+                    snprintf(tmp_str, sizeof(tmp_str), "%d", tmp->count);
+                    GrepResult* grepResult = createGrepResult(tmp->header, tmp_str, tmp->trimparam, tmp->regexparam);
+                    if (grepResult == NULL) {
+                        T2Error("Failed to create GrepResult\n");
+                        return -1;
+                    }
+                    if(tmp->header)
                     {
-                        GrepResult* grepResult = (GrepResult*) malloc(sizeof(GrepResult));
-                        grepResult->markerName = strdup(tmp->header);
-                        grepResult->markerValue = strdup(tmp->data);
-                        grepResult->trimParameter = tmp->trimparam;
-                        grepResult->regexParameter = tmp->regexparam;
-                        if(tmp->header)
-                        {
-                            free(tmp->header);
-                            tmp->header = NULL;
-                        }
-                        if(tmp->data)
-                        {
-                            free(tmp->data);
-                            tmp->data = NULL;
-                        }
-                        T2Debug("Adding STR to result list %s : %s \n", grepResult->markerName, grepResult->markerValue);
-                        Vector_PushBack(grepResultList, grepResult);
-
+                        free(tmp->header);
+                        tmp->header = NULL;
                     }
+                    T2Debug("Adding OCCURENCE to result list %s : %s \n", grepResult->markerName, grepResult->markerValue);
+                    Vector_PushBack(grepResultList, grepResult);
                 }
             }
-            else
+            else if(tmp->d_type == STR)
             {
-                T2Debug("%s : grepResultList is NULL \n", __FUNCTION__);
+                if(NULL != tmp->data && (strcmp(tmp->data, "0") != 0))
+                {
+                    GrepResult* grepResult = createGrepResult(tmp->header, tmp->data, tmp->trimparam, tmp->regexparam);
+                    if(grepResult == NULL) {
+                        T2Error("Failed to create GrepResult\n");
+                        return -1;
+                    }
+                    if(tmp->header)
+                    {
+                        free(tmp->header);
+                        tmp->header = NULL;
+                    }
+                    if(tmp->data)
+                    {
+                        free(tmp->data);
+                        tmp->data = NULL;
+                    }
+                    T2Debug("Adding STR to result list %s : %s \n", grepResult->markerName, grepResult->markerValue);
+                    Vector_PushBack(grepResultList, grepResult);
+
+                }
             }
         }
         tlist = rdk_list_find_next_node(tlist);
@@ -977,4 +997,5 @@ int getDCAResultsInVector(char* profileName, Vector* vecMarkerList, Vector** gre
 
 /** @} */
 /** @} */
+
 

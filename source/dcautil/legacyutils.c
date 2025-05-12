@@ -404,20 +404,13 @@ int getLoadAvg(Vector* grepResultList, bool trim, char* regex)
  *
  * @return  Returns size of file.
  */
-static int fsize(FILE *fp)
+static long fsize(FILE *fp)
 {
-    // TODO optimize with fstat functions
-    int prev = ftell(fp);
-    fseek(fp, 0L, SEEK_END);
-    int sz = ftell(fp);
-    if(prev >= 0)
-    {
-        if(fseek(fp, prev, SEEK_SET) != 0)
-        {
-            T2Error("Cannot set the file position indicator for the stream pointed to by stream\n");
-        }
+    struct stat st;
+    if (fstat(fileno(fp), &st) == 0) {
+        return st.st_size;
     }
-    return sz;
+    return -1;
 }
 
 /**

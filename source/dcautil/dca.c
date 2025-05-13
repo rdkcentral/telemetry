@@ -46,6 +46,9 @@ static bool firstreport_after_bootup = false; // the rotated logs check should r
 // safeclib is not compleately introduced in T2 but to be in sync with legacy
 #define INVALID_COUNT -406
 
+#define BUFFER_SIZE 4096  // TODO fine tune this value based on the size of the data
+#define LARGE_FILE_THRESHOLD 1000000 // 1MB
+
 /**
  * @addtogroup DCA_TYPES
  * @{
@@ -123,18 +126,24 @@ int processTopPattern(rdkList_t *pchead, Vector* grepResultList)
     return 0;
 }
 
-/** 
+/**
  * @brief This API updates the filename if it is different from the current one.
  * @param currentFile The current filename.
  * @param newFile The new filename to update to.
  * @return The updated filename.
  */
 
-static char* updateFilename(char* currentFile, const char* newFile) {
-    if (currentFile == NULL || strcmp(currentFile, newFile) != 0) {
-        free(currentFile);
+static char* updateFilename(char* currentFile, const char* newFile)
+{
+    if (currentFile == NULL || strcmp(currentFile, newFile) != 0)
+    {
+        if (currentFile != NULL)
+        {
+            free(currentFile);
+        }
         currentFile = strdup(newFile);
-        if (currentFile == NULL) {
+        if (currentFile == NULL)
+        {
             T2Error("Insufficient memory to allocate string %s\n", newFile);
         }
     }
@@ -347,10 +356,11 @@ static void addToJson(rdkList_t *pchead)
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
-static GrepResult* createGrepResult(const char* markerName, const char* markerValue, bool trimParameter, char* regexParameter)
+static GrepResult* createGrepResultObj(const char* markerName, const char* markerValue, bool trimParameter, char* regexParameter)
 {
     GrepResult* grepResult = (GrepResult*) malloc(sizeof(GrepResult));
-    if (grepResult == NULL) {
+    if (grepResult == NULL)
+    {
         T2Error("Failed to allocate memory for GrepResult\n");
         return NULL;
     }
@@ -366,6 +376,23 @@ static GrepResult* createGrepResult(const char* markerName, const char* markerVa
         grepResult->regexParameter = NULL;
     }
     return grepResult;
+}
+
+/**
+ * @brief This function formats the count value to a string.
+ *     Formatting is to handle the case where the count of error occurence in an interval exceeds 9999.
+ *
+ * @param[out] buffer  The buffer to store the formatted string.
+ * @param[in]  size    The size of the buffer.
+ * @param[in]  count   The count value to format.
+ */
+static inline void formatCount(char* buffer, size_t size, int count)
+{
+    if (count > 9999)
+    {
+        count = INVALID_COUNT;
+    }
+    snprintf(buffer, size, "%d", count);
 }
 
 /**
@@ -387,6 +414,7 @@ static int addToVector(rdkList_t *pchead, Vector* grepResultList)
     rdkList_t *tlist = pchead;
     pcdata_t *tmp = NULL;
 
+    // Loop iterating through the results - JSON data converted back to vector
     while(NULL != tlist)
     {
         tmp = tlist->m_pUserData;
@@ -395,7 +423,7 @@ static int addToVector(rdkList_t *pchead, Vector* grepResultList)
             T2Debug("tmp is NULL for %s\n", __FUNCTION__);
             tlist = rdk_list_find_next_node(tlist);
             continue;
-            
+
         }
 
         if(tmp->pattern)
@@ -404,15 +432,12 @@ static int addToVector(rdkList_t *pchead, Vector* grepResultList)
             {
                 if(tmp->count != 0)
                 {
+                    // JSON respnse always expects message in string format
                     char tmp_str[5] = { 0 };
-                    if(tmp->count > 9999)
+                    formatCount(tmp_str, sizeof(tmp_str), tmp->count);
+                    GrepResult* grepResult = createGrepResultObj(tmp->header, tmp_str, tmp->trimparam, tmp->regexparam);
+                    if (grepResult == NULL)
                     {
-                        T2Debug("Count value is %d higher than limit of 9999 changing the value to %d to track buffer overflow", tmp->count, INVALID_COUNT);
-                        tmp->count = INVALID_COUNT;
-                    }
-                    snprintf(tmp_str, sizeof(tmp_str), "%d", tmp->count);
-                    GrepResult* grepResult = createGrepResult(tmp->header, tmp_str, tmp->trimparam, tmp->regexparam);
-                    if (grepResult == NULL) {
                         T2Error("Failed to create GrepResult\n");
                         return -1;
                     }
@@ -429,8 +454,9 @@ static int addToVector(rdkList_t *pchead, Vector* grepResultList)
             {
                 if(NULL != tmp->data && (strcmp(tmp->data, "0") != 0))
                 {
-                    GrepResult* grepResult = createGrepResult(tmp->header, tmp->data, tmp->trimparam, tmp->regexparam);
-                    if(grepResult == NULL) {
+                    GrepResult* grepResult = createGrepResultObj(tmp->header, tmp->data, tmp->trimparam, tmp->regexparam);
+                    if(grepResult == NULL)
+                    {
                         T2Error("Failed to create GrepResult\n");
                         return -1;
                     }
@@ -467,108 +493,120 @@ static int addToVector(rdkList_t *pchead, Vector* grepResultList)
  */
 static int getSplitParameterValue(char *line, pcdata_t *pcnode)
 {
-
-    char *strFound = NULL;
-    if(line == NULL || pcnode == NULL)
+    // Input validation
+    if (!line || !pcnode || !pcnode->pattern)
     {
         T2Error("Invalid arguments for %s\n", __FUNCTION__);
         return -1;
     }
-    strFound = strstr(line, pcnode->pattern);
 
-    if(strFound != NULL)
+    // Use const for pattern to prevent accidental modifications
+    const char *pattern = pcnode->pattern;
+    const size_t pattern_len = strlen(pattern);
+
+    // Find pattern in line
+    const char *value_start = strstr(line, pattern);
+    if (!value_start)
     {
-        int tlen = 0, plen = 0, vlen = 0;
-        tlen = (int) strlen(line);
-        plen = (int) strlen(pcnode->pattern);
-        strFound = strFound + plen;
-        if(tlen > plen)
+        return 0;  // Pattern not found
+    }
+
+    // Calculate value position and length
+    value_start += pattern_len;
+    const size_t line_len = strlen(line);
+    const size_t value_len = line_len - (value_start - line);
+
+    // Skip if value is empty or just whitespace
+    if (value_len <= 1 || (value_len == 1 && isspace(*value_start)))
+    {
+        return 0;
+    }
+
+    // Allocate memory only if needed
+    if (!pcnode->data)
+    {
+        pcnode->data = malloc(MAXLINE);
+        if (!pcnode->data)
         {
-            vlen = strlen(strFound);
-            // If value is only single char make sure its not an empty space .
-            // Ideally component should not print logs with empty values but we have to consider logs from OSS components
-            if((1 == vlen) && isspace(strFound[plen]))
-            {
-                return 0;
-            }
-
-            if(vlen > 0)
-            {
-                if(NULL == pcnode->data)
-                {
-                    pcnode->data = (char *) malloc(MAXLINE);
-                }
-
-                if(NULL == pcnode->data)
-                {
-                    return (-1);
-                }
-
-                strncpy(pcnode->data, strFound, MAXLINE);
-                pcnode->data[tlen - plen] = '\0'; //For Boundary Safety
-            }
+            T2Error("Memory allocation failed for split parameter value\n");
+            return -1;
         }
     }
 
+    // Copy value with bounds checking
+    size_t copy_len = value_len < MAXLINE - 1 ? value_len : MAXLINE - 1;
+    memcpy(pcnode->data, value_start, copy_len);
+    pcnode->data[copy_len] = '\0';
+
     return 0;
+
 }
 
 /**
- * @brief To get RDK error code.
+ * @brief Function to extract RDK error code from a string.
  *
- * @param[in]  str    Source string.
- * @param[out] ec     Error code.
+ * @param[in]  str    Source string containing RDK error code
+ * @param[out] ec     Buffer to store the extracted error code
  *
- * @return Returns status of operation.
- * @retval Return 0 upon success.
+ * @return Returns 0 on success, -1 on failure
  */
-int getErrorCode(char *str, char *ec)
+int getErrorCode(const char *str, char *ec)
 {
-
     T2Debug("%s ++in\n", __FUNCTION__);
-    int i = 0, j = 0, len = 0;
-// Solution: Check if str is NULL before dereferencing it.
-    if(str == NULL)
+
+    // Input validation
+    if (!str || !ec)
     {
-        T2Error("Str is NULL for %s\n", __FUNCTION__);
+        T2Error("Invalid arguments: str=%p, ec=%p\n", (void*)str, (void*)ec);
         return -1;
     }
-    len = strlen(str);
-    char tmpEC[LEN] = { 0 };
-    while(str[i] != '\0')
+
+    // Use const for better optimization
+    static const char RDK_PREFIX[] = "RDK-";
+    const size_t PREFIX_LEN = sizeof(RDK_PREFIX) - 1;
+    const char *ptr = str;
+
+    // Find "RDK-" prefix
+    while ((ptr = strstr(ptr, RDK_PREFIX)) != NULL)
     {
-        if(len >= 4 && str[i] == 'R' && str[i + 1] == 'D' && str[i + 2] == 'K' && str[i + 3] == '-')
+        ptr += PREFIX_LEN;  // Check if line has strings after "RDK-"
+        if (*ptr != '0' && *ptr != '1')
         {
-            i += 4;
-            j = 0;
-            if(str[i] == '0' || str[i] == '1')
-            {
-                tmpEC[j] = str[i];
-                i++;
-                j++;
-                if(str[i] == '0' || str[i] == '3')
-                {
-                    tmpEC[j] = str[i];
-                    i++;
-                    j++;
-                    if(0 != isdigit(str[i]))
-                    {
-                        while(i <= len && 0 != isdigit(str[i]) && j < RDK_EC_MAXLEN)
-                        {
-                            tmpEC[j] = str[i];
-                            i++;
-                            j++;
-                            ec[j] = '\0';
-                            strncpy(ec, tmpEC, LEN);
-                        }
-                        break;
-                    }
-                }
-            }
+            ptr++;
+            continue;
         }
-        i++;
+
+        if (ptr[1] != '0' && ptr[1] != '3')
+        {
+            ptr++;
+            continue;
+        }
+
+        // Validate remaining digits
+        const char *digit_start = ptr + 2;
+        size_t digit_count = 0;
+
+        while (isdigit((unsigned char)digit_start[digit_count]) &&
+                digit_count < RDK_EC_MAXLEN - 2)
+        {
+            digit_count++;
+        }
+
+        if (digit_count > 0)
+        {
+            // Copy the error code: first two digits + remaining digits
+            memcpy(ec, ptr, 2 + digit_count);
+            ec[2 + digit_count] = '\0';
+            T2Debug("%s --out Success\n", __FUNCTION__);
+            return 0;
+        }
+
+        ptr++;
     }
-    T2Debug("%s --out\n", __FUNCTION__);
+
+    // No valid error code found
+    ec[0] = '\0';
+    T2Debug("%s --out No valid error code found\n", __FUNCTION__);
     return 0;
 }
 
@@ -580,6 +618,8 @@ int getErrorCode(char *str, char *ec)
  *
  * @return Returns status of operation.
  * @retval Return 0 upon success, -1 on failure.
+ * TODO: This was a special case for RDK-V. Need to check if this is still needed or atleast restrict to certain files.
+ * This function should be moved to a more appropriate location if it is still required and exclude checking for each line.
  */
 static int handleRDKErrCodes(rdkList_t **rdkec_head, char *line)
 {
@@ -608,6 +648,95 @@ static int handleRDKErrCodes(rdkList_t **rdkec_head, char *line)
     return -1;
 }
 
+
+#if 0
+static int processCountPatternOptimized(hash_map_t *logSeekMap, char *logfile,
+                                        rdkList_t *pchead, rdkList_t **rdkec_head,
+                                        int *firstSeekFromEOF, bool check_rotated_logs)
+{
+
+    size_t adaptive_buffer_size = BUFFER_SIZE;
+    char line[MAXLINE];
+    size_t line_pos = 0;
+    FILE *fp;
+    double cpuUsage = getSystemCPUUsage();
+    double memoryUsage = getSystemMemoryUsage();
+
+
+    T2Debug("System CPU Usage: %.2f%%\n", cpuUsage);
+    T2Debug("System Memory Usage: %.2f%%\n", memoryUsage);
+
+    if (memoryUsage > 80.0)
+    {
+        adaptive_buffer_size = BUFFER_SIZE / 2; // Reduce buffer size for high memory usage
+        T2Info("High memory usage detected, using smaller buffer size %zu\n", adaptive_buffer_size);
+    }
+
+
+    if (memoryUsage < 50.0 && sb.st_size > LARGE_FILE_THRESHOLD)
+    {
+        return processWithMMapSafe(logfile, pchead);
+    }
+    else
+    {
+        return processWithBufferedIO(logfile, pchead);
+    }
+
+    char buffer[adaptive_buffer_size];
+    // Logic for for rotated file and update log seek needs to be retained from getLogLine
+    if ((fp = fopen(logfile, "r")) == NULL)
+    {
+        T2Error("Failed to open file %s\n", logfile);
+        return -1;
+    }
+
+
+// Process file in chunks
+    size_t bytes_read;
+    while ((bytes_read = fread(buffer, 1, BUFFER_SIZE, fp)) > 0)
+    {
+        for (size_t i = 0; i < bytes_read; i++)
+        {
+            if (buffer[i] == '\n' || line_pos >= MAXLINE - 1)
+            {
+                line[line_pos] = '\0';
+
+                // Pattern match check - Without any algorithms -
+                // This is a simple linear search for the pattern in the line
+                // This can be optimized further if needed
+                pcdata_t *pc_node = searchPCNode(pchead, line);
+                if (pc_node != NULL)
+                {
+                    if (pc_node->d_type == OCCURENCE)
+                    {
+                        pc_node->count++;
+                    }
+                    else if (pc_node->header != NULL)
+                    {
+                        getSplitParameterValue(line, pc_node);
+                    }
+                }
+                else if (strstr(line, "RDK-"))
+                {
+                    handleRDKErrCodes(rdkec_head, line);
+                }
+
+                line_pos = 0;
+            }
+            else
+            {
+                line[line_pos++] = buffer[i];
+            }
+        }
+    }
+
+    fclose(fp);
+    return 0;
+}
+#endif
+
+
+
 /**
  * @brief Function to process pattern count (loggrep)
  *
@@ -622,7 +751,7 @@ static int handleRDKErrCodes(rdkList_t **rdkec_head, char *line)
 static int processCountPattern(hash_map_t *logSeekMap, char *logfile, rdkList_t *pchead, rdkList_t **rdkec_head, int *firstSeekFromEOF, bool check_rotated_logs)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
-    char temp[MAXLINE];
+    char temp[MAXLINE] = { 0 };
     T2Debug("Read from log file %s \n", logfile);
     while(getLogLine(logSeekMap, temp, MAXLINE, logfile, firstSeekFromEOF, check_rotated_logs) != NULL)
     {
@@ -651,6 +780,7 @@ static int processCountPattern(hash_map_t *logSeekMap, char *logfile, rdkList_t 
         else
         {
             // This is a RDK-V specific calls for reporting RDK error codes . Retaining for video porting
+            // TODO: This should be moved to a more appropriate location if it is still required and exclude checking for each line.
             if(NULL != strstr(temp, "RDK-"))
             {
                 handleRDKErrCodes(rdkec_head, temp);
@@ -697,8 +827,8 @@ static int processPattern(char **prev_file, char *logfile, rdkList_t **rdk_error
             T2Error("Insufficient memory available to allocate duplicate string %s\n", logfile);
         }
     }
-    // Based on the logfile name, processing varies. 
-    // Message bus still landing on the legacy utils is a case which has a non-zero skip frequency value 
+    // Based on the logfile name, processing varies.
+    // Message bus still landing on the legacy utils is a case which has a non-zero skip frequency value
     if(0 == strcmp(logfile, "top_log.txt"))
     {
         processTopPattern(pchead, grepResultList);
@@ -812,9 +942,9 @@ static int parseMarkerList(char* profileName, Vector* ip_vMarkerList, Vector* op
     }
 
     int profileExecCounter = gsProfile->execCounter;
-    // checking the execution count and first report after bootup because after config reload again execution count will get initialised and again reaches 1. 
+    // checking the execution count and first report after bootup because after config reload again execution count will get initialised and again reaches 1.
     // check_rotated logs flag is to check the rotated log files even when seekvalue is less than filesize for the first time.
-    if((gsProfile->execCounter == 1) && (firstreport_after_bootup == false))  
+    if((gsProfile->execCounter == 1) && (firstreport_after_bootup == false))
     {
         check_rotated_logs = check_rotated;
         firstreport_after_bootup = true;
@@ -825,15 +955,19 @@ static int parseMarkerList(char* profileName, Vector* ip_vMarkerList, Vector* op
     }
 
     // Traverse through marker list
-    for (var = 0; var < vCount; ++var) {
+    for (var = 0; var < vCount; ++var)
+    {
         GrepMarker* markerList = (GrepMarker*) Vector_At(ip_vMarkerList, var);
-        if (!markerList || !markerList->logFile || !markerList->searchString || !markerList->markerName) {
+        if (!markerList || !markerList->logFile || !markerList->searchString || !markerList->markerName)
+        {
             continue;
         }
-        if (strcmp(markerList->searchString, "") == 0 || strcmp(markerList->logFile, "") == 0) {
+        if (strcmp(markerList->searchString, "") == 0 || strcmp(markerList->logFile, "") == 0)
+        {
             continue;
         }
-        if (strcasecmp(markerList->logFile, "snmp") == 0) {
+        if (strcasecmp(markerList->logFile, "snmp") == 0)
+        {
             continue;
         }
 

@@ -345,7 +345,7 @@ void testCase2()
 int main(int argc, char *argv[])
 {
 
-    
+
 
     LOGInit();
     printf("Validating dcautils test cases .... \n \n");

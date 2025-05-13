@@ -58,8 +58,10 @@ void destroyer_func(void *data)
     }
 }
 
-void backupAndAppendLogFile(const char *filePath) {
-    if (!filePath) {
+void backupAndAppendLogFile(const char *filePath)
+{
+    if (!filePath)
+    {
         printf("Invalid file path provided.\n");
         return;
     }
@@ -70,14 +72,16 @@ void backupAndAppendLogFile(const char *filePath) {
 
     // Open the original file for reading
     FILE *originalFile = fopen(filePath, "r");
-    if (!originalFile) {
+    if (!originalFile)
+    {
         printf("Failed to open the original file: %s\n", filePath);
         return;
     }
 
     // Open the backup file for writing
     FILE *backupFile = fopen(backupFilePath, "w");
-    if (!backupFile) {
+    if (!backupFile)
+    {
         printf("Failed to create the backup file: %s\n", backupFilePath);
         fclose(originalFile);
         return;
@@ -86,7 +90,8 @@ void backupAndAppendLogFile(const char *filePath) {
     // Copy content from the original file to the backup file
     char buffer[1024];
     size_t bytesRead;
-    while ((bytesRead = fread(buffer, 1, sizeof(buffer), originalFile)) > 0) {
+    while ((bytesRead = fread(buffer, 1, sizeof(buffer), originalFile)) > 0)
+    {
         fwrite(buffer, 1, bytesRead, backupFile);
     }
 
@@ -95,7 +100,8 @@ void backupAndAppendLogFile(const char *filePath) {
 
     // Open the original file for appending
     FILE *file = fopen(filePath, "a");
-    if (!file) {
+    if (!file)
+    {
         printf("Failed to open the file for appending: %s\n", filePath);
         return;
     }
@@ -175,7 +181,7 @@ void logGrepTest1()
     }
 
     /**
-    * Marker addition starts here 
+    * Marker addition starts here
     */
     if (T2ERROR_FAILURE == Vector_PushBack(markerlist, gMarker1))
     {

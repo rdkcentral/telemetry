@@ -16,12 +16,37 @@
 * SPDX-License-Identifier: Apache-2.0
 */
 #include <stdarg.h>
-
+#include <dlfcn.h>
 #include "test/mocks/SystemMock.h"
 
 extern SystemMock * g_SystemMock;   /* This is just a declaration! The actual mock
                                      obj is defined globally in the test file. */
 
+typedef int (*system_ptr) (const char * cmd);
+typedef int (*unlink_ptr) (const char * str);
+typedef int (*access_ptr) (const char * pathname, int mode);
+typedef int (*remove_ptr) (const char *pathname);
+typedef int (*vsnprintf_ptr)(char* str, size_t size, const char* format, va_list ap);
+typedef int (*v_secure_system_ptr) (const char * cmd);
+typedef FILE* (*v_secure_popen_ptr) (const char *direction, const char *command, ...);
+typedef int (*getParameterValue_ptr) (const char* paramName, char **paramValue);
+typedef int (*publishEventsDCMSetConf_ptr) (char *eventInfo);
+typedef int (*getRbusDCMEventStatus_ptr) ();
+typedef int (*publishEventsDCMProcConf_ptr) ();
+
+system_ptr system_func = (system_ptr) dlsym(RTLD_NEXT, "system");
+unlink_ptr unlink_func = (unlink_ptr) dlsym(RTLD_NEXT, "unlink");
+access_ptr access_func = (access_ptr) dlsym(RTLD_NEXT, "access");
+remove_ptr remove_func = (remove_ptr) dlsym(RTLD_NEXT, "remove");
+vsnprintf_ptr vsnprintf_func = (vsnprintf_ptr) dlsym(RTLD_NEXT, "vsnprintf");
+v_secure_system_ptr v_secure_system_func = (v_secure_system_ptr) dlsym(RTLD_NEXT, "v_secure_system");
+v_secure_popen_ptr v_secure_popen_func = (v_secure_popen_ptr) dlsym(RTLD_NEXT, "v_secure_popen");
+getParameterValue_ptr getParameterValue_func = (getParameterValue_ptr) dlsym(RTLD_NEXT, "getParameterValue");
+publishEventsDCMSetConf_ptr publishEventsDCMSetConf_func = (publishEventsDCMSetConf_ptr) dlsym(RTLD_NEXT, "publishEventsDCMSetConf");
+getRbusDCMEventStatus_ptr getRbusDCMEventStatus_func = (getRbusDCMEventStatus_ptr) dlsym(RTLD_NEXT, "getRbusDCMEventStatus");
+publishEventsDCMProcConf_ptr publishEventsDCMProcConf_func = (publishEventsDCMProcConf_ptr) dlsym(RTLD_NEXT, "publishEventsDCMProcConf");
+
+// Mock Method
 extern "C" int system(const char * cmd)
 {
     if (!g_SystemMock)

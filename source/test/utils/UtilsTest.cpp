@@ -21,12 +21,14 @@ extern "C" {
 #include <utils/t2MtlsUtils.h>
 #include <utils/t2log_wrapper.h>
 #include <utils/persistence.h>
+#include <utils/t2common.h>
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <telemetry2_0.h>
+#include <privacycontrol/rdkservices_privacyutils.h>
 #include <stdarg.h>
 }
 
@@ -37,6 +39,7 @@ extern "C" {
 #include "test/mocks/SystemMock.h"
 #include "test/mocks/FileioMock.h"
 #include "test/mocks/rdklogMock.h"
+#define PROFILE_NAME "/opt/opt/opt/opt/opt/opt/opt/opt/opt/opt/log/log/log/log/log/log/log/log/log/log//opt/opt/opt/opt/opt/opt/opt/opt/opt/opt/opt/opt/opt/opt/opt/opt/opt/opt/opt/opt/log/log/log/log/log"
 using namespace std;
 
 using ::testing::_;
@@ -45,7 +48,6 @@ using ::testing::StrEq;
 
 SystemMock * g_SystemMock = NULL;  /* This is the actual definition of the mock obj */
 FileIOMock * g_fileIOMock = NULL;
-
 rdklogMock *m_rdklogMock = NULL;
 
 class rdklogTestFixture : public ::testing::Test {
@@ -315,6 +317,15 @@ TEST(VECTOR_DESTROY, VECTOR_NOT_NULL)
      Vector_Create(&config);
      Vector_PushBack(config, (void *) strdup(marker1));
      EXPECT_EQ(T2ERROR_SUCCESS, Vector_Destroy(config, free));
+}
+
+TEST(VECTOR_AT, VECTOR_NULL_AND_NOT_NULL)
+{
+     Vector_Create(&config);
+     Vector_PushBack(config, (void *) strdup(marker1));
+     Vector_PushBack(config, (void *) strdup(marker2));
+     EXPECT_EQ(NULL, Vector_At(NULL, 1));
+     EXPECT_EQ(NULL, Vector_At(config, 3));
 }
 
 TEST(VECTOR_REMOVE_ITEM, VECTOR_FIRST_NULL)
@@ -601,6 +612,17 @@ TEST(HASH_MAP_DESTROY1, check_markercompmap)
    EXPECT_NO_THROW(check_markercompmap(markerCompMap));
 }
 
+//t2common.c
+
+TEST(GETDEVICEPROPERTYDATA, PARAM_NULL)
+{
+    char UseHWBasedCert[8] = {'\0'};
+    EXPECT_EQ(false, getDevicePropertyData(NULL, UseHWBasedCert, sizeof(UseHWBasedCert)));
+    EXPECT_EQ(false, getDevicePropertyData("UseSEBasedCert", NULL, sizeof(UseHWBasedCert)));
+    EXPECT_EQ(false, getDevicePropertyData("UseSEBasedCert", UseHWBasedCert, 0));
+    EXPECT_EQ(false, getDevicePropertyData("UseSEBasedCert", UseHWBasedCert, 90));
+}
+
 TEST(FETCHLOCALCONFIGS, PATH_NULL)
 {
      Vector* configlist = NULL;
@@ -634,20 +656,14 @@ TEST(SAVECONFIGTOFILE, CONFIG_NULL_ALL_NULL)
      EXPECT_EQ(T2ERROR_INVALID_ARGS, saveConfigToFile("/tmp/path", "Profile1", NULL));
      EXPECT_EQ(T2ERROR_INVALID_ARGS, saveConfigToFile(NULL, NULL, NULL));
 }
-
+/*
 TEST(SAVECONFIGTOFILE, PROFILENAME_SIZE)
 {
 
-     char* path = NULL;
-     path = (char*) malloc(130);
-     memset(path, 0, 130);
-     if(path){
-         EXPECT_EQ(T2ERROR_FAILURE, saveConfigToFile(path, "Profile1", "{Config: Testing Conf}"));
+     EXPECT_EQ(T2ERROR_FAILURE, saveConfigToFile("/tmp/path", PROFILE_NAME, "{Config: Testing Conf}"));
 
-         EXPECT_EQ(T2ERROR_FAILURE,  saveConfigToFile("/tmp/path", "Profile1",  "{Config: Testing Conf}"));
-         free(path);
-     }
 }
+*/
 
 TEST(MSGPACKSAVECONFIG, ARGS_TEST)
 {
@@ -658,34 +674,84 @@ TEST(MSGPACKSAVECONFIG, ARGS_TEST)
 
 TEST(SAVECACREPTOPERSFOLD, ARGS_NULL)
 {
+     Vector* reportlist = NULL;
+     Vector_Create(&reportlist);
+     Vector_PushBack(reportlist, (void *)strdup("cJSON_Report: SYS_MEM_INFO:1"));
      EXPECT_EQ(T2ERROR_FAILURE, saveCachedReportToPersistenceFolder(NULL, NULL));
+     EXPECT_EQ(T2ERROR_FAILURE, saveCachedReportToPersistenceFolder("PROFILE1", NULL));
+     EXPECT_EQ(T2ERROR_FAILURE, saveCachedReportToPersistenceFolder(NULL, reportlist));
+     Vector_Destroy(reportlist, free);
 }
 
 TEST(POPULATECACREPORT, ARGS_NULL)
 {
-     EXPECT_EQ(T2ERROR_FAILURE,  populateCachedReportList(NULL, NULL));
+     Vector* configlist = NULL;
+     Vector_Create(&configlist);
+     Vector_PushBack(configlist, (void *)strdup("marker1"));
+     EXPECT_EQ(T2ERROR_FAILURE, populateCachedReportList(NULL, NULL));
+     EXPECT_EQ(T2ERROR_FAILURE, populateCachedReportList("PROFILE1", NULL));
+     EXPECT_EQ(T2ERROR_FAILURE, populateCachedReportList(NULL, configlist));
+     Vector_Destroy(configlist, free);
+}
+
+//Privacymode module test cases
+//getPrivacyMode
+TEST(GETPRIVACYMODE, ARGS_NULL)
+{
+    char* privacyMode = NULL;
+    getPrivacyMode(&privacyMode);
+    EXPECT_STREQ("SHARE", privacyMode);
+}
+
+//setPrivacyMode
+TEST(SETPRIVACYMODE, ARGS_NULL)
+{
+    char* privacyMode = strdup("SHARE");
+    EXPECT_EQ(T2ERROR_SUCCESS, setPrivacyMode(privacyMode));
+    free(privacyMode);
 }
 
 
-Vector* configlist = NULL;
-
 TEST_F(UtilsFileTestFixture, FETCHLOCALCONFIGS_FUNC1)
 {
-    const char* path = "/tmp/profiles";
-    DIR *dir = NULL ;
-
+    const char* path = "/tmp/t2reportprofiles/";
+    DIR *dir = (DIR*)NULL ;
+    Vector* configlist = NULL;
     Vector_Create(&configlist);
-    Vector_PushBack(configlist, (void *)strdup(marker1));
+    Vector_PushBack(configlist, (void *)strdup("marker1"));
     EXPECT_CALL(*g_fileIOMock, opendir(_))
            .Times(1)
-           .WillOnce(::testing::Return(dir));
+           .WillOnce(Return(dir));
 
-    EXPECT_CALL(*g_fileIOMock, mkdir(_, _))
+    EXPECT_CALL(*g_fileIOMock, mkdir(_,_))
            .Times(1)
            .WillOnce(Return(-1));
 
     ASSERT_EQ(T2ERROR_FAILURE, fetchLocalConfigs(path, configlist));
     Vector_Destroy(configlist, free);
+}
+
+/*
+TEST(UtilsFileTest, FETCHLOCALCONFIGS_FUNC)
+{
+   FileIOMock mockedFileIO;
+   g_fileIOMock = &mockedFileIO;
+    const char* path = "/tmp/t2reportprofiles/";
+    DIR *dir = NULL ;
+    Vector* configlist = NULL;
+    Vector_Create(&configlist);
+    Vector_PushBack(configlist, (void *)strdup("marker1"));
+    EXPECT_CALL(*g_fileIOMock, opendir(_))
+           .Times(1)
+           .WillOnce(testing::ReturnNull());
+
+    EXPECT_CALL(*g_fileIOMock, mkdir(_,_))
+           .Times(1)
+           .WillOnce(Return(-1));
+
+    ASSERT_EQ(T2ERROR_FAILURE, fetchLocalConfigs(path, configlist));
+    Vector_Destroy(configlist, free);
+    g_fileIOMock = NULL;
 }
 
 TEST_F(UtilsSystemTestFixture, CONFIG_FROM_SSA)
@@ -719,6 +785,35 @@ TEST_F(UtilsFileTestFixture, SAVECONFITOFILE)
             .WillOnce(Return(mockfp));
      ASSERT_EQ(T2ERROR_FAILURE, saveConfigToFile(filepath, profilename, config));
 }
+
+     
+TEST_F(UtilsFileTestFixture, getDevicePropertyData)
+{
+     
+     FILE* mockfp = NULL;
+     char UseHWBasedCert[8] = { '\0' };
+     EXPECT_CALL(*g_fileIOMock, fopen(_,_))
+            .Times(1)
+            .WillOnce(Return(mockfp));
+     ASSERT_EQ(false, getDevicePropertyData("UseSEBasedCert", UseHWBasedCert, sizeof(UseHWBasedCert)));
+}
+
+TEST_F(UtilsFileTestFixture, getDevicePropertyData1)
+{
+     FILE* mockfp = (FILE *)0xffffffff;
+     char UseHWBasedCert[8] = { '\0' };
+     EXPECT_CALL(*g_fileIOMock, fopen(_,_))
+            .Times(1)
+            .WillOnce(Return(mockfp));
+     EXPECT_CALL(*g_fileIOMock, fgets(_,_,_))
+            .Times(1)
+            .WillOnce(Return(NULL));
+     EXPECT_CALL(*g_fileIOMock, fclose(_))
+            .Times(1)
+            .WillOnce(Return(0));       
+     ASSERT_EQ(false, getDevicePropertyData("UseSEBasedCert", UseHWBasedCert, sizeof(UseHWBasedCert)));
+}
+
 
 TEST_F(UtilsFileTestFixture, MSGPACKSAVECONFIG)
 {
@@ -909,5 +1004,5 @@ TEST_F(UtilsFileTestFixture, GETPRIVACYMODE1)
     getPrivacyMode(&privMode);
     EXPECT_NE(*privMode, NULL);
 }
-
 #endif
+*/

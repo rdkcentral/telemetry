@@ -21,27 +21,11 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <dirent.h>
-#include <stdio.h>
-#include <curl/curl.h>
 #include <unistd.h>
-#include <stdarg.h>
+#include <curl/curl.h>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
-/*#ifndef MOCK_FILE_COV
-#define MOCK_FILE_COV
-extern "C"
-{
-#define fopen(filename, mode) fopen_mock(filename, mode)
-#define fclose(file) fclose_mock(file)
-#define fprintf(file, format, message) fprintf_mock(file, format, message)
-#define fgets(file, buffer, size) fgets_mock(file, buffer, size) 
-#undef fopen
-#undef fclose
-#undef fprintf
-#undef fgets
-}
-#endif
-*/
+
 class FileIOInterface
 {
 public:
@@ -51,7 +35,7 @@ public:
     virtual int pclose(FILE *) = 0;
     virtual int pipe(int *) = 0;
     virtual int fclose(FILE *) = 0;
-    virtual int fscanf(FILE *, const char *, va_list) = 0;
+    virtual int fscanf(FILE *, const char *) = 0;
     virtual ssize_t getline(char **, size_t *, FILE *) = 0;
     virtual struct dirent * readdir(DIR *) = 0;
     virtual FILE * fopen(const char *, const char *) = 0;
@@ -68,7 +52,6 @@ public:
     virtual size_t fread(void *, size_t, size_t, FILE* ) = 0;
     virtual CURLcode curl_easy_perform(CURL *) = 0;
     virtual CURL* curl_easy_init() = 0;
-    virtual long ftell(FILE *) = 0;
 };
 
 class FileIOMock: public FileIOInterface
@@ -79,7 +62,7 @@ public:
     MOCK_METHOD1(pclose, int (FILE *));
     MOCK_METHOD1(pipe, int(int *));
     MOCK_METHOD1(fclose, int (FILE *));
-    MOCK_METHOD3(fscanf, int(FILE*, const char*, va_list));
+    MOCK_METHOD2(fscanf, int(FILE *, const char *));
     MOCK_METHOD3(getline, ssize_t (char **, size_t *, FILE *));
     MOCK_METHOD1(opendir, DIR * (const char*));
     MOCK_METHOD1(readdir, struct dirent * (DIR *));
@@ -97,7 +80,7 @@ public:
     MOCK_METHOD3(fseek, int(FILE *, long, int));
     MOCK_METHOD1(curl_easy_perform, CURLcode(CURL *));
     MOCK_METHOD0(curl_easy_init, CURL * ());
-    MOCK_METHOD1(ftell, long(FILE *));
 };
 
 #endif
+

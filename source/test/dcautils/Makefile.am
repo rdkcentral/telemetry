@@ -17,9 +17,9 @@
 # limitations under the License.
 ##########################################################################
 
-AM_CXXFLAGS = -std=c++11 -DGTEST_ENABLE -DPERSIST_LOG_MON_REF -fPIC
+AM_CXXFLAGS = -std=c++11 -DGTEST_ENABLE
 
-AM_CFLAGS = -DGTEST_ENABLE -DPERSIST_LOG_MON_REF -fPIC
+AM_CFLAGS = -DGTEST_ENABLE
 
 AUTOMAKE_OPTIONS = subdir-objects
 
@@ -29,6 +29,6 @@ bin_PROGRAMS = dcautil_gtest.bin
 
 dcautil_gtest_bin_CPPFLAGS = -I$(PKG_CONFIG_SYSROOT_DIR)/usr/include/gtest -I$(PKG_CONFIG_SYSROOT_DIR)/usr/include/glib-2.0 -I$(PKG_CONFIG_SYSROOT_DIR)/usr/lib/x86_64-linux-gnu/glib-2.0/include -I$(PKG_CONFIG_SYSROOT_DIR)/usr/local/lib -I$(PKG_CONFIG_SYSROOT_DIR)$(includedir)/gtest -I${top_srcdir}/gtest/include -I${top_srcdir}/source/include -I${top_srcdir}/source -I${top_srcdir}/source/test/mocks -I${top_srcdir}/source/test/rbus -I${top_srcdir}/source/test/rdk_logger -I${top_srcdir}/include -I${top_srcdir}/source/utils -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/rbus -I${top_srcdir}/source/dcautil -I${top_srcdir}/source/ccspinterface -I${PKG_CONFIG_SYSROOT_DIR}$(includedir) -I${PKG_CONFIG_SYSROOT_DIR}/usr/src/googletest/googlemock/include -I${RDK_PROJECT_ROOT_PATH}/$(GLIB_CFLAGS) -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/glib-2.0 -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/glib-2.0/include
 
-dcautil_gtest_bin_SOURCES = gtest_main.cpp ../mocks/SystemMock.cpp ../mocks/FileioMock.cpp dcautilTest.cpp ../mocks/rdklogMock.cpp ../../utils/persistence.c ../../utils/t2common.c ../../utils/t2collection.c ../../utils/vector.c ../../utils/t2MtlsUtils.c ../../utils/t2log_wrapper.c ../../dcautil/dcautil.c ../../dcautil/dca.c ../../dcautil/dcalist.c ../../dcautil/legacyutils.c ../../dcautil/dcaproc.c ../../dcautil/dcajson.c ../../dcautil/rdk_linkedlist.c
+dcautil_gtest_bin_SOURCES = gtest_main.cpp ../mocks/SystemMock.cpp ../mocks/FileioMock.cpp dcautilTest.cpp ../mocks/rdklogMock.cpp ../../utils/persistence.c ../../utils/t2common.c ../../utils/t2collection.c ../../utils/vector.c ../../utils/t2MtlsUtils.c ../../utils/t2log_wrapper.c ../../dcautil/dcautil.c ../../dcautil/dca.c ../../dcautil/dcalist.c ../../dcautil/legacyutils.c ../../dcautil/dcaproc.c ../../dcautil/dcajson.c
 
 dcautil_gtest_bin_LDFLAGS = -L/usr/src/googletest/googletest/lib/.libs  -lgcov -L/src/googletest/googlemock/lib -L/usr/src/googletest/googlemock/lib/.libs -L/usr/include/glib-2.0 -lgmock -lcjson -lcurl -lmsgpackc -lgtest -lgtest_main -lglib-2.0

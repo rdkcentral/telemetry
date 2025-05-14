@@ -544,7 +544,7 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
     size_t sPasswdSize = 0;
 #endif
     // char *pKeyType = "PEM" ;
-    bool mtls_enable = false;
+    bool mtls_enable = true;
     pid_t childPid;
     int sharedPipeFdStatus[2];
     int sharedPipeFdDataLen[2];
@@ -761,7 +761,10 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
             }
             else
             {
-                curl_code = curl_easy_perform(curl);
+		    T2Info("T2:Telemetry XCONF communication non-Mtls disabled\n");
+		    ret = T2ERROR_FAILURE;
+                    goto status_return;
+            //    curl_code = curl_easy_perform(curl);
             }
             curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
 

@@ -303,7 +303,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
     size_t sKey = 0;
 #endif
     long http_code;
-    bool mtls_enable = false;
+    bool mtls_enable = true;
     pid_t childPid;
     int sharedPipeFds[2];
 

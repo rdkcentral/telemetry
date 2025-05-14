@@ -94,8 +94,10 @@ static char *t2Version = NULL;
 
 pthread_mutex_t rpMutex = PTHREAD_MUTEX_INITIALIZER;
 T2ERROR RemovePreRPfromDisk(const char* path, hash_map_t *map);
+#if 0
 static bool isT2MtlsEnable = false;
 static bool initT2MtlsEnable = false;
+#endif
 struct rusage pusage;
 unsigned int profilemem = 0;
 bool previousLogCheck = false;
@@ -1445,6 +1447,7 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
 
 bool isMtlsEnabled(void)
 {
+#if 0
 #if !defined (ENABLE_RDKC_SUPPORT)
     char *paramValue = NULL;
 
@@ -1490,7 +1493,9 @@ bool isMtlsEnabled(void)
     }
     return isT2MtlsEnable;
 #else
-    /* Enabling Mtls by default for RDKC */
-    return true;
 #endif
+#endif
+    /* Enabling Mtls by default for all */
+    T2Debug ("Defaulting MTLS Connection For Telemetry\n");
+    return true;
 }

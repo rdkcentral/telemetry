@@ -28,6 +28,8 @@
 #include "vector.h"
 #include "t2common.h"
 #include "ssp_global.h"
+#include "ccsp_memory.h"
+#include "ccsp_base_api.h"
 
 static void *bus_handle = NULL;
 
@@ -226,8 +228,6 @@ T2ERROR getCCSPParamVal(const char* paramName, char **paramValue)
 
 Vector* getCCSPProfileParamValues(Vector *paramList)
 {
-    unsigned int i = 0;
-    int count = Vector_Size(paramList);
     Vector *profileValueList = NULL;
     Vector_Create(&profileValueList);
 
@@ -237,107 +237,147 @@ Vector* getCCSPProfileParamValues(Vector *paramList)
         return profileValueList;
     }
 
-    char** paramNames = (char **) malloc(count * sizeof(char*));
-    if(!paramNames)
-    {
-        T2Error("Unable allocate memory for paramNames\n");
-        return profileValueList;
-    }
 
-    T2Info("TR-181 Param count : %d\n", count);
-    for( ; i < count; i++ )
-    {
+    for(int i = 0; i < Vector_Size(paramList); i++) {
+        /* Preparing the storage for the result */
         tr181ValStruct_t **paramValues = NULL;
         parameterValStruct_t **ccspParamValues = NULL;
-        int paramValCount = 0;
-        int iterate = 0;
-        profileValues *profVals = (profileValues *) malloc(sizeof(profileValues));
+        int paramValCount  = 0;
+        profileValues *profVals = calloc(1, sizeof(profileValues));
         if(profVals == NULL)
         {
             T2Error("Unable allocate memory for profVals\n");
             continue;
         }
-        paramNames[0] = strdup(((Param *) Vector_At(paramList, i))->alias);
-        if(paramNames[0] == NULL)
+
+        /* Retrieving the TR-181 alias and duplicating it */
+        const char *alias     = ((Param *)Vector_At(paramList, i))->alias;
+        char       *paramName = alias ? strdup(alias) : NULL;
+        /* paramNames passed to the CCSP API (must be char*[], not const) */
+        char *paramNames[1]   = { paramName ? strdup(paramName) : NULL };
+
+        /* --- CCSP component discovery --- */
+        char *destCompName = NULL;
+        char *destCompPath = NULL;
+        if(paramName)
         {
-            T2Error("Unable allocate memory for paramNames[0]\n");
-            free(profVals);
-            continue;
-        }
-        if(T2ERROR_SUCCESS != ccspGetParameterValues((const char**)paramNames, 1, &ccspParamValues, &paramValCount))
-        {
-            T2Error("Failed to retrieve param : %s\n", paramNames[0]);
-            paramValCount = 0;
-        }
-        else
-        {
-            /* CID 175831: Dereference after null check */
-            if(ccspParamValues == NULL)
+            int discRet = findDestComponent(paramName, &destCompName, &destCompPath);
+            if(discRet != CCSP_SUCCESS) {
+                T2Error("Component discovery failed for %s (ret=%d)\n", paramName, discRet);
+                paramValCount = 0;
+            } 
+            else
             {
-                T2Info("unable to get ccspParamValues \n");
-                free(profVals);
-                return profileValueList;
+                T2Debug("Discovered comp %s at %s\n", destCompName, destCompPath);
             }
-            if(paramValCount == 0)
+        }
+
+        /* --- Call to the CCSP API to retrieve the values --- */
+        if(paramNames[0]) 
+        {
+            T2Debug("CcspBaseIf_getParameterValues for: %s\n", paramNames[0]);
+            int ret = CcspBaseIf_getParameterValues(
+                          bus_handle,
+                          destCompName,
+                          destCompPath,
+                          (char**)paramNames,
+                          1,
+                          &paramValCount,
+                          &ccspParamValues);
+            if(ret != CCSP_SUCCESS)
+            {
+                T2Error("CcspBaseIf_getParameterValues failed for %s (ret=%d)\n", paramNames[0], ret);
+                paramValCount = 0;
+            } 
+            else
             {
                 T2Info("ParameterName : %s Retrieved value count : %d\n", paramNames[0], paramValCount);
             }
         }
 
         profVals->paramValueCount = paramValCount;
+        T2Debug("Received %d parameters for %s (CCSP)\n",
+                 paramValCount,
+                 paramNames[0] ? paramNames[0] : "(null)");
 
-        // Populate bus independent parameter value array
+        /* --- Constructing the TR-181 values array --- */
         if(paramValCount == 0)
         {
-            paramValues = (tr181ValStruct_t**) malloc(sizeof(tr181ValStruct_t*));
-            if(paramValues != NULL)
-            {
-                paramValues[0] = (tr181ValStruct_t*) malloc(sizeof(tr181ValStruct_t));
-                if(paramValues[0] != NULL)
-                {
-                    paramValues[0]->parameterName = strdup(paramNames[0]);
-                    paramValues[0]->parameterValue = strdup("NULL");
-                }
-            }
+            /* Parameters found → copy each one */
+            paramValues = calloc(1, sizeof(tr181ValStruct_t*));
+            paramValues[0] = calloc(1, sizeof(tr181ValStruct_t));
+            paramValues[0]->parameterName  = strdup(paramName ? paramName : "");
+            paramValues[0]->parameterValue = strdup("NULL");
+            paramValues[0]->type           = TR181_TYPE_STRING;
+            profVals->paramValueCount      = 1;
         }
         else
         {
-            paramValues = (tr181ValStruct_t**) malloc(paramValCount * sizeof(tr181ValStruct_t*));
-            if(paramValues != NULL)
+            /* Parameters found → copy each one */
+            paramValues = calloc(paramValCount, sizeof(tr181ValStruct_t*));
+            for(int j = 0; j < paramValCount; j++)
             {
-                for( iterate = 0; iterate < paramValCount; ++iterate )
-                {
-                    if(ccspParamValues[iterate])
-                    {
-                        paramValues[iterate] = (tr181ValStruct_t*) malloc(sizeof(tr181ValStruct_t));
-                        if(paramValues[iterate])
-                        {
-                            paramValues[iterate]->parameterName = strdup((ccspParamValues[iterate])->parameterName);
-                            paramValues[iterate]->parameterValue = strdup((ccspParamValues[iterate])->parameterValue);
-                        }
-                    }
+                parameterValStruct_t *cc = ccspParamValues[j];
+                paramValues[j] = calloc(1, sizeof(tr181ValStruct_t));
+                /* Copy name and value */
+                paramValues[j]->parameterName  = strdup(cc->parameterName);
+                paramValues[j]->parameterValue = strdup(cc->parameterValue);
+                /* Assign the native TR-181 type */
+                switch(ccspParamValues[j]->type) {
+                    case ccsp_boolean:
+                        paramValues[j]->type = TR181_TYPE_BOOLEAN;
+                        break;
+                    case ccsp_int:
+                        paramValues[j]->type = TR181_TYPE_INT;
+                        break;
+                    case ccsp_unsignedInt:
+                        paramValues[j]->type = TR181_TYPE_UNSIGNED;
+                        break;
+                    case ccsp_long:
+                        paramValues[j]->type = TR181_TYPE_LONG;
+                        break;
+                    case ccsp_unsignedLong:
+                        paramValues[j]->type = TR181_TYPE_UNSIGNED_LONG;
+                        break;
+                    case ccsp_float:
+                        paramValues[j]->type = TR181_TYPE_FLOAT;
+                        break;
+                    case ccsp_double:
+                        paramValues[j]->type = TR181_TYPE_DOUBLE;
+                        break;
+                    case ccsp_dateTime:
+                        paramValues[j]->type = TR181_TYPE_DATETIME;
+                        break;
+                    case ccsp_base64:
+                        paramValues[j]->type = TR181_TYPE_BASE64;
+                        break;
+                    case ccsp_string:
+                    default:
+                        paramValues[j]->type = TR181_TYPE_STRING;
+                        break;
                 }
-                free_parameterValStruct_t(bus_handle, paramValCount, ccspParamValues);
             }
         }
 
+        /* --- CCSP cleanup and profile finalization --- */
+        if(ccspParamValues)
+        {
+            free_parameterValStruct_t(bus_handle, paramValCount, ccspParamValues);
+        }
         profVals->paramValues = paramValues;
         // End of populating bus independent parameter value array
         Vector_PushBack(profileValueList, profVals);
-        if(paramNames[0])
-        {
-            free(paramNames[0]);
-        }
-    }
-    if(paramNames)
-    {
-        free(paramNames);
+
+        /* Free the temporary strings */
+        free(paramName);
+        free(paramNames[0]);
+        free(destCompName);
+        free(destCompPath);
     }
 
     T2Debug("%s --Out\n", __FUNCTION__);
     return profileValueList;
 }
-
 
 T2ERROR registerCcspT2EventListener(TelemetryEventCallback eventCB)
 {

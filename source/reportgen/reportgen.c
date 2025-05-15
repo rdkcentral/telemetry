@@ -246,13 +246,63 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
                             regfree(&regpattern);
                         }
                     }
-
-                    if(cJSON_AddStringToObject(arrayItem, param->name, paramValues[0]->parameterValue)  == NULL)
-                    {
-                        T2Error("cJSON_AddStringToObject failed.\n");
-                        cJSON_Delete(arrayItem);
-                        return T2ERROR_FAILURE;
-                    }
+                    switch(paramValues[0]->type) {
+                        case TR181_TYPE_BOOLEAN: {
+                            bool b = false;
+                            // Convert "true"/"false"/"1"/"0" to boolean
+                            if(paramValues[0]->parameterValue && 
+                               (strcasecmp(paramValues[0]->parameterValue, "true") == 0 || 
+                                strcmp(paramValues[0]->parameterValue, "1") == 0)) {
+                                b = true;
+                            }
+                            if(cJSON_AddBoolToObject(arrayItem, param->name, b) == NULL){
+                                T2Error("cJSON_AddBoolToObject failed.\n");
+                                cJSON_Delete(arrayItem);
+                                return T2ERROR_FAILURE;
+                            }
+                            break;
+                        }
+                        case TR181_TYPE_INT:
+                        case TR181_TYPE_LONG: {
+                            long long ll = paramValues[0]->parameterValue ? strtoll(paramValues[0]->parameterValue, NULL, 10) : 0;
+                            if(cJSON_AddNumberToObject(arrayItem, param->name, (double) ll) == NULL){
+                                T2Error("cJSON_AddNumberToObject failed.\n");
+                                cJSON_Delete(arrayItem);
+                                return T2ERROR_FAILURE;
+                            }
+                            break;
+                        }
+                        case TR181_TYPE_UNSIGNED:
+                        case TR181_TYPE_UNSIGNED_LONG: {
+                            unsigned long long ull = paramValues[0]->parameterValue ? strtoull(paramValues[0]->parameterValue, NULL, 10) : 0;
+                            if(cJSON_AddNumberToObject(arrayItem, param->name, (double) ull) == NULL){
+                                T2Error("cJSON_AddNumberToObject failed.\n");
+                                cJSON_Delete(arrayItem);
+                                return T2ERROR_FAILURE;
+                            }
+                            break;
+                        }
+                        case TR181_TYPE_FLOAT:
+                        case TR181_TYPE_DOUBLE: {
+                            double d = paramValues[0]->parameterValue ? strtod(paramValues[0]->parameterValue, NULL) : 0.0;
+                            if(cJSON_AddNumberToObject(arrayItem, param->name, d) == NULL){
+                                T2Error("cJSON_AddNumberToObject failed.\n");
+                                cJSON_Delete(arrayItem);
+                                return T2ERROR_FAILURE;
+                            }
+                            break;
+                        }
+                        case TR181_TYPE_STRING:
+                        case TR181_TYPE_DATETIME:
+                        case TR181_TYPE_BASE64:
+                        default: {
+                                if(cJSON_AddStringToObject(arrayItem, param->name, paramValues[0]->parameterValue) == NULL){
+                                T2Error("cJSON_AddStringToObject failed.\n");
+                                cJSON_Delete(arrayItem);
+                                return T2ERROR_FAILURE;
+                            }
+                        }
+                    } // end switch
                     cJSON_AddItemToArray(valArray, arrayItem);
                 }
             }
@@ -320,13 +370,69 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
                             }
                         }
 
-                        if(cJSON_AddStringToObject(valItem, paramValues[valIndex]->parameterName, paramValues[valIndex]->parameterValue) == NULL)
-                        {
-                            T2Error("cJSON_AddStringToObject failed\n");
-                            cJSON_Delete(arrayItem);
-                            cJSON_Delete(valItem);
-                            return T2ERROR_FAILURE;
-                        }
+		        switch(paramValues[valIndex]->type) {
+                            case TR181_TYPE_BOOLEAN: {
+                                bool b = false;
+                                if(paramValues[valIndex]->parameterValue && 
+                                   (strcasecmp(paramValues[valIndex]->parameterValue, "true") == 0 || 
+                                    strcmp(paramValues[valIndex]->parameterValue, "1") == 0)) {
+                                    b = true;
+                                }
+                                if(cJSON_AddBoolToObject(valItem, paramValues[valIndex]->parameterName, b) == NULL){
+                                    T2Error("cJSON_AddBoolToObject failed\n");
+                                    cJSON_Delete(arrayItem);
+                                    cJSON_Delete(valItem);
+                                    return T2ERROR_FAILURE;
+			        }
+                                break;
+                            }
+                            case TR181_TYPE_INT:
+                            case TR181_TYPE_LONG: {
+                                long long ll = paramValues[valIndex]->parameterValue ? strtoll(paramValues[valIndex]->parameterValue, NULL, 10) : 0;
+                                if(cJSON_AddNumberToObject(valItem, paramValues[valIndex]->parameterName, (double) ll) == NULL){
+                                    T2Error("cJSON_AddNumberToObject failed\n");
+                                    cJSON_Delete(arrayItem);
+                                    cJSON_Delete(valItem);
+                                    return T2ERROR_FAILURE;
+                                }
+                                break;
+                            }
+                            case TR181_TYPE_UNSIGNED:
+                            case TR181_TYPE_UNSIGNED_LONG: {
+                                unsigned long long ull = paramValues[valIndex]->parameterValue ? strtoull(paramValues[valIndex]->parameterValue, NULL, 10) : 0;
+                                if(cJSON_AddNumberToObject(valItem, paramValues[valIndex]->parameterName, (double) ull) == NULL){
+                                    T2Error("cJSON_AddNumberToObject failed\n");
+                                    cJSON_Delete(arrayItem);
+                                    cJSON_Delete(valItem);
+                                    return T2ERROR_FAILURE;
+                                }
+                                break;
+                            }
+                            case TR181_TYPE_FLOAT:
+                            case TR181_TYPE_DOUBLE: {
+                                double d = paramValues[valIndex]->parameterValue ? strtod(paramValues[valIndex]->parameterValue, NULL) : 0.0;
+                                if(cJSON_AddNumberToObject(valItem, paramValues[valIndex]->parameterName, d) == NULL){
+                                    T2Error("cJSON_AddNumberToObject failed\n");
+                                    cJSON_Delete(arrayItem);
+                                    cJSON_Delete(valItem);
+                                    return T2ERROR_FAILURE;
+                                }
+                                break;
+                            }
+                            case TR181_TYPE_STRING:
+                            case TR181_TYPE_DATETIME:
+                            case TR181_TYPE_BASE64:
+                            default: {
+                                if(cJSON_AddStringToObject(valItem, paramValues[valIndex]->parameterName, paramValues[valIndex]->parameterValue) == NULL){
+                                    T2Error("cJSON_AddStringToObject failed\n");
+                                    cJSON_Delete(arrayItem);
+                                    cJSON_Delete(valItem);
+                                    return T2ERROR_FAILURE;
+                                }
+                                break;
+                            }
+                        } 
+                        // end switch
                         cJSON_AddItemToArray(valList, valItem);
                         isTableEmpty = false ;
                     }

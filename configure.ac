@@ -210,7 +210,7 @@ AM_CONDITIONAL([IS_LIBRDKCERTSEL_ENABLED], [test x$IS_LIBRDKCERTSEL_ENABLED = xt
 AC_SUBST(LIBRDKCERTSEL_FLAG)
 
 AC_ARG_ENABLE([mtls],
-        AS_HELP_STRING([--enable-mtls], [Enable mTLS support (default is yes)]),
+        AS_HELP_STRING([--enable-mtls], [Enable mTLS support (default is no)]),
         [
           case "${enableval}" in
            yes) IS_MTLS_ENABLED=true
@@ -219,11 +219,7 @@ AC_ARG_ENABLE([mtls],
           *) AC_MSG_ERROR([bad value ${enableval} for --enable-mtls]) ;;
           esac
         ],
-        [
-          IS_MTLS_ENABLED=true
-          MTLS_FLAG=" -DENABLE_MTLS "
-        ])
-
+        [echo "MTLS is disabled"])
 AM_CONDITIONAL([IS_MTLS_ENABLED], [test x$IS_MTLS_ENABLED = xtrue])
 AC_SUBST(MTLS_FLAG)
 

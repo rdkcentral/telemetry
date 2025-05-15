@@ -61,3 +61,7 @@ endif
 if IS_LIBRDKCERTSEL_ENABLED
 libbulkdata_la_CFLAGS = $(LIBRDKCERTSEL_FLAG)
 endif
+
+if IS_MTLS_ENABLED
+libbulkdata_la_CFLAGS = $(MTLS_FLAG)
+endif

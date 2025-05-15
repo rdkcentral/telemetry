@@ -32,6 +32,10 @@ libt2utils_la_CFLAGS += $(LIBSYSWRAPPER_FLAG)
 libt2utils_la_LDFLAGS += -lsecure_wrapper
 endif
 
+if IS_MTLS_ENABLED
+libt2utils_la_CFLAGS = $(MTLS_FLAG)
+endif
+
 if RDKLOGGER_ENABLE
 libt2utils_la_CFLAGS += -DRDK_LOGGER 
 libt2utils_la_LDFLAGS += -lrdkloggers

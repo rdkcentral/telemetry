@@ -274,6 +274,7 @@ Vector* getRbusProfileParamValues(Vector *paramList)
                 paramValues[0] = (tr181ValStruct_t*) malloc(sizeof(tr181ValStruct_t));
                 paramValues[0]->parameterName = strdup(param);
                 paramValues[0]->parameterValue = strdup("NULL");
+                paramValues[0]->type = TR181_TYPE_STRING;  
                 // If parameter doesn't exist in device we do populate with entry as NULL.
                 // So count of populated data list has 1 entry and is not 0
                 profVals->paramValueCount = 1;
@@ -289,57 +290,87 @@ Vector* getRbusProfileParamValues(Vector *paramList)
             if(paramValues != NULL)
             {
                 rbusProperty_t nextProperty = rbusPropertyValues;
-                for( iterate = 0; iterate < paramValCount; ++iterate )   // Loop through values obtained from query for individual param in list
-                {
-                    if(nextProperty)
-                    {
-                        char* stringValue = NULL;
+                for( iterate = 0; iterate < paramValCount; ++iterate ) { // Loop through values obtained from query for individual param in list
+                    if(nextProperty) {
+                        char* paramName = NULL;
                         rbusValue_t value = rbusProperty_GetValue(nextProperty);
                         paramValues[iterate] = (tr181ValStruct_t*) malloc(sizeof(tr181ValStruct_t));
-                        if(paramValues[iterate])
-                        {
-                            stringValue = (char*)rbusProperty_GetName(nextProperty);
-                            paramValues[iterate]->parameterName = strdup(stringValue);
+                        if(paramValues[iterate]) {
+                            // Full name of the parameter.
+                            paramName = (char*)rbusProperty_GetName(nextProperty);
+                            paramValues[iterate]->parameterName = strdup(paramName);
 
+                            // Retrieving the value as a string
                             rbusValueType_t rbusValueType = rbusValue_GetType(value);
-                            if(rbusValueType == RBUS_BOOLEAN)
-                            {
-                                if(rbusValue_GetBoolean(value))
-                                {
+                            if(rbusValueType == RBUS_BOOLEAN) {
+                                // Boolean value -> store "true"/"false" as text and as a boolean type
+                                if(rbusValue_GetBoolean(value)) {
                                     paramValues[iterate]->parameterValue = strdup("true");
-                                }
-                                else
-                                {
+                                }else {
                                     paramValues[iterate]->parameterValue = strdup("false");
                                 }
-                            }
-                            else
-                            {
+                                paramValues[iterate]->type = TR181_TYPE_BOOLEAN;
+                            }else {
+                                // Other types -> convert to string then set the appropriate type
                                 paramValues[iterate]->parameterValue = rbusValue_ToString(value, NULL, 0);
+                                switch(rbusValueType) {
+                                    case RBUS_INT32:
+                                    case RBUS_INT16:
+                                    case RBUS_INT8:
+                                        paramValues[iterate]->type = TR181_TYPE_INT;
+                                        break;
+                                    case RBUS_UINT32:
+                                    case RBUS_UINT16:
+                                    case RBUS_UINT8:
+                                        paramValues[iterate]->type = TR181_TYPE_UNSIGNED;
+                                        break;
+                                    case RBUS_INT64:
+                                        paramValues[iterate]->type = TR181_TYPE_LONG;
+                                        break;
+                                    case RBUS_UINT64:
+                                        paramValues[iterate]->type = TR181_TYPE_UNSIGNED_LONG;
+                                        break;
+                                    case RBUS_SINGLE:
+                                        paramValues[iterate]->type = TR181_TYPE_FLOAT;
+                                        break;
+                                    case RBUS_DOUBLE:
+                                        paramValues[iterate]->type = TR181_TYPE_DOUBLE;
+                                        break;
+                                    case RBUS_DATETIME:
+                                        paramValues[iterate]->type = TR181_TYPE_DATETIME;
+                                        break;
+                                    case RBUS_BYTES:
+                                        paramValues[iterate]->type = TR181_TYPE_BASE64;
+                                        break;
+                                    case RBUS_STRING:
+                                    default:
+                                        paramValues[iterate]->type = TR181_TYPE_STRING;
+                                        break;
+                                }
                             }
+                            #if defined(ENABLE_RDKV_SUPPORT)
+                            // (Code not modified regarding the FirmwareFilename for RDK-V)
 
-#if defined(ENABLE_RDKV_SUPPORT)
                             // Workaround as video platforms doesn't have a TR param which gives Firmware name
                             // Existing dashboards doesn't like version with file name exentsion
                             // Workaround stays until initiative for unified new TR param for version name gets implemented across board
-                            if(0 == strncmp(stringValue, "Device.DeviceInfo.X_RDKCENTRAL-COM_FirmwareFilename", maxParamLen ) || 0 == strncmp(stringValue, "Device.DeviceInfo.X_COMCAST-COM_FirmwareFilename", maxParamLen ))
-                            {
-                                char* temp = NULL;
-                                temp = strstr(paramValues[iterate]->parameterValue, "-signed.bin");
-                                if(!temp)
-                                {
+                            if(paramName && (strncmp(paramName, "Device.DeviceInfo.X_RDKCENTRAL-COM_FirmwareFilename", maxParamLen) == 0 ||
+                                             strncmp(paramName, "Device.DeviceInfo.X_COMCAST-COM_FirmwareFilename", maxParamLen) == 0)) {
+                                char* temp = strstr(paramValues[iterate]->parameterValue, "-signed.bin");
+                                if(!temp) {
                                     temp = strstr(paramValues[iterate]->parameterValue, ".bin");
                                 }
                                 if(temp)
-                                {
                                     *temp = '\0';
-                                }
                             }
-#endif
+                            #endif
                         }
+                        // Move to next property in list
+                        nextProperty = rbusProperty_GetNext(nextProperty);
                     }
-                    nextProperty = rbusProperty_GetNext(nextProperty);
                 }
+            }
+            if(rbusPropertyValues != NULL) {
                 rbusProperty_Release(rbusPropertyValues);
             }
         }
@@ -350,9 +381,7 @@ Vector* getRbusProfileParamValues(Vector *paramList)
         Vector_PushBack(profileValueList, profVals);
     } // End of looping through tr181 parameter list from profile
     if(paramNames)
-    {
         free(paramNames);
-    }
 
     T2Debug("%s --Out\n", __FUNCTION__);
     return profileValueList;

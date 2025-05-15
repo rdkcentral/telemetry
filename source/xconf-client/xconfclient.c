@@ -35,7 +35,9 @@
 #include "reportprofiles.h"
 #include "profilexconf.h"
 #include "xconfclient.h"
+#ifdef ENABLE_MTLS
 #include "t2MtlsUtils.h"
+#endif
 #include "t2parserxconf.h"
 #include "vector.h"
 #include "persistence.h"

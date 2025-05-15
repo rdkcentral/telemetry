@@ -49,7 +49,9 @@
 #include "busInterface.h"
 #include "t2parser.h"
 #include "telemetry2_0.h"
+#ifdef ENABLE_MTLS
 #include "t2MtlsUtils.h"
+#endif
 #include "persistence.h"
 #ifdef LIBRDKCERTSEL_BUILD
 #include "curlinterface.h"
@@ -470,10 +472,12 @@ T2ERROR initReportProfiles()
         return T2ERROR_FAILURE;
     }
 #ifndef LIBRDKCERTSEL_BUILD
+#ifdef ENABLE_MTLS
     if(isMtlsEnabled() == true)
     {
         initMtls();
     }
+#endif
 #endif
 
 // Drop root before we are creating any folders/flags to avoid access issues
@@ -699,7 +703,9 @@ T2ERROR ReportProfiles_uninit( )
 #ifdef LIBRDKCERTSEL_BUILD
     curlCertSelectorFree();
 #else
+#ifdef ENABLE_MTLS
     uninitMtls();
+#endif
 #endif
     T2ER_Uninit();
     destroyT2MarkerComponentMap();
@@ -1445,52 +1451,17 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
 
 bool isMtlsEnabled(void)
 {
-#if !defined (ENABLE_RDKC_SUPPORT)
-    char *paramValue = NULL;
-
-    if(initT2MtlsEnable == false)
+    if (initT2MtlsEnable == false)
     {
-        if(T2ERROR_SUCCESS == getParameterValue(T2_MTLS_RFC, &paramValue))
-        {
-            if(paramValue != NULL && (strncasecmp(paramValue, "true", 4) == 0))
-            {
-                T2Debug("mTLS support is Enabled\n");
-                isT2MtlsEnable = true;
-            }
-            initT2MtlsEnable = true;
-            free(paramValue);
-            paramValue = NULL;
-        }
-        else
-        {
-            T2Error("getParameterValue failed\n");
-        }
-    }
-    if(isT2MtlsEnable != true)
-    {
-        if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_PARTNER_ID, &paramValue))
-        {
-            if(paramValue != NULL && (strncasecmp(paramValue, "sky-uk", 6) == 0))
-            {
-                T2Debug("Enabling mTLS for sky-uk partner\n");
-                isT2MtlsEnable = true;
-                initT2MtlsEnable = true;
-                free(paramValue);
-                paramValue = NULL;
-            }
-            else
-            {
-                if(paramValue != NULL)
-                {
-                    free(paramValue);
-                }
-                T2Error("getParameterValue partner id failed\n");
-            }
-        }
-    }
-    return isT2MtlsEnable;
+#if defined (ENABLE_MTLS) || defined (ENABLE_RDKC_SUPPORT)
+        T2Debug("mTLS support is Enabled by build flag\n");
+        isT2MtlsEnable = true;
 #else
-    /* Enabling Mtls by default for RDKC */
-    return true;
+        T2Debug("mTLS not enabled for non-mtls users)\n");
+        isT2MtlsEnable = false;
 #endif
+        initT2MtlsEnable = true;
+    }
+
+    return isT2MtlsEnable;
 }

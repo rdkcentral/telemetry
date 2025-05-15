@@ -34,7 +34,9 @@
 
 #include "curlinterface.h"
 #include "reportprofiles.h"
+#ifdef ENABLE_MTLS
 #include "t2MtlsUtils.h"
+#endif
 #include "t2log_wrapper.h"
 #include "busInterface.h"
 #ifdef LIBRDKCERTSEL_BUILD

@@ -748,7 +748,7 @@ static int processCountPatternOptimized(hash_map_t *logSeekMap, char *logfile,
  * @return Returns status of operation.
  * @retval Return 0 upon success, -1 on failure.
  */
-static int processCountPattern(hash_map_t *logSeekMap, char *logfile, rdkList_t *pchead, rdkList_t **rdkec_head, int *firstSeekFromEOF, bool check_rotated_logs)
+static int processPatternFromLogFiles(hash_map_t *logSeekMap, char *logfile, rdkList_t *pchead, rdkList_t **rdkec_head, int *firstSeekFromEOF, bool check_rotated_logs)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
     char temp[MAXLINE] = { 0 };
@@ -842,7 +842,7 @@ static int processPattern(char **prev_file, char *logfile, rdkList_t **rdk_error
     {
         // This is the function which does actual loggrep for the pattern
         // It will also handle the rotated log files if the flag is set
-        processCountPattern(logSeekMap, logfile, pchead, rdk_error_code_head, firstSeekFromEOF, check_rotated_logs);
+        processPatternFromLogFiles(logSeekMap, logfile, pchead, rdk_error_code_head, firstSeekFromEOF, check_rotated_logs);
         addToVector(pchead, grepResultList);
     }
     clearPCNodes(&pchead);
@@ -1054,38 +1054,6 @@ static int parseMarkerList(char* profileName, Vector* ip_vMarkerList, Vector* op
     T2Debug("%s --out \n", __FUNCTION__);
     return 0;
 }
-
-int getDCAResultsInJson(char* profileName, void* markerList, cJSON** grepResultList)
-{
-
-    T2Debug("%s ++in \n", __FUNCTION__);
-    int rc = -1;
-
-    /*
-     * Keeping the lock here to be aligned with getDCAResultsInVector().
-     * Although the lock here is redundant, coz for multiprocess devices
-     * dcautil is having pInterChipLock for all inter-processor communications.
-     */
-
-    pthread_mutex_lock(&dcaMutex);
-    if(NULL != markerList)
-    {
-        if (!isPropsInitialized())
-        {
-            initProperties(logPath, persistentPath);
-        }
-
-        initSearchResultJson(&ROOT_JSON, &SEARCH_RESULT_JSON);
-
-        rc = parseMarkerList(profileName, markerList, NULL, false);
-        *grepResultList = ROOT_JSON;
-    }
-    pthread_mutex_unlock(&dcaMutex);
-
-    T2Debug("%s --out \n", __FUNCTION__);
-    return rc;
-}
-
 
 int getDCAResultsInVector(char* profileName, Vector* vecMarkerList, Vector** grepResultList, bool check_rotated, char* customLogPath)
 {

@@ -25,7 +25,6 @@
 /**
  * Caller should be freeing vectorMarkerList and grepResultList
  */
-int getDCAResultsInJson(char* profileName, void* vectorMarkerList, cJSON** grepResultList);
 
 int getDCAResultsInVector(char* profileName, Vector* vectorMarkerList, Vector** grepResultList, bool check_rotated, char* customLogPath);
 

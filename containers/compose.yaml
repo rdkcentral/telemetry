@@ -7,7 +7,7 @@ services:
       - "50050:50050"
       - "50051:50051"
     volumes:
-      - ./:/mnt/L2_CONTAINER_SHARED_VOLUME
+      - ../:/mnt/L2_CONTAINER_SHARED_VOLUME
 
 
   l2-container:
@@ -16,4 +16,4 @@ services:
     depends_on:
       - mock-xconf
     volumes:
-      - ./:/mnt/L2_CONTAINER_SHARED_VOLUME
+      - ../:/mnt/L2_CONTAINER_SHARED_VOLUME

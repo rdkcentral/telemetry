@@ -2,7 +2,7 @@ name: L2 Integration Tests
 
 on:
   pull_request:
-    branches: [ develop ]
+    branches: [ develop , main , topic/RDK-48832 ]
 
 env:
   AUTOMATICS_UNAME: ${{ secrets.AUTOMATICS_UNAME }}
@@ -14,30 +14,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-        
-      - name: Checkout telemetry code
-        uses: actions/checkout@v4
-        with:
-          path : 'telemetry'
-
-      - name: Checkout rdk_logger 
-        uses: actions/checkout@v4
-        with:
-          repository: 'rdkcentral/rdk_logger'
-          path : 'telemetry/containers/native-platform/rdk_logger'
-
-      - name: Checkout WebconfigFramework 
-        uses: actions/checkout@v4
-        with:
-          repository: 'rdkcentral/WebconfigFramework'
-          path : 'telemetry/containers/native-platform/WebconfigFramework'
-
-      - name: InstallC astyle 
-        run: |
-            sudo apt-get update
-            sudo apt-get install astyle -y
+        uses: docker/setup-buildx-action@v1
 
       - name: Check for formatting errors
         run: |
@@ -54,62 +42,37 @@ jobs:
           else
             echo "Code formatting errors not found."
           fi
-          cd - 
- 
-      - name: Build Docker image for Mock XCONF Server
-        uses: docker/build-push-action@v4
-        with:
-          context: telemetry/containers/mock-xconf
-          push: false
-          tags: mock-xconf:latest
-          load: true
+          cd -
 
-      # - name: List Docker Images
-      # run: docker images
-      # commenting this as this was used in debugging to see if container loads with load: true
-
-      - name: Dump self-signed public serts from mock-xconf container
+      - name: Pull docker images
         run: |
-          docker run --rm mock-xconf:latest cat /etc/xconf/certs/mock-xconf-server-cert.pem >  telemetry/containers/native-platform/mock-xconf-server-cert.pem
+          docker pull ghcr.io/rdkcentral/docker-device-mgt-service-test/mockxconf:latest
+          docker pull ghcr.io/rdkcentral/docker-device-mgt-service-test/native-platform:latest
 
-      - name: Build Docker image for native platform Server
-        uses: docker/build-push-action@v4
-        with:
-          context: telemetry/containers/native-platform
-          push: false
-          tags: native-platform:latest
-          load: true
-
-      - name: Install Docker Compose
+      - name: Start mock-xconf service
         run: |
-          sudo apt-get update
-          sudo apt-get install docker-compose -y
+          docker run -d --name mockxconf -p 50050:50050 -p 50051:50051 -p 50052:50052 -v ${{ github.workspace }}:/mnt/L2_CONTAINER_SHARED_VOLUME ghcr.io/rdkcentral/docker-device-mgt-service-test/mockxconf:latest
 
-      - name: Run L2 container with code attached to /mnt/L2_CONTAINER_SHARED_VOLUME
+      - name: Start l2-container service
         run: |
-          cd telemetry/containers
-          docker-compose up -d 
+          docker run -d --name native-platform --link mockxconf -v ${{ github.workspace }}:/mnt/L2_CONTAINER_SHARED_VOLUME ghcr.io/rdkcentral/docker-device-mgt-service-test/native-platform:latest
 
-      - name: Run L2 tests in the native-platform container
+      - name: Enter Inside Platform native container and run L2 Test
         run: |
-          docker exec -i native-platform /bin/bash -c "cd /mnt/L2_CONTAINER_SHARED_VOLUME/ && sh build_inside_container.sh && export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/x86_64-linux-gnu:/lib/aarch64-linux-gnu:/usr/local/lib: &&  sh test/run_l2.sh"
-          
-      - name: Copy l2 test results to runner 
+          docker exec -i native-platform /bin/bash -c "cd /mnt/L2_CONTAINER_SHARED_VOLUME/ && sh build_inside_container.sh && export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/x86_64-linux-gnu:/lib/aarch64-linux-gnu:/usr/local/lib: && sh test/run_l2.sh"
+
+      - name: Copy l2 test results to runner
         run: |
           docker cp native-platform:/tmp/l2_test_report /tmp/L2_TEST_RESULTS
-
-      - name: Shut down L2 container
-        run: |
-          cd telemetry/containers
-          docker-compose down
-
+          ls -l
+          ls -l /tmp/L2_TEST_RESULTS
   upload-test-results:
     name: Upload L2 test results to automatic test result management system
     needs: execute-L2-tests-on-pr
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/rdkcentral/docker-rdk-ci:latest
-      volumes: 
+      volumes:
         - /tmp/L2_TEST_RESULTS:/tmp/L2_TEST_RESULTS
     steps:
       - name: Upload results
@@ -123,6 +86,3 @@ jobs:
             echo "==============================="
             git config --global --add safe.directory `pwd`
             gtest-json-result-push.py /tmp/L2_TEST_RESULTS https://rdkeorchestrationservice.apps.cloud.comcast.net/rdke_orchestration_api/push_unit_test_results `pwd`
-
- 
-

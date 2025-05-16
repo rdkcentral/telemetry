@@ -129,6 +129,12 @@ T2ERROR sendReportsOverRBUSMethod(char *methodName, Vector* inputParams, char* p
             else
             {
                 retry_count++;
+                /*
+                 * NOTE: CID=190391 is a false positive.
+                 * The rbusMethodMutex is already unlocked within asyncMethodHandler.
+                 * This code path handles the scenario where locking fails again,
+                 * so there is no need to address or fix this warning.
+                 */
                 sleep(2); // giving 2 seconds sleep for 5 times which will be equal to waiting for RBUS_METHOD_TIMEOUT value // Removing the pthread_mutex_unlock before sleep as rbusmethodmutex will be unlocked by asyncMethodHandler.
                 if(retry_count == 5)
                 {

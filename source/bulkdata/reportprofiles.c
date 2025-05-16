@@ -1023,6 +1023,11 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
                 else
                 {
                     T2Error("Unable to parse the profile: %s, invalid configuration\n", profileName);
+                    if (profile)
+                    {
+                        free(profile);
+                        profile = NULL;
+                    }
                 }
             }
         }
@@ -1048,6 +1053,11 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
             else
             {
                 T2Error("Unable to parse the profile: %s, invalid configuration\n", profileName);
+                if (profile)
+                {
+                    free(profile);
+                    profile = NULL;
+                }
             }
         }
     }

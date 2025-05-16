@@ -43,7 +43,6 @@ jobs:
           else
             echo "Code formatting errors not found."
           fi
-          cd -
 
       - name: Pull docker images
         run: |

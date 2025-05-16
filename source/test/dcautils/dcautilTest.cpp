@@ -697,6 +697,7 @@ TEST_F(dcaSystemTestFixture, firstBootstatus){
             .WillOnce(Return(-1));
 
     firstBootStatus();
+    g_SystemMock = nullptr;
 }
 
 TEST_F(dcaFileTestFixture, dcaFlagReportCompleation)
@@ -706,7 +707,7 @@ TEST_F(dcaFileTestFixture, dcaFlagReportCompleation)
             .Times(1)
             .WillOnce(Return(fp));
     dcaFlagReportCompleation();
-    g_fileIOMock = NULL;
+    g_fileIOMock = nullptr;
 }
 
 TEST_F(dcaFileTestFixture, dcaFlagReportCompleation1)
@@ -719,7 +720,7 @@ TEST_F(dcaFileTestFixture, dcaFlagReportCompleation1)
             .Times(1)
             .WillOnce(Return(0));
     dcaFlagReportCompleation();
-    g_fileIOMock = NULL;
+    g_fileIOMock = nullptr;
 }
 
 #ifdef PERSIST_LOG_MON_RE
@@ -730,7 +731,7 @@ TEST_F(dcaFileTestFixture, loadSavedSeekConfig)
             .Times(1)
             .WillOnce(Return(fp));
     EXPECT_EQ(T2ERROR_FAILURE, loadSavedSeekConfig("RDK_Profile"));
-    g_fileIOMock = NULL;
+    g_fileIOMock = nullptr;
     
 }
 
@@ -757,7 +758,7 @@ TEST_F(dcaFileTestFixture, loadSavedSeekConfig1)
             .WillOnce(Return(0));
     
     EXPECT_EQ(T2ERROR_SUCCESS, loadSavedSeekConfig("RDK_Profile"));
-    g_fileIOMock = NULL;
+    g_fileIOMock = nullptr;
 }
 #endif
 
@@ -779,7 +780,7 @@ TEST_F(dcaFileTestFixture, getProcUsage)
             .WillOnce(Return(fp));
     #endif
     EXPECT_EQ(0, getProcUsage("telemetry2_0", grepResultList, true, "[0-9]"));
-    g_fileIOMock = NULL;
+    g_fileIOMock = nullptr;
 }
 
 TEST_F(dcaFileTestFixture, getProcUsage1)
@@ -811,6 +812,7 @@ TEST_F(dcaFileTestFixture, getProcUsage1)
             .WillOnce(Return(-1));
     #endif
     EXPECT_EQ(0, getProcUsage("telemetry2_0", grepResultList, true, "[0-9]"));
+    g_fileIOMock = nullptr;
 }
 
 TEST_F(dcaFileTestFixture, getProcUsage2)
@@ -844,6 +846,7 @@ TEST_F(dcaFileTestFixture, getProcUsage2)
 	    .WillOnce(Return(-1));
     #endif
     EXPECT_EQ(0, getProcUsage("telemetry2_0", grepResultList, true, "[0-9]"));
+    g_fileIOMock = nullptr;
 }
 
 TEST_F(dcaFileTestFixture, getProcPidStat)
@@ -854,6 +857,7 @@ TEST_F(dcaFileTestFixture, getProcPidStat)
             .Times(1)
             .WillOnce(Return(-1));
     ASSERT_EQ(0, getProcPidStat(123, &pinfo));
+    g_fileIOMock = nullptr;
 }
 
 TEST_F(dcaFileTestFixture, getProcPidStat1)
@@ -870,6 +874,7 @@ TEST_F(dcaFileTestFixture, getProcPidStat1)
             .Times(1)
             .WillOnce(Return(0));
     ASSERT_EQ(0, getProcPidStat(123, &pinfo));
+    g_fileIOMock = nullptr;
 }
 
 #if !defined(ENABLE_RDKC_SUPPORT) && !defined(ENABLE_RDKB_SUPPORT)
@@ -879,6 +884,7 @@ TEST_F(dcaSystemTestFixture, saveTopOutput)
                 .Times(1)
                 .WillOnce(Return(0));
     saveTopOutput();
+    g_SystemMock = nullptr;
 }
 
 TEST_F(dcaSystemTestFixture, saveTopOutput1)
@@ -898,6 +904,7 @@ TEST_F(dcaSystemTestFixture, saveTopOutput1)
                 .WillOnce(Return(-1));
     #endif
     saveTopOutput();
+    g_SystemMock = nullptr;
 }
 
 TEST_F(dcaSystemTestFixture, saveTopOutput2)
@@ -917,6 +924,7 @@ TEST_F(dcaSystemTestFixture, saveTopOutput2)
                 .WillOnce(Return(-1));
     #endif
     saveTopOutput();
+    g_SystemMock = nullptr;
 }
 
 TEST_F(dcaSystemTestFixture, removeTopOutput)
@@ -931,6 +939,7 @@ TEST_F(dcaSystemTestFixture, removeTopOutput)
                 .WillOnce(Return(-1));
     #endif
     removeTopOutput();
+    g_SystemMock = nullptr;
 }
 
 TEST_F(dcaSystemTestFixture, removeTopOutput1)
@@ -945,6 +954,7 @@ TEST_F(dcaSystemTestFixture, removeTopOutput1)
                 .WillOnce(Return(0));
     #endif
     removeTopOutput();
+    g_SystemMock = nullptr;
 }
 
 #else
@@ -956,6 +966,7 @@ TEST_F(dcaFileTestFixture, getTotalCpuTimes)
             .Times(1)
             .WillOnce(Return(mockfp));
     EXPECT_EQ(0, getTotalCpuTimes(totaltime));
+    g_fileIOMock = nullptr;
 }
 
 TEST_F(dcaFileTestFixture, getTotalCpuTimes1)
@@ -972,6 +983,7 @@ TEST_F(dcaFileTestFixture, getTotalCpuTimes1)
             .Times(1)
 	    .WillOnce(Return(0));
     EXPECT_EQ(1, getTotalCpuTimes(totaltime));
+    g_fileIOMock = nullptr;
 }
 #endif
 
@@ -985,6 +997,7 @@ TEST_F(dcaFileTestFixture,  getProcUsage4)
             .Times(1)
             .WillOnce(Return(fp));
     EXPECT_EQ(0, getProcUsage(processName, gresulist, true, "[0-9]+"));
+    g_fileIOMock = nullptr;
 }
 
 TEST_F(dcaFileTestFixture,  getProcUsage3)
@@ -1018,6 +1031,7 @@ TEST_F(dcaFileTestFixture,  getProcUsage3)
             .WillOnce(Return(0));
     #endif 
    EXPECT_EQ(0, getProcUsage("telemetry2_0", grepResultList, true, "[0-9]+"));
+   g_fileIOMock = nullptr;
 }
 
 TEST_F(dcaFileTestFixture,  getProcUsage5)
@@ -1052,6 +1066,7 @@ TEST_F(dcaFileTestFixture,  getProcUsage5)
             .WillOnce(Return(0));
     #endif 
    EXPECT_EQ(0, getProcUsage("telemetry2_0", grepResultList, true, "[0-9]+"));
+   g_fileIOMock = nullptr;
 }
 
 TEST_F(dcaFileTestFixture, getLoadAvg)
@@ -1066,7 +1081,7 @@ TEST_F(dcaFileTestFixture, getLoadAvg)
             .WillOnce(Return(fp));
     EXPECT_EQ(0, getLoadAvg(grepResultList, false, NULL));
     Vector_Destroy(grepResultList, free);
-    g_fileIOMock = NULL;
+    g_fileIOMock = nullptr;
 }
 
 TEST_F(dcaFileTestFixture, getLoadAvg1)
@@ -1091,6 +1106,7 @@ TEST_F(dcaFileTestFixture, getLoadAvg1)
 	    .WillOnce(Return(0));
     EXPECT_EQ(0, getLoadAvg(grepResultList, false, NULL));
     Vector_Destroy(grepResultList, free);
+    g_fileIOMock = nullptr;
 }
 
 TEST_F(dcaFileTestFixture, getLoadAvg2)
@@ -1115,5 +1131,6 @@ TEST_F(dcaFileTestFixture, getLoadAvg2)
             .WillOnce(Return(0));
     EXPECT_EQ(1, getLoadAvg(grepResultList, true, "[0-9]+"));
     Vector_Destroy(grepResultList, free);
+    g_fileIOMock = nullptr;
 }
 

@@ -1,7 +1,7 @@
 services:
 
   mock-xconf:
-    image: "mock-xconf:latest"
+    image: "ghcr.io/rdkcentral/docker-device-mgt-service-test/mockxconf:latest"
     container_name: "mockxconf"
     ports:
       - "50050:50050"
@@ -11,7 +11,7 @@ services:
 
 
   l2-container:
-    image: "native-platform:latest"
+    image: "ghcr.io/rdkcentral/docker-device-mgt-service-test/native-platform"
     container_name: "native-platform"
     depends_on:
       - mock-xconf

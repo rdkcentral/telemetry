@@ -605,16 +605,9 @@ T2ERROR unregisterProfileFromScheduler(const char* profileName)
             // pthread_join(tProfile->tId, NULL); // pthread_detach in freeSchedulerProfile will detach the thread
             sched_yield(); // This will give chance for the signal receiving thread to start
             int count = 0;
-            //In case of activation timeout, the thread doesn't have to wait for report generation to be triggered,
-            //as the report generation is already triggered in the timeout thread.
-            while (1)
+            while(signalrecived_and_executing && !is_activation_time_out)
             {
-                //CID-539891:Data race condition (MISSING_LOCK)
-                pthread_mutex_lock(&tProfile->tMutex);
-                bool local_variable = !signalrecived_and_executing || is_activation_time_out;
-                pthread_mutex_unlock(&tProfile->tMutex);
-
-                if(local_variable || count++ > 10)
+                if(count++ > 10)
                 {
                     break;
                 }

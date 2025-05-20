@@ -23,7 +23,7 @@ if IS_PRIVACYCONTROL_ENABLED
 SUBDIRS += privacycontrol
 endif
 
-SUBDIRS += ccspinterface t2parser xconf-client protocol nativeProtocolSimulator reportgen scheduler dcautil commonlib bulkdata
+SUBDIRS += ccspinterface t2parser xconf-client protocol reportgen scheduler dcautil commonlib bulkdata
 
 if ENABLE_CCSP_SUPPORT
 SUBDIRS += t2dm

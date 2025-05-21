@@ -31,10 +31,6 @@ if IS_LIBSYSWRAPPER_ENABLED
 libt2utils_la_CFLAGS += $(LIBSYSWRAPPER_FLAG)
 libt2utils_la_LDFLAGS += -lsecure_wrapper
 endif
-if IS_MTLS_ENABLED
-libt2utils_la_CFLAGS = $(MTLS_FLAG)
-libt2utils_la_SOURCES += t2MtlsUtils.c
-endif
 
 if IS_MTLS_ENABLED
 libt2utils_la_CFLAGS = $(MTLS_FLAG)

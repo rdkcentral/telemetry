@@ -1455,52 +1455,17 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
 
 bool isMtlsEnabled(void)
 {
-#if !defined (ENABLE_RDKC_SUPPORT)
-    char *paramValue = NULL;
-
-    if(initT2MtlsEnable == false)
+    if (!initT2MtlsEnable)
     {
-        if(T2ERROR_SUCCESS == getParameterValue(T2_MTLS_RFC, &paramValue))
-        {
-            if(paramValue != NULL && (strncasecmp(paramValue, "true", 4) == 0))
-            {
-                T2Debug("mTLS support is Enabled\n");
-                isT2MtlsEnable = true;
-            }
-            initT2MtlsEnable = true;
-            free(paramValue);
-            paramValue = NULL;
-        }
-        else
-        {
-            T2Error("getParameterValue failed\n");
-        }
-    }
-    if(isT2MtlsEnable != true)
-    {
-        if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_PARTNER_ID, &paramValue))
-        {
-            if(paramValue != NULL && (strncasecmp(paramValue, "sky-uk", 6) == 0))
-            {
-                T2Debug("Enabling mTLS for sky-uk partner\n");
-                isT2MtlsEnable = true;
-                initT2MtlsEnable = true;
-                free(paramValue);
-                paramValue = NULL;
-            }
-            else
-            {
-                if(paramValue != NULL)
-                {
-                    free(paramValue);
-                }
-                T2Error("getParameterValue partner id failed\n");
-            }
-        }
-    }
-    return isT2MtlsEnable;
+#if defined(ENABLE_MTLS) || defined(ENABLE_RDKC_SUPPORT)
+        T2Debug("mTLS support is enabled by build flag\n");
+        isT2MtlsEnable = true;
 #else
-    /* Enabling Mtls by default for RDKC */
-    return true;
+        T2Debug("mTLS is not enabled for non-mTLS users\n");
+        isT2MtlsEnable = false;
 #endif
+        initT2MtlsEnable = true;
+    }
+
+    return isT2MtlsEnable;
 }

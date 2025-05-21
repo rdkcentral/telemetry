@@ -16,8 +16,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+#ifdef ENABLE_MTLS
 #include "t2MtlsUtils.h"
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>

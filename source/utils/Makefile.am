@@ -19,7 +19,7 @@
 AM_CFLAGS = -fno-permissive
 lib_LTLIBRARIES = libt2utils.la
 
-libt2utils_la_SOURCES = vector.c t2collection.c t2log_wrapper.c t2MtlsUtils.c persistence.c t2common.c
+libt2utils_la_SOURCES = vector.c t2collection.c t2log_wrapper.c persistence.c t2common.c
 libt2utils_la_LDFLAGS = -shared -fPIC
 libt2utils_la_CFLAGS = -DUNUSED
 
@@ -30,6 +30,11 @@ endif
 if IS_LIBSYSWRAPPER_ENABLED
 libt2utils_la_CFLAGS += $(LIBSYSWRAPPER_FLAG)
 libt2utils_la_LDFLAGS += -lsecure_wrapper
+endif
+
+if IS_MTLS_ENABLED
+libt2utils_la_CFLAGS = $(MTLS_FLAG)
+libt2utils_la_SOURCES += t2MtlsUtils.c
 endif
 
 if RDKLOGGER_ENABLE

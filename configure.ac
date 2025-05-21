@@ -41,6 +41,7 @@ LIBSYSWRAPPER_FLAG=" "
 IS_LIBSYSWRAPPER_ENABLED=" "
 IS_LIBRDKCONFIG_ENABLED=" "
 IS_LIBRDKCERTSEL_ENABLED=" "
+IS_MTLS_ENABLED=" "
 
 AC_ARG_ENABLE([gtestapp],
              AS_HELP_STRING([--enable-gtestapp],[enable Gtest support (default is no)]),
@@ -207,6 +208,20 @@ AC_ARG_ENABLE([rdkcertselector],
         [echo "rdkcertselector is disabled"])
 AM_CONDITIONAL([IS_LIBRDKCERTSEL_ENABLED], [test x$IS_LIBRDKCERTSEL_ENABLED = xtrue])
 AC_SUBST(LIBRDKCERTSEL_FLAG)
+
+AC_ARG_ENABLE([mtls],
+        AS_HELP_STRING([--enable-mtls], [Enable mTLS support (default is no)]),
+        [
+          case "${enableval}" in
+           yes) IS_MTLS_ENABLED=true
+                MTLS_FLAG=" -DENABLE_MTLS ";;
+           no)  IS_MTLS_ENABLED=false ;;
+          *) AC_MSG_ERROR([bad value ${enableval} for --enable-mtls]) ;;
+          esac
+        ],
+        [echo "MTLS is disabled"])
+AM_CONDITIONAL([IS_MTLS_ENABLED], [test x$IS_MTLS_ENABLED = xtrue])
+AC_SUBST(MTLS_FLAG)
 
 AC_CONFIG_FILES([Makefile
                  source/Makefile

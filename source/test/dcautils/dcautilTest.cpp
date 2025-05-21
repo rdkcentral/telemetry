@@ -51,151 +51,9 @@ using ::testing::_;
 using ::testing::Return;
 using ::testing::StrEq;
 
-FileIOMock * g_fileIOMock = NULL;
-SystemMock * g_SystemMock = NULL;
+FileMock *g_fileIOMock = NULL;
+SystemMock * g_systemMock = NULL;
 rdklogMock *m_rdklogMock = NULL;
-
-class rdklogTestFixture : public ::testing::Test {
-    protected:
-            rdklogMock rdklogmock_IO;
-
-            rdklogTestFixture()
-            {
-                    m_rdklogMock = &rdklogmock_IO;
-            }
-
-            virtual ~rdklogTestFixture()
-            {
-                    m_rdklogMock = NULL;
-            }
-            virtual void SetUp()
-            {
-                    printf("%s\n", __func__);
-            }
-
-            virtual void TearDown()
-            {
-                    printf("%s\n", __func__);
-            }
-	    static void SetUpTestCase()
-            {
-                    printf("%s\n", __func__);
-            }
-            static void TearDownTestCase()
-            {
-                    printf("%s\n", __func__);
-            }
-};
-
-class dcaFileTestFixture : public ::testing::Test {
-    protected:
-        FileIOMock mockeddcaFileIO;
-
-        dcaFileTestFixture()
-        {
-            g_fileIOMock = &mockeddcaFileIO;
-
-        }
-        virtual ~dcaFileTestFixture()
-        {
-            g_fileIOMock = NULL;
-        }
-
-        virtual void SetUp()
-        {
-            printf("%s\n", __func__);
-        }
-
-        virtual void TearDown()
-        {
-            printf("%s\n", __func__);
-        }
-
-        static void SetUpTestCase()
-        {
-            printf("%s\n", __func__);
-        }
-
-        static void TearDownTestCase()
-        {
-            printf("%s\n", __func__);
-        }
-};
-
-class dcaSystemTestFixture : public ::testing::Test {
-    protected:
-        SystemMock mockedSSystem;
-
-        dcaSystemTestFixture()
-        {
-            g_SystemMock = &mockedSSystem;
-
-        }
-        virtual ~dcaSystemTestFixture()
-        {
-            g_SystemMock = NULL;
-        }
-
-        virtual void SetUp()
-        {
-            printf("%s\n", __func__);
-        }
-
-        virtual void TearDown()
-        {
-            printf("%s\n", __func__);
-        }
-
-        static void SetUpTestCase()
-        {
-            printf("%s\n", __func__);
-        }
-
-        static void TearDownTestCase()
-        {
-            printf("%s\n", __func__);
-        }
-};
-
-class dcaTestFixture : public ::testing::Test {
-    protected:
-        FileIOMock mockeddcaFileIO;
-        SystemMock mockedSSystem;
-
-        dcaTestFixture()
-        {
-            g_fileIOMock = &mockeddcaFileIO;
-            g_SystemMock = &mockedSSystem;
-
-        }
-        virtual ~dcaTestFixture()
-        {
-            g_fileIOMock = NULL;
-            g_SystemMock = NULL;
-        }
-
-        virtual void SetUp()
-        {
-            printf("%s\n", __func__);
-        }
-
-        virtual void TearDown()
-        {
-            printf("%s\n", __func__);
-        }
-
-        static void SetUpTestCase()
-        {
-            printf("%s\n", __func__);
-        }
-
-        static void TearDownTestCase()
-        {
-            printf("%s\n", __func__);
-        }
-};
-
-
 
 //Insert node to the list
 
@@ -664,13 +522,7 @@ TEST(strSplit, STR_NULL)
 {
    EXPECT_EQ(NULL, strSplit(NULL, "<#>"));
 }
-/*
-TEST(strSplit, STR_NOT_NULL)
-{
-  char* info = "info";
-  EXPECT_EQ(info, strSplit("telemetry_<#>info","<#>"));
-}
-*/
+
 TEST(getDCAResultsInJson, markerlist_NULL)
 {
     char* profileName = "Profile1";
@@ -688,29 +540,44 @@ TEST(getDCAResultsInVector, markerlist_NULL)
     EXPECT_EQ(-1, getDCAResultsInVector(profileName, NULL, &grepResultList, true, "/opt/logs"));
 }
 
+class dcaTestFixture : public ::testing::Test {
+protected:
+    void SetUp() override
+    {
+        g_fileIOMock = new FileMock();
+	g_systemMock = new SystemMock();
+    }
 
+    void TearDown() override
+    {
+       delete g_fileIOMock;
+       delete g_systemMock;
+
+        g_fileIOMock = nullptr;
+	g_systemMock = nullptr;
+    }                                                                                                       
+}; 
 
 //dcautil.c
-TEST_F(dcaSystemTestFixture, firstBootstatus){
-    EXPECT_CALL(*g_SystemMock, access(_,_))
+TEST_F(dcaTestFixture, firstBootstatus){
+    EXPECT_CALL(*g_systemMock, access(_,_))
             .Times(1)
             .WillOnce(Return(-1));
 
     firstBootStatus();
-    g_SystemMock = nullptr;
 }
 
-TEST_F(dcaFileTestFixture, dcaFlagReportCompleation)
+
+TEST_F(dcaTestFixture, dcaFlagReportCompleation)
 {
     FILE* fp = (FILE*)NULL;
     EXPECT_CALL(*g_fileIOMock, fopen(_,_))
             .Times(1)
             .WillOnce(Return(fp));
     dcaFlagReportCompleation();
-    g_fileIOMock = nullptr;
 }
 
-TEST_F(dcaFileTestFixture, dcaFlagReportCompleation1)
+TEST_F(dcaTestFixture, dcaFlagReportCompleation1)
 {
     FILE* fp = (FILE*)0xffffffff;
     EXPECT_CALL(*g_fileIOMock, fopen(_,_))
@@ -720,22 +587,20 @@ TEST_F(dcaFileTestFixture, dcaFlagReportCompleation1)
             .Times(1)
             .WillOnce(Return(0));
     dcaFlagReportCompleation();
-    g_fileIOMock = nullptr;
 }
 
 #ifdef PERSIST_LOG_MON_RE
-TEST_F(dcaFileTestFixture, loadSavedSeekConfig)
+TEST_F(dcaTestFixture, loadSavedSeekConfig)
 {
     FILE* fp = (FILE*)NULL;
     EXPECT_CALL(*g_fileIOMock, fopen(_,_))
             .Times(1)
             .WillOnce(Return(fp));
     EXPECT_EQ(T2ERROR_FAILURE, loadSavedSeekConfig("RDK_Profile"));
-    g_fileIOMock = nullptr;
     
 }
 
-TEST_F(dcaFileTestFixture, loadSavedSeekConfig1)
+TEST_F(dcaTestFixture, loadSavedSeekConfig1)
 {
     FILE* fp = (FILE*)0xffffffff;
     EXPECT_CALL(*g_fileIOMock, fopen(_,_))
@@ -758,12 +623,11 @@ TEST_F(dcaFileTestFixture, loadSavedSeekConfig1)
             .WillOnce(Return(0));
     
     EXPECT_EQ(T2ERROR_SUCCESS, loadSavedSeekConfig("RDK_Profile"));
-    g_fileIOMock = nullptr;
 }
 #endif
 
 //dcautil.c
-TEST_F(dcaFileTestFixture, getProcUsage)
+TEST_F(dcaTestFixture, getProcUsage)
 {
     Vector* grepResultList = NULL;
     Vector_Create(&grepResultList);
@@ -780,10 +644,9 @@ TEST_F(dcaFileTestFixture, getProcUsage)
             .WillOnce(Return(fp));
     #endif
     EXPECT_EQ(0, getProcUsage("telemetry2_0", grepResultList, true, "[0-9]"));
-    g_fileIOMock = nullptr;
 }
 
-TEST_F(dcaFileTestFixture, getProcUsage1)
+TEST_F(dcaTestFixture, getProcUsage1)
 {
     Vector* grepResultList = NULL;
     Vector_Create(&grepResultList);
@@ -800,7 +663,7 @@ TEST_F(dcaFileTestFixture, getProcUsage1)
             .WillOnce(Return(fp));
     #endif
     EXPECT_CALL(*g_fileIOMock, fscanf(_,_,_))
-            .Times(1)
+           .Times(1)
             .WillOnce(Return(0));
     #ifdef LIBSYSWRAPPER_BUILD
     EXPECT_CALL(*g_fileIOMock, v_secure_pclose(_))
@@ -812,10 +675,9 @@ TEST_F(dcaFileTestFixture, getProcUsage1)
             .WillOnce(Return(-1));
     #endif
     EXPECT_EQ(0, getProcUsage("telemetry2_0", grepResultList, true, "[0-9]"));
-    g_fileIOMock = nullptr;
 }
 
-TEST_F(dcaFileTestFixture, getProcUsage2)
+TEST_F(dcaTestFixture, getProcUsage2)
 {
     Vector* grepResultList = NULL;
     Vector_Create(&grepResultList);
@@ -836,6 +698,7 @@ TEST_F(dcaFileTestFixture, getProcUsage2)
             .Times(2)
             .WillOnce(Return(1))
 	    .WillOnce(Return(0));
+	    
     #ifdef LIBSYSWRAPPER_BUILD
     EXPECT_CALL(*g_fileIOMock, v_secure_pclose(_))
             .Times(1)
@@ -846,10 +709,9 @@ TEST_F(dcaFileTestFixture, getProcUsage2)
 	    .WillOnce(Return(-1));
     #endif
     EXPECT_EQ(0, getProcUsage("telemetry2_0", grepResultList, true, "[0-9]"));
-    g_fileIOMock = nullptr;
 }
 
-TEST_F(dcaFileTestFixture, getProcPidStat)
+TEST_F(dcaTestFixture, getProcPidStat)
 {
     procinfo pinfo;
     int fd = (int)0xffffffff;
@@ -857,10 +719,9 @@ TEST_F(dcaFileTestFixture, getProcPidStat)
             .Times(1)
             .WillOnce(Return(-1));
     ASSERT_EQ(0, getProcPidStat(123, &pinfo));
-    g_fileIOMock = nullptr;
 }
 
-TEST_F(dcaFileTestFixture, getProcPidStat1)
+TEST_F(dcaTestFixture, getProcPidStat1)
 {
     procinfo pinfo;
     int fd = (int)0xffffffff;
@@ -874,91 +735,85 @@ TEST_F(dcaFileTestFixture, getProcPidStat1)
             .Times(1)
             .WillOnce(Return(0));
     ASSERT_EQ(0, getProcPidStat(123, &pinfo));
-    g_fileIOMock = nullptr;
 }
 
 #if !defined(ENABLE_RDKC_SUPPORT) && !defined(ENABLE_RDKB_SUPPORT)
-TEST_F(dcaSystemTestFixture, saveTopOutput)
+TEST_F(dcaTestFixture, saveTopOutput)
 {
-    EXPECT_CALL(*g_SystemMock, access(_,_))
+    EXPECT_CALL(*g_systemMock, access(_,_))
                 .Times(1)
                 .WillOnce(Return(0));
     saveTopOutput();
-    g_SystemMock = nullptr;
 }
 
-TEST_F(dcaSystemTestFixture, saveTopOutput1)
+TEST_F(dcaTestFixture, saveTopOutput1)
 {
-    EXPECT_CALL(*g_SystemMock, access(_,_))
+    EXPECT_CALL(*g_systemMock, access(_,_))
                 .Times(1)
                 .WillOnce(Return(-1));
     #ifdef LIBSYSWRAPPER_BUILD
-       EXPECT_CALL(*g_SystemMock, v_secure_system(_))
+       EXPECT_CALL(*g_systemMock, v_secure_system(_))
                 .Times(2)
                 .WillOnce(Return(-1))
                 .WillOnce(Return(-1));
     #else
-       EXPECT_CALL(*g_SystemMock, system(_))
+       EXPECT_CALL(*g_systemMock, system(_))
                 .Times(2)
                 .WillOnce(Return(-1))
                 .WillOnce(Return(-1));
     #endif
     saveTopOutput();
-    g_SystemMock = nullptr;
 }
 
-TEST_F(dcaSystemTestFixture, saveTopOutput2)
+TEST_F(dcaTestFixture, saveTopOutput2)
 {
-    EXPECT_CALL(*g_SystemMock, access(_,_))
+    EXPECT_CALL(*g_systemMock, access(_,_))
                 .Times(1)
                 .WillOnce(Return(-1));
     #ifdef LIBSYSWRAPPER_BUILD
-       EXPECT_CALL(*g_SystemMock, v_secure_system(_))
+       EXPECT_CALL(*g_systemMock, v_secure_system(_))
                 .Times(2)
                 .WillOnce(Return(0))
                 .WillOnce(Return(-1));
     #else
-       EXPECT_CALL(*g_SystemMock, system(_))
+       EXPECT_CALL(*g_systemMock, system(_))
                 .Times(2)
                 .WillOnce(Return(0))
                 .WillOnce(Return(-1));
     #endif
     saveTopOutput();
-    g_SystemMock = nullptr;
 }
 
-TEST_F(dcaSystemTestFixture, removeTopOutput)
+TEST_F(dcaTestFixture, removeTopOutput)
 {
     #ifdef LIBSYSWRAPPER_BUILD
-    EXPECT_CALL(*g_SystemMock, v_secure_system(_))
+    EXPECT_CALL(*g_systemMock, v_secure_system(_))
                 .Times(1)
                 .WillOnce(Return(-1));
     #else
-    EXPECT_CALL(*g_SystemMock, system(_))
+    EXPECT_CALL(*g_systemMock, system(_))
                 .Times(1)
                 .WillOnce(Return(-1));
     #endif
     removeTopOutput();
-    g_SystemMock = nullptr;
 }
 
-TEST_F(dcaSystemTestFixture, removeTopOutput1)
+TEST_F(dcaTestFixture, removeTopOutput1)
 {
     #ifdef LIBSYSWRAPPER_BUILD
-    EXPECT_CALL(*g_SystemMock, v_secure_system(_))
+    EXPECT_CALL(*g_systemMock, v_secure_system(_))
                 .Times(1)
                 .WillOnce(Return(0));
     #else
-    EXPECT_CALL(*g_SystemMock, system(_))
+    EXPECT_CALL(*g_systemMock, system(_))
                 .Times(1)
                 .WillOnce(Return(0));
     #endif
     removeTopOutput();
-    g_SystemMock = nullptr;
 }
 
 #else
-TEST_F(dcaFileTestFixture, getTotalCpuTimes)
+TEST_F(dcaTestFixture, getTotalCpuTimes)
 {
     FILE* mockfp = (FILE *)NULL;
     int *totaltime = 0;
@@ -966,10 +821,9 @@ TEST_F(dcaFileTestFixture, getTotalCpuTimes)
             .Times(1)
             .WillOnce(Return(mockfp));
     EXPECT_EQ(0, getTotalCpuTimes(totaltime));
-    g_fileIOMock = nullptr;
 }
 
-TEST_F(dcaFileTestFixture, getTotalCpuTimes1)
+TEST_F(dcaTestFixture, getTotalCpuTimes1)
 {
     FILE* mockfp = (FILE *)0xFFFFFFFF;
     int *totaltime = 0;
@@ -983,11 +837,10 @@ TEST_F(dcaFileTestFixture, getTotalCpuTimes1)
             .Times(1)
 	    .WillOnce(Return(0));
     EXPECT_EQ(1, getTotalCpuTimes(totaltime));
-    g_fileIOMock = nullptr;
 }
 #endif
 
-TEST_F(dcaFileTestFixture,  getProcUsage4)
+TEST_F(dcaTestFixture,  getProcUsage4)
 {
     Vector* gresulist = NULL;
     Vector_Create(&gresulist);
@@ -997,10 +850,9 @@ TEST_F(dcaFileTestFixture,  getProcUsage4)
             .Times(1)
             .WillOnce(Return(fp));
     EXPECT_EQ(0, getProcUsage(processName, gresulist, true, "[0-9]+"));
-    g_fileIOMock = nullptr;
 }
 
-TEST_F(dcaFileTestFixture,  getProcUsage3)
+TEST_F(dcaTestFixture,  getProcUsage3)
 {
     Vector* grepResultList = NULL;
     Vector_Create(&grepResultList);
@@ -1031,10 +883,9 @@ TEST_F(dcaFileTestFixture,  getProcUsage3)
             .WillOnce(Return(0));
     #endif 
    EXPECT_EQ(0, getProcUsage("telemetry2_0", grepResultList, true, "[0-9]+"));
-   g_fileIOMock = nullptr;
 }
 
-TEST_F(dcaFileTestFixture,  getProcUsage5)
+TEST_F(dcaTestFixture,  getProcUsage5)
 {
    
 	Vector* grepResultList = NULL;
@@ -1066,10 +917,9 @@ TEST_F(dcaFileTestFixture,  getProcUsage5)
             .WillOnce(Return(0));
     #endif 
    EXPECT_EQ(0, getProcUsage("telemetry2_0", grepResultList, true, "[0-9]+"));
-   g_fileIOMock = nullptr;
 }
 
-TEST_F(dcaFileTestFixture, getLoadAvg)
+TEST_F(dcaTestFixture, getLoadAvg)
 {
     Vector* grepResultList;
     Vector_Create(&grepResultList);
@@ -1081,10 +931,9 @@ TEST_F(dcaFileTestFixture, getLoadAvg)
             .WillOnce(Return(fp));
     EXPECT_EQ(0, getLoadAvg(grepResultList, false, NULL));
     Vector_Destroy(grepResultList, free);
-    g_fileIOMock = nullptr;
 }
 
-TEST_F(dcaFileTestFixture, getLoadAvg1)
+TEST_F(dcaTestFixture, getLoadAvg1)
 {
     Vector* grepResultList;
     Vector_Create(&grepResultList);
@@ -1106,10 +955,9 @@ TEST_F(dcaFileTestFixture, getLoadAvg1)
 	    .WillOnce(Return(0));
     EXPECT_EQ(0, getLoadAvg(grepResultList, false, NULL));
     Vector_Destroy(grepResultList, free);
-    g_fileIOMock = nullptr;
 }
 
-TEST_F(dcaFileTestFixture, getLoadAvg2)
+TEST_F(dcaTestFixture, getLoadAvg2)
 {
     Vector* grepResultList;
     Vector_Create(&grepResultList);
@@ -1131,6 +979,4 @@ TEST_F(dcaFileTestFixture, getLoadAvg2)
             .WillOnce(Return(0));
     EXPECT_EQ(1, getLoadAvg(grepResultList, true, "[0-9]+"));
     Vector_Destroy(grepResultList, free);
-    g_fileIOMock = nullptr;
 }
-

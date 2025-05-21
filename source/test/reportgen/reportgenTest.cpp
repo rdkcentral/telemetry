@@ -968,4 +968,3 @@ TEST_F(reportgenTestFixture,  encodeEventMarkersInJSON9)
     }
     Vector_Destroy(eventMarkerList, freeEMarker);
 }
-

@@ -22,7 +22,7 @@
 #include "telemetry2_0.h"
 #include "test/rbus/include/rbus.h"
 #include "test/rbus/include/rbus_value.h"
-
+/*
 class rbusInterface
 {
 public:
@@ -41,7 +41,7 @@ public:
     virtual const char* rbusError_ToString(rbusError_t) = 0;
     virtual bool rbusCheckMethodExists(const char*) = 0;
     virtual T2ERROR rbusMethodCaller(char *, rbusObject_t*, char*) = 0;
-    /* virtual bool isRbusEnabled() = 0;
+     virtual bool isRbusEnabled() = 0;
      virtual void publishReportUploadStatus(char*) = 0;
      virtual Vector* getProfileParameterValues(Vector *) = 0;
      virtual int regDEforCompEventList(const char*, T2EventMarkerListCallback) = 0;
@@ -54,8 +54,9 @@ public:
            virtual int rbusT2ConsumerReg(Vector *) = 0;
            virtual void registerConditionalReportCallBack(triggerReportOnCondtionCallBack) = 0;
            virtual int sendReportsOverRBUSMethod(char *, Vector*, char*) = 0;
-           virtual int sendCachedReportsOverRBUSMethod(char *, Vector*, Vector*) = 0;*/
+           virtual int sendCachedReportsOverRBUSMethod(char *, Vector*, Vector*) = 0;
 };
+
 
 class rbusMock: public rbusInterface
 {
@@ -75,7 +76,7 @@ public:
     MOCK_METHOD4(rbusMethod_Invoke, rbusError_t(rbusHandle_t, char const*, rbusObject_t, rbusObject_t*));
     MOCK_METHOD1(rbusCheckMethodExists, bool(const char*));
     MOCK_METHOD3(rbusMethodCaller, T2ERROR(char *, rbusObject_t*, char*));
-    /* MOCK_METHOD0(isRbusEnabled, bool());
+     MOCK_METHOD0(isRbusEnabled, bool());
      MOCK_METHOD1(publishReportUploadStatus, void(char* ));
      MOCK_METHOD1(getProfileParameterValues, Vector*(Vector *));
     MOCK_METHOD2(regDEforCompEventList, int(const char*, T2EventMarkerListCallback));
@@ -87,7 +88,36 @@ public:
     MOCK_METHOD1(rbusT2ConsumerReg, int(Vector *));
     MOCK_METHOD1(registerConditionalReportCallBack, void(triggerReportOnCondtionCallBack));
            MOCK_METHOD3(sendReportsOverRBUSMethod, int(char *, Vector*, char*));
-           MOCK_METHOD3(sendCachedReportsOverRBUSMethod, int(char *, Vector*, Vector*));*/
+           MOCK_METHOD3(sendCachedReportsOverRBUSMethod, int(char *, Vector*, Vector*));
 };
 
+*/
 
+class rbusMock {
+public:
+    MOCK_METHOD(rbusObject_t, rbusObject_Init, (rbusObject_t* obj, char const * str), ());
+    MOCK_METHOD(rbusValue_t, rbusValue_Init, (rbusValue_t* value),());
+    MOCK_METHOD(void, rbusValue_SetString, (rbusValue_t value, char const* str), ());
+    MOCK_METHOD(void, rbusObject_SetValue, (rbusObject_t obj, char const* name, rbusValue_t value), ());
+    MOCK_METHOD(void, rbusValue_SetInt32, (rbusValue_t value, int32_t val), ());
+    MOCK_METHOD(void, rbusValue_Release, (rbusValue_t value), ());
+    MOCK_METHOD(void, rbusObject_Release, (rbusObject_t obj), ());
+    MOCK_METHOD(rbusError_t, rbusMethod_Invoke, (rbusHandle_t handle, char const* methodName, rbusObject_t input, rbusObject_t* output), ());
+    MOCK_METHOD(const char*, rbusError_ToString, (rbusError_t error), ());
+    MOCK_METHOD(bool, rbusCheckMethodExists, (const char* methodName), ());
+    MOCK_METHOD(T2ERROR, rbusMethodCaller, (char *methodName, rbusObject_t* input, char* output), ());
+};
+
+extern rbusMock* g_rbusMock;
+
+extern "C" rbusObject_t rbusObject_Init(rbusObject_t* obj, char const * str);
+extern "C" rbusValue_t rbusValue_Init(rbusValue_t* value);
+extern "C" void rbusValue_SetString(rbusValue_t value, char const* str);
+extern "C" void rbusObject_SetValue(rbusObject_t obj, char const* name, rbusValue_t value);
+extern "C" void rbusValue_SetInt32(rbusValue_t value, int32_t val);
+extern "C" void rbusValue_Release(rbusValue_t value);
+extern "C" void rbusObject_Release(rbusObject_t obj);
+extern "C" rbusError_t rbusMethod_Invoke(rbusHandle_t handle, char const* methodName, rbusObject_t input, rbusObject_t* output);
+extern "C" const char* rbusError_ToString(rbusError_t error);
+extern "C" bool rbusCheckMethodExists(const char* methodName);
+extern "C" T2ERROR rbusMethodCaller(char *methodName, rbusObject_t* input, char* output);

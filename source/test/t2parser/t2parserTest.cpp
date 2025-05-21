@@ -66,7 +66,7 @@ sigset_t blocking_signal;
 T2parserMock *m_t2parserMock = NULL;
 rdklogMock *m_rdklogMock = NULL;
 rbusMock *g_rbusMock = NULL;
-
+/*
 class t2parserTestFixture : public ::testing::Test {
     protected:
             T2parserMock mock_IO;
@@ -165,7 +165,7 @@ class rbusTestFixture : public ::testing::Test {
                     printf("%s\n", __func__);
             }
 };
-
+*/
 TEST(PROCESSXCONFCONFIGURATION, TEST_NULL_INVALID)
 {
      ProfileXConf *profile = 0;

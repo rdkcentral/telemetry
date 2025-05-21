@@ -19,8 +19,6 @@
 
 #include "test/mocks/rbusMock.h"
 
-extern rbusMock *g_rbusMock;
-
 extern "C" rbusObject_t rbusObject_Init(rbusObject_t* object, char const* value)
 {
     if (!g_rbusMock)
@@ -152,3 +150,4 @@ extern "C" T2ERROR rbusMethodCaller(char *methodName, rbusObject_t* inputParams,
     }
     return g_rbusMock->rbusMethodCaller(methodName, inputParams, payload);
 }
+

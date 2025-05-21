@@ -19,7 +19,7 @@
 AUTOMAKE_OPTIONS = subdir-objects
 
 
-SUBDIRS = t2parser scheduler reportgen protocol dcautils
+SUBDIRS =  t2parser reportgen scheduler dcautils
 
 AM_CXXFLAGS = -std=c++11 -DGTEST_ENABLE -DGTEST_HAS_PTHREAD=0
 

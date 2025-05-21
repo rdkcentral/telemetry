@@ -14,13 +14,15 @@
 *
 * SPDX-License-Identifier: Apache-2.0
 */
-#ifndef SOURCE_TEST_MOCKS_SYSTEMMOCK_H_
-#define SOURCE_TEST_MOCKS_SYSTEMMOCK_H_
+//#ifndef SOURCE_TEST_MOCKS_SYSTEMMOCK_H_
+//#define SOURCE_TEST_MOCKS_SYSTEMMOCK_H_
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
-#include "telemetry2_0.h"
 
+
+#include "telemetry2_0.h"
+/*
 class SystemInterface
 {
 public:
@@ -56,3 +58,17 @@ public:
 };
 
 #endif
+*/
+
+class SystemMock {
+public:
+    MOCK_METHOD(int, system, (const char* cmd), ());
+    MOCK_METHOD(int, unlink, (const char *str), ());
+    MOCK_METHOD(int, access, (const char *pathname, int mode), ());
+};
+
+extern SystemMock* g_systemMock;
+
+extern "C" int system(const char* cmd);
+extern "C" int unlink(const char* str);
+extern "C" int access(const char * pathname, int mode);

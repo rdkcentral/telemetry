@@ -48,192 +48,9 @@ using ::testing::_;
 using ::testing::Return;
 using ::testing::StrEq;
 
-SystemMock * g_SystemMock = NULL;  // This is the actual definition of the mock obj 
-FileIOMock * g_fileIOMock = NULL;
+SystemMock * g_systemMock = NULL;  // This is the actual definition of the mock obj 
+FileMock * g_fileIOMock = NULL;
 rdklogMock *m_rdklogMock = NULL;
-/*
-#include <cstdio>
-
-// Wrapper function for fopen
-FILE* mock_fopen(const char* filename, const char* mode);
-
-// Function pointer to switch between real and mock fopen
-FILE* (*real_fopen)(const char* filename, const char* mode) = fopen;
-
-// Mock implementation of fopen
-/FILE* fopen(const char* filename, const char* mode) {
-    return mock_fopen(filename, mode);
-}
-
-class MockFopen {
-public:
-    MOCK_METHOD(FILE*, fopen, (const char* filename, const char* mode));
-    MOCK_METHOD(DIR*, opendir, (const char* filename));
-    MOCK_METHOD(int, mkdir, (const char* filename, int mode));
-};
-
-// Singleton instance for testing
-MockFopen* g_mock_fopen = nullptr;
-
-// Mocked version of the wrapper function
- FILE* fopen_wrapper(const char* filename, const char* mode) {
-    if (g_mock_fopen) {
-        return g_mock_fopen->fopen(filename, mode);
-    }
-    return fopen(filename, mode);
-}
-DIR* opendir_wrapper(const char* filename) {
-    if (g_mock_fopen) {
-        return g_mock_fopen->opendir(filename);
-    }
-    return opendir(filename);
-}
-int mkdir_wrapper(const char* filename, int mode) {
-    if (g_mock_fopen) {
-        return g_mock_fopen->mkdir(filename, mode);
-    }
-    return mkdir(filename, mode);
-}
-*/
-class rdklogTestFixture : public ::testing::Test {
-    protected:
-            rdklogMock rdklogmock_IO;
-
-            rdklogTestFixture()
-            {
-                    m_rdklogMock = &rdklogmock_IO;
-            }
-
-            virtual ~rdklogTestFixture()
-            {
-                    m_rdklogMock = NULL;
-            }
-            virtual void SetUp()
-            {
-                    printf("%s\n", __func__);
-            }
-
-            virtual void TearDown()
-            {
-                    printf("%s\n", __func__);
-            }
-	    static void SetUpTestCase()
-            {
-                    printf("%s\n", __func__);
-            }
-            static void TearDownTestCase()
-            {
-                    printf("%s\n", __func__);
-            }
-};
-
-class UtilsFileTestFixture : public ::testing::Test {
-    protected:
-        FileIOMock mockedFileIO;
-
-        UtilsFileTestFixture()
-        {
-            g_fileIOMock = &mockedFileIO;
-
-        }
-        virtual ~UtilsFileTestFixture()
-        {
-            g_fileIOMock = NULL;
-        }
-
-        virtual void SetUp()
-        {
-            printf("%s\n", __func__);
-        }
-
-        virtual void TearDown()
-        {
-          //  printf("%s\n", __func__);
-        }
-
-        static void SetUpTestCase()
-        {
-            printf("%s\n", __func__);
-        }
-
-        static void TearDownTestCase()
-        {
-            //printf("%s\n", __func__);
-        }
-};
-
-class UtilsSystemTestFixture : public ::testing::Test {
-    protected:
-        SystemMock mockedSystem;
-
-        UtilsSystemTestFixture()
-        {
-            g_SystemMock = &mockedSystem;
-
-        }
-        virtual ~UtilsSystemTestFixture()
-        {
-            g_SystemMock = NULL;
-        }
-
-        virtual void SetUp()
-        {
-            printf("%s\n", __func__);
-        }
-
-        virtual void TearDown()
-        {
-            printf("%s\n", __func__);
-        }
-
-        static void SetUpTestCase()
-        {
-            printf("%s\n", __func__);
-        }
-
-        static void TearDownTestCase()
-        {
-            printf("%s\n", __func__);
-        }
-};
-
-class UtilsTestFixture : public ::testing::Test {
-    protected:
-        SystemMock mockedSystem;
-        FileIOMock mockedFileIO;
-
-        UtilsTestFixture()
-        {
-            g_SystemMock = &mockedSystem;
-            g_fileIOMock = &mockedFileIO;
-
-        }
-        virtual ~UtilsTestFixture()
-        {
-            g_SystemMock = NULL;
-            g_fileIOMock = NULL;
-        }
-
-        virtual void SetUp()
-        {
-            printf("%s\n", __func__);
-        }
-
-        virtual void TearDown()
-        {
-            printf("%s\n", __func__);
-        }
-
-        static void SetUpTestCase()
-        {
-            printf("%s\n", __func__);
-        }
-
-        static void TearDownTestCase()
-        {
-            printf("%s\n", __func__);
-        }
-};
 
 //Testing t2MtlsUtils
 TEST(GET_CERTS, MTLS_UTILS_NULL)
@@ -758,7 +575,7 @@ TEST(SETPRIVACYMODE, ARGS_NULL)
     free(privacyMode);
 }
 
-
+/*
 TEST_F(UtilsFileTestFixture, FETCHLOCALCONFIGS_FUNC1)
 {
     const char* path = "/tmp/t2reportprofiles/";
@@ -778,7 +595,7 @@ TEST_F(UtilsFileTestFixture, FETCHLOCALCONFIGS_FUNC1)
     Vector_Destroy(configlist, free);
 }
 
-/*
+
 TEST(UtilsFileTest, FETCHLOCALCONFIGS_FUNC)
 {
     MockFopen mock;

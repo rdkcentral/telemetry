@@ -1458,10 +1458,10 @@ bool isMtlsEnabled(void)
     if (!initT2MtlsEnable)
     {
 #if defined(ENABLE_MTLS) || defined(ENABLE_RDKC_SUPPORT)
-        T2Debug("mTLS support is enabled by build flag\n");
+        T2Info("mTLS support is enabled by build flag\n");
         isT2MtlsEnable = true;
 #else
-        T2Debug("mTLS is not enabled for non-mTLS users\n");
+        T2Info("mTLS is not enabled for non-mTLS users\n");
         isT2MtlsEnable = false;
 #endif
         initT2MtlsEnable = true;

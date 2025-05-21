@@ -49,7 +49,9 @@
 #include "busInterface.h"
 #include "t2parser.h"
 #include "telemetry2_0.h"
+#ifdef ENABLE_MTLS
 #include "t2MtlsUtils.h"
+#endif
 #include "persistence.h"
 #ifdef LIBRDKCERTSEL_BUILD
 #include "curlinterface.h"
@@ -470,10 +472,12 @@ T2ERROR initReportProfiles()
         return T2ERROR_FAILURE;
     }
 #ifndef LIBRDKCERTSEL_BUILD
+#ifdef ENABLE_MTLS
     if(isMtlsEnabled() == true)
     {
         initMtls();
     }
+#endif
 #endif
 
 // Drop root before we are creating any folders/flags to avoid access issues
@@ -699,7 +703,9 @@ T2ERROR ReportProfiles_uninit( )
 #ifdef LIBRDKCERTSEL_BUILD
     curlCertSelectorFree();
 #else
+#ifdef ENABLE_MTLS
     uninitMtls();
+#endif
 #endif
     T2ER_Uninit();
     destroyT2MarkerComponentMap();

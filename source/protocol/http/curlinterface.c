@@ -45,6 +45,7 @@
 #include "rdkconfig.h"
 #endif
 
+int x = 0;
 extern sigset_t blocking_signal;
 
 typedef struct

@@ -19,6 +19,16 @@
 
 WORKDIR=`pwd`
 
+## Build and install critical dependency
+export RBUS_ROOT=/usr
+export RBUS_INSTALL_DIR=${RBUS_ROOT}/local
+mkdir -p $RBUS_INSTALL_DIR
+cd $RBUS_ROOT
+
+git clone https://github.com/rdkcentral/rbus
+cmake -Hrbus -Bbuild/rbus -DBUILD_FOR_DESKTOP=ON -DCMAKE_BUILD_TYPE=Debug
+make -C build/rbus && make -C build/rbus install
+
 cd $WORKDIR
 
 export INSTALL_DIR='/usr/local'
@@ -30,7 +40,7 @@ autoreconf --install
 # FLags to print compiler warnings
 DEBUG_CFLAGS="-Wall -Werror -Wextra"
 
-export CFLAGS=" ${DEBUG_CFLAGS} -I${INSTALL_DIR}/include/rtmessage -I${INSTALL_DIR}/include/msgpack -I${INSTALL_DIR}/include/rbus -I${INSTALL_DIR}/include -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/local/include " 
+export CFLAGS=" ${DEBUG_CFLAGS} -I${INSTALL_DIR}/include/rtmessage -I${INSTALL_DIR}/include/msgpack -I${INSTALL_DIR}/include/rbus -I${INSTALL_DIR}/include -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/local/include "
 
 export LDFLAGS="-L/usr/lib/x86_64-linux-gnu -lglib-2.0"
 

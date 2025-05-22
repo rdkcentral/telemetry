@@ -48,7 +48,7 @@ AC_ARG_ENABLE([gtestapp],
                case "${enableval}" in
                 yes) GTEST_SUPPORT_ENABLED=true
                      GTEST_ENABLE_FLAG=" -DGTEST_ENABLE"
-                     m4_if(m4_sysval,[0],[AC_CONFIG_FILES([source/test/Makefile source/test/dcautils/Makefile source/test/protocol/Makefile source/test/xconf-client/Makefile source/test/t2parser/Makefile source/test/scheduler/Makefile source/test/reportgen/Makefile])]);;
+                     m4_if(m4_sysval,[0],[AC_CONFIG_FILES([source/test/Makefile source/test/dcautils/Makefile source/test/t2parser/Makefile source/test/scheduler/Makefile source/test/reportgen/Makefile])]);;
                 no) GTEST_SUPPORT_ENABLED=false AC_MSG_ERROR([Gtest support is disabled]);;
                  *) AC_MSG_ERROR([bad value ${enableval} for --enable-gtestapp ]);;
                esac

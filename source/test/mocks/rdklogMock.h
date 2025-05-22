@@ -25,17 +25,11 @@ typedef uint32_t rdk_Error;
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-class rdklogInterface
-{
+class rdklogMock {
 public:
-    virtual ~rdklogInterface() {}
-    virtual rdk_Error rdk_logger_init(const char *) = 0;
+    MOCK_METHOD(rdk_Error, rdk_logger_init, (const char* str), ());
 };
 
-class rdklogMock: public rdklogInterface
-{
-public:
-    virtual ~rdklogMock() {}
-    MOCK_METHOD1(rdk_logger_init, rdk_Error(const char*));
-};
+extern rdklogMock* m_rdklogMock;
 
+extern "C" rdk_Error rdk_logger_init(const char* str);

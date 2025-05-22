@@ -23,7 +23,8 @@
 
 #include "telemetry2_0.h"
 
-class SystemMock {
+class SystemMock
+{
 public:
     MOCK_METHOD(int, system, (const char* cmd), ());
     MOCK_METHOD(int, unlink, (const char *str), ());

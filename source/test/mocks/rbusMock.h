@@ -23,10 +23,11 @@
 #include "test/rbus/include/rbus.h"
 #include "test/rbus/include/rbus_value.h"
 
-class rbusMock {
+class rbusMock
+{
 public:
     MOCK_METHOD(rbusObject_t, rbusObject_Init, (rbusObject_t* obj, char const * str), ());
-    MOCK_METHOD(rbusValue_t, rbusValue_Init, (rbusValue_t* value),());
+    MOCK_METHOD(rbusValue_t, rbusValue_Init, (rbusValue_t* value), ());
     MOCK_METHOD(void, rbusValue_SetString, (rbusValue_t value, char const* str), ());
     MOCK_METHOD(void, rbusObject_SetValue, (rbusObject_t obj, char const* name, rbusValue_t value), ());
     MOCK_METHOD(void, rbusValue_SetInt32, (rbusValue_t value, int32_t val), ());

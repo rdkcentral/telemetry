@@ -19,16 +19,6 @@
 
 WORKDIR=`pwd`
 
-## Build and install critical dependency
-export RBUS_ROOT=/usr
-export RBUS_INSTALL_DIR=${RBUS_ROOT}/local
-mkdir -p $RBUS_INSTALL_DIR
-cd $RBUS_ROOT
-
-git clone https://github.com/rdkcentral/rbus
-cmake -Hrbus -Bbuild/rbus -DBUILD_FOR_DESKTOP=ON -DCMAKE_BUILD_TYPE=Debug
-make -C build/rbus && make -C build/rbus install
-
 cd $WORKDIR
 
 export INSTALL_DIR='/usr/local'

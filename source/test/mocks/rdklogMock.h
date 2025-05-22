@@ -25,7 +25,8 @@ typedef uint32_t rdk_Error;
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-class rdklogMock {
+class rdklogMock
+{
 public:
     MOCK_METHOD(rdk_Error, rdk_logger_init, (const char* str), ());
 };

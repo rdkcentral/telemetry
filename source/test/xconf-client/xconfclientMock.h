@@ -44,7 +44,8 @@ typedef struct _ProfilexConf
     pthread_t reportThread;
 } ProfilexConf;
 
-class XconfclientMock {
+class XconfclientMock
+{
 public:
     MOCK_METHOD(bool, isMtlsEnabled, (), ());
     MOCK_METHOD(bool, ProfileXConf_isSet, (), ());

@@ -29,7 +29,8 @@
 #include <cstdio>
 #include <gmock/gmock.h>
 
-class FileMock {
+class FileMock
+{
 public:
     MOCK_METHOD(FILE*, fopen, (const char* filename, const char* mode), ());
     MOCK_METHOD(int, fclose, (FILE* stream), ());
@@ -55,7 +56,7 @@ public:
     MOCK_METHOD(CURLcode, curl_easy_perform, (CURL* handle), ());
     MOCK_METHOD(CURL*, curl_easy_init, (), ());
     MOCK_METHOD(ssize_t, getline, (char** lineptr, size_t* n, FILE* stream), ());
-    MOCK_METHOD(pid_t, fork, (), ()); 
+    MOCK_METHOD(pid_t, fork, (), ());
     MOCK_METHOD(ssize_t, write, (int fd, const void* buf, size_t count), ());
 };
 

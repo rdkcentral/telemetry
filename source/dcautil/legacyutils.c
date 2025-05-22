@@ -33,6 +33,8 @@ static char* PERSISTENT_PATH = NULL;
 static char* LOG_PATH        = NULL;
 static char* DEVICE_TYPE     = NULL;
 static bool  isPropsIntialized = false ;
+
+// This static variable makes the entire log grep functionality thread unsafe.
 static long  LAST_SEEK_VALUE = 0;
 
 // Map holding profile name to Map ( logfile -> seek value) ]
@@ -263,42 +265,7 @@ GrepSeekProfile *getLogSeekMapForProfile(char* profileName)
     return gsProfile;
 }
 
-/**
- *  @brief Function to read the rotated Log file.
- *
- *  @param[in] name        Log file name.
- *  @param[in] seek_value  Position to seek.
- *
- *  @return Returns the status of the operation.
- *  @retval Returns -1 on failure, appropriate errorcode otherwise.
- */
-static int getLogSeekValue(hash_map_t *logSeekMap, char *name, long *seek_value)
-{
 
-    T2Debug("%s ++in for file %s \n", __FUNCTION__, name);
-    int rc = 0;
-    if (logSeekMap)
-    {
-        long *data = (long*) hash_map_get(logSeekMap, name) ;
-        if (data)
-        {
-            *seek_value = *data ;
-        }
-        else
-        {
-            T2Debug("data is null .. Setting seek value to 0 from getLogSeekValue \n");
-            *seek_value = 0 ;
-        }
-    }
-    else
-    {
-        T2Debug("logSeekMap is null .. Setting seek value to 0 \n");
-        *seek_value = 0 ;
-    }
-
-    T2Debug("%s --out \n", __FUNCTION__);
-    return rc;
-}
 
 /**
  *  @brief Function to write the rotated Log file.
@@ -308,7 +275,7 @@ static int getLogSeekValue(hash_map_t *logSeekMap, char *name, long *seek_value)
  *  @return Returns the status of the operation.
  *  @retval Returns -1 on failure, appropriate errorcode otherwise.
  */
-T2ERROR updateLogSeek(hash_map_t *logSeekMap, char* logFileName)
+T2ERROR updateLogSeek(hash_map_t *logSeekMap, const char* logFileName)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
     if(logSeekMap == NULL || logFileName == NULL)
@@ -316,27 +283,21 @@ T2ERROR updateLogSeek(hash_map_t *logSeekMap, char* logFileName)
         T2Error("Invalid or NULL arguments\n");
         return T2ERROR_FAILURE;
     }
-
-    pthread_mutex_lock(&pSeekLock);
-    if(NULL != logSeekMap)
-    {
-        T2Debug("Adding seekvalue of %ld for %s to logSeekMap \n", LAST_SEEK_VALUE, logFileName);
+    long logfileSize = 0;
+    getLogFileSize(logFileName, &logfileSize);
+        T2Debug("Adding seekvalue of %ld for %s to logSeekMap \n", logfileSize, logFileName);
         long* val = (long *) malloc(sizeof(long));
         if(NULL != val)
         {
-            *val = LAST_SEEK_VALUE ;
+            memset(val, 0, sizeof(long));
+            *val = logfileSize;
             hash_map_put(logSeekMap, strdup(logFileName), (void *)val, free);
         }
         else
         {
             T2Warning("Unable to allocate memory for seek value pointer \n");
         }
-    }
-    else
-    {
-        T2Debug("logSeekMap is null, unable to update logSeekMap \n");
-    }
-    pthread_mutex_unlock(&pSeekLock);
+
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
@@ -487,260 +448,7 @@ void updateLastSeekval(hash_map_t *logSeekMap, char **prev_file, char* filename)
     }
 }
 
-/**
- *  @brief Function to return rotated log file.
- *
- *  @param[in] buf       Buffer
- *  @param[in] buflen    Maximum buffer length
- *  @param[in] name      Current Log file
- *
- *  @return Returns Seek Log file.
- */
-char *getLogLine(hash_map_t *logSeekMap, char *buf, int buflen, char *name, int *firstSeekFromEOF, bool check_rotated_logs)
-{
-    static FILE *pcurrentLogFile = NULL;
-    static int is_rotated_log = 0;
-    char *rval = NULL;
 
-    if((NULL == PERSISTENT_PATH) || (NULL == LOG_PATH) || (NULL == name))
-    {
-        T2Debug("Path variables are empty");
-        return NULL;
-    }
-    if(logSeekMap == NULL || buf == NULL)
-    {
-        T2Debug("Invalid arguments or NULL arguments\n");
-        return NULL;
-    }
-    char *logpath = LOG_PATH;
-
-    /* If name is already an absolute path then prepend empty string instead of LOG_PATH */
-    if (name[0] == '/')
-    {
-        logpath = "";
-    }
-
-    int logname_len = strlen(logpath) + strlen(name) + 1;
-    char *fileExtn = ".1";
-    int fileExtn_len = logname_len + strlen(fileExtn);
-    if(NULL == pcurrentLogFile)
-    {
-        char *currentLogFile = NULL;
-        long seek_value = 0;
-
-        currentLogFile = malloc(logname_len);
-        if(NULL != currentLogFile)
-        {
-            snprintf(currentLogFile, logname_len, "%s%s", logpath, name);
-            if(0 != getLogSeekValue(logSeekMap, name, &seek_value))
-            {
-                pcurrentLogFile = fopen(currentLogFile, "rb");
-                free(currentLogFile);
-                if(NULL == pcurrentLogFile)
-                {
-                    return NULL;
-                }
-            }
-            else
-            {
-                long fileSize = 0;
-                pcurrentLogFile = fopen(currentLogFile, "rb");
-
-                if(NULL == pcurrentLogFile)
-                {
-                    LAST_SEEK_VALUE = 0;
-                    free(currentLogFile);
-                    return NULL;
-                }
-                fileSize = fsize(pcurrentLogFile);
-
-                // if the seek value is given in the profile use that value to calculate the seek value from the END OF FILE
-                // the seek value becomes filesize - firstSeekFromEOF since it cant be negetive set it zero if negative
-                if (*firstSeekFromEOF != 0)
-                {
-                    seek_value = (fileSize > (*firstSeekFromEOF)) ? (fileSize - (*firstSeekFromEOF)) : 0 ;
-                    T2Debug("First Seek from the EOF is given  value : %d; the size of file is %ld; current seek after calculations %ld\n", *firstSeekFromEOF, fileSize, seek_value);
-                    *firstSeekFromEOF = 0; // update this to zero as this initial seek update should only run for the first time
-                }
-                if(seek_value <= fileSize)
-                {
-                    if(check_rotated_logs)  // considering the rotated log file  within few minutes after bootup, it should check only for the first time
-                    {
-                        char * rotatedLog;
-                        size_t name_len = strlen(currentLogFile);
-                        if(name_len > 2 && currentLogFile[name_len - 2] == '.' && currentLogFile[name_len - 1] == '0')
-                        {
-                            rotatedLog = strdup(currentLogFile);
-                            if(NULL != rotatedLog)
-                            {
-                                rotatedLog[name_len - 1] = '1';
-                                T2Debug("Log file name seems to be having .0 extension hence Rotated log file name is %s\n", rotatedLog);
-                            }
-                        }
-                        else
-                        {
-                            rotatedLog = malloc(fileExtn_len);
-                            if(NULL != rotatedLog)
-                            {
-                                snprintf(rotatedLog, fileExtn_len, "%s%s%s", logpath, name, fileExtn);
-                                T2Debug("Rotated log file name is %s\n", rotatedLog);
-                            }
-                        }
-                        if(NULL != rotatedLog)
-                        {
-                            fclose(pcurrentLogFile);
-                            pcurrentLogFile = NULL;
-                            pcurrentLogFile = fopen(rotatedLog, "rb");
-                            is_rotated_log = 1;
-                            if(NULL == pcurrentLogFile)
-                            {
-                                T2Debug("Error in opening file %s\n", rotatedLog);
-                                is_rotated_log = 0;
-                                pcurrentLogFile = fopen(currentLogFile, "rb");
-                                if(pcurrentLogFile == NULL)
-                                {
-                                    T2Debug("Error in opening file %s\n", currentLogFile);
-                                    free(currentLogFile);
-                                    free(rotatedLog);
-                                    return NULL;
-                                }
-                            }
-                            free(currentLogFile);
-                            free(rotatedLog);
-                            if(fseek(pcurrentLogFile, seek_value, 0) != 0)
-                            {
-                                T2Error("Cannot set the file position indicator for the stream pointed to by stream\n");
-                            }
-                        }
-                        else
-                        {
-                            T2Error("Malloc failure for rotated log\n");
-                            free(currentLogFile);
-                            fclose(pcurrentLogFile);
-                            return NULL;
-                        }
-                    }
-                    else
-                    {
-                        free(currentLogFile);
-                        if( fseek(pcurrentLogFile, seek_value, 0) != 0)
-                        {
-                            T2Error("Cannot set the file position indicator for the stream pointed to by stream\n");
-                        }
-                    }
-                }
-                else
-                {
-                    if((NULL != DEVICE_TYPE) && (0 == strcmp("broadband", DEVICE_TYPE)))
-                    {
-                        T2Debug("Telemetry file pointer corrupted");
-                        if(fseek(pcurrentLogFile, 0, 0) != 0)
-                        {
-                            T2Error("Cannot set the file position indicator for the stream pointed to by stream\n");
-                        }
-                        if(currentLogFile != NULL)
-                        {
-                            free(currentLogFile);
-                        }
-                    }
-                    else
-                    {
-                        char * rotatedLog;
-                        size_t name_len = strlen(currentLogFile);
-                        if(name_len > 2 && currentLogFile[name_len - 2] == '.' && currentLogFile[name_len - 1] == '0')
-                        {
-                            rotatedLog = strdup(currentLogFile);
-                            if(NULL != rotatedLog)
-                            {
-                                rotatedLog[name_len - 1] = '1';
-                                T2Debug("Log file name seems to be having .0 extension hence Rotated log file name is %s\n", rotatedLog);
-                            }
-                        }
-                        else
-                        {
-                            rotatedLog = malloc(fileExtn_len);
-                            if(NULL != rotatedLog)
-                            {
-                                snprintf(rotatedLog, fileExtn_len, "%s%s%s", logpath, name, fileExtn);
-                                T2Debug("Rotated log file name is %s\n", rotatedLog);
-                            }
-                        }
-                        if(currentLogFile != NULL)
-                        {
-                            free(currentLogFile);
-                        }
-
-                        if(NULL != rotatedLog)
-                        {
-                            fclose(pcurrentLogFile);
-                            pcurrentLogFile = NULL;
-                            pcurrentLogFile = fopen(rotatedLog, "rb");
-
-                            if(NULL == pcurrentLogFile)
-                            {
-                                T2Debug("Error in opening file %s", rotatedLog);
-                                LAST_SEEK_VALUE = 0;
-                                free(rotatedLog);
-                                return NULL;
-                            }
-                            free(rotatedLog);
-
-                            if(fseek(pcurrentLogFile, seek_value, 0) != 0)
-                            {
-                                T2Error("Cannot set the file position indicator for the stream pointed to by stream\n");
-                            }
-                            is_rotated_log = 1;
-                        }
-                    }
-                }
-            }
-        }
-    }
-    if(NULL != pcurrentLogFile)
-    {
-        rval = fgets(buf, buflen, pcurrentLogFile);
-        if(NULL == rval)
-        {
-            long seek_value = ftell(pcurrentLogFile);
-            LAST_SEEK_VALUE = seek_value;
-
-            fclose(pcurrentLogFile);
-            pcurrentLogFile = NULL;
-
-            if(is_rotated_log == 1)
-            {
-                char *curLog = NULL;
-                is_rotated_log = 0;
-                curLog = malloc(logname_len);
-                if(NULL != curLog)
-                {
-                    snprintf(curLog, logname_len, "%s%s", logpath, name);
-                    pcurrentLogFile = fopen(curLog, "rb");
-
-                    if(NULL == pcurrentLogFile)
-                    {
-                        T2Debug("Error in opening file %s", curLog);
-                        LAST_SEEK_VALUE = 0;
-                        free(curLog);
-                        return NULL;
-                    }
-
-                    free(curLog);
-                    rval = fgets(buf, buflen, pcurrentLogFile);
-                    if(NULL == rval)
-                    {
-                        seek_value = ftell(pcurrentLogFile);
-
-                        LAST_SEEK_VALUE = seek_value;
-                        fclose(pcurrentLogFile);
-                        pcurrentLogFile = NULL;
-                    }
-                }
-            }
-        }
-    }
-    return rval;
-}
 /**
  *  @brief Function to update the global paths like PERSISTENT_PATH,LOG_PATH from include.properties file.
  *

@@ -106,18 +106,18 @@ int insertPCNode(rdkList_t **pch, char *pattern, char *header, DType_t dtype, in
 }
 
 /**
- * @brief To do custom comparison.
+ * @brief Comparator function to do custom comparison.
  *
- * @param[in] np   Node pattern.
- * @param[in] sp   Search pattern.
+ * @param[in] np   Node containing the pattern.
+ * @param[in] logline   Log line .
  *
  * @return  Returns status of the operation.
  * @retval  Returns 0 on success and NULL on failure.
  */
-int comparePattern(const void *np, const void *sp)
+int comparePattern(const void *np, const void *logline)
 {
     pcdata_t *tmp = (pcdata_t *)np;
-    if (tmp && tmp->pattern && (NULL != sp) && (NULL != strstr(sp, tmp->pattern)))
+    if (tmp && tmp->pattern && (NULL != logline) && (NULL != strstr(logline, tmp->pattern)))
     {
         return 0;
     }
@@ -125,21 +125,21 @@ int comparePattern(const void *np, const void *sp)
 }
 
 /**
- * @brief To search node from the list based on the given pattern.
- *
+ * @brief Get the node that matches the pattern.
+ *        Compare the 
  * @param[in]  pch       Node head.
  * @param[in]  pattern   Pattern to search.
  *
  * @return  Returns node on success and NULL on failure.
  */
-pcdata_t* searchPCNode(rdkList_t *pch, char *pattern)
+pcdata_t* searchPCNode(rdkList_t *pch, char *logline)
 {
     rdkList_t *fnode = NULL;
-    if(pch == NULL && pattern == NULL)
+    if(pch == NULL && logline == NULL)
     {
         return NULL;
     }
-    fnode = rdk_list_find_node_custom(pch, pattern, (fnRDKListCustomCompare)comparePattern);
+    fnode = rdk_list_find_node_custom(pch, logline, (fnRDKListCustomCompare)comparePattern);
     if (NULL != fnode)
     {
         return fnode->m_pUserData;

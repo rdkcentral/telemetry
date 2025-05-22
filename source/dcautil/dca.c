@@ -25,6 +25,12 @@
 #include <unistd.h>
 #include <ctype.h>
 #include <pthread.h>
+#include <stdbool.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
 
 #include <cjson/cJSON.h>
 
@@ -127,233 +133,65 @@ int processTopPattern(rdkList_t *pchead, Vector* grepResultList)
 }
 
 /**
+ *  @brief Function to read the rotated Log file.
+ *
+ *  @param[in] name        Log file name.
+ *  @param[in] seek_value  Position to seek.
+ *
+ *  @return Returns the status of the operation.
+ *  @retval Returns -1 on failure, appropriate errorcode otherwise.
+ */
+static int getLogSeekValue(hash_map_t *logSeekMap, const char *name, long *seek_value)
+{
+
+    T2Debug("%s ++in for file %s \n", __FUNCTION__, name);
+    int rc = 0;
+    if (logSeekMap)
+    {
+        long *data = (long*) hash_map_get(logSeekMap, name) ;
+        if (data)
+        {
+            *seek_value = *data ;
+        }
+        else
+        {
+            T2Debug("data is null .. Setting seek value to 0 from getLogSeekValue \n");
+            *seek_value = 0 ;
+        }
+    }
+    else
+    {
+        T2Debug("logSeekMap is null .. Setting seek value to 0 \n");
+        *seek_value = 0 ;
+    }
+
+    T2Debug("%s --out \n", __FUNCTION__);
+    return rc;
+}
+
+
+/**
  * @brief This API updates the filename if it is different from the current one.
  * @param currentFile The current filename.
  * @param newFile The new filename to update to.
  * @return The updated filename.
  */
 
-static char* updateFilename(char* currentFile, const char* newFile)
+static char* updateFilename(char* previousFile, const char* newFile)
 {
-    if (currentFile == NULL || strcmp(currentFile, newFile) != 0)
+    if (previousFile == NULL || strcmp(previousFile, newFile) != 0)
     {
-        if (currentFile != NULL)
+        if (previousFile != NULL)
         {
-            free(currentFile);
+            free(previousFile);
         }
-        currentFile = strdup(newFile);
-        if (currentFile == NULL)
+        previousFile = strdup(newFile);
+        if (previousFile == NULL)
         {
             T2Error("Insufficient memory to allocate string %s\n", newFile);
         }
     }
-    return currentFile;
-}
-
-/** @brief This API appends tr181 object value to telemetry node.
- *
- *  @param[in] dst  Object node
- *  @param[in] src  Data value
- */
-static void appendData(pcdata_t* dst, const char* src)
-{
-
-    T2Debug("%s ++in\n", __FUNCTION__);
-    int dst_len, src_len = 0;
-
-    if(NULL == dst || NULL == src)
-    {
-        return;
-    }
-
-    //Copy data
-    if(NULL == dst->data)
-    {
-        src_len = strlen(src) + 1;
-        dst->data = (char*) malloc(src_len);
-        if(NULL != dst->data)
-        {
-            snprintf(dst->data, src_len, "%s", src);
-        }
-        else
-        {
-            T2Debug("Failed to allocate memory for telemetry node data\n");
-        }
-    }
-    else    //Append data
-    {
-        dst_len = strlen(dst->data) + 1;
-        src_len = strlen(src) + 1;
-        dst->data = (char*) realloc(dst->data, dst_len + src_len);
-        if(NULL != dst->data)
-        {
-            strcat(dst->data, ",");
-            snprintf((dst->data) + dst_len, src_len, "%s", src);
-        }
-        else
-        {
-            T2Debug("Failed to re-allocate memory for telemetry node data\n");
-        }
-    }
-
-    T2Debug("%s --out\n", __FUNCTION__);
-}
-
-
-/**
- *  @brief This API process tr181 objects through ccsp message bus
- *
- *  @param[in] logfile  DCA pattern file
- *  @param[in] pchead   Node head
- *  @param[in] pcIndex  Node count
- *
- *  @return Returns status of the operation.
- *  @retval Returns 1 on failure, 0 on success
- *  Retaining this for skip frequency param confined to XCONF profile
- */
-static T2ERROR processTr181Objects(rdkList_t *pchead)
-{
-    T2Debug("%s ++in\n", __FUNCTION__);
-    T2ERROR ret_val = T2ERROR_FAILURE;
-    int length, obj_count, i = 0;
-    rdkList_t *tlist = NULL;
-    pcdata_t *tmp = NULL;
-    char tr181objBuff[TR181BUF_LENGTH + 15] = { '\0' };
-    char *tck, *first_tck = NULL;
-    if(pchead == NULL)
-    {
-        T2Error("pchead is NULL for %s\n", __FUNCTION__);
-        return T2ERROR_FAILURE;
-    }
-    //Loop through the given list and fill the data field of each node
-    for( tlist = pchead; tlist != NULL; tlist = rdk_list_find_next_node(tlist) )
-    {
-        char* tr181dataBuff = NULL;
-        tmp = tlist->m_pUserData;
-        if(NULL != tmp)
-        {
-            if(NULL != tmp->header && NULL != tmp->pattern && strlen(tmp->pattern) < TR181BUF_LENGTH && NULL == tmp->data)
-            {
-
-                //Check whether given object has multi-instance token, if no token found it will be treated as a single instance object
-                //Or if more than one token found, skip the object as it is not valid/supported
-                //Check for first multi-instance token
-                tck = strstr(tmp->pattern, OBJ_DELIMITER);
-                if(NULL == tck)   //Single instance check
-                {
-                    ret_val = getParameterValue(tmp->pattern, &tr181dataBuff);
-                    if(T2ERROR_SUCCESS == ret_val)
-                    {
-                        appendData(tmp, tr181dataBuff);
-                        free(tr181dataBuff);
-                        tr181dataBuff = NULL;
-                    }
-                    else
-                    {
-                        T2Debug("Telemetry data source not found. Type = <message_bus>. Content string = %s\n", tmp->pattern);
-                    }
-                }
-                else    //Multi-instance check
-                {
-                    first_tck = tck;
-                    //Check for a next multi-instance token
-                    tck = strstr(tck + DELIMITER_SIZE, OBJ_DELIMITER);
-                    if(NULL == tck)
-                    {
-                        //Get NumberOfEntries of a multi-instance object
-                        length = first_tck - tmp->pattern;
-                        snprintf(tr181objBuff, sizeof(tr181objBuff), "%sNumberOfEntries", tmp->pattern);
-                        ret_val = getParameterValue(tr181objBuff, &tr181dataBuff);
-                        if(T2ERROR_SUCCESS == ret_val)
-                        {
-                            obj_count = atoi(tr181dataBuff);
-                            free(tr181dataBuff);
-                            tr181dataBuff = NULL ;
-                            //Collect all all instance value of a object
-                            if(obj_count > 0)
-                            {
-                                for( i = 1; i <= obj_count; i++ )
-                                {
-                                    //Replace multi-instance token with an object instance number
-                                    snprintf(tr181objBuff, sizeof(tr181objBuff), "%s%d%s", tmp->pattern, i, (tmp->pattern + length + DELIMITER_SIZE));
-                                    ret_val = getParameterValue(tr181objBuff, &tr181dataBuff);
-                                    if(T2ERROR_SUCCESS == ret_val)
-                                    {
-                                        appendData(tmp, tr181dataBuff);
-                                    }
-                                    else
-                                    {
-                                        T2Debug("Telemetry data source not found. Type = <message_bus>. Content string = %s\n", tr181objBuff);
-                                    }
-                                    free(tr181dataBuff);
-                                    tr181dataBuff = NULL;
-                                } //End of for loop
-                            }
-                        }
-                        else
-                        {
-                            T2Debug("Failed to get NumberOfEntries. Type = <message_bus>. Content string = %s\n", tr181objBuff);
-                        }
-                    }
-                    else
-                    {
-                        T2Debug("Skipping Telemetry object due to invalid format. Type = <message_bus>. Content string = %s\n", tmp->pattern);
-                    }
-                } //End of Mult-instance check
-            }
-        }
-
-    } //End of node loop through for loop
-
-    T2Debug("%s --out\n", __FUNCTION__);
-    return ret_val;
-}
-
-/**
- * @brief This function adds the value to the telemetry output json object.
- *
- * @param[in] pchead  Header field in the telemetry profile
- *
- * @return Returns status of operation.
- */
-static void addToJson(rdkList_t *pchead)
-{
-    if(pchead == NULL)
-    {
-        T2Error("pchead is NULL for %s\n", __FUNCTION__);
-        return;
-    }
-    T2Debug("%s ++in\n", __FUNCTION__);
-    rdkList_t *tlist = pchead;
-    pcdata_t *tmp = NULL;
-    while(NULL != tlist)
-    {
-        tmp = tlist->m_pUserData;
-        if(NULL != tmp)
-        {
-            if(tmp->pattern)
-            {
-                if(tmp->d_type == OCCURENCE)
-                {
-                    if(tmp->count != 0)
-                    {
-                        char tmp_str[5] = { 0 };
-                        sprintf(tmp_str, "%d", tmp->count);
-                        addToSearchResult(tmp->header, tmp_str);
-                    }
-                }
-                else if(tmp->d_type == STR)
-                {
-                    if(NULL != tmp->data && (strcmp(tmp->data, "0") != 0))
-                    {
-                        addToSearchResult(tmp->header, tmp->data);
-                    }
-                }
-            }
-        }
-        tlist = rdk_list_find_next_node(tlist);
-    }
-    T2Debug("%s --out\n", __FUNCTION__);
+    return previousFile;
 }
 
 static GrepResult* createGrepResultObj(const char* markerName, const char* markerValue, bool trimParameter, char* regexParameter)
@@ -395,93 +233,8 @@ static inline void formatCount(char* buffer, size_t size, int count)
     snprintf(buffer, size, "%d", count);
 }
 
-/**
- * @brief This function adds the value to the telemetry output vector object.
- *
- * @param[in] pchead  Header field in the telemetry profile
- *
- * @return Returns status of operation.
- */
-static int addToVector(rdkList_t *pchead, Vector* grepResultList)
-{
 
-    T2Debug("%s ++in\n", __FUNCTION__);
-    if(pchead == NULL || grepResultList == NULL)
-    {
-        T2Error("Inavlid arguments for %s\n", __FUNCTION__);
-        return -1;
-    }
-    rdkList_t *tlist = pchead;
-    pcdata_t *tmp = NULL;
-
-    // Loop iterating through the results - JSON data converted back to vector
-    while(NULL != tlist)
-    {
-        tmp = tlist->m_pUserData;
-        if (NULL == tmp)
-        {
-            T2Debug("tmp is NULL for %s\n", __FUNCTION__);
-            tlist = rdk_list_find_next_node(tlist);
-            continue;
-
-        }
-
-        if(tmp->pattern)
-        {
-            if(tmp->d_type == OCCURENCE)
-            {
-                if(tmp->count != 0)
-                {
-                    // JSON respnse always expects message in string format
-                    char tmp_str[5] = { 0 };
-                    formatCount(tmp_str, sizeof(tmp_str), tmp->count);
-                    GrepResult* grepResult = createGrepResultObj(tmp->header, tmp_str, tmp->trimparam, tmp->regexparam);
-                    if (grepResult == NULL)
-                    {
-                        T2Error("Failed to create GrepResult\n");
-                        return -1;
-                    }
-                    if(tmp->header)
-                    {
-                        free(tmp->header);
-                        tmp->header = NULL;
-                    }
-                    T2Debug("Adding OCCURENCE to result list %s : %s \n", grepResult->markerName, grepResult->markerValue);
-                    Vector_PushBack(grepResultList, grepResult);
-                }
-            }
-            else if(tmp->d_type == STR)
-            {
-                if(NULL != tmp->data && (strcmp(tmp->data, "0") != 0))
-                {
-                    GrepResult* grepResult = createGrepResultObj(tmp->header, tmp->data, tmp->trimparam, tmp->regexparam);
-                    if(grepResult == NULL)
-                    {
-                        T2Error("Failed to create GrepResult\n");
-                        return -1;
-                    }
-                    if(tmp->header)
-                    {
-                        free(tmp->header);
-                        tmp->header = NULL;
-                    }
-                    if(tmp->data)
-                    {
-                        free(tmp->data);
-                        tmp->data = NULL;
-                    }
-                    T2Debug("Adding STR to result list %s : %s \n", grepResult->markerName, grepResult->markerValue);
-                    Vector_PushBack(grepResultList, grepResult);
-
-                }
-            }
-        }
-        tlist = rdk_list_find_next_node(tlist);
-    }
-    T2Debug("%s --out\n", __FUNCTION__);
-    return 0;
-}
-
+#if 0
 /**
  * @brief Function to process pattern if it has split text in the header
  *
@@ -648,6 +401,7 @@ static int handleRDKErrCodes(rdkList_t **rdkec_head, char *line)
     return -1;
 }
 
+#endif
 
 #if 0
 static int processCountPatternOptimized(hash_map_t *logSeekMap, char *logfile,
@@ -737,118 +491,100 @@ static int processCountPatternOptimized(hash_map_t *logSeekMap, char *logfile,
 
 
 
-/**
- * @brief Function to process pattern count (loggrep)
- *
- * @param[in]  logfile     Current log file
- * @param[in]  pchead      Node head
- * @param[in]  pcIndex     Node count
- * @param[in]  rdkec_head  RDK errorcode head
- *
- * @return Returns status of operation.
- * @retval Return 0 upon success, -1 on failure.
- */
-static int processPatternFromLogFiles(hash_map_t *logSeekMap, char *logfile, rdkList_t *pchead, rdkList_t **rdkec_head, int *firstSeekFromEOF, bool check_rotated_logs)
-{
-    T2Debug("%s ++in\n", __FUNCTION__);
-    char temp[MAXLINE] = { 0 };
-    T2Debug("Read from log file %s \n", logfile);
-    while(getLogLine(logSeekMap, temp, MAXLINE, logfile, firstSeekFromEOF, check_rotated_logs) != NULL)
-    {
+static int get_count_of_matched_pattern(const char* buffer, const char* pattern) {
 
-        int len = strlen(temp);
-        if(len > 0 && temp[len - 1] == '\n')
-        {
-            temp[--len] = '\0';
-        }
-
-        pcdata_t *pc_node = searchPCNode(pchead, temp);
-        if(NULL != pc_node)
-        {
-            if(pc_node->d_type == OCCURENCE)
-            {
-                pc_node->count++;
-            }
-            else
-            {
-                if(NULL != pc_node->header)
-                {
-                    getSplitParameterValue(temp, pc_node);
-                }
-            }
-        }
-        else
-        {
-            // This is a RDK-V specific calls for reporting RDK error codes . Retaining for video porting
-            // TODO: This should be moved to a more appropriate location if it is still required and exclude checking for each line.
-            if(NULL != strstr(temp, "RDK-"))
-            {
-                handleRDKErrCodes(rdkec_head, temp);
-            }
-        }
+    if (!buffer || !pattern) {
+        return -1; // Invalid arguments
     }
-    T2Debug("%s --out\n", __FUNCTION__);
-    return 0;
+
+   // Search for number of matches of specific string in the file
+   // const char *search_str = "Induced log entries from test";
+   char *found = strstr(buffer, pattern);
+   // Capture the last line that finds a match
+   int count = 0;
+   while (found) {
+       count++;
+       found = strstr(found + 1, pattern);
+    }
+    
+    printf("==============================\n");
+    printf("Number of matches for string '%s': %d\n", pattern, count);
+    printf("==============================\n");
+    return count;
+
 }
 
-/**
- * @brief Generic pattern function based on pattern to call top/count or using ccsp message bus.
- *
- * @param[in]  prev_file    The previous log file.
- * @param[in]  logfile      The current log file.
- * @param[in]  rdk_error_code_head   RDK errorcode head
- * @param[in]  pchead       Node head
- * @param[in]  pcIndex      Node count
- *
- * @return Returns status on operation.
- * @retval Returns 0 upon success.
- */
-static int processPattern(char **prev_file, char *logfile, rdkList_t **rdk_error_code_head, rdkList_t *pchead, Vector *grepResultList, hash_map_t* logSeekMap, int *firstSeekFromEOF, bool check_rotated_logs)
-{
+static char* get_value_of_matched_pattern(const char* buffer, const char* pattern) {
+    char *found = strstr(buffer, pattern);
+    char *last_found = NULL ;
+    // Capture the last line that finds a match 
+    while (found) {
+        last_found = found ;
+        found = strstr(found + 1, pattern);
+    }
 
-    T2Debug("%s ++in\n", __FUNCTION__);
-    if(NULL == prev_file || NULL == logfile || NULL == rdk_error_code_head || NULL == pchead || NULL == grepResultList)
-    {
+    printf("==============================\n");
+    if ( last_found != NULL ){
+        printf("Last line :\n %s \n", last_found );
+    } else {
+        printf("No matches were found for pattern : %s \n", pattern);
+    }
+    printf("==============================\n");
+    return last_found;
+}
+ 
+
+static int processPatternWithOptimizedFunction(const GrepMarker* marker, Vector* out_grepResultList, const char* memmmapped_data) {
+     // Sanitize the input
+    if (!marker || !out_grepResultList || !memmmapped_data) {
         T2Error("Invalid arguments for %s\n", __FUNCTION__);
         return -1;
     }
 
+    // Extract the pattern and other parameters from the marker
+    const char* pattern = marker->searchString;
+    bool trimParameter = marker->trimParam;
+    char* regexParameter = marker->regexParam;
+    char* header = marker->markerName;
+    int count = 0;
+    char* last_found = NULL;
+    MarkerType mType = marker->mType;
 
-    if((NULL == *prev_file) || (strcmp(*prev_file, logfile) != 0))
-    {
-        if(*prev_file != NULL)
-        {
-            updateLogSeek(logSeekMap, *prev_file);
-            free(*prev_file);
+    if (mType == MTYPE_COUNTER) {
+        // Count the number of occurrences of the pattern in the memory-mapped data
+        count = get_count_of_matched_pattern(memmmapped_data, pattern);
+        if (count > 0) {
+            // If matches are found, process them accordingly
+            char tmp_str[5] = { 0 };
+            formatCount(tmp_str, sizeof(tmp_str), count);
+            GrepResult* result = createGrepResultObj(header, tmp_str, trimParameter, regexParameter);
+            if (result == NULL) {
+                T2Error("Failed to create GrepResult\n");
+                return -1;
+            }
+            Vector_PushBack(out_grepResultList, result);
         }
-        *prev_file = strdup(logfile);
-        if(*prev_file == NULL)
-        {
-            T2Error("Insufficient memory available to allocate duplicate string %s\n", logfile);
-        }
+    } else {
+        // Get the last occurrence of the pattern in the memory-mapped data
+        last_found = get_value_of_matched_pattern(memmmapped_data, pattern);
+        // TODO : If trimParameter is true, trim the pattern before adding to the result list
+        if (last_found) {
+            // If a match is found, process it accordingly
+            GrepResult* result = createGrepResultObj(header,last_found, trimParameter, regexParameter);
+            if (result == NULL) {
+                T2Error("Failed to create GrepResult\n");
+                return -1;
+            }
+            Vector_PushBack(out_grepResultList, result);
+        } 
     }
-    // Based on the logfile name, processing varies.
-    // Message bus still landing on the legacy utils is a case which has a non-zero skip frequency value
-    if(0 == strcmp(logfile, "top_log.txt"))
-    {
-        processTopPattern(pchead, grepResultList);
-    }
-    else if(0 == strcmp(logfile, "<message_bus>"))
-    {
-        processTr181Objects(pchead);
-        addToVector(pchead, grepResultList);
-    }
-    else
-    {
-        // This is the function which does actual loggrep for the pattern
-        // It will also handle the rotated log files if the flag is set
-        processPatternFromLogFiles(logSeekMap, logfile, pchead, rdk_error_code_head, firstSeekFromEOF, check_rotated_logs);
-        addToVector(pchead, grepResultList);
-    }
-    clearPCNodes(&pchead);
-    T2Debug("%s --out\n", __FUNCTION__);
+
     return 0;
 }
+
+
+
+
 
 /**
  * @brief Function like strstr but based on the string delimiter.
@@ -911,33 +647,124 @@ void getDType(char *filename, MarkerType mType, DType_t *dtype)
     }
 }
 
+
+static int getLogFileDescriptor(GrepSeekProfile* gsProfile, const char* logFile, int old_fd, off_t* out_seek_value) {
+    long seek_value_from_map = 0;
+    getLogSeekValue(gsProfile->logFileSeekMap, logFile, &seek_value_from_map);
+    updateLogSeek(gsProfile->logFileSeekMap, logFile);
+    if (old_fd != -1) {
+        close(old_fd);
+    }
+    int fd = open(logFile, O_RDONLY);
+    if (fd == -1) {
+        T2Error("Failed to open log file %s\n", logFile);
+    }
+    *out_seek_value = seek_value_from_map;
+    return fd;
+}
+
+// Define a struct to hold the file descriptor and size
+typedef struct {
+    int fd;
+    off_t file_size;
+    char* addr;
+} FileDescriptor;
+
+// Caller should free the FileDescriptor struct after use
+static void freeFileDescriptor(FileDescriptor* fileDescriptor) {
+    if (fileDescriptor) {
+        munmap(fileDescriptor->addr, fileDescriptor->file_size);
+        close(fileDescriptor->fd);
+        free(fileDescriptor);
+    }
+}
+
+static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd , const off_t seek_value) {
+       if (fd == -1) {
+           perror("Error opening file");
+           return NULL;
+       }
+       // Read the file contents using mmap
+       struct stat sb;
+       if(fstat(fd, &sb) == -1) {
+           perror("Error getting file size");
+           return NULL;
+       }
+
+       FileDescriptor* fileDescriptor = NULL;
+
+       printf("File size: %ld bytes\n", sb.st_size);
+
+       if (sb.st_size > seek_value) {
+           printf("File has grown compared to previous lookup \n");
+       } else {
+           printf("File has not grown compared to previous lookup \n");
+       }
+       // Check if the file size is a multiple of the page size
+   
+       off_t file_size_offset ;
+       int bytes_ignored = 0;
+
+       // Find the nearest multiple of page size
+       long page_size = sysconf(_SC_PAGESIZE);
+       bytes_ignored = seek_value % page_size;
+       if (bytes_ignored > 0) {
+           printf("File size is not a multiple of page size. Ignoring %d bytes and Rounding up to nearest page size \n", bytes_ignored);
+           file_size_offset = (seek_value / page_size) * page_size;
+       } else {
+           file_size_offset = sb.st_size;
+       }
+       printf("File size rounded to nearest page size: %ld bytes\n", file_size_offset);
+   
+       char *addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, file_size_offset);
+       close(fd);
+
+       if (addr == MAP_FAILED) {
+           perror("Error mapping file");
+           return NULL;
+       }
+       fileDescriptor = malloc(sizeof(FileDescriptor));
+       if (!fileDescriptor) {
+           perror("Error allocating memory");
+           return NULL;
+       }
+       memset(fileDescriptor, 0, sizeof(FileDescriptor));
+       fileDescriptor->addr = addr;
+       fileDescriptor->fd = fd;
+       fileDescriptor->file_size = sb.st_size;
+   
+       // addr needs to ignore the first bytes_ignored bytes
+       addr += bytes_ignored;
+       
+       return fileDescriptor;
+}
+
+// Call 2
 /** @description: Main logic function to parse sorted vector list and to process the pattern list
  *  @param filename
  *  @return -1 on failure, 0 on success
  */
-static int parseMarkerList(char* profileName, Vector* ip_vMarkerList, Vector* op_grepResultList, bool check_rotated)
+static int parseMarkerListOptimized(char* profileName, Vector* ip_vMarkerList, Vector* out_grepResultList, bool check_rotated)
 {
     T2Debug("%s ++in \n", __FUNCTION__);
 
-    char *filename = NULL, *prevfile = NULL;
-    rdkList_t *pchead = NULL, *rdkec_head = NULL;
+    if(NULL == profileName || NULL == ip_vMarkerList || NULL == out_grepResultList)
+    {
+        T2Error("Invalid arguments for %s\n", __FUNCTION__);
+        return -1;
+    }
+
+    char *prevfile = NULL;
     GrepSeekProfile* gsProfile = NULL;
     size_t var = 0;
-
     size_t vCount = Vector_Size(ip_vMarkerList);
     T2Debug("vMarkerList for profile %s is of count = %lu \n", profileName, (unsigned long )vCount);
 
     // Get logfile -> seek value map associated with the profile
     gsProfile = (GrepSeekProfile *) getLogSeekMapForProfile(profileName);
-    if(NULL == gsProfile)
+    if(NULL == gsProfile && (gsProfile = (GrepSeekProfile *) addToProfileSeekMap(profileName)) == NULL)
     {
-        T2Debug("logSeekMap is null, add logSeekMap for %s \n", profileName);
-        gsProfile = (GrepSeekProfile *) addToProfileSeekMap(profileName);
-    }
-
-    if(NULL == gsProfile)
-    {
-        T2Error("%s Unable to retrive / create logSeekMap for profile %s \n", __FUNCTION__, profileName);
+        T2Error("%s Unable to retrieve/create logSeekMap for profile %s \n", __FUNCTION__, profileName);
         return -1;
     }
 
@@ -954,108 +781,107 @@ static int parseMarkerList(char* profileName, Vector* ip_vMarkerList, Vector* op
         check_rotated_logs = false;
     }
 
-    // Traverse through marker list
-    for (var = 0; var < vCount; ++var)
+    // Loops start here - This should be completed here 
+    // Traverse through sorted ip_vMarkerList marker list
+    // Reuse the file descriptor or memmory mapped I/O when the log file is same between iterations
+
+    int fd = -1;
+    char *buffer = NULL;
+    FileDescriptor* fileDescriptor = NULL;
+
+    for (var = 0; var < vCount; ++var) // Loop of marker list starts here
     {
-        GrepMarker* markerList = (GrepMarker*) Vector_At(ip_vMarkerList, var);
-        if (!markerList || !markerList->logFile || !markerList->searchString || !markerList->markerName)
+        GrepMarker* grepMarkerObj = (GrepMarker*) Vector_At(ip_vMarkerList, var);
+        if (!grepMarkerObj || !grepMarkerObj->logFile || !grepMarkerObj->searchString || !grepMarkerObj->markerName)
         {
             continue;
         }
-        if (strcmp(markerList->searchString, "") == 0 || strcmp(markerList->logFile, "") == 0)
-        {
-            continue;
-        }
-        if (strcasecmp(markerList->logFile, "snmp") == 0)
+        if (strcmp(grepMarkerObj->searchString, "") == 0 || strcmp(grepMarkerObj->logFile, "") == 0)
         {
             continue;
         }
 
         int tmp_skip_interval, is_skip_param;
+        tmp_skip_interval = grepMarkerObj->skipFreq;
 
-        char *temp_header = markerList->markerName;
-        char *temp_pattern = markerList->searchString;
-        char *temp_file = markerList->logFile;
-        bool trim = markerList->trimParam;
-        char *regex = markerList->regexParam;
-        tmp_skip_interval = markerList->skipFreq;
+        char *log_file_for_this_iteration = grepMarkerObj->logFile;
 
-        DType_t dtype;
-        getDType(temp_file, markerList->mType, &dtype);
+        // For first iteration and when the log file changes
+        if (NULL == prevfile || strcmp(log_file_for_this_iteration, prevfile) != 0)
+        {
+            if (prevfile != NULL)
+            {
+                free(prevfile);
+            }
+
+            if (fd != -1) {
+                close(fd);
+                fd = -1;
+            }
+
+            if (fileDescriptor != NULL) {
+                freeFileDescriptor(fileDescriptor);
+                fileDescriptor = NULL;
+            }
+
+            // Get a valid file descriptor for the current log file
+            off_t seek_value = 0;
+            fd = getLogFileDescriptor(gsProfile, log_file_for_this_iteration, fd, &seek_value);
+            if (fd == -1) {
+                continue;
+            }
+            prevfile = updateFilename(prevfile, log_file_for_this_iteration);
+            fileDescriptor = getFileDeltaInMemMapAndSearch(fd, seek_value);
+            if (fileDescriptor == NULL) {
+                T2Error("Failed to get file descriptor for %s\n", log_file_for_this_iteration);
+                continue;
+            }
+            buffer = fileDescriptor->addr;
+
+        }
 
         if(tmp_skip_interval <= 0)
         {
             tmp_skip_interval = 0;
         }
-
-        if(profileExecCounter % (tmp_skip_interval + 1) == 0)
+        is_skip_param = (profileExecCounter % (tmp_skip_interval + 1) == 0) ? 0 : 1;
+        // If skip param is 0, then process the pattern with optimized function
+        if (is_skip_param == 0)
         {
-            is_skip_param = 0;
-        }
-        else
-        {
-            is_skip_param = 1;
+            // Call the optimized function to process the pattern
+            processPatternWithOptimizedFunction(grepMarkerObj, out_grepResultList, buffer);
         }
 
-        filename = updateFilename(filename, temp_file);
+    }  // Loop of marker list ends here 
 
-        // TODO optimize the list search in US
-        if(is_skip_param == 0)
-        {
-            if(0 == insertPCNode(&pchead, temp_pattern, temp_header, dtype, 0, NULL, trim, regex))
-            {
-                processPattern(&prevfile, filename, &rdkec_head, pchead, op_grepResultList, gsProfile->logFileSeekMap, &(markerList->firstSeekFromEOF), check_rotated_logs);
-                pchead = NULL;
-            }
-        }
-        else
-        {
-            T2Debug("Current iteration for this parameter needs to be excluded, but the seek values needs to be updated in case of logfile based marker\n");
-            // TODO optimize seek update logic for skip intervals
-            updateLastSeekval(gsProfile->logFileSeekMap, &prevfile, filename);
-        }
-
-    }  // End of adding list to node
-#if !defined(ENABLE_RDKC_SUPPORT) && !defined(ENABLE_RDKB_SUPPORT)
-    // remove the saved top information
-    pthread_mutex_lock(&topOutputMutex);
-    removeTopOutput();
-    pthread_mutex_unlock(&topOutputMutex);
-#endif
-
-
-    if(filename)
-    {
-        updateLogSeek(gsProfile->logFileSeekMap, filename);
-    }
 
     gsProfile->execCounter += 1;
     T2Debug("Execution Count = %d\n", gsProfile->execCounter);
 
-    /* max limit not maintained for rdkec_head FIXME */
-    if(NULL != rdkec_head)
-    {
-        addToJson(rdkec_head);
-        // clear nodes memory after process
-        clearPCNodes(&rdkec_head);
-        rdkec_head = NULL;
-    }
-
-    if(NULL != filename)
-    {
-        free(filename);
-    }
-
-    if(NULL != prevfile)
+    if (prevfile != NULL)
     {
         free(prevfile);
+    }
+
+    if (fd != -1) {
+        close(fd);
+        fd = -1;
+    }
+
+    if (fileDescriptor != NULL) {
+        freeFileDescriptor(fileDescriptor);
+        fileDescriptor = NULL;
     }
 
     T2Debug("%s --out \n", __FUNCTION__);
     return 0;
 }
 
-int getDCAResultsInVector(char* profileName, Vector* vecMarkerList, Vector** grepResultList, bool check_rotated, char* customLogPath)
+
+
+
+// Call 1 
+int getDCAResultsInVector(char* profileName, Vector* vecMarkerList, Vector** out_grepResultList, bool check_rotated, char* customLogPath)
 {
 
     T2Debug("%s ++in \n", __FUNCTION__);
@@ -1075,16 +901,20 @@ int getDCAResultsInVector(char* profileName, Vector* vecMarkerList, Vector** gre
             initProperties(logPath, persistentPath);
         }
 
+        // Set the log look up location as previous log folder
         if (customLogPath)
         {
             initProperties(customLogPath, persistentPath);
         }
 
-        Vector_Create(grepResultList);
-        if( (rc = parseMarkerList(profileName, vecMarkerList, *grepResultList, check_rotated)) == -1 )
+        Vector_Create(out_grepResultList);
+
+        // Go for looping through the marker list
+        if( (rc = parseMarkerListOptimized(profileName, vecMarkerList, *out_grepResultList, check_rotated)) == -1 )
         {
             T2Debug("Error in fetching grep results\n");
         }
+        // Reset the log look up directory to default
         if (customLogPath)
         {
             initProperties(logPath, persistentPath);

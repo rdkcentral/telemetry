@@ -26,7 +26,7 @@
  * Caller should be freeing vectorMarkerList and grepResultList
  */
 
-int getDCAResultsInVector(char* profileName, Vector* vectorMarkerList, Vector** grepResultList, bool check_rotated, char* customLogPath);
+int getDCAResultsInVector(char* profileName, Vector* vectorMarkerList, Vector** out_grepResultList, bool check_rotated, char* customLogPath);
 
 char *strSplit(char *str, char *delim);
 

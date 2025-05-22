@@ -1,48 +1,46 @@
 ```mermaid
 flowchart TD
-    A[Start processPattern] --> B{Validate Input Parameters}
-    B -->|Invalid| C[Log Error Message]
-    C --> D[Return -1]
+    Start[getDCAResultsInVector] --> Lock[Lock dcaMutex]
     
-    B -->|Valid| E{Check Previous File}
+    Lock --> CheckInput{Check vecMarkerList}
+    CheckInput -->|NULL| Unlock1[Unlock dcaMutex]
+    Unlock1 --> Return1[Return -1]
     
-    E -->|Different or NULL| F[Update Log Seek Map]
-    F --> G[Free Previous File]
-    G --> H[Allocate New Previous File]
-    H -->|Failed| I[Log Memory Error]
+    CheckInput -->|Valid| CheckProps{Check Properties\nInitialized?}
     
-    H -->|Success| J{Check Log File Type}
-    E -->|Same| J
+    CheckProps -->|No| InitProps[Initialize Properties\nlogPath & persistentPath]
+    CheckProps -->|Yes| CheckCustomPath
+    InitProps --> CheckCustomPath
     
-    J -->|top_log.txt| K[Process Top Pattern]
-    K --> K1[Process with grepResultList]
+    CheckCustomPath{Custom Log Path?} -->|Yes| UpdateProps[Update Properties\nwith customLogPath]
+    CheckCustomPath -->|No| CreateVector
+    UpdateProps --> CreateVector
     
-    J -->|message_bus| L[Process TR181 Objects]
-    L --> L1[Add to Vector]
+    CreateVector[Create grepResultList Vector] --> ParseMarkers[parseMarkerList]
     
-    J -->|other files| M[Process Count Pattern]
-    M --> M1[Add to Vector]
-    
-    K1 --> N[Clear PC Nodes]
-    L1 --> N
-    M1 --> N
-    
-    N --> O[Return 0]
-    
-    subgraph Process Top Pattern
-        K1 -->|Internal| KA[Get Load Average]
-        K1 -->|Internal| KB[Get Process Usage]
+    ParseMarkers --> ProcessSeek{Check if logfile differs between iterations and open new file descriptors}
+    subgraph LoopThroughMarkers[Loop Through Markers]
+        ProcessSeek --> GetSeekMap[Get/Create LogSeekMap]
+        GetSeekMap --> insertPCNode[T2 Marker object transformed to LegacyCode object]
+        insertPCNode --> processPattern
+        processPattern -->|top_log.txt| TopPattern[Process Top Pattern]
+        processPattern -->|message_bus| TR181[Process TR181 Objects - Only one with skip frequency lands here]
+        processPattern -->|other| LogPattern[Extract line by line from log file]
+        LogPattern --> LogPattern
+        TopPattern --> Transform
+        TR181 --> Transform
+        LogPattern --> Transform[Transform from legacy code object ]
+        Transform --> AddVector
+
     end
     
-    subgraph Process TR181
-        L -->|Internal| LA[Parse TR181 Objects]
-        LA --> LB[Get Parameter Values]
-    end
+    AddVector --> CleanupNodes[Clear PC Nodes]
     
-    subgraph Process Count Pattern
-        M -->|Internal| MA[Read Log Lines]
-        MA --> MB[Update Pattern Counts]
-        MB --> MC[Handle RDK Error Codes]
-    end
+    CleanupNodes --> CheckCustom{Has Custom Path?}
+    CheckCustom -->|Yes| RestoreProps[Restore Original Properties]
+    CheckCustom -->|No| Unlock2[Unlock dcaMutex]
+    RestoreProps --> Unlock2
+    
+    Unlock2 --> Return2[Return rc]
 ```
 

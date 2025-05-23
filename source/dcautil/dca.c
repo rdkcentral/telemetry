@@ -49,8 +49,9 @@
 
 static bool check_rotated_logs = false; // using this variable to indicate whether it needs to check the rotated logs or not . Initialising it with false.
 static bool firstreport_after_bootup = false; // the rotated logs check should run only for the first time.
+
 // Using same error code used by safeclib for buffer overflow for easy metrics collection
-// safeclib is not compleately introduced in T2 but to be in sync with legacy
+// safeclib is not completely introduced in T2 but to be in sync with legacy
 #define INVALID_COUNT -406
 
 #define BUFFER_SIZE 4096  // TODO fine tune this value based on the size of the data
@@ -338,46 +339,6 @@ static int processPatternWithOptimizedFunction(const GrepMarker* marker, Vector*
         } 
     }
     return 0;
-}
-
-
-
-
-
-/**
- * @brief Function like strstr but based on the string delimiter.
- *
- * @param[in] str    String.
- * @param[in] delim  Delimiter.
- *
- * @return Returns the output string.
- */
-char *strSplit(char *str, char *delim)
-{
-    static char *next_str;
-    char *last = NULL;
-    if(str != NULL)
-    {
-        next_str = str;
-    }
-
-    if(NULL == next_str)
-    {
-        return next_str;
-    }
-
-    last = strstr(next_str, delim);
-    if(NULL == last)
-    {
-        char *ret = next_str;
-        next_str = NULL;
-        return ret;
-    }
-
-    char *ret = next_str;
-    *last = '\0';
-    next_str = last + strlen(delim);
-    return ret;
 }
 
 

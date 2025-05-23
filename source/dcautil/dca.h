@@ -28,8 +28,4 @@
 
 int getDCAResultsInVector(char* profileName, Vector* vectorMarkerList, Vector** out_grepResultList, bool check_rotated, char* customLogPath);
 
-char *strSplit(char *str, char *delim);
-
-int getErrorCode(char *str, char *ec);
-
 #endif /* SRC_DCA_H_ */

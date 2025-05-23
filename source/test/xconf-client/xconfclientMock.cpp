@@ -18,14 +18,29 @@
 */
 
 #include "xconfclientMock.h"
+#include <dlfcn.h>
 
-extern XconfclientMock *m_xconfclientMock;
+typedef bool (*isMtlsEnabled_ptr)();
+typedef bool (*ProfileXConf_isSet_ptr)();
+typedef T2ERROR (*processConfigurationXConf_ptr)(char* configData, ProfilexConf **localProfile);
+typedef bool (*ProfileXConf_isNameEqual_ptr)(char* profileName);
+typedef T2ERROR (*ReportProfiles_deleteProfileXConf_ptr)(ProfilexConf *profile);
+typedef T2ERROR (*ReportProfiles_setProfileXConf_ptr)(ProfilexConf *profile);
+typedef T2ERROR (*getParameterValue_ptr)(const char* paramName, char **paramValue);
+
+isMtlsEnabled_ptr isMtlsEnabled_func = (isMtlsEnabled_ptr) dlsym(RTLD_NEXT, "isMtlsEnabled");
+ProfileXConf_isSet_ptr ProfileXConf_isSet_func = (ProfileXConf_isSet_ptr) dlsym(RTLD_NEXT, "ProfileXConf_isSet");
+processConfigurationXConf_ptr processConfigurationXConf_func = (processConfigurationXConf_ptr) dlsym(RTLD_NEXT, "processConfigurationXConf");
+ProfileXConf_isNameEqual_ptr ProfileXConf_isNameEqual_func = (ProfileXConf_isNameEqual_ptr) dlsym(RTLD_NEXT, "ProfileXConf_isNameEqual");
+ReportProfiles_deleteProfileXConf_ptr ReportProfiles_deleteProfileXConf_func = (ReportProfiles_deleteProfileXConf_ptr) dlsym(RTLD_NEXT, "ReportProfiles_deleteProfileXConf");
+ReportProfiles_setProfileXConf_ptr ReportProfiles_setProfileXConf_func = (ReportProfiles_setProfileXConf_ptr) dlsym(RTLD_NEXT, "ReportProfiles_setProfileXConf");
+getParameterValue_ptr getParameterValue_func = (getParameterValue_ptr) dlsym(RTLD_NEXT, "getParameterValue");
 
 extern "C" bool isMtlsEnabled()
 {
     if (!m_xconfclientMock)
     {
-         return false;
+        return isMtlsEnabled_func();
     }
     return m_xconfclientMock->isMtlsEnabled();
 }
@@ -34,7 +49,7 @@ extern "C" bool ProfileXConf_isSet()
 {
     if (!m_xconfclientMock)
     {
-         return false;
+         return ProfileXConf_isSet_func();
     }
     return m_xconfclientMock->ProfileXConf_isSet();
 }
@@ -43,7 +58,7 @@ extern "C" T2ERROR processConfigurationXConf(char* configData, ProfilexConf **lo
 {
     if (!m_xconfclientMock)
     {
-         return T2ERROR_FAILURE;
+         return processConfigurationXConf_func(configData, localProfile);
     }
     return m_xconfclientMock->processConfigurationXConf(configData, localProfile);
 }
@@ -52,7 +67,7 @@ extern "C" bool ProfileXConf_isNameEqual(char* profileName)
 {
     if (!m_xconfclientMock)
     {
-         return false;
+         return ProfileXConf_isNameEqual_func(profileName);
     }
     return m_xconfclientMock->ProfileXConf_isNameEqual(profileName);
 }
@@ -61,7 +76,7 @@ extern "C" T2ERROR ReportProfiles_deleteProfileXConf(ProfilexConf *profile)
 {
     if (!m_xconfclientMock)
     { 
-         return T2ERROR_FAILURE;
+         return ReportProfiles_deleteProfileXConf_func(profile);
     }
     return m_xconfclientMock->ReportProfiles_deleteProfileXConf(profile);
 }
@@ -70,7 +85,16 @@ extern "C" T2ERROR ReportProfiles_setProfileXConf(ProfilexConf *profile)
 {
     if (!m_xconfclientMock)
     {
-         return T2ERROR_FAILURE;
+         return ReportProfiles_setProfileXConf_func(profile);
     }
     return m_xconfclientMock->ReportProfiles_setProfileXConf(profile);
+}
+
+extern "C" T2ERROR getParameterValue(const char* paramName, char **paramValue)
+{
+    if (!m_xconfclientMock)
+    {
+         return getParameterValue_func(paramName, paramValue);
+    }
+    return m_xconfclientMock->getParameterValue(paramName, paramValue);
 }

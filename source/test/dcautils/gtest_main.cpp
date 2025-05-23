@@ -37,8 +37,8 @@ GTEST_API_ int main(int argc, char *argv[])
     memset( buffer, 0, GTEST_REPORT_FILEPATH_SIZE );
 
     snprintf( testresults_fullfilepath, GTEST_REPORT_FILEPATH_SIZE, "json:%s%s" , GTEST_DEFAULT_RESULT_FILEPATH , GTEST_DEFAULT_RESULT_FILENAME);
+    ::testing::InitGoogleTest(&argc, argv);
     ::testing::GTEST_FLAG(output) = testresults_fullfilepath;
     ::testing::InitGoogleMock(&argc, argv);
     return RUN_ALL_TESTS();
 }
-

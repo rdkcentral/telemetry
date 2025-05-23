@@ -21,8 +21,6 @@
 #include "rdklogMock.h"
 using namespace std;
 
-extern rdklogMock *m_rdklogMock;
-
 extern "C" rdk_Error rdk_logger_init(const char* debugfile)
 {
     if(!m_rdklogMock)

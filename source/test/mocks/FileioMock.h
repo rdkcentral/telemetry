@@ -16,71 +16,51 @@
 * SPDX-License-Identifier: Apache-2.0
 */
 
-#ifndef MOCK_FILE_IO_H
-#define MOCK_FILE_IO_H
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <dirent.h>
-#include <unistd.h>
+#include <stdio.h>
 #include <curl/curl.h>
-#include <gtest/gtest.h>
+#include <unistd.h>
+#include <stdarg.h>
+#ifndef FOPEN_MOCK_H
+#define FOPEN_MOCK_H
+
+#include <cstdio>
 #include <gmock/gmock.h>
 
-class FileIOInterface
+class FileMock
 {
 public:
-    virtual ~FileIOInterface() {}
-    virtual FILE * popen(const char *, const char *) = 0;
-    virtual int stat(const char *, struct stat *) = 0;
-    virtual int pclose(FILE *) = 0;
-    virtual int pipe(int *) = 0;
-    virtual int fclose(FILE *) = 0;
-    virtual int fscanf(FILE *, const char *) = 0;
-    virtual ssize_t getline(char **, size_t *, FILE *) = 0;
-    virtual struct dirent * readdir(DIR *) = 0;
-    virtual FILE * fopen(const char *, const char *) = 0;
-    virtual int closedir(DIR *) = 0;
-    virtual int mkdir(const char *, mode_t) = 0;
-    virtual DIR* opendir(const char*) = 0;
-    virtual int close(int) = 0;
-    virtual int open(const char *, mode_t) = 0;
-    virtual int fstat(int, struct stat *) = 0;
-    virtual ssize_t read(int, void *, size_t ) = 0;
-    virtual struct curl_slist *curl_slist_append(struct curl_slist *, const char *) = 0;
-    virtual int fseek(FILE *, long, int ) = 0;
-    virtual size_t fwrite(const void*, size_t, size_t, FILE* ) = 0;
-    virtual size_t fread(void *, size_t, size_t, FILE* ) = 0;
-    virtual CURLcode curl_easy_perform(CURL *) = 0;
-    virtual CURL* curl_easy_init() = 0;
+    MOCK_METHOD(FILE*, fopen, (const char* filename, const char* mode), ());
+    MOCK_METHOD(int, fclose, (FILE* stream), ());
+    MOCK_METHOD(int, fprintf, (FILE* stream, const char* format, const char* message), ());
+    MOCK_METHOD(char*, fgets, (char* buffer, int size, FILE* stream), ());
+    MOCK_METHOD(int, fscanf, (FILE* stream, const char* format, va_list args), ());
+    MOCK_METHOD(int, fseek, (FILE* stream, long offset, int whence), ());
+    MOCK_METHOD(long, ftell, (FILE* stream), ());
+    MOCK_METHOD(size_t, fread, (void* ptr, size_t size, size_t count, FILE* stream), ());
+    MOCK_METHOD(size_t, fwrite, (const void* ptr, size_t size, size_t count, FILE* stream), ());
+    MOCK_METHOD(FILE*, popen, (const char* command, const char* type), ());
+    MOCK_METHOD(int, pclose, (FILE* stream), ());
+    MOCK_METHOD(int, pipe, (int* fds), ());
+    MOCK_METHOD(int, open, (const char* pathname, int flags), ());
+    MOCK_METHOD(int, close, (int fd), ());
+    MOCK_METHOD(DIR*, opendir, (const char* name), ());
+    MOCK_METHOD(struct dirent*, readdir, (DIR* dirp), ());
+    MOCK_METHOD(int, closedir, (DIR* dirp), ());
+    MOCK_METHOD(int, mkdir, (const char* pathname, mode_t mode), ());
+    MOCK_METHOD(int, fstat, (int fd, struct stat* statbuf), ());
+    MOCK_METHOD(ssize_t, read, (int fd, void* buf, size_t count), ());
+    MOCK_METHOD(struct curl_slist*, curl_slist_append, (struct curl_slist* list, const char* str), ());
+    MOCK_METHOD(CURLcode, curl_easy_perform, (CURL* handle), ());
+    MOCK_METHOD(CURL*, curl_easy_init, (), ());
+    MOCK_METHOD(ssize_t, getline, (char** lineptr, size_t* n, FILE* stream), ());
+    MOCK_METHOD(pid_t, fork, (), ());
+    MOCK_METHOD(ssize_t, write, (int fd, const void* buf, size_t count), ());
 };
 
-class FileIOMock: public FileIOInterface
-{
-public:
-    virtual ~FileIOMock() {}
-    MOCK_METHOD2(popen, FILE * (const char *, const char *));
-    MOCK_METHOD1(pclose, int (FILE *));
-    MOCK_METHOD1(pipe, int(int *));
-    MOCK_METHOD1(fclose, int (FILE *));
-    MOCK_METHOD2(fscanf, int(FILE *, const char *));
-    MOCK_METHOD3(getline, ssize_t (char **, size_t *, FILE *));
-    MOCK_METHOD1(opendir, DIR * (const char*));
-    MOCK_METHOD1(readdir, struct dirent * (DIR *));
-    MOCK_METHOD2(fopen, FILE * (const char *, const char *));
-    MOCK_METHOD1(closedir, int (DIR *));
-    MOCK_METHOD2(mkdir, int (const char *, mode_t));
-    MOCK_METHOD3(read, ssize_t(int, void *, size_t));
-    MOCK_METHOD2(fstat, int (int, struct stat *));
-    MOCK_METHOD1(close, int(int));
-    MOCK_METHOD2(stat, int(const char *, struct stat *));
-    MOCK_METHOD2(open, int(const char *, mode_t));
-    MOCK_METHOD4(fwrite, size_t(const void *, size_t, size_t, FILE *));
-    MOCK_METHOD2(curl_slist_append, struct curl_slist * (struct curl_slist *, const char *));
-    MOCK_METHOD4(fread, size_t(void*, size_t, size_t, FILE*));
-    MOCK_METHOD3(fseek, int(FILE *, long, int));
-    MOCK_METHOD1(curl_easy_perform, CURLcode(CURL *));
-    MOCK_METHOD0(curl_easy_init, CURL * ());
-};
+extern FileMock* g_fileIOMock;
 
-#endif
 
+#endif // FOPEN_MOCK_H

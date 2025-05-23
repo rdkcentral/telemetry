@@ -680,6 +680,7 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
 #endif
             if(mtls_enable == true)
             {
+#ifdef ENABLE_MTLS
 #ifdef LIBRDKCERTSEL_BUILD
                 pEngine = rdkcertselector_getEngine(xcCertSelector);
                 if(pEngine != NULL)
@@ -764,6 +765,7 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
                         ret = T2ERROR_FAILURE;
                         goto status_return;
                     }
+#endif
 #endif
             }
             else

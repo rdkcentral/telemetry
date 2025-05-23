@@ -19,6 +19,7 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include <sys/time.h>
 #include <net/if.h>
 #include <ifaddrs.h>

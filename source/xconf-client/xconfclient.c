@@ -19,6 +19,7 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <sys/time.h>
 #include <net/if.h>
 #include <ifaddrs.h>
@@ -35,7 +36,9 @@
 #include "reportprofiles.h"
 #include "profilexconf.h"
 #include "xconfclient.h"
+#ifdef ENABLE_MTLS
 #include "t2MtlsUtils.h"
+#endif
 #include "t2parserxconf.h"
 #include "vector.h"
 #include "persistence.h"
@@ -678,6 +681,7 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
 #endif
             if(mtls_enable == true)
             {
+#ifdef ENABLE_MTLS
 #ifdef LIBRDKCERTSEL_BUILD
                 pEngine = rdkcertselector_getEngine(xcCertSelector);
                 if(pEngine != NULL)
@@ -762,6 +766,7 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
                         ret = T2ERROR_FAILURE;
                         goto status_return;
                     }
+#endif
 #endif
             }
             else

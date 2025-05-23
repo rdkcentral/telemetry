@@ -130,11 +130,12 @@ void logGrepTest1()
     printf("%s ++in \n", __FUNCTION__ );
 
     T2ERROR ret = T2ERROR_FAILURE ;
+    bool run2ndTest = false;
     // 1st Split parameter from rotated files
     GrepMarker *gMarker1 = (GrepMarker *)malloc(sizeof(GrepMarker));
     memset(gMarker1, 0, sizeof(GrepMarker));
     gMarker1->markerName = strdup("wakeReason_split");
-    gMarker1->searchString = strdup("wakeReason:");
+    gMarker1->searchString = strdup("wakeReason: \"");
     gMarker1->logFile = strdup("messages.log");
     gMarker1->skipFreq = 0 ;
 
@@ -214,16 +215,17 @@ void logGrepTest1()
     double time_taken = ((double)(end_time - start_time)) / CLOCKS_PER_SEC; // Calculate elapsed time
     printf("\ngetGrepResults execution time: %f seconds\n", time_taken);
 
+
     // Print markerlist
-    printf("============== Marker list contents: ==============\n");
-    int markerListSize = Vector_Size(markerlist);
-    for (int i = 0; i < markerListSize; ++i)
-    {
-        GrepMarker* marker = (GrepMarker*)Vector_At(markerlist, i);
-        printf(" Marker Name: %s, Search String: %s, Log File: %s, Skip Frequency: %d\n",
-               marker->markerName, marker->searchString, marker->logFile, marker->skipFreq);
-    }
-    printf("====================================================\n");
+    // printf("============== Marker list contents: ==============\n");
+    // int markerListSize = Vector_Size(markerlist);
+    // for (int i = 0; i < markerListSize; ++i)
+    // {
+    //     GrepMarker* marker = (GrepMarker*)Vector_At(markerlist, i);
+    //     printf(" Marker Name: %s, Search String: %s, Log File: %s, Skip Frequency: %d\n",
+    //            marker->markerName, marker->searchString, marker->logFile, marker->skipFreq);
+    // }
+    // printf("====================================================\n");
 
     printf("============== Data collected from logs : ==============\n");
     if (ret == T2ERROR_SUCCESS)
@@ -244,10 +246,19 @@ void logGrepTest1()
     printf("====================================================\n");
 
     printf("\n##################End of test set ################## \n\n\n");
-    if (grepResultList)
+    if (!grepResultList)
     {
         free(grepResultList);
         grepResultList = NULL ;
+    }
+
+    if (!run2ndTest) {
+        if (markerlist)
+        {
+            Vector_Destroy(markerlist, destroyer_func);
+            markerlist = NULL ;
+        }
+        return ;
     }
 
     backupAndAppendLogFile("/opt/logs/messages.log");

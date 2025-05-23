@@ -34,9 +34,6 @@ static char* LOG_PATH        = NULL;
 static char* DEVICE_TYPE     = NULL;
 static bool  isPropsIntialized = false ;
 
-// This static variable makes the entire log grep functionality thread unsafe.
-static long  LAST_SEEK_VALUE = 0;
-
 // Map holding profile name to Map ( logfile -> seek value) ]
 static hash_map_t *profileSeekMap = NULL;
 static pthread_mutex_t pSeekLock = PTHREAD_MUTEX_INITIALIZER;
@@ -275,7 +272,7 @@ GrepSeekProfile *getLogSeekMapForProfile(char* profileName)
  *  @return Returns the status of the operation.
  *  @retval Returns -1 on failure, appropriate errorcode otherwise.
  */
-T2ERROR updateLogSeek(hash_map_t *logSeekMap, const char* logFileName)
+T2ERROR updateLogSeek(hash_map_t *logSeekMap, const char* logFileName,const long logfileSize)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
     if(logSeekMap == NULL || logFileName == NULL)
@@ -283,28 +280,22 @@ T2ERROR updateLogSeek(hash_map_t *logSeekMap, const char* logFileName)
         T2Error("Invalid or NULL arguments\n");
         return T2ERROR_FAILURE;
     }
-    long logfileSize = 0;
-    getLogFileSize(logFileName, &logfileSize);
-        T2Debug("Adding seekvalue of %ld for %s to logSeekMap \n", logfileSize, logFileName);
-        long* val = (long *) malloc(sizeof(long));
-        if(NULL != val)
-        {
-            memset(val, 0, sizeof(long));
-            *val = logfileSize;
-            hash_map_put(logSeekMap, strdup(logFileName), (void *)val, free);
-        }
-        else
-        {
-            T2Warning("Unable to allocate memory for seek value pointer \n");
-        }
+    T2Debug("Adding seekvalue of %ld for %s to logSeekMap \n", logfileSize, logFileName);
+    long* val = (long *) malloc(sizeof(long));
+    if(NULL != val)
+    {
+        memset(val, 0, sizeof(long));
+        *val = logfileSize;
+        hash_map_put(logSeekMap, strdup(logFileName), (void *)val, free);
+    }
+    else
+    {
+        T2Warning("Unable to allocate memory for seek value pointer \n");
+    }
 
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
-
-/**
- * Start of functions dealing with log seek values
- */
 
 /**
  * @addtogroup DCA_APIS
@@ -358,21 +349,7 @@ int getLoadAvg(Vector* grepResultList, bool trim, char* regex)
     return 1;
 }
 
-/**
- * @brief This function returns file size.
- *
- * @param[in] fp    File name
- *
- * @return  Returns size of file.
- */
-static long fsize(FILE *fp)
-{
-    struct stat st;
-    if (fstat(fileno(fp), &st) == 0) {
-        return st.st_size;
-    }
-    return -1;
-}
+
 
 /**
  * @brief This function is to clear/free the global paths.
@@ -395,57 +372,6 @@ void clearConfVal(void)
         free(DEVICE_TYPE);
     }
     T2Debug("%s --out \n", __FUNCTION__);
-}
-
-void updateLastSeekval(hash_map_t *logSeekMap, char **prev_file, char* filename)
-{
-
-    FILE *pcurrentLogFile = NULL;
-    char* currentLogFile = NULL;
-    long fileSize = 0;
-
-    if((NULL == PERSISTENT_PATH) || (NULL == LOG_PATH) || (NULL == filename) || (NULL == logSeekMap))
-    {
-        T2Debug("Path variables are empty");
-        return;
-    }
-
-    if((NULL == *prev_file) || (strcmp(*prev_file, filename) != 0))
-    {
-        if(NULL == *prev_file)
-        {
-            *prev_file = strdup(filename);
-            if(*prev_file == NULL)
-            {
-                T2Error("Insufficient memory available to allocate duplicate string %s\n", filename);
-            }
-        }
-        else
-        {
-            updateLogSeek(logSeekMap, *prev_file);
-            free(*prev_file);
-            *prev_file = strdup(filename);
-            if(*prev_file == NULL)
-            {
-                T2Error("Insufficient memory available to allocate duplicate string %s\n", filename);
-            }
-        }
-    }
-
-    int logname_len = strlen(LOG_PATH) + strlen(filename) + 1;
-    currentLogFile = malloc(logname_len);
-    if(currentLogFile)
-    {
-        snprintf(currentLogFile, logname_len, "%s%s", LOG_PATH, filename);
-        pcurrentLogFile = fopen(currentLogFile, "rb");
-        if(pcurrentLogFile)
-        {
-            fileSize = fsize(pcurrentLogFile);
-            LAST_SEEK_VALUE = fileSize;
-            fclose(pcurrentLogFile);
-        }
-        free(currentLogFile);
-    }
 }
 
 

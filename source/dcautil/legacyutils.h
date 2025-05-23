@@ -98,9 +98,8 @@ void updatePropsFromIncludeFile(char *logpath, char *perspath);
 
 void initProperties(char *logpath, char *perspath);
 
-T2ERROR updateLogSeek(hash_map_t *logSeekMap, const char *name);
+T2ERROR updateLogSeek(hash_map_t *logSeekMap, const char *name, const long logfileSize);
 
-void updateLastSeekval(hash_map_t *logSeekMap, char **prev_file, char* filename);
 
 /* JSON functions */
 void initSearchResultJson(cJSON **root, cJSON **sr);

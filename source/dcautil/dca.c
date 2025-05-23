@@ -18,7 +18,6 @@
  */
 
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -30,7 +29,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
-#include <sys/stat.h>
+#include <limits.h>
 
 #include <cjson/cJSON.h>
 
@@ -46,6 +45,8 @@
 #include "t2log_wrapper.h"
 #include "t2common.h"
 #include "busInterface.h"
+
+
 static bool check_rotated_logs = false; // using this variable to indicate whether it needs to check the rotated logs or not . Initialising it with false.
 static bool firstreport_after_bootup = false; // the rotated logs check should run only for the first time.
 // Using same error code used by safeclib for buffer overflow for easy metrics collection
@@ -176,20 +177,17 @@ static int getLogSeekValue(hash_map_t *logSeekMap, const char *name, long *seek_
  * @param newFile The new filename to update to.
  * @return The updated filename.
  */
-
 static char* updateFilename(char* previousFile, const char* newFile)
 {
-    if (previousFile == NULL || strcmp(previousFile, newFile) != 0)
+    if (!newFile)
+        return NULL;
+
+    if (!previousFile || strcmp(previousFile, newFile) != 0)
     {
-        if (previousFile != NULL)
-        {
-            free(previousFile);
-        }
+        free(previousFile);
         previousFile = strdup(newFile);
-        if (previousFile == NULL)
-        {
+        if (!previousFile)
             T2Error("Insufficient memory to allocate string %s\n", newFile);
-        }
     }
     return previousFile;
 }
@@ -233,265 +231,7 @@ static inline void formatCount(char* buffer, size_t size, int count)
     snprintf(buffer, size, "%d", count);
 }
 
-
-#if 0
-/**
- * @brief Function to process pattern if it has split text in the header
- *
- * @param[in] line    Log file matched line
- * @param[in] pcnode  Pattern to be verified.
- *
- * @return Returns status of operation.
- * @retval Return 0 on success, -1 on failure
- */
-static int getSplitParameterValue(char *line, pcdata_t *pcnode)
-{
-    // Input validation
-    if (!line || !pcnode || !pcnode->pattern)
-    {
-        T2Error("Invalid arguments for %s\n", __FUNCTION__);
-        return -1;
-    }
-
-    // Use const for pattern to prevent accidental modifications
-    const char *pattern = pcnode->pattern;
-    const size_t pattern_len = strlen(pattern);
-
-    // Find pattern in line
-    const char *value_start = strstr(line, pattern);
-    if (!value_start)
-    {
-        return 0;  // Pattern not found
-    }
-
-    // Calculate value position and length
-    value_start += pattern_len;
-    const size_t line_len = strlen(line);
-    const size_t value_len = line_len - (value_start - line);
-
-    // Skip if value is empty or just whitespace
-    if (value_len <= 1 || (value_len == 1 && isspace(*value_start)))
-    {
-        return 0;
-    }
-
-    // Allocate memory only if needed
-    if (!pcnode->data)
-    {
-        pcnode->data = malloc(MAXLINE);
-        if (!pcnode->data)
-        {
-            T2Error("Memory allocation failed for split parameter value\n");
-            return -1;
-        }
-    }
-
-    // Copy value with bounds checking
-    size_t copy_len = value_len < MAXLINE - 1 ? value_len : MAXLINE - 1;
-    memcpy(pcnode->data, value_start, copy_len);
-    pcnode->data[copy_len] = '\0';
-
-    return 0;
-
-}
-
-/**
- * @brief Function to extract RDK error code from a string.
- *
- * @param[in]  str    Source string containing RDK error code
- * @param[out] ec     Buffer to store the extracted error code
- *
- * @return Returns 0 on success, -1 on failure
- */
-int getErrorCode(const char *str, char *ec)
-{
-    T2Debug("%s ++in\n", __FUNCTION__);
-
-    // Input validation
-    if (!str || !ec)
-    {
-        T2Error("Invalid arguments: str=%p, ec=%p\n", (void*)str, (void*)ec);
-        return -1;
-    }
-
-    // Use const for better optimization
-    static const char RDK_PREFIX[] = "RDK-";
-    const size_t PREFIX_LEN = sizeof(RDK_PREFIX) - 1;
-    const char *ptr = str;
-
-    // Find "RDK-" prefix
-    while ((ptr = strstr(ptr, RDK_PREFIX)) != NULL)
-    {
-        ptr += PREFIX_LEN;  // Check if line has strings after "RDK-"
-        if (*ptr != '0' && *ptr != '1')
-        {
-            ptr++;
-            continue;
-        }
-
-        if (ptr[1] != '0' && ptr[1] != '3')
-        {
-            ptr++;
-            continue;
-        }
-
-        // Validate remaining digits
-        const char *digit_start = ptr + 2;
-        size_t digit_count = 0;
-
-        while (isdigit((unsigned char)digit_start[digit_count]) &&
-                digit_count < RDK_EC_MAXLEN - 2)
-        {
-            digit_count++;
-        }
-
-        if (digit_count > 0)
-        {
-            // Copy the error code: first two digits + remaining digits
-            memcpy(ec, ptr, 2 + digit_count);
-            ec[2 + digit_count] = '\0';
-            T2Debug("%s --out Success\n", __FUNCTION__);
-            return 0;
-        }
-
-        ptr++;
-    }
-
-    // No valid error code found
-    ec[0] = '\0';
-    T2Debug("%s --out No valid error code found\n", __FUNCTION__);
-    return 0;
-}
-
-/**
- * @brief Function to handle error codes received from the log file.
- *
- * @param[in]  rdkec_head  Node head.
- * @param[in]  line        Logfile matched line.
- *
- * @return Returns status of operation.
- * @retval Return 0 upon success, -1 on failure.
- * TODO: This was a special case for RDK-V. Need to check if this is still needed or atleast restrict to certain files.
- * This function should be moved to a more appropriate location if it is still required and exclude checking for each line.
- */
-static int handleRDKErrCodes(rdkList_t **rdkec_head, char *line)
-{
-    T2Debug("%s ++in\n", __FUNCTION__);
-    char err_code[20] = { 0 }, rdkec[30] = { 0 };
-    pcdata_t *tnode = NULL;
-
-    getErrorCode(line, err_code);
-    if(strcmp(err_code, "") != 0)
-    {
-        snprintf(rdkec, sizeof(rdkec), "RDK-%s", err_code);
-        tnode = searchPCNode(*rdkec_head, rdkec);
-        if(NULL != tnode)
-        {
-            tnode->count++;
-        }
-        else
-        {
-            /* Args:  rdkList_t **pch, char *pattern, char *header, DType_t dtype, int count, char *data, bool trim, char *regex */
-            insertPCNode(rdkec_head, rdkec, rdkec, OCCURENCE, 1, NULL, false, NULL);
-        }
-        T2Debug("%s --out\n", __FUNCTION__);
-        return 0;
-    }
-    T2Debug("%s --out Error .... \n", __FUNCTION__);
-    return -1;
-}
-
-#endif
-
-#if 0
-static int processCountPatternOptimized(hash_map_t *logSeekMap, char *logfile,
-                                        rdkList_t *pchead, rdkList_t **rdkec_head,
-                                        int *firstSeekFromEOF, bool check_rotated_logs)
-{
-
-    size_t adaptive_buffer_size = BUFFER_SIZE;
-    char line[MAXLINE];
-    size_t line_pos = 0;
-    FILE *fp;
-    double cpuUsage = getSystemCPUUsage();
-    double memoryUsage = getSystemMemoryUsage();
-
-
-    T2Debug("System CPU Usage: %.2f%%\n", cpuUsage);
-    T2Debug("System Memory Usage: %.2f%%\n", memoryUsage);
-
-    if (memoryUsage > 80.0)
-    {
-        adaptive_buffer_size = BUFFER_SIZE / 2; // Reduce buffer size for high memory usage
-        T2Info("High memory usage detected, using smaller buffer size %zu\n", adaptive_buffer_size);
-    }
-
-
-    if (memoryUsage < 50.0 && sb.st_size > LARGE_FILE_THRESHOLD)
-    {
-        return processWithMMapSafe(logfile, pchead);
-    }
-    else
-    {
-        return processWithBufferedIO(logfile, pchead);
-    }
-
-    char buffer[adaptive_buffer_size];
-    // Logic for for rotated file and update log seek needs to be retained from getLogLine
-    if ((fp = fopen(logfile, "r")) == NULL)
-    {
-        T2Error("Failed to open file %s\n", logfile);
-        return -1;
-    }
-
-
-// Process file in chunks
-    size_t bytes_read;
-    while ((bytes_read = fread(buffer, 1, BUFFER_SIZE, fp)) > 0)
-    {
-        for (size_t i = 0; i < bytes_read; i++)
-        {
-            if (buffer[i] == '\n' || line_pos >= MAXLINE - 1)
-            {
-                line[line_pos] = '\0';
-
-                // Pattern match check - Without any algorithms -
-                // This is a simple linear search for the pattern in the line
-                // This can be optimized further if needed
-                pcdata_t *pc_node = searchPCNode(pchead, line);
-                if (pc_node != NULL)
-                {
-                    if (pc_node->d_type == OCCURENCE)
-                    {
-                        pc_node->count++;
-                    }
-                    else if (pc_node->header != NULL)
-                    {
-                        getSplitParameterValue(line, pc_node);
-                    }
-                }
-                else if (strstr(line, "RDK-"))
-                {
-                    handleRDKErrCodes(rdkec_head, line);
-                }
-
-                line_pos = 0;
-            }
-            else
-            {
-                line[line_pos++] = buffer[i];
-            }
-        }
-    }
-
-    fclose(fp);
-    return 0;
-}
-#endif
-
-
-
-static int get_count_of_matched_pattern(const char* buffer, const char* pattern) {
+static int getCountPatternMatch(const char* buffer, const char* pattern) {
 
     if (!buffer || !pattern) {
         return -1; // Invalid arguments
@@ -506,31 +246,47 @@ static int get_count_of_matched_pattern(const char* buffer, const char* pattern)
        count++;
        found = strstr(found + 1, pattern);
     }
-    
-    printf("==============================\n");
-    printf("Number of matches for string '%s': %d\n", pattern, count);
-    printf("==============================\n");
     return count;
 
 }
 
-static char* get_value_of_matched_pattern(const char* buffer, const char* pattern) {
-    char *found = strstr(buffer, pattern);
-    char *last_found = NULL ;
-    // Capture the last line that finds a match 
-    while (found) {
-        last_found = found ;
-        found = strstr(found + 1, pattern);
+static char* getAbsolutePatternMatch(const char* buffer, const char* pattern) {
+    if (!buffer || !pattern) {
+        return NULL; // Invalid arguments
     }
 
-    printf("==============================\n");
-    if ( last_found != NULL ){
-        printf("Last line :\n %s \n", last_found );
+   char *found = strstr(buffer, pattern);
+   char *last_found = NULL ;
+   // Capture the last line that finds a match
+   while (found)
+   {
+       last_found = found;
+       found = strstr(found + 1, pattern);
+  }
+
+    if (last_found)
+    {
+        // Exclude the pattern from the results
+        last_found = last_found + strlen(pattern);
+        char *end_of_line = strchr(last_found, '\n');
+        if (end_of_line)
+        {
+            size_t length = end_of_line - last_found;
+            char *result = (char*)malloc(length + 1);
+            if (result)
+            {
+                strncpy(result, last_found, length);
+                result[length] = '\0';
+                return result;
+            }
+        }
     } else {
-        printf("No matches were found for pattern : %s \n", pattern);
+        T2Error("Pattern not found in the buffer\n");
+        last_found = NULL;
     }
-    printf("==============================\n");
-    return last_found;
+
+
+   return last_found;
 }
  
 
@@ -540,7 +296,6 @@ static int processPatternWithOptimizedFunction(const GrepMarker* marker, Vector*
         T2Error("Invalid arguments for %s\n", __FUNCTION__);
         return -1;
     }
-
     // Extract the pattern and other parameters from the marker
     const char* pattern = marker->searchString;
     bool trimParameter = marker->trimParam;
@@ -552,7 +307,7 @@ static int processPatternWithOptimizedFunction(const GrepMarker* marker, Vector*
 
     if (mType == MTYPE_COUNTER) {
         // Count the number of occurrences of the pattern in the memory-mapped data
-        count = get_count_of_matched_pattern(memmmapped_data, pattern);
+        count = getCountPatternMatch(memmmapped_data, pattern);
         if (count > 0) {
             // If matches are found, process them accordingly
             char tmp_str[5] = { 0 };
@@ -566,11 +321,15 @@ static int processPatternWithOptimizedFunction(const GrepMarker* marker, Vector*
         }
     } else {
         // Get the last occurrence of the pattern in the memory-mapped data
-        last_found = get_value_of_matched_pattern(memmmapped_data, pattern);
+        last_found = getAbsolutePatternMatch(memmmapped_data, pattern);
         // TODO : If trimParameter is true, trim the pattern before adding to the result list
         if (last_found) {
             // If a match is found, process it accordingly
             GrepResult* result = createGrepResultObj(header,last_found, trimParameter, regexParameter);
+            if(last_found){
+                free(last_found);
+                last_found = NULL;
+            }
             if (result == NULL) {
                 T2Error("Failed to create GrepResult\n");
                 return -1;
@@ -578,7 +337,6 @@ static int processPatternWithOptimizedFunction(const GrepMarker* marker, Vector*
             Vector_PushBack(out_grepResultList, result);
         } 
     }
-
     return 0;
 }
 
@@ -622,43 +380,32 @@ char *strSplit(char *str, char *delim)
     return ret;
 }
 
-/**
- * @brief To get node data type based on pattern.
- *
- * @param[in]  filename   Conf filename.
- * @param[in]  header     node header.
- * @param[out] dtype      Data type
- *
- * @return Returns status of operation.
- */
-void getDType(char *filename, MarkerType mType, DType_t *dtype)
-{
-    if (mType != MTYPE_COUNTER)
-    {
-        *dtype = STR;
-    }
-    else if(0 == strcmp(filename, "top_log.txt") || 0 == strcmp(filename, "<message_bus>"))
-    {
-        *dtype = STR;
-    }
-    else
-    {
-        *dtype = OCCURENCE;
-    }
-}
-
 
 static int getLogFileDescriptor(GrepSeekProfile* gsProfile, const char* logFile, int old_fd, off_t* out_seek_value) {
     long seek_value_from_map = 0;
     getLogSeekValue(gsProfile->logFileSeekMap, logFile, &seek_value_from_map);
-    updateLogSeek(gsProfile->logFileSeekMap, logFile);
     if (old_fd != -1) {
         close(old_fd);
     }
-    int fd = open(logFile, O_RDONLY);
+    // TODO : Get path from initProperties and append the log file name
+    char logFilePath[PATH_MAX];
+    snprintf(logFilePath, sizeof(logFilePath), "%s%s", "/opt/logs/", logFile); 
+
+    T2Debug("Opening log file %s\n", logFilePath);
+    int fd = open(logFilePath, O_RDONLY);
     if (fd == -1) {
-        T2Error("Failed to open log file %s\n", logFile);
+        T2Error("Failed to open log file %s\n", logFilePath);
+        return -1;
     }
+
+    // Calculate the file size
+    struct stat sb;
+    if (fstat(fd, &sb) == -1) {
+        T2Error("Error getting file size for %s\n", logFile);
+        close(fd);
+        return -1;
+    }
+    updateLogSeek(gsProfile->logFileSeekMap, logFile, sb.st_size);
     *out_seek_value = seek_value_from_map;
     return fd;
 }
@@ -690,37 +437,28 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd , const off_t 
            perror("Error getting file size");
            return NULL;
        }
-
+       
        FileDescriptor* fileDescriptor = NULL;
-
-       printf("File size: %ld bytes\n", sb.st_size);
-
-       if (sb.st_size > seek_value) {
-           printf("File has grown compared to previous lookup \n");
-       } else {
-           printf("File has not grown compared to previous lookup \n");
-       }
-       // Check if the file size is a multiple of the page size
-   
-       off_t file_size_offset ;
-       int bytes_ignored = 0;
+       off_t offset_in_page_size_multiple ;
+       unsigned int bytes_ignored = 0;
 
        // Find the nearest multiple of page size
        long page_size = sysconf(_SC_PAGESIZE);
-       bytes_ignored = seek_value % page_size;
-       if (bytes_ignored > 0) {
-           printf("File size is not a multiple of page size. Ignoring %d bytes and Rounding up to nearest page size \n", bytes_ignored);
-           file_size_offset = (seek_value / page_size) * page_size;
-       } else {
-           file_size_offset = sb.st_size;
-       }
-       printf("File size rounded to nearest page size: %ld bytes\n", file_size_offset);
+        if (seek_value > 0) {
+            offset_in_page_size_multiple = (seek_value / page_size) * page_size;
+            bytes_ignored = seek_value - offset_in_page_size_multiple;
+        } else {
+            offset_in_page_size_multiple = 0;
+            bytes_ignored = 0;
+        }
+      
+       T2Debug("File size rounded to nearest page size used for offset read: %ld bytes\n", offset_in_page_size_multiple);
    
-       char *addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, file_size_offset);
+       char *addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
        close(fd);
 
        if (addr == MAP_FAILED) {
-           perror("Error mapping file");
+           T2Error("Error in memory mapping file %d: %s\n", fd, strerror(errno));
            return NULL;
        }
        fileDescriptor = malloc(sizeof(FileDescriptor));
@@ -729,12 +467,11 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd , const off_t 
            return NULL;
        }
        memset(fileDescriptor, 0, sizeof(FileDescriptor));
+       // addr needs to ignore the first bytes_ignored bytes
+       addr += bytes_ignored;
        fileDescriptor->addr = addr;
        fileDescriptor->fd = fd;
        fileDescriptor->file_size = sb.st_size;
-   
-       // addr needs to ignore the first bytes_ignored bytes
-       addr += bytes_ignored;
        
        return fileDescriptor;
 }
@@ -812,6 +549,7 @@ static int parseMarkerListOptimized(char* profileName, Vector* ip_vMarkerList, V
             if (prevfile != NULL)
             {
                 free(prevfile);
+                prevfile = NULL;
             }
 
             if (fd != -1) {
@@ -829,7 +567,9 @@ static int parseMarkerListOptimized(char* profileName, Vector* ip_vMarkerList, V
             fd = getLogFileDescriptor(gsProfile, log_file_for_this_iteration, fd, &seek_value);
             if (fd == -1) {
                 continue;
+                printf("Error opening file %s\n", log_file_for_this_iteration);
             }
+
             prevfile = updateFilename(prevfile, log_file_for_this_iteration);
             fileDescriptor = getFileDeltaInMemMapAndSearch(fd, seek_value);
             if (fileDescriptor == NULL) {
@@ -886,13 +626,11 @@ int getDCAResultsInVector(char* profileName, Vector* vecMarkerList, Vector** out
 
     T2Debug("%s ++in \n", __FUNCTION__);
     int rc = -1;
-
-    /*
-     * Serializing grep result functionality,
-     * to avoid synchronization issue on single processor device when
-     * multiple profiles tries to get grep result.
-     * TODO: Remove static variables from log files processing apis.
-     */
+    if(NULL == profileName || NULL == vecMarkerList || NULL == out_grepResultList)
+    {
+        T2Error("Invalid arguments for %s\n", __FUNCTION__);
+        return rc;
+    }
     pthread_mutex_lock(&dcaMutex);
     if(NULL != vecMarkerList)
     {

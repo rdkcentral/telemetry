@@ -20,7 +20,7 @@ lib_LTLIBRARIES = libdcautil.la
 
 bin_PROGRAMS = logrep
 
-libdcautil_la_SOURCES = dcautil.c dca.c dcalist.c legacyutils.c dcaproc.c rdk_linkedlist.c
+libdcautil_la_SOURCES = dcautil.c dca.c legacyutils.c dcaproc.c rdk_linkedlist.c
 libdcautil_la_CFLAGS = 
 libdcautil_la_LDFLAGS = -shared -fPIC -lcjson
 libdcautil_la_CFLAGS += $(DBUS_CFLAGS) -DUSE_TR181_CCSP_MESSAGEBUS
@@ -41,7 +41,7 @@ libdcautil_la_CFLAGS += -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 
 libdcautil_la_DEPENDENCIES = ${top_builddir}/source/ccspinterface/libccspinterface.la ${top_builddir}/source/utils/libt2utils.la
 
 
-logrep_SOURCES = testModules.c dcautil.c dca.c dcalist.c legacyutils.c dcaproc.c dcajson.c rdk_linkedlist.c
+logrep_SOURCES = testModules.c dcautil.c dca.c legacyutils.c dcaproc.c rdk_linkedlist.c
 logrep_LDFLAGS = -shared -fPIC -lcjson
 logrep_CFLAGS = -g
 logrep_CFLAGS += $(DBUS_CFLAGS) -DUSE_TR181_CCSP_MESSAGEBUS

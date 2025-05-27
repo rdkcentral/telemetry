@@ -49,22 +49,20 @@ static pthread_mutex_t pExecCountLock = PTHREAD_MUTEX_INITIALIZER;
 static void freeLogFileSeekMap(void *data)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
-    if (data != NULL)
+    if (data)
     {
-        hash_element_t *element = (hash_element_t *) data;
+        hash_element_t *element = (hash_element_t *)data;
 
-        if (element->key)
-        {
-            T2Debug("Freeing hash entry element for Log file Name:%s\n", element->key);
+        if (element->key) {
             free(element->key);
+            element->key = NULL;
         }
-        if (element->data)
-        {
-            T2Debug("Freeing element data\n");
+        if (element->data) {
             free(element->data);
+            element->data = NULL;
         }
-
         free(element);
+        element = NULL;
     }
     T2Debug("%s --out\n", __FUNCTION__);
 }

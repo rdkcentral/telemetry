@@ -42,10 +42,10 @@ make -C source/test
 # Execute test suites for different sub-modules
 
 # - Disabled for now as the gtest framework ends up in a segfault at tear down
-# ./source/test/dcautils/dcautil_gtest.bin
+ ./source/test/dcautils/dcautil_gtest.bin
 # ./source/test/protocol/protocol_gtest.bin
 # ./source/test/xconf-client/xconfclient_gtest.bin
-# ./source/test/telemetry_gtest.bin
+ ./source/test/telemetry_gtest.bin
 
 ./source/test/reportgen/reportgen_gtest.bin
 ./source/test/scheduler/scheduler_gtest.bin

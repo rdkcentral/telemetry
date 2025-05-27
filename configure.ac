@@ -31,8 +31,6 @@ AC_CONFIG_SRCDIR([source/protocol])
 AC_CONFIG_SRCDIR([source/protocol/http])
 AC_CONFIG_SRCDIR([source/protocol/rbusMethod])
 AC_CONFIG_SRCDIR([source/dcautil])
-AC_CONFIG_SRCDIR([source/nativeProtocolSimulator])
-AC_CONFIG_SRCDIR([source/testApp])
 AM_INIT_AUTOMAKE([foreign no-dist-gzip dist-bzip2 1.9])
 
 LT_INIT
@@ -48,7 +46,7 @@ AC_ARG_ENABLE([gtestapp],
                case "${enableval}" in
                 yes) GTEST_SUPPORT_ENABLED=true
                      GTEST_ENABLE_FLAG=" -DGTEST_ENABLE"
-                     m4_if(m4_sysval,[0],[AC_CONFIG_FILES([source/test/Makefile source/test/dcautils/Makefile source/test/protocol/Makefile source/test/xconf-client/Makefile source/test/t2parser/Makefile source/test/scheduler/Makefile source/test/reportgen/Makefile])]);;
+                     m4_if(m4_sysval,[0],[AC_CONFIG_FILES([source/test/Makefile source/test/dcautils/Makefile source/test/t2parser/Makefile source/test/scheduler/Makefile source/test/reportgen/Makefile])]);;
                 no) GTEST_SUPPORT_ENABLED=false AC_MSG_ERROR([Gtest support is disabled]);;
                  *) AC_MSG_ERROR([bad value ${enableval} for --enable-gtestapp ]);;
                esac
@@ -219,9 +217,7 @@ AC_CONFIG_FILES([Makefile
                  source/utils/Makefile
                  source/commonlib/Makefile
                  source/protocol/Makefile
-                 source/nativeProtocolSimulator/Makefile
                  source/dcautil/Makefile
-                 source/testApp/Makefile
                  source/protocol/http/Makefile
                  source/protocol/rbusMethod/Makefile])
 

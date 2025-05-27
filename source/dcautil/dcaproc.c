@@ -174,7 +174,7 @@ int getProcUsage(char *processName, Vector* grepResultList, bool trim, char* reg
         if ((*pid) <= 0)
         {
             // pidof was empty, see if we can grab the pid via ps
-            sprintf(psCommand, "busybox ps | grep %s | grep -v grep | awk '{ print $1 }' | tail -n1", processName);
+            snprintf(psCommand, sizeof(psCommand), "busybox ps | grep %s | grep -v grep | awk '{ print $1 }' | tail -n1", processName);
 
 #ifdef LIBSYSWRAPPER_BUILD
             if (!(cmdPid = v_secure_popen("r", "busybox ps | grep %s | grep -v grep | awk '{ print $1 }' | tail -n1", processName)))
@@ -601,7 +601,7 @@ int getCPUInfo(procMemCpuInfo *pInfo)
 #ifdef LIBSYSWRAPPER_BUILD
         inFp = v_secure_popen("r", "cat %s |grep -i '%s'", TOPTEMP, pInfo->processName);
 #else
-        sprintf(command, "cat %s |grep -i '%s'", TOPTEMP, pInfo->processName);
+        snprintf(command, sizeof(command), "cat %s |grep -i '%s'", TOPTEMP, pInfo->processName);
         inFp = popen(command, "r");
 #endif
         normalize = TOPITERATION;

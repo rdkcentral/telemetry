@@ -649,6 +649,11 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
                     {
                         T2Error("cJSON_CreateArray failed .. TimevectorToarray is NULL\n");
                         cJSON_Delete(arrayItem);
+                        if(regaccumulateValues != NULL)
+                        {
+                            Vector_Clear(regaccumulateValues, NULL);
+                            free(regaccumulateValues);
+                        }
                         return T2ERROR_FAILURE;
                     }
                     convertVectorToJson(TimevectorToarray, eventMarker->accumulatedTimestamp);
@@ -662,6 +667,11 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
                 {
                     T2Debug("Marker value Array for : %s is %s\n", eventMarker->markerName, temp);
                     free(temp);
+                }
+                if(regaccumulateValues != NULL)
+                {
+                    Vector_Clear(regaccumulateValues, NULL);
+                    free(regaccumulateValues);
                 }
             }
             break;

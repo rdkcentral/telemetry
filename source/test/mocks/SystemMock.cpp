@@ -23,10 +23,12 @@
 typedef int (*system_ptr) (const char * cmd);
 typedef int (*unlink_ptr) (const char * str);
 typedef int (*access_ptr) (const char * pathname, int mode);
+typedef int (*remove_ptr) (const char * pathname);
 
 system_ptr system_func = (system_ptr) dlsym(RTLD_NEXT, "system");
 unlink_ptr unlink_func = (unlink_ptr) dlsym(RTLD_NEXT, "unlink");
 access_ptr access_func = (access_ptr) dlsym(RTLD_NEXT, "access");
+remove_ptr remove_func = (remove_ptr) dlsym(RTLD_NEXT, "remove");
 
 // Mock Method
 extern "C" int system(const char * cmd)
@@ -55,3 +57,12 @@ extern "C" int access(const char * pathname, int mode)
     }
     return g_systemMock->access(pathname, mode);
 }
+
+extern "C" int remove(const char *pathname)
+{
+    if(!g_systemMock)                                                                                                             
+    {                                                                                                                              
+        return remove_func(pathname);                                                                                         
+    }                                                                                                                              
+    return g_systemMock->remove(pathname);                                                                                   
+}                                              

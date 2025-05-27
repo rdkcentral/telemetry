@@ -83,7 +83,7 @@ extern "C" void rbusValue_SetInt32(rbusValue_t value, int32_t i32)
     return g_rbusMock->rbusValue_SetInt32(value, i32);
 }
 
-extern "C" rbusError_t rbusMethod_Invoke(rbusHandle_t handle, char const* value, rbusObject_t object, rbusObject_t* objectpt)
+extern "C" rbusError_t rbusMethod_Invoke(rbusHandle_t handle, char const* value, rbusObject_t object, rbusObject_t* objectpt)      
 {
     if (!g_rbusMock)
     {
@@ -99,7 +99,7 @@ extern "C" const char* rbusError_ToString(rbusError_t e)
         return "RBUS_ERROR_INVALID_OPERATION";
     }
     else{
-	    #define rbusError_String(E, S) case E: s = S; break;
+            #define rbusError_String(E, S) case E: s = S; break;
 
   char const * s = NULL;
   switch (e)
@@ -143,10 +143,10 @@ extern "C" bool rbusCheckMethodExists(const char* rbusMethodName)
 }
 
 
-extern "C" T2ERROR rbusMethodCaller(char *methodName, rbusObject_t* inputParams, char* payload){
+extern "C" T2ERROR rbusMethodCaller(char *methodName, rbusObject_t* inputParams, char* payload, rbusMethodCallBackPtr rbusMethodCallBack){
     if (!g_rbusMock)
     {
         return T2ERROR_FAILURE;
     }
-    return g_rbusMock->rbusMethodCaller(methodName, inputParams, payload);
+    return g_rbusMock->rbusMethodCaller(methodName, inputParams, payload, rbusMethodCallBack);
 }

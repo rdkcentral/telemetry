@@ -26,6 +26,7 @@ typedef int (*pipe_ptr) (int str[2]);
 typedef int (*fclose_ptr)(FILE * stream);
 typedef size_t (*fread_ptr) (void* ptr, size_t size, size_t nmemb,FILE* stream);
 typedef int (*fseek_ptr) (FILE *stream, long offset, int whence);
+typedef char* (*fgets_ptr) (char *str, int n, FILE *stream);
 typedef ssize_t (*getline_ptr) (char **str, size_t *n, FILE * stream);
 typedef struct dirent * (*readdir_ptr) (DIR *rd);
 typedef ssize_t (*read_ptr)(int fd, void *buf, size_t count);
@@ -44,13 +45,15 @@ typedef long (*ftell_ptr) (FILE *stream);
 typedef int (*fscanf_ptr) (FILE *, const char *, va_list);
 typedef pid_t (*fork_ptr) ();
 typedef ssize_t (*write_ptr) (int fd, const void *buf, size_t count);
-
+//typedef int (*stat_ptr) (const char *pathname, struct stat *statbuf);
+typedef int (*fprintf_ptr) (FILE* stream, const char* format, va_list args);
 
 popen_ptr popen_func = (popen_ptr) dlsym(RTLD_NEXT, "popen");
 pclose_ptr pclose_func = (pclose_ptr) dlsym(RTLD_NEXT, "pclose");
 pipe_ptr pipe_func = (pipe_ptr) dlsym(RTLD_NEXT, "pipe");
 fclose_ptr fclose_func = (fclose_ptr) dlsym(RTLD_NEXT, "fclose");
 fread_ptr fread_func = (fread_ptr) dlsym(RTLD_NEXT, "fread");
+fgets_ptr fgets_func = (fgets_ptr) dlsym(RTLD_NEXT, "fgets");
 fseek_ptr fseek_func = (fseek_ptr) dlsym(RTLD_NEXT, "fseek");
 getline_ptr getline_func = (getline_ptr) dlsym(RTLD_NEXT, "getline");
 readdir_ptr readdir_func = (readdir_ptr) dlsym(RTLD_NEXT, "readdir");
@@ -70,6 +73,8 @@ ftell_ptr ftell_func = (ftell_ptr) dlsym(RTLD_NEXT, "ftell");
 fscanf_ptr fscanf_func = (fscanf_ptr) dlsym(RTLD_NEXT, "fscanf");
 fork_ptr fork_func = (fork_ptr) dlsym(RTLD_NEXT, "fork");
 write_ptr write_func = (write_ptr) dlsym(RTLD_NEXT, "write");
+//stat_ptr stat_func = (stat_ptr) dlsym(RTLD_NEXT, "stat");
+fprintf_ptr fprintf_func = (fprintf_ptr) dlsym(RTLD_NEXT, "fprintf");
 
 extern "C" int fscanf(FILE *stream, const char *format, ...)
 {
@@ -84,6 +89,14 @@ extern "C" int fscanf(FILE *stream, const char *format, ...)
     return result;
 }
 
+extern "C" char* fgets(char *str, int n, FILE *stream)
+{
+    if(g_fileIOMock == nullptr){
+       return fgets_func(str, n, stream);
+    }
+
+    return g_fileIOMock->fgets(str, n, stream);
+}
 
 extern "C" long ftell(FILE *stream)
 {
@@ -270,7 +283,7 @@ extern "C" struct curl_slist *curl_slist_append(struct curl_slist *list, const c
 extern "C" CURL* curl_easy_init()
 {
     if (g_fileIOMock == nullptr){
-        return curl_easy_init_func();
+        return (CURL*)NULL;
     }
     
     return g_fileIOMock->curl_easy_init();
@@ -290,4 +303,27 @@ extern "C" ssize_t write(int fd, const void *buf, size_t count)
        return write_func(fd, buf, count);
    }
    return g_fileIOMock->write(fd, buf, count);
+}
+
+/*extern "C" int stat(const char *pathname, struct stat *statbuf)
+{
+   if(g_fileIOMock == nullptr){
+        return stat_func(pathname, statbuf);
+   }
+   return g_fileIOMock->stat(pathname, statbuf);
+}*/
+
+extern "C" int fprintf(FILE* stream, const char* format, ...) {
+    va_list args;
+    va_start(args, format);
+    int result = -1;
+
+    if (g_fileIOMock) {
+        result = g_fileIOMock->fprintf(stream, format, args);
+    }
+    else{
+	result = fprintf_func(stream, format, args);
+    }
+    va_end(args);
+    return result;
 }

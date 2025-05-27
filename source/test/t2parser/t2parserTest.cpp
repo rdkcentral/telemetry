@@ -115,16 +115,17 @@ TEST(PROCESSXCONFCONFIGURATION, TEST_NULL_INVALID)
         cout << data << endl;
         EXPECT_EQ(T2ERROR_FAILURE, processConfigurationXConf(data, &profile));
 	delete[] data;
-// 5th case marker cnt 0	
-	getline(new_file, sa);
+
+// 5th case Working case
+        getline(new_file, sa);
 
         cout << sa << endl;
         len = sa.length();
         data = new char[len + 1];
         strcpy(data, sa.c_str());
         cout << data << endl;
-        EXPECT_EQ(T2ERROR_FAILURE, processConfigurationXConf(data, &profile));
-	delete[] data;
+        EXPECT_EQ(T2ERROR_SUCCESS, processConfigurationXConf(data, &profile));
+        delete[] data;
      }
      new_file.close();
 }
@@ -151,7 +152,7 @@ TEST(PROCESSCONFIGURATION_CJSON, TEST_NULL_INVALID_PARAM)
         data = new char[len + 1];
         strcpy(data, sa.c_str());
         //Protocol NULL
-        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile", "hash2", &profile));
+        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile2", "hash2", &profile));
 	delete[] data;
 
         getline(new_file, sa);
@@ -159,7 +160,7 @@ TEST(PROCESSCONFIGURATION_CJSON, TEST_NULL_INVALID_PARAM)
         data = new char[len + 1];
         strcpy(data, sa.c_str());
         //Encoding NULL
-        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile", "hash3", &profile));
+        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile3", "hash3", &profile));
         delete[] data;
 
         getline(new_file, sa); 
@@ -167,7 +168,7 @@ TEST(PROCESSCONFIGURATION_CJSON, TEST_NULL_INVALID_PARAM)
         data = new char[len + 1];
         strcpy(data, sa.c_str());
         //Parameter NULL
-        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile", "hash4", &profile));
+        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile4", "hash4", &profile));
         delete[] data;
 
        	getline(new_file, sa);
@@ -175,7 +176,7 @@ TEST(PROCESSCONFIGURATION_CJSON, TEST_NULL_INVALID_PARAM)
         data = new char[len + 1];
         strcpy(data, sa.c_str());
         //HASH NULL
-        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile", NULL, &profile));
+        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile5", NULL, &profile));
 	delete[] data;
 
         getline(new_file, sa);
@@ -183,7 +184,7 @@ TEST(PROCESSCONFIGURATION_CJSON, TEST_NULL_INVALID_PARAM)
         data = new char[len + 1];
         strcpy(data, sa.c_str());
         //RI<ML NULL
-        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile", "hash6", &profile));
+        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile6", "hash6", &profile));
         delete[] data;
 
         getline(new_file, sa);
@@ -191,14 +192,14 @@ TEST(PROCESSCONFIGURATION_CJSON, TEST_NULL_INVALID_PARAM)
         data = new char[len + 1];
         strcpy(data, sa.c_str());
 	//!RI!TC
-        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile", "hash7", &profile));
+        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile7", "hash7", &profile));
         delete[] data;
        //HTTP PROTOCOL
 	getline(new_file, sa);
         len = sa.length();
         data = new char[len + 1];
         strcpy(data, sa.c_str());
-        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile", "hash8", &profile));
+        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile8", "hash8", &profile));
 	delete[] data;
 
        //Protocol HTTP
@@ -206,14 +207,14 @@ TEST(PROCESSCONFIGURATION_CJSON, TEST_NULL_INVALID_PARAM)
        len = sa.length();
         data = new char[len + 1];
         strcpy(data, sa.c_str());
-        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile", "hash9", &profile));
+        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile9", "hash9", &profile));
 	delete[] data;
 
 	getline(new_file, sa);
         len = sa.length();
         data = new char[len + 1];
         strcpy(data, sa.c_str());
-        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile", "hash10", &profile));
+        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile10", "hash10", &profile));
         delete[] data;
 
         getline(new_file, sa);
@@ -221,7 +222,7 @@ TEST(PROCESSCONFIGURATION_CJSON, TEST_NULL_INVALID_PARAM)
         data = new char[len + 1];
         strcpy(data, sa.c_str());
         //RBUS_METHOD_PARAM_NULL
-        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile", "hash11", &profile));
+        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile11", "hash11", &profile));
         delete[] data;
 
        getline(new_file, sa);
@@ -229,7 +230,7 @@ TEST(PROCESSCONFIGURATION_CJSON, TEST_NULL_INVALID_PARAM)
         data = new char[len + 1];
         strcpy(data, sa.c_str());
         //Method not present
-        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile", "hash12", &profile));
+        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile12", "hash12", &profile));
         delete[] data;
 
         getline(new_file, sa);
@@ -237,7 +238,7 @@ TEST(PROCESSCONFIGURATION_CJSON, TEST_NULL_INVALID_PARAM)
         data = new char[len + 1];
         strcpy(data, sa.c_str());
 	//Unsupported protocol
-        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile", "hash12", &profile));
+        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile13", "hash13", &profile));
         delete[] data;
 
         getline(new_file, sa);
@@ -245,7 +246,7 @@ TEST(PROCESSCONFIGURATION_CJSON, TEST_NULL_INVALID_PARAM)
         data = new char[len + 1];
         strcpy(data, sa.c_str());
 	 //ReportTimeformat NULL
-        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile", "hash13", &profile));
+        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile14", "hash14", &profile));
         delete[] data;
 
         getline(new_file, sa);
@@ -253,7 +254,7 @@ TEST(PROCESSCONFIGURATION_CJSON, TEST_NULL_INVALID_PARAM)
         data = new char[len + 1];
         strcpy(data, sa.c_str());
         //RI_GT_AT_NULL
-        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile", "hash14", &profile));
+        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile15", "hash15", &profile));
         delete[] data;
 
         getline(new_file, sa);
@@ -261,7 +262,7 @@ TEST(PROCESSCONFIGURATION_CJSON, TEST_NULL_INVALID_PARAM)
         data = new char[len + 1];
         strcpy(data, sa.c_str());
 	//TC type
-        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile", "hash15", &profile));
+        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile16", "hash16", &profile));
 	delete[] data;
 
         getline(new_file, sa);
@@ -269,7 +270,7 @@ TEST(PROCESSCONFIGURATION_CJSON, TEST_NULL_INVALID_PARAM)
         data = new char[len + 1];
         strcpy(data, sa.c_str());
 	//Type!=datamodel
-        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile", "hash16", &profile));
+        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile17", "hash17", &profile));
         delete[] data;
 
         getline(new_file, sa);
@@ -277,7 +278,7 @@ TEST(PROCESSCONFIGURATION_CJSON, TEST_NULL_INVALID_PARAM)
         data = new char[len + 1];
         strcpy(data, sa.c_str());
 	//operator NULL
-        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile", "hash17", &profile));
+        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile18", "hash18", &profile));
         delete[] data;
 
         getline(new_file, sa);
@@ -285,7 +286,7 @@ TEST(PROCESSCONFIGURATION_CJSON, TEST_NULL_INVALID_PARAM)
         data = new char[len + 1];
         strcpy(data, sa.c_str());
 	//operator invalid
-        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile", "hash18", &profile));
+        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile19", "hash19", &profile));
         delete[] data;
 
         getline(new_file, sa);
@@ -293,7 +294,7 @@ TEST(PROCESSCONFIGURATION_CJSON, TEST_NULL_INVALID_PARAM)
         data = new char[len + 1];
         strcpy(data, sa.c_str());
         //threshold
-        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile", "hash19", &profile));
+        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile20", "hash20", &profile));
         delete[] data;
 
         getline(new_file, sa);
@@ -301,7 +302,7 @@ TEST(PROCESSCONFIGURATION_CJSON, TEST_NULL_INVALID_PARAM)
         data = new char[len + 1];
         strcpy(data, sa.c_str());
         //Ref NULL
-        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile", "hash20", &profile));
+        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile21", "hash21", &profile));
         delete[] data;
 
         getline(new_file, sa);
@@ -309,23 +310,31 @@ TEST(PROCESSCONFIGURATION_CJSON, TEST_NULL_INVALID_PARAM)
         data = new char[len + 1];
         strcpy(data, sa.c_str());
 	//Ref Invalid
-        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile", "hash21", &profile));
+        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "RDKB_Profile22", "hash22", &profile));
 	delete[] data;
-
+        sleep(2);
 	getline(new_file, sa);
         len = sa.length();
         data = new char[len + 1];
         strcpy(data, sa.c_str());
 	//datamodel parameter reference is mandatory
-	EXPECT_EQ(T2ERROR_SUCCESS,  processConfiguration(&data, "RDKB_Profile", "hash22", &profile));
+	EXPECT_EQ(T2ERROR_SUCCESS,  processConfiguration(&data, "RDKB_Profile23", "hash23", &profile));
 	delete[] data;
-        
+
 	//type is invalid for parameters
 	getline(new_file, sa);
         len = sa.length();
         data = new char[len + 1];
         strcpy(data, sa.c_str());
-        EXPECT_EQ(T2ERROR_SUCCESS,  processConfiguration(&data, "RDKB_Profile", "hash23", &profile));
+        EXPECT_EQ(T2ERROR_SUCCESS,  processConfiguration(&data, "RDKB_Profile24", "hash24", &profile));
+        delete[] data;
+
+	//working case
+	getline(new_file, sa);
+        len = sa.length();
+        data = new char[len + 1];
+        strcpy(data, sa.c_str());
+        EXPECT_EQ(T2ERROR_SUCCESS,  processConfiguration(&data, "RDKB_Profile25", "hash25", &profile));
         delete[] data;
 
     }
@@ -733,3 +742,42 @@ TEST(PROCESSCONFIGURATION_MSGPACK, REPORTFORMAT_NULL)
     msgpack_object *singleProfile = msgpack_get_array_element(profilesArray, 0);
     EXPECT_EQ(T2ERROR_FAILURE,processMsgPackConfiguration(singleProfile, &profile));     
 }
+
+TEST(PROCESSCONFIGURATION_MSGPACK, PARAMETER_TYPE_INVALID)
+{
+    msgpack_unpacked result;
+    size_t off = 0;
+    msgpack_unpack_return ret;
+    Profile *profile = NULL;
+    guchar *webConfigString = NULL;
+    char* data = "gahwcm9maWxlc5GDpG5hbWWsUkRLQl9Qcm9maWxlpGhhc2ilSGFzaDeldmFsdWWOpE5hbWWsUkRLQl9Qcm9maWxlq0Rlc2NyaXB0aW9urFJES0JfUHJvZmlsZadWZXJzaW9uozAuMahQcm90b2NvbKRIVFRQrEVuY29kaW5nVHlwZaRKU09OsVJlcG9ydGluZ0ludGVydmFsHrFBY3RpdmF0aW9uVGltZU91dM0OEKtHZW5lcmF0ZU5vd8KoUm9vdE5hbWWqRlIyX1VTX1RDMq1UaW1lUmVmZXJlbmNltDIwMjItMTItMTlUMDk6MzM6NTZaqVBhcmFtZXRlcpOEpHR5cGWsdHlwZV9pbnZhbGlkpG5hbWWmVVBUSU1FqXJlZmVyZW5jZbhEZXZpY2UuRGV2aWNlSW5mby5VcFRpbWWjdXNlqGFic29sdXRlhKR0eXBlpWV2ZW50qWV2ZW50TmFtZa9VU0VEX01FTTFfc3BsaXSpY29tcG9uZW50pnN5c2ludKN1c2WoYWJzb2x1dGWFpHR5cGWkZ3JlcKZtYXJrZXLZIlNZU19JTkZPX0NyYXNoUG9ydGFsVXBsb2FkX3N1Y2Nlc3Omc2VhcmNosVN1Y2Nlc3MgdXBsb2FkaW5np2xvZ0ZpbGWsY29yZV9sb2cudHh0o3VzZaVjb3VudLRSZXBvcnRpbmdBZGp1c3RtZW50c4OuUmVwb3J0T25VcGRhdGXCtkZpcnN0UmVwb3J0aW5nSW50ZXJ2YWwPsE1heFVwbG9hZExhdGVuY3nNE4ikSFRUUISjVVJMu2h0dHBzOi8vc3RicnRsLnI1My54Y2FsLnR2L6tDb21wcmVzc2lvbqROb25lpk1ldGhvZKRQT1NUs1JlcXVlc3RVUklQYXJhbWV0ZXKRgqROYW1lqnJlcG9ydE5hbWWpUmVmZXJlbmNlrFByb2ZpbGUuTmFtZaxKU09ORW5jb2RpbmeCrFJlcG9ydEZvcm1hdK1OYW1lVmFsdWVQYWlyr1JlcG9ydFRpbWVzdGFtcKROb25l";
+    gsize decodedDataLen = 0;
+    webConfigString = g_base64_decode(data, &decodedDataLen);
+    msgpack_unpacked_init(&result);
+    ret = msgpack_unpack_next(&result, (char*)webConfigString, decodedDataLen, &off);
+    msgpack_object *profiles_root =  &result.data;                                                                                 
+    msgpack_object *profilesArray = msgpack_get_map_value(profiles_root, "profiles");                                              
+    msgpack_object *singleProfile = msgpack_get_array_element(profilesArray, 0);                                                   
+    EXPECT_EQ(T2ERROR_SUCCESS, processMsgPackConfiguration(singleProfile, &profile));                                               
+}
+
+TEST(PROCESSCONFIGURATION_MSGPACK, WORKING_CASE)
+{
+    msgpack_unpacked result;
+    size_t off = 0;
+    msgpack_unpack_return ret;
+    Profile *profile = NULL;
+    char* data = "gahwcm9maWxlc5GDpG5hbWWsUkRLQl9Qcm9maWxlpGhhc2ilSGFzaDeldmFsdWWPpE5hbWWsUkRLQl9Qcm9maWxlq0Rlc2NyaXB0aW9urFJES0JfUHJvZmlsZadWZXJzaW9uozAuMahQcm90b2NvbKRIVFRQrEVuY29kaW5nVHlwZaRKU09OsVJlcG9ydGluZ0ludGVydmFsHrFBY3RpdmF0aW9uVGltZU91dM0OEKtHZW5lcmF0ZU5vd8KoUm9vdE5hbWWqRlIyX1VTX1RDMq1UaW1lUmVmZXJlbmNltDIwMjItMTItMTlUMDk6MzM6NTZaqVBhcmFtZXRlcpOEpHR5cGWsdHlwZV9pbnZhbGlkpG5hbWWmVVBUSU1FqXJlZmVyZW5jZbhEZXZpY2UuRGV2aWNlSW5mby5VcFRpbWWjdXNlqGFic29sdXRlhKR0eXBlpWV2ZW50qWV2ZW50TmFtZa9VU0VEX01FTTFfc3BsaXSpY29tcG9uZW50pnN5c2ludKN1c2WoYWJzb2x1dGWFpHR5cGWkZ3JlcKZtYXJrZXLZIlNZU19JTkZPX0NyYXNoUG9ydGFsVXBsb2FkX3N1Y2Nlc3Omc2VhcmNosVN1Y2Nlc3MgdXBsb2FkaW5np2xvZ0ZpbGWsY29yZV9sb2cudHh0o3VzZaVjb3VudLBUcmlnZ2VyQ29uZGl0aW9ukYSkdHlwZalkYXRhTW9kZWypcmVmZXJlbmNl2TlEZXZpY2UuRGV2aWNlSW5mby5YX1JES0NFTlRSQUwtQ09NX1JGQy5GZWF0dXJlLk9WUy5FbmFibGWob3BlcmF0b3KiZ3SpdGhyZXNob2xkoTC0UmVwb3J0aW5nQWRqdXN0bWVudHODrlJlcG9ydE9uVXBkYXRlwrZGaXJzdFJlcG9ydGluZ0ludGVydmFsD7BNYXhVcGxvYWRMYXRlbmN5zROIpEhUVFCEo1VSTLtodHRwczovL3N0YnJ0bC5yNTMueGNhbC50di+rQ29tcHJlc3Npb26kTm9uZaZNZXRob2SkUE9TVLNSZXF1ZXN0VVJJUGFyYW1ldGVykYKkTmFtZapyZXBvcnROYW1lqVJlZmVyZW5jZaxQcm9maWxlLk5hbWWsSlNPTkVuY29kaW5ngqxSZXBvcnRGb3JtYXStTmFtZVZhbHVlUGFpcq9SZXBvcnRUaW1lc3RhbXCkTm9uZQ==";
+    guchar *webConfigString = NULL;
+    gsize decodedDataLen = 0;
+    webConfigString = g_base64_decode(data, &decodedDataLen);
+    msgpack_unpacked_init(&result);
+    ret = msgpack_unpack_next(&result, (char*)webConfigString, decodedDataLen, &off);
+    msgpack_object *profiles_root =  &result.data;
+    msgpack_object *profilesArray = msgpack_get_map_value(profiles_root, "profiles");
+    msgpack_object *singleProfile = msgpack_get_array_element(profilesArray, 0);
+    EXPECT_EQ(T2ERROR_SUCCESS, processMsgPackConfiguration(singleProfile, &profile));
+}
+
+
+

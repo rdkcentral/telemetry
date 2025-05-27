@@ -38,19 +38,18 @@ extern "C" {
 #include <stdexcept>
 #include <sys/types.h>
 #include <dirent.h>
+#include <cstdio>
+#include <cstring>
 #define PROFILE_NAME "/opt/opt/opt/opt/opt/opt/logs/logs/logs/logs/logs/logs/opt/opt/opt/opt/opt/opt/logs/logs/logs/logs/logs/logs/opt/opt/opt/opt/opt/opt/logs/logs/logs/logs/logs/logs/opt/opt/opt/opt/opt/opt/logs/logs/logs/logs/logs/logs"
 #include "test/mocks/SystemMock.h"
 #include "test/mocks/FileioMock.h"
 #include "test/mocks/rdklogMock.h"
+#include "test/mocks/rdkconfigMock.h"
 using namespace std;
 
 using ::testing::_;
 using ::testing::Return;
 using ::testing::StrEq;
-
-SystemMock * g_systemMock = NULL;  // This is the actual definition of the mock obj 
-FileMock * g_fileIOMock = NULL;
-rdklogMock *m_rdklogMock = NULL;
 
 //Testing t2MtlsUtils
 TEST(GET_CERTS, MTLS_UTILS_NULL)
@@ -575,102 +574,265 @@ TEST(SETPRIVACYMODE, ARGS_NULL)
     free(privacyMode);
 }
 
-/*
-TEST_F(UtilsFileTestFixture, FETCHLOCALCONFIGS_FUNC1)
+rdkconfigMock *g_rdkconfigMock = nullptr;
+
+class utilsTestFixture : public ::testing::Test {
+protected:
+    void SetUp() override
+    {
+        g_fileIOMock = new FileMock();
+        g_systemMock = new SystemMock();
+	g_rdkconfigMock = new rdkconfigMock();
+    }
+
+    void TearDown() override
+    {
+        delete g_fileIOMock;
+        delete g_systemMock;
+	delete g_rdkconfigMock;
+
+        g_fileIOMock = nullptr;
+        g_systemMock = nullptr;
+	g_rdkconfigMock = nullptr;
+    }
+};
+
+TEST_F(utilsTestFixture, FETCHLOCALCONFIGS_FUNC1)
 {
     const char* path = "/tmp/t2reportprofiles/";
     DIR *dir = (DIR*)NULL ;
     Vector* configlist = NULL;
     Vector_Create(&configlist);
     Vector_PushBack(configlist, (void *)strdup("marker1"));
-  //  EXPECT_CALL(*g_fileIOMock, opendir(_))
-    //       .Times(1)
-      //     .WillOnce(Return(dir));
-
-   // EXPECT_CALL(*g_fileIOMock, mkdir(_,_))
-     //      .Times(1)
-       //    .WillOnce(Return(-1));
-
-    ASSERT_EQ(T2ERROR_FAILURE, fetchLocalConfigs(path, configlist));
-    Vector_Destroy(configlist, free);
-}
-
-
-TEST(UtilsFileTest, FETCHLOCALCONFIGS_FUNC)
-{
-    MockFopen mock;
-    g_mock_fopen = &mock;
-    const char* path = "/tmp/t2reportprofiles/";
-    DIR *dir = NULL ;
-    Vector* configlist = NULL;
-    Vector_Create(&configlist);
-    Vector_PushBack(configlist, (void *)strdup("marker1"));
-    EXPECT_CALL(mock, opendir_wrapper(_))
+    EXPECT_CALL(*g_fileIOMock, opendir(_))
            .Times(1)
-           .WillOnce(Return(nullptr));
+           .WillOnce(Return(dir));
 
-    EXPECT_CALL(mock, mkdir_wrapper(_,_))
+    EXPECT_CALL(*g_fileIOMock, mkdir(_,_))
            .Times(1)
            .WillOnce(Return(-1));
 
     ASSERT_EQ(T2ERROR_FAILURE, fetchLocalConfigs(path, configlist));
     Vector_Destroy(configlist, free);
-    g_mock_fopen = nullptr;
-}
-#if defined (MTLS_FROM_ENV)
-TEST_F(UtilsFileTestFixture, getMtlsCerts)
-{ 
-    char* cert = NULL;
-    char* key = NULL;
-    char* env =  (char*)0xffffffff;
-    EXPECT_CALL(*g_fileIOMock, getenv(_))
-            .Times(3)
-            .WillOnce(Return(env))
-            .WillOnce(Return(env))
-            .WillOnce(Return(env));
-
-    EXPECT_EQ(T2ERROR_SUCCESS, getMtlsCerts(&cert, &key));
-   
 }
 
-TEST_F(UtilsFileTestFixture, getMtlsCerts1)
+TEST_F(utilsTestFixture, FETCHLOCALCONFIGS_FUNC2)
 {
-    char* cert = NULL;
-    char* key = NULL;
-    char* env =  (char*)0xffffffff;
-    EXPECT_CALL(*g_fileIOMock, getenv(_))
-            .Times(4)
-            .WillOnce(ReturnNull())
-            .WillOnce(Return(env))
-            .WillOnce(Return(env))
-            .WillOnce(Return(env));
-
-    EXPECT_EQ(T2ERROR_SUCCESS, getMtlsCerts(&cert, &key));
-   
-}
-TEST_F(UtilsFileTestFixture, getMtlsCerts2)
-{
-    char* cert = NULL;
-    char* key = NULL;
-    char* env =  (char*)0xffffffff;
-    EXPECT_CALL(*g_fileIOMock, getenv(_))
-            .Times(2)
-            .WillOnce(ReturnNull())
-            .WillOnce(ReturnNull());
-
-    EXPECT_EQ(T2ERROR_FAILURE, getMtlsCerts(&cert, &key));
-   
-}
-TEST_F(UtilsFileTestFixture, get_system_uptime)
-{
+    const char* path = "/tmp/t2reportprofiles/";
+    DIR *dir = (DIR*)0xffffffff ;
+    Vector* configlist = NULL;
+    Vector_Create(&configlist);
+    Vector_PushBack(configlist, (void *)strdup("marker1"));
+    EXPECT_CALL(*g_fileIOMock, opendir(_))
+           .Times(1)
+           .WillOnce(Return(dir));
+    EXPECT_CALL(*g_systemMock, system(_))
+	   .Times(1)
+           .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, closedir(_))
+	   .Times(1)
+	   .WillOnce(Return(0));
     
+    ASSERT_EQ(T2ERROR_SUCCESS, fetchLocalConfigs(path, configlist));
+    Vector_Destroy(configlist, free);
+}
+
+TEST_F(utilsTestFixture, FETCHLOCALCONFIGS_FUNC3)
+{
+    const char* path = "/opt/.t2persistentFolder/";
+    DIR *dir = (DIR*)0xffffffff;
+    Vector* configlist = NULL;
+    Vector_Create(&configlist);
+    Vector_PushBack(configlist, (void *)strdup("marker1"));
+    Vector_PushBack(configlist, (void *)strdup("marker2"));
+    struct dirent *entry = NULL;
+    entry = (struct dirent *)malloc(sizeof(struct dirent));
+    entry->d_type = DT_REG;
+    std::strncpy(entry->d_name, "DCMresponse.txt", sizeof(entry->d_name));
+    EXPECT_CALL(*g_fileIOMock, opendir(_))
+           .Times(1)
+           .WillOnce(Return(dir));
+   /* EXPECT_CALL(*g_systemMock, system(_))
+	   .Times(1)
+	   .WillOnce(Return(0));*/ //v_secure_system need to be added
+    EXPECT_CALL(*g_fileIOMock, readdir(_))
+	   .Times(2)
+	   .WillOnce(Return(entry))
+	   .WillOnce(Return((struct dirent *)NULL));
+    EXPECT_CALL(*g_fileIOMock, open(_,_))
+	   .Times(1)
+	   .WillOnce(Return(1));
+    EXPECT_CALL(*g_fileIOMock, fstat(_,_))
+	   .Times(1)
+	   .WillOnce(Return(-1));
+    EXPECT_CALL(*g_fileIOMock, close(_))                                                       
+           .Times(1)
+           .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, closedir(_))  
+           .Times(1)
+           .WillOnce(Return(0));    
+    ASSERT_EQ(T2ERROR_SUCCESS, fetchLocalConfigs(path, configlist));
+    Vector_Destroy(configlist, free);
+}
+
+TEST_F(utilsTestFixture, FETCHLOCALCONFIGS_FUNC4)
+{
+    const char* path = "/opt/.t2persistentFolder/";
+    DIR *dir = (DIR*)0xffffffff;
+    Vector* configlist = NULL;
+    Vector_Create(&configlist);
+    Vector_PushBack(configlist, (void *)strdup("marker1"));
+    Vector_PushBack(configlist, (void *)strdup("marker2"));
+    struct dirent *entry = NULL;
+    entry = (struct dirent *)malloc(sizeof(struct dirent));
+    entry->d_type = DT_REG;
+    std::strncpy(entry->d_name, "DCMresponse.txt", sizeof(entry->d_name));
+    EXPECT_CALL(*g_fileIOMock, opendir(_))
+           .Times(1)
+           .WillOnce(Return(dir));
+   /* EXPECT_CALL(*g_systemMock, system(_))
+           .Times(1)
+           .WillOnce(Return(0));*/ //v_secure_system need to be added
+    EXPECT_CALL(*g_fileIOMock, readdir(_))
+           .Times(2)
+           .WillOnce(Return(entry))
+           .WillOnce(Return((struct dirent *)NULL));
+    EXPECT_CALL(*g_fileIOMock, open(_,_))
+           .Times(1)
+           .WillOnce(Return(1));
+    EXPECT_CALL(*g_fileIOMock, fstat(_,_))
+           .Times(1)
+           .WillOnce(Return(-1));
+    EXPECT_CALL(*g_fileIOMock, close(_))
+           .Times(1)
+           .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, closedir(_))
+           .Times(1)
+           .WillOnce(Return(0));
+    ASSERT_EQ(T2ERROR_SUCCESS, fetchLocalConfigs(path, configlist));
+    Vector_Destroy(configlist, free);
+}
+
+#if defined (MTLS_FROM_ENV)
+TEST(GetMtlsCertsTest, ReturnsDynamicCertsWhenEnvSet) {
+    setenv("XPKI", "1", 1);
+    setenv("XPKI_CERT", "dynamic_cert.pem", 1);
+    setenv("XPKI_PASS", "dynamic_pass", 1);
+
+    char* certName = nullptr;
+    char* phrase = nullptr;
+    EXPECT_EQ(getMtlsCerts(&certName, &phrase), T2ERROR_SUCCESS);
+    EXPECT_STREQ(certName, "dynamic_cert.pem");
+    EXPECT_STREQ(phrase, "dynamic_pass");
+
+    free(certName);
+    free(phrase);
+
+    unsetenv("XPKI");
+    unsetenv("XPKI_CERT");
+    unsetenv("XPKI_PASS");
+}
+
+TEST(GetMtlsCertsTest, ReturnsStaticCertsWhenEnvSet) {
+    unsetenv("XPKI");
+    unsetenv("XPKI_CERT");
+    unsetenv("XPKI_PASS");
+
+    setenv("STATICXPKI", "1", 1);
+    setenv("STATIC_XPKI_CERT", "static_cert.pem", 1);
+    setenv("STATIC_XPKI_PASS", "static_pass", 1);
+
+    char* certName = nullptr;
+    char* phrase = nullptr;
+    EXPECT_EQ(getMtlsCerts(&certName, &phrase), T2ERROR_SUCCESS);
+    EXPECT_STREQ(certName, "static_cert.pem");
+    EXPECT_STREQ(phrase, "static_pass");
+
+    free(certName);
+    free(phrase);
+    unsetenv("STATICXPKI");
+    unsetenv("STATIC_XPKI_CERT");
+    unsetenv("STATIC_XPKI_PASS");
+}
+
+TEST(GetMtlsCertsTest, ReturnsFailureWhenNoEnvSet) {
+    unsetenv("XPKI");
+    unsetenv("XPKI_CERT");
+    unsetenv("XPKI_PASS");
+    unsetenv("STATICXPKI");
+    unsetenv("STATIC_XPKI_CERT");
+    unsetenv("STATIC_XPKI_PASS");
+
+    char* certName = nullptr;
+    char* phrase = nullptr;
+    EXPECT_EQ(getMtlsCerts(&certName, &phrase), T2ERROR_FAILURE);
+}
+#else
+TEST_F(utilsTestFixture, getMtlsCerts1)
+{
+    char* certName = nullptr;
+    char* phrase = nullptr;
+    EXPECT_CALL(*g_systemMock, access(_,_))
+            .Times(1)
+            .WillOnce(Return(0));
+    #ifdef LIBRDKCONFIG_BUILD
+    EXPECT_CALL(*g_rdkconfigMock, rdkconfig_get(_,_,_))
+            .Times(1)
+	    .WillOnce(Return(RDKCONFIG_OK));
+    #endif
+    EXPECT_EQ(T2ERROR_SUCCESS, getMtlsCerts(&certName, &phrase));
+}
+
+TEST_F(utilsTestFixture, getMtlsCerts2)
+{
+    char* certName = nullptr;
+    char* phrase = nullptr;
+    EXPECT_CALL(*g_systemMock, access(_,_))
+            .Times(2)
+            .WillOnce(Return(-1))
+	    .WillOnce(Return(0));
+    FILE* mockfp = (FILE *)0xffffffff;
     EXPECT_CALL(*g_fileIOMock, fopen(_,_))
             .Times(1)
-            .WillOnce(ReturnNull());
-    EXPECT_EQ(0.0, getSystemUptime());
+            .WillOnce(Return(mockfp));
+    EXPECT_CALL(*g_fileIOMock, fscanf(_,_,_))
+            .Times(1)
+            .WillOnce(Return(1));
+    EXPECT_CALL(*g_fileIOMock, fclose(_))
+            .Times(1)
+            .WillOnce(Return(0));
+    #ifdef LIBRDKCONFIG_BUILD
+    EXPECT_CALL(*g_rdkconfigMock, rdkconfig_get(_,_,_))
+            .Times(1)
+            .WillOnce(Return(RDKCONFIG_OK));
+    #endif
+    EXPECT_EQ(T2ERROR_SUCCESS, getMtlsCerts(&certName, &phrase));
 }
 
-TEST_F(UtilsFileTestFixture, get_system_uptime1)
+TEST_F(utilsTestFixture, getMtlsCerts3)
+{
+    char* certName = nullptr;
+    char* phrase = nullptr;
+    EXPECT_CALL(*g_systemMock, access(_,_))
+            .Times(2)
+            .WillOnce(Return(-1))
+            .WillOnce(Return(-1));
+    EXPECT_EQ(T2ERROR_FAILURE, getMtlsCerts(&certName, &phrase));
+}
+
+#endif
+
+
+TEST_F(utilsTestFixture, get_system_uptime)
+{
+
+    EXPECT_CALL(*g_fileIOMock, fopen(_,_))
+            .Times(1)
+            .WillOnce(::testing::ReturnNull());
+    EXPECT_EQ(0.0, get_system_uptime());
+}
+
+TEST_F(utilsTestFixture, get_system_uptime1)
 {
     FILE* mockfp = (FILE *)0xffffffff;
     EXPECT_CALL(*g_fileIOMock, fopen(_,_))
@@ -682,51 +844,45 @@ TEST_F(UtilsFileTestFixture, get_system_uptime1)
     EXPECT_CALL(*g_fileIOMock, fclose(_))
             .Times(1)
             .WillOnce(Return(0));
-    EXPECT_EQ(0.0, getSystemUptime());
+    EXPECT_EQ(0.0, get_system_uptime());
 }
 
-
-*/    
-/*
-TEST(UtilsFileTest, SAVECONFITOFILE)
+TEST_F(utilsTestFixture, SAVECONFITOFILE1)
 {
-     MockFopen mock;                                                             
-    g_mock_fopen = &mock; 
      const char* filepath = "/nvram/.t2reportprofiles";
      const char* profilename = "Profile_1";
      const char* config = "This is a config string";
      FILE* mockfp = NULL;
-     EXPECT_CALL(mock, fopen(_,_))
+     EXPECT_CALL(*g_fileIOMock, fopen(_,_))
             .Times(1)
             .WillOnce(Return(mockfp));
      ASSERT_EQ(T2ERROR_FAILURE, saveConfigToFile(filepath, profilename, config));
-     g_mock_fopen = nullptr;
 }
-
-TEST_F(UtilsFileTestFixture, SAVECONFITOFILE1)
+/*
+TEST_F(utilsTestFixture, SAVECONFITOFILE2)
 {
      const char* filepath = "/nvram/.t2reportprofiles";
      const char* profilename = "Profile_1";
      const char* config = "This is a config string";
      FILE* mockfp = (FILE *)0xffffffff;
-     EXPECT_CALL(*g_fileIOMock, fopen(_,_))
-            .Times(1)
-            .WillOnce(Return(mockfp));
-     EXPECT_CALL(*g_fileIOMock, fprintf(_,_,_))
-            .Times(1)
-            .WillOnce(Return(-1));
+
+    EXPECT_CALL(*g_fileIOMock, fopen(_,_))
+	.Times(1)
+        .WillOnce(Return(mockfp));
+    EXPECT_CALL(*g_fileIOMock, fprintf(_,_,_))
+        .Times(1)
+        .WillOnce(Return(-1));
     EXPECT_CALL(*g_fileIOMock, fclose(_))
-            .Times(1)
-            .WillOnce(Return(0));
-     ASSERT_EQ(T2ERROR_SUCCESS, saveConfigToFile(filepath, profilename, config));
+	.Times(1)
+        .WillOnce(Return(0));
+
+    EXPECT_EQ(saveConfigToFile(filepath, profilename, config), T2ERROR_SUCCESS);
+
 }
-
-
-
-     
-TEST_F(UtilsFileTestFixture, getDevicePropertyData)
+*/
+TEST_F(utilsTestFixture, getDevicePropertyData)
 {
-     
+
      FILE* mockfp = NULL;
      char UseHWBasedCert[8] = { '\0' };
      EXPECT_CALL(*g_fileIOMock, fopen(_,_))
@@ -735,7 +891,7 @@ TEST_F(UtilsFileTestFixture, getDevicePropertyData)
      ASSERT_EQ(false, getDevicePropertyData("UseSEBasedCert", UseHWBasedCert, sizeof(UseHWBasedCert)));
 }
 
-TEST_F(UtilsFileTestFixture, getDevicePropertyData1)
+TEST_F(utilsTestFixture, getDevicePropertyData1)
 {
      FILE* mockfp = (FILE *)0xffffffff;
      char UseHWBasedCert[8] = { '\0' };
@@ -744,15 +900,14 @@ TEST_F(UtilsFileTestFixture, getDevicePropertyData1)
             .WillOnce(Return(mockfp));
      EXPECT_CALL(*g_fileIOMock, fgets(_,_,_))
             .Times(1)
-            .WillOnce(Return(NULL));
+            .WillOnce(Return((char*)NULL));
      EXPECT_CALL(*g_fileIOMock, fclose(_))
             .Times(1)
-            .WillOnce(Return(0));       
+            .WillOnce(Return(0));
      ASSERT_EQ(false, getDevicePropertyData("UseSEBasedCert", UseHWBasedCert, sizeof(UseHWBasedCert)));
 }
 
-
-TEST_F(UtilsFileTestFixture, MSGPACKSAVECONFIG)
+TEST_F(utilsTestFixture, MSGPACKSAVECONFIG)
 {
      const char* path = "/nvram/.t2reportprofiles";
      const char* fileName = "msgpack.profiles";
@@ -764,7 +919,7 @@ TEST_F(UtilsFileTestFixture, MSGPACKSAVECONFIG)
      ASSERT_EQ(T2ERROR_FAILURE,  MsgPackSaveConfig(path, fileName, msgpack, 45));
 }
 
-TEST_F(UtilsFileTestFixture, MSGPACKSAVECONFIG1)
+TEST_F(utilsTestFixture, MSGPACKSAVECONFIG1)
 {
      const char* path = "/nvram/.t2reportprofiles";
      const char* fileName = "msgpack.profiles";
@@ -779,34 +934,34 @@ TEST_F(UtilsFileTestFixture, MSGPACKSAVECONFIG1)
      EXPECT_CALL(*g_fileIOMock, fclose(_))
             .Times(1)
             .WillOnce(Return(0));
-     ASSERT_EQ(T2ERROR_FAILURE,  MsgPackSaveConfig(path, fileName, msgpack, 45));
+     ASSERT_EQ(T2ERROR_SUCCESS,  MsgPackSaveConfig(path, fileName, msgpack, 45));
 }
 
-TEST_F(UtilsSystemTestFixture, CLEARPERSISTENCEFOLDER)
+TEST_F(utilsTestFixture, CLEARPERSISTENCEFOLDER)
 {
         const char* path = "/tmp/profiles";
         #ifdef LIBSYSWRAPPER_BUILD
-        EXPECT_CALL(*g_SystemMock, v_secure_system(_))
+        EXPECT_CALL(*g_systemMock, v_secure_system(_))
                 .Times(1)
                 .WillOnce(Return(-1));
         #endif
-        EXPECT_CALL(*g_SystemMock, system(_))
+        EXPECT_CALL(*g_systemMock, system(_))
                 .Times(1)
                 .WillOnce(Return(-1));
         clearPersistenceFolder(path);
 }
 
-TEST_F(UtilsSystemTestFixture, REMOVEPROFILEFROMDISK)
+TEST_F(utilsTestFixture, REMOVEPROFILEFROMDISK)
 {
-	const char* path = "/tmp/profiles";
+        const char* path = "/tmp/profiles";
         const char* fileName = "Profile1";
-        EXPECT_CALL(*g_SystemMock, unlink(_))
+        EXPECT_CALL(*g_systemMock, unlink(_))
                 .Times(1)
                 .WillOnce(Return(-1));
-	removeProfileFromDisk(path, fileName);
+        removeProfileFromDisk(path, fileName);
 }
 
-TEST_F(UtilsFileTestFixture, SAVECACHEDREPORTTOPERSF)
+TEST_F(utilsTestFixture, SAVECACHEDREPORTTOPERSF)
 {
     const char* profile = "FR2_US_TC2";
      DIR* mockfd = (DIR *)NULL;
@@ -816,14 +971,14 @@ TEST_F(UtilsFileTestFixture, SAVECACHEDREPORTTOPERSF)
      EXPECT_CALL(*g_fileIOMock, opendir(_))
            .Times(1)
            .WillOnce(::testing::Return(mockfd));
-     EXPECT_CALL(*g_fileIOMock, mkdir(_, _))
+     EXPECT_CALL(*g_fileIOMock, mkdir(_,_))
            .Times(1)
            .WillOnce(Return(-1));
      ASSERT_EQ(T2ERROR_FAILURE, saveCachedReportToPersistenceFolder(profile, reportlist));
      Vector_Destroy(reportlist, free);
 }
 
-TEST_F(UtilsFileTestFixture, SAVECACHEDREPORTTOPERSF1)
+TEST_F(utilsTestFixture, SAVECACHEDREPORTTOPERSF1)
 {
     const char* profile = "FR2_US_TC2";
     FILE* mockfp = (FILE *)0xffffffff;
@@ -839,32 +994,35 @@ TEST_F(UtilsFileTestFixture, SAVECACHEDREPORTTOPERSF1)
             .WillOnce(Return(0));
     EXPECT_CALL(*g_fileIOMock, fopen(_,_))
             .Times(1)
-            .WillOnce(ReturnNull());
+            .WillOnce(::testing::ReturnNull());
     ASSERT_EQ(T2ERROR_FAILURE, saveCachedReportToPersistenceFolder(profile, reportlist));
     Vector_Destroy(reportlist, free);
 }
 
-TEST_F(UtilsFileTestFixture, POPULATECACHE_TEST)
+TEST_F(utilsTestFixture, POPULATECACHE_TEST1)
 {
     const char* profile = "FR2_US_TC2";
-    FILE* mockfp = (FILE *)NULL;
+    FILE* mockfp = (FILE *)0xffffffff;
     Vector* outReportlist = NULL;
     Vector_Create(&outReportlist);
     Vector_PushBack(outReportlist, strdup("{FR2_US_TC2:[{UPTIME:NULL}]}"));
     EXPECT_CALL(*g_fileIOMock, fopen(_,_))
             .Times(1)
             .WillOnce(Return(mockfp));
+    EXPECT_CALL(*g_fileIOMock, getline(_,_,_))
+             .Times(1)
+             .WillOnce(Return(-1));
     EXPECT_CALL(*g_fileIOMock, fclose(_))
             .Times(1)
             .WillOnce(Return(0));
-    EXPECT_CALL(*g_fileIOMock, remove(_))
+    EXPECT_CALL(*g_systemMock, remove(_))
             .Times(1)
             .WillOnce(Return(-1));
     ASSERT_EQ(T2ERROR_FAILURE, populateCachedReportList(profile, outReportlist));
     Vector_Destroy(outReportlist, free);
 }
 
-TEST_F(UtilsTestFixture, POPULATECACHE)
+TEST_F(utilsTestFixture, POPULATECACHE)
 {
         const char* profile = "FR2_US_TC2";
         FILE* mockfp = (FILE *)0xffffffff;
@@ -882,46 +1040,46 @@ TEST_F(UtilsTestFixture, POPULATECACHE)
         EXPECT_CALL(*g_fileIOMock, fclose(_))
             .Times(1)
             .WillOnce(Return(0));
-        EXPECT_CALL(*g_SystemMock, remove(_))
+        EXPECT_CALL(*g_systemMock, remove(_))
                 .Times(1)
                 .WillOnce(Return(0));
-        ASSERT_EQ(T2ERROR_FAILURE, populateCachedReportList(profile, outReportlist));
+        ASSERT_EQ(T2ERROR_SUCCESS, populateCachedReportList(profile, outReportlist));
         Vector_Destroy(outReportlist, free);
 }
 
-TEST_F(UtilsFileTestFixture, getPrivacyModeFromPersistentFolder)
+TEST_F(utilsTestFixture, getPrivacyModeFromPersistentFolder)
 {
    char *privacymode = NULL;
-   FILE* mockfp = (FILE *)0xffffffff;
+   FILE* mockfp = (FILE *)NULL;
    EXPECT_CALL(*g_fileIOMock, fopen(_,_))
            .Times(1)
            .WillOnce(Return(mockfp));
-   EXPECT_CALL(*g_fileIOMock, stat(_,_))
-           .Times(1)
-           .WillOnce(Return(0));
-   EXPECT_CALL(*g_fileIOMock, fread(_,_,_,_))
-           .Times(1)
-           .WillOnce(Return(10));
-    EXPECT_CALL(*g_fileIOMock, fclose(_))
-           .Times(1)
-           .WillOnce(Return(0));
     EXPECT_EQ(T2ERROR_FAILURE, getPrivacyModeFromPersistentFolder(&privacymode));
 }
 
-TEST_F(UtilsFileTestFixture, savePrivacyModeToPersistentFolder)
+TEST_F(utilsTestFixture, savePrivacyModeToPersistentFolder)
 {
     char *privacymode = "SHARE";
     DIR* dir = (DIR *)0xffffffff;
     EXPECT_CALL(*g_fileIOMock, opendir(_))
             .Times(1)
-            .WillOnce(ReturnNull());
+            .WillOnce(::testing::ReturnNull());
     EXPECT_CALL(*g_fileIOMock, mkdir(_,_))
             .Times(1)
             .WillOnce(Return(-1));
+    #ifdef LIBSYSWRAPPER_BUILD
+    EXPECT_CALL(*g_systemMock, v_secure_system(_))
+            .Times(1)
+            .WillOnce(Return(0));
+    #else
+    EXPECT_CALL(*g_systemMock, system(_))
+            .Times(1)
+            .WillOnce(Return(0));
+    #endif
     EXPECT_EQ(T2ERROR_FAILURE, savePrivacyModeToPersistentFolder(privacymode));
 }
 
-TEST_F(UtilsFileTestFixture, savePrivacyModeToPersistentFolder1)
+TEST_F(utilsTestFixture, savePrivacyModeToPersistentFolder1)
 {
     char *privacymode = "SHARE";
     FILE* mockfp = (FILE *)0xffffffff;
@@ -929,129 +1087,36 @@ TEST_F(UtilsFileTestFixture, savePrivacyModeToPersistentFolder1)
     EXPECT_CALL(*g_fileIOMock, opendir(_))
             .Times(1)
             .WillOnce(Return(dir));
-    #if defined(DROP_ROOT_PRIV)
+    EXPECT_CALL(*g_fileIOMock, closedir(_))
+            .Times(1)
+            .WillOnce(Return(0));
     #ifdef LIBSYSWRAPPER_BUILD
-    EXPECT_CALL(*g_SystemMock, v_secure_system(_))
+    EXPECT_CALL(*g_systemMock, v_secure_system(_))
             .Times(1)
-            .WillOnce(Return(0));
+	    .WillOnce(Return(0));
     #else
-    EXPECT_CALL(*g_SystemMock, system(_))
+    EXPECT_CALL(*g_systemMock, system(_))
             .Times(1)
-            .WillOnce(Return(0));
-    #endif
+	    .WillOnce(Return(0));
     #endif
     EXPECT_CALL(*g_fileIOMock, fopen(_,_))
             .Times(1)
-            .WillOnce(Return(mockfp));
-    EXPECT_CALL(*g_fileIOMock, fprintf(_,_,_))
-            .Times(1)
-            .WillOnce(Return(-1));
-    EXPECT_CALL(*g_fileIOMock, fclose(_))
-            .Times(1)
-            .WillOnce(Return(0));
+            .WillOnce(::testing::ReturnNull());
     EXPECT_EQ(T2ERROR_FAILURE, savePrivacyModeToPersistentFolder(privacymode));
 }
 
-#if defined(PRIVACYMODES_CONTROL)
-char* privacymode = "SHARE";
-
-#if defined(DROP_ROOT_PRIV)
-#ifdef LIBSYSWRAPPER_BUILD
-TEST_F(UtilsTestFixture, SETPRIVACYMODE1)
+TEST_F(utilsTestFixture, initMtls)
 {
-    DIR* dir = (DIR *)0xffffffff;
-    EXPECT_CALL(*g_fileIOMock, opendir(_))
-                .Times(1)
-                .WillOnce(Return(dir));
-    EXPECT_CALL(*g_SystemMock, v_secure_system(_))
-                .Times(1)
-                .WillOnce(Return(-1));
+    FILE* mockfp = (FILE *)0xffffffff;
+    char UseHWBasedCert[8] = { '\0' };
     EXPECT_CALL(*g_fileIOMock, fopen(_,_))
-                .Times(1)
-                .WillOnce(testing::ReturnNull());
-    ASSERT_EQ(T2ERROR_FAILURE, setPrivacyMode(privacymode));
-}
-#else
-TEST_F(UtilsTestFixture, SETPRIVACYMODE1)
-{
-    DIR* dir = (DIR *)0xffffffff;
-    EXPECT_CALL(*g_fileIOMock, opendir(_))
-                .Times(1)
-                .WillOnce(Return(dir));
-    EXPECT_CALL(*g_SystemMock, system(_))
-                .Times(1)
-                .WillOnce(Return(-1));
-    EXPECT_CALL(*g_fileIOMock, fopen(_,_))
-                .Times(1)
-                .WillOnce(testing::ReturnNull());
-    ASSERT_EQ(T2ERROR_FAILURE, setPrivacyMode(privacymode));
-}
-#endif
-#endif
-
-
-TEST_F(UtilsFileTestFixture, SETPRIVACYMODE2)
-{
-    EXPECT_CALL(*g_fileIOMock, opendir(_))
-                .Times(1)
-                .WillOnce(testing::ReturnNull());
-    EXPECT_CALL(*g_fileIOMock, mkdir(_,_))
-                .Times(1)
-                .WillOnce(Return(-1));
-
-     ASSERT_EQ(T2ERROR_FAILURE, setPrivacyMode(privacymode));
-}
-
-#if defined(DROP_ROOT_PRIV)
-#ifdef LIBSYSWRAPPER_BUILD
-TEST_F(UtilsTestFixture, SETPRIVACYMODE3)
-{
-    DIR* dir = (DIR *)0xffffffff;
-    FILE *fp = (FILE *) 0xffffffff;
-    EXPECT_CALL(*g_fileIOMock, opendir(_))
-                .Times(1)
-                .WillOnce(Return(dir));
-    EXPECT_CALL(*g_SystemMock, v_secure_system(_))
-                .Times(1)
-                .WillOnce(Return(-1));
-    EXPECT_CALL(*g_fileIOMock, fopen(_,_))
-                .Times(1)
-                .WillOnce(Return(fp));
+            .Times(1)
+            .WillOnce(Return(mockfp));
+    EXPECT_CALL(*g_fileIOMock, fgets(_,_,_))
+            .Times(1)
+            .WillOnce(Return((char*)NULL));
     EXPECT_CALL(*g_fileIOMock, fclose(_))
-                .Times(1)
-                .WillOnce(Return(-1));
-    ASSERT_EQ(T2ERROR_FAILURE, setPrivacyMode(privacymode));
+            .Times(1)
+            .WillOnce(Return(0));
+    initMtls();
 }
-#else
-TEST_F(UtilsTestFixture, SETPRIVACYMODE3)
-{
-    DIR* dir = (DIR *)0xffffffff;
-    EXPECT_CALL(*g_fileIOMock, opendir(_))
-                .Times(1)
-                .WillOnce(Return(dir));
-    EXPECT_CALL(*g_SystemMock, system(_))
-                .Times(1)
-                .WillOnce(Return(-1));
-    EXPECT_CALL(*g_fileIOMock, fopen(_,_))
-                .Times(1)
-                .WillOnce(Return(fp));
-    EXPECT_CALL(*g_fileIOMock, fclose(_))
-                .Times(1)
-                .WillOnce(Return(-1));
-    ASSERT_EQ(T2ERROR_FAILURE, setPrivacyMode(privacymode));
-}
-#endif
-#endif
-
-char* privMode = NULL;
-TEST_F(UtilsFileTestFixture, GETPRIVACYMODE1)
-{
-    EXPECT_CALL(*g_fileIOMock, fopen(_,_))
-                .Times(1)
-                .WillOnce(testing::ReturnNull());
-    getPrivacyMode(&privMode);
-    EXPECT_NE(*privMode, NULL);
-}
-#endif
-
-*/

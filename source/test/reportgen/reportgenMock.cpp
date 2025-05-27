@@ -79,7 +79,7 @@ extern "C" cJSON* cJSON_GetObjectItem(const cJSON * const array, const char* con
     return m_reportgenMock->cJSON_GetObjectItem(array, value);
 }
 
-/*extern "C" cJSON_bool cJSON_AddItemToArray(cJSON *array, cJSON *item)
+extern "C" cJSON_bool cJSON_AddItemToArray(cJSON *array, cJSON *item)
 {
     if (!m_reportgenMock)
     {
@@ -95,7 +95,7 @@ extern "C" cJSON_bool cJSON_AddItemToObject(cJSON *object, const char *string, c
          return false;
     }
     return m_reportgenMock->cJSON_AddItemToObject(object, string, item);
-}*/
+}
 
 extern "C" char* cJSON_PrintUnformatted(const cJSON *item)
 {
@@ -124,6 +124,33 @@ extern "C" CURL* curl_easy_init()
         return m_reportgenMock->curl_easy_init();
 }
 
+extern "C" char *curl_easy_escape( CURL *curl, const char *url, int length )
+{
+        if(!m_reportgenMock)
+        {
+                return NULL;
+        }
+        return m_reportgenMock->curl_easy_escape(curl, url, length);
+}
+
+extern "C" void curl_free( void *ptr )
+{
+        if(!m_reportgenMock)
+        {
+                return;
+        }
+        return m_reportgenMock->curl_free(ptr);
+}
+
+extern "C" void curl_easy_cleanup(CURL *curl)
+{
+        if(!m_reportgenMock)
+        {
+                return;
+        }
+        m_reportgenMock->curl_easy_cleanup(curl);
+}
+
 /*extern "C" char *curl_easy_escape( CURL *curl, const char *url, int length )
 {
         if(!m_reportgenMock)
@@ -142,13 +169,40 @@ extern "C" void cJSON_Delete(cJSON * root)
         m_reportgenMock->cJSON_Delete(root);
 }
 
+extern "C" void cJSON_free(void* root)
+{
+        if(!m_reportgenMock)
+        {
+                return;
+        }
+        m_reportgenMock->cJSON_free(root);
+}
+
+extern "C" cJSON* cJSON_CreateString(const char *string)
+{
+	if(!m_reportgenMock)
+	{
+		return (cJSON*)NULL;
+	}
+	return m_reportgenMock->cJSON_CreateString(string);
+}
+
+extern "C" char* cJSON_Print(const cJSON *root)
+{
+	if(!m_reportgenMock)
+	{
+		return NULL;
+	}
+	return m_reportgenMock->cJSON_Print(root);
+}
+
 extern "C" int regcomp(regex_t *preg, const char *pattern, int cflags)
 {
         if(!m_reportgenMock)
         {
                return -1;
         }
-        m_reportgenMock->regcomp(preg, pattern, cflags);
+        return m_reportgenMock->regcomp(preg, pattern, cflags);
 }
 
 extern "C" int regexec(const regex_t *preg, const char *string, size_t nmatch, regmatch_t pmatch[], int eflags)
@@ -157,7 +211,7 @@ extern "C" int regexec(const regex_t *preg, const char *string, size_t nmatch, r
         {
                return -1;
         }
-        m_reportgenMock->regexec(preg, string, nmatch, pmatch, eflags);
+        return m_reportgenMock->regexec(preg, string, nmatch, pmatch, eflags);
 }
 
 extern "C"  void regfree(regex_t *preg)
@@ -166,7 +220,7 @@ extern "C"  void regfree(regex_t *preg)
         {
                return;
         }
-         m_reportgenMock->regfree(preg);
+        return  m_reportgenMock->regfree(preg);
 }
 
 extern "C" T2ERROR getParameterValue(const char* paramName, char **paramValue)

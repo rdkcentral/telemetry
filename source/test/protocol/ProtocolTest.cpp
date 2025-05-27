@@ -32,7 +32,6 @@ extern "C" {
 #include <ccspinterface/busInterface.h>
 #include <ccspinterface/rbusInterface.h>
 #include <reportgen/reportgen.h>
-sigset_t blocking_signal;
 }
 
 #include "gmock/gmock.h"
@@ -45,225 +44,42 @@ using namespace std;
 #include <stdexcept>
 #include "test/mocks/SystemMock.h"
 #include "test/mocks/FileioMock.h"
-#include "test/mocks/protocolMock.h"
 #include "test/mocks/rbusMock.h"
 #include "test/mocks/rdklogMock.h"
+#include "test/xconf-client/xconfclientMock.h"
+#include "protocolMock.h"
 
 using ::testing::_;
 using ::testing::Return;
 using ::testing::StrEq;
 
-SystemMock * g_SystemMock = NULL; 
-FileIOMock * g_fileIOMock = NULL;
-rbusMock *g_rbusMock = NULL;
-rdklogMock *m_rdklogMock = NULL;
-ProtocolMock * g_protocolMock = NULL;
+class protocolTestFixture : public ::testing::Test {
+protected:
+    void SetUp() override
+    {
+        g_fileIOMock = new FileMock();
+        g_systemMock = new SystemMock();
+        m_xconfclientMock = new XconfclientMock();
+        //m_protocolMock = new ProtocolMock();
+        g_rbusMock = new rbusMock();
+    }
 
-class rdklogTestFixture : public ::testing::Test {
-    protected:
-            rdklogMock rdklogmock_IO;
+    void TearDown() override
+    {
+        delete g_fileIOMock;
+        delete g_systemMock;
+        delete m_xconfclientMock;
+//      delete m_protocolMock;
+        delete g_rbusMock;
 
-            rdklogTestFixture()
-            {
-                    m_rdklogMock = &rdklogmock_IO;
-            }
-
-            virtual ~rdklogTestFixture()
-            {
-                    m_rdklogMock = NULL;
-            }
-            virtual void SetUp()
-            {
-                    printf("%s\n", __func__);
-            }
-
-            virtual void TearDown()
-            {
-                    printf("%s\n", __func__);
-            }
-	    static void SetUpTestCase()
-            {
-                    printf("%s\n", __func__);
-            }
-            static void TearDownTestCase()
-            {
-                    printf("%s\n", __func__);
-            }
+        g_fileIOMock = nullptr;
+        g_systemMock = nullptr;
+        m_xconfclientMock = nullptr;
+//      m_protocolMock = nullptr;
+        g_rbusMock = nullptr;
+    }
 };
 
-
-class rbusTestFixture : public ::testing::Test {
-    protected:
-            rbusMock rbusmock_IO;
-
-            rbusTestFixture()
-            {
-                    g_rbusMock = &rbusmock_IO;
-            }
-
-            virtual ~rbusTestFixture()
-            {
-                    g_rbusMock = NULL;
-            }
-            virtual void SetUp()
-            {
-                    printf("%s\n", __func__);
-            }
-
-            virtual void TearDown()
-            {
-                    printf("%s\n", __func__);
-            }
-
-            static void SetUpTestCase()
-            {
-                    printf("%s\n", __func__);
-            }
-            static void TearDownTestCase()
-            {
-                    printf("%s\n", __func__);
-            }
-};
-
-class ProtocolFixture : public ::testing::Test {
-    protected:
-        ProtocolMock mockprotocol;
-
-        ProtocolFixture()
-        {
-            g_protocolMock = &mockprotocol;
-        }
-        virtual ~ProtocolFixture()
-        {
-            g_protocolMock = NULL;
-        }
-        virtual void SetUp()
-        {
-            printf("%s\n", __func__);
-        }
-
-        virtual void TearDown()
-        {
-            printf("%s\n", __func__);
-        }
-
-        static void SetUpTestCase()
-        {
-            printf("%s\n", __func__);
-        }
-        static void TearDownTestCase()
-        {
-            printf("%s\n", __func__);
-        }
-
-};
-
-
-class ProtocolTestFixture : public ::testing::Test {
-    protected:
-        SystemMock mockedpsystem;
-        FileIOMock mockedpfileIO;
-
-        ProtocolTestFixture()
-        {
-            g_SystemMock = &mockedpsystem;
-            g_fileIOMock = &mockedpfileIO;
-
-        }
-        virtual ~ProtocolTestFixture()
-        {
-            g_SystemMock = NULL;
-            g_fileIOMock = NULL;
-        }
-
-         virtual void SetUp()
-        {
-            printf("%s\n", __func__);
-        }
-
-        virtual void TearDown()
-        {
-            printf("%s\n", __func__);
-        }
-
-        static void SetUpTestCase()
-        {
-            printf("%s\n", __func__);
-        }
-
-        static void TearDownTestCase()
-        {
-            printf("%s\n", __func__);
-        }
-
-};
-
-class ProtocolFileTestFixture : public ::testing::Test {
-    protected:
-        FileIOMock mockedpfileIO;
-
-        ProtocolFileTestFixture()
-        {
-            g_fileIOMock = &mockedpfileIO;
-
-        }
-        virtual ~ProtocolFileTestFixture()
-        {
-            g_fileIOMock = NULL;
-        }
-
-         virtual void SetUp()
-        {
-            printf("%s\n", __func__);
-        }
-
-        virtual void TearDown()
-        {
-            printf("%s\n", __func__);
-        }
-
-        static void SetUpTestCase()
-        {
-            printf("%s\n", __func__);
-        }
-
-        static void TearDownTestCase()
-        {
-            printf("%s\n", __func__);
-        }
-
-};
-
-/*
-TEST(SETHEADER, CURL_NULL)
-{
-    char* destURL = "https://google.com";
-    EXPECT_EQ(T2ERROR_FAILURE, setHeader(NULL, destURL, NULL));
-}
-
-TEST(SETHEADER, DEST_NULL)
-{
-    CURL* curl = curl_easy_init();
-     EXPECT_EQ(T2ERROR_FAILURE, setHeader(curl, NULL, NULL));
-}
-
-const char* certFile = "certs/etyeu.txt";
-const char* passwd = "euyeurywi";
-CURL* curl = curl_easy_init();
-TEST(SETMTLSHEADERS, NULL_CHECK)
-{
-   EXPECT_EQ(T2ERROR_FAILURE,  setMtlsHeaders(NULL, certFile, passwd));
-   EXPECT_EQ(T2ERROR_FAILURE,  setMtlsHeaders(curl, NULL, passwd));
-   EXPECT_EQ(T2ERROR_FAILURE,  setMtlsHeaders(curl, certFile, NULL));
-}
-
-const char* payload = "This is a payload string";
-TEST(SETPAYLOAD, NULL_CHECK)
-{
-   EXPECT_EQ(T2ERROR_FAILURE, setPayload(NULL, payload));
-   EXPECT_EQ(T2ERROR_FAILURE, setPayload(curl, NULL));
-}
-*/
 
 TEST(SENDREPORTOVERHTTP, 1_NULL_CHECK)
 {
@@ -281,6 +97,8 @@ TEST(SENDCACREPOVERHTTP, 1_NULL_CHECK)
 {
     Vector* reportlist;
     Vector_Create(&reportlist);
+    Vector_PushBack(reportlist, strdup("This is a payload string"));
+    Vector_PushBack(reportlist, strdup("This is a output string"));
     EXPECT_EQ(T2ERROR_FAILURE, sendCachedReportsOverHTTP(NULL, reportlist));
     Vector_Destroy(reportlist, free);
 }
@@ -292,10 +110,11 @@ TEST(SENDCACREPOVERHTTP, 2_NULL_CHECK)
 }
 
 TEST(SENDRBUDREPORTOVERRBUS, 1_NULL_CHECK)
-{    
+{
     Vector* inputParams = NULL;
     Vector_Create(&inputParams);
     char* payload = "This is a payload string";
+    Vector_PushBack(inputParams, strdup(payload));
     EXPECT_EQ(T2ERROR_FAILURE, sendReportsOverRBUSMethod(NULL, inputParams, payload));
     Vector_Destroy(inputParams, free);
 }
@@ -312,6 +131,8 @@ TEST(SENDRBUDREPORTOVERRBUS,3_NULL_CHECK)
     char* method = "RBUS_METHOD";
     Vector* inputParams = NULL;
     Vector_Create(&inputParams);
+    char* payload = "This is a payload string";
+    Vector_PushBack(inputParams, strdup(payload));
     EXPECT_EQ(T2ERROR_FAILURE, sendReportsOverRBUSMethod(method, inputParams, NULL));
     EXPECT_EQ(T2ERROR_FAILURE, sendReportsOverRBUSMethod(NULL, NULL, NULL));
     Vector_Destroy(inputParams, free);
@@ -322,8 +143,12 @@ TEST(SENDRBUSCACHEREPORTOVERRBUS, NULL_CHECK)
     char* method = "RBUS_METHOD";
     Vector* inputParams = NULL;
     Vector_Create(&inputParams);
+    Vector_PushBack(inputParams, strdup("This is a payload string"));
+    Vector_PushBack(inputParams, strdup("This is a output string"));
     Vector* reportList = NULL;
     Vector_Create(&reportList);
+    Vector_PushBack(reportList, strdup("This is a payload string"));
+    Vector_PushBack(reportList, strdup("This is a output string"));
     EXPECT_EQ(T2ERROR_FAILURE, sendCachedReportsOverRBUSMethod(NULL, inputParams, reportList));
     EXPECT_EQ(T2ERROR_FAILURE, sendCachedReportsOverRBUSMethod(method, NULL, reportList));
     EXPECT_EQ(T2ERROR_FAILURE, sendCachedReportsOverRBUSMethod(method, inputParams, NULL));
@@ -332,12 +157,284 @@ TEST(SENDRBUSCACHEREPORTOVERRBUS, NULL_CHECK)
     Vector_Destroy(reportList, free);
 }
 
-// TEST_F(ProtocolFileTestFixture, SENDREPORTOVERHTTP)
-// {
-//      char* httpURL = "https://mockxconf:50051/dataLakeMock";
-//      char* payload = "This is a payload string";
-//      EXPECT_CALL(*g_fileIOMock, pipe(_))
-//              .Times(1)
-//              .WillOnce(Return(-1));
-//      EXPECT_EQ(T2ERROR_FAILURE, sendReportOverHTTP(httpURL, payload, NULL));
-// }
+TEST_F(protocolTestFixture, SENDREPORTOVERHTTP1)
+{
+      char* httpURL = "https://mockxconf:50051/dataLakeMock";
+      char* payload = strdup("This is a payload string");
+      EXPECT_CALL(*g_fileIOMock, pipe(_))
+              .Times(1)
+              .WillOnce(Return(-1));
+      EXPECT_EQ(T2ERROR_FAILURE, sendReportOverHTTP(httpURL, payload, NULL));
+      free(payload);
+}
+
+TEST_F(protocolTestFixture, SENDREPORTOVERHTTP2)
+{
+      char* httpURL = "https://mockxconf:50051/dataLakeMock";
+      char* payload = strdup("This is a payload string");
+      char *cm = (char*)0xFFFFFFFF;
+      EXPECT_CALL(*g_fileIOMock, pipe(_))
+              .Times(1)
+              .WillOnce(Return(0));
+      #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
+      #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
+      EXPECT_CALL(*m_xconfclientMock, getParameterValue(_,_)
+              .Times(1)
+              .WillOnce(Return(T2ERROR_SUCCESS));
+      #endif
+      #endif
+      EXPECT_CALL(*m_xconfclientMock, isMtlsEnabled())
+              .Times(1)
+              .WillOnce(Return(true));
+      EXPECT_CALL(*g_systemMock, access(_,_))                                                                                      
+             .Times(1)                                                                                                             
+             .WillOnce(Return(0));                                                                                                 
+      #ifdef LIBRDKCONFIG_BUILD                                                                                                    
+      EXPECT_CALL(*g_rdkconfigMock, rdkconfig_get(_,_,_))                                                                          
+             .Times(1)                                                                                                             
+             .WillOnce(Return(RDKCONFIG_OK));                                                                                      
+      #endif
+      EXPECT_CALL(*g_fileIOMock, fork())
+              .Times(1)
+              .WillOnce(Return(-1));
+      EXPECT_EQ(T2ERROR_FAILURE, sendReportOverHTTP(httpURL, payload, NULL));
+      free(payload);
+}
+
+TEST_F(protocolTestFixture, SENDREPORTOVERHTTP3)
+{
+      char* httpURL = "https://mockxconf:50051/dataLakeMock";
+      char* payload = strdup("This is a payload string");
+      char *cm = (char*)0xFFFFFFFF;
+      EXPECT_CALL(*g_fileIOMock, pipe(_))
+              .Times(1)
+              .WillOnce(Return(0));
+      #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
+      #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
+      EXPECT_CALL(*m_xconfclientMock, getParameterValue(_,_)
+              .Times(1)
+              .WillOnce(Return(T2ERROR_SUCCESS));
+      #endif
+      #endif
+      EXPECT_CALL(*m_xconfclientMock, isMtlsEnabled())
+              .Times(1)
+              .WillOnce(Return(true));
+      EXPECT_CALL(*g_systemMock, access(_,_))
+             .Times(1)
+             .WillOnce(Return(0));
+      #ifdef LIBRDKCONFIG_BUILD
+      EXPECT_CALL(*g_rdkconfigMock, rdkconfig_get(_,_,_))
+             .Times(1)
+             .WillOnce(Return(RDKCONFIG_OK));
+      #endif
+      EXPECT_CALL(*g_fileIOMock, fork())
+              .Times(1)
+              .WillOnce(Return(1));
+      EXPECT_CALL(*g_fileIOMock, close(_))
+              .Times(2)
+              .WillOnce(Return(-1))
+              .WillOnce(Return(-1));
+      EXPECT_CALL(*g_fileIOMock, read(_,_,_))
+              .Times(1)
+              .WillOnce(Return(-1));
+      EXPECT_EQ(T2ERROR_SUCCESS, sendReportOverHTTP(httpURL, payload, NULL));
+      free(payload);
+}
+/*
+TEST_F(protocolTestFixture, SENDREPORTOVERHTTP4)
+{
+      char* httpURL = "https://mockxconf:50051/dataLakeMock";
+      char* payload = strdup("This is a payload string");
+      char *cm = (char*)0xFFFFFFFF;
+      EXPECT_CALL(*g_fileIOMock, pipe(_))
+              .Times(1)
+              .WillOnce(Return(0));
+      #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
+      #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
+      EXPECT_CALL(*m_xconfclientMock, getParameterValue(_,_)
+              .Times(1)
+              .WillOnce(Return(T2ERROR_SUCCESS));
+      #endif
+      #endif
+      EXPECT_CALL(*m_xconfclientMock, isMtlsEnabled())
+              .Times(1)
+              .WillOnce(Return(true));
+      EXPECT_CALL(*g_systemMock, access(_,_))                                                                                      
+             .Times(1)                                                                                                             
+             .WillOnce(Return(0));                                                                                                 
+      #ifdef LIBRDKCONFIG_BUILD                                                                                                    
+      EXPECT_CALL(*g_rdkconfigMock, rdkconfig_get(_,_,_))                                                                          
+             .Times(1)                                                                                                             
+             .WillOnce(Return(RDKCONFIG_OK));                                                                                      
+      #endif
+      EXPECT_CALL(*g_fileIOMock, fork())
+              .Times(1)
+              .WillOnce(Return(0));
+      CURL* curl = (CURL*)nullptr;
+      EXPECT_CALL(*g_fileIOMock, curl_easy_init())
+              .Times(1)
+              .WillOnce(Return(curl));
+      EXPECT_CALL(*g_fileIOMock, close(_))
+              .Times(2)
+              .WillOnce(Return(-1))
+              .WillOnce(Return(-1));
+      EXPECT_CALL(*g_fileIOMock, write(_,_,_))
+              .Times(1)
+              .WillOnce(Return(-1));
+      sendReportOverHTTP(httpURL, payload, NULL);
+      free(payload);
+}
+*/
+TEST_F(protocolTestFixture, SENDCACHEDREPORTOVERHTTP)
+{
+      char* httpURL = "https://mockxconf:50051/dataLakeMock";
+      char* payload = strdup("This is a payload string");
+      Vector* reportlist = NULL;
+      Vector_Create(&reportlist);
+      Vector_PushBack(reportlist, payload);
+      char *cm = (char*)0xFFFFFFFF;
+      EXPECT_CALL(*g_fileIOMock, pipe(_))
+              .Times(1)
+              .WillOnce(Return(0));
+      #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
+      #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
+      EXPECT_CALL(*m_xconfclientMock, getParameterValue(_,_)
+              .Times(1)
+              .WillOnce(Return(T2ERROR_SUCCESS));
+      #endif
+      #endif
+      EXPECT_CALL(*m_xconfclientMock, isMtlsEnabled())
+              .Times(1)
+              .WillOnce(Return(true));
+      EXPECT_CALL(*g_systemMock, access(_,_))
+             .Times(1)
+             .WillOnce(Return(0));
+      #ifdef LIBRDKCONFIG_BUILD
+      EXPECT_CALL(*g_rdkconfigMock, rdkconfig_get(_,_,_))
+             .Times(1)
+             .WillOnce(Return(RDKCONFIG_OK));
+      #endif
+      EXPECT_CALL(*g_fileIOMock, fork())
+              .Times(1)
+              .WillOnce(Return(1));
+      EXPECT_CALL(*g_fileIOMock, close(_))
+              .Times(2)
+              .WillOnce(Return(-1))
+              .WillOnce(Return(-1));
+      EXPECT_CALL(*g_fileIOMock, read(_,_,_))
+              .Times(1)
+              .WillOnce(Return(-1));
+      EXPECT_EQ(T2ERROR_SUCCESS, sendCachedReportsOverHTTP(httpURL, reportlist));
+      Vector_Destroy(reportlist, free);
+}
+
+TEST_F(protocolTestFixture, SENDREPORTSOVERRBUSMETHOD1)
+{
+    char* method = strdup("RBUS_METHOD");
+    RBUSMethodParam *rbusMethodParam = (RBUSMethodParam *) malloc(sizeof(RBUSMethodParam));
+    rbusMethodParam->name = "Device.X_RDK_Xmidt.SendData";
+    rbusMethodParam->value = "This is a value string";
+    Vector* inputParams = NULL;
+    Vector_Create(&inputParams);
+    Vector_PushBack(inputParams, rbusMethodParam);
+    char* payload = strdup("This is a payload string");
+    EXPECT_CALL(*g_rbusMock, rbusObject_Init(_,_))
+            .Times(1)
+            .WillOnce(Return((rbusObject_t)0xffffffff));
+    EXPECT_CALL(*g_rbusMock, rbusValue_Init(_))
+            .Times(3)
+            .WillOnce(Return((rbusValue_t)0xffffffff))
+            .WillOnce(Return((rbusValue_t)0xffffffff))
+            .WillOnce(Return((rbusValue_t)0xffffffff));
+    EXPECT_CALL(*g_rbusMock, rbusValue_SetString(_,_))
+            .Times(2);
+    EXPECT_CALL(*g_rbusMock, rbusObject_SetValue(_,_,_))
+            .Times(3);
+    EXPECT_CALL(*g_rbusMock, rbusValue_Release(_))
+            .Times(3);
+    EXPECT_CALL(*g_rbusMock, rbusValue_SetInt32(_,_))
+            .Times(1);
+    EXPECT_CALL(*g_rbusMock, rbusMethodCaller(_,_,_,_))
+            .Times(1)
+            .WillOnce(Return(T2ERROR_FAILURE));
+    EXPECT_CALL(*g_rbusMock, rbusObject_Release(_))
+            .Times(1);
+    EXPECT_EQ(T2ERROR_FAILURE, sendReportsOverRBUSMethod(method, inputParams, payload));
+}
+
+TEST_F(protocolTestFixture, SENDREPORTSOVERRBUSMETHOD2)
+{
+    char* method = strdup("RBUS_METHOD");
+    RBUSMethodParam *rbusMethodParam = (RBUSMethodParam *) malloc(sizeof(RBUSMethodParam));
+    rbusMethodParam->name = "Device.X_RDK_Xmidt.SendData";
+    rbusMethodParam->value = "This is a value string";
+    Vector* inputParams = NULL;
+    Vector_Create(&inputParams);
+    Vector_PushBack(inputParams, rbusMethodParam);
+    char* payload = strdup("This is a payload string");
+    EXPECT_CALL(*g_rbusMock, rbusObject_Init(_,_))
+            .Times(1)
+            .WillOnce(Return((rbusObject_t)0xffffffff));
+    EXPECT_CALL(*g_rbusMock, rbusValue_Init(_))
+            .Times(3)
+            .WillOnce(Return((rbusValue_t)0xffffffff))
+            .WillOnce(Return((rbusValue_t)0xffffffff))
+            .WillOnce(Return((rbusValue_t)0xffffffff));
+    EXPECT_CALL(*g_rbusMock, rbusValue_SetString(_,_))
+            .Times(2);
+    EXPECT_CALL(*g_rbusMock, rbusObject_SetValue(_,_,_))
+            .Times(3);
+    EXPECT_CALL(*g_rbusMock, rbusValue_Release(_))
+            .Times(3);
+    EXPECT_CALL(*g_rbusMock, rbusValue_SetInt32(_,_))
+            .Times(1);
+    EXPECT_CALL(*g_rbusMock, rbusMethodCaller(_,_,_,_))
+            .Times(1)
+            .WillOnce(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_rbusMock, rbusObject_Release(_))
+            .Times(1);
+    EXPECT_EQ(T2ERROR_NO_RBUS_METHOD_PROVIDER, sendReportsOverRBUSMethod(method, inputParams, payload));
+    free(method);
+    free(payload);
+    Vector_Destroy(inputParams, free);
+}
+
+TEST_F(protocolTestFixture, sendCachedReportsOverRBUSMethod)
+{
+    char* method = strdup("RBUS_METHOD");
+    RBUSMethodParam *rbusMethodParam = (RBUSMethodParam *) malloc(sizeof(RBUSMethodParam));
+    rbusMethodParam->name = "Device.X_RDK_Xmidt.SendData";
+    rbusMethodParam->value = "This is a value string";
+    Vector* inputParams = NULL;
+    Vector_Create(&inputParams);
+    Vector_PushBack(inputParams, rbusMethodParam);
+    char* payload = strdup("This is a payload string");
+    Vector* reportlist = NULL;
+    Vector_Create(&reportlist);
+    Vector_PushBack(reportlist, payload);
+    EXPECT_CALL(*g_rbusMock, rbusObject_Init(_,_))
+            .Times(1)
+            .WillOnce(Return((rbusObject_t)0xffffffff));
+    EXPECT_CALL(*g_rbusMock, rbusValue_Init(_))
+            .Times(3)
+            .WillOnce(Return((rbusValue_t)0xffffffff))
+            .WillOnce(Return((rbusValue_t)0xffffffff))
+            .WillOnce(Return((rbusValue_t)0xffffffff));
+    EXPECT_CALL(*g_rbusMock, rbusValue_SetString(_,_))
+            .Times(2);
+    EXPECT_CALL(*g_rbusMock, rbusObject_SetValue(_,_,_))
+            .Times(3);
+    EXPECT_CALL(*g_rbusMock, rbusValue_Release(_))
+            .Times(3);
+    EXPECT_CALL(*g_rbusMock, rbusValue_SetInt32(_,_))
+            .Times(1);
+    EXPECT_CALL(*g_rbusMock, rbusMethodCaller(_,_,_,_))
+            .Times(1)
+            .WillOnce(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_rbusMock, rbusObject_Release(_))
+            .Times(1);
+    EXPECT_EQ(T2ERROR_FAILURE, sendCachedReportsOverRBUSMethod(method, inputParams, reportlist));
+    free(method);
+    Vector_Destroy(reportlist,free);
+    Vector_Destroy(inputParams, free);
+}

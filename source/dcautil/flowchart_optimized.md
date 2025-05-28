@@ -7,13 +7,9 @@ flowchart TD
     Unlock1 --> Return1[Return -1]
     
  
-    CheckInput -->|Valid| CheckProps{Check Properties\nInitialized?}
+    CheckInput -->|Valid| CheckCustomPath
  
-    subgraph CheckInputValid[Change to one explicit init call]
-    CheckProps -->|No| InitProps[Initialize Properties\nlogPath & persistentPath]
-    CheckProps -->|Yes| CheckCustomPath
-    end 
-    InitProps --> CheckCustomPath
+    
     
     CheckCustomPath{Custom Log Path?} -->|Yes| UpdateProps[Update Properties\nwith customLogPath]
     CheckCustomPath -->|No| CreateVector
@@ -23,25 +19,17 @@ flowchart TD
     
     ParseMarkers --> processPattern
     subgraph LoopThroughMarkers[Loop Through Markers]
-        processPattern -->|top_log.txt| TopPattern[Process Top Pattern]
-        processPattern -->|message_bus| TR181[Process TR181 Objects - Only one with skip frequency lands here]
-        processPattern -->|other| GetSeekMap[Do a memory map of seeked file only if files are different]
-        GetSeekMap --> LogPattern[1.Extract from memory mapped file.
-                                  2.Avoid replace slower string functions with mem comparators or search algorithms]
-        TopPattern --> AddVector
-        TR181 --> AddVector
-        LogPattern --> AddVector
-      end
+        processPattern --> GetSeekMap[Memory map of seeked file only if files are different]
+        GetSeekMap --> LogPattern[Stage1 - Extract from memory mapped file.
+                                  Stage2 - Avoid replace slower string functions with mem comparators or search algorithms]
+        LogPattern --> AddToResult
+    end
     
-    AddVector --> CleanupNodes[Clear PC Nodes]
-   
-    CleanupNodes --> CheckCustom{Has Custom Path?}
-    subgraph RestoreProp[Restore Properties - to be removed]
+    AddToResult --> CheckCustom{Has Custom Path?}
     CheckCustom -->|Yes| RestoreProps[Restore Original Properties]
     CheckCustom -->|No| Unlock2[Unlock dcaMutex]
-    end
     RestoreProps --> Unlock2
     
-    Unlock2 --> Return2[Return rc]
+    Unlock2 --> Return2[Return processing status]
 ```
 

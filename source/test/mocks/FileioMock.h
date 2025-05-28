@@ -59,7 +59,7 @@ public:
     MOCK_METHOD(ssize_t, getline, (char** lineptr, size_t* n, FILE* stream), ());
     MOCK_METHOD(pid_t, fork, (), ());
     MOCK_METHOD(ssize_t, write, (int fd, const void* buf, size_t count), ());
-   //MOCK_METHOD(CURLcode, curl_easy_setopt, (CURL *handle, CURLoption option, parameter), ());
+    //MOCK_METHOD(CURLcode, curl_easy_setopt, (CURL *handle, CURLoption option, parameter), ());
     MOCK_METHOD(void, curl_easy_cleanup, (CURL *handle), ());
     MOCK_METHOD(void, curl_slist_free_all, (struct curl_slist *list), ());
     // MOCK_METHOD(int, stat, (const char *pathname, struct stat *statbuf), ());

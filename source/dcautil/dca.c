@@ -33,7 +33,6 @@
 
 #include <cjson/cJSON.h>
 
-#include "dcalist.h"
 #include "dcautil.h"
 #include "legacyutils.h"
 #include "rdk_linkedlist.h"
@@ -62,6 +61,12 @@ static bool firstreport_after_bootup = false; // the rotated logs check should r
  * @{
  */
 
+ // Define a struct to hold the file descriptor and size
+typedef struct {
+    int fd;
+    off_t file_size;
+    char* addr;
+} FileDescriptor;
 
 
 cJSON *SEARCH_RESULT_JSON = NULL, *ROOT_JSON = NULL;
@@ -70,9 +75,9 @@ static char *logPath = NULL;
 static char *persistentPath = NULL;
 static pthread_mutex_t dcaMutex = PTHREAD_MUTEX_INITIALIZER;
 
-#if !defined(ENABLE_RDKC_SUPPORT) && !defined(ENABLE_RDKB_SUPPORT)
-static pthread_mutex_t topOutputMutex = PTHREAD_MUTEX_INITIALIZER;
-#endif
+
+
+
 /* @} */ // End of group DCA_TYPES
 /**
  * @addtogroup DCA_APIS
@@ -82,53 +87,85 @@ static pthread_mutex_t topOutputMutex = PTHREAD_MUTEX_INITIALIZER;
 /** @brief This API processes the top command log file patterns to retrieve load average and process usage.
  *
  *  @param[in] logfile  top_log file
- *  @param[in] pchead   Node  head
- *  @param[in] pcIndex  Node  count
  *
  *  @return  Returns the status of the operation.
  *  @retval  Returns zero on success, appropriate errorcode otherwise.
  */
-int processTopPattern(rdkList_t *pchead, Vector* grepResultList)
+int processTopPattern(char* profileName,  Vector* topMarkerList, Vector* out_grepResultList)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
-    if(pchead == NULL || grepResultList == NULL)
+    if(profileName == NULL || topMarkerList == NULL || out_grepResultList == NULL)
     {
         T2Error("Invalid arguments for %s\n", __FUNCTION__);
         return -1;
     }
-    rdkList_t *tlist = pchead;
-    pcdata_t *tmp = NULL;
-    while(NULL != tlist)
-    {
-        tmp = tlist->m_pUserData;
-        if(NULL != tmp)
-        {
-            if((NULL != tmp->header) && (NULL != strstr(tmp->header, "Load_Average")))
-            {
-                if(0 == getLoadAvg(grepResultList, tmp->trimparam, tmp->regexparam))
-                {
-                    T2Debug("getLoadAvg() Failed with error");
-                }
-            }
-            else
-            {
-                if(NULL != tmp->pattern)
-                {
-                    // save top output
-#if !defined(ENABLE_RDKC_SUPPORT) && !defined(ENABLE_RDKB_SUPPORT)
-                    pthread_mutex_lock(&topOutputMutex);
-                    saveTopOutput();
-                    getProcUsage(tmp->pattern, grepResultList, tmp->trimparam, tmp->regexparam);
-                    pthread_mutex_unlock(&topOutputMutex);
-#else
-                    getProcUsage(tmp->pattern, grepResultList, tmp->trimparam, tmp->regexparam);
-#endif
 
-                }
-            }
-        }
-        tlist = rdk_list_find_next_node(tlist);
+    GrepSeekProfile* gsProfile = NULL;
+    size_t var = 0;
+    size_t vCount = Vector_Size(topMarkerList);
+    T2Debug("topMarkerList for profile %s is of count = %lu \n", profileName, (unsigned long )vCount);
+    // Get logfile -> seek value map associated with the profile
+    gsProfile = (GrepSeekProfile *) getLogSeekMapForProfile(profileName);
+    if(NULL == gsProfile && (gsProfile = (GrepSeekProfile *) addToProfileSeekMap(profileName)) == NULL)
+    {
+        T2Error("%s Unable to retrieve/create logSeekMap for profile %s \n", __FUNCTION__, profileName);
+        return -1;
     }
+
+    int profileExecCounter = gsProfile->execCounter;
+
+    // TODO Generate the top output file - should be profile specific and thread safe
+    ProcessSnapshot *snapshot = createProcessSnapshot();
+
+    // If the header contains "Load_Average", it calls getLoadAvg() to retrieve load average data.
+    // If the header does not contain "Load_Average", it checks if the pattern field is present in the top out put snapshot.
+    for (var = 0; var < vCount; ++var) // Loop of marker list starts here
+    {
+        GrepMarker* grepMarkerObj = (GrepMarker*) Vector_At(topMarkerList, var);
+        if (!grepMarkerObj || !grepMarkerObj->logFile || !grepMarkerObj->searchString || !grepMarkerObj->markerName)
+        {
+            continue;
+        }
+        if (strcmp(grepMarkerObj->searchString, "") == 0 || strcmp(grepMarkerObj->logFile, "") == 0)
+        {
+            continue;
+        }
+
+
+        // If the skip frequency is set, skip the marker processing for this interval
+        int tmp_skip_interval, is_skip_param;
+        tmp_skip_interval = grepMarkerObj->skipFreq;
+        is_skip_param = (profileExecCounter % (tmp_skip_interval + 1) == 0) ? 0 : 1;
+        if (is_skip_param != 0)
+        {
+            
+            T2Debug("Skipping marker %s for profile %s as per skip frequency %d \n", grepMarkerObj->markerName, profileName, tmp_skip_interval);
+            continue;
+        }
+  
+
+        if (strcmp(grepMarkerObj->markerName, "Load_Average") == 0) { // This block is for device level load average
+            if (0 == getLoadAvg(out_grepResultList, grepMarkerObj->trimParam, grepMarkerObj->regexParam)) {
+                T2Debug("getLoadAvg() Failed with error");
+            }
+        } else {
+            // This block is for process level usage
+            // TODO - Move this to a separate function which adds the results to the out_grepResultList 
+            ProcessInfo *info = lookupProcess(snapshot, grepMarkerObj->markerName);
+            if (info) {
+                printf("Process found: PID=%d, Name=%s, Mem=%s, CPU=%s\n",
+                    info->pid, info->processName, info->memUsage, info->cpuUsage);
+            } else {
+                printf("Process %s not found\n", grepMarkerObj->markerName);
+            }
+
+            // getProcUsage(grepMarkerObj->markerName, out_grepResultList, grepMarkerObj->trimParam, grepMarkerObj->regexParam);
+        }
+
+    }
+
+    // TODO Clear the top output file
+    freeProcessSnapshot(snapshot);
 
     T2Debug("%s --out\n", __FUNCTION__);
     return 0;
@@ -371,12 +408,6 @@ static int getLogFileDescriptor(GrepSeekProfile* gsProfile, const char* logFile,
     return fd;
 }
 
-// Define a struct to hold the file descriptor and size
-typedef struct {
-    int fd;
-    off_t file_size;
-    char* addr;
-} FileDescriptor;
 
 // Caller should free the FileDescriptor struct after use
 static void freeFileDescriptor(FileDescriptor* fileDescriptor) {

@@ -75,6 +75,7 @@ typedef struct _Profile
     T2RBUS *t2RBUSDest;
     Vector *eMarkerList;
     Vector *gMarkerList;
+    Vector *topMarkerList;
     Vector *cachedReportList;
     cJSON *jsonReportObj;
     pthread_t reportThread;

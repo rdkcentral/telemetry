@@ -68,6 +68,92 @@
  * @{
  */
 
+
+
+ProcessSnapshot* createProcessSnapshot() {
+    DIR *procDir = opendir("/proc");
+    if (!procDir) {
+        T2Error("Failed to open /proc directory\n");
+        return NULL;
+    }
+
+    ProcessSnapshot *snapshot = malloc(sizeof(ProcessSnapshot));
+    if (!snapshot) {
+        closedir(procDir);
+        T2Error("Failed to allocate memory for snapshot\n");
+        return NULL;
+    }
+
+    snapshot->processList = Vector_Create();
+    struct dirent *entry;
+
+    while ((entry = readdir(procDir)) != NULL) {
+        if (!isdigit(entry->d_name[0])) {
+            continue; // Skip non-numeric directories
+        }
+
+        pid_t pid = atoi(entry->d_name);
+        char cmdPath[256];
+        snprintf(cmdPath, sizeof(cmdPath), "/proc/%s/comm", entry->d_name);
+
+        FILE *cmdFile = fopen(cmdPath, "r");
+        if (!cmdFile) {
+            continue; 
+        }
+
+        char processName[256];
+        if (fgets(processName, sizeof(processName), cmdFile)) {
+            processName[strcspn(processName, "\n")] = '\0'; // Remove newline
+
+            ProcessInfo *info = malloc(sizeof(ProcessInfo));
+            if (!info) {
+                fclose(cmdFile);
+                continue;
+            }
+
+            info->pid = pid;
+            strncpy(info->processName, processName, sizeof(info->processName) - 1);
+
+            // Optionally, collect memory and CPU usage
+            // TODO: Implement memory and CPU usage collection
+            snprintf(info->memUsage, sizeof(info->memUsage), "N/A"); 
+            snprintf(info->cpuUsage, sizeof(info->cpuUsage), "N/A"); 
+
+            Vector_PushBack(snapshot->processList, info);
+        }
+        fclose(cmdFile);
+    }
+
+    closedir(procDir);
+    return snapshot;
+}
+
+void freeProcessSnapshot(ProcessSnapshot *snapshot) {
+    if (!snapshot) {
+        return;
+    }
+
+    for (size_t i = 0; i < Vector_Size(snapshot->processList); i++) {
+        free(Vector_At(snapshot->processList, i));
+    }
+    Vector_Destroy(snapshot->processList);
+    free(snapshot);
+}
+
+ProcessInfo* lookupProcess(ProcessSnapshot *snapshot, const char *processName) {
+    if (!snapshot || !processName) {
+        return NULL;
+    }
+
+    for (size_t i = 0; i < Vector_Size(snapshot->processList); i++) {
+        ProcessInfo *info = Vector_At(snapshot->processList, i);
+        if (strcmp(info->processName, processName) == 0) {
+            return info; // Return the matching process info
+        }
+    }
+    return NULL; // Process not found
+}
+
 /**
  * @brief To get process usage.
  *
@@ -104,12 +190,8 @@ int getProcUsage(char *processName, Vector* grepResultList, bool trim, char* reg
         memcpy(pInfo.processName, processName, strlen(processName) + 1);
 
         T2Debug("Command for collecting process info : \n pidof %s", processName);
-#ifdef LIBSYSWRAPPER_BUILD
-        cmdPid = v_secure_popen("r", "pidof %s", processName);
-#else
         snprintf(pidofCommand, sizeof(pidofCommand), "pidof %s", processName);
         cmdPid = popen(pidofCommand, "r");
-#endif
         if(!cmdPid)
         {
             T2Debug("Failed to execute %s", pidofCommand);
@@ -118,11 +200,7 @@ int getProcUsage(char *processName, Vector* grepResultList, bool trim, char* reg
         pid = (int *) malloc(sizeof(pid_t));
         if(NULL == pid)
         {
-#ifdef LIBSYSWRAPPER_BUILD
-            pclose_ret = v_secure_pclose(cmdPid);
-#else
             pclose_ret = pclose(cmdPid);
-#endif
             if(pclose_ret != 0)
             {
                 T2Debug("failed in closing pipe! ret %d\n", pclose_ret);
@@ -144,11 +222,7 @@ int getProcUsage(char *processName, Vector* grepResultList, bool trim, char* reg
                 {
                     free(pid);
                 }
-#ifdef LIBSYSWRAPPER_BUILD
-                pclose_ret = v_secure_pclose(cmdPid);
-#else
                 pclose_ret = pclose(cmdPid);
-#endif
                 if(pclose_ret != 0)
                 {
                     T2Debug("failed in closing pipe! ret %d\n", pclose_ret);
@@ -159,11 +233,7 @@ int getProcUsage(char *processName, Vector* grepResultList, bool trim, char* reg
         }
 
 
-#ifdef LIBSYSWRAPPER_BUILD
-        pclose_ret = v_secure_pclose(cmdPid);
-#else
         pclose_ret = pclose(cmdPid);
-#endif
         if(pclose_ret != 0)
         {
             T2Debug("failed in closing pipe! ret %d\n", pclose_ret);
@@ -176,11 +246,7 @@ int getProcUsage(char *processName, Vector* grepResultList, bool trim, char* reg
             // pidof was empty, see if we can grab the pid via ps
             sprintf(psCommand, "busybox ps | grep %s | grep -v grep | awk '{ print $1 }' | tail -n1", processName);
 
-#ifdef LIBSYSWRAPPER_BUILD
-            if (!(cmdPid = v_secure_popen("r", "busybox ps | grep %s | grep -v grep | awk '{ print $1 }' | tail -n1", processName)))
-#else
             if (!(cmdPid = popen(psCommand, "r")))
-#endif
             {
                 free(pid);//CID 172839:Resource leak (RESOURCE_LEAK)
                 return 0;
@@ -199,21 +265,13 @@ int getProcUsage(char *processName, Vector* grepResultList, bool trim, char* reg
                 if ( NULL == temp )
                 {
                     free(pid);
-#ifdef LIBSYSWRAPPER_BUILD
-                    v_secure_pclose(cmdPid);
-#else
                     pclose(cmdPid);
-#endif
                     return 0;
                 }
                 pid = temp;
             }
 
-#ifdef LIBSYSWRAPPER_BUILD
-            v_secure_pclose(cmdPid);
-#else
             pclose(cmdPid);
-#endif
 
             // If pidof command output is empty
             if ((*pid) <= 0)

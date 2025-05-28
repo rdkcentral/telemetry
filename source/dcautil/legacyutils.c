@@ -322,6 +322,7 @@ int getLoadAvg(Vector* grepResultList, bool trim, char* regex)
         T2Debug("Error in opening /proc/loadavg file");
         return 0;
     }
+
     if(fread(str, 1, LEN, fp) != LEN)
     {
         T2Debug("Error in reading loadavg");
@@ -329,6 +330,7 @@ int getLoadAvg(Vector* grepResultList, bool trim, char* regex)
         return 0;
     }
     fclose(fp);
+    
     str[LEN] = '\0';
 
     if(grepResultList != NULL)
@@ -336,8 +338,8 @@ int getLoadAvg(Vector* grepResultList, bool trim, char* regex)
         GrepResult* loadAvg = (GrepResult*) malloc(sizeof(GrepResult));
         if(loadAvg)
         {
-            loadAvg->markerName = strdup("Load_Average");
-            loadAvg->markerValue = strdup(str);
+            loadAvg->markerName = strndup("Load_Average", (strlen("Load_Average") + 1));
+            loadAvg->markerValue = strndup(str, LEN);
             loadAvg->trimParameter = trim;
             loadAvg->regexParameter = regex;
             Vector_PushBack(grepResultList, loadAvg);

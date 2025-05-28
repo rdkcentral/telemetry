@@ -61,6 +61,7 @@ typedef struct _ProfileXConf
     T2HTTP *t2HTTPDest;
     Vector *eMarkerList;
     Vector *gMarkerList;
+    Vector *topMarkerList;
     Vector *cachedReportList;
     cJSON *jsonReportObj;
     pthread_t reportThread;

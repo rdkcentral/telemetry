@@ -23,6 +23,7 @@
 #include "test/rbus/include/rbus.h"
 #include "test/rbus/include/rbus_value.h"
 
+typedef void (*rbusMethodCallBackPtr) (rbusHandle_t handle, char const* methodName, rbusError_t retStatus, rbusObject_t params);
 class rbusMock
 {
 public:
@@ -36,7 +37,7 @@ public:
     MOCK_METHOD(rbusError_t, rbusMethod_Invoke, (rbusHandle_t handle, char const* methodName, rbusObject_t input, rbusObject_t* output), ());
     MOCK_METHOD(const char*, rbusError_ToString, (rbusError_t error), ());
     MOCK_METHOD(bool, rbusCheckMethodExists, (const char* methodName), ());
-    MOCK_METHOD(T2ERROR, rbusMethodCaller, (char *methodName, rbusObject_t* input, char* output), ());
+    MOCK_METHOD(T2ERROR, rbusMethodCaller, (char *methodName, rbusObject_t* input, char* output, rbusMethodCallBackPtr rbusMethodCallBack), ());
 };
 
 extern rbusMock* g_rbusMock;
@@ -51,4 +52,4 @@ extern "C" void rbusObject_Release(rbusObject_t obj);
 extern "C" rbusError_t rbusMethod_Invoke(rbusHandle_t handle, char const* methodName, rbusObject_t input, rbusObject_t* output);
 extern "C" const char* rbusError_ToString(rbusError_t error);
 extern "C" bool rbusCheckMethodExists(const char* methodName);
-extern "C" T2ERROR rbusMethodCaller(char *methodName, rbusObject_t* input, char* output);
+extern "C" T2ERROR rbusMethodCaller(char *methodName, rbusObject_t* input, char* output, rbusMethodCallBackPtr rbusMethodCallBack );

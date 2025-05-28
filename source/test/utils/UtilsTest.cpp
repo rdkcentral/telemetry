@@ -68,6 +68,7 @@ TEST(GET_CERTS, MTLS_UTILS_1ST_NULL)
         EXPECT_EQ(T2ERROR_FAILURE, getMtlsCerts(&buff,NULL));
         free(buff);
     }
+    buff = NULL;
 }
 
 
@@ -80,6 +81,7 @@ TEST(GET_CERTS, MTLS_UTILS_2ND_NULL)
         EXPECT_EQ(T2ERROR_FAILURE, getMtlsCerts(NULL,&buff));
         free(buff);
     }
+    buff = NULL;
 }
 
 //Testing the vectors
@@ -92,6 +94,8 @@ char *marker2  = "GTEST_TELEMETRY2";
 TEST(VECTOR_CREATE, VECTOR_NOT_NULL)
 {
     EXPECT_EQ(T2ERROR_SUCCESS, Vector_Create(&config));
+    Vector_Destroy(config, free); // Free the vector after the test
+    config = NULL;
 }
 
 TEST(VECTOR_PUSHBACK, VECTOR_NULL)
@@ -105,6 +109,7 @@ TEST(VECTOR_PUSHBACK, VECTOR_ITEM_NULL)
      EXPECT_EQ(T2ERROR_INVALID_ARGS, Vector_PushBack(config, NULL));
      //Deletion of vector
      Vector_Destroy(config,free);
+     config = NULL;
 }
 
 TEST(VECTOR_PUSHBACK, VECTOR_NOT_NULL)
@@ -112,7 +117,8 @@ TEST(VECTOR_PUSHBACK, VECTOR_NOT_NULL)
      Vector_Create(&config);
      EXPECT_EQ(T2ERROR_SUCCESS, Vector_PushBack(config, (void *) strdup(marker1)));
      EXPECT_EQ(T2ERROR_SUCCESS, Vector_PushBack(config, (void *) strdup(marker2)));
-     Vector_Destroy(config,free);
+     Vector_Destroy(config,free); // Free all elements and the vector
+     config = NULL;
 }
 
 TEST(VECTOR_SIZE, VECTOR_NULL)
@@ -128,6 +134,7 @@ TEST(VECTOR_SIZE, VECTOR_NOT_NULL)
     EXPECT_EQ(2, Vector_Size(config));
     //Deleting the vector
     Vector_Destroy(config, free);
+    config = NULL;
 }
 
 TEST(VECTOR_AT,VECTOR_NULL)
@@ -143,6 +150,7 @@ TEST(VECTOR_AT, VECTOR_OUT_OF_SIZE)
     EXPECT_EQ(NULL, Vector_At(config, 3));
     //Deleting the Vector
     Vector_Destroy(config, free);
+    config = NULL;
 }
 
 
@@ -153,6 +161,7 @@ TEST(VECTOR_CLEAR, VECTOR_NULL)
     EXPECT_EQ(T2ERROR_INVALID_ARGS, Vector_Clear(config, NULL));
     //Deleting the vector
     Vector_Destroy(config, free);
+    config = NULL;
 }
 
 
@@ -163,14 +172,12 @@ TEST(VECTOR_CLEAR, VECTOR_NOT_NULL)
      EXPECT_EQ(T2ERROR_SUCCESS, Vector_Clear(config, free));
      //Deleting the vector
     Vector_Destroy(config, free);
+    config = NULL;
 }
 
 TEST(VECTOR_DESTROY, VECTOR_NULL)
 {
-    Vector_Create(&config);
     EXPECT_EQ(T2ERROR_INVALID_ARGS, Vector_Destroy(NULL, free));
-    //Deleting the vector
-    Vector_Destroy(config, free);
 }
 
 TEST(VECTOR_DESTROY, VECTOR_NOT_NULL)
@@ -178,6 +185,7 @@ TEST(VECTOR_DESTROY, VECTOR_NOT_NULL)
      Vector_Create(&config);
      Vector_PushBack(config, (void *) strdup(marker1));
      EXPECT_EQ(T2ERROR_SUCCESS, Vector_Destroy(config, free));
+     config = NULL;
 }
 
 TEST(VECTOR_AT, VECTOR_NULL_AND_NOT_NULL)
@@ -187,6 +195,8 @@ TEST(VECTOR_AT, VECTOR_NULL_AND_NOT_NULL)
      Vector_PushBack(config, (void *) strdup(marker2));
      EXPECT_EQ(NULL, Vector_At(NULL, 1));
      EXPECT_EQ(NULL, Vector_At(config, 3));
+     Vector_Destroy(config, free);
+     config = NULL;
 }
 
 TEST(VECTOR_REMOVE_ITEM, VECTOR_FIRST_NULL)
@@ -202,16 +212,18 @@ TEST(VECTOR_REMOVE_ITEM, VECTOR_SECOND_NULL)
      EXPECT_EQ(T2ERROR_INVALID_ARGS, Vector_RemoveItem(config, NULL, free));
      //Deleting the vector
      Vector_Destroy(config, free);
+     config = NULL;
 }
 
-TEST(VECTOR_REMOVE_ITEM, VECTOR_THIRD_NULL)
+TEST(VECTOR_REMOVE_ITEM, REMOVE_ITEM1)
 {
      Vector_Create(&config);
      Vector_PushBack(config, (void *) strdup(marker1));
      Vector_PushBack(config, (void *) strdup(marker2));
-     EXPECT_EQ(T2ERROR_SUCCESS, Vector_RemoveItem(config, marker1, NULL));
+     EXPECT_EQ(T2ERROR_SUCCESS, Vector_RemoveItem(config, marker1, free));// Free the removed item
      //Deleting the vector
      Vector_Destroy(config, free);
+     config = NULL;
 }
 
 TEST(VECTOR_SORT, VECTOR_1_NULL)
@@ -227,6 +239,7 @@ TEST(VECTOR_SORT, VECTOR_3_NULL)
      EXPECT_EQ(T2ERROR_INVALID_ARGS, Vector_Sort(config, sizeof(config), NULL));
      //Deleting the vector
      Vector_Destroy(config, free);
+     config = NULL;
 }
 
 //QUEUE TESTING
@@ -357,6 +370,8 @@ TEST(HASH_MAP_TEST, check_markercompmap)
 {
     markerCompMap = hash_map_create();
     EXPECT_NO_THROW(check_markercompmap(markerCompMap));
+    hash_map_destroy(markerCompMap, free); // Free the hash map itself
+    markerCompMap = NULL;
 }
 
 TEST(HASH_MAP_PUT, HASH_MAP_1_NULL)
@@ -366,12 +381,18 @@ TEST(HASH_MAP_PUT, HASH_MAP_1_NULL)
 
 TEST(HASH_MAP_PUT, HASH_MAP_2_NULL)
 {
-    EXPECT_EQ(-1, hash_map_put(markerCompMap, NULL, markerh1, NULL));
+    hash_map_t *markerCompMapTest = hash_map_create();
+    EXPECT_EQ(-1, hash_map_put(markerCompMapTest, NULL, markerh1, NULL));
+    hash_map_destroy(markerCompMapTest, free); // Free the hash map itself
+    markerCompMapTest = NULL;
 }
 
 TEST(HASH_MAP_PUT, HASH_MAP_3_NULL)
 {
-    EXPECT_EQ(-1, hash_map_put(markerCompMap, teststring, NULL, NULL));
+    hash_map_t *markerCompMapTest = hash_map_create();
+    EXPECT_EQ(-1, hash_map_put(markerCompMapTest, teststring, NULL, NULL));
+    hash_map_destroy(markerCompMapTest, free); // Free the hash map itself
+    markerCompMapTest = NULL;
 }
 
 TEST(HASH_MAP_COUNT, HASH_MAP_NULL)
@@ -386,7 +407,10 @@ TEST(HASH_MAP_LOOKUP, HASH_MAP_1_NULL)
 
 TEST(HASH_MAP_LOOKUP, HASH_MAP_2_NULL)
 {
-   EXPECT_EQ(NULL, hash_map_lookup(markerCompMap, 3));
+   hash_map_t *markerCompMapTest = hash_map_create();
+   EXPECT_EQ(NULL, hash_map_lookup(markerCompMapTest, 3));
+   hash_map_destroy(markerCompMapTest, free); // Free the hash map itself
+   markerCompMapTest = NULL;
 }
 
 TEST(HASH_MAP_LOOKUPKEY, HASH_MAP_1_NULL)
@@ -396,7 +420,10 @@ TEST(HASH_MAP_LOOKUPKEY, HASH_MAP_1_NULL)
 
 TEST(HASH_MAP_LOOKUPKEY, HASH_MAP_2_NULL)
 {
-    EXPECT_EQ(NULL, hash_map_lookupKey(markerCompMap, 3));
+    hash_map_t *markerCompMapTest = hash_map_create();
+    EXPECT_EQ(NULL, hash_map_lookupKey(markerCompMapTest, 3));
+    hash_map_destroy(markerCompMapTest, free); // Free the hash map itself
+    markerCompMapTest = NULL;
 }
 
 TEST(HASH_MAP_GET, HASH_MAP_1_NULL)
@@ -406,12 +433,18 @@ TEST(HASH_MAP_GET, HASH_MAP_1_NULL)
 
 TEST(HASH_MAP_GET, HASH_MAP_2_NULL)
 {
-    EXPECT_EQ(NULL, hash_map_get(markerCompMap, NULL));
+    hash_map_t *markerCompMapTest = hash_map_create();
+    EXPECT_EQ(NULL, hash_map_get(markerCompMapTest, NULL));
+    hash_map_destroy(markerCompMapTest, free); // Free the hash map itself
+    markerCompMapTest = NULL;
 }
 
 TEST(HASH_MAP_GET, HASH_MAP_INVALID)
 {
-   EXPECT_EQ(NULL, hash_map_get(markerCompMap, "TEST"));
+   hash_map_t *markerCompMapTest = hash_map_create();
+   EXPECT_EQ(NULL, hash_map_get(markerCompMapTest, "TEST"));
+   hash_map_destroy(markerCompMapTest, free); // Free the hash mapp itself
+   markerCompMapTest = NULL;
 }
 
 TEST(HASH_MAP_GET_FIRST, HASH_MAP_NULL)
@@ -421,23 +454,32 @@ TEST(HASH_MAP_GET_FIRST, HASH_MAP_NULL)
 
 TEST(HASH_MAP_GET_FIRST, HASH_MAP_VALUE_NULL)
 {
-    EXPECT_EQ(NULL, hash_map_get_first(markerCompMap1));
+    hash_map_t *markerCompMapTest = hash_map_create();
+    EXPECT_EQ(NULL, hash_map_get_first(markerCompMapTest));
+    hash_map_destroy(markerCompMapTest, free); // Free the hash map itself
+    markerCompMapTest = NULL;
 }
 
 TEST(HASH_MAP_GET_NEXT, HASH_MAP_1_NULL)
 {
-
-    EXPECT_EQ(NULL, hash_map_get_next(NULL, (void *)teststring1));
+   EXPECT_EQ(NULL, hash_map_get_next(NULL, (void *)teststring1));
 }
+
 
 TEST(HASH_MAP_GET_NEXT, HASH_MAP_2_NULL)
 {
-    EXPECT_EQ(NULL, hash_map_get_next(markerCompMap, NULL));
+    hash_map_t *markerCompMapTest = hash_map_create();
+    EXPECT_EQ(NULL, hash_map_get_next(markerCompMapTest, NULL));
+    hash_map_destroy(markerCompMapTest, free); // Free the hash map itself
+    markerCompMapTest = NULL;
 }
 
 TEST(HASH_MAP_GET_NEXT, HASH_ITEM_INVALID)
 {
-    EXPECT_EQ(NULL, hash_map_get_next(markerCompMap, (void *)"TEST"));
+    hash_map_t *markerCompMapTest = hash_map_create();
+    EXPECT_EQ(NULL, hash_map_get_next(markerCompMapTest, (void *)"TEST"));
+    hash_map_destroy(markerCompMapTest, free); // Free the hash map itself
+    markerCompMapTest = NULL;
 }
 
 TEST(HASH_MAP_REMOVE, HASH_MAP_NULL)
@@ -447,30 +489,43 @@ TEST(HASH_MAP_REMOVE, HASH_MAP_NULL)
 
 TEST(HASH_MAP_REMOVE, HASH_ELEMENT_NULL)
 {
-    EXPECT_EQ(NULL,hash_map_remove(markerCompMap, NULL));
+    hash_map_t *markerCompMapTest = hash_map_create();
+    EXPECT_EQ(NULL,hash_map_remove(markerCompMapTest, NULL));
+    hash_map_destroy(markerCompMapTest, free); // Free the hash map itself
+    markerCompMapTest = NULL;
 }
 
 TEST(HASH_MAP_REMOVE, HASH_INVALID_ELEMENT)
 {
-    EXPECT_EQ(NULL, hash_map_remove(markerCompMap, "TEST"));
+    hash_map_t *markerCompMapTemp = NULL;
+    markerCompMapTemp = hash_map_create();
+    EXPECT_EQ(NULL, hash_map_remove(markerCompMapTemp, "TEST"));
+    hash_map_destroy(markerCompMapTemp, free); // Free the hash map itself
+    markerCompMapTemp = NULL;
 }
 
-TEST(HASH_MAP_CLEAR1, check_markercompmap)
-{
-   hash_map_clear(markerCompMap, NULL);
-   EXPECT_NO_THROW(check_markercompmap(markerCompMap));
+TEST(HASH_MAP_CLEAR1, check_markercompmap) {
+    hash_map_t *markerCompMapTemp = NULL;
+    markerCompMapTemp = hash_map_create();
+    hash_map_clear(markerCompMapTemp, free); // Ensure elements are freed
+    EXPECT_NO_THROW(check_markercompmap(markerCompMapTemp));
+    markerCompMapTemp = NULL;
 }
 
-TEST(HASH_MAP_CLEAR2, check_markercompmap)
-{
-   hash_map_clear(markerCompMap, free);
-   EXPECT_NO_THROW(check_markercompmap(markerCompMap));
+TEST(HASH_MAP_CLEAR2, check_markercompmap) {
+    hash_map_t *markerCompMapTemp = NULL;
+    markerCompMapTemp = hash_map_create();
+    hash_map_clear(markerCompMapTemp, free); // Ensure elements are freed
+    EXPECT_NO_THROW(check_markercompmap(markerCompMapTemp));
+    // hash_map_destroy(markerCompMapTemp, free); // Free the hash map itself
+    markerCompMapTemp = NULL;
 }
 
-TEST(HASH_MAP_DESTROY1, check_markercompmap)
-{
-   hash_map_destroy(markerCompMap, NULL);
-   EXPECT_NO_THROW(check_markercompmap(markerCompMap));
+TEST(HASH_MAP_DESTROY1, check_markercompmap) {
+    hash_map_t *markerCompMapTemp = NULL;
+    markerCompMapTemp = hash_map_create();
+    hash_map_destroy(markerCompMapTemp, free); // Free the hash map and its elements
+    markerCompMapTemp = NULL;
 }
 
 //t2common.c
@@ -564,6 +619,8 @@ TEST(GETPRIVACYMODE, ARGS_NULL)
     char* privacyMode = NULL;
     getPrivacyMode(&privacyMode);
     EXPECT_STREQ("SHARE", privacyMode);
+    free(privacyMode); // Free the allocated memory
+    privacyMode = NULL;
 }
 
 //setPrivacyMode

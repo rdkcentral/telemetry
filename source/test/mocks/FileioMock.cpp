@@ -47,6 +47,9 @@ typedef pid_t (*fork_ptr) ();
 typedef ssize_t (*write_ptr) (int fd, const void *buf, size_t count);
 //typedef int (*stat_ptr) (const char *pathname, struct stat *statbuf);
 typedef int (*fprintf_ptr) (FILE* stream, const char* format, va_list args);
+//typedef CURLcode (*curl_easy_setopt_ptr) (CURL *curl, CURLoption option, parameter);
+typedef void (*curl_easy_cleanup_ptr) (CURL *handle);
+typedef void (*curl_slist_free_all_ptr) (struct curl_slist *list);
 
 popen_ptr popen_func = (popen_ptr) dlsym(RTLD_NEXT, "popen");
 pclose_ptr pclose_func = (pclose_ptr) dlsym(RTLD_NEXT, "pclose");
@@ -75,6 +78,10 @@ fork_ptr fork_func = (fork_ptr) dlsym(RTLD_NEXT, "fork");
 write_ptr write_func = (write_ptr) dlsym(RTLD_NEXT, "write");
 //stat_ptr stat_func = (stat_ptr) dlsym(RTLD_NEXT, "stat");
 fprintf_ptr fprintf_func = (fprintf_ptr) dlsym(RTLD_NEXT, "fprintf");
+//curl_easy_setopt_ptr curl_easy_setopt_func = (curl_easy_setopt_ptr) dlsym(RTLD_NEXT, "curl_easy_setopt");
+curl_easy_cleanup_ptr curl_easy_cleanup_func = (curl_easy_cleanup_ptr) dlsym(RTLD_NEXT, "curl_easy_cleanup");
+curl_slist_free_all_ptr curl_slist_free_all_func = (curl_slist_free_all_ptr) dlsym(RTLD_NEXT, "curl_slist_free_all");
+
 
 extern "C" int fscanf(FILE *stream, const char *format, ...)
 {
@@ -283,7 +290,7 @@ extern "C" struct curl_slist *curl_slist_append(struct curl_slist *list, const c
 extern "C" CURL* curl_easy_init()
 {
     if (g_fileIOMock == nullptr){
-        return (CURL*)NULL;
+        return curl_easy_init_func();
     }
     
     return g_fileIOMock->curl_easy_init();
@@ -327,3 +334,38 @@ extern "C" int fprintf(FILE* stream, const char* format, ...) {
     va_end(args);
     return result;
 }
+
+/*extern "C" CURLcode curl_easy_setopt(CURL *curl, CURLoption option, parameter)
+{
+    va_list args;
+    va_start(args, option);
+    CURLcode result = CURLE_OK;
+
+    if (g_fileIOMock) {
+        result = g_fileIOMock->curl_easy_setopt(curl, option, args);
+    }
+    else {
+        result = curl_easy_setopt_func(curl, option, args);
+    }
+    va_end(args);
+    return result;
+}
+*/
+extern "C" void curl_easy_cleanup(CURL *handle)
+{
+    if (g_fileIOMock == nullptr){
+        return curl_easy_cleanup_func(handle);
+    }
+
+    return g_fileIOMock->curl_easy_cleanup(handle);
+}
+
+extern "C" void curl_slist_free_all(struct curl_slist *list)
+{
+    if (g_fileIOMock == nullptr){
+        return curl_slist_free_all_func(list);
+    }
+
+    return g_fileIOMock->curl_slist_free_all(list);
+}
+

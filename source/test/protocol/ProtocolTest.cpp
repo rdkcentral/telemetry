@@ -48,10 +48,13 @@ using namespace std;
 #include "test/mocks/rdklogMock.h"
 #include "test/xconf-client/xconfclientMock.h"
 #include "protocolMock.h"
+#include "test/mocks/rdkconfigMock.h"
+
 
 using ::testing::_;
 using ::testing::Return;
 using ::testing::StrEq;
+
 
 class protocolTestFixture : public ::testing::Test {
 protected:
@@ -60,8 +63,9 @@ protected:
         g_fileIOMock = new FileMock();
         g_systemMock = new SystemMock();
         m_xconfclientMock = new XconfclientMock();
-        //m_protocolMock = new ProtocolMock();
         g_rbusMock = new rbusMock();
+        g_rdkconfigMock = new rdkconfigMock();
+
     }
 
     void TearDown() override
@@ -69,14 +73,14 @@ protected:
         delete g_fileIOMock;
         delete g_systemMock;
         delete m_xconfclientMock;
-//      delete m_protocolMock;
         delete g_rbusMock;
+	delete g_rdkconfigMock;
 
         g_fileIOMock = nullptr;
         g_systemMock = nullptr;
         m_xconfclientMock = nullptr;
-//      m_protocolMock = nullptr;
         g_rbusMock = nullptr;
+	g_rdkconfigMock = nullptr;
     }
 };
 
@@ -240,51 +244,7 @@ TEST_F(protocolTestFixture, SENDREPORTOVERHTTP3)
       EXPECT_EQ(T2ERROR_SUCCESS, sendReportOverHTTP(httpURL, payload, NULL));
       free(payload);
 }
-/*
-TEST_F(protocolTestFixture, SENDREPORTOVERHTTP4)
-{
-      char* httpURL = "https://mockxconf:50051/dataLakeMock";
-      char* payload = strdup("This is a payload string");
-      char *cm = (char*)0xFFFFFFFF;
-      EXPECT_CALL(*g_fileIOMock, pipe(_))
-              .Times(1)
-              .WillOnce(Return(0));
-      #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
-      #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
-      EXPECT_CALL(*m_xconfclientMock, getParameterValue(_,_)
-              .Times(1)
-              .WillOnce(Return(T2ERROR_SUCCESS));
-      #endif
-      #endif
-      EXPECT_CALL(*m_xconfclientMock, isMtlsEnabled())
-              .Times(1)
-              .WillOnce(Return(true));
-      EXPECT_CALL(*g_systemMock, access(_,_))                                                                                      
-             .Times(1)                                                                                                             
-             .WillOnce(Return(0));                                                                                                 
-      #ifdef LIBRDKCONFIG_BUILD                                                                                                    
-      EXPECT_CALL(*g_rdkconfigMock, rdkconfig_get(_,_,_))                                                                          
-             .Times(1)                                                                                                             
-             .WillOnce(Return(RDKCONFIG_OK));                                                                                      
-      #endif
-      EXPECT_CALL(*g_fileIOMock, fork())
-              .Times(1)
-              .WillOnce(Return(0));
-      CURL* curl = (CURL*)nullptr;
-      EXPECT_CALL(*g_fileIOMock, curl_easy_init())
-              .Times(1)
-              .WillOnce(Return(curl));
-      EXPECT_CALL(*g_fileIOMock, close(_))
-              .Times(2)
-              .WillOnce(Return(-1))
-              .WillOnce(Return(-1));
-      EXPECT_CALL(*g_fileIOMock, write(_,_,_))
-              .Times(1)
-              .WillOnce(Return(-1));
-      sendReportOverHTTP(httpURL, payload, NULL);
-      free(payload);
-}
-*/
+
 TEST_F(protocolTestFixture, SENDCACHEDREPORTOVERHTTP)
 {
       char* httpURL = "https://mockxconf:50051/dataLakeMock";
@@ -360,6 +320,9 @@ TEST_F(protocolTestFixture, SENDREPORTSOVERRBUSMETHOD1)
     EXPECT_CALL(*g_rbusMock, rbusObject_Release(_))
             .Times(1);
     EXPECT_EQ(T2ERROR_FAILURE, sendReportsOverRBUSMethod(method, inputParams, payload));
+    free(method);
+    free(payload);
+    Vector_Destroy(inputParams, free);
 }
 
 TEST_F(protocolTestFixture, SENDREPORTSOVERRBUSMETHOD2)
@@ -435,6 +398,6 @@ TEST_F(protocolTestFixture, sendCachedReportsOverRBUSMethod)
             .Times(1);
     EXPECT_EQ(T2ERROR_FAILURE, sendCachedReportsOverRBUSMethod(method, inputParams, reportlist));
     free(method);
-    Vector_Destroy(reportlist,free);
     Vector_Destroy(inputParams, free);
+    Vector_Destroy(reportlist,free);
 }

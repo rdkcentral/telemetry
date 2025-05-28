@@ -44,7 +44,7 @@ public:
     MOCK_METHOD(size_t, fwrite, (const void* ptr, size_t size, size_t count, FILE* stream), ());
     MOCK_METHOD(FILE*, popen, (const char* command, const char* type), ());
     MOCK_METHOD(int, pclose, (FILE* stream), ());
-    MOCK_METHOD(int, pipe, (int* fds), ());
+    MOCK_METHOD(int, pipe, (int* fd), ());
     MOCK_METHOD(int, open, (const char* pathname, int flags), ());
     MOCK_METHOD(int, close, (int fd), ());
     MOCK_METHOD(DIR*, opendir, (const char* name), ());
@@ -59,10 +59,12 @@ public:
     MOCK_METHOD(ssize_t, getline, (char** lineptr, size_t* n, FILE* stream), ());
     MOCK_METHOD(pid_t, fork, (), ());
     MOCK_METHOD(ssize_t, write, (int fd, const void* buf, size_t count), ());
+   //MOCK_METHOD(CURLcode, curl_easy_setopt, (CURL *handle, CURLoption option, parameter), ());
+    MOCK_METHOD(void, curl_easy_cleanup, (CURL *handle), ());
+    MOCK_METHOD(void, curl_slist_free_all, (struct curl_slist *list), ());
     // MOCK_METHOD(int, stat, (const char *pathname, struct stat *statbuf), ());
 };
 
 extern FileMock* g_fileIOMock;
-
 
 #endif // FOPEN_MOCK_H

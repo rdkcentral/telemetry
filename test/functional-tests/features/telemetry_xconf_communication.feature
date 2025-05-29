@@ -48,3 +48,12 @@ Feature: Telemetry Xconf communication
     When the telemetry communicates with Xconf server
     Then the telemetry should respect the 404 error and not save any data
     Then telemetry should terminate all reporting based on xconf profiles and not attempt to communicate with xconf server
+
+   Scenario: Telemetry Xconf communication with valid URL check for logupload and logupload_on_demand
+   Given Paramater Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.ConfigURL is set to a valid https URL
+   When the telemetry binary is invoked or reload is initiated with signal reload
+   Then the telemetry should be running as a daemon
+   Then the telemetry should be communicating with Xconf server
+   When the telemetry communicates with Xconf server
+   Then the telemetry should be generating the report when it received the kill signal 10
+   Then the telemetry should be generating the report when it received the kill signal 29

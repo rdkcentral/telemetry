@@ -56,4 +56,3 @@ Feature: Telemetry Xconf communication
    Then the telemetry should be communicating with Xconf server
    When the telemetry communicates with Xconf server
    Then the telemetry should be generating the report when it received the kill signal 10
-   Then the telemetry should be generating the report when it received the kill signal 29

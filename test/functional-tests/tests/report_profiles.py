@@ -1327,143 +1327,6 @@ data_with_delete_on_timeout = '''{
         }
     ]
 }'''
-#json test cases
-#profile with timeref and first reporting Interval shouldn't be taken
-data_with_first_reporting_interval_neg = '''{
-    "profiles": [
-        {
-            "name": "NA_FRI",
-            "hash": "Hash89",
-            "value": {
-                "Name": "RDKB_FRI_Profile",
-                "Description": "RDKB_Profile",
-                "Version": "0.1",
-                "Protocol": "HTTP",
-                "EncodingType": "JSON",
-                "ActivationTimeOut": 30,
-                "DeleteOnTimeout": true,
-                "ReportingInterval": 10,
-                "GenerateNow": false,
-                "RootName": "FR2_US_TC3",
-                "TimeReference": "2023-01-25T13:47:00Z",
-                "Parameter": [
-                    {
-                        "type": "dataModel",
-                        "name": "MODEL_NAME",
-                        "reference": "Device.DeviceInfo.ModelName",
-                        "use": "absolute",
-                        "regex":"[A-Z]+"
-                    },
-                    {
-                        "type": "event",
-                        "eventName": "TEST_EVENT_MARKER_2",
-                        "component": "sysint",
-                        "use": "absolute",
-                        "regex":"[0-9]+"
-                    },
-                    {
-                        "type": "grep",
-                        "marker": "SYS_INFO_CrashPortalUpload_success",
-                        "search": "Success uploading",
-                        "logFile": "core_log.txt",
-                        "use": "absolute",
-                        "regex":"[0-9]+"
-                    }
-                ],
-                "ReportingAdjustments": 
-                    {
-                        "ReportOnUpdate": true,
-                        "FirstReportingInterval": 5,
-                        "MaxUploadLatency": 10
-                    },
-                "HTTP": {
-                    "URL": "https://mockxconf:50051/dataLakeMock/",
-                    "Compression": "None",
-                    "Method": "POST",
-                    "RequestURIParameter": [
-                        {
-                            "Name": "reportName",
-                            "Reference": "Profile.Name"
-                        }
-                    ]
-                },
-                "JSONEncoding": {
-                    "ReportFormat": "NameValuePair",
-                    "ReportTimestamp": "None"
-                }
-            }
-        },
-
-    ]
-}'''
-
-#profile with timeref default and max reporting interval shouldn't be taken
-data_with_maxuploadlatency_neg = '''{
-    "profiles": [
-        {
-            "name": "NA_MLU",
-            "hash": "Hash90",
-            "value": {
-                "Name": "RDKB_ML_Profile",
-                "Description": "RDKB_Profile",
-                "Version": "0.1",
-                "Protocol": "HTTP",
-                "EncodingType": "JSON",
-                "ActivationTimeOut": 20,
-                "DeleteOnTimeout": true,
-                "ReportingInterval": 10,
-                "GenerateNow": false,
-                "RootName": "FR2_US_TC3",
-                "TimeReference": "0001-01-01T00:00:00Z",
-                "Parameter": [
-                    {
-                        "type": "dataModel",
-                        "name": "MODEL_NAME",
-                        "reference": "Device.DeviceInfo.ModelName",
-                        "use": "absolute",
-                        "regex":"[A-Z]+"
-                    },
-                    {
-                        "type": "event",
-                        "eventName": "TEST_EVENT_MARKER_2",
-                        "component": "sysint",
-                        "use": "absolute",
-                        "regex":"[0-9]+"
-                    },
-                    {
-                        "type": "grep",
-                        "marker": "SYS_INFO_CrashPortalUpload_success",
-                        "search": "Success uploading",
-                        "logFile": "core_log.txt",
-                        "use": "absolute",
-                        "regex":"[0-9]+"
-                    }
-                ],
-                "ReportingAdjustments":
-                    {
-                        "ReportOnUpdate": true,
-                        "FirstReportingInterval": 5,
-                        "MaxUploadLatency": 10
-                    },
-                "HTTP": {
-                    "URL": "https://mockxconf:50051/dataLakeMock/",
-                    "Compression": "None",
-                    "Method": "POST",
-                    "RequestURIParameter": [
-                        {
-                            "Name": "reportName",
-                            "Reference": "Profile.Name"
-                        }
-                    ]
-                },
-                "JSONEncoding": {
-                    "ReportFormat": "NameValuePair",
-                    "ReportTimestamp": "None"
-                }
-            }
-        }
-    ]
-}'''
 
 data_with_first_reporting_interval_max_latency = '''{
     "profiles": [
@@ -1683,7 +1546,7 @@ data_with_triggerconditon_neg = '''{
       "value": {
         "Description": "Trigger condition type NULL case",
         "Version": ".01",
-        "Protocol": "RBUS_METHOD",
+        "Protocol": "HTTP",
         "EncodingType": "JSON",
         "GenerateNow": false,
         "ReportingInterval": 10,
@@ -1703,26 +1566,17 @@ data_with_triggerconditon_neg = '''{
             "reference": "Device.X_RDK_Remote.Device.2.Status"
           }
         ],
-        "RBUS_METHOD": {
-          "Method": "Device.X_RDK_Xmidt.SendData",
-          "Parameters": [
-            {
-              "name": "msg_type",
-              "value": "event"
-            },
-            {
-              "name": "source",
-              "value": "telemetry2"
-            },
-            {
-              "name": "dest",
-              "value": "event:/profile-report/LTE-report"
-            },
-            {
-              "name": "content_type",
-              "value": "application/json"
-            }
-          ]
+        "HTTP": {
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
+                
         },
         "JSONEncoding": {
           "ReportFormat": "NameValuePair",
@@ -1736,7 +1590,7 @@ data_with_triggerconditon_neg = '''{
       "value": {
         "Description": "Trigger Condition Reference NULL case",
         "Version": ".01",
-        "Protocol": "RBUS_METHOD",
+        "Protocol": "HTTP",
         "EncodingType": "JSON",
         "GenerateNow": false,
         "ReportingInterval": 10,
@@ -1757,26 +1611,16 @@ data_with_triggerconditon_neg = '''{
             "reference": "Device.X_RDK_Remote.Device.2.Status"
           }
         ],
-        "RBUS_METHOD": {
-          "Method": "Device.X_RDK_Xmidt.SendData",
-          "Parameters": [
-            {
-              "name": "msg_type",
-              "value": "event"
-            },
-            {
-              "name": "source",
-              "value": "telemetry2"
-            },
-            {
-              "name": "dest",
-              "value": "event:/profile-report/LTE-report"
-            },
-            {
-              "name": "content_type",
-              "value": "application/json"
-            }
-          ]
+        "HTTP": {                                                                                  
+                    "URL": "https://mockxconf:50051/dataLakeMock/",                                        
+                    "Compression": "None",                                                                 
+                    "Method": "POST",                                                                      
+                    "RequestURIParameter": [                                                               
+                        {                                                                                  
+                            "Name": "reportName",                                                          
+                            "Reference": "Profile.Name"                                                    
+                        }                                                                                  
+                    ]                                                                                      
         },
         "JSONEncoding": {
           "ReportFormat": "NameValuePair",
@@ -1790,7 +1634,7 @@ data_with_triggerconditon_neg = '''{
       "value": {
         "Description": "Trigger Condition type is not datamodel",
         "Version": ".01",
-        "Protocol": "RBUS_METHOD",
+        "Protocol": "HTTP",
         "EncodingType": "JSON",
         "GenerateNow": false,
         "ReportingInterval": 240,
@@ -1807,26 +1651,16 @@ data_with_triggerconditon_neg = '''{
             "reference": "Device.X_RDK_WanManager.InterfaceActiveStatus"
           }
         ],
-        "RBUS_METHOD": {
-          "Method": "Device.X_RDK_Xmidt.SendData",
-          "Parameters": [
-            {
-              "name": "msg_type",
-              "value": "event"
-            },
-            {
-              "name": "source",
-              "value": "telemetry2"
-            },
-            {
-              "name": "dest",
-              "value": "event:/profile-report/LTE-report"
-            },
-            {
-              "name": "content_type",
-              "value": "application/json"
-            }
-          ]
+        "HTTP": {
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
         },
         "JSONEncoding": {
           "ReportFormat": "NameValuePair",
@@ -1840,7 +1674,7 @@ data_with_triggerconditon_neg = '''{
       "value": {
         "Description": "Trigger condition operator is NULL",
         "Version": ".01",
-        "Protocol": "RBUS_METHOD",
+        "Protocol": "HTTP",
         "EncodingType": "JSON",
         "GenerateNow": false,
         "ReportingInterval": 25,
@@ -1857,26 +1691,16 @@ data_with_triggerconditon_neg = '''{
             "reference": "Device.X_RDK_WanManager.InterfaceActiveStatus"
           }
         ],
-        "RBUS_METHOD": {
-          "Method": "Device.X_RDK_Xmidt.SendData",
-          "Parameters": [
-            {
-              "name": "msg_type",
-              "value": "event"
-            },
-            {
-              "name": "source",
-              "value": "telemetry2"
-            },
-            {
-              "name": "dest",
-              "value": "event:/profile-report/LTE-report"
-            },
-            {
-              "name": "content_type",
-              "value": "application/json"
-            }
-          ]
+        "HTTP": {
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
         },
         "JSONEncoding": {
           "ReportFormat": "NameValuePair",
@@ -1890,7 +1714,7 @@ data_with_triggerconditon_neg = '''{
       "value": {
         "Description": "Trigger Condition operator invalid case",
         "Version": ".01",
-        "Protocol": "RBUS_METHOD",
+        "Protocol": "HTTP",
         "EncodingType": "JSON",
         "GenerateNow": false,
         "ReportingInterval": 10,
@@ -1908,26 +1732,16 @@ data_with_triggerconditon_neg = '''{
             "reference": "Device.X_RDK_WanManager.InterfaceActiveStatus"
           }
         ],
-        "RBUS_METHOD": {
-          "Method": "Device.X_RDK_Xmidt.SendData",
-          "Parameters": [
-            {
-              "name": "msg_type",
-              "value": "event"
-            },
-            {
-              "name": "source",
-              "value": "telemetry2"
-            },
-            {
-              "name": "dest",
-              "value": "event:/profile-report/LTE-report"
-            },
-            {
-              "name": "content_type",
-              "value": "application/json"
-            }
-          ]
+        "HTTP": {
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
         },
         "JSONEncoding": {
           "ReportFormat": "NameValuePair",
@@ -1941,7 +1755,7 @@ data_with_triggerconditon_neg = '''{
       "value": {
         "Description": "Trigger Condition threshold is NULL",
         "Version": ".01",
-        "Protocol": "RBUS_METHOD",
+        "Protocol": "HTTP",
         "EncodingType": "JSON",
         "GenerateNow": false,
         "ActivationTimeOut": 360,
@@ -1963,26 +1777,16 @@ data_with_triggerconditon_neg = '''{
             "reference": "Device.X_RDK_GatewayManagement.Gateway.1.ActiveStatus"
           }
         ],
-        "RBUS_METHOD": {
-          "Method": "Device.X_RDK_Xmidt.SendData",
-          "Parameters": [
-            {
-              "name": "msg_type",
-              "value": "event"
-            },
-            {
-              "name": "source",
-              "value": "telemetry2"
-            },
-            {
-              "name": "dest",
-              "value": "event:/profile-report/LTE-report"
-            },
-            {
-              "name": "content_type",
-              "value": "application/json"
-            }
-          ]
+        "HTTP": {
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
         },
         "JSONEncoding": {
           "ReportFormat": "NameValuePair",
@@ -1996,7 +1800,7 @@ data_with_triggerconditon_neg = '''{
       "value": {
         "Description": "Trigger Condition threshold is NULL",
         "Version": ".01",
-        "Protocol": "RBUS_METHOD",
+        "Protocol": "HTTP",
         "EncodingType": "JSON",
         "GenerateNow": false,
         "ActivationTimeOut": 360,
@@ -2018,26 +1822,16 @@ data_with_triggerconditon_neg = '''{
             "reference": "Device.X_RDK_GatewayManagement.Gateway.1.ActiveStatus"
           }
         ],
-        "RBUS_METHOD": {
-          "Method": "Device.X_RDK_Xmidt.SendData",
-            "Parameters": [
-            {
-              "name": "msg_type",
-              "value": "event"
-            },
-            {
-              "name": "source",
-              "value": "telemetry2"
-            },
-            {
-              "name": "dest",
-              "value": "event:/profile-report/LTE-report"
-            },
-            {
-              "name": "content_type",
-              "value": "application/json"
-            }
-          ]
+        "HTTP": {
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
         },
         "JSONEncoding": {
           "ReportFormat": "NameValuePair",
@@ -2056,7 +1850,7 @@ data_with_triggerconditon_pos = '''{
       "value": {
         "Description": "Trigger condition working case",
         "Version": ".01",
-        "Protocol": "RBUS_METHOD",
+        "Protocol": "HTTP",
         "EncodingType": "JSON",
         "GenerateNow": false,
         "TimeReference": "0001-01-01T00:00:00Z",
@@ -2069,26 +1863,16 @@ data_with_triggerconditon_pos = '''{
             "operator": "any"
           }
         ],
-        "RBUS_METHOD": {
-         "Method": "Device.X_RDK_Xmidt.SendData",
-          "Parameters": [
-            {
-              "name": "msg_type",
-              "value": "event"
-            },
-            {
-              "name": "source",
-              "value": "telemetry2"
-            },
-            {
-              "name": "dest",
-              "value": "event:/profile-report/LTE-report"
-            },
-            {
-              "name": "content_type",
-              "value": "application/json"
-            }
-          ]
+        "HTTP": {
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
         },
         "JSONEncoding": {
           "ReportFormat": "NameValuePair",
@@ -2098,3 +1882,4 @@ data_with_triggerconditon_pos = '''{
         }
     ]
 }'''
+

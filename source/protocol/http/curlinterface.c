@@ -34,7 +34,9 @@
 
 #include "curlinterface.h"
 #include "reportprofiles.h"
+#ifdef ENABLE_MTLS
 #include "t2MtlsUtils.h"
+#endif
 #include "t2log_wrapper.h"
 #include "busInterface.h"
 #ifdef LIBRDKCERTSEL_BUILD
@@ -345,6 +347,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
 #endif
 #endif
     mtls_enable = isMtlsEnabled();
+#ifdef ENABLE_MTLS
 #ifndef LIBRDKCERTSEL_BUILD
     if(mtls_enable == true && T2ERROR_SUCCESS != getMtlsCerts(&pCertFile, &pCertPC))
     {
@@ -368,12 +371,14 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
         return ret;
     }
 #endif
+#endif
     // Block the userdefined signal handlers before fork
     pthread_sigmask(SIG_BLOCK, &blocking_signal, NULL);
     if((childPid = fork()) < 0)
     {
         T2Error("Failed to fork !!! exiting...\n");
         // Unblock the userdefined signal handler
+#ifdef ENABLE_MTLS
 #ifndef LIBRDKCERTSEL_BUILD
         if(NULL != pCertFile)
         {
@@ -391,6 +396,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
             free(pCertPC);
 #endif
         }
+#endif
 #endif
         pthread_sigmask(SIG_UNBLOCK, &blocking_signal, NULL);
         T2Debug("%s --out\n", __FUNCTION__);

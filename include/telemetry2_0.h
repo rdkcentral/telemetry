@@ -37,7 +37,6 @@ extern "C" {
 #define T2_TEMP_REPORT_PROFILE_PARAM "Device.X_RDKCENTRAL-COM_T2.Temp_ReportProfiles"
 #define T2_TOTAL_MEM_USAGE "Device.X_RDK_T2.TotalUsedMem"
 
-#define T2_MTLS_RFC "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.MTLS.Enable"
 #define PRIVACYMODES_RFC "Device.X_RDKCENTRAL-COM_Privacy.PrivacyMode"
 #define T2_ON_DEMAND_REPORT "Device.X_RDKCENTRAL-COM_T2.UploadDCMReport"
 #define T2_ABORT_ON_DEMAND_REPORT "Device.X_RDKCENTRAL-COM_T2.AbortDCMReport"

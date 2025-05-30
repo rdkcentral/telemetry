@@ -80,7 +80,7 @@ def test_xconf_404():
     ERROR_MSG1 = "Telemetry XCONF communication Failed with http code"
     ERROR_MSG2 = "XConf Telemetry profile not set for this device, uninitProfileList."
 
-    sleep(20)
+    sleep(10)
     response1 = grep_T2logs(ERROR_MSG1)
     assert ERROR_MSG1 in response1
     sleep(10)
@@ -95,7 +95,7 @@ def test_change_profile():
     rbus_set_data("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.ConfigURL", "string", "https://mockxconf:50050/loguploader1/getT2DCMSettings")
     #exec_reload the telemetry profile
     kill_telemetry(12)
-    sleep(20)
+    sleep(10)
     assert os.path.exists(XCONF_PERSISTANT_FILE)
     assert "NEW TEST PROFILE" in grep_T2logs("NEW TEST PROFILE")
     
@@ -113,10 +113,30 @@ def test_verify_report():
     assert ERROR_MSG2 in grep_T2logs(ERROR_MSG2)
 
 @pytest.mark.run(order=8)
+def test_log_upload():
+    LOG_MSG1 = "CollectAndReportXconf ++in profileName : NEW TEST PROFILE"
+    LOG_MSG2 = "cJSON Report ="
+    clear_T2logs()
+    kill_telemetry(10)
+    sleep(10)
+    assert LOG_MSG1 in grep_T2logs(LOG_MSG1)
+    assert LOG_MSG2 in grep_T2logs(LOG_MSG2)
+
+@pytest.mark.run(order=9)
+def test_log_upload_on_demand():
+    LOG_MSG1 = "CollectAndReportXconf ++in profileName : NEW TEST PROFILE"
+    LOG_MSG2 = "cJSON Report ="
+    clear_T2logs()
+    kill_telemetry(29)
+    sleep(10)
+    assert LOG_MSG1 in grep_T2logs(LOG_MSG1)
+    assert LOG_MSG2 in grep_T2logs(LOG_MSG2)
+
+@pytest.mark.run(order=10)
 def test_verify_persistant_file():
     assert os.path.exists(XCONF_PERSISTANT_FILE)
 
-@pytest.mark.run(order=9)
+@pytest.mark.run(order=11)
 def test_xconf_retry_for_connection_errors():
     clear_T2logs()
     rbus_set_data("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.ConfigURL", "string", "https://mockxconf:80/loguploader1/getT2DCMSettings")

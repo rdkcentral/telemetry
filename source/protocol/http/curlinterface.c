@@ -258,11 +258,13 @@ static T2ERROR setPayload(CURL *curl, const char* payload, childResponse *childC
 static void checkStateRed(char *cert_buf, size_t buf_size)
 {
     if (access("/tmp/stateRedEnabled", F_OK) == 0) {
-        T2Info("%s, T2:Cert selector: Device is in state red\n", __func__);
-        snprintf(cert_buf, buf_size, "RCVRY");
-    } else {
-        T2Info("%s, T2:Cert selector: Device is not in state red\n", __func__);
-        snprintf(cert_buf, buf_size, "MTLS");
+         T2Info("%s, T2:Cert selector: Device is in state red\n", __func__);
+         snprintf(cert_buf, buf_size, "RCVRY");
+    } 
+    else 
+    {
+         T2Info("%s, T2:Cert selector: Device is not in state red\n", __func__);
+         snprintf(cert_buf, buf_size, "MTLS");
     }
     if (curlCertSelector != NULL) {
          curlCertSelectorFree();
@@ -290,7 +292,7 @@ static void curlCertSelectorInit()
         curlCertSelector = rdkcertselector_new( NULL, NULL, cert_group );
         if(curlCertSelector == NULL)
         {
-            T2Error("%s, T2:Cert selector initialization failed %s\n", __func__, cert_group );
+            T2Error("%s, T2:Cert selector initialization failed %s\n", __func__, cert_group);
         }
         else
         {

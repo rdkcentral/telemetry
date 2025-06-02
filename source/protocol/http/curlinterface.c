@@ -293,11 +293,11 @@ static void curlCertSelectorInit()
         curlCertSelector = rdkcertselector_new( NULL, NULL, cert_group );
         if(curlCertSelector == NULL)
         {
-            T2Error("%s, T2:Cert selector %s initialization failed\n", __func__, cert_group);
+            T2Error("%s, T2:Cert selector initialization failed\n", __func__);
         }
         else
         {
-            T2Info("%s, T2:Cert selector %s initialization successfully\n", __func__, cert_group);
+            T2Info("%s, T2:Cert selector initialization successfully\n", __func__);
         }
     }
 }

@@ -261,13 +261,11 @@ static void checkStateRed(char *cert_buf, size_t buf_size)
     {
         T2Info("%s, Device is in red state\n", __func__);
         snprintf(cert_buf, buf_size, "RCVRY");
-        //curlCertSelectorFree();
     }
     else
     {
         T2Info("%s, Device is not in red state\n", __func__);
         snprintf(cert_buf, buf_size, "MTLS");
-        //curlCertSelectorFree();
     }
     if(curlCertSelector)
     {

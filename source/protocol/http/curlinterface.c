@@ -259,7 +259,7 @@ void checkStateRed(char *cert_buf, size_t buf_size)
 {
     if (access("/tmp/stateRedEnabled", F_OK) == 0) 
     {
-        T2Info("%s, T2:Cert selector: Device is in state red\n", __func__);
+         T2Debug("%s Device is not in red state\n", __FUNCTION__);
     }
 }
 void curlCertSelectorFree()

@@ -255,7 +255,22 @@ static T2ERROR setPayload(CURL *curl, const char* payload, childResponse *childC
     return T2ERROR_SUCCESS;
 }
 #ifdef LIBRDKCERTSEL_BUILD
-// CertSelector Init
+static void checkStateRed(char *cert_buf, size_t buf_size)
+{
+    if (access("/tmp/stateRedEnabled", F_OK) == 0) 
+    {
+        T2Info("%s, T2:Cert selector: Device is in state red\n", __func__);
+        snprintf(cert_buf, buf_size, "%s", "RCVRY");
+    } 
+    else 
+    {
+        T2Info("%s, T2:Cert selector: Device is not in state red\n", __func__);
+        snprintf(cert_buf, buf_size, "%s", "MTLS");
+    }
+    if (curlCertSelector != NULL) {
+         curlCertSelectorFree();
+    }
+}
 void curlCertSelectorFree()
 {
     rdkcertselector_free(&curlCertSelector);

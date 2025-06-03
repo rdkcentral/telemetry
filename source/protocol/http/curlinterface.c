@@ -255,6 +255,9 @@ static T2ERROR setPayload(CURL *curl, const char* payload, childResponse *childC
     return T2ERROR_SUCCESS;
 }
 #ifdef LIBRDKCERTSEL_BUILD
+void checkStateRed(char *cert_buf, size_t buf_size)
+{
+}
 void curlCertSelectorFree()
 {
     rdkcertselector_free(&curlCertSelector);

@@ -267,6 +267,10 @@ void checkStateRed(char *cert_buf, size_t buf_size)
         T2Debug("%s Device is not in red state\n", __FUNCTION__);
         snprintf(cert_buf, buf_size, "%s", "MTLS");
     }
+    if(curlCertSelector != NULL) 
+    {
+         curlCertSelectorFree();
+    }
 }
 void curlCertSelectorFree()
 {

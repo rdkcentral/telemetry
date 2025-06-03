@@ -259,8 +259,13 @@ void checkStateRed(char *cert_buf, size_t buf_size)
 {
     if(access("/tmp/stateRedEnabled", F_OK) == 0)
     {
-        T2Debug("%s Device is not in red state\n", __FUNCTION__);
+        T2Debug("%s Device is in red state\n", __FUNCTION__);
         snprintf(cert_buf, buf_size, "%s", "RCVRY");
+    }
+    else
+    {
+        T2Debug("%s Device is not in red state\n", __FUNCTION__);
+        snprintf(cert_buf, buf_size, "%s", "MTLS");
     }
 }
 void curlCertSelectorFree()

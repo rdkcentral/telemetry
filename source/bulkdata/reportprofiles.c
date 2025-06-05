@@ -1461,7 +1461,7 @@ bool isMtlsEnabled(void)
     isT2MtlsEnable = true;
     return true;
 #else
-#if !defined (ENABLE_RDKC_SUPPORT)
+#if !defined(ENABLE_RDKC_SUPPORT) && !defined(DEVICE_EXTENDER)
     char *paramValue = NULL;
 
     if(initT2MtlsEnable == false)

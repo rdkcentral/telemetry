@@ -34,15 +34,19 @@
 #include "rdkconfig.h"
 #endif
 
-
-#if !defined(ENABLE_RDKC_SUPPORT)
-static const char* staticMtlsCert = "/etc/ssl/certs/staticXpkiCrt.pk12";
+static bool UsedynamicMtlsCert2 = false;
 #ifdef LIBRDKCONFIG_BUILD
 static const char* staticMtlsDestFile = "/tmp/.cfgStaticxpki";
 static const char* dynamicMtlsDestFile = "/tmp/.cfgDynamicxpki";
 #endif
+#if defined(DEVICE_EXTENDER)
+static const char* staticMtlsCert = "/usr/opensync/certs/cert.p12";
+static const char* dynamicMtlsCert = "/mnt/data/pstore/certs/devicecert_1.pk12";
 
-static bool UsedynamicMtlsCert2 = false;
+#else
+#if !defined(ENABLE_RDKC_SUPPORT)
+static const char* staticMtlsCert = "/etc/ssl/certs/staticXpkiCrt.pk12";
+
 #if defined(ENABLE_RDKB_SUPPORT)
 static const char* dynamicMtlsCert = "/nvram/certs/devicecert_1.pk12";
 #else
@@ -54,6 +58,7 @@ static char* staticMtlsCert = "";
 static char* staticPassPhrase = "";
 static char* dynamicMtlsCert = "";
 static char* dynamicPassPhrase = "";
+#endif
 #endif
 
 void initMtls()

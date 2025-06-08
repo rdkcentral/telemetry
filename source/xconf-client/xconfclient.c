@@ -358,7 +358,8 @@ T2ERROR appendRequestParams(char *buf, const int maxArgLen)
     }
 
     char whoami_support[8] = {0};
-    if (getDevicePropertyData("WHOAMI_SUPPORT", whoami_support, sizeof(whoami_support)) == 0 && strcmp(whoami_support, "true") == 0) {
+    if (getDevicePropertyData("WHOAMI_SUPPORT", whoami_support, sizeof(whoami_support)) == 0 && strcmp(whoami_support, "true") == 0)
+    {
         if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_OSCLASS, &paramVal))
         {
             memset(tempBuf, 0, MAX_URL_ARG_LEN);

@@ -262,61 +262,28 @@ bool isStateRedEnabled(void)
 }
 void curlCertSelectorFree()
 {
-    bool state_red_enable = isStateRedEnabled();
-    if(state_red_enable)
+    rdkcertselector_free(&curlCertSelector);
+    rdkcertselector_free(&curlRcvryCertSelector);
+    if(curlCertSelector == NULL || curlRcvryCertSelector == NULL)
     {
-        rdkcertselector_free(&curlRcvryCertSelector);
-        if(curlRcvryCertSelector == NULL)
-        {
-            T2Info("%s, T2:Cert Rcvry selector memory free\n", __func__);
-        }
-        else
-        {
-            T2Info("%s, T2:Cert Rcvry selector memory free failed\n", __func__);
-        }
-    } else {
-        rdkcertselector_free(&curlCertSelector);
-        if(curlCertSelector == NULL)
-        {
-            T2Info("%s, T2:Cert selector memory free\n", __func__);
-        }
-        else
-        {
-            T2Info("%s, T2:Cert selector memory free failed\n", __func__);
-        }
+        T2Info("%s, T2:Cert selector memory free\n", __func__);
+    }
+    else
+    {
+        T2Info("%s, T2:Cert  selector memory free failed\n", __func__);
     }
 }
 static void curlCertSelectorInit()
 {
-    bool state_red_enable = isStateRedEnabled();
-    
-    if(state_red_enable)
+    curlCertSelector = rdkcertselector_new( NULL, NULL, "MTLS" );
+    curlRcvryCertSelector = rdkcertselector_new( NULL, NULL, "RCVRY" );
+    if(curlCertSelector == NULL || curlRcvryCertSelector == NULL)
     {
-        if(curlRcvryCertSelector == NULL) 
-        {
-            curlRcvryCertSelector = rdkcertselector_new( NULL, NULL, "RCVRY" );
-            if(curlRcvryCertSelector == NULL)
-            {
-                T2Error("%s, T2:Cert selector Rcvry initialization failed\n", __func__);
-            }
-            else
-            {
-                T2Info("%s, T2:Cert selector Rcvry initialization successfully\n", __func__);
-            }
-        }
-    } else {
-        if(curlCertSelector == NULL) 
-        {
-            curlCertSelector = rdkcertselector_new( NULL, NULL, "MTLS" );
-            if(curlCertSelector == NULL)
-            {
-                T2Error("%s, T2:Cert selector initialization failed\n", __func__);
-            }
-            else
-            {
-                T2Info("%s, T2:Cert selector initialization successfully\n", __func__);
-            }
-        }
+        T2Error("%s, T2:Cert selector initialization failed\n", __func__);
+    }
+    else
+    {
+        T2Info("%s, T2:Cert selector initialization successfully\n", __func__);
     }
 }
 #endif
@@ -358,12 +325,15 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
         return ret;
     }
 #ifdef LIBRDKCERTSEL_BUILD
-    curlCertSelectorInit();
+    if(curlCertSelector == NULL || curlRcvryCertSelector == NULL)
+    {
+        curlCertSelectorInit();
+    }
     state_red_enable = isStateRedEnabled();
     if (state_red_enable)
     {
         thisCertSel = curlRcvryCertSelector;
-    }
+    } 
     else
     {
         thisCertSel = curlCertSelector;

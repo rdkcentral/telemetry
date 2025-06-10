@@ -59,6 +59,8 @@ typedef struct
 
 #ifdef LIBRDKCERTSEL_BUILD
 static rdkcertselector_h curlCertSelector = NULL;
+static char last_cert[8]="";
+static pthread_mutex_t certMutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
@@ -267,10 +269,6 @@ static void checkStateRed(char *cert_buf, size_t buf_size)
         T2Info("%s, Device is not in red state\n", __func__);
         snprintf(cert_buf, buf_size, "MTLS");
     }
-    if(curlCertSelector)
-    {
-        curlCertSelectorFree();
-    }
 }
 void curlCertSelectorFree()
 {
@@ -288,10 +286,15 @@ static void curlCertSelectorInit()
 {
     char cert_group[8] = {0};
     checkStateRed(cert_group, sizeof(cert_group));
-
-    if(curlCertSelector == NULL)
+    pthread_mutex_lock(&certMutex);
+    
+    if(curlCertSelector == NULL || strncmp(last_cert, cert_group, sizeof(cert_group) != 0))
     {
+        T2Info("%s, T2:Cert selector certGroup %s\n", __func__, cert_group);
         curlCertSelector = rdkcertselector_new( NULL, NULL, cert_group );
+        strncpy(last_cert, cert_group, sizeof(last_cert)-1);
+        last_cert[sizeof(last_cert) -1] = '\0';
+        
         if(curlCertSelector == NULL)
         {
             T2Error("%s, T2:Cert selector initialization failed\n", __func__);
@@ -301,6 +304,7 @@ static void curlCertSelectorInit()
             T2Info("%s, T2:Cert selector initialization successfully\n", __func__);
         }
     }
+    pthread_mutex_unlock(&certMutex);
 }
 #endif
 T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)

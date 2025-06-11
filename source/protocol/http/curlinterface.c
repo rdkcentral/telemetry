@@ -279,22 +279,23 @@ static void curlCertSelectorInit()
     if (state_red_enable && curlRcvryCertSelector == NULL ) 
     {
         curlRcvryCertSelector = rdkcertselector_new( NULL, NULL, "RCVRY" );
+        if(curlRcvryCertSelector == NULL) {
+            T2Error("%s, T2:statered Cert selector initialization failed\n", __func__);
+        } else {
+            T2Info("%s, T2:statered Cert selector initialization successfully\n", __func__);
+        }
     } 
     else 
     {
         if (curlCertSelector == NULL)
         {
             curlCertSelector = rdkcertselector_new( NULL, NULL, "MTLS" );
+            if (curlCertSelector == NULL) {
+                T2Error("%s, T2:Cert selector initialization failed\n", __func__);
+            } else {
+                T2Info("%s, T2:Cert selector initialization successfully\n", __func__);
+            }
         }
-    }
-    
-    if (curlCertSelector == NULL || curlRcvryCertSelector == NULL)
-    {
-        T2Error("%s, T2: %s Cert  selector memory free failed\n", __func__, (state_red_enable) ? "state red" : "normal state");
-    } 
-    else 
-    {
-        T2Info("%s, T2: %s Cert selector initialization successfully\n", __func__, (state_red_enable) ? "state red" : "normal state");
     }
 }
 #endif

@@ -270,20 +270,31 @@ void curlCertSelectorFree()
     }
     else
     {
-        T2Info("%s, T2:Cert  selector memory free failed\n", __func__);
+        T2Info("%s, T2:Cert selector memory free failed\n", __func__);
     }
 }
 static void curlCertSelectorInit()
 {
-    curlCertSelector = rdkcertselector_new( NULL, NULL, "MTLS" );
-    curlRcvryCertSelector = rdkcertselector_new( NULL, NULL, "RCVRY" );
-    if(curlCertSelector == NULL || curlRcvryCertSelector == NULL)
+    state_red_enable = isStateRedEnabled();
+    if (state_red_enable && curlRcvryCertSelector == NULL ) 
     {
-        T2Error("%s, T2:Cert selector initialization failed\n", __func__);
+        curlRcvryCertSelector = rdkcertselector_new( NULL, NULL, "RCVRY" );
+    } 
+    else 
+    {
+        if (curlCertSelector == NULL)
+        {
+            curlCertSelector = rdkcertselector_new( NULL, NULL, "MTLS" );
+        }
     }
-    else
+    
+    if (curlCertSelector == NULL || curlRcvryCertSelector == NULL)
     {
-        T2Info("%s, T2:Cert selector initialization successfully\n", __func__);
+        T2Error("%s, T2: %s Cert  selector memory free failed\n", __func__, (state_red_enable) ? "state red" : "normal state");
+    } 
+    else 
+    {
+        T2Info("%s, T2: %s Cert selector initialization successfully\n", __func__, (state_red_enable) ? "state red" : "normal state");
     }
 }
 #endif
@@ -325,20 +336,15 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
         return ret;
     }
 #ifdef LIBRDKCERTSEL_BUILD
-    if(curlCertSelector == NULL || curlRcvryCertSelector == NULL)
-    {
-        curlCertSelectorInit();
-    }
+    curlCertSelectorInit();
     state_red_enable = isStateRedEnabled();
     T2Info("%s: state_red_enable: %d\n", __func__, state_red_enable );
     if (state_red_enable)
     {
-        T2Info("%s: Device is in state red \n", __func__ );
         thisCertSel = curlRcvryCertSelector;
     } 
     else
     {
-        T2Info("%s: Device is NOT in state red \n", __func__ );
         thisCertSel = curlCertSelector;
     }
 #endif

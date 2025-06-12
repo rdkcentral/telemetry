@@ -279,9 +279,12 @@ static void curlCertSelectorInit()
     if (state_red_enable && curlRcvryCertSelector == NULL )
     {
         curlRcvryCertSelector = rdkcertselector_new( NULL, NULL, "RCVRY" );
-        if(curlRcvryCertSelector == NULL) {
+        if (curlRcvryCertSelector == NULL)
+        {
             T2Error("%s, T2:statered Cert selector initialization failed\n", __func__);
-        } else {
+        } 
+        else
+        {
             T2Info("%s, T2:statered Cert selector initialization successfully\n", __func__);
         }
     }
@@ -290,15 +293,19 @@ static void curlCertSelectorInit()
         if (curlCertSelector == NULL)
         {
             curlCertSelector = rdkcertselector_new( NULL, NULL, "MTLS" );
-            if (curlCertSelector == NULL) {
+            if (curlCertSelector == NULL)
+            {
                 T2Error("%s, T2:Cert selector initialization failed\n", __func__);
-            } else {
+            }
+            else
+            {
                 T2Info("%s, T2:Cert selector initialization successfully\n", __func__);
             }
         }
     }
 }
 #endif
+
 T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
 {
     CURL *curl = NULL;
@@ -340,6 +347,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
     curlCertSelectorInit();
     state_red_enable = isStateRedEnabled();
     T2Info("%s: state_red_enable: %d\n", __func__, state_red_enable );
+    
     if (state_red_enable)
     {
         thisCertSel = curlRcvryCertSelector;

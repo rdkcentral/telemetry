@@ -43,6 +43,19 @@ jobs:
           else
             echo "Code formatting errors not found."
           fi
+      - name: Auto-fix formatting errors and commit
+        run: |
+          find . -name '*.c' -o -name '*.h' | xargs astyle --options=.astylerc
+          find . -name '*.orig' -type f -delete
+          if ! git diff --quiet; then
+              git config --global user.name 'github-actions[bot]'
+              git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+              git add .
+              git commit -m "chore: auto-fix code formatting issues [ci skip]"
+              git push
+          else
+              echo "No formatting changes needed."
+          fi
 
       - name: Pull docker images
         run: |

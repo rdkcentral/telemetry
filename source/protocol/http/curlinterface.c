@@ -447,7 +447,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
                 goto child_cleanReturn;
             }
 #ifdef LIBRDKCERTSEL_BUILD
-            pEngine = rdkcertselector_getEngine(curlCertSelector);
+            pEngine = rdkcertselector_getEngine(thisCertSel);
             if(pEngine != NULL)
             {
                 code = curl_easy_setopt(curl, CURLOPT_SSLENGINE, pEngine);
@@ -466,7 +466,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
                 pCertFile = NULL;
                 pCertPC = NULL;
                 pCertURI = NULL;
-                curlGetCertStatus = rdkcertselector_getCert(curlCertSelector, &pCertURI, &pCertPC);
+                curlGetCertStatus = rdkcertselector_getCert(thisCertSel, &pCertURI, &pCertPC);
                 if(curlGetCertStatus != certselectorOk)
                 {
                     T2Error("%s, T2:Failed to retrieve the certificate.\n", __func__);
@@ -524,7 +524,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
 #ifdef LIBRDKCERTSEL_BUILD
                 }
             }
-            while(rdkcertselector_setCurlStatus(curlCertSelector, curl_code, (const char*)httpUrl) == TRY_ANOTHER);
+            while(rdkcertselector_setCurlStatus(thisCertSel, curl_code, (const char*)httpUrl) == TRY_ANOTHER);
 #endif
             curl_slist_free_all(headerList);
             curl_easy_cleanup(curl);

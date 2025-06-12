@@ -350,7 +350,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
 #ifdef LIBRDKCERTSEL_BUILD
     curlCertSelectorInit();
     state_red_enable = isStateRedEnabled();
-    T2Info("%s: state_red_enable: %d\n", __func__, state_red_enable );
+    T2Info("%s: state_red_enable: %d\n", __func__, state_red_enable);
     if (state_red_enable)
     {
         thisCertSel = curlRcvryCertSelector;

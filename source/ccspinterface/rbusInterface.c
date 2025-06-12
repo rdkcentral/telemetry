@@ -44,6 +44,8 @@
 
 #define RBUS_METHOD_TIMEOUT 10
 #define MAX_REPORT_TIMEOUT 50
+#define RBUS_CALL_MAX_RETRIES 3
+#define RBUS_CALL_RETRY_DELAY 1
 
 static rbusHandle_t t2bus_handle;
 
@@ -62,7 +64,7 @@ static ReportProfilesDeleteDNDCallBack mprofilesDeleteCallBack;
 #if defined(PRIVACYMODES_CONTROL)
 static char* privacyModeVal = NULL;
 #endif
-static uint32_t t2ReadyStatus = T2_STATE_NOT_READY;;
+static uint32_t t2ReadyStatus = T2_STATE_NOT_READY;
 static char* reportProfileVal = NULL ;
 static char* tmpReportProfileVal = NULL ;
 static char* reportProfilemsgPckVal = NULL ;
@@ -244,11 +246,30 @@ Vector* getRbusProfileParamValues(Vector *paramList)
         if(paramNames[0] != NULL)
         {
             T2Debug("Calling rbus_getExt for %s \n", paramNames[0]);
-            if(RBUS_ERROR_SUCCESS != rbus_getExt(t2bus_handle, 1, (const char**)paramNames, &paramValCount, &rbusPropertyValues))
+            int retries = 0;
+            rbusError_t extRet;
+            do
             {
-                T2Error("Failed to retrieve param : %s\n", paramNames[0]);
-                paramValCount = 0 ;
+                extRet = rbus_getExt(t2bus_handle, 1, (const char**)paramNames, &paramValCount, &rbusPropertyValues);
+                if(extRet == RBUS_ERROR_SUCCESS)
+                {
+                    break;
+                }
+                T2Error("rbus_getExt failed for %s, retry %d/%d, error=%d\n", paramNames[0], retries + 1, RBUS_CALL_MAX_RETRIES, extRet);
+                sleep(RBUS_CALL_RETRY_DELAY);
             }
+            while (++retries < RBUS_CALL_MAX_RETRIES);
+
+            if(extRet != RBUS_ERROR_SUCCESS)
+            {
+                T2Error("Failed to retrieve param: %s after %d retries\n", paramNames[0], RBUS_CALL_MAX_RETRIES);
+                paramValCount = 0;
+            }
+            /* if(RBUS_ERROR_SUCCESS != rbus_getExt(t2bus_handle, 1, (const char**)paramNames, &paramValCount, &rbusPropertyValues))
+             {
+                 T2Error("Failed to retrieve param : %s\n", paramNames[0]);
+                 paramValCount = 0 ;
+             }*/
             else
             {
                 if(rbusPropertyValues == NULL || paramValCount == 0)
@@ -856,7 +877,7 @@ rbusError_t t2PropertyDataGetHandler(rbusHandle_t handle, rbusProperty_t propert
 }
 
 
-void publishReportUploadStatus(char* status)
+void publishReportUploadStatus(char* status) //needs revisit
 {
 
     rbusObject_t outParams;

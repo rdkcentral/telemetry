@@ -149,17 +149,22 @@ TEST(GETLAPSEDTIME, T2_GT_T1)
     EXPECT_EQ(1, getLapsedTime(&output, &time1, &time2));
 }
 
-TEST(REGISTERSCHEWITHPROFILE, TEST1)
+TEST(REGISTERSCHEWITHPROFILE_BEFORE_INITSCHEDULER, TEST1)
 {
    EXPECT_EQ(T2ERROR_INVALID_ARGS,  registerProfileWithScheduler(NULL, 50, 3600, true, true, true, 10, "2022-12-20T11:05:56Z"));
 }
 
-TEST(UNREGISTERPROFILEFROMSCH, TEST1)
+TEST(REGISTERSCHEWITHPROFILE_BEFORE_INITSCHEDULER, TEST2)
+{
+   EXPECT_EQ(T2ERROR_FAILURE,  registerProfileWithScheduler("RDKB_Profile", 50, 3600, true, true, true, 10, "2022-12-20T11:05:56Z"));
+}
+
+TEST(UNREGISTERPROFILEFROMSCH_BEFORE_INITSCHEDULER, TEST1)
 {
     EXPECT_EQ(T2ERROR_SUCCESS,  unregisterProfileFromScheduler("RDKB_PROFILE1"));
 }
 
-TEST(UNREGISTERPROFILEFROMSCH, TEST2)
+TEST(UNREGISTERPROFILEFROMSCH_BEFORE_INITSCHEDULER, TEST2)
 {
     EXPECT_EQ(T2ERROR_INVALID_ARGS,  unregisterProfileFromScheduler(NULL));
 }
@@ -180,17 +185,37 @@ void NotifySchedulerstartCb()
     printf("NotifySchedulerstartCb is done\n");
 }
 
-TEST(initScheduler, NULL_CALLBACK)
-{
-    EXPECT_EQ(T2ERROR_SUCCESS,  initScheduler((TimeoutNotificationCB)NULL, (ActivationTimeoutCB)NULL, (NotifySchedulerstartCB)NULL));
-}
-
 TEST(initScheduler, NON_NULL_CALLBACK)
 {
     EXPECT_EQ(T2ERROR_SUCCESS,  initScheduler((TimeoutNotificationCB)ReportProfiles_ToutCb, (ActivationTimeoutCB)ReportProfiles_ActivationToutCb, (NotifySchedulerstartCB)NotifySchedulerstartCb));
 }
 
+TEST(initScheduler, NULL_CALLBACK)
+{
+    EXPECT_EQ(T2ERROR_SUCCESS,  initScheduler((TimeoutNotificationCB)NULL, (ActivationTimeoutCB)NULL, (NotifySchedulerstartCB)NULL));
+}
+
+TEST(REGISTERSCHEWITHPROFILE_AFTER_INITSCHEDULER, TEST3)
+{
+   EXPECT_EQ(T2ERROR_SUCCESS,  registerProfileWithScheduler("RDKB_Profile", 50, 3600, true, true, true, 10, "2022-12-20T11:05:56Z"));
+}
+
 TEST(SendInterruptToTimeoutThread, NULL_CHECK)
 {
     EXPECT_EQ(T2ERROR_INVALID_ARGS, SendInterruptToTimeoutThread(NULL));
+}
+
+TEST(SendInterruptToTimeoutThread, NON_NULL_CHECK)
+{
+    EXPECT_EQ(T2ERROR_SUCCESS, SendInterruptToTimeoutThread("RDKB_Profile"));
+}
+
+TEST(UNREGISTERPROFILEFROMSCH_AFTER_INITSCHEDULER, TEST1)
+{
+    EXPECT_EQ(T2ERROR_SUCCESS,  unregisterProfileFromScheduler("RDKB_Profile"));
+}
+
+TEST(UNINITSCHEDULER, TEST)
+{
+   uninitScheduler();
 }

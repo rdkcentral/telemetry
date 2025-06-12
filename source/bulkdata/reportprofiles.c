@@ -1455,6 +1455,12 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
 
 bool isMtlsEnabled(void)
 {
+#ifdef ENABLE_MTLS
+    T2Info("mTLS defaulted for telemetry\n");
+    initT2MtlsEnable = true;
+    isT2MtlsEnable = true;
+    return true;
+#else
 #if !defined (ENABLE_RDKC_SUPPORT)
     char *paramValue = NULL;
 
@@ -1502,5 +1508,6 @@ bool isMtlsEnabled(void)
 #else
     /* Enabling Mtls by default for RDKC */
     return true;
+#endif
 #endif
 }

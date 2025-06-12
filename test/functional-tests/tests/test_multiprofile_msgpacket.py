@@ -58,11 +58,11 @@ def test_without_namefield():
     remove_T2bootup_flag()
     clear_persistant_files()
     run_telemetry()
-    #run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
-    sleep(10)
+    #Enabling debug log lines to get the HASH_ERROR_MSG in the logs
+    sleep(2)
 
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_without_namefield))
-    sleep(20)
+    sleep(10) 
 
     #Verify that profile is running
     ERROR_MSG = "Incomplete profile object information, unable to create profile"
@@ -71,25 +71,23 @@ def test_without_namefield():
     assert ERROR_MSG in grep_T2logs(ERROR_MSG) #Without name field
     assert LOG_MSG not in grep_T2logs(LOG_MSG) #Empty string in namefield 
     assert HASH_ERROR_MSG in grep_T2logs(HASH_ERROR_MSG) #without hash field
-    sleep(10)
+
 
 #negative case without hashvalue, without version field & without Protocol field
 @pytest.mark.run(order=2)
 def test_without_hashvalue():
     clear_T2logs()
-    #Adding this to avoid faiure
-    kill_telemetry(9)
-    remove_T2bootup_flag()
-    clear_persistant_files()
-    run_telemetry()
-    sleep(10)
+    RUN_START_TIME = dt.now()
     run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
+    sleep(2)
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_without_hashvalue))
-    sleep(20)
+    sleep(20) #All profiles are erorr case profiles so adding 20 sec for processing of profiles
+    PROTOCOL_ERROR_MSG = "Incomplete Profile information, ignoring profile"
     assert "TR_AC12" not in grep_T2logs(LOG_PROFILE_ENABLE)  # without hash value
     assert "TR_AC14" in grep_T2logs(LOG_PROFILE_ENABLE)  # without version field
     assert "TR_AC15" not in grep_T2logs(LOG_PROFILE_ENABLE)  # without Protocol field
-    sleep(10)
+    assert PROTOCOL_ERROR_MSG in grep_T2logs(PROTOCOL_ERROR_MSG) # verify whether the protocol is given
+
 
 #negative cases:
 # random value for Protocol 
@@ -98,20 +96,19 @@ def test_without_hashvalue():
 @pytest.mark.run(order=3)
 def test_with_wrong_protocol_value():
     clear_T2logs()
-    #Adding this to avoid faiure
-    kill_telemetry(9)
-    remove_T2bootup_flag()
-    clear_persistant_files()
-    run_telemetry()
-    sleep(10)
+    RUN_START_TIME = dt.now()
+    run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
+    sleep(2)
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_wrong_protocol_value))
-    sleep(20)
+    sleep(10)
     ERROR_WRONG_PROTOCOL = "Unsupported report sending protocol"
     assert ERROR_WRONG_PROTOCOL in grep_T2logs(ERROR_WRONG_PROTOCOL) #Verify the right protocol is given
     assert "TR_AC16" not in grep_T2logs(LOG_PROFILE_ENABLE) # Verify profile is not enabled with an incorrect protocol
     assert "TR_AC17" in grep_T2logs(LOG_PROFILE_ENABLE) # Verify Profile can be enabled for empty version
     assert "TR_AC13" not in grep_T2logs(LOG_PROFILE_ENABLE) # Verify Profile cannot be enabled for empty protocol
-    sleep(5)
+    sleep(5) 
+
+
 
 #negative cases
 # without EncodingType & ActivationTimeout values
@@ -119,9 +116,11 @@ def test_with_wrong_protocol_value():
 # without ActivationTimeout param
 # without ReportingInterval param
 # without GenerateNow param
+
 @pytest.mark.run(order=4)
 def test_without_EncodingType_ActivationTimeout_values():
     ERROR_REPORTING_INTERVAL = "If TriggerCondition is not given ReportingInterval parameter is mandatory"
+    ERROR_ENCODING = "Incomplete Profile information, ignoring profile"
     clear_T2logs()
     kill_telemetry(9)
     RUN_START_TIME = dt.now()
@@ -129,35 +128,32 @@ def test_without_EncodingType_ActivationTimeout_values():
     clear_persistant_files()
     run_telemetry()
     run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
-    sleep(10)
+    sleep(2)
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_without_EncodingType_ActivationTimeout_values))
-    sleep(20)
-    sleep(5)
+    sleep(25)
     assert "TR_AC18" in grep_T2logs(LOG_PROFILE_ENABLE) # Verify profile is enabled with an empty encodingType
     assert "TR_AC19" in grep_T2logs(LOG_PROFILE_ENABLE) # Verify profile is enabled with an empty ActivationTimeout
     assert "TR_AC20" not in grep_T2logs(LOG_PROFILE_ENABLE) # Verify profile is not enabled without encodingType param
+    assert ERROR_ENCODING in grep_T2logs(ERROR_ENCODING)
     assert "TR_AC21" in grep_T2logs(LOG_PROFILE_ENABLE) # Verify profile is enabled without ActivationTimeout param
     assert ERROR_REPORTING_INTERVAL in grep_T2logs(ERROR_REPORTING_INTERVAL) # Verify ReportingInterval error is thrown
     assert "TR_AC22" not in grep_T2logs(LOG_PROFILE_ENABLE) # Verify profile is not enabled without ReportingInterval param
     assert "TR_AC23" in grep_T2logs(LOG_PROFILE_ENABLE) # Verify profile is enabled without GenerateNow param
     sleep(5)
-    clear_T2logs()
+
 
 #1).positive case for working of Reporting Interval
 #2).positive case for event marker & with count
 #3).positive case for event marker with accumulate
 @pytest.mark.run(order=5)
 def test_reporting_interval_working():
-    clear_T2logs()
-    kill_telemetry(9)
     RUN_START_TIME = dt.now()
-    remove_T2bootup_flag()
-    clear_persistant_files()
-    run_telemetry()
     run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
-    sleep(10)
+    sleep(2)
+    rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_empty_profile))
+    sleep(2)
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_reporting_interval))
-    sleep(20)
+    sleep(10)
     REPORTING_INTERVAL_LOG1 = grep_T2logs("reporting interval is taken - TR_AC732")
 
     command1 = ["telemetry2_0_client TEST_EVENT_MARKER_1 300"]
@@ -165,27 +161,24 @@ def test_reporting_interval_working():
     command3 = ["telemetry2_0_client TEST_EVENT_MARKER_2 occurrance2"]
 
     run_shell_command(command1)
-    sleep(5)
     run_shell_command(command1)
-    sleep(5)
     run_shell_command(command2)
-    sleep(5)
     run_shell_command(command3)
-    sleep(5)
-    assert "45 sec" in REPORTING_INTERVAL_LOG1
-    sleep(50)
+    assert "20 sec" in REPORTING_INTERVAL_LOG1
+    sleep(20)
     assert "TIMEOUT for profile" in grep_T2logs("TR_AC732") #Verify reporting interval 
     assert "TEST_EVENT_MARKER_1\":\"2" in grep_T2logs("cJSON Report ") #verify event marker for count 
     assert "occurrance1" in grep_T2logs("TEST_EVENT_MARKER_2") #verify event marker for accummulate - 1
     assert "occurrance2" in grep_T2logs("TEST_EVENT_MARKER_2") #verify event marker for accummulate - 2
-    sleep(10)
+    sleep(2) #wait for 2 sec to verify whether this valid profile is running and generating report
 
-'''
+
 # verification for GenerateNow
 # count - grep marker validation
 # absolute - grep marker validation
 # Trim - grep marker validation
 # Datamodel validation
+'''
 @pytest.mark.run(order=6)
 def test_for_Generate_Now():
     clear_T2logs()
@@ -203,19 +196,16 @@ def test_for_Generate_Now():
     		"file writing to file.txt 23 lines\n"
 	    	)
     file.close()
+    sleep(2)
 
-    sleep(10)
     LOG_GENERATE_NOW = "Waiting for 0 sec for next TIMEOUT for profile"
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_Generate_Now))
-    sleep(20)
-    assert "TR_AC777" in grep_T2logs(LOG_GENERATE_NOW)  # verification for GenerateNow
     sleep(10)
+    assert "TR_AC777" in grep_T2logs(LOG_GENERATE_NOW)  # verification for GenerateNow
     assert "SYS_INFO_CrashPortalUpload_success\":\"2" in grep_T2logs("cJSON Report ") #  count - grep marker validation
     assert "FILE_Upload_Progress\":\" newfile1 20%" in grep_T2logs("cJSON Report ") #  absolute - grep marker validation
     assert "FILE_Read_Progress\":\"newfile2 line 10" in grep_T2logs("cJSON Report ") #  Trim - grep marker validation
     assert "MODEL_NAME" in grep_T2logs("cJSON Report ") #  Datamodel validation
-    sleep(10)
-    clear_T2logs()
 '''
 
 # Negative case with activation timeout less than reporting interval
@@ -232,9 +222,8 @@ def test_for_invalid_activation_timeout():
     remove_T2bootup_flag()
     clear_persistant_files()
     run_telemetry()
+    sleep(5)
     run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
-    sleep(10)
-
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_less_activation_timeout))
     sleep(60)
     assert "TR_AC88" in grep_T2logs(ERROR_PROFILE_TIMEOUT) # Verify profile not set if activation timeout is less than reporting interval
@@ -244,7 +233,6 @@ def test_for_invalid_activation_timeout():
     assert "NEW TEST PROFILE" in grep_T2logs(LOG_PROFILE_SET) # Verify DCM profile is set
     assert "60 sec" in grep_T2logs("reporting interval is taken - NEW TEST PROFILE") #Verify DCM profile is running
     assert "AccountId\":\"Platform_Container_Test_DEVICE" in grep_T2logs("cJSON Report ") #verify report generated for DCM profile
-    sleep(10)
 
 #1).positive case for activation timeout
 #2).regex - grep marker validation
@@ -254,19 +242,15 @@ def test_for_invalid_activation_timeout():
 @pytest.mark.run(order=8)
 def test_with_delete_on_timeout():
     clear_T2logs()
-    kill_telemetry(9)
     RUN_START_TIME = dt.now()
-    remove_T2bootup_flag()
-    clear_persistant_files()
-    run_telemetry()
     run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
-    sleep(10)
+    sleep(2)
     os.makedirs('/opt/logs', exist_ok=True)
     # Create log file with the logs needed for grep marker
     file = open('/opt/logs/core_log.txt', 'w')
     file.write("Success uploading report 200\n")
     file.close()
-    sleep(5)
+    sleep(2)
     LOG_PROFILE_TIMEOUT = "Profile activation timeout"
     LOG_DELETE_PROFILE = "removing profile :"
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_delete_on_timeout))
@@ -280,4 +264,71 @@ def test_with_delete_on_timeout():
     assert "TEST_EVENT_MARKER_2\":\"17" in grep_T2logs("cJSON Report ") #  regex - Event marker validation 
     assert "TR_AC66" in grep_T2logs(LOG_DELETE_PROFILE) #verify profile is removed from active profile list if DeleteOnTimeout is true
 
+
+#1.First reporting interval is applicable only when time ref is default - non-working case
+#2.Maxlatency is applicable only when time ref is not default - non- working case
+#3.Maxlatency is greater than reporting interval - non-working case 
+#4.Parameter array is entirely empty - non-working case
+@pytest.mark.run(order=9)
+def test_for_first_reporting_interval_Maxlatency():
+    MLU_ERROR_LOG = "MaxUploadLatency is greater than reporting interval. Invalid Profile"
+    TIMEOUT_LOG = "TIMEOUT for profile"
+    PARAM_ERROR_LOG = "Incomplete profile information, unable to create profile"
+    RUN_START_TIME = dt.now()
+    run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
+    sleep(2)
+    rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_empty_profile)) # instead of telemetry restart giving empty profile to clear previous profile data 
+    sleep(2)
+    rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_first_reporting_interval_max_latency))
     sleep(5)
+    assert "PARAM_NULL" not in grep_T2logs(LOG_PROFILE_ENABLE)
+    assert "NA_FRI" in grep_T2logs(LOG_PROFILE_ENABLE) #verify when timeref is not default first reporting inetrval is not accepted
+    
+    assert "NA_MLU" in grep_T2logs(LOG_PROFILE_ENABLE)
+    assert "NA_FRI" not in grep_T2logs("Waiting for 5 sec for next TIMEOUT for profile as firstreporting interval is given")
+    sleep(10)
+    assert "NA_FRI" in grep_T2logs(TIMEOUT_LOG)
+    assert "NA_MLU" in grep_T2logs(TIMEOUT_LOG) #verify when timeref is not default max uploadlatency is accepted
+    assert MLU_ERROR_LOG in grep_T2logs(MLU_ERROR_LOG)
+
+@pytest.mark.run(order=10)
+def test_for_triggerCondition_negative_case():
+    TC_ERROR_LOG = "TriggerCondition is invalid, unable to create profile"
+    RUN_START_TIME = dt.now()
+    run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 DEBUG")
+    sleep(2)
+    rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_empty_profile))
+    sleep(2)
+    rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_triggerconditon_neg))
+    sleep(5)
+    assert TC_ERROR_LOG in grep_T2logs(TC_ERROR_LOG)
+    assert "Null type verifyMsgPckTriggerCondition ++out" in grep_T2logs("Null type verifyMsgPckTriggerCondition ++out")
+    assert "Null reference verifyMsgPckTriggerCondition ++out" in grep_T2logs("Null reference verifyMsgPckTriggerCondition ++out")
+    assert "Unexpected type verifyMsgPckTriggerCondition ++out" in grep_T2logs("Unexpected type verifyMsgPckTriggerCondition ++out")
+    assert "Null operator verifyMsgPckTriggerCondition ++out" in grep_T2logs("Null operator verifyMsgPckTriggerCondition ++out")
+    assert "Unexpected operator verifyMsgPckTriggerCondition ++out" in grep_T2logs("Unexpected operator verifyMsgPckTriggerCondition ++out")
+    assert "Null threshold verifyMsgPckTriggerCondition ++out" in grep_T2logs("Null threshold verifyMsgPckTriggerCondition ++out")
+    assert "Unexpected reference verifyMsgPckTriggerCondition ++out" in grep_T2logs("Unexpected reference verifyMsgPckTriggerCondition ++out")
+'''
+@pytest.mark.run(order=11)
+def test_for_triggerCondition_working_case():
+    clear_T2logs()
+    RUN_START_TIME = dt.now()
+    kill_telemetry(9)
+    remove_T2bootup_flag()
+    clear_persistant_files()
+    run_telemetry()
+    sleep(5)
+    run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
+    sleep(2)
+    rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_triggerconditon_pos))
+    sleep(5)
+    subprocess.run("rbuscli set Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RDKRemoteDebugger.Enable  bool false", shell=True)
+    sleep(2)
+    assert "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RDKRemoteDebugger.Enable" in grep_T2logs("TriggerConditionResult")
+    assert "false" in grep_T2logs("TriggerConditionResult")
+    subprocess.run("rbuscli set Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RDKRemoteDebugger.Enable  bool true", shell=True)
+    sleep(2)
+    assert "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RDKRemoteDebugger.Enable" in grep_T2logs("TriggerConditionResult")
+    assert "true" in grep_T2logs("TriggerConditionResult") 
+    '''

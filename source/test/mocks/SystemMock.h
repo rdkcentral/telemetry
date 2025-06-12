@@ -29,10 +29,12 @@ public:
     MOCK_METHOD(int, system, (const char* cmd), ());
     MOCK_METHOD(int, unlink, (const char *str), ());
     MOCK_METHOD(int, access, (const char *pathname, int mode), ());
+    MOCK_METHOD(int, remove, (const char *pathname), ());
 };
 
 extern SystemMock* g_systemMock;
 
 extern "C" int system(const char* cmd);
 extern "C" int unlink(const char* str);
-extern "C" int access(const char * pathname, int mode);
+extern "C" int access(const char* pathname, int mode);
+extern "C" int remove(const char* pathname);

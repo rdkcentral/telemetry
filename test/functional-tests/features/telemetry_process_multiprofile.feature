@@ -164,4 +164,65 @@ Feature: Telemetry multiprofile configuration and report generation
     When a multiprofile is configured and a DCM profile is fetched from xconf
     Then both the multiprofile and the DCM profile should be enabled
     Then report should be generated for both the multiprofile and DCM profile separately
-    
+
+ Scenario: Multiprofile with timeref as default and maxUploadLatency & First reporting interval given 
+    Given When the telemetry daemon is already running
+    When a multiprofile is configured with timeref as default and maxUploadLatency given
+    Then  If first reporting interval is given, it will be taken for reporting. MaxUploadLatency won't be accepted
+    Then report should be generated according to first reporting interval if given or reporting interval if first reporting interval is not given.
+
+Scenario: Multiprofile with timeref is not default and maxUploadLatency & First reporting interval given
+    Given When the telemetry daemon is already running
+    When a multiprofile is configured with timeref as not default and maxUploadLatency given
+    Then  If first reporting interval is given, it won't be taken for reporting. MaxUploadLatency will be taken while sending the report to the cloud.
+    Then report should be generated according to reporting interval and it should be sent to the cloud after waiting for random value of maxlatency.
+
+Scenario: Multiprofile with  maxUploadLatency (millisec) greater than reporting interval (sec)
+    Given When the telemetry daemon is already running
+    When a multiprofile is configured with maxUploadLatency greater than reporting interval
+    Then  Multiprofile should be rejected logging the error message "Maxlatency is greater then reporting interval. Invalid Profile"
+
+Scenario: Multiprofile without parameters and Trigger Conditions
+    Given When the telemetry daemon is already running
+    When a multiprofile is configured without parameters and Trigger Conditions
+    Then Multiprofile should be rejected logging the error message "Incomplete Profile Information, unable to create profile"
+
+Scenario: Multiprofile having  TriggerCondition without type parameter
+    Given When the telemetry daemon is already running
+    When a multiprofile is configured with TriggerCondition without type parameter
+    Then Multiprofile should be rejected
+
+Scenario: Multiprofile having  TriggerCondition without reference parameter
+    Given When the telemetry daemon is already running
+    When a multiprofile is configured with TriggerCondition without reference parameter
+    Then Multiprofile should be rejected
+
+Scenario: Multiprofile having  TriggerCondition with Unexpected type parameter
+    Given When the telemetry daemon is already running
+    When a multiprofile is configured with TriggerCondition with unexpected type parameter
+    Then Multiprofile should be rejected
+
+Scenario: Multiprofile having  TriggerCondition without operator parameter
+    Given When the telemetry daemon is already running
+    When a multiprofile is configured with TriggerCondition without operator parameter
+    Then Multiprofile should be rejected
+
+Scenario: Multiprofile having  TriggerCondition with unexpected operator parameter
+    Given When the telemetry daemon is already running                                                     
+    When a multiprofile is configured with TriggerCondition with unexpected operator parameter
+    Then Multiprofile should be rejected
+
+Scenario: Multiprofile having  TriggerCondition with operator other then "any" without threshold  parameter
+    Given When the telemetry daemon is already running                                                     
+    When a multiprofile is configured with TriggerCondition with operator other then "any" without threshold parameter
+    Then Multiprofile should be rejected
+
+Scenario: Multiprofile having  TriggerCondition with unexpected reference parameter                         
+    Given When the telemetry daemon is already running                                                     
+    When a multiprofile is configured with TriggerCondition with unexpected reference parameter
+    Then Multiprofile should be rejected
+
+Scenario: Multiprofile with TriggerConditions                         
+    Given When the telemetry daemon is already running                                                     
+    When a multiprofile is configured with TriggerConditions
+    Then Multiprofile should be accepted and report should be generated whenever trigger condition is triggered

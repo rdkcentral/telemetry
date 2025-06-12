@@ -1,4 +1,8 @@
 
+data_empty_profile = '''{
+    "profiles": [{}]
+    }'''
+
 data_without_namefield = '''{
     "profiles": [
         {
@@ -413,7 +417,7 @@ data_with_wrong_protocol_value = '''{
                 "Protocol": "HTTP",
                 "EncodingType": "JSON",
                 "ActivationTimeout": 1200,
-                "ReportingInterval": 20,
+                "ReportingInterval": 10,
                 "GenerateNow": false,
                 "RootName": "FR2_US_TC3",
                 "TimeReference": "2023-01-25T13:47:00Z",
@@ -602,7 +606,7 @@ data_without_EncodingType_ActivationTimeout_values = '''{
                 "Protocol": "HTTP",
                 "EncodingType": "JSON",
                 "ActivationTimeout": "",
-                "ReportingInterval": 35,
+                "ReportingInterval": 15,
                 "GenerateNow": false,
                 "RootName": "FR2_US_TC3",
                 "TimeReference": "2023-01-25T13:47:00Z",
@@ -718,7 +722,7 @@ data_without_EncodingType_ActivationTimeout_values = '''{
                 "Version": "0.1",
                 "Protocol": "HTTP",
                 "EncodingType": "JSON",
-                "ReportingInterval": 35,
+                "ReportingInterval": 20,
                 "GenerateNow": false,
                 "RootName": "FR2_US_TC3",
                 "TimeReference": "2023-01-25T13:47:00Z",
@@ -835,7 +839,7 @@ data_without_EncodingType_ActivationTimeout_values = '''{
                 "Protocol": "HTTP",
                 "EncodingType": "JSON",
                 "ActivationTimeout": 3600,
-                "ReportingInterval": 45,
+                "ReportingInterval": 30,
                 "RootName": "FR2_US_TC3",
                 "TimeReference": "2023-01-25T13:47:00Z",
                 "Parameter": [
@@ -898,7 +902,7 @@ data_with_reporting_interval = '''{
                 "Protocol": "HTTP",
                 "EncodingType": "JSON",
                 "ActivationTimeout": 3600,
-                "ReportingInterval": 45,
+                "ReportingInterval": 20,
                 "GenerateNow": false,
                 "RootName": "FR2_US_TC3",
                 "Parameter": [
@@ -1320,6 +1324,561 @@ data_with_delete_on_timeout = '''{
                     "ReportTimestamp": "None"
                 }
             }
+        }
+    ]
+}'''
+
+data_with_first_reporting_interval_max_latency = '''{
+    "profiles": [
+        {
+            "name": "NA_FRI",
+            "hash": "Hash89",
+            "value": {
+                "Name": "RDKB_FRI_Profile",
+                "Description": "RDKB_Profile",
+                "Version": "0.1",
+                "Protocol": "HTTP",
+                "EncodingType": "JSON",
+                "ActivationTimeOut": 30,
+                "DeleteOnTimeout": true,
+                "ReportingInterval": 10,
+                "GenerateNow": false,
+                "RootName": "FR2_US_TC3",
+                "TimeReference": "2023-01-25T13:47:00Z",
+                "Parameter": [
+                    {
+                        "type": "dataModel",
+                        "name": "MODEL_NAME",
+                        "reference": "Device.DeviceInfo.ModelName",
+                        "use": "absolute",
+                        "regex":"[A-Z]+"
+                    },
+                    {
+                        "type": "event",
+                        "eventName": "TEST_EVENT_MARKER_2",
+                        "component": "sysint",
+                        "use": "absolute",
+                        "regex":"[0-9]+"
+                    },
+                    {
+                        "type": "grep",
+                        "marker": "SYS_INFO_CrashPortalUpload_success",
+                        "search": "Success uploading",
+                        "logFile": "core_log.txt",
+                        "use": "absolute",
+                        "regex":"[0-9]+"
+                    }
+                ],
+                "ReportingAdjustments":
+                    {
+                        "ReportOnUpdate": true,
+                        "FirstReportingInterval": 5,
+                        "MaxUploadLatency": 10
+                    },
+                "HTTP": {
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
+                },
+                "JSONEncoding": {
+                    "ReportFormat": "NameValuePair",
+                    "ReportTimestamp": "None"
+                }
+            }
+        },
+        {
+            "name": "NA_MLU",
+            "hash": "Hash90",
+            "value": {
+                "Name": "RDKB_ML_Profile",
+                "Description": "RDKB_Profile",
+                "Version": "0.1",
+                "Protocol": "HTTP",
+                "EncodingType": "JSON",
+                "ActivationTimeOut": 20,
+                "DeleteOnTimeout": true,
+                "ReportingInterval": 10,
+                "GenerateNow": false,
+                "RootName": "FR2_US_TC3",
+                "TimeReference": "0001-01-01T00:00:00Z",
+                "Parameter": [
+                    {
+                        "type": "dataModel",
+                        "name": "MODEL_NAME",
+                        "reference": "Device.DeviceInfo.ModelName",
+                        "use": "absolute",
+                        "regex":"[A-Z]+"
+                    },
+                    {
+                        "type": "event",
+                        "eventName": "TEST_EVENT_MARKER_2",
+                        "component": "sysint",
+                        "use": "absolute",
+                        "regex":"[0-9]+"
+                    },
+                    {
+                        "type": "grep",
+                        "marker": "SYS_INFO_CrashPortalUpload_success",
+                        "search": "Success uploading",
+                        "logFile": "core_log.txt",
+                        "use": "absolute",
+                        "regex":"[0-9]+"
+                    }
+                ],
+                "ReportingAdjustments":
+                    {
+                        "ReportOnUpdate": true,
+                        "FirstReportingInterval": 5,
+                        "MaxUploadLatency": 10
+                    },
+                "HTTP": {
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
+                },
+                "JSONEncoding": {
+                    "ReportFormat": "NameValuePair",
+                    "ReportTimestamp": "None"
+                }
+            }
+        },
+        {
+            "name": "NA_MLU_GT_RI",
+            "hash": "Hash91",
+            "value": {
+                "Name": "RDKB_ML_Profile",
+                "Description": "RDKB_Profile",
+                "Version": "0.1",
+                "Protocol": "HTTP",
+                "EncodingType": "JSON",
+                "ActivationTimeOut": 20,
+                "DeleteOnTimeout": true,
+                "ReportingInterval": 10,
+                "GenerateNow": false,
+                "RootName": "FR2_US_TC3",
+                "TimeReference": "2023-01-25T13:47:00Z",
+                "Parameter": [
+                    {
+                        "type": "dataModel",
+                        "name": "MODEL_NAME",
+                        "reference": "Device.DeviceInfo.ModelName",
+                        "use": "absolute",
+                        "regex":"[A-Z]+"
+                    },
+                    {
+                        "type": "event",
+                        "eventName": "TEST_EVENT_MARKER_2",
+                        "component": "sysint",
+                        "use": "absolute",
+                        "regex":"[0-9]+"
+                    },
+                    {
+                        "type": "grep",
+                        "marker": "SYS_INFO_CrashPortalUpload_success",
+                        "search": "Success uploading",
+                        "logFile": "core_log.txt",
+                        "use": "absolute",
+                        "regex":"[0-9]+"
+                    }
+                ],
+                "ReportingAdjustments":
+                    {
+                        "ReportOnUpdate": true,
+                        "FirstReportingInterval": 5,
+                        "MaxUploadLatency": 20000
+                    },
+                "HTTP": {
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
+                },
+                "JSONEncoding": {
+                    "ReportFormat": "NameValuePair",
+                    "ReportTimestamp": "None"
+                }
+            }
+        },
+        {
+            "name": "PARAM_NULL",
+            "hash": "Hash90",
+            "value": {
+                "Name": "RDKB_ML_Profile",
+                "Description": "RDKB_Profile",
+                "Version": "0.1",
+                "Protocol": "HTTP",
+                "EncodingType": "JSON",
+                "ActivationTimeOut": 20,
+                "DeleteOnTimeout": true,
+                "ReportingInterval": 10,
+                "GenerateNow": false,
+                "RootName": "FR2_US_TC3",
+                "TimeReference": "0001-01-01T00:00:00Z",
+                "Parameter": []
+                }
+        }
+    ]
+}'''
+
+#profile with timeref default and max reporting interval shouldn't be taken
+data_with_triggerconditon_neg = '''{
+    "profiles": [
+     {
+      "name": "TC_TYPE_NULL",
+      "hash": "Hash_Default",
+      "value": {
+        "Description": "Trigger condition type NULL case",
+        "Version": ".01",
+        "Protocol": "HTTP",
+        "EncodingType": "JSON",
+        "GenerateNow": false,
+        "ReportingInterval": 10,
+        "ActivationTimeOut": 360,
+        "TimeReference": "0001-01-01T00:00:00Z",
+        "Parameter": [],
+        "TriggerCondition": [
+          {
+            "reference": "Device.X_RDK_WanManager.InterfaceAvailableStatus"
+          },
+          {
+            "type": "dataModel",
+            "reference": "Device.X_RDK_WanManager.InterfaceActiveStatus"
+          },
+          {
+            "type": "dataModel",
+            "reference": "Device.X_RDK_Remote.Device.2.Status"
+          }
+        ],
+        "HTTP": {
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
+                
+        },
+        "JSONEncoding": {
+          "ReportFormat": "NameValuePair",
+          "ReportTimestamp": "None"
+        }
+      }
+    },
+    {
+      "name": "TC_REF_NULL",
+      "hash": "Hash_Default",
+      "value": {
+        "Description": "Trigger Condition Reference NULL case",
+        "Version": ".01",
+        "Protocol": "HTTP",
+        "EncodingType": "JSON",
+        "GenerateNow": false,
+        "ReportingInterval": 10,
+        "ActivationTimeOut": 360,
+        "TimeReference": "0001-01-01T00:00:00Z",
+        "Parameter": [],
+        "TriggerCondition": [
+          {
+            "type": "dataModel",
+            "operator": "any"
+          },
+          {
+            "type": "dataModel",
+            "reference": "Device.X_RDK_WanManager.InterfaceActiveStatus"
+          },
+          {
+            "type": "dataModel",
+            "reference": "Device.X_RDK_Remote.Device.2.Status"
+          }
+        ],
+        "HTTP": {                                                                                  
+                    "URL": "https://mockxconf:50051/dataLakeMock/",                                        
+                    "Compression": "None",                                                                 
+                    "Method": "POST",                                                                      
+                    "RequestURIParameter": [                                                               
+                        {                                                                                  
+                            "Name": "reportName",                                                          
+                            "Reference": "Profile.Name"                                                    
+                        }                                                                                  
+                    ]                                                                                      
+        },
+        "JSONEncoding": {
+          "ReportFormat": "NameValuePair",
+          "ReportTimestamp": "None"
+        }
+      }
+    },
+    {
+      "name": "TC_TYPE_NOT_DETAMODEL",
+      "hash": "Hash_Default",
+      "value": {
+        "Description": "Trigger Condition type is not datamodel",
+        "Version": ".01",
+        "Protocol": "HTTP",
+        "EncodingType": "JSON",
+        "GenerateNow": false,
+        "ReportingInterval": 240,
+        "ActivationTimeOut": 360,
+        "TimeReference": "0001-01-01T00:00:00Z",
+        "Parameter": [],
+        "TriggerCondition": [
+          {
+            "type": "grep",
+            "reference": "Device.X_RDK_WanManager.InterfaceAvailableStatus"
+          },
+          {
+            "type": "dataModel",
+            "reference": "Device.X_RDK_WanManager.InterfaceActiveStatus"
+          }
+        ],
+        "HTTP": {
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
+        },
+        "JSONEncoding": {
+          "ReportFormat": "NameValuePair",
+          "ReportTimestamp": "None"
+        }
+      }
+    },
+    {
+      "name": "TC_OPERATOR_NULL",
+      "hash": "Hash_Default",
+      "value": {
+        "Description": "Trigger condition operator is NULL",
+        "Version": ".01",
+        "Protocol": "HTTP",
+        "EncodingType": "JSON",
+        "GenerateNow": false,
+        "ReportingInterval": 25,
+        "ActivationTimeOut": 360,
+        "TimeReference": "0001-01-01T00:00:00Z",
+        "Parameter": [],
+        "TriggerCondition": [
+          {
+            "type": "dataModel",
+            "reference": "Device.X_RDK_WanManager.InterfaceAvailableStatus"
+          },
+          {
+            "type": "dataModel",
+            "reference": "Device.X_RDK_WanManager.InterfaceActiveStatus"
+          }
+        ],
+        "HTTP": {
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
+        },
+        "JSONEncoding": {
+          "ReportFormat": "NameValuePair",
+          "ReportTimestamp": "None"
+        }
+      }
+    },
+    {
+      "name": "TC_OPERATOR_WRONG",
+      "hash": "Hash_Default",
+      "value": {
+        "Description": "Trigger Condition operator invalid case",
+        "Version": ".01",
+        "Protocol": "HTTP",
+        "EncodingType": "JSON",
+        "GenerateNow": false,
+        "ReportingInterval": 10,
+        "ActivationTimeOut": 360,
+        "TimeReference": "0001-01-01T00:00:00Z",
+        "Parameter": [],
+        "TriggerCondition": [
+          {
+            "type": "dataModel",
+            "reference": "Device.X_RDK_WanManager.InterfaceAvailableStatus",
+            "operator": "less"
+          },
+          {
+            "type": "dataModel",
+            "reference": "Device.X_RDK_WanManager.InterfaceActiveStatus"
+          }
+        ],
+        "HTTP": {
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
+        },
+        "JSONEncoding": {
+          "ReportFormat": "NameValuePair",
+          "ReportTimestamp": "None"
+        }
+      }
+    },
+    {
+      "name": "TC_OPERATOR_THRESHOLD",
+      "hash": "Hash_Default",
+      "value": {
+        "Description": "Trigger Condition threshold is NULL",
+        "Version": ".01",
+        "Protocol": "HTTP",
+        "EncodingType": "JSON",
+        "GenerateNow": false,
+        "ActivationTimeOut": 360,
+        "TimeReference": "0001-01-01T00:00:00Z",
+        "Parameter": [],
+        "TriggerCondition": [
+          {
+            "type": "dataModel",
+            "reference": "Device.X_RDK_WanManager.InterfaceAvailableStatus",
+            "operator": "any"
+          },
+          {
+            "type": "dataModel",
+            "reference": "Device.X_RDK_WanManager.InterfaceActiveStatus",
+            "operator": "gt"
+          },
+          {
+            "type": "dataModel",
+            "reference": "Device.X_RDK_GatewayManagement.Gateway.1.ActiveStatus"
+          }
+        ],
+        "HTTP": {
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
+        },
+        "JSONEncoding": {
+          "ReportFormat": "NameValuePair",
+          "ReportTimestamp": "None"
+        }
+      }
+    },
+    {
+      "name": "TC_REFERENCE_WRONG",
+      "hash": "Hash_Default",
+      "value": {
+        "Description": "Trigger Condition threshold is NULL",
+        "Version": ".01",
+        "Protocol": "HTTP",
+        "EncodingType": "JSON",
+        "GenerateNow": false,
+        "ActivationTimeOut": 360,
+        "TimeReference": "0001-01-01T00:00:00Z",
+        "Parameter": [],
+        "TriggerCondition": [
+          {
+            "type": "dataModel",
+            "reference": "",
+            "operator": "any"
+          },
+          {
+            "type": "dataModel",
+            "reference": "Device.X_RDK_WanManager.InterfaceActiveStatus",
+            "operator": "gt"
+          },
+          {
+            "type": "dataModel",
+            "reference": "Device.X_RDK_GatewayManagement.Gateway.1.ActiveStatus"
+          }
+        ],
+        "HTTP": {
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
+        },
+        "JSONEncoding": {
+          "ReportFormat": "NameValuePair",
+          "ReportTimestamp": "None"
+        }
+      }
+    }
+  ]
+}'''
+
+data_with_triggerconditon_pos = '''{
+    "profiles": [
+     {
+      "name": "TC_pos",
+      "hash": "Hash_default",
+      "value": {
+        "Description": "Trigger condition working case",
+        "Version": ".01",
+        "Protocol": "HTTP",
+        "EncodingType": "JSON",
+        "GenerateNow": false,
+        "TimeReference": "0001-01-01T00:00:00Z",
+        "ActivationTimeout": 120,
+        "Parameter": [],
+        "TriggerCondition": [
+          {
+            "type": "dataModel",
+            "reference": "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RDKRemoteDebugger.Enable",
+            "operator": "any"
+          }
+        ],
+        "HTTP": {
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
+        },
+        "JSONEncoding": {
+          "ReportFormat": "NameValuePair",
+          "ReportTimestamp": "None"
+        }
+        }
         }
     ]
 }'''

@@ -64,7 +64,7 @@ static ReportProfilesDeleteDNDCallBack mprofilesDeleteCallBack;
 #if defined(PRIVACYMODES_CONTROL)
 static char* privacyModeVal = NULL;
 #endif
-static uint32_t t2ReadyStatus = T2_STATE_NOT_READY;;
+static uint32_t t2ReadyStatus = T2_STATE_NOT_READY;
 static char* reportProfileVal = NULL ;
 static char* tmpReportProfileVal = NULL ;
 static char* reportProfilemsgPckVal = NULL ;

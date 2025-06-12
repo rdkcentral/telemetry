@@ -215,7 +215,7 @@ void* T2ER_EventDispatchThread(void *arg)
         if(pthread_mutex_lock(&erMutex) != 0) // mutex lock failed, without locking eQueue shouldn't be accessed
         {
             T2Error("%s pthread_mutex_lock for erMutex failed\n", __FUNCTION__);
-            return;
+            return NULL;
         }
         T2Debug("Checking for events in event queue , event count = %d\n", t2_queue_count(eQueue));
         if(t2_queue_count(eQueue) > 0)
@@ -233,7 +233,7 @@ void* T2ER_EventDispatchThread(void *arg)
             if(pthread_mutex_unlock(&erMutex) != 0) // unlock failed so return from the EventDispatch thread
             {
                 T2Error("%s pthread_mutex_unlock for erMutex failed\n", __FUNCTION__);
-                return;
+                return NULL;
             }
             Vector_Create(&profileList);
             if(T2ERROR_SUCCESS == getMarkerProfileList(event->name, &profileList))

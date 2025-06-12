@@ -309,9 +309,11 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
     struct curl_slist *headerList = NULL;
     CURLcode curl_code = CURLE_OK;
 #ifdef LIBRDKCERTSEL_BUILD
+    rdkcertselector_h thisCertSel = NULL;
     rdkcertselectorStatus_t curlGetCertStatus;
     char *pCertURI = NULL;
     char *pEngine = NULL;
+    bool state_red_enable = false;
 #endif
     char *pCertFile = NULL;
     char *pCertPC = NULL;

@@ -44,7 +44,6 @@ jobs:
             echo "Code formatting errors not found."
           fi
 
-
       - name: Pull docker images
         run: |
           docker pull ghcr.io/rdkcentral/docker-device-mgt-service-test/mockxconf:latest

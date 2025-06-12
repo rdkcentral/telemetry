@@ -59,6 +59,7 @@ typedef struct
 
 #ifdef LIBRDKCERTSEL_BUILD
 static rdkcertselector_h curlCertSelector = NULL;
+static rdkcertselector_h curlRcvryCertSelector = NULL;
 #endif
 
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
@@ -255,27 +256,15 @@ static T2ERROR setPayload(CURL *curl, const char* payload, childResponse *childC
     return T2ERROR_SUCCESS;
 }
 #ifdef LIBRDKCERTSEL_BUILD
-static void checkStateRed(char *cert_buf, size_t buf_size)
+bool isStateRedEnabled(void)
 {
-    if(access("/tmp/stateRedEnabled", F_OK) == 0)
-    {
-        T2Info("%s, Device is in red state\n", __func__);
-        snprintf(cert_buf, buf_size, "RCVRY");
-    }
-    else
-    {
-        T2Info("%s, Device is not in red state\n", __func__);
-        snprintf(cert_buf, buf_size, "MTLS");
-    }
-    if(curlCertSelector)
-    {
-        curlCertSelectorFree();
-    }
+    return access("/tmp/stateRedEnabled", F_OK) == 0;
 }
 void curlCertSelectorFree()
 {
     rdkcertselector_free(&curlCertSelector);
-    if(curlCertSelector == NULL)
+    rdkcertselector_free(&curlRcvryCertSelector);
+    if(curlCertSelector == NULL || curlRcvryCertSelector == NULL)
     {
         T2Info("%s, T2:Cert selector memory free\n", __func__);
     }
@@ -286,19 +275,26 @@ void curlCertSelectorFree()
 }
 static void curlCertSelectorInit()
 {
-    char cert_group[8] = {0};
-    checkStateRed(cert_group, sizeof(cert_group));
-
-    if(curlCertSelector == NULL)
+    bool state_red_enable = isStateRedEnabled();
+    if (state_red_enable && curlRcvryCertSelector == NULL )
     {
-        curlCertSelector = rdkcertselector_new( NULL, NULL, cert_group );
-        if(curlCertSelector == NULL)
-        {
-            T2Error("%s, T2:Cert selector initialization failed\n", __func__);
+        curlRcvryCertSelector = rdkcertselector_new( NULL, NULL, "RCVRY" );
+        if(curlRcvryCertSelector == NULL) {
+            T2Error("%s, T2:statered Cert selector initialization failed\n", __func__);
+        } else {
+            T2Info("%s, T2:statered Cert selector initialization successfully\n", __func__);
         }
-        else
+    }
+    else
+    {
+        if (curlCertSelector == NULL)
         {
-            T2Info("%s, T2:Cert selector initialization successfully\n", __func__);
+            curlCertSelector = rdkcertselector_new( NULL, NULL, "MTLS" );
+            if (curlCertSelector == NULL) {
+                T2Error("%s, T2:Cert selector initialization failed\n", __func__);
+            } else {
+                T2Info("%s, T2:Cert selector initialization successfully\n", __func__);
+            }
         }
     }
 }
@@ -340,6 +336,16 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
     }
 #ifdef LIBRDKCERTSEL_BUILD
     curlCertSelectorInit();
+    state_red_enable = isStateRedEnabled();
+    T2Info("%s: state_red_enable: %d\n", __func__, state_red_enable );
+    if (state_red_enable)
+    {
+        thisCertSel = curlRcvryCertSelector;
+    }
+    else
+    {
+        thisCertSel = curlCertSelector;
+    }
 #endif
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
 

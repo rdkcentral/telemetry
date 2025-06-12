@@ -257,42 +257,59 @@ static T2ERROR setPayload(CURL *curl, const char* payload, childResponse *childC
 }
 #ifdef LIBRDKCERTSEL_BUILD
 bool isStateRedEnabled(void)
-{ 
+{
     return access("/tmp/stateRedEnabled", F_OK) == 0;
 }
+
 void curlCertSelectorFree()
 {
     rdkcertselector_free(&curlCertSelector);
     rdkcertselector_free(&curlRcvryCertSelector);
-    if(curlCertSelector == NULL || curlRcvryCertSelector == NULL) {
+
+    if (curlCertSelector == NULL || curlRcvryCertSelector == NULL)
+    {
         T2Info("%s, T2:Cert selector memory free\n", __func__);
-    } else {
+    }
+    else
+    {
         T2Info("%s, T2:Cert selector memory free failed\n", __func__);
     }
 }
+
 static void curlCertSelectorInit()
 {
     bool state_red_enable = isStateRedEnabled();
-    if (state_red_enable && curlRcvryCertSelector == NULL ) {
-        curlRcvryCertSelector = rdkcertselector_new( NULL, NULL, "RCVRY" );
-        if(curlRcvryCertSelector == NULL) {
+
+    if (state_red_enable && curlRcvryCertSelector == NULL)
+    {
+        curlRcvryCertSelector = rdkcertselector_new(NULL, NULL, "RCVRY");
+        if (curlRcvryCertSelector == NULL)
+        {
             T2Error("%s, T2:statered Cert selector initialization failed\n", __func__);
-        } else {
+        }
+        else
+        {
             T2Info("%s, T2:statered Cert selector initialization successfully\n", __func__);
         }
-    } 
-    else {
-        if (curlCertSelector == NULL) {
-            curlCertSelector = rdkcertselector_new( NULL, NULL, "MTLS" );
-            if (curlCertSelector == NULL) {
+    }
+    else
+    {
+        if (curlCertSelector == NULL)
+        {
+            curlCertSelector = rdkcertselector_new(NULL, NULL, "MTLS");
+            if (curlCertSelector == NULL)
+            {
                 T2Error("%s, T2:Cert selector initialization failed\n", __func__);
-            } else {
+            }
+            else
+            {
                 T2Info("%s, T2:Cert selector initialization successfully\n", __func__);
             }
         }
     }
 }
 #endif
+
 T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
 {
     CURL *curl = NULL;
@@ -334,9 +351,12 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
     curlCertSelectorInit();
     state_red_enable = isStateRedEnabled();
     T2Info("%s: state_red_enable: %d\n", __func__, state_red_enable );
-    if (state_red_enable) {
+    if (state_red_enable)
+    {
         thisCertSel = curlRcvryCertSelector;
-    } else {
+    } 
+    else
+    {
         thisCertSel = curlCertSelector;
     }
 #endif

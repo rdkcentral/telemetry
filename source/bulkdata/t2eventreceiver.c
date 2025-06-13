@@ -67,6 +67,7 @@ void T2ER_PushDataWithDelim(char* eventInfo, char* user_data)
     pthread_mutex_lock(&sTDMutex); //lock for stopDispatchThread variable
     bool sDThread = stopDispatchThread;
     pthread_mutex_unlock(&sTDMutex);
+    
     if(enabled)
     {
         if(!eventInfo)
@@ -113,6 +114,7 @@ void T2ER_PushDataWithDelim(char* eventInfo, char* user_data)
                                 }
 
                             }
+                            pthread_mutex_unlock(&sTDMutex); //unlock for stopDispatchThread
                         }
                     }
                     else
@@ -187,6 +189,7 @@ void T2ER_Push(char* eventName, char* eventValue)
                             T2Error("%s pthread_cond_signal for erCond failed with error code : %d\n", __FUNCTION__, ret);
                         }
                     }
+                    pthread_mutex_unlock(&sTDMutex); //unlock for stopDispatchThread
                 }
 
             }

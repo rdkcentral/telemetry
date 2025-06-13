@@ -67,7 +67,7 @@ void T2ER_PushDataWithDelim(char* eventInfo, char* user_data)
     pthread_mutex_lock(&sTDMutex); //lock for stopDispatchThread variable
     bool sDThread = stopDispatchThread;
     pthread_mutex_unlock(&sTDMutex);
-    
+
     if(enabled)
     {
         if(!eventInfo)

@@ -52,8 +52,10 @@
 #define XCONF_RETRY_TIMEOUT 180
 #define MAX_XCONF_RETRY_COUNT 5
 #define IFINTERFACE      "erouter0"
+#define XCONF_CONFIG_FILE  "DCMresponse.txt"
 #define PROCESS_CONFIG_COMPLETE_FLAG "/tmp/t2DcmComplete"
 #define HTTP_RESPONSE_FILE "/tmp/httpOutput.txt"
+#define DCM_CONF_FULL_PATH  XCONFPROFILE_PERSISTENCE_PATH "" XCONF_CONFIG_FILE
 
 extern sigset_t blocking_signal;
 

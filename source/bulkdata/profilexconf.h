@@ -29,10 +29,6 @@
 #include "t2eventreceiver.h"
 #include "vector.h"
 #include "reportgen.h"
-#include "persistence.h"
-
-#define XCONF_CONFIG_FILE  "DCMresponse.txt"
-#define DCM_CONF_FULL_PATH  XCONFPROFILE_PERSISTENCE_PATH "" XCONF_CONFIG_FILE
 
 typedef enum
 {
@@ -65,6 +61,7 @@ typedef struct _ProfileXConf
     T2HTTP *t2HTTPDest;
     Vector *eMarkerList;
     Vector *gMarkerList;
+    Vector *topMarkerList;
     Vector *cachedReportList;
     cJSON *jsonReportObj;
     pthread_t reportThread;

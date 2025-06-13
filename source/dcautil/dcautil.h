@@ -23,6 +23,9 @@
 #include <stdbool.h>
 #include "telemetry2_0.h"
 #include "vector.h"
+#include "dca.h"
+#include <dirent.h>
+#include <ctype.h>
 
 #define TOPTEMP "/tmp/.t2toplog"
 #define DCADONEFLAG "/tmp/.dca_done"
@@ -85,4 +88,7 @@ bool firstBootStatus();
 #endif
 
 void dcaFlagReportCompleation();
+ProcessSnapshot* createProcessSnapshot();
+ProcessInfo* lookupProcess(ProcessSnapshot *snapshot, const char *processName);
+void freeProcessSnapshot(ProcessSnapshot *snapshot);
 #endif /* _DCAUTIL_H_ */

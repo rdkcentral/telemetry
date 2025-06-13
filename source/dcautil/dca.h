@@ -22,15 +22,24 @@
 #include "vector.h"
 #include <stdbool.h>
 
+
+typedef struct {
+    pid_t pid;
+    char processName[256];
+    char memUsage[20];
+    char cpuUsage[20];
+} ProcessInfo;
+
+typedef struct {
+    Vector *processList; // Vector of ProcessInfo
+} ProcessSnapshot;
+
 /**
  * Caller should be freeing vectorMarkerList and grepResultList
  */
-int getDCAResultsInJson(char* profileName, void* vectorMarkerList, cJSON** grepResultList);
 
-int getDCAResultsInVector(char* profileName, Vector* vectorMarkerList, Vector** grepResultList, bool check_rotated, char* customLogPath);
+int getDCAResultsInVector(char* profileName, Vector* vectorMarkerList, Vector** out_grepResultList, bool check_rotated, char* customLogPath);
 
-char *strSplit(char *str, char *delim);
-
-int getErrorCode(char *str, char *ec);
+int processTopPattern(char* profileName, Vector* topMarkerList, Vector* out_grepResultList);
 
 #endif /* SRC_DCA_H_ */

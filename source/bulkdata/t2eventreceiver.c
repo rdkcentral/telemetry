@@ -449,13 +449,13 @@ T2ERROR T2ER_StopDispatchThread()
     if(ret != 0) //pthread_cond_signal failed so return after unlock
     {
         T2Error("%s pthread_cond_signal failed with error code %d\n", __FUNCTION__, ret);
-        if(pthread_mutex_unlock(&sTDMutex) != 0)
-        {
-            T2Error("%s pthread_mutex_unlock for sTDMutex failed\n", __FUNCTION__);
-        }
         if(pthread_mutex_unlock(&erMutex) != 0)
         {
             T2Error("%s pthread_mutex_unlock for erMutex failed\n", __FUNCTION__);
+        }
+        if(pthread_mutex_unlock(&sTDMutex) != 0)
+        {
+            T2Error("%s pthread_mutex_unlock for sTDMutex failed\n", __FUNCTION__);
         }
         return T2ERROR_FAILURE;
 

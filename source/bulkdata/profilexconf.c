@@ -492,19 +492,6 @@ T2ERROR ProfileXConf_init(bool checkPreviousSeek)
         {
             config = Vector_At(configList, 0);
             ProfileXConf *profile = 0;
-#ifdef DCMAGENT
-            T2Info("Publish configuration to DCM \n");
-            if(T2ERROR_SUCCESS != publishEventsDCMSetConf(DCM_CONF_FULL_PATH))
-            {
-                T2Error("Failed to Publish set conf event to DCM \n");
-            }
-
-            T2Info("Publishing the Process conf event\n");
-            if(T2ERROR_SUCCESS != publishEventsDCMProcConf())
-            {
-                T2Error("Failed to Publish process conf event to DCM \n");
-            }
-#endif
             T2Debug("Processing config with name : %s\n", config->name);
             T2Debug("Config Size = %lu\n", (unsigned long)strlen(config->configData));
             if(T2ERROR_SUCCESS == processConfigurationXConf(config->configData, &profile))

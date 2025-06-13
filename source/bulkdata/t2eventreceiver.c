@@ -340,15 +340,15 @@ T2ERROR T2ER_Init()
 T2ERROR T2ER_StartDispatchThread()
 {
     T2Debug("%s ++in\n", __FUNCTION__);
-    pthread_mutex_lock(&enabledMutex); //lock for EREnabled
-    bool enabled = EREnabled;
-    pthread_mutex_unlock(&enabledMutex);
 
     if(pthread_mutex_lock(&sTDMutex) != 0)
     {
         T2Error("%s pthread_mutex_lock for sTDMutex failed\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
+    pthread_mutex_lock(&enabledMutex); //lock for EREnabled
+    bool enabled = EREnabled;
+    pthread_mutex_unlock(&enabledMutex);
     if(!enabled || !stopDispatchThread)
     {
         T2Info("T2ER isn't initialized or dispatch thread is already running\n");
@@ -414,16 +414,14 @@ T2ERROR T2ER_StopDispatchThread()
 {
     T2Debug("%s ++in\n", __FUNCTION__);
     int ret = 0;
-    pthread_mutex_lock(&enabledMutex); //lock for EREnabled
-    bool enabled = EREnabled;
-    pthread_mutex_unlock(&enabledMutex);
-
     if(pthread_mutex_lock(&sTDMutex) != 0)
     {
         T2Error("%s pthread_mutex_lock for sTDMutex failed\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
-
+    pthread_mutex_lock(&enabledMutex); //lock for EREnabled
+    bool enabled = EREnabled;
+    pthread_mutex_unlock(&enabledMutex);
     if(!enabled || stopDispatchThread)
     {
         T2Info("T2ER isn't initialized or dispatch thread isn't running\n");

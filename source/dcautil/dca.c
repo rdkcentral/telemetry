@@ -436,7 +436,7 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd , const off_t 
        unsigned int bytes_ignored = 0;
 
        // Find the nearest multiple of page size
-       static long page_size = sysconf(_SC_PAGESIZE);
+       long page_size = sysconf(_SC_PAGESIZE);
         if (seek_value > 0) {
             offset_in_page_size_multiple = (seek_value / page_size) * page_size;
             bytes_ignored = seek_value - offset_in_page_size_multiple;

@@ -64,6 +64,9 @@ void T2ER_PushDataWithDelim(char* eventInfo, char* user_data)
     pthread_mutex_lock(&enabledMutex); //lock for ERenabled variable
     bool enabled = EREnabled;
     pthread_mutex_unlock(&enabledMutex);
+    pthread_mutex_lock(&sTDMutex); //lock for stopDispatchThread variable
+    bool sDThread = stopDispatchThread;
+    pthread_mutex_unlock(&sTDMutex);
     if(enabled)
     {
         if(!eventInfo)
@@ -101,8 +104,7 @@ void T2ER_PushDataWithDelim(char* eventInfo, char* user_data)
                         {
                             T2Debug("Adding eventName : %s eventValue : %s to t2event queue\n", event->name, event->value);
                             t2_queue_push(eQueue, (void *) event);
-                            pthread_mutex_lock(&sTDMutex); // lock for stopDispatchThread
-                            if(!stopDispatchThread)
+                            if(!sDThread)
                             {
                                 ret = pthread_cond_signal(&erCond);
                                 if(ret != 0) // pthread cond signal failed so return after unlocking the mutex
@@ -111,7 +113,6 @@ void T2ER_PushDataWithDelim(char* eventInfo, char* user_data)
                                 }
 
                             }
-                            pthread_mutex_unlock(&sTDMutex); //unlock for stopDispatchThread
                         }
                     }
                     else
@@ -147,6 +148,9 @@ void T2ER_Push(char* eventName, char* eventValue)
     pthread_mutex_lock(&enabledMutex); //lock for ERenabled
     bool enabled = EREnabled;
     pthread_mutex_unlock(&enabledMutex);
+    pthread_mutex_lock(&sTDMutex); //lock for stopDispatchThread
+    bool sDThread = stopDispatchThread;
+    pthread_mutex_unlock(&sTDMutex);
     if(enabled)
     {
         if(!eventName || !eventValue)
@@ -175,8 +179,7 @@ void T2ER_Push(char* eventName, char* eventValue)
                     event->value = strdup(eventValue);
                     T2Debug("Adding eventName : %s eventValue : %s to t2event queue\n", event->name, event->value);
                     t2_queue_push(eQueue, (void *) event);
-                    pthread_mutex_lock(&sTDMutex); //lock for stopDispatchThread
-                    if(!stopDispatchThread)
+                    if(!sDThread)
                     {
                         ret = pthread_cond_signal(&erCond);
                         if(ret != 0) // pthread_cond _signal failed so after unlocking the mutex it will return
@@ -184,7 +187,6 @@ void T2ER_Push(char* eventName, char* eventValue)
                             T2Error("%s pthread_cond_signal for erCond failed with error code : %d\n", __FUNCTION__, ret);
                         }
                     }
-                    pthread_mutex_unlock(&sTDMutex); //unlock for stopDispatchThread
                 }
 
             }
@@ -209,9 +211,10 @@ void* T2ER_EventDispatchThread(void *arg)
     T2Debug("%s ++in\n", __FUNCTION__);
     Vector *profileList = NULL;
     pthread_mutex_lock(&sTDMutex); //lock for stopDispatchThread
-    while(!stopDispatchThread)
+    bool sDThread = stopDispatchThread;
+    pthread_mutex_unlock(&sTDMutex);
+    while(!sDThread)
     {
-        pthread_mutex_unlock(&sTDMutex); //unlock for stopDispatchThread
         if(pthread_mutex_lock(&erMutex) != 0) // mutex lock failed, without locking eQueue shouldn't be accessed
         {
             T2Error("%s pthread_mutex_lock for erMutex failed\n", __FUNCTION__);
@@ -268,9 +271,7 @@ void* T2ER_EventDispatchThread(void *arg)
             }
             T2Debug("Received signal from T2ER_Push\n");
         }
-        pthread_mutex_lock(&sTDMutex); // lock for stopDispatchThread as this is in while locking at the end once again
     }
-    pthread_mutex_unlock(&sTDMutex); //unlock for stopDispatchThread
     T2Debug("%s --out\n", __FUNCTION__);
     return NULL;
 }
@@ -338,14 +339,15 @@ T2ERROR T2ER_Init()
 T2ERROR T2ER_StartDispatchThread()
 {
     T2Debug("%s ++in\n", __FUNCTION__);
+    pthread_mutex_lock(&enabledMutex); //lock for EREnabled
+    bool enabled = EREnabled;
+    pthread_mutex_unlock(&enabledMutex);
+
     if(pthread_mutex_lock(&sTDMutex) != 0)
     {
         T2Error("%s pthread_mutex_lock for sTDMutex failed\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
-    pthread_mutex_lock(&enabledMutex); //lock for EREnabled
-    bool enabled = EREnabled;
-    pthread_mutex_unlock(&enabledMutex);
     if(!enabled || !stopDispatchThread)
     {
         T2Info("T2ER isn't initialized or dispatch thread is already running\n");
@@ -411,14 +413,16 @@ T2ERROR T2ER_StopDispatchThread()
 {
     T2Debug("%s ++in\n", __FUNCTION__);
     int ret = 0;
+    pthread_mutex_lock(&enabledMutex); //lock for EREnabled
+    bool enabled = EREnabled;
+    pthread_mutex_unlock(&enabledMutex);
+
     if(pthread_mutex_lock(&sTDMutex) != 0)
     {
         T2Error("%s pthread_mutex_lock for sTDMutex failed\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
-    pthread_mutex_lock(&enabledMutex); //lock for EREnabled
-    bool enabled = EREnabled;
-    pthread_mutex_unlock(&enabledMutex);
+
     if(!enabled || stopDispatchThread)
     {
         T2Info("T2ER isn't initialized or dispatch thread isn't running\n");
@@ -453,6 +457,7 @@ T2ERROR T2ER_StopDispatchThread()
             T2Error("%s pthread_mutex_unlock for erMutex failed\n", __FUNCTION__);
         }
         return T2ERROR_FAILURE;
+
     }
     if(pthread_mutex_unlock(&erMutex) != 0)
     {

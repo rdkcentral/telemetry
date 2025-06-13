@@ -1282,7 +1282,6 @@ T2ERROR regDEforCompEventList(const char* componentName, T2EventMarkerListCallba
             return status;
         }
     }
-    pthread_mutex_unlock(&compParamMap);
 
     snprintf(deNameSpace, 124, "%s%s%s", T2_ROOT_PARAMETER, componentName, T2_EVENT_LIST_PARAM_SUFFIX);
 
@@ -1294,9 +1293,7 @@ T2ERROR regDEforCompEventList(const char* componentName, T2EventMarkerListCallba
     if(ret == RBUS_ERROR_SUCCESS)
     {
         T2Debug("Registered data element %s with bus \n ", deNameSpace);
-        pthread_mutex_lock(&compParamMap);
         hash_map_put(compTr181ParamMap, (void*) strdup(deNameSpace), (void*) strdup(componentName), free);
-        pthread_mutex_unlock(&compParamMap);
         T2Debug("Save dataelement mapping, %s with component name %s \n ", deNameSpace, componentName);
     }
     else
@@ -1304,7 +1301,7 @@ T2ERROR regDEforCompEventList(const char* componentName, T2EventMarkerListCallba
         T2Error("Failed in registering data element %s \n", deNameSpace);
         status = T2ERROR_FAILURE;
     }
-
+    pthread_mutex_unlock(&compParamMap);
 
     if(!getMarkerListCallBack)
     {

@@ -62,7 +62,7 @@ static ReportProfilesDeleteDNDCallBack mprofilesDeleteCallBack;
 #if defined(PRIVACYMODES_CONTROL)
 static char* privacyModeVal = NULL;
 #endif
-static uint32_t t2ReadyStatus = T2_STATE_NOT_READY;;
+static uint32_t t2ReadyStatus = T2_STATE_NOT_READY;
 static char* reportProfileVal = NULL ;
 static char* tmpReportProfileVal = NULL ;
 static char* reportProfilemsgPckVal = NULL ;
@@ -1301,7 +1301,6 @@ T2ERROR regDEforCompEventList(const char* componentName, T2EventMarkerListCallba
         T2Error("Failed in registering data element %s \n", deNameSpace);
         status = T2ERROR_FAILURE;
     }
-
     pthread_mutex_unlock(&compParamMap);
 
     if(!getMarkerListCallBack)

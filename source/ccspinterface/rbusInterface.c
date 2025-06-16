@@ -1282,7 +1282,7 @@ T2ERROR regDEforCompEventList(const char* componentName, T2EventMarkerListCallba
             return status;
         }
     }
-
+    pthread_mutex_unlock(&compParamMap);
     snprintf(deNameSpace, 124, "%s%s%s", T2_ROOT_PARAMETER, componentName, T2_EVENT_LIST_PARAM_SUFFIX);
 
     rbusDataElement_t dataElements[1] =
@@ -1293,7 +1293,9 @@ T2ERROR regDEforCompEventList(const char* componentName, T2EventMarkerListCallba
     if(ret == RBUS_ERROR_SUCCESS)
     {
         T2Debug("Registered data element %s with bus \n ", deNameSpace);
+        pthread_mutex_lock(&compParamMap);
         hash_map_put(compTr181ParamMap, (void*) strdup(deNameSpace), (void*) strdup(componentName), free);
+        pthread_mutex_unlock(&compParamMap);
         T2Debug("Save dataelement mapping, %s with component name %s \n ", deNameSpace, componentName);
     }
     else
@@ -1301,7 +1303,6 @@ T2ERROR regDEforCompEventList(const char* componentName, T2EventMarkerListCallba
         T2Error("Failed in registering data element %s \n", deNameSpace);
         status = T2ERROR_FAILURE;
     }
-    pthread_mutex_unlock(&compParamMap);
 
     if(!getMarkerListCallBack)
     {
@@ -1362,6 +1363,7 @@ void unregisterDEforCompEventList()
     }
 
     count = hash_map_count(compTr181ParamMap);
+    pthread_mutex_unlock(&compParamMap);
     T2Debug("compTr181ParamMap has %d components registered \n", count);
     if(count > 0)
     {
@@ -1369,7 +1371,9 @@ void unregisterDEforCompEventList()
         rbusCallbackTable_t cbTable = { t2PropertyDataGetHandler, NULL, NULL, NULL, NULL, NULL };
         for( i = 0; i < count; ++i )
         {
+            pthread_mutex_lock(&compParamMap);
             char *dataElementName = hash_map_lookupKey(compTr181ParamMap, i);
+            pthread_mutex_unlock(&compParamMap);
             if(dataElementName)
             {
                 T2Debug("Adding %s to unregister list \n", dataElementName);
@@ -1388,6 +1392,7 @@ void unregisterDEforCompEventList()
         }
     }
     T2Debug("Freeing compTr181ParamMap \n");
+    pthread_mutex_lock(&compParamMap);
     hash_map_destroy(compTr181ParamMap, freeComponentEventList);
     compTr181ParamMap = NULL;
     pthread_mutex_unlock(&compParamMap);

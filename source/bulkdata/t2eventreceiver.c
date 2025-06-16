@@ -211,9 +211,7 @@ void* T2ER_EventDispatchThread(void *arg)
     (void) arg; // To avoid compiler warning
     T2Debug("%s ++in\n", __FUNCTION__);
     Vector *profileList = NULL;
-    pthread_mutex_lock(&sTDMutex); //lock for stopDispatchThread
     bool sDThread = stopDispatchThread;
-    pthread_mutex_unlock(&sTDMutex);
     while(!sDThread)
     {
         if(pthread_mutex_lock(&erMutex) != 0) // mutex lock failed, without locking eQueue shouldn't be accessed

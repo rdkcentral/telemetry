@@ -24,6 +24,7 @@
 export top_srcdir=`pwd`
 
 ENABLE_COV=false
+fail=0
 
 if [ "x$1" = "x--enable-cov" ]; then
       echo "Enabling coverage options"
@@ -51,6 +52,25 @@ make -C source/test
 ./source/test/scheduler/scheduler_gtest.bin
 ./source/test/t2parser/t2parser_gtest.bin
 
+for test in $tests
+do
+    # Skip commented out tests (lines starting with #)
+    case "$test" in
+        \#*) continue ;;
+    esac
+
+    if [ -x "$test" ]; then
+        "$test"
+        status=$?
+        if [ $status -ne 0 ]; then
+            echo "Test $test failed with exit code $status"
+            fail=1
+        fi
+    else
+        echo "Test binary $test not found or not executable"
+        fail=1
+    fi
+done
 
 #### Generate the coverage report ####
 if [ "$ENABLE_COV" = true ]; then
@@ -62,5 +82,10 @@ if [ "$ENABLE_COV" = true ]; then
     lcov --remove coverage.info "/usr/*" --output-file coverage.info
     lcov --list coverage.info
 fi
-
+if [ $fail -ne 0 ]; then
+    echo "Some unit tests failed."
+    exit 1
+else
+    echo "All unit tests passed."
+fi
 

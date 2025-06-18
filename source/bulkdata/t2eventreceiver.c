@@ -41,7 +41,6 @@ static pthread_t erThread;
 static pthread_mutex_t erMutex;
 static pthread_cond_t erCond;
 static pthread_mutex_t sTDMutex;
-static pthread_mutex_t enabledMutex = PTHREAD_MUTEX_INITIALIZER;
 
 T2ERROR ReportProfiles_storeMarkerEvent(char *profileName, T2Event *eventInfo);
 
@@ -458,15 +457,12 @@ T2ERROR T2ER_StopDispatchThread()
 void T2ER_Uninit()
 {
     T2Debug("%s ++in\n", __FUNCTION__);
-    pthread_mutex_lock(&enabledMutex); //lock for EREnabled
     if(!EREnabled)
     {
         T2Debug("T2ER isn't initialized, ignoring\n");
-        pthread_mutex_unlock(&enabledMutex);
         return;
     }
     EREnabled = false;
-    pthread_mutex_unlock(&enabledMutex);
 
     if(!stopDispatchThread)
     {

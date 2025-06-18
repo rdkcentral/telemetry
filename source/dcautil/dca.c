@@ -69,6 +69,31 @@ typedef struct {
     char* addr;
 } FileDescriptor;
 
+/**
+ * Portable implementation of strnstr (BSD function).
+ * Searches for the first occurrence of the substring 'needle' in the
+ * first 'len' bytes of 'haystack'.
+ * Returns pointer to the beginning of the match, or NULL if not found.
+ */
+static const char *strnstr(const char *haystack, const char *needle, size_t len) {
+    size_t needle_len;
+
+    if (*needle == '\0')
+        return haystack;
+
+    needle_len = strlen(needle);
+
+    if (needle_len == 0)
+        return haystack;
+
+    for (size_t i = 0; i + needle_len <= len; i++) {
+        if (memcmp(haystack + i, needle, needle_len) == 0)
+            return haystack + i;
+        if (haystack[i] == '\0')
+            break;
+    }
+    return NULL;
+}
 
 cJSON *SEARCH_RESULT_JSON = NULL, *ROOT_JSON = NULL;
 
@@ -269,7 +294,7 @@ static inline void formatCount(char* buffer, size_t size, int count)
     }
     snprintf(buffer, size, "%d", count);
 }
-
+/*
 static int getCountPatternMatch(const char* buffer, const char* pattern) {
 
     if (!buffer || !pattern) {
@@ -287,9 +312,43 @@ static int getCountPatternMatch(const char* buffer, const char* pattern) {
     }
     return count;
 
+}*/
+
+static int getCountPatternMatch(FileDescriptor* fileDescriptor, const char* pattern) {
+    if (!fileDescriptor || !fileDescriptor->addr || !pattern || !*pattern || fileDescriptor->file_size <= 0) {
+        return -1; // Invalid arguments
+    }
+
+    const char* buffer = fileDescriptor->addr;
+    size_t buflen = (size_t)fileDescriptor->file_size;
+    size_t patlen = strlen(pattern);
+
+    if (patlen == 0 || buflen < patlen) {
+        return 0;
+    }
+
+    int count = 0;
+    const char *cur = buffer;
+    size_t bytes_left = buflen;
+
+    while (bytes_left >= patlen) {
+        const char *found = strnstr(cur, pattern, bytes_left);
+        if (!found)
+            break;
+        count++;
+        size_t advance = (size_t)(found - cur) + patlen;
+        cur = found + patlen;
+        if (bytes_left < advance)
+            break;
+        bytes_left -= advance;
+    }
+    return count;
 }
 
+/*
+
 static char* getAbsolutePatternMatch(const char* buffer, const char* pattern) {
+    
     if (!buffer || !pattern) {
         return NULL; // Invalid arguments
     }
@@ -327,10 +386,55 @@ static char* getAbsolutePatternMatch(const char* buffer, const char* pattern) {
 
    return last_found;
 }
- 
+ */
 
-static int processPatternWithOptimizedFunction(const GrepMarker* marker, Vector* out_grepResultList, const char* memmmapped_data) {
+static char* getAbsolutePatternMatch(FileDescriptor* fileDescriptor, const char* pattern) {
+    if (!fileDescriptor || !fileDescriptor->addr || fileDescriptor->file_size <= 0 || !pattern || !*pattern)
+        return NULL;
+
+    const char* buffer = fileDescriptor->addr;
+    size_t buflen = (size_t)fileDescriptor->file_size;
+    size_t patlen = strlen(pattern);
+
+    const char *cur = buffer;
+    size_t bytes_left = buflen;
+    const char *last_found = NULL;
+
+    while (bytes_left >= patlen) {
+        const char *found = strnstr(cur, pattern, bytes_left);
+        if (!found)
+            break;
+        last_found = found;
+        size_t advance = (size_t)(found - cur) + patlen;
+        cur = found + patlen;
+        if (bytes_left < advance)
+            break;
+        bytes_left -= advance;
+    }
+
+    if (!last_found)
+        return NULL;
+
+    // Move pointer just after the pattern
+    const char *start = last_found + patlen;
+    size_t chars_left = buflen - (start - buffer);
+
+    // Find next newline or end of buffer
+    const char *end = memchr(start, '\n', chars_left);
+    size_t length = end ? (size_t)(end - start) : chars_left;
+
+    char *result = (char*)malloc(length + 1);
+    if (!result)
+        return NULL;
+    memcpy(result, start, length);
+    result[length] = '\0';
+    return result;
+}
+
+static int processPatternWithOptimizedFunction(const GrepMarker* marker, Vector* out_grepResultList, FileDescriptor* filedescriptor) {
      // Sanitize the input
+    
+    const char* memmmapped_data = filedescriptor->addr;
     if (!marker || !out_grepResultList || !memmmapped_data) {
         T2Error("Invalid arguments for %s\n", __FUNCTION__);
         return -1;
@@ -346,7 +450,7 @@ static int processPatternWithOptimizedFunction(const GrepMarker* marker, Vector*
 
     if (mType == MTYPE_COUNTER) {
         // Count the number of occurrences of the pattern in the memory-mapped data
-        count = getCountPatternMatch(memmmapped_data, pattern);
+        count = getCountPatternMatch(filedescriptor, pattern);
         if (count > 0) {
             // If matches are found, process them accordingly
             char tmp_str[5] = { 0 };
@@ -360,7 +464,7 @@ static int processPatternWithOptimizedFunction(const GrepMarker* marker, Vector*
         }
     } else {
         // Get the last occurrence of the pattern in the memory-mapped data
-        last_found = getAbsolutePatternMatch(memmmapped_data, pattern);
+        last_found = getAbsolutePatternMatch(filedescriptor, pattern);
         // TODO : If trimParameter is true, trim the pattern before adding to the result list
         if (last_found) {
             // If a match is found, process it accordingly
@@ -516,7 +620,7 @@ static int parseMarkerListOptimized(char* profileName, Vector* ip_vMarkerList, V
     // Reuse the file descriptor or memmory mapped I/O when the log file is same between iterations
 
     int fd = -1;
-    char *buffer = NULL;
+    //char *buffer = NULL;
     FileDescriptor* fileDescriptor = NULL;
 
     for (var = 0; var < vCount; ++var) // Loop of marker list starts here
@@ -569,7 +673,7 @@ static int parseMarkerListOptimized(char* profileName, Vector* ip_vMarkerList, V
                 T2Error("Failed to get file descriptor for %s\n", log_file_for_this_iteration);
                 continue;
             }
-            buffer = fileDescriptor->addr;
+            //buffer = fileDescriptor->addr;
 
         }
 
@@ -582,7 +686,7 @@ static int parseMarkerListOptimized(char* profileName, Vector* ip_vMarkerList, V
         if (is_skip_param == 0)
         {
             // Call the optimized function to process the pattern
-            processPatternWithOptimizedFunction(grepMarkerObj, out_grepResultList, buffer);
+            processPatternWithOptimizedFunction(grepMarkerObj, out_grepResultList, fileDescriptor);
         }
 
     }  // Loop of marker list ends here 

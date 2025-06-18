@@ -272,6 +272,7 @@ T2ERROR appendRequestParams(char *buf, const int maxArgLen)
     char *paramVal = NULL;
     char *tempBuf = (char*) malloc(MAX_URL_ARG_LEN);
     char build_type[BUILD_TYPE_MAX_LENGTH] = { 0 };
+    char whoami_support[8] = {0};
 #if !defined(ENABLE_RDKB_SUPPORT) && !defined(ENABLE_RDKC_SUPPORT)
     char *timezone = NULL;
 #endif
@@ -357,8 +358,8 @@ T2ERROR appendRequestParams(char *buf, const int maxArgLen)
         goto error;
     }
 
-    char whoami_support[8] = {0};
-    if ((getDevicePropertyData("WHOAMI_SUPPORT", whoami_support, sizeof(whoami_support)) == 0) && (strcmp(whoami_support, "true") == 0)) {
+    if ((getDevicePropertyData("WHOAMI_SUPPORT", whoami_support, sizeof(whoami_support)) == 1) && (strcmp(whoami_support, "true") == 0))
+    {
         T2Info("WHOAMI support is enabled\n");
         if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_OSCLASS, &paramVal))
         {

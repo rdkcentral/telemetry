@@ -26,9 +26,7 @@ if IS_LIBRDKCERTSEL_ENABLED
 libhttp_la_CFLAGS = $(LIBRDKCERTSEL_FLAG)
 libhttp_la_LDFLAGS += -lRdkCertSelector
 endif
-libhttp_la_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \
-                                -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/dbus-1.0/include \
-                                -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ccsp \
+libhttp_la_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ccsp \
                                 -I${top_srcdir}/include \
                                 -I${top_srcdir}/source/ccspinterface \
                                 -I${top_srcdir}/source/bulkdata \

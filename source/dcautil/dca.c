@@ -97,8 +97,9 @@ static const char *strnstr(const char *haystack, const char *needle, size_t len)
 
 cJSON *SEARCH_RESULT_JSON = NULL, *ROOT_JSON = NULL;
 
-static char *logPath = NULL;
-static char *persistentPath = NULL;
+static char *LOGPATH = NULL;
+static char *PERSISTENTPATH = NULL;
+static long PAGESIZE;
 static pthread_mutex_t dcaMutex = PTHREAD_MUTEX_INITIALIZER;
 
 
@@ -484,7 +485,7 @@ static int processPatternWithOptimizedFunction(const GrepMarker* marker, Vector*
 }
 
 
-static int getLogFileDescriptor(GrepSeekProfile* gsProfile, const char* logFile, int old_fd, off_t* out_seek_value) {
+static int getLogFileDescriptor(GrepSeekProfile* gsProfile,const char* logPath, const char* logFile, int old_fd, off_t* out_seek_value) {
     long seek_value_from_map = 0;
     getLogSeekValue(gsProfile->logFileSeekMap, logFile, &seek_value_from_map);
     if (old_fd != -1) {
@@ -492,7 +493,7 @@ static int getLogFileDescriptor(GrepSeekProfile* gsProfile, const char* logFile,
     }
     // TODO : Get path from initProperties and append the log file name
     char logFilePath[PATH_MAX];
-    snprintf(logFilePath, sizeof(logFilePath), "%s%s", "/opt/logs/", logFile); 
+    snprintf(logFilePath, sizeof(logFilePath), "%s%s", logPath, logFile); 
 
     T2Debug("Opening log file %s\n", logFilePath);
     int fd = open(logFilePath, O_RDONLY);
@@ -540,9 +541,8 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd , const off_t 
        unsigned int bytes_ignored = 0;
 
        // Find the nearest multiple of page size
-       long page_size = sysconf(_SC_PAGESIZE);
         if (seek_value > 0) {
-            offset_in_page_size_multiple = (seek_value / page_size) * page_size;
+            offset_in_page_size_multiple = (seek_value / PAGESIZE) * PAGESIZE;
             bytes_ignored = seek_value - offset_in_page_size_multiple;
         } else {
             offset_in_page_size_multiple = 0;
@@ -578,7 +578,7 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd , const off_t 
  *  @param filename
  *  @return -1 on failure, 0 on success
  */
-static int parseMarkerListOptimized(char* profileName, Vector* ip_vMarkerList, Vector* out_grepResultList, bool check_rotated)
+static int parseMarkerListOptimized(char* profileName, Vector* ip_vMarkerList, Vector* out_grepResultList, bool check_rotated, char* logPath)
 {
     T2Debug("%s ++in \n", __FUNCTION__);
 
@@ -661,7 +661,7 @@ static int parseMarkerListOptimized(char* profileName, Vector* ip_vMarkerList, V
 
             // Get a valid file descriptor for the current log file
             off_t seek_value = 0;
-            fd = getLogFileDescriptor(gsProfile, log_file_for_this_iteration, fd, &seek_value);
+            fd = getLogFileDescriptor(gsProfile, logPath, log_file_for_this_iteration, fd, &seek_value);
             if (fd == -1) {
                 continue;
                 printf("Error opening file %s\n", log_file_for_this_iteration);
@@ -733,32 +733,32 @@ int getDCAResultsInVector(char* profileName, Vector* vecMarkerList, Vector** out
     {
         if (!isPropsInitialized())
         {
-            initProperties(logPath, persistentPath);
+            initProperties(LOGPATH,PERSISTENTPATH,&PAGESIZE);
         }
 
-        // Set the log look up location as previous log folder
-        if (customLogPath)
-        {
-            initProperties(customLogPath, persistentPath);
-        }
-
+        char* logPath = customLogPath ? customLogPath : LOGPATH;
+        
         Vector_Create(out_grepResultList);
 
         // Go for looping through the marker list
-        if( (rc = parseMarkerListOptimized(profileName, vecMarkerList, *out_grepResultList, check_rotated)) == -1 )
+        if( (rc = parseMarkerListOptimized(profileName, vecMarkerList, *out_grepResultList, check_rotated, logPath)) == -1 )
         {
             T2Debug("Error in fetching grep results\n");
-        }
-        // Reset the log look up directory to default
-        if (customLogPath)
-        {
-            initProperties(logPath, persistentPath);
         }
     }
     pthread_mutex_unlock(&dcaMutex);
     T2Debug("%s --out \n", __FUNCTION__);
     return rc;
 }
+
+#ifdef __GNUC__
+
+void __attribute__ ((constructor)) grepPropertiesInit(void)
+{
+    initProperties(LOGPATH,PERSISTENTPATH,&PAGESIZE);
+}
+#endif
+
 
 /** @} */
 

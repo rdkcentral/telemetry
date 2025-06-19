@@ -21,6 +21,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <pthread.h>
+#include <unistd.h>
 
 #include "t2log_wrapper.h"
 #include "legacyutils.h"
@@ -462,7 +463,7 @@ void updateIncludeConfVal(char *logpath, char *perspath)
  *  @param[in] logpath   Log file path
  *  @param[in] perspath  Persistent path
  */
-void initProperties(char *logpath, char *perspath)
+void initProperties(char *logpath, char *perspath, long* pagesize)
 {
 
 
@@ -573,6 +574,8 @@ void initProperties(char *logpath, char *perspath)
             }
         }
     }
+    
+    *pagesize = sysconf(_SC_PAGESIZE);
 
     isPropsIntialized = true ;
     T2Debug("%s --out \n", __FUNCTION__);

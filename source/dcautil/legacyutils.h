@@ -96,7 +96,7 @@ void clearConfVal(void);
 
 void updatePropsFromIncludeFile(char *logpath, char *perspath);
 
-void initProperties(char *logpath, char *perspath);
+void initProperties(char *logpath, char *perspath, long *pagesize);
 
 T2ERROR updateLogSeek(hash_map_t *logSeekMap, const char *name, const long logfileSize);
 

@@ -172,6 +172,10 @@ static void freeProfile(void *data)
         {
             Vector_Destroy(profile->gMarkerList, freeGMarker);
         }
+        if(profile->topMarkerList)
+        {
+            Vector_Destroy(profile->topMarkerList,freeGMarker);
+        }
         if(profile->paramList)
         {
             Vector_Destroy(profile->paramList, freeParam);

@@ -751,13 +751,6 @@ int getDCAResultsInVector(char* profileName, Vector* vecMarkerList, Vector** out
     return rc;
 }
 
-#ifdef __GNUC__
-
-void __attribute__ ((constructor)) grepPropertiesInit(void)
-{
-    initProperties(LOGPATH,PERSISTENTPATH,&PAGESIZE);
-}
-#endif
 
 
 /** @} */

@@ -119,6 +119,10 @@ static void freeProfileXConf()
         {
             Vector_Destroy(singleProfile->gMarkerList, freeGMarker);
         }
+        if(singleProfile->topMarkerList)
+        {
+            Vector_Destroy(singleProfile->topMarkerList, freeGMarker);
+        }
         if(singleProfile->paramList)
         {
             Vector_Destroy(singleProfile->paramList, freeParam);

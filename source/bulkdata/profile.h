@@ -90,6 +90,10 @@ typedef struct _Profile
     bool threadExists;
 } Profile;
 
+extern bool whoami_support;
+
+void initWhoamiSupport(void);
+
 T2ERROR initProfileList(bool checkPreviousSeek);
 
 T2ERROR uninitProfileList();

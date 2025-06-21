@@ -1199,7 +1199,7 @@ bool isProfileEnabled(const char *profileName)
 
 T2ERROR deleteProfile(const char *profileName)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     if(!initialized)
     {
         T2Error("profile list is not initialized yet, ignoring\n");
@@ -1215,14 +1215,6 @@ T2ERROR deleteProfile(const char *profileName)
         return T2ERROR_FAILURE;
     }
 
-    if(profile->enable)
-    {
-        profile->enable = false;
-    }
-    if(profile->isSchedulerstarted)
-    {
-        profile->isSchedulerstarted = false;
-    }
     pthread_mutex_unlock(&plMutex);
     if(T2ERROR_SUCCESS != unregisterProfileFromScheduler(profileName))
     {
@@ -1233,11 +1225,24 @@ T2ERROR deleteProfile(const char *profileName)
     pthread_mutex_lock(&plMutex);
     if (profile->threadExists)
     {
+        T2Info("profile->threadExists : %s\n", profileName);
         pthread_mutex_lock(&profile->reuseThreadMutex);
         pthread_cond_signal(&profile->reuseThread);
         pthread_mutex_unlock(&profile->reuseThreadMutex);
+        T2Info("Before pthread_join : %s\n", profileName);
         pthread_join(profile->reportThread, NULL);
+        T2Info("After pthread_join : %s\n", profileName);
         profile->threadExists = false;
+    }
+    T2Info("After profile->threadExists : %s\n", profileName);
+
+    if(profile->enable)
+    {
+        profile->enable = false;
+    }
+    if(profile->isSchedulerstarted)
+    {
+        profile->isSchedulerstarted = false;
     }
 
     if(Vector_Size(profile->triggerConditionList) > 0)

@@ -25,7 +25,7 @@ Requires=network-online.target
 Type=forking
 ExecStart=/usr/bin/telemetry2_0
 ExecStop=/usr/bin/killall telemetry2_0
-ExecStopPost=/bin/rm -rf /tmp/.t2ReadyToReceiveEvents /tmp/telemetry_initialized_bootup /tmp/.t2ConfigReady
+ExecStopPost=/bin/rm -rf /tmp/.t2ReadyToReceiveEvents /tmp/telemetry_initialized_bootup /tmp/.t2ConfigReady /tmp/enable_t2_service
 Restart=always
 
 [Install]

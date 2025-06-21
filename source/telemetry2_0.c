@@ -64,12 +64,14 @@ sigset_t blocking_signal;
 static bool isDebugEnabled = true;
 static int initcomplete = 0;
 static pid_t DAEMONPID; //static varible store the Main Pid
+bool whoami_support = false;
 
 T2ERROR initTelemetry()
 {
     T2ERROR ret = T2ERROR_FAILURE;
     T2Debug("%s ++in\n", __FUNCTION__);
 
+    initWhoamiSupport();
     if(T2ERROR_SUCCESS == initReportProfiles())
     {
 #ifndef DEVICE_EXTENDER
@@ -372,4 +374,17 @@ int main()
     T2Info("Initializing Telemetry 2.0 Component\n");
     t2DaemonMainModeInit();
     return 0;
+}
+
+void initWhoamiSupport(void)
+{
+    char buf[8] = {0};
+    if (getDevicePropertyData("WHOAMI_SUPPORT", buf, sizeof(buf)) && strcmp(buf, "true") == 0)
+    {
+        whoami_support = true;
+    }
+    else
+    {
+        whoami_support = false;
+    }
 }

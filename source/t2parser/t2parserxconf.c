@@ -40,7 +40,7 @@
 #define MT_TR181PATAM_PATTERN_LENGTH 13
 #define SPLITMARKER_SUFFIX  "_split"
 #define ACCUMULATE_MARKER_SUFFIX  "_accum"
-#define MAX_PARAM_LEN 
+#define MAX_PARAM_LEN
 
 extern bool whoami_support;
 

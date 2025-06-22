@@ -44,6 +44,7 @@
 #include "xconfclient.h"
 #include "scheduler.h"
 #include "t2eventreceiver.h"
+#include "t2common.h"
 
 #ifdef INCLUDE_BREAKPAD
 #ifndef ENABLE_RDKC_SUPPORT

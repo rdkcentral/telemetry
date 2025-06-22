@@ -58,6 +58,7 @@
 #define DCM_CONF_FULL_PATH  XCONFPROFILE_PERSISTENCE_PATH "" XCONF_CONFIG_FILE
 
 extern sigset_t blocking_signal;
+extern bool whoami_support;
 
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
 

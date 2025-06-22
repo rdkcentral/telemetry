@@ -272,7 +272,6 @@ T2ERROR appendRequestParams(char *buf, const int maxArgLen)
     char *paramVal = NULL;
     char *tempBuf = (char*) malloc(MAX_URL_ARG_LEN);
     char build_type[BUILD_TYPE_MAX_LENGTH] = { 0 };
-    char whoami_support[8] = {0};
 #if !defined(ENABLE_RDKB_SUPPORT) && !defined(ENABLE_RDKC_SUPPORT)
     char *timezone = NULL;
 #endif
@@ -343,22 +342,8 @@ T2ERROR appendRequestParams(char *buf, const int maxArgLen)
         goto error;
     }
 #endif
-    if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_PARTNER_ID, &paramVal))
-    {
-        memset(tempBuf, 0, MAX_URL_ARG_LEN);
-        write_size = snprintf(tempBuf, MAX_URL_ARG_LEN, "partnerId=%s&", paramVal);
-        strncat(buf, tempBuf, avaBufSize);
-        avaBufSize = avaBufSize - write_size;
-        free(paramVal);
-        paramVal = NULL;
-    }
-    else
-    {
-        T2Error("Failed to get Value for %s\n", TR181_DEVICE_PARTNER_ID);
-        goto error;
-    }
 
-    if ((getDevicePropertyData("WHOAMI_SUPPORT", whoami_support, sizeof(whoami_support)) == 1) && (strcmp(whoami_support, "true") == 0))
+    if(whoami_support)
     {
         T2Info("WHOAMI support is enabled\n");
         if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_OSCLASS, &paramVal))
@@ -375,10 +360,39 @@ T2ERROR appendRequestParams(char *buf, const int maxArgLen)
             T2Error("Failed to get Value for %s\n", TR181_DEVICE_OSCLASS);
             goto error;
         }
+
+    if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_PARTNER_NAME, &paramVal))
+    {
+        memset(tempBuf, 0, MAX_URL_ARG_LEN);
+        write_size = snprintf(tempBuf, MAX_URL_ARG_LEN, "partnerId=%s&", paramVal);
+        strncat(buf, tempBuf, avaBufSize);
+        avaBufSize = avaBufSize - write_size;
+        free(paramVal);
+        paramVal = NULL;
+    }
+    else
+    {
+        T2Error("Failed to get Value for %s\n", TR181_DEVICE_PARTNER_NAME);
+        goto error;
+    }
     }
     else
     {
         T2Info("WHOAMI support is disabled\n");
+    if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_PARTNER_ID, &paramVal))
+    {
+        memset(tempBuf, 0, MAX_URL_ARG_LEN);
+        write_size = snprintf(tempBuf, MAX_URL_ARG_LEN, "partnerId=%s&", paramVal);
+        strncat(buf, tempBuf, avaBufSize);
+        avaBufSize = avaBufSize - write_size;
+        free(paramVal);
+        paramVal = NULL;
+    }
+    else
+    {
+        T2Error("Failed to get Value for %s\n", TR181_DEVICE_PARTNER_ID);
+        goto error;
+    }
     }
 
     if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_ACCOUNT_ID, &paramVal))

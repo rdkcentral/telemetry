@@ -1484,10 +1484,8 @@ bool isMtlsEnabled(void)
     }
     if(isT2MtlsEnable != true)
     {
-        if (whoami_support)
-            if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_PARTNER_NAME, &paramValue))
-        else
-            if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_PARTNER_ID, &paramValue))
+        const char* returnPartnerInfo = whoami_support ? TR181_DEVICE_PARTNER_ID : TR181_DEVICE_PARTNER_NAME;
+        if(T2ERROR_SUCCESS == getParameterValue(returnPartnerInfo, &paramValue))
         {
             if(paramValue != NULL && (strncasecmp(paramValue, "sky-uk", 6) == 0))
             {

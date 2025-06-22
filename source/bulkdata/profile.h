@@ -92,8 +92,6 @@ typedef struct _Profile
 
 extern bool whoami_support;
 
-void initWhoamiSupport(void);
-
 T2ERROR initProfileList(bool checkPreviousSeek);
 
 T2ERROR uninitProfileList();

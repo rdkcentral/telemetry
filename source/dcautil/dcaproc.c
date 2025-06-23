@@ -492,19 +492,31 @@ int getMemInfo(procMemCpuInfo *pmInfo)
 
 #if !defined(ENABLE_RDKC_SUPPORT) && !defined(ENABLE_RDKB_SUPPORT)
 
-void saveTopOutput()
+char* saveTopOutput(char* profilename)
 {
+    char filename[128]={"\0"};
+    char* retfile = NULL;
+    if(profilename != NULL)
+    {
+        snprintf(filename, sizeof(filename), "%s_%s", TOPTEMP,profilename);
+        retfile = strdup(filename);
+    }
+    else
+    {
+        return retfile;
+    }
+
     T2Debug("%s ++in \n", __FUNCTION__);
-    if(access(TOPTEMP, F_OK) == 0)
+    if(access(filename, F_OK) == 0)
     {
         T2Debug("%s --out \n", __FUNCTION__);
-        return;
+        return NULL;
     }
     int ret = 0;
     char command[CMD_LEN] = { '\0' };
     int cmd_option = 0;
     /* Check Whether -c option is supported */
-    sprintf(command, "top -b -n 1 -c > %s ", TOPTEMP);
+    sprintf(command, "top -b -n 1 -c > %s ", filename);
 #ifdef LIBSYSWRAPPER_BUILD
     ret = v_secure_system(command);
 #else
@@ -521,16 +533,16 @@ void saveTopOutput()
     /* Format Use:  `top n 1 | grep Receiver` */
     if ( 1 == cmd_option )
     {
-        sprintf(command, "COLUMNS=512 top -n %d -c > %s ", TOPITERATION, TOPTEMP);
+        sprintf(command, "COLUMNS=512 top -n %d -c > %s ", TOPITERATION, filename);
     }
     else
     {
-        sprintf(command, "top -n %d > %s", TOPITERATION, TOPTEMP);
+        sprintf(command, "top -n %d > %s", TOPITERATION, filename);
     }
 #else
     /* ps -C Receiver -o %cpu -o %mem */
     //sprintf(command, "ps -C '%s' -o %%cpu -o %%mem | sed 1d", pInfo->processName);
-    snprintf(command, CMD_LEN, "%s top -b -n %d %s > %s", (cmd_option == 1) ? "COLUMNS=512" : "", TOPITERATION, (cmd_option == 1) ? "-c" : "", TOPTEMP);
+    snprintf(command, CMD_LEN, "%s top -b -n %d %s > %s", (cmd_option == 1) ? "COLUMNS=512" : "", TOPITERATION, (cmd_option == 1) ? "-c" : "", filename);
 
 #endif
 
@@ -541,23 +553,25 @@ void saveTopOutput()
 #endif
     if(ret != 0)
     {
-        T2Debug("return value of system command to create %s is success with code %d\n", TOPTEMP, ret);
+        T2Debug("return value of system command to create %s is success with code %d\n", filename, ret);
     }
     else
     {
-        T2Error("return value of system command to create %s is not successful with code \n", TOPTEMP);
-        return;
+        T2Error("return value of system command to create %s is not successful with code \n", filename);
+        return NULL;
     }
     T2Debug("%s --out \n", __FUNCTION__);
+    return retfile;
 
 }
 
-void removeTopOutput()
+void removeTopOutput(char* filename)
 {
     T2Debug("%s ++in \n", __FUNCTION__);
+    if(filename!=NULL){
     int ret = 0;
     char command[256] = {'\0'};
-    snprintf(command, sizeof(command), "rm -rf %s", TOPTEMP);
+    snprintf(command, sizeof(command), "rm -rf %s", filename);
 #ifdef LIBSYSWRAPPER_BUILD
     ret = v_secure_system(command);
 #else
@@ -565,13 +579,16 @@ void removeTopOutput()
 #endif
     if(ret == 0)
     {
-        T2Debug("return value of system command to remove %s is success with code %d \n", TOPTEMP, ret);
+        T2Debug("return value of system command to remove %s is success with code %d \n", filename, ret);
     }
     else
     {
-        T2Error("return value of system command to remove %s is not successful with code %d \n", TOPTEMP, ret);
+        T2Error("return value of system command to remove %s is not successful with code %d \n", filename, ret);
     }
+    free(filename);
     T2Debug("%s --out \n", __FUNCTION__);
+    return;
+}
 }
 
 //#if !defined(ENABLE_RDKC_SUPPORT) && !defined(ENABLE_RDKB_SUPPORT)

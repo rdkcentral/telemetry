@@ -27,7 +27,7 @@
 #include <dirent.h>
 #include <ctype.h>
 
-#define TOPTEMP "/tmp/.t2toplog"
+#define TOPTEMP "/tmp/t2toplog"
 #define DCADONEFLAG "/tmp/.dca_done"
 
 #define PREVIOUS_LOG "PREVIOUS_LOG"
@@ -43,8 +43,8 @@ typedef struct _GrepResult
 } GrepResult;
 
 #if !defined(ENABLE_RDKC_SUPPORT) && !defined(ENABLE_RDKB_SUPPORT)
-void saveTopOutput();
-void removeTopOutput();
+char* saveTopOutput(char* profilename);
+void removeTopOutput(char* filename);
 #endif
 
 void removeGrepConfig(char* profileName, bool clearSeek, bool clearExec);

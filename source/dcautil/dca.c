@@ -142,8 +142,8 @@ int processTopPattern(char* profileName,  Vector* topMarkerList, Vector* out_gre
     int profileExecCounter = gsProfile->execCounter;
 
     // TODO Generate the top output file - should be profile specific and thread safe
-    ProcessSnapshot *snapshot = createProcessSnapshot();
-
+    //ProcessSnapshot *snapshot = createProcessSnapshot();
+    char* filename = saveTopOutput(profileName);
     // If the header contains "Load_Average", it calls getLoadAvg() to retrieve load average data.
     // If the header does not contain "Load_Average", it checks if the pattern field is present in the top out put snapshot.
     for (var = 0; var < vCount; ++var) // Loop of marker list starts here
@@ -178,22 +178,22 @@ int processTopPattern(char* profileName,  Vector* topMarkerList, Vector* out_gre
         } else {
             // This block is for process level usage
             // TODO - Move this to a separate function which adds the results to the out_grepResultList 
-            ProcessInfo *info = lookupProcess(snapshot, grepMarkerObj->markerName);
+            /*ProcessInfo *info = lookupProcess(snapshot, grepMarkerObj->markerName);
             if (info) {
                 printf("Process found: PID=%d, Name=%s, Mem=%s, CPU=%s\n",
                     info->pid, info->processName, info->memUsage, info->cpuUsage);
             } else {
                 printf("Process %s not found\n", grepMarkerObj->markerName);
-            }
+            }*/
 
-            // getProcUsage(grepMarkerObj->markerName, out_grepResultList, grepMarkerObj->trimParam, grepMarkerObj->regexParam);
+            getProcUsage(grepMarkerObj->searchString, out_grepResultList, grepMarkerObj->trimParam, grepMarkerObj->regexParam);
         }
 
     }
 
     // TODO Clear the top output file
-    freeProcessSnapshot(snapshot);
-
+    //freeProcessSnapshot(snapshot);
+    removeTopOutput(filename);
     T2Debug("%s --out\n", __FUNCTION__);
     return 0;
 }
@@ -545,6 +545,12 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd , const off_t 
             offset_in_page_size_multiple = (seek_value / PAGESIZE) * PAGESIZE;
             bytes_ignored = seek_value - offset_in_page_size_multiple;
         } else {
+            offset_in_page_size_multiple = 0;
+            bytes_ignored = 0;
+        }
+
+        if(seek_value > sb.st_size)
+        {
             offset_in_page_size_multiple = 0;
             bytes_ignored = 0;
         }

@@ -803,7 +803,7 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
         }
         else
         {
-	    pthread_mutex_lock(&profile->reportScheduledMutex);
+            pthread_mutex_lock(&profile->reportScheduledMutex);
             profile->reportScheduled = true;
             pthread_mutex_unlock(&profile->reportScheduledMutex);
             pthread_create(&profile->reportThread, NULL, CollectAndReport, (void*)profile);

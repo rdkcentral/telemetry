@@ -42,23 +42,22 @@ make -C source/test
 
 # Execute test suites for different sub-modules
 
-# - Disabled for now as the gtest framework ends up in a segfault at tear down
- ./source/test/dcautils/dcautil_gtest.bin
+
 # ./source/test/protocol/protocol_gtest.bin
 # ./source/test/xconf-client/xconfclient_gtest.bin
 # ./source/test/telemetry_gtest.bin
 
+
+
+tests="
+ ./source/test/dcautils/dcautil_gtest.bin
 ./source/test/reportgen/reportgen_gtest.bin
 ./source/test/scheduler/scheduler_gtest.bin
 ./source/test/t2parser/t2parser_gtest.bin
+"
 
 for test in $tests
 do
-    # Skip commented out tests (lines starting with #)
-    case "$test" in
-        \#*) continue ;;
-    esac
-
     if [ -x "$test" ]; then
         "$test"
         status=$?
@@ -71,7 +70,6 @@ do
         fail=1
     fi
 done
-
 #### Generate the coverage report ####
 if [ "$ENABLE_COV" = true ]; then
     echo "Generating coverage report"

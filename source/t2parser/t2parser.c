@@ -1353,6 +1353,10 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     profile->isSchedulerstarted = false;
     profile->saveSeekConfig = false;
     profile->checkPreviousSeek = false;
+    profile->reportScheduled = false;
+    pthread_mutex_init(&profile->reportScheduledMutex, NULL);
+    pthread_cond_init(&profile->reportScheduledCond, NULL);
+
     if(jprofileDeleteOnTimeout)
     {
         profile->deleteonTimeout = (cJSON_IsTrue(jprofileDeleteOnTimeout) == 1);

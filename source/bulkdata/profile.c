@@ -326,6 +326,9 @@ static void* CollectAndReport(void* data)
     {
         T2Info("%s while Loop -- START \n", __FUNCTION__);
         profile->reportInProgress = true;
+        pthread_mutex_lock(&profile->reportScheduledMutex);
+        pthread_cond_signal(&profile->reportScheduledCond);
+        pthread_mutex_unlock(&profile->reportScheduledMutex);
 
         Vector *profileParamVals = NULL;
         Vector *grepResultList = NULL;
@@ -800,6 +803,9 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
         }
         else
         {
+	    pthread_mutex_lock(&profile->reportScheduledMutex);
+            profile->reportScheduled = true;
+            pthread_mutex_unlock(&profile->reportScheduledMutex);
             pthread_create(&profile->reportThread, NULL, CollectAndReport, (void*)profile);
         }
     }
@@ -1223,6 +1229,24 @@ T2ERROR deleteProfile(const char *profileName)
 
     T2Info("Waiting for CollectAndReport to be complete : %s\n", profileName);
     pthread_mutex_lock(&plMutex);
+
+    pthread_mutex_lock(&profile->reportScheduledMutex);
+    if (profile->reportScheduled && !profile->threadExists)
+    {
+        pthread_cond_wait(&profile->reportScheduledCond, &profile->reportScheduledMutex);
+    }
+    T2Info("CollectAndReport has started : %s\n", profileName);
+    pthread_mutex_unlock(&profile->reportScheduledMutex);
+
+    if(profile->enable)
+    {
+        profile->enable = false;
+    }
+    if(profile->isSchedulerstarted)
+    {
+        profile->isSchedulerstarted = false;
+    }
+
     if (profile->threadExists)
     {
         T2Info("profile->threadExists : %s\n", profileName);
@@ -1235,15 +1259,6 @@ T2ERROR deleteProfile(const char *profileName)
         profile->threadExists = false;
     }
     T2Info("After profile->threadExists : %s\n", profileName);
-
-    if(profile->enable)
-    {
-        profile->enable = false;
-    }
-    if(profile->isSchedulerstarted)
-    {
-        profile->isSchedulerstarted = false;
-    }
 
     if(Vector_Size(profile->triggerConditionList) > 0)
     {

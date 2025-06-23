@@ -1231,7 +1231,7 @@ T2ERROR deleteProfile(const char *profileName)
     pthread_mutex_lock(&plMutex);
 
     pthread_mutex_lock(&profile->reportScheduledMutex);
-    if (profile->reportScheduled && !profile->threadExists)
+    while (profile->reportScheduled && !profile->threadExists)
     {
         pthread_cond_wait(&profile->reportScheduledCond, &profile->reportScheduledMutex);
     }

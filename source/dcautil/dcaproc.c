@@ -164,7 +164,7 @@ ProcessInfo* lookupProcess(ProcessSnapshot *snapshot, const char *processName) {
  * @retval  0 on sucess, appropiate errorcode otherwise.
  */
 
-int getProcUsage(char *processName, Vector* grepResultList, bool trim, char* regex)
+int getProcUsage(char *processName, Vector* grepResultList, bool trim, char* regex, char* filename)
 {
     T2Debug("%s ++in \n", __FUNCTION__);
     if(grepResultList == NULL || processName == NULL)
@@ -292,7 +292,7 @@ int getProcUsage(char *processName, Vector* grepResultList, bool trim, char* reg
 
         pInfo.total_instance = index;
         pInfo.pid = pid;
-        if(0 != getProcInfo(&pInfo))
+        if(0 != getProcInfo(&pInfo, filename))
         {
             mem_key = malloc(pname_prefix_len);
             cpu_key = malloc(pname_prefix_len);
@@ -425,7 +425,7 @@ int getProcPidStat(int pid, procinfo * pinfo)
  * @return  Returns status of operation.
  * @retval  Return 1 on success.
  */
-int getProcInfo(procMemCpuInfo *pmInfo)
+int getProcInfo(procMemCpuInfo *pmInfo, char* filename)
 {
     T2Debug("%s ++in \n", __FUNCTION__);
     if(0 == getMemInfo(pmInfo))
@@ -433,7 +433,7 @@ int getProcInfo(procMemCpuInfo *pmInfo)
         return 0;
     }
 
-    if(0 == getCPUInfo(pmInfo))
+    if(0 == getCPUInfo(pmInfo, filename))
     {
         return 0;
     }
@@ -600,7 +600,7 @@ void removeTopOutput(char* filename)
  * @return  Returns status of operation.
  * @retval  Return 1 on success,appropiate errorcode otherwise.
  */
-int getCPUInfo(procMemCpuInfo *pInfo)
+int getCPUInfo(procMemCpuInfo *pInfo, char* filename)
 {
     int ret = 0, pclose_ret = 0;
     FILE *inFp = NULL;
@@ -625,9 +625,9 @@ int getCPUInfo(procMemCpuInfo *pInfo)
 
         return 0;
     }
-    if(access(TOPTEMP, F_OK) != 0)
+    if(access(filename, F_OK) != 0)
     {
-        T2Debug("%s ++in the savad temp log %s is not available \n", __FUNCTION__, TOPTEMP);
+        T2Debug("%s ++in the savad temp log %s is not available \n", __FUNCTION__, filename);
         /* Check Whether -c option is supported */
 #ifdef LIBSYSWRAPPER_BUILD
         ret = v_secure_system(" top -c -n 1 2> /dev/null 1> /dev/null");
@@ -673,11 +673,11 @@ int getCPUInfo(procMemCpuInfo *pInfo)
     }
     else
     {
-        T2Debug("%s ++in the savad temp log %s is available \n", __FUNCTION__, TOPTEMP);
+        T2Debug("%s ++in the savad temp log %s is available \n", __FUNCTION__, filename);
 #ifdef LIBSYSWRAPPER_BUILD
         inFp = v_secure_popen("r", "cat %s |grep -i '%s'", TOPTEMP, pInfo->processName);
 #else
-        snprintf(command, sizeof(command), "cat %s |grep -i '%s'", TOPTEMP, pInfo->processName);
+        snprintf(command, sizeof(command), "cat %s |grep -i '%s'", filename, pInfo->processName);
         inFp = popen(command, "r");
 #endif
         normalize = TOPITERATION;
@@ -835,8 +835,9 @@ int getProcessCpuUtilization(int pid, float *procCpuUtil)
     return 1;
 }
 
-int getCPUInfo(procMemCpuInfo *pmInfo)
+int getCPUInfo(procMemCpuInfo *pmInfo, char* filename)
 {
+    (void)filename; // Unused parameter, can be removed if not needed
     float cpu = 0;
     float total_cpu = 0;
     int index = 0;

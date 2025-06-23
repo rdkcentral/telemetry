@@ -73,9 +73,9 @@ typedef struct _procMemCpuInfo
 } procMemCpuInfo;
 
 /* @} */ // End of group DCA_TYPES
-int getProcInfo(procMemCpuInfo *pInfo);
+int getProcInfo(procMemCpuInfo *pInfo, char* filename);
 int getMemInfo(procMemCpuInfo *pmInfo);
-int getCPUInfo(procMemCpuInfo *pInfo);
+int getCPUInfo(procMemCpuInfo *pInfo,char* filename);
 int getProcPidStat(int pid, procinfo * pinfo);
 int getTotalCpuTimes(int * totalTime);
 

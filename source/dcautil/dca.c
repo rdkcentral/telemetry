@@ -186,7 +186,7 @@ int processTopPattern(char* profileName,  Vector* topMarkerList, Vector* out_gre
                 printf("Process %s not found\n", grepMarkerObj->markerName);
             }*/
 
-            getProcUsage(grepMarkerObj->searchString, out_grepResultList, grepMarkerObj->trimParam, grepMarkerObj->regexParam);
+            getProcUsage(grepMarkerObj->searchString, out_grepResultList, grepMarkerObj->trimParam, grepMarkerObj->regexParam,filename);
         }
 
     }

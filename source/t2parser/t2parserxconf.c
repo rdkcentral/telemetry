@@ -41,8 +41,11 @@
 #define SPLITMARKER_SUFFIX  "_split"
 #define ACCUMULATE_MARKER_SUFFIX  "_accum"
 #define MAX_PARAM_LEN 15
-
+#ifndef GTEST_ENABLE
 extern bool whoami_support;
+#else
+bool whoami_support=false;
+#endif
 
 static int getScheduleInSeconds(const char* cronPattern)
 {

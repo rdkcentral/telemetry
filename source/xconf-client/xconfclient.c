@@ -56,6 +56,7 @@
 #define PROCESS_CONFIG_COMPLETE_FLAG "/tmp/t2DcmComplete"
 #define HTTP_RESPONSE_FILE "/tmp/httpOutput.txt"
 #define DCM_CONF_FULL_PATH  XCONFPROFILE_PERSISTENCE_PATH "" XCONF_CONFIG_FILE
+#define T2_VERSION_DATAMODEL_PARAM  "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.Version"
 
 extern sigset_t blocking_signal;
 extern bool whoami_support;
@@ -85,6 +86,9 @@ static pthread_cond_t xcCond;
 static pthread_cond_t xcThreadCond;
 #ifdef LIBRDKCERTSEL_BUILD
 static rdkcertselector_h xcCertSelector = NULL;
+#endif
+#if defined(ENABLE_REMOTE_PROFILE_DOWNLOAD)
+    static int retryCount = 0;
 #endif
 
 T2ERROR ReportProfiles_deleteProfileXConf(ProfileXConf *profile);
@@ -961,6 +965,152 @@ status_return :
 
 }
 
+#if defined(ENABLE_REMOTE_PROFILE_DOWNLOAD)
+static char* getReportProfileConfigUrl() {
+    T2Debug("%s ++in\n", __FUNCTION__);
+    FILE *fp = NULL;
+    char buf[256] = {0};
+    char *p = NULL;
+    char* url = NULL;
+    fp = popen("syscfg get T2ReportProfileConfigURL", "r");
+    if (fp)
+    {
+        fgets(buf, sizeof(buf), fp);
+        T2Debug("%s buf::%s\n", __FUNCTION__,buf);
+        /*we need to remove the \n char in buf*/
+        if ((p = strchr(buf, '\n'))) *p = 0;
+        url=strdup(buf);
+        pclose(fp);
+    }
+    T2Debug("%s ++out\n", __FUNCTION__);
+    return url;
+}
+
+static T2ERROR fetchRemoteReportProfileConfiguration(char **configData) {
+    T2Debug("%s ++in\n", __FUNCTION__);
+    T2ERROR ret = T2ERROR_FAILURE;
+
+    int write_size = 0, availableBufSize = MAX_URL_LEN;
+
+    char* urlWithParams = (char*) malloc(MAX_URL_LEN * sizeof(char));
+    char* remoteUrl = getReportProfileConfigUrl();
+    T2Info("URL for Report Profile: %s",remoteUrl);
+    T2Debug("%s remoteUrl::%s\n", __FUNCTION__,remoteUrl);
+    if ((NULL != urlWithParams) && (NULL != remoteUrl))
+    {
+        memset(urlWithParams, '0', MAX_URL_LEN * sizeof(char));
+        write_size = snprintf(urlWithParams, MAX_URL_LEN, "%s?", remoteUrl);
+        availableBufSize = availableBufSize - write_size;
+        // Append device specific arguments to the base URL
+        if(T2ERROR_SUCCESS == appendRequestParams(urlWithParams, availableBufSize))
+        {
+            ret = doHttpGet(urlWithParams, configData);
+            if (ret != T2ERROR_SUCCESS)
+            {
+                T2Error("T2:Curl GET of XCONF data failed\n");
+            }
+        }
+    }
+    else
+    {
+        T2Error("Failed to get T2 report profile URL and the required parameters\n");
+    }
+    if(urlWithParams)
+        free(urlWithParams);
+
+    if(remoteUrl)
+        free(remoteUrl);
+    T2Debug("%s --out\n", __FUNCTION__);
+
+    return ret;
+}
+
+static T2ERROR getRemoteReportProfile() {
+
+    T2Debug("%s ++in\n", __FUNCTION__);
+    T2ERROR ret = T2ERROR_FAILURE;
+
+    char *configData = NULL;
+    struct timespec _ts;
+    struct timespec _now;
+    bool fetchReportProfile = true;
+    int returnCode;
+    bool rprofiletypes=false;
+
+    while(fetchReportProfile)
+    {
+        ret = fetchRemoteReportProfileConfiguration(&configData);
+        if (ret == T2ERROR_SUCCESS)
+        {
+            T2Debug("%s Report Profile Data: %s\n", __FUNCTION__,configData);
+            cJSON *reportProfiles = NULL;
+            reportProfiles = cJSON_Parse(configData);
+            if (reportProfiles)
+            {
+                ReportProfiles_ProcessReportProfilesBlob(reportProfiles, rprofiletypes);
+                cJSON_Delete(reportProfiles);
+                reportProfiles = NULL;
+            }
+            if(configData != NULL) {
+                free(configData);
+                configData = NULL;
+            }
+            break;
+        }
+        else if(ret == T2ERROR_PROFILE_NOT_SET)
+        {
+            T2Warning("XConf Telemetry report profile not set for this device.\n");
+            T2Debug("Empty report profiles in configuration. Delete all active profiles. \n");
+            clearPersistenceFolder(REPORTPROFILES_PERSISTENCE_PATH);
+            if(configData != NULL) {
+                free(configData);
+                configData = NULL;
+            }
+            break;
+        }
+        else {
+            T2Error("Failed to get report profiles from xconf");
+
+            if(configData != NULL) {
+                free(configData);
+                configData = NULL;
+            }
+            retryCount++;
+            if(retryCount == MAX_XCONF_RETRY_COUNT)
+            {
+                T2Error("Reached max xconf retry counts : %d for downloading the report profile from xconf\n", MAX_XCONF_RETRY_COUNT);
+                retryCount = 0;
+                break;
+            }
+            T2Info("Waiting for %d sec before trying fetchRemoteReportProfileConfiguration, No.of tries : %d\n", XCONF_RETRY_TIMEOUT, retryCount);
+            memset(&_ts, 0, sizeof(struct timespec));
+            memset(&_now, 0, sizeof(struct timespec));
+            clock_gettime(CLOCK_REALTIME, &_now);
+            _ts.tv_sec = _now.tv_sec + XCONF_RETRY_TIMEOUT;
+
+            returnCode = pthread_cond_timedwait(&xcCond, &xcMutex, &_ts);
+            if(returnCode == ETIMEDOUT)
+            {
+                T2Info("TIMEDOUT -- trying fetchConfigurations again\n");
+            }
+            else if (returnCode == 0)
+            {
+                T2Error("%s XConfClient Interrupted\n",__FUNCTION__);
+                fetchReportProfile = false;
+            }
+            else
+            {
+                T2Error("ERROR inside startXConfClientThread for timedwait, error code : %d\n", returnCode);
+            }
+            pthread_mutex_unlock(&xcMutex);
+        }
+    }
+    fetchReportProfile = false;
+    T2Debug("%s --out\n", __FUNCTION__);
+    return ret;
+}
+#endif
+
 T2ERROR fetchRemoteConfiguration(char *configURL, char **configData)
 {
     // Handles the https communications with the xconf server
@@ -1080,6 +1230,9 @@ static void* getUpdatedConfigurationThread(void *data)
     int n;
     char *configURL = NULL;
     char *configData = NULL;
+#if defined(ENABLE_REMOTE_PROFILE_DOWNLOAD)
+    char *t2Version = NULL;
+#endif  
     pthread_mutex_lock(&xcThreadMutex);
     stopFetchRemoteConfiguration = false ;
     do
@@ -1239,6 +1392,16 @@ static void* getUpdatedConfigurationThread(void *data)
             free(configURL);
             configURL = NULL;
         }
+#if defined(ENABLE_REMOTE_PROFILE_DOWNLOAD)
+        if(T2ERROR_SUCCESS == getParameterValue(T2_VERSION_DATAMODEL_PARAM, &t2Version) && strcmp(t2Version, "2") !=0) {
+            T2Debug("T2 Version = %s\n", t2Version);
+            if(T2ERROR_SUCCESS == getRemoteReportProfile()) {
+                    T2Info("Successfully downloaded report profiles\n");
+            } else {
+                    T2Error("Unable to download the report profile\n");
+            }
+        }
+#endif
         stopFetchRemoteConfiguration = true;
         T2Debug("%s while Loop -- END; wait for restart event\n", __FUNCTION__);
         pthread_cond_wait(&xcThreadCond, &xcThreadMutex);

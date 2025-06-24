@@ -625,7 +625,7 @@ int getCPUInfo(procMemCpuInfo *pInfo, char* filename)
 
         return 0;
     }
-    if(access(filename, F_OK) != 0)
+    if((filename!=NULL) && (access(filename, F_OK) != 0))
     {
         T2Debug("%s ++in the savad temp log %s is not available \n", __FUNCTION__, filename);
         /* Check Whether -c option is supported */

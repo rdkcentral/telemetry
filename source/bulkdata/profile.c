@@ -327,6 +327,7 @@ static void* CollectAndReport(void* data)
         T2Info("%s while Loop -- START \n", __FUNCTION__);
         profile->reportInProgress = true;
         pthread_mutex_lock(&profile->reportScheduledMutex);
+	profile->reportScheduled = false;
         pthread_cond_signal(&profile->reportScheduledCond);
         pthread_mutex_unlock(&profile->reportScheduledMutex);
 

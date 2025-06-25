@@ -23,6 +23,8 @@
 #include "t2log_wrapper.h"
 #include "dcautil.h"
 
+bool whoami_support = false;
+
 void freeParam(void *data)
 {
     if(data != NULL)

@@ -280,3 +280,22 @@ bool getDevicePropertyData(const char *dev_prop_name, char *out_data, unsigned i
     return ret;
 }
 
+void initWhoamiSupport(void)
+{
+    char buf[8] = {0};
+    if (getDevicePropertyData("WHOAMI_SUPPORT", buf, sizeof(buf)) && strcmp(buf, "true") == 0)
+    {
+        whoami_support = true;
+        T2Info("WHOAMI support is enabled\n");
+    }
+    else
+    {
+        whoami_support = false;
+        T2Info("WHOAMI support is disabled\n");
+    }
+}
+
+bool isWhoAmiEnabled(void)
+{
+    return whoami_support;
+}

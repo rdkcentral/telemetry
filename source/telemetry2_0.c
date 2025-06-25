@@ -65,7 +65,6 @@ sigset_t blocking_signal;
 static bool isDebugEnabled = true;
 static int initcomplete = 0;
 static pid_t DAEMONPID; //static varible store the Main Pid
-bool whoami_support = false;
 
 T2ERROR initTelemetry()
 {
@@ -377,17 +376,3 @@ int main()
     return 0;
 }
 
-void initWhoamiSupport(void)
-{
-    char buf[8] = {0};
-    if (getDevicePropertyData("WHOAMI_SUPPORT", buf, sizeof(buf)) && strcmp(buf, "true") == 0)
-    {
-        whoami_support = true;
-        T2Info("WHOAMI support is enabled\n");
-    }
-    else
-    {
-        whoami_support = false;
-        T2Info("WHOAMI support is disabled\n");
-    }
-}

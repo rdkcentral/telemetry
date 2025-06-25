@@ -90,8 +90,6 @@ typedef enum
     T2_STATE_READY
 } T2_OPERATIONAL_STATE;
 
-void initWhoamiSupport(void);
-
 #ifdef __cplusplus
 }
 #endif

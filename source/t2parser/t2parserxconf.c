@@ -41,11 +41,6 @@
 #define SPLITMARKER_SUFFIX  "_split"
 #define ACCUMULATE_MARKER_SUFFIX  "_accum"
 #define MAX_PARAM_LEN 15
-#ifndef GTEST_ENABLE
-extern bool whoami_support;
-#else
-bool whoami_support = false;
-#endif
 
 static int getScheduleInSeconds(const char* cronPattern)
 {
@@ -232,7 +227,7 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
     {
         addParameter(profile, "mac", TR181_DEVICE_WAN_MAC, NULL, -1);
         addParameter(profile, "StbIp", TR181_DEVICE_WAN_IPv6, NULL, -1);
-        whoami_support ? addParameter(profile, "PartnerId", TR181_DEVICE_PARTNER_NAME, NULL, -1) : addParameter(profile, "PartnerId", TR181_DEVICE_PARTNER_ID, NULL, -1);
+        isWhoAmiEnabled() ? addParameter(profile, "PartnerId", TR181_DEVICE_PARTNER_NAME, NULL, -1) : addParameter(profile, "PartnerId", TR181_DEVICE_PARTNER_ID, NULL, -1);
         addParameter(profile, "Version", TR181_DEVICE_FW_VERSION, NULL, -1);
         addParameter(profile, "AccountId", TR181_DEVICE_ACCOUNT_ID, NULL, -1);
         addParameter(profile, "immui_ver_split", TR181_IUI_VERSION, NULL, -1);
@@ -251,7 +246,7 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
     addParameter(profile, "StbIp", TR181_DEVICE_WAN_IPv6, NULL, -1);
     addParameter(profile, "immui_ver_split", TR181_IUI_VERSION, NULL, -1);
 #endif
-    whoami_support ? addParameter(profile, "PartnerId", TR181_DEVICE_PARTNER_NAME, NULL, -1) : addParameter(profile, "PartnerId", TR181_DEVICE_PARTNER_ID, NULL, -1);
+    isWhoAmiEnabled() ? addParameter(profile, "PartnerId", TR181_DEVICE_PARTNER_NAME, NULL, -1) : addParameter(profile, "PartnerId", TR181_DEVICE_PARTNER_ID, NULL, -1);
     addParameter(profile, "Version", TR181_DEVICE_FW_VERSION, NULL, -1);
     addParameter(profile, "AccountId", TR181_DEVICE_ACCOUNT_ID, NULL, -1);
 #endif

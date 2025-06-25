@@ -59,11 +59,6 @@
 #define T2_VERSION_DATAMODEL_PARAM  "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.Version"
 
 extern sigset_t blocking_signal;
-#ifndef GTEST_ENABLE
-extern bool whoami_support;
-#else
-bool whoami_support = false;
-#endif
 
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
 
@@ -352,7 +347,7 @@ T2ERROR appendRequestParams(char *buf, const int maxArgLen)
     }
 #endif
 
-    if(whoami_support)
+    if(isWhoAmiEnabled())
     {
         T2Info("WHOAMI support is enabled\n");
         if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_OSCLASS, &paramVal))

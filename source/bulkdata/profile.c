@@ -1257,6 +1257,14 @@ T2ERROR deleteProfile(const char *profileName)
     Vector_RemoveItem(profileList, profile, freeProfile);
 
     pthread_mutex_unlock(&plMutex);
+    if(isRbusEnabled())
+    {
+        getMarkerCompRbusSub(false);
+        unregisterDEforCompEventList();
+        createComponentDataElements();
+        publishEventsProfileUpdates();
+	getMarkerCompRbusSub(true);
+    }
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }

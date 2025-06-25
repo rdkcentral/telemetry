@@ -288,12 +288,12 @@ void initWhoamiSupport(void)
     if (getDevicePropertyData("WHOAMI_SUPPORT", buf, sizeof(buf)) && strcmp(buf, "true") == 0)
     {
         whoami_support = true;
-        T2Info("WHOAMI support is enabled\n");
+        T2Info("WhoAmI feature is enabled\n");
     }
     else
     {
         whoami_support = false;
-        T2Info("WHOAMI support is disabled\n");
+        T2Info("WhoAmI feature is disabled\n");
     }
 }
 

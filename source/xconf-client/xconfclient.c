@@ -349,7 +349,6 @@ T2ERROR appendRequestParams(char *buf, const int maxArgLen)
 
     if(isWhoAmiEnabled())
     {
-        T2Info("WHOAMI support is enabled\n");
         if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_OSCLASS, &paramVal))
         {
             memset(tempBuf, 0, MAX_URL_ARG_LEN);
@@ -382,7 +381,6 @@ T2ERROR appendRequestParams(char *buf, const int maxArgLen)
     }
     else
     {
-        T2Info("WHOAMI support is disabled\n");
         if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_PARTNER_ID, &paramVal))
         {
             memset(tempBuf, 0, MAX_URL_ARG_LEN);

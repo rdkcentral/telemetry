@@ -793,7 +793,7 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
     if(profile->enable && !profile->reportInProgress)
     {
         profile->bClearSeekMap = isClearSeekMap;
-        profile->reportInProgress = false;
+        profile->reportInProgress = true;
         /* To avoid previous report thread to go into zombie state, mark it detached. */
         if (profile->threadExists)
         {

@@ -44,6 +44,8 @@ typedef struct _Profile
     bool isSchedulerstarted;
     bool isUpdated;
     bool reportInProgress;
+    pthread_cond_t reportInProgressCond;
+    pthread_mutex_t reportInProgressMutex;
     bool generateNow;
     bool deleteonTimeout;
     bool bClearSeekMap;
@@ -88,9 +90,6 @@ typedef struct _Profile
     pthread_cond_t reuseThread;
     pthread_mutex_t reuseThreadMutex;
     bool threadExists;
-    bool reportScheduled;
-    pthread_cond_t reportScheduledCond;
-    pthread_mutex_t reportScheduledMutex;
 } Profile;
 
 T2ERROR initProfileList(bool checkPreviousSeek);

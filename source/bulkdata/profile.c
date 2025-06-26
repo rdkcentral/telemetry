@@ -326,10 +326,9 @@ static void* CollectAndReport(void* data)
     {
         T2Info("%s while Loop -- START \n", __FUNCTION__);
         profile->reportInProgress = true;
-        pthread_mutex_lock(&profile->reportScheduledMutex);
-        profile->reportScheduled = false;
-        pthread_cond_signal(&profile->reportScheduledCond);
-        pthread_mutex_unlock(&profile->reportScheduledMutex);
+        pthread_mutex_lock(&profile->reportInProgressMutex);
+        pthread_cond_signal(&profile->reportInProgressCond);
+        pthread_mutex_unlock(&profile->reportInProgressMutex);
 
         Vector *profileParamVals = NULL;
         Vector *grepResultList = NULL;
@@ -794,6 +793,7 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
     if(profile->enable && !profile->reportInProgress)
     {
         profile->bClearSeekMap = isClearSeekMap;
+        profile->reportInProgress = false;
         /* To avoid previous report thread to go into zombie state, mark it detached. */
         if (profile->threadExists)
         {
@@ -804,9 +804,8 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
         }
         else
         {
-            pthread_mutex_lock(&profile->reportScheduledMutex);
-            profile->reportScheduled = true;
-            pthread_mutex_unlock(&profile->reportScheduledMutex);
+            pthread_mutex_lock(&profile->reportInProgressMutex);
+            pthread_mutex_unlock(&profile->reportInProgressMutex);
             pthread_create(&profile->reportThread, NULL, CollectAndReport, (void*)profile);
         }
     }
@@ -1231,13 +1230,13 @@ T2ERROR deleteProfile(const char *profileName)
     T2Info("Waiting for CollectAndReport to be complete : %s\n", profileName);
     pthread_mutex_lock(&plMutex);
 
-    pthread_mutex_lock(&profile->reportScheduledMutex);
-    while (profile->reportScheduled && !profile->threadExists)
+    pthread_mutex_lock(&profile->reportInProgressMutex);
+    while (profile->reportInProgress && !profile->threadExists)
     {
-        pthread_cond_wait(&profile->reportScheduledCond, &profile->reportScheduledMutex);
+        pthread_cond_wait(&profile->reportInProgressCond, &profile->reportInProgressMutex);
     }
     T2Info("CollectAndReport has started : %s\n", profileName);
-    pthread_mutex_unlock(&profile->reportScheduledMutex);
+    pthread_mutex_unlock(&profile->reportInProgressMutex);
 
     if(profile->enable)
     {

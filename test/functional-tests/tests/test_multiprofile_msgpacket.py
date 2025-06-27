@@ -100,7 +100,7 @@ def test_with_wrong_protocol_value():
     run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
     sleep(2)
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_wrong_protocol_value))
-    sleep(10)
+    sleep(5)
     ERROR_WRONG_PROTOCOL = "Unsupported report sending protocol"
     assert ERROR_WRONG_PROTOCOL in grep_T2logs(ERROR_WRONG_PROTOCOL) #Verify the right protocol is given
     assert "TR_AC16" not in grep_T2logs(LOG_PROFILE_ENABLE) # Verify profile is not enabled with an incorrect protocol
@@ -147,6 +147,7 @@ def test_without_EncodingType_ActivationTimeout_values():
 #3).positive case for event marker with accumulate
 @pytest.mark.run(order=5)
 def test_reporting_interval_working():
+    clear_T2logs()
     RUN_START_TIME = dt.now()
     run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
     sleep(2)

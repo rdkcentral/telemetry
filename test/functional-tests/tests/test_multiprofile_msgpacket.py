@@ -96,17 +96,20 @@ def test_without_hashvalue():
 @pytest.mark.run(order=3)
 def test_with_wrong_protocol_value():
     clear_T2logs()
+    kill_telemetry(9)
     RUN_START_TIME = dt.now()
+    remove_T2bootup_flag()
+    clear_persistant_files()
+    run_telemetry()
     run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
     sleep(2)
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_wrong_protocol_value))
-    sleep(5)
+    sleep(10)
     ERROR_WRONG_PROTOCOL = "Unsupported report sending protocol"
     assert ERROR_WRONG_PROTOCOL in grep_T2logs(ERROR_WRONG_PROTOCOL) #Verify the right protocol is given
     assert "TR_AC16" not in grep_T2logs(LOG_PROFILE_ENABLE) # Verify profile is not enabled with an incorrect protocol
     assert "TR_AC17" in grep_T2logs(LOG_PROFILE_ENABLE) # Verify Profile can be enabled for empty version
     assert "TR_AC13" not in grep_T2logs(LOG_PROFILE_ENABLE) # Verify Profile cannot be enabled for empty protocol
-    sleep(5) 
 
 
 
@@ -148,10 +151,12 @@ def test_without_EncodingType_ActivationTimeout_values():
 @pytest.mark.run(order=5)
 def test_reporting_interval_working():
     clear_T2logs()
+    kill_telemetry(9)
     RUN_START_TIME = dt.now()
+    remove_T2bootup_flag()
+    clear_persistant_files()
+    run_telemetry()
     run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
-    sleep(2)
-    rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_empty_profile))
     sleep(2)
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_reporting_interval))
     sleep(10)
@@ -162,9 +167,12 @@ def test_reporting_interval_working():
     command3 = ["telemetry2_0_client TEST_EVENT_MARKER_2 occurrance2"]
 
     run_shell_command(command1)
+    sleep(1)
     run_shell_command(command1)
+    sleep(1)
     run_shell_command(command2)
     run_shell_command(command3)
+
     assert "20 sec" in REPORTING_INTERVAL_LOG1
     sleep(20)
     assert "TIMEOUT for profile" in grep_T2logs("TR_AC732") #Verify reporting interval 

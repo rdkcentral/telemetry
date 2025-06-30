@@ -167,14 +167,17 @@ def test_reporting_interval_working():
     command3 = ["telemetry2_0_client TEST_EVENT_MARKER_2 occurrance2"]
 
     run_shell_command(command1)
+    sleep(2)
     run_shell_command(command1)
+    sleep(2)
     run_shell_command(command2)
+    sleep(2)
     run_shell_command(command3)
-
+    sleep(2)
     assert "20 sec" in REPORTING_INTERVAL_LOG1
-    sleep(25)
+    sleep(10)
     assert "TIMEOUT for profile" in grep_T2logs("TR_AC732") #Verify reporting interval 
-    #assert '"TEST_EVENT_MARKER_1":"2"' in grep_T2logs("cJSON Report ") #verify event marker for count
+    assert '"TEST_EVENT_MARKER_1":"2"' in grep_T2logs("cJSON Report ") #verify event marker for count
     assert "occurrance1" in grep_T2logs("TEST_EVENT_MARKER_2") #verify event marker for accummulate - 1
     assert "occurrance2" in grep_T2logs("TEST_EVENT_MARKER_2") #verify event marker for accummulate - 2
 

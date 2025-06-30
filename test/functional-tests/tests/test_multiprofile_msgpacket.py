@@ -174,7 +174,7 @@ def test_reporting_interval_working():
     assert "20 sec" in REPORTING_INTERVAL_LOG1
     sleep(20)
     assert "TIMEOUT for profile" in grep_T2logs("TR_AC732") #Verify reporting interval 
-    assert "TEST_EVENT_MARKER_1\":\"2" in grep_T2logs("cJSON Report ") #verify event marker for count
+    assert '"TEST_EVENT_MARKER_1":"2"' in grep_T2logs("cJSON Report ") #verify event marker for count
     assert "occurrance1" in grep_T2logs("TEST_EVENT_MARKER_2") #verify event marker for accummulate - 1
     assert "occurrance2" in grep_T2logs("TEST_EVENT_MARKER_2") #verify event marker for accummulate - 2
     sleep(2) #wait for 2 sec to verify whether this valid profile is running and generating report

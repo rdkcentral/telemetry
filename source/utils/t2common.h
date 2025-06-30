@@ -132,4 +132,8 @@ int compareLogFileNames(const void *g1, const void *g2);
 
 bool getDevicePropertyData(const char *dev_prop_name, char *out_data, unsigned int buff_size);
 
+void initWhoamiSupport(void);
+
+bool isWhoAmiEnabled(void);
+
 #endif /* _T2COMMON_H_ */

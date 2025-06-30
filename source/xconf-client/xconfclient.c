@@ -346,37 +346,56 @@ T2ERROR appendRequestParams(char *buf, const int maxArgLen)
         goto error;
     }
 #endif
-    if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_PARTNER_ID, &paramVal))
-    {
-        memset(tempBuf, 0, MAX_URL_ARG_LEN);
-        write_size = snprintf(tempBuf, MAX_URL_ARG_LEN, "partnerId=%s&", paramVal);
-        strncat(buf, tempBuf, avaBufSize);
-        avaBufSize = avaBufSize - write_size;
-        free(paramVal);
-        paramVal = NULL;
-    }
-    else
-    {
-        T2Error("Failed to get Value for %s\n", TR181_DEVICE_PARTNER_ID);
-        goto error;
-    }
 
-#if defined(WHOAMI_ENABLED)
-    if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_OSCLASS, &paramVal))
+    if(isWhoAmiEnabled())
     {
-        memset(tempBuf, 0, MAX_URL_ARG_LEN);
-        write_size = snprintf(tempBuf, MAX_URL_ARG_LEN, "osClass=%s&", paramVal);
-        strncat(buf, tempBuf, avaBufSize);
-        avaBufSize = avaBufSize - write_size;
-        free(paramVal);
-        paramVal = NULL;
+        if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_OSCLASS, &paramVal))
+        {
+            memset(tempBuf, 0, MAX_URL_ARG_LEN);
+            write_size = snprintf(tempBuf, MAX_URL_ARG_LEN, "osClass=%s&", paramVal);
+            strncat(buf, tempBuf, avaBufSize);
+            avaBufSize = avaBufSize - write_size;
+            free(paramVal);
+            paramVal = NULL;
+        }
+        else
+        {
+            T2Error("Failed to get Value for %s\n", TR181_DEVICE_OSCLASS);
+            goto error;
+        }
+
+        if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_PARTNER_NAME, &paramVal))
+        {
+            memset(tempBuf, 0, MAX_URL_ARG_LEN);
+            write_size = snprintf(tempBuf, MAX_URL_ARG_LEN, "partnerId=%s&", paramVal);
+            strncat(buf, tempBuf, avaBufSize);
+            avaBufSize = avaBufSize - write_size;
+            free(paramVal);
+            paramVal = NULL;
+        }
+        else
+        {
+            T2Error("Failed to get Value for %s\n", TR181_DEVICE_PARTNER_NAME);
+            goto error;
+        }
     }
     else
     {
-        T2Error("Failed to get Value for %s\n", TR181_DEVICE_OSCLASS);
-        goto error;
+        if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_PARTNER_ID, &paramVal))
+        {
+            memset(tempBuf, 0, MAX_URL_ARG_LEN);
+            write_size = snprintf(tempBuf, MAX_URL_ARG_LEN, "partnerId=%s&", paramVal);
+            strncat(buf, tempBuf, avaBufSize);
+            avaBufSize = avaBufSize - write_size;
+            free(paramVal);
+            paramVal = NULL;
+        }
+        else
+        {
+            T2Error("Failed to get Value for %s\n", TR181_DEVICE_PARTNER_ID);
+            goto error;
+        }
     }
-#endif
 
     if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_ACCOUNT_ID, &paramVal))
     {

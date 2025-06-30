@@ -1281,6 +1281,9 @@ T2ERROR deleteProfile(const char *profileName)
         removeGrepConfig((char*)profileName, true, true);
     }
 
+    pthread_mutex_destroy(&profile->reportInProgressMutex);
+    pthread_cond_destroy(&profile->reportInProgressCond);
+
     T2Info("removing profile : %s from profile list\n", profile->name);
 #ifdef PERSIST_LOG_MON_REF
     removeProfileFromDisk(SEEKFOLDER, profile->name);

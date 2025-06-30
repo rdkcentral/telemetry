@@ -793,7 +793,9 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
     if(profile->enable && !profile->reportInProgress)
     {
         profile->bClearSeekMap = isClearSeekMap;
+        pthread_mutex_lock(&profile->reportInProgressMutex);
         profile->reportInProgress = true;
+        pthread_mutex_unlock(&profile->reportInProgressMutex);
         /* To avoid previous report thread to go into zombie state, mark it detached. */
         if (profile->threadExists)
         {
@@ -804,8 +806,6 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
         }
         else
         {
-            pthread_mutex_lock(&profile->reportInProgressMutex);
-            pthread_mutex_unlock(&profile->reportInProgressMutex);
             pthread_create(&profile->reportThread, NULL, CollectAndReport, (void*)profile);
         }
     }

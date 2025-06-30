@@ -793,8 +793,8 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
     pthread_mutex_lock(&profile->reportInProgressMutex);
     if(profile->enable && !profile->reportInProgress)
     {
+        profile->reportInProgress = true;
         profile->bClearSeekMap = isClearSeekMap;
-        pthread_mutex_unlock(&profile->reportInProgressMutex);
         /* To avoid previous report thread to go into zombie state, mark it detached. */
         if (profile->threadExists)
         {
@@ -812,8 +812,7 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
     {
         T2Warning("Either profile is disabled or report generation still in progress - ignoring the request\n");
     }
-    profile->reportInProgress = true;
-
+    pthread_mutex_unlock(&profile->reportInProgressMutex);
     T2Debug("%s --out\n", __FUNCTION__);
 }
 

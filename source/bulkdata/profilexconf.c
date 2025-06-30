@@ -640,7 +640,7 @@ bool ProfileXConf_isNameEqual(char* profileName)
     {
         if(singleProfile && (singleProfile->name != NULL) && (profileName != NULL) && !strcmp(singleProfile->name, profileName)) //Adding NULL check to avoid strcmp crash
         {
-            T2Info("singleProfile->name = %s and profileName = %s\n", singleProfile->name, profileName)
+            T2Info("singleProfile->name = %s and profileName = %s\n", singleProfile->name, profileName);
             isName = true;
         }
     }

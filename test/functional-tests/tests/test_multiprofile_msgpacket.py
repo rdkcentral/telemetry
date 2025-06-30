@@ -151,7 +151,7 @@ def test_without_EncodingType_ActivationTimeout_values():
 #3).positive case for event marker with accumulate
 @pytest.mark.run(order=11)
 def test_reporting_interval_working():
-        clear_T2logs()
+    clear_T2logs()
     kill_telemetry(9)
     RUN_START_TIME = dt.now()
     remove_T2bootup_flag()

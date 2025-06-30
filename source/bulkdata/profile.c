@@ -1232,6 +1232,15 @@ T2ERROR deleteProfile(const char *profileName)
         return T2ERROR_FAILURE;
     }
 
+    if(profile->enable)
+    {
+        profile->enable = false;
+    }
+    if(profile->isSchedulerstarted)
+    {
+        profile->isSchedulerstarted = false;
+    }
+
     pthread_mutex_unlock(&plMutex);
     if(T2ERROR_SUCCESS != unregisterProfileFromScheduler(profileName))
     {
@@ -1248,15 +1257,6 @@ T2ERROR deleteProfile(const char *profileName)
     }
     T2Info("CollectAndReport has started : %s\n", profileName);
     pthread_mutex_unlock(&profile->reportInProgressMutex);
-
-    if(profile->enable)
-    {
-        profile->enable = false;
-    }
-    if(profile->isSchedulerstarted)
-    {
-        profile->isSchedulerstarted = false;
-    }
 
     if (profile->threadExists)
     {

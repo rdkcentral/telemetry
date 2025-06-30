@@ -96,7 +96,7 @@ def test_without_hashvalue():
 @pytest.mark.run(order=3)
 def test_with_wrong_protocol_value():
     clear_T2logs()
-        kill_telemetry(9)
+    kill_telemetry(9)
     RUN_START_TIME = dt.now()
     remove_T2bootup_flag()
     clear_persistant_files()

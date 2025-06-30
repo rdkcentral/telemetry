@@ -23,6 +23,8 @@
 #include "t2log_wrapper.h"
 #include "dcautil.h"
 
+bool whoami_support = false;
+
 void freeParam(void *data)
 {
     if(data != NULL)
@@ -280,3 +282,22 @@ bool getDevicePropertyData(const char *dev_prop_name, char *out_data, unsigned i
     return ret;
 }
 
+void initWhoamiSupport(void)
+{
+    char buf[8] = {0};
+    if (getDevicePropertyData("WHOAMI_SUPPORT", buf, sizeof(buf)) && strcmp(buf, "true") == 0)
+    {
+        whoami_support = true;
+        T2Info("WhoAmI feature is enabled\n");
+    }
+    else
+    {
+        whoami_support = false;
+        T2Info("WhoAmI feature is disabled\n");
+    }
+}
+
+bool isWhoAmiEnabled(void)
+{
+    return whoami_support;
+}

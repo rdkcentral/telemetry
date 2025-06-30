@@ -44,6 +44,7 @@
 #include "xconfclient.h"
 #include "scheduler.h"
 #include "t2eventreceiver.h"
+#include "t2common.h"
 
 #ifdef INCLUDE_BREAKPAD
 #ifndef ENABLE_RDKC_SUPPORT
@@ -70,6 +71,7 @@ T2ERROR initTelemetry()
     T2ERROR ret = T2ERROR_FAILURE;
     T2Debug("%s ++in\n", __FUNCTION__);
 
+    initWhoamiSupport();
     if(T2ERROR_SUCCESS == initReportProfiles())
     {
 #ifndef DEVICE_EXTENDER
@@ -373,3 +375,4 @@ int main()
     t2DaemonMainModeInit();
     return 0;
 }
+

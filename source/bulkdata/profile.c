@@ -1023,6 +1023,18 @@ T2ERROR enableProfile(const char *profileName)
             pthread_mutex_unlock(&plMutex);
             return T2ERROR_FAILURE;
         }
+        if(pthread_mutex_init(&profile->reportInProgressMutex, NULL) != 0)
+	{
+            T2Error(" %s Mutex init has failed\n", __FUNCTION__);
+            pthread_mutex_unlock(&plMutex);
+            return T2ERROR_FAILURE;
+	}
+        if(pthread_cond_init(&profile->reportInProgressCond, NULL) != 0)
+	{
+            T2Error(" %s Cond init has failed\n", __FUNCTION__);
+            pthread_mutex_unlock(&plMutex);
+            return T2ERROR_FAILURE;
+	}
 
         size_t emIndex = 0;
         EventMarker *eMarker = NULL;

@@ -747,7 +747,7 @@ int getDCAResultsInVector(char* profileName, Vector* vecMarkerList, Vector** out
     {
         if (!isPropsInitialized())
         {
-            initProperties(LOGPATH,PERSISTENTPATH,&PAGESIZE);
+            initProperties(&LOGPATH,&PERSISTENTPATH,&PAGESIZE);
         }
 
         char* logPath = customLogPath ? customLogPath : LOGPATH;

@@ -510,7 +510,7 @@ char* saveTopOutput(char* profilename)
     if(access(filename, F_OK) == 0)
     {
         T2Debug("%s --out \n", __FUNCTION__);
-        return NULL;
+        removeTopOutput(strdup(retfile));
     }
     int ret = 0;
     char command[CMD_LEN] = { '\0' };
@@ -551,13 +551,13 @@ char* saveTopOutput(char* profilename)
 #else
     ret = system(command);
 #endif
-    if(ret != 0)
+    if(ret == 0)
     {
-        T2Debug("return value of system command to create %s is success with code %d\n", filename, ret);
+        T2Debug("return value of system command to create %s is success with code\n", filename);
     }
     else
     {
-        T2Error("return value of system command to create %s is not successful with code \n", filename);
+        T2Error("return value of system command to create %s is not successful with code %d \n", filename, ret);
         return NULL;
     }
     T2Debug("%s --out \n", __FUNCTION__);

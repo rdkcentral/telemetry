@@ -382,7 +382,7 @@ void clearConfVal(void)
  *  @param[in] logpath   Log file path
  *  @param[in] perspath  Persistent path
  */
-void updateIncludeConfVal(char *logpath, char *perspath)
+void updateIncludeConfVal(char **logpath, char **perspath)
 {
 
     T2Debug("%s ++in \n", __FUNCTION__);
@@ -418,8 +418,9 @@ void updateIncludeConfVal(char *logpath, char *perspath)
         }
         fclose(file);
     }
-
-
+    if (perspath) *perspath = PERSISTENT_PATH;
+    if (logpath) *logpath = LOG_PATH;
+#ifdef UNUSED_T2
     if(NULL != logpath && strcmp(logpath, "") != 0)
     {
         char *tmp = NULL;
@@ -453,7 +454,7 @@ void updateIncludeConfVal(char *logpath, char *perspath)
             PERSISTENT_PATH = NULL;
         }
     }
-
+#endif
     T2Debug("%s --out \n", __FUNCTION__);
 
 }
@@ -463,7 +464,7 @@ void updateIncludeConfVal(char *logpath, char *perspath)
  *  @param[in] logpath   Log file path
  *  @param[in] perspath  Persistent path
  */
-void initProperties(char *logpath, char *perspath, long* pagesize)
+void initProperties(char **logpath, char **perspath, long* pagesize)
 {
 
 
@@ -494,6 +495,7 @@ void initProperties(char *logpath, char *perspath, long* pagesize)
 
     updateIncludeConfVal(logpath, perspath);
 
+    #ifdef UNUSED_T2
     if(NULL != DEVICE_TYPE && NULL != PERSISTENT_PATH && NULL != LOG_PATH)
     {
         int logpath_len = strlen(LOG_PATH);
@@ -574,6 +576,7 @@ void initProperties(char *logpath, char *perspath, long* pagesize)
             }
         }
     }
+    #endif
     
     *pagesize = sysconf(_SC_PAGESIZE);
 

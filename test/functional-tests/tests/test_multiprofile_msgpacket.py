@@ -159,7 +159,7 @@ def test_reporting_interval_working():
     run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
     sleep(2)
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_reporting_interval))
-    sleep(10)
+    sleep(5)
     REPORTING_INTERVAL_LOG1 = grep_T2logs("reporting interval is taken - TR_AC732")
 
     command1 = ["telemetry2_0_client TEST_EVENT_MARKER_1 300"]
@@ -167,16 +167,14 @@ def test_reporting_interval_working():
     command3 = ["telemetry2_0_client TEST_EVENT_MARKER_2 occurrance2"]
 
     run_shell_command(command1)
-    sleep(1)
     run_shell_command(command1)
-    sleep(1)
     run_shell_command(command2)
     run_shell_command(command3)
 
     assert "20 sec" in REPORTING_INTERVAL_LOG1
-    sleep(25)
+    sleep(20)
     assert "TIMEOUT for profile" in grep_T2logs("TR_AC732") #Verify reporting interval 
-    assert "TEST_EVENT_MARKER_1\":\"2" in grep_T2logs("cJSON Report ") #verify event marker for count 
+    assert "TEST_EVENT_MARKER_1\":\"2" in grep_T2logs("cJSON Report ") #verify event marker for count
     assert "occurrance1" in grep_T2logs("TEST_EVENT_MARKER_2") #verify event marker for accummulate - 1
     assert "occurrance2" in grep_T2logs("TEST_EVENT_MARKER_2") #verify event marker for accummulate - 2
     sleep(2) #wait for 2 sec to verify whether this valid profile is running and generating report

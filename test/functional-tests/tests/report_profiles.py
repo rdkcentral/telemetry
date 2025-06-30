@@ -905,7 +905,6 @@ data_with_reporting_interval = '''{
                 "ReportingInterval": 20,
                 "GenerateNow": false,
                 "RootName": "FR2_US_TC3",
-                "TimeReference": "2023-01-25T13:47:00Z",
                 "Parameter": [
                     {
                         "type": "event",

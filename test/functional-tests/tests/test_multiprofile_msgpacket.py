@@ -110,6 +110,7 @@ def test_with_wrong_protocol_value():
     assert "TR_AC16" not in grep_T2logs(LOG_PROFILE_ENABLE) # Verify profile is not enabled with an incorrect protocol
     assert "TR_AC17" in grep_T2logs(LOG_PROFILE_ENABLE) # Verify Profile can be enabled for empty version
     assert "TR_AC13" not in grep_T2logs(LOG_PROFILE_ENABLE) # Verify Profile cannot be enabled for empty protocol
+    sleep(2)
 
 
 
@@ -148,7 +149,7 @@ def test_without_EncodingType_ActivationTimeout_values():
 #1).positive case for working of Reporting Interval
 #2).positive case for event marker & with count
 #3).positive case for event marker with accumulate
-@pytest.mark.run(order=5)
+@pytest.mark.run(order=11)
 def test_reporting_interval_working():
     clear_T2logs()
     kill_telemetry(9)
@@ -180,6 +181,7 @@ def test_reporting_interval_working():
     assert '"TEST_EVENT_MARKER_1":"2"' in grep_T2logs("cJSON Report ") #verify event marker for count
     assert "occurrance1" in grep_T2logs("TEST_EVENT_MARKER_2") #verify event marker for accummulate - 1
     assert "occurrance2" in grep_T2logs("TEST_EVENT_MARKER_2") #verify event marker for accummulate - 2
+    sleep(2)
 
 
 

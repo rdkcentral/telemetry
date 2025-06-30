@@ -326,6 +326,9 @@ static void* CollectAndReport(void* data)
     {
         T2Info("%s while Loop -- START \n", __FUNCTION__);
         profile->reportInProgress = true;
+        pthread_mutex_lock(&profile->reportInProgressMutex);
+        pthread_cond_signal(&profile->reportInProgressCond);
+        pthread_mutex_unlock(&profile->reportInProgressMutex);
 
         Vector *profileParamVals = NULL;
         Vector *grepResultList = NULL;
@@ -787,8 +790,10 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
 
     pthread_mutex_unlock(&plMutex);
     T2Info("%s: profile %s is in %s state\n", __FUNCTION__, profileName, profile->enable ? "Enabled" : "Disabled");
+    pthread_mutex_lock(&profile->reportInProgressMutex);
     if(profile->enable && !profile->reportInProgress)
     {
+        profile->reportInProgress = true;
         profile->bClearSeekMap = isClearSeekMap;
         /* To avoid previous report thread to go into zombie state, mark it detached. */
         if (profile->threadExists)
@@ -807,7 +812,7 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
     {
         T2Warning("Either profile is disabled or report generation still in progress - ignoring the request\n");
     }
-
+    pthread_mutex_unlock(&profile->reportInProgressMutex);
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
@@ -1199,7 +1204,7 @@ bool isProfileEnabled(const char *profileName)
 
 T2ERROR deleteProfile(const char *profileName)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     if(!initialized)
     {
         T2Error("profile list is not initialized yet, ignoring\n");
@@ -1215,14 +1220,6 @@ T2ERROR deleteProfile(const char *profileName)
         return T2ERROR_FAILURE;
     }
 
-    if(profile->enable)
-    {
-        profile->enable = false;
-    }
-    if(profile->isSchedulerstarted)
-    {
-        profile->isSchedulerstarted = false;
-    }
     pthread_mutex_unlock(&plMutex);
     if(T2ERROR_SUCCESS != unregisterProfileFromScheduler(profileName))
     {
@@ -1231,14 +1228,36 @@ T2ERROR deleteProfile(const char *profileName)
 
     T2Info("Waiting for CollectAndReport to be complete : %s\n", profileName);
     pthread_mutex_lock(&plMutex);
+
+    pthread_mutex_lock(&profile->reportInProgressMutex);
+    while (profile->reportInProgress && !profile->threadExists)
+    {
+        pthread_cond_wait(&profile->reportInProgressCond, &profile->reportInProgressMutex);
+    }
+    T2Info("CollectAndReport has started : %s\n", profileName);
+    pthread_mutex_unlock(&profile->reportInProgressMutex);
+
+    if(profile->enable)
+    {
+        profile->enable = false;
+    }
+    if(profile->isSchedulerstarted)
+    {
+        profile->isSchedulerstarted = false;
+    }
+
     if (profile->threadExists)
     {
+        T2Info("profile->threadExists : %s\n", profileName);
         pthread_mutex_lock(&profile->reuseThreadMutex);
         pthread_cond_signal(&profile->reuseThread);
         pthread_mutex_unlock(&profile->reuseThreadMutex);
+        T2Info("Before pthread_join : %s\n", profileName);
         pthread_join(profile->reportThread, NULL);
+        T2Info("After pthread_join : %s\n", profileName);
         profile->threadExists = false;
     }
+    T2Info("After profile->threadExists : %s\n", profileName);
 
     if(Vector_Size(profile->triggerConditionList) > 0)
     {

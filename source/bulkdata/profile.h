@@ -44,6 +44,8 @@ typedef struct _Profile
     bool isSchedulerstarted;
     bool isUpdated;
     bool reportInProgress;
+    pthread_cond_t reportInProgressCond;
+    pthread_mutex_t reportInProgressMutex;
     bool generateNow;
     bool deleteonTimeout;
     bool bClearSeekMap;

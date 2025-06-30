@@ -500,7 +500,7 @@ static int getLogFileDescriptor(GrepSeekProfile* gsProfile,const char* logPath, 
     }
     // TODO : Get path from initProperties and append the log file name
     char logFilePath[PATH_MAX];
-    snprintf(logFilePath, sizeof(logFilePath), "%s%s", logPath, logFile); 
+    snprintf(logFilePath, sizeof(logFilePath), "%s/%s", logPath, logFile); 
 
     T2Debug("Opening log file %s\n", logFilePath);
     int fd = open(logFilePath, O_RDONLY);

@@ -67,6 +67,7 @@ typedef struct {
     int fd;
     off_t file_size;
     char* addr;
+    void* baseAddr;
 } FileDescriptor;
 
 /**
@@ -143,7 +144,11 @@ int processTopPattern(char* profileName,  Vector* topMarkerList, Vector* out_gre
 
     // TODO Generate the top output file - should be profile specific and thread safe
     //ProcessSnapshot *snapshot = createProcessSnapshot();
+    #if !defined(ENABLE_RDKC_SUPPORT) && !defined(ENABLE_RDKB_SUPPORT)
     char* filename = saveTopOutput(profileName);
+    #else
+    char* filename = NULL;
+    #endif
     // If the header contains "Load_Average", it calls getLoadAvg() to retrieve load average data.
     // If the header does not contain "Load_Average", it checks if the pattern field is present in the top out put snapshot.
     for (var = 0; var < vCount; ++var) // Loop of marker list starts here
@@ -193,7 +198,9 @@ int processTopPattern(char* profileName,  Vector* topMarkerList, Vector* out_gre
 
     // TODO Clear the top output file
     //freeProcessSnapshot(snapshot);
+    #if !defined(ENABLE_RDKC_SUPPORT) && !defined(ENABLE_RDKB_SUPPORT)
     removeTopOutput(filename);
+    #endif
     T2Debug("%s --out\n", __FUNCTION__);
     return 0;
 }
@@ -518,7 +525,7 @@ static int getLogFileDescriptor(GrepSeekProfile* gsProfile,const char* logPath, 
 // Caller should free the FileDescriptor struct after use
 static void freeFileDescriptor(FileDescriptor* fileDescriptor) {
     if (fileDescriptor) {
-        munmap(fileDescriptor->addr, fileDescriptor->file_size);
+        munmap(fileDescriptor->baseAddr, fileDescriptor->file_size);
         close(fileDescriptor->fd);
         free(fileDescriptor);
     }
@@ -571,6 +578,7 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd , const off_t 
        }
        memset(fileDescriptor, 0, sizeof(FileDescriptor));
        // addr needs to ignore the first bytes_ignored bytes
+       fileDescriptor->baseAddr=(void *)addr;
        addr += bytes_ignored;
        fileDescriptor->addr = addr;
        fileDescriptor->fd = fd;

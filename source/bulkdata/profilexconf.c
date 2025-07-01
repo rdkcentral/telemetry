@@ -638,8 +638,9 @@ bool ProfileXConf_isNameEqual(char* profileName)
     pthread_mutex_lock(&plMutex);
     if(initialized)
     {
-        if(singleProfile && !strcmp(singleProfile->name, profileName))
+        if(singleProfile && (singleProfile->name != NULL) && (profileName != NULL) && !strcmp(singleProfile->name, profileName)) //Adding NULL check to avoid strcmp crash
         {
+            T2Info("singleProfile->name = %s and profileName = %s\n", singleProfile->name, profileName);
             isName = true;
         }
     }

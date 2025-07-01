@@ -110,7 +110,7 @@ def test_with_wrong_protocol_value():
     assert "TR_AC16" not in grep_T2logs(LOG_PROFILE_ENABLE) # Verify profile is not enabled with an incorrect protocol
     assert "TR_AC17" in grep_T2logs(LOG_PROFILE_ENABLE) # Verify Profile can be enabled for empty version
     assert "TR_AC13" not in grep_T2logs(LOG_PROFILE_ENABLE) # Verify Profile cannot be enabled for empty protocol
-    sleep(2) 
+    sleep(2)
 
 
 
@@ -158,7 +158,6 @@ def test_reporting_interval_working():
     clear_persistant_files()
     run_telemetry()
     run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
-    sleep(2)
     sleep(2)
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_reporting_interval))
     sleep(5)

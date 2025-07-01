@@ -533,15 +533,20 @@ static void freeFileDescriptor(FileDescriptor* fileDescriptor) {
 
 static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd , const off_t seek_value) {
        if (fd == -1) {
-           perror("Error opening file");
+           T2Error("Error opening file\n");
            return NULL;
        }
        // Read the file contents using mmap
        struct stat sb;
        if(fstat(fd, &sb) == -1) {
-           perror("Error getting file size");
+           T2Error("Error getting file size\n");
            return NULL;
        }
+
+        if(sb.st_size == 0){
+            T2Error("The Size of the logfile is 0\n")
+            return NULL;
+        }
        
        FileDescriptor* fileDescriptor = NULL;
        off_t offset_in_page_size_multiple ;

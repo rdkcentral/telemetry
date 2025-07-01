@@ -544,7 +544,7 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd , const off_t 
        }
 
         if(sb.st_size == 0){
-            T2Error("The Size of the logfile is 0\n")
+            T2Error("The Size of the logfile is 0\n");
             return NULL;
         }
        

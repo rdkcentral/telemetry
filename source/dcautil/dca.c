@@ -516,6 +516,20 @@ static int getLogFileDescriptor(GrepSeekProfile* gsProfile,const char* logPath, 
         close(fd);
         return -1;
     }
+
+    // Check if the file size is 0
+    if (sb.st_size == 0) {
+        T2Error("The size of the logfile is 0 for %s\n", logFile);
+        close(fd);
+        return -1; // Consistent error return value
+    }
+
+    // Check if the file size matches the seek value from the map
+    if (sb.st_size == seek_value_from_map) {
+        T2Error("The logfile size matches the seek value (%ld) for %s\n", seek_value_from_map, logFile);
+        close(fd);
+        return -1; // Consistent error return value
+    }
     updateLogSeek(gsProfile->logFileSeekMap, logFile, sb.st_size);
     *out_seek_value = seek_value_from_map;
     return fd;
@@ -690,6 +704,11 @@ static int parseMarkerListOptimized(char* profileName, Vector* ip_vMarkerList, V
             fileDescriptor = getFileDeltaInMemMapAndSearch(fd, seek_value);
             if (fileDescriptor == NULL) {
                 T2Error("Failed to get file descriptor for %s\n", log_file_for_this_iteration);
+                if (fd != -1)
+                {
+                    close(fd);
+                    fd = -1;
+                }
                 continue;
             }
             //buffer = fileDescriptor->addr;

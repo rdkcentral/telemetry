@@ -325,8 +325,8 @@ static void* CollectAndReport(void* data)
     do
     {
         T2Info("%s while Loop -- START \n", __FUNCTION__);
-        profile->reportInProgress = true;
         pthread_mutex_lock(&profile->reportInProgressMutex);
+        profile->reportInProgress = true;
         pthread_cond_signal(&profile->reportInProgressCond);
         pthread_mutex_unlock(&profile->reportInProgressMutex);
 
@@ -768,6 +768,9 @@ reportThreadEnd :
     }
     while(profile->enable);
     T2Info("%s --out Exiting collect and report Thread\n", __FUNCTION__);
+    pthread_mutex_lock(&profile->reportInProgressMutex);
+    profile->reportInProgress = false;
+    pthread_mutex_unlock(&profile->reportInProgressMutex);
     profile->threadExists = false;
     pthread_mutex_unlock(&profile->reuseThreadMutex);
     pthread_mutex_destroy(&profile->reuseThreadMutex);

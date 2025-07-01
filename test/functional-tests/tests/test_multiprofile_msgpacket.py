@@ -96,7 +96,11 @@ def test_without_hashvalue():
 @pytest.mark.run(order=3)
 def test_with_wrong_protocol_value():
     clear_T2logs()
+    kill_telemetry(9)
     RUN_START_TIME = dt.now()
+    remove_T2bootup_flag()
+    clear_persistant_files()
+    run_telemetry()
     run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
     sleep(2)
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_wrong_protocol_value))
@@ -106,7 +110,7 @@ def test_with_wrong_protocol_value():
     assert "TR_AC16" not in grep_T2logs(LOG_PROFILE_ENABLE) # Verify profile is not enabled with an incorrect protocol
     assert "TR_AC17" in grep_T2logs(LOG_PROFILE_ENABLE) # Verify Profile can be enabled for empty version
     assert "TR_AC13" not in grep_T2logs(LOG_PROFILE_ENABLE) # Verify Profile cannot be enabled for empty protocol
-    sleep(5) 
+    sleep(2)
 
 
 
@@ -145,15 +149,18 @@ def test_without_EncodingType_ActivationTimeout_values():
 #1).positive case for working of Reporting Interval
 #2).positive case for event marker & with count
 #3).positive case for event marker with accumulate
-@pytest.mark.run(order=5)
+@pytest.mark.run(order=11)
 def test_reporting_interval_working():
+    clear_T2logs()
+    kill_telemetry(9)
     RUN_START_TIME = dt.now()
+    remove_T2bootup_flag()
+    clear_persistant_files()
+    run_telemetry()
     run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
     sleep(2)
-    rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_empty_profile))
-    sleep(2)
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_reporting_interval))
-    sleep(10)
+    sleep(5)
     REPORTING_INTERVAL_LOG1 = grep_T2logs("reporting interval is taken - TR_AC732")
 
     command1 = ["telemetry2_0_client TEST_EVENT_MARKER_1 300"]
@@ -161,13 +168,17 @@ def test_reporting_interval_working():
     command3 = ["telemetry2_0_client TEST_EVENT_MARKER_2 occurrance2"]
 
     run_shell_command(command1)
+    sleep(2)
     run_shell_command(command1)
+    sleep(2)
     run_shell_command(command2)
+    sleep(2)
     run_shell_command(command3)
+    sleep(2)
     assert "20 sec" in REPORTING_INTERVAL_LOG1
-    sleep(20)
+    sleep(10)
     assert "TIMEOUT for profile" in grep_T2logs("TR_AC732") #Verify reporting interval 
-    assert "TEST_EVENT_MARKER_1\":\"2" in grep_T2logs("cJSON Report ") #verify event marker for count 
+    assert "TEST_EVENT_MARKER_1\":\"2" in grep_T2logs("cJSON Report ") #verify event marker for count
     assert "occurrance1" in grep_T2logs("TEST_EVENT_MARKER_2") #verify event marker for accummulate - 1
     assert "occurrance2" in grep_T2logs("TEST_EVENT_MARKER_2") #verify event marker for accummulate - 2
     sleep(2) #wait for 2 sec to verify whether this valid profile is running and generating report

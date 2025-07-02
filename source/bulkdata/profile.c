@@ -771,6 +771,7 @@ reportThreadEnd :
     pthread_mutex_lock(&profile->reportInProgressMutex);
     profile->reportInProgress = false;
     pthread_mutex_unlock(&profile->reportInProgressMutex);
+    T2Info("%s --out Unlocked profile->reportInProgressMutex\n", __FUNCTION__);
     profile->threadExists = false;
     pthread_mutex_unlock(&profile->reuseThreadMutex);
     pthread_mutex_destroy(&profile->reuseThreadMutex);
@@ -1279,6 +1280,7 @@ T2ERROR deleteProfile(const char *profileName)
     }
 
     pthread_mutex_destroy(&profile->reportInProgressMutex);
+    T2Info("%s --out Destroyed profile->reportInProgressMutex\n", __FUNCTION__);
     pthread_cond_destroy(&profile->reportInProgressCond);
 
     T2Info("removing profile : %s from profile list\n", profile->name);

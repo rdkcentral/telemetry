@@ -1279,6 +1279,7 @@ T2ERROR deleteProfile(const char *profileName)
         removeGrepConfig((char*)profileName, true, true);
     }
 
+    T2Info("%s --out Destroying profile->reportInProgressMutex\n", __FUNCTION__);
     pthread_mutex_destroy(&profile->reportInProgressMutex);
     T2Info("%s --out Destroyed profile->reportInProgressMutex\n", __FUNCTION__);
     pthread_cond_destroy(&profile->reportInProgressCond);

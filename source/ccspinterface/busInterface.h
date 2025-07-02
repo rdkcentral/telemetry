@@ -28,10 +28,33 @@
 #define CCSP_COMPONENT_ID          "eRT.com.cisco.spvtg.ccsp.telemetry"
 #endif // CCSP_SUPPORT_ENABLED 
 
-typedef struct
+/**
+ * Enumeration of possible types for TR-181 values
+ */
+
+typedef enum {
+    TR181_TYPE_STRING,
+    TR181_TYPE_INT,
+    TR181_TYPE_UNSIGNED,
+    TR181_TYPE_BOOLEAN,
+    TR181_TYPE_DATETIME,
+    TR181_TYPE_BASE64,
+    TR181_TYPE_LONG,
+    TR181_TYPE_UNSIGNED_LONG,
+    TR181_TYPE_FLOAT,
+    TR181_TYPE_DOUBLE
+} TR181ParameterType;
+
+/**
+ * Structure containing the name and value of a TR-181 parameter,
+ * as well as its type (added for correct JSON encoding).
+ */
+
+typedef struct 
 {
     char *parameterName;
     char *parameterValue;
+    TR181ParameterType type;
 
 } tr181ValStruct_t;
 

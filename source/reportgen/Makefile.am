@@ -22,9 +22,7 @@ lib_LTLIBRARIES = libreportgen.la
 
 libreportgen_la_SOURCES = reportgen.c
 libreportgen_la_LDFLAGS = -shared -fPIC -lcjson -lcurl
-libreportgen_la_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \
-                                -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/dbus-1.0/include \
-                                -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ccsp \
+libreportgen_la_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ccsp \
                                 -I${top_srcdir}/include \
                                 -I${top_srcdir}/source/ccspinterface \
                                 -I${top_srcdir}/source/bulkdata \

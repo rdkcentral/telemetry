@@ -100,12 +100,4 @@ ssp_T2Mbi_FreeResources
     void * user_data
 );
 
-DBusHandlerResult
-T2_path_message_func
-(
-    DBusConnection  *conn,
-    DBusMessage     *message,
-    void            *user_data
-);
-
 #endif

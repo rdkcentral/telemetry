@@ -287,7 +287,7 @@ void getMarkerCompRbusSub(bool subscription)
             {
                 int ret = T2RbusReportEventConsumer(markerName, subscription);
                 T2Debug("%d T2RbusEventReg with name = %s: subscription = %s ret %d \n", i, markerName, (subscription ? "Subscribe" : "Un-Subscribe"), ret);
-            }
+           }
             else
             {
                 T2Error("Error while retrieving Marker Name at index : %d \n", i);
@@ -707,8 +707,7 @@ static void* CollectAndReport(void* data)
                         }
                         else
                         {
-                            ret = sendCachedReportsOverRBUSMethod(profile->t2RBUSDest->rbusMethodName, profile->t2RBUSDest->rbusMethodParamList,
-                                                                  profile->cachedReportList);
+                            ret = sendCachedReportsOverRBUSMethod(profile->t2RBUSDest->rbusMethodName, profile->t2RBUSDest->rbusMethodParamList,profile->cachedReportList);
                         }
 
                         if(ret == T2ERROR_SUCCESS)
@@ -747,6 +746,7 @@ static void* CollectAndReport(void* data)
             T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
             profile->triggerReportOnCondition = false ;
             pthread_mutex_unlock(&profile->triggerCondMutex);
+         
 
             if(profile->callBackOnReportGenerationComplete)
             {
@@ -1249,7 +1249,7 @@ T2ERROR deleteProfile(const char *profileName)
     {
         removeGrepConfig((char*)profileName, true, true);
     }
-
+  //  unregisterRbusT2EventListener;
     T2Info("removing profile : %s from profile list\n", profile->name);
 #ifdef PERSIST_LOG_MON_REF
     removeProfileFromDisk(SEEKFOLDER, profile->name);
@@ -1259,12 +1259,13 @@ T2ERROR deleteProfile(const char *profileName)
     pthread_mutex_unlock(&plMutex);
     if(isRbusEnabled())
     {
-        getMarkerCompRbusSub(false);
-        unregisterDEforCompEventList();
-        createComponentDataElements();
-        publishEventsProfileUpdates();
-	getMarkerCompRbusSub(true);
+        //getMarkerCompRbusSub(false);
+        //unregisterDEforCompEventList();
+        //createComponentDataElements();
+        //publishEventsProfileUpdates();
+//	getMarkerCompRbusSub(true);
     }
+    //registerRbusT2EventListener(T2ER_Push);
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }

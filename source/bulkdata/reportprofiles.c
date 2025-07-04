@@ -258,16 +258,22 @@ void ReportProfiles_ActivationTimeoutCb(char* profileName)
         {
             T2Error("Failed to delete profile after timeout: %s \n", profileName);
         }
-
+        if(isRbusEnabled())
+        {
+            getMarkerCompRbusSub(false);
+            unregisterDEforCompEventList();
+            createComponentDataElements();
+            publishEventsProfileUpdates();
+        }
         T2ER_StopDispatchThread();
         clearT2MarkerComponentMap();
 
-        if(ProfileXConf_isSet())
+	if(ProfileXConf_isSet())
         {
             ProfileXConf_updateMarkerComponentMap();
         }
         updateMarkerComponentMap();
-
+        
         /* Restart DispatchThread */
         if (ProfileXConf_isSet() || getProfileCount() > 0)
         {

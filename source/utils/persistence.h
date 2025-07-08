@@ -26,7 +26,7 @@
 #if defined(ENABLE_RDKB_SUPPORT)
 #define PERSISTENCE_PATH "/nvram"
 #elif defined(DEVICE_EXTENDER)
-#define PERSISTENCE_PATH "/usr/opensync/data"
+#define PERSISTENCE_PATH "/mnt/data/pstore"
 #else
 #define PERSISTENCE_PATH "/opt"
 #endif

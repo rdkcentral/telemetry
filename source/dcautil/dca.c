@@ -718,8 +718,8 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
                 return NULL; // Consistent error return value
             }
 
-            size_t size_main = sb.st_size - seek_value;
-            size_t size_rotated = rb.st_size;
+            size_t size_main = sb.st_size;
+            size_t size_rotated = rb.st_size - seek_value;
             addr =  map_files_rotated(fd, rd, size_main, size_rotated, offset_in_page_size_multiple);
             close(fd);
             close(rd);
@@ -776,8 +776,8 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
             return NULL;
         }
 
-        size_t size_main = sb.st_size - seek_value;
-        size_t size_rotated = rb.st_size;
+        size_t size_main = sb.st_size;
+        size_t size_rotated = rb.st_size - seek_value;
         addr =  map_files_rotated(fd, rd, size_main, size_rotated, offset_in_page_size_multiple);
         close(fd);
         close(rd);

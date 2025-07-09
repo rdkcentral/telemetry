@@ -71,15 +71,18 @@
 
 
 
-ProcessSnapshot* createProcessSnapshot() {
+ProcessSnapshot* createProcessSnapshot()
+{
     DIR *procDir = opendir("/proc");
-    if (!procDir) {
+    if (!procDir)
+    {
         T2Error("Failed to open /proc directory\n");
         return NULL;
     }
 
     ProcessSnapshot *snapshot = malloc(sizeof(ProcessSnapshot));
-    if (!snapshot) {
+    if (!snapshot)
+    {
         closedir(procDir);
         T2Error("Failed to allocate memory for snapshot\n");
         return NULL;
@@ -88,8 +91,10 @@ ProcessSnapshot* createProcessSnapshot() {
     Vector_Create(&(snapshot->processList));
     struct dirent *entry;
 
-    while ((entry = readdir(procDir)) != NULL) {
-        if (!isdigit(entry->d_name[0])) {
+    while ((entry = readdir(procDir)) != NULL)
+    {
+        if (!isdigit(entry->d_name[0]))
+        {
             continue; // Skip non-numeric directories
         }
 
@@ -98,16 +103,19 @@ ProcessSnapshot* createProcessSnapshot() {
         snprintf(cmdPath, sizeof(cmdPath), "/proc/%s/comm", entry->d_name);
 
         FILE *cmdFile = fopen(cmdPath, "r");
-        if (!cmdFile) {
-            continue; 
+        if (!cmdFile)
+        {
+            continue;
         }
 
         char processName[256];
-        if (fgets(processName, sizeof(processName), cmdFile)) {
+        if (fgets(processName, sizeof(processName), cmdFile))
+        {
             processName[strcspn(processName, "\n")] = '\0'; // Remove newline
 
             ProcessInfo *info = malloc(sizeof(ProcessInfo));
-            if (!info) {
+            if (!info)
+            {
                 fclose(cmdFile);
                 continue;
             }
@@ -117,8 +125,8 @@ ProcessSnapshot* createProcessSnapshot() {
 
             // Optionally, collect memory and CPU usage
             // TODO: Implement memory and CPU usage collection
-            snprintf(info->memUsage, sizeof(info->memUsage), "N/A"); 
-            snprintf(info->cpuUsage, sizeof(info->cpuUsage), "N/A"); 
+            snprintf(info->memUsage, sizeof(info->memUsage), "N/A");
+            snprintf(info->cpuUsage, sizeof(info->cpuUsage), "N/A");
 
             Vector_PushBack(snapshot->processList, info);
         }
@@ -129,26 +137,33 @@ ProcessSnapshot* createProcessSnapshot() {
     return snapshot;
 }
 
-void freeProcessSnapshot(ProcessSnapshot *snapshot) {
-    if (!snapshot) {
+void freeProcessSnapshot(ProcessSnapshot *snapshot)
+{
+    if (!snapshot)
+    {
         return;
     }
 
-    for (size_t i = 0; i < Vector_Size(snapshot->processList); i++) {
+    for (size_t i = 0; i < Vector_Size(snapshot->processList); i++)
+    {
         free(Vector_At(snapshot->processList, i));
     }
-    Vector_Destroy(snapshot->processList,free);
+    Vector_Destroy(snapshot->processList, free);
     free(snapshot);
 }
 
-ProcessInfo* lookupProcess(ProcessSnapshot *snapshot, const char *processName) {
-    if (!snapshot || !processName) {
+ProcessInfo* lookupProcess(ProcessSnapshot *snapshot, const char *processName)
+{
+    if (!snapshot || !processName)
+    {
         return NULL;
     }
 
-    for (size_t i = 0; i < Vector_Size(snapshot->processList); i++) {
+    for (size_t i = 0; i < Vector_Size(snapshot->processList); i++)
+    {
         ProcessInfo *info = Vector_At(snapshot->processList, i);
-        if (strcmp(info->processName, processName) == 0) {
+        if (strcmp(info->processName, processName) == 0)
+        {
             return info; // Return the matching process info
         }
     }
@@ -494,11 +509,11 @@ int getMemInfo(procMemCpuInfo *pmInfo)
 
 char* saveTopOutput(char* profilename)
 {
-    char filename[128]={"\0"};
+    char filename[128] = {"\0"};
     char* retfile = NULL;
     if(profilename != NULL)
     {
-        snprintf(filename, sizeof(filename), "%s_%s", TOPTEMP,profilename);
+        snprintf(filename, sizeof(filename), "%s_%s", TOPTEMP, profilename);
         retfile = strdup(filename);
     }
     else
@@ -568,27 +583,28 @@ char* saveTopOutput(char* profilename)
 void removeTopOutput(char* filename)
 {
     T2Debug("%s ++in \n", __FUNCTION__);
-    if(filename!=NULL){
-    int ret = 0;
-    char command[256] = {'\0'};
-    snprintf(command, sizeof(command), "rm -rf %s", filename);
+    if(filename != NULL)
+    {
+        int ret = 0;
+        char command[256] = {'\0'};
+        snprintf(command, sizeof(command), "rm -rf %s", filename);
 #ifdef LIBSYSWRAPPER_BUILD
-    ret = v_secure_system(command);
+        ret = v_secure_system(command);
 #else
-    ret = system(command);
+        ret = system(command);
 #endif
-    if(ret == 0)
-    {
-        T2Debug("return value of system command to remove %s is success with code %d \n", filename, ret);
+        if(ret == 0)
+        {
+            T2Debug("return value of system command to remove %s is success with code %d \n", filename, ret);
+        }
+        else
+        {
+            T2Error("return value of system command to remove %s is not successful with code %d \n", filename, ret);
+        }
+        free(filename);
+        T2Debug("%s --out \n", __FUNCTION__);
+        return;
     }
-    else
-    {
-        T2Error("return value of system command to remove %s is not successful with code %d \n", filename, ret);
-    }
-    free(filename);
-    T2Debug("%s --out \n", __FUNCTION__);
-    return;
-}
 }
 
 //#if !defined(ENABLE_RDKC_SUPPORT) && !defined(ENABLE_RDKB_SUPPORT)
@@ -625,7 +641,7 @@ int getCPUInfo(procMemCpuInfo *pInfo, char* filename)
 
         return 0;
     }
-    if((filename!=NULL) && (access(filename, F_OK) != 0))
+    if((filename != NULL) && (access(filename, F_OK) != 0))
     {
         T2Debug("%s ++in the savad temp log %s is not available \n", __FUNCTION__, filename);
         /* Check Whether -c option is supported */

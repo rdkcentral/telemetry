@@ -54,7 +54,7 @@ static bool firstreport_after_bootup = false; // the rotated logs check should r
 // safeclib is not completely introduced in T2 but to be in sync with legacy
 #define INVALID_COUNT -406
 
-#define BUFFER_SIZE 4096  // TODO fine tune this value based on the size of the data
+#define BUFFER_SIZE 4096  // TODO fine tune this value based on the size of the data    
 #define LARGE_FILE_THRESHOLD 1000000 // 1MB
 
 /**
@@ -62,8 +62,9 @@ static bool firstreport_after_bootup = false; // the rotated logs check should r
  * @{
  */
 
- // Define a struct to hold the file descriptor and size
-typedef struct {
+// Define a struct to hold the file descriptor and size
+typedef struct
+{
     int fd;
     off_t file_size;
     char* addr;
@@ -76,22 +77,32 @@ typedef struct {
  * first 'len' bytes of 'haystack'.
  * Returns pointer to the beginning of the match, or NULL if not found.
  */
-static const char *strnstr(const char *haystack, const char *needle, size_t len) {
+static const char *strnstr(const char *haystack, const char *needle, size_t len)
+{
     size_t needle_len;
 
     if (*needle == '\0')
+    {
         return haystack;
+    }
 
     needle_len = strlen(needle);
 
     if (needle_len == 0)
+    {
         return haystack;
+    }
 
-    for (size_t i = 0; i + needle_len <= len; i++) {
+    for (size_t i = 0; i + needle_len <= len; i++)
+    {
         if (memcmp(haystack + i, needle, needle_len) == 0)
+        {
             return haystack + i;
+        }
         if (haystack[i] == '\0')
+        {
             break;
+        }
     }
     return NULL;
 }
@@ -144,11 +155,11 @@ int processTopPattern(char* profileName,  Vector* topMarkerList, Vector* out_gre
 
     // TODO Generate the top output file - should be profile specific and thread safe
     //ProcessSnapshot *snapshot = createProcessSnapshot();
-    #if !defined(ENABLE_RDKC_SUPPORT) && !defined(ENABLE_RDKB_SUPPORT)
+#if !defined(ENABLE_RDKC_SUPPORT) && !defined(ENABLE_RDKB_SUPPORT)
     char* filename = saveTopOutput(profileName);
-    #else
+#else
     char* filename = NULL;
-    #endif
+#endif
     // If the header contains "Load_Average", it calls getLoadAvg() to retrieve load average data.
     // If the header does not contain "Load_Average", it checks if the pattern field is present in the top out put snapshot.
     for (var = 0; var < vCount; ++var) // Loop of marker list starts here
@@ -170,19 +181,23 @@ int processTopPattern(char* profileName,  Vector* topMarkerList, Vector* out_gre
         is_skip_param = (profileExecCounter % (tmp_skip_interval + 1) == 0) ? 0 : 1;
         if (is_skip_param != 0)
         {
-            
+
             T2Debug("Skipping marker %s for profile %s as per skip frequency %d \n", grepMarkerObj->markerName, profileName, tmp_skip_interval);
             continue;
         }
-  
 
-        if (strcmp(grepMarkerObj->markerName, "Load_Average") == 0) { // This block is for device level load average
-            if (0 == getLoadAvg(out_grepResultList, grepMarkerObj->trimParam, grepMarkerObj->regexParam)) {
+
+        if (strcmp(grepMarkerObj->markerName, "Load_Average") == 0)   // This block is for device level load average
+        {
+            if (0 == getLoadAvg(out_grepResultList, grepMarkerObj->trimParam, grepMarkerObj->regexParam))
+            {
                 T2Debug("getLoadAvg() Failed with error");
             }
-        } else {
+        }
+        else
+        {
             // This block is for process level usage
-            // TODO - Move this to a separate function which adds the results to the out_grepResultList 
+            // TODO - Move this to a separate function which adds the results to the out_grepResultList
             /*ProcessInfo *info = lookupProcess(snapshot, grepMarkerObj->markerName);
             if (info) {
                 printf("Process found: PID=%d, Name=%s, Mem=%s, CPU=%s\n",
@@ -191,16 +206,16 @@ int processTopPattern(char* profileName,  Vector* topMarkerList, Vector* out_gre
                 printf("Process %s not found\n", grepMarkerObj->markerName);
             }*/
 
-            getProcUsage(grepMarkerObj->searchString, out_grepResultList, grepMarkerObj->trimParam, grepMarkerObj->regexParam,filename);
+            getProcUsage(grepMarkerObj->searchString, out_grepResultList, grepMarkerObj->trimParam, grepMarkerObj->regexParam, filename);
         }
 
     }
 
     // TODO Clear the top output file
     //freeProcessSnapshot(snapshot);
-    #if !defined(ENABLE_RDKC_SUPPORT) && !defined(ENABLE_RDKB_SUPPORT)
+#if !defined(ENABLE_RDKC_SUPPORT) && !defined(ENABLE_RDKB_SUPPORT)
     removeTopOutput(filename);
-    #endif
+#endif
     T2Debug("%s --out\n", __FUNCTION__);
     return 0;
 }
@@ -252,14 +267,18 @@ static int getLogSeekValue(hash_map_t *logSeekMap, const char *name, long *seek_
 static char* updateFilename(char* previousFile, const char* newFile)
 {
     if (!newFile)
+    {
         return NULL;
+    }
 
     if (!previousFile || strcmp(previousFile, newFile) != 0)
     {
         free(previousFile);
         previousFile = strdup(newFile);
         if (!previousFile)
+        {
             T2Error("Insufficient memory to allocate string %s\n", newFile);
+        }
     }
     return previousFile;
 }
@@ -322,8 +341,10 @@ static int getCountPatternMatch(const char* buffer, const char* pattern) {
 
 }*/
 
-static int getCountPatternMatch(FileDescriptor* fileDescriptor, const char* pattern) {
-    if (!fileDescriptor || !fileDescriptor->addr || !pattern || !*pattern || fileDescriptor->file_size <= 0) {
+static int getCountPatternMatch(FileDescriptor* fileDescriptor, const char* pattern)
+{
+    if (!fileDescriptor || !fileDescriptor->addr || !pattern || !*pattern || fileDescriptor->file_size <= 0)
+    {
         return -1; // Invalid arguments
     }
 
@@ -331,7 +352,8 @@ static int getCountPatternMatch(FileDescriptor* fileDescriptor, const char* patt
     size_t buflen = (size_t)fileDescriptor->file_size;
     size_t patlen = strlen(pattern);
 
-    if (patlen == 0 || buflen < patlen) {
+    if (patlen == 0 || buflen < patlen)
+    {
         return 0;
     }
 
@@ -339,15 +361,20 @@ static int getCountPatternMatch(FileDescriptor* fileDescriptor, const char* patt
     const char *cur = buffer;
     size_t bytes_left = buflen;
 
-    while (bytes_left >= patlen) {
+    while (bytes_left >= patlen)
+    {
         const char *found = strnstr(cur, pattern, bytes_left);
         if (!found)
+        {
             break;
+        }
         count++;
         size_t advance = (size_t)(found - cur) + patlen;
         cur = found + patlen;
         if (bytes_left < advance)
+        {
             break;
+        }
         bytes_left -= advance;
     }
     return count;
@@ -356,7 +383,7 @@ static int getCountPatternMatch(FileDescriptor* fileDescriptor, const char* patt
 /*
 
 static char* getAbsolutePatternMatch(const char* buffer, const char* pattern) {
-    
+
     if (!buffer || !pattern) {
         return NULL; // Invalid arguments
     }
@@ -396,9 +423,12 @@ static char* getAbsolutePatternMatch(const char* buffer, const char* pattern) {
 }
  */
 
-static char* getAbsolutePatternMatch(FileDescriptor* fileDescriptor, const char* pattern) {
+static char* getAbsolutePatternMatch(FileDescriptor* fileDescriptor, const char* pattern)
+{
     if (!fileDescriptor || !fileDescriptor->addr || fileDescriptor->file_size <= 0 || !pattern || !*pattern)
+    {
         return NULL;
+    }
 
     const char* buffer = fileDescriptor->addr;
     size_t buflen = (size_t)fileDescriptor->file_size;
@@ -408,20 +438,27 @@ static char* getAbsolutePatternMatch(FileDescriptor* fileDescriptor, const char*
     size_t bytes_left = buflen;
     const char *last_found = NULL;
 
-    while (bytes_left >= patlen) {
+    while (bytes_left >= patlen)
+    {
         const char *found = strnstr(cur, pattern, bytes_left);
         if (!found)
+        {
             break;
+        }
         last_found = found;
         size_t advance = (size_t)(found - cur) + patlen;
         cur = found + patlen;
         if (bytes_left < advance)
+        {
             break;
+        }
         bytes_left -= advance;
     }
 
     if (!last_found)
+    {
         return NULL;
+    }
 
     // Move pointer just after the pattern
     const char *start = last_found + patlen;
@@ -433,17 +470,21 @@ static char* getAbsolutePatternMatch(FileDescriptor* fileDescriptor, const char*
 
     char *result = (char*)malloc(length + 1);
     if (!result)
+    {
         return NULL;
+    }
     memcpy(result, start, length);
     result[length] = '\0';
     return result;
 }
 
-static int processPatternWithOptimizedFunction(const GrepMarker* marker, Vector* out_grepResultList, FileDescriptor* filedescriptor) {
-     // Sanitize the input
-    
+static int processPatternWithOptimizedFunction(const GrepMarker* marker, Vector* out_grepResultList, FileDescriptor* filedescriptor)
+{
+    // Sanitize the input
+
     const char* memmmapped_data = filedescriptor->addr;
-    if (!marker || !out_grepResultList || !memmmapped_data) {
+    if (!marker || !out_grepResultList || !memmmapped_data)
+    {
         T2Error("Invalid arguments for %s\n", __FUNCTION__);
         return -1;
     }
@@ -456,76 +497,90 @@ static int processPatternWithOptimizedFunction(const GrepMarker* marker, Vector*
     char* last_found = NULL;
     MarkerType mType = marker->mType;
 
-    if (mType == MTYPE_COUNTER) {
+    if (mType == MTYPE_COUNTER)
+    {
         // Count the number of occurrences of the pattern in the memory-mapped data
         count = getCountPatternMatch(filedescriptor, pattern);
-        if (count > 0) {
+        if (count > 0)
+        {
             // If matches are found, process them accordingly
             char tmp_str[5] = { 0 };
             formatCount(tmp_str, sizeof(tmp_str), count);
             GrepResult* result = createGrepResultObj(header, tmp_str, trimParameter, regexParameter);
-            if (result == NULL) {
+            if (result == NULL)
+            {
                 T2Error("Failed to create GrepResult\n");
                 return -1;
             }
             Vector_PushBack(out_grepResultList, result);
         }
-    } else {
+    }
+    else
+    {
         // Get the last occurrence of the pattern in the memory-mapped data
         last_found = getAbsolutePatternMatch(filedescriptor, pattern);
         // TODO : If trimParameter is true, trim the pattern before adding to the result list
-        if (last_found) {
+        if (last_found)
+        {
             // If a match is found, process it accordingly
-            GrepResult* result = createGrepResultObj(header,last_found, trimParameter, regexParameter);
-            if(last_found){
+            GrepResult* result = createGrepResultObj(header, last_found, trimParameter, regexParameter);
+            if(last_found)
+            {
                 free(last_found);
                 last_found = NULL;
             }
-            if (result == NULL) {
+            if (result == NULL)
+            {
                 T2Error("Failed to create GrepResult\n");
                 return -1;
             }
             Vector_PushBack(out_grepResultList, result);
-        } 
+        }
     }
     return 0;
 }
 
 
-static int getLogFileDescriptor(GrepSeekProfile* gsProfile,const char* logPath, const char* logFile, int old_fd, off_t* out_seek_value) {
+static int getLogFileDescriptor(GrepSeekProfile* gsProfile, const char* logPath, const char* logFile, int old_fd, off_t* out_seek_value)
+{
     long seek_value_from_map = 0;
     getLogSeekValue(gsProfile->logFileSeekMap, logFile, &seek_value_from_map);
-    if (old_fd != -1) {
+    if (old_fd != -1)
+    {
         close(old_fd);
     }
-    // TODO : Get path from initProperties and append the log file name
+
     char logFilePath[PATH_MAX];
-    snprintf(logFilePath, sizeof(logFilePath), "%s/%s", logPath, logFile); 
+    snprintf(logFilePath, sizeof(logFilePath), "%s/%s", logPath, logFile);
 
     T2Debug("Opening log file %s\n", logFilePath);
     int fd = open(logFilePath, O_RDONLY);
-    if (fd == -1) {
+    if (fd == -1)
+    {
         T2Error("Failed to open log file %s\n", logFilePath);
         return -1;
     }
 
     // Calculate the file size
     struct stat sb;
-    if (fstat(fd, &sb) == -1) {
+    if (fstat(fd, &sb) == -1)
+    {
         T2Error("Error getting file size for %s\n", logFile);
         close(fd);
         return -1;
     }
 
     // Check if the file size is 0
-    if (sb.st_size == 0) {
+    if (sb.st_size == 0)
+    {
         T2Error("The size of the logfile is 0 for %s\n", logFile);
         close(fd);
         return -1; // Consistent error return value
     }
 
     // Check if the file size matches the seek value from the map
-    if (sb.st_size == seek_value_from_map) {
+    if (sb.st_size == seek_value_from_map)
+    {
         T2Error("The logfile size matches the seek value (%ld) for %s\n", seek_value_from_map, logFile);
         close(fd);
         return -1; // Consistent error return value
@@ -537,73 +592,218 @@ static int getLogFileDescriptor(GrepSeekProfile* gsProfile,const char* logPath, 
 
 
 // Caller should free the FileDescriptor struct after use
-static void freeFileDescriptor(FileDescriptor* fileDescriptor) {
-    if (fileDescriptor) {
+static void freeFileDescriptor(FileDescriptor* fileDescriptor)
+{
+    if (fileDescriptor)
+    {
         munmap(fileDescriptor->baseAddr, fileDescriptor->file_size);
         close(fileDescriptor->fd);
         free(fileDescriptor);
     }
 }
 
-static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd , const off_t seek_value) {
-       if (fd == -1) {
-           T2Error("Error opening file\n");
-           return NULL;
-       }
-       // Read the file contents using mmap
-       struct stat sb;
-       if(fstat(fd, &sb) == -1) {
-           T2Error("Error getting file size\n");
-           return NULL;
-       }
+static void *map_files_rotated(int fd_main, int fd_rotated, size_t size_main, size_t size_rotated, off_t rotated_offset)
+{
+    size_t total_size = size_main + size_rotated;
 
-        if(sb.st_size == 0){
-            T2Error("The Size of the logfile is 0\n");
+    void *base_addr = mmap(NULL, total_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (base_addr == MAP_FAILED)
+    {
+        perror("Error allocating memory region");
+        return NULL;
+    }
+
+    // Map the first file into the allocated region
+    void *addr1 = mmap(base_addr, size_rotated, PROT_READ, MAP_PRIVATE | MAP_FIXED, fd_rotated, rotated_offset);
+    if (addr1 == MAP_FAILED)
+    {
+        perror("Error mapping rotated file");
+        munmap(base_addr, total_size); // Clean up
+        return NULL;
+    }
+
+    // Map the second file into the allocated region, right after the first file
+    void *addr2 = mmap(base_addr + size_rotated, size_main, PROT_READ, MAP_PRIVATE | MAP_FIXED, fd_main, 0);
+    if (addr2 == MAP_FAILED)
+    {
+        perror("Error mapping file main");
+        munmap(base_addr, total_size); // Clean up
+        return NULL;
+    }
+
+    return base_addr;
+}
+
+static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t seek_value, const char* logPath, const char* logFile, bool check_rotated )
+{
+    char *addr = NULL;
+    if (fd == -1)
+    {
+        T2Error("Error opening file\n");
+        return NULL;
+    }
+    // Read the file contents using mmap
+    struct stat sb;
+    if(fstat(fd, &sb) == -1)
+    {
+        T2Error("Error getting file size\n");
+        return NULL;
+    }
+
+    if(sb.st_size == 0)
+    {
+        T2Error("The Size of the logfile is 0\n");
+        return NULL;
+    }
+
+    FileDescriptor* fileDescriptor = NULL;
+    off_t offset_in_page_size_multiple ;
+    unsigned int bytes_ignored = 0;
+
+    // Find the nearest multiple of page size
+    if (seek_value > 0)
+    {
+        offset_in_page_size_multiple = (seek_value / PAGESIZE) * PAGESIZE;
+        bytes_ignored = seek_value - offset_in_page_size_multiple;
+    }
+    else
+    {
+        offset_in_page_size_multiple = 0;
+        bytes_ignored = 0;
+    }
+
+    if(seek_value < sb.st_size)
+    {
+        if(check_rotated == true)
+        {
+            char logFilePath[PATH_MAX];
+            snprintf(logFilePath, sizeof(logFilePath), "%s/%s", logPath, logFile);
+            //get the rotated filename
+            char *fileExtn = ".1";
+            char rotatedlogFilePath[PATH_MAX];
+            size_t name_len = strlen(logFilePath);
+            if(name_len > 2 && logFilePath[name_len - 2] == '.' && logFilePath[name_len - 1] == '0')
+            {
+                snprintf(rotatedlogFilePath, sizeof(rotatedlogFilePath), "%s/%s", logPath, logFile);
+                rotatedlogFilePath[name_len - 1] = '1';
+                T2Debug("Log file name seems to be having .0 extension hence Rotated log file name is %s\n", rotatedlogFilePath);
+            }
+            else
+            {
+                snprintf(rotatedlogFilePath, sizeof(rotatedlogFilePath), "%s/%s%s", logPath, logFile, fileExtn);
+                T2Debug("Rotated log file name is %s\n", rotatedlogFilePath);
+            }
+
+            int rd = open(rotatedlogFilePath, O_RDONLY);
+            if (rd == -1)
+            {
+                T2Error("Failed to open log file %s\n", rotatedlogFilePath);
+                return NULL;
+            }
+
+            // Calculate the file size
+            struct stat rb;
+            if (fstat(rd, &rb) == -1)
+            {
+                T2Error("Error getting file size for %s\n", rotatedlogFilePath);
+                close(rd);
+                return NULL;
+            }
+
+            // Check if the file size is 0
+            if (rb.st_size == 0)
+            {
+                T2Error("The size of the logfile is 0 for %s\n", rotatedlogFilePath);
+                close(rd);
+                return NULL; // Consistent error return value
+            }
+
+            size_t size_main = sb.st_size - seek_value;
+            size_t size_rotated = rb.st_size;
+            addr =  map_files_rotated(fd, rd, size_main, size_rotated, offset_in_page_size_multiple);
+            close(fd);
+            close(rd);
+        }
+        else
+        {
+            T2Debug("File size rounded to nearest page size used for offset read: %ld bytes\n", offset_in_page_size_multiple);
+            addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
+            close(fd);
+        }
+    }
+
+    if(seek_value > sb.st_size)
+    {
+        offset_in_page_size_multiple = 0;
+        bytes_ignored = 0;
+        char logFilePath[PATH_MAX];
+        snprintf(logFilePath, sizeof(logFilePath), "%s/%s", logPath, logFile);
+        //get the rotated filename
+        char *fileExtn = ".1";
+        char rotatedlogFilePath[PATH_MAX];
+        size_t name_len = strlen(logFilePath);
+        if(name_len > 2 && logFilePath[name_len - 2] == '.' && logFilePath[name_len - 1] == '0')
+        {
+            snprintf(rotatedlogFilePath, sizeof(rotatedlogFilePath), "%s/%s", logPath, logFile);
+            rotatedlogFilePath[name_len - 1] = '1';
+            T2Debug("Log file name seems to be having .0 extension hence Rotated log file name is %s\n", rotatedlogFilePath);
+        }
+        else
+        {
+            snprintf(rotatedlogFilePath, sizeof(rotatedlogFilePath), "%s/%s%s", logPath, logFile, fileExtn);
+            T2Debug("Rotated log file name is %s\n", rotatedlogFilePath);
+        }
+
+        int rd = open(rotatedlogFilePath, O_RDONLY);
+        if (rd == -1)
+        {
+            T2Error("Failed to open log file %s\n", rotatedlogFilePath);
             return NULL;
         }
-       
-       FileDescriptor* fileDescriptor = NULL;
-       off_t offset_in_page_size_multiple ;
-       unsigned int bytes_ignored = 0;
 
-       // Find the nearest multiple of page size
-        if (seek_value > 0) {
-            offset_in_page_size_multiple = (seek_value / PAGESIZE) * PAGESIZE;
-            bytes_ignored = seek_value - offset_in_page_size_multiple;
-        } else {
-            offset_in_page_size_multiple = 0;
-            bytes_ignored = 0;
-        }
-
-        if(seek_value > sb.st_size)
+        // Calculate the file size
+        struct stat rb;
+        if (fstat(rd, &rb) == -1)
         {
-            offset_in_page_size_multiple = 0;
-            bytes_ignored = 0;
+            T2Error("Error getting file size for %s\n", rotatedlogFilePath);
+            close(rd);
+            return NULL;
         }
-      
-       T2Debug("File size rounded to nearest page size used for offset read: %ld bytes\n", offset_in_page_size_multiple);
-   
-       char *addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
-       close(fd);
+        if (rb.st_size == 0)
+        {
+            T2Error("The size of the logfile is 0 for %s\n", rotatedlogFilePath);
+            close(rd);
+            return NULL;
+        }
 
-       if (addr == MAP_FAILED) {
-           T2Error("Error in memory mapping file %d: %s\n", fd, strerror(errno));
-           return NULL;
-       }
-       fileDescriptor = malloc(sizeof(FileDescriptor));
-       if (!fileDescriptor) {
-           perror("Error allocating memory");
-           return NULL;
-       }
-       memset(fileDescriptor, 0, sizeof(FileDescriptor));
-       // addr needs to ignore the first bytes_ignored bytes
-       fileDescriptor->baseAddr=(void *)addr;
-       addr += bytes_ignored;
-       fileDescriptor->addr = addr;
-       fileDescriptor->fd = fd;
-       fileDescriptor->file_size = sb.st_size;
-       
-       return fileDescriptor;
+        size_t size_main = sb.st_size - seek_value;
+        size_t size_rotated = rb.st_size;
+        addr =  map_files_rotated(fd, rd, size_main, size_rotated, offset_in_page_size_multiple);
+        close(fd);
+        close(rd);
+    }
+
+
+    if (addr == MAP_FAILED)
+    {
+        T2Error("Error in memory mapping file %d: %s\n", fd, strerror(errno));
+        return NULL;
+    }
+    fileDescriptor = malloc(sizeof(FileDescriptor));
+    if (!fileDescriptor)
+    {
+        perror("Error allocating memory");
+        return NULL;
+    }
+    memset(fileDescriptor, 0, sizeof(FileDescriptor));
+// addr needs to ignore the first bytes_ignored bytes
+    fileDescriptor->baseAddr = (void *)addr;
+    addr += bytes_ignored;
+    fileDescriptor->addr = addr;
+    fileDescriptor->fd = fd;
+    fileDescriptor->file_size = sb.st_size;
+
+    return fileDescriptor;
 }
 
 // Call 2
@@ -648,7 +848,7 @@ static int parseMarkerListOptimized(char* profileName, Vector* ip_vMarkerList, V
         check_rotated_logs = false;
     }
 
-    // Loops start here - This should be completed here 
+    // Loops start here - This should be completed here
     // Traverse through sorted ip_vMarkerList marker list
     // Reuse the file descriptor or memmory mapped I/O when the log file is same between iterations
 
@@ -682,12 +882,14 @@ static int parseMarkerListOptimized(char* profileName, Vector* ip_vMarkerList, V
                 prevfile = NULL;
             }
 
-            if (fd != -1) {
+            if (fd != -1)
+            {
                 close(fd);
                 fd = -1;
             }
 
-            if (fileDescriptor != NULL) {
+            if (fileDescriptor != NULL)
+            {
                 freeFileDescriptor(fileDescriptor);
                 fileDescriptor = NULL;
             }
@@ -695,14 +897,16 @@ static int parseMarkerListOptimized(char* profileName, Vector* ip_vMarkerList, V
             // Get a valid file descriptor for the current log file
             off_t seek_value = 0;
             fd = getLogFileDescriptor(gsProfile, logPath, log_file_for_this_iteration, fd, &seek_value);
-            if (fd == -1) {
+            if (fd == -1)
+            {
                 continue;
                 printf("Error opening file %s\n", log_file_for_this_iteration);
             }
 
             prevfile = updateFilename(prevfile, log_file_for_this_iteration);
-            fileDescriptor = getFileDeltaInMemMapAndSearch(fd, seek_value);
-            if (fileDescriptor == NULL) {
+            fileDescriptor = getFileDeltaInMemMapAndSearch(fd, seek_value, logPath, log_file_for_this_iteration, check_rotated_logs);
+            if (fileDescriptor == NULL)
+            {
                 T2Error("Failed to get file descriptor for %s\n", log_file_for_this_iteration);
                 if (fd != -1)
                 {
@@ -727,7 +931,7 @@ static int parseMarkerListOptimized(char* profileName, Vector* ip_vMarkerList, V
             processPatternWithOptimizedFunction(grepMarkerObj, out_grepResultList, fileDescriptor);
         }
 
-    }  // Loop of marker list ends here 
+    }  // Loop of marker list ends here
 
 
     gsProfile->execCounter += 1;
@@ -738,12 +942,14 @@ static int parseMarkerListOptimized(char* profileName, Vector* ip_vMarkerList, V
         free(prevfile);
     }
 
-    if (fd != -1) {
+    if (fd != -1)
+    {
         close(fd);
         fd = -1;
     }
 
-    if (fileDescriptor != NULL) {
+    if (fileDescriptor != NULL)
+    {
         freeFileDescriptor(fileDescriptor);
         fileDescriptor = NULL;
     }
@@ -752,10 +958,13 @@ static int parseMarkerListOptimized(char* profileName, Vector* ip_vMarkerList, V
     return 0;
 }
 
+void T2InitProperties()
+{
+    initProperties(&LOGPATH, &PERSISTENTPATH, &PAGESIZE);
+}
 
 
-
-// Call 1 
+// Call 1
 int getDCAResultsInVector(char* profileName, Vector* vecMarkerList, Vector** out_grepResultList, bool check_rotated, char* customLogPath)
 {
 
@@ -769,13 +978,8 @@ int getDCAResultsInVector(char* profileName, Vector* vecMarkerList, Vector** out
     pthread_mutex_lock(&dcaMutex);
     if(NULL != vecMarkerList)
     {
-        if (!isPropsInitialized())
-        {
-            initProperties(&LOGPATH,&PERSISTENTPATH,&PAGESIZE);
-        }
-
         char* logPath = customLogPath ? customLogPath : LOGPATH;
-        
+
         Vector_Create(out_grepResultList);
 
         // Go for looping through the marker list
@@ -788,12 +992,4 @@ int getDCAResultsInVector(char* profileName, Vector* vecMarkerList, Vector** out
     T2Debug("%s --out \n", __FUNCTION__);
     return rc;
 }
-
-
-
-/** @} */
-
-/** @} */
-/** @} */
-
 

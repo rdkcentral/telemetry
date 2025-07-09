@@ -174,7 +174,7 @@ static void freeProfile(void *data)
         }
         if(profile->topMarkerList)
         {
-            Vector_Destroy(profile->topMarkerList,freeGMarker);
+            Vector_Destroy(profile->topMarkerList, freeGMarker);
         }
         if(profile->paramList)
         {
@@ -442,13 +442,13 @@ static void* CollectAndReport(void* data)
                     }
                     Vector_Destroy(profileParamVals, freeProfileValues);
                 }
-                if(profile->topMarkerList != NULL && Vector_Size(profile->topMarkerList)>0)
+                if(profile->topMarkerList != NULL && Vector_Size(profile->topMarkerList) > 0)
                 {
                     Vector *topMarkerResultList = NULL;
                     Vector_Create(&topMarkerResultList);
                     processTopPattern(profile->name, profile->topMarkerList, topMarkerResultList);
                     long int reportSize = Vector_Size(topMarkerResultList);
-                    if(reportSize!=0)
+                    if(reportSize != 0)
                     {
                         T2Info("Top markers report is compleated report size %ld\n", (unsigned long)reportSize);
                         encodeGrepResultInJSON(valArray, topMarkerResultList);
@@ -457,7 +457,7 @@ static void* CollectAndReport(void* data)
                     {
                         T2Debug("Top markers report generated but is empty possabliy the memory value is changed");
                     }
-                    Vector_Destroy(topMarkerResultList,freeGResult);
+                    Vector_Destroy(topMarkerResultList, freeGResult);
                 }
                 if(profile->gMarkerList != NULL && Vector_Size(profile->gMarkerList) > 0)
                 {

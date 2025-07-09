@@ -60,8 +60,8 @@
 #endif
 
 /*
- * Used to store the log file seek position for each profile. 
- * The key is the profile name and 
+ * Used to store the log file seek position for each profile.
+ * The key is the profile name and
  *   value is a hash_map_t which contains the log file name as key and the seek position as value.
  */
 typedef struct _GrepSeekProfile

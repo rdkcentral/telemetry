@@ -1,3 +1,4 @@
+
 /*
  * If not stated otherwise in this file or this component's LICENSE file the
  * following copyright and licenses apply:
@@ -123,7 +124,7 @@ typedef struct _curlResponseData
 
 T2ERROR getBuildType(char* buildType);
 
-T2ERROR appendRequestParams(CURLU* buf, const int maxArgLen);
+T2ERROR appendRequestParams(char *buf, const int maxArgLen);
 
 T2ERROR doHttpGet(char* httpsUrl, char **data);
 
@@ -140,3 +141,4 @@ T2ERROR startXConfClient();
 T2ERROR stopXConfClient();
 
 #endif /* _XCONF_CLIENT_H_ */
+

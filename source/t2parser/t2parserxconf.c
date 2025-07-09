@@ -142,12 +142,14 @@ static T2ERROR addParameter(ProfileXConf *profile, const char* name, const char*
             gMarker->u.count = 0;
         }
         gMarker->skipFreq = skipFreq;
-        if(strncmp("top_log.txt",fileName,sizeof("top_log.txt"))==0){
+        if(strncmp("top_log.txt", fileName, sizeof("top_log.txt")) == 0)
+        {
             T2Debug("This is a topMarker add it to topmarker list \n");
-            T2Debug("This is a TopMarker name :%s and value: %s add it to topmarker list \n",name,ref);
-            Vector_PushBack(profile->topMarkerList,gMarker);
+            T2Debug("This is a TopMarker name :%s and value: %s add it to topmarker list \n", name, ref);
+            Vector_PushBack(profile->topMarkerList, gMarker);
         }
-        else{
+        else
+        {
             Vector_PushBack(profile->gMarkerList, gMarker);
         }
     }

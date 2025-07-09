@@ -33,7 +33,6 @@
 static char* PERSISTENT_PATH = NULL;
 static char* LOG_PATH        = NULL;
 static char* DEVICE_TYPE     = NULL;
-static bool  isPropsIntialized = false ;
 
 // Map holding profile name to Map ( logfile -> seek value) ]
 static hash_map_t *profileSeekMap = NULL;
@@ -54,11 +53,13 @@ static void freeLogFileSeekMap(void *data)
     {
         hash_element_t *element = (hash_element_t *)data;
 
-        if (element->key) {
+        if (element->key)
+        {
             free(element->key);
             element->key = NULL;
         }
-        if (element->data) {
+        if (element->data)
+        {
             free(element->data);
             element->data = NULL;
         }
@@ -271,7 +272,7 @@ GrepSeekProfile *getLogSeekMapForProfile(char* profileName)
  *  @return Returns the status of the operation.
  *  @retval Returns -1 on failure, appropriate errorcode otherwise.
  */
-T2ERROR updateLogSeek(hash_map_t *logSeekMap, const char* logFileName,const long logfileSize)
+T2ERROR updateLogSeek(hash_map_t *logSeekMap, const char* logFileName, const long logfileSize)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
     if(logSeekMap == NULL || logFileName == NULL)
@@ -331,7 +332,7 @@ int getLoadAvg(Vector* grepResultList, bool trim, char* regex)
         return 0;
     }
     fclose(fp);
-    
+
     str[LEN] = '\0';
 
     if(grepResultList != NULL)
@@ -418,46 +419,21 @@ void updateIncludeConfVal(char **logpath, char **perspath)
         }
         fclose(file);
     }
-    if (perspath) *perspath = PERSISTENT_PATH;
-    if (logpath) *logpath = LOG_PATH;
-#ifdef UNUSED_T2
-    if(NULL != logpath && strcmp(logpath, "") != 0)
+    if(LOG_PATH == NULL)
     {
-        char *tmp = NULL;
-        int logpath_len = strlen(logpath) + 1;
-        tmp = realloc(LOG_PATH, logpath_len);
-        if(NULL != tmp)
-        {
-            LOG_PATH = tmp;
-            strncpy(LOG_PATH, logpath, logpath_len);
-        }
-        else
-        {
-            free(LOG_PATH);
-            LOG_PATH = NULL;
-        }
+        LOG_PATH = DEFAULT_LOG_PATH;
     }
-
-    if(NULL != perspath && strcmp(perspath, "") != 0)
+    if (perspath)
     {
-        char *tmp = NULL;
-        int perspath_len = strlen(perspath) + 1;
-        tmp = realloc(PERSISTENT_PATH, perspath_len);
-        if(NULL != tmp)
-        {
-            PERSISTENT_PATH = tmp;
-            strncpy(PERSISTENT_PATH, perspath, perspath_len);
-        }
-        else
-        {
-            free(PERSISTENT_PATH);
-            PERSISTENT_PATH = NULL;
-        }
+        *perspath = PERSISTENT_PATH;
     }
-#endif
+    if (logpath)
+    {
+        *logpath = LOG_PATH;
+    }
     T2Debug("%s --out \n", __FUNCTION__);
-
 }
+
 /**
  *  @brief Function to update the configuration values from device.properties file.
  *
@@ -466,8 +442,6 @@ void updateIncludeConfVal(char **logpath, char **perspath)
  */
 void initProperties(char **logpath, char **perspath, long* pagesize)
 {
-
-
     T2Debug("%s ++in \n", __FUNCTION__);
 
     FILE *file = NULL;
@@ -495,97 +469,7 @@ void initProperties(char **logpath, char **perspath, long* pagesize)
 
     updateIncludeConfVal(logpath, perspath);
 
-    #ifdef UNUSED_T2
-    if(NULL != DEVICE_TYPE && NULL != PERSISTENT_PATH && NULL != LOG_PATH)
-    {
-        int logpath_len = strlen(LOG_PATH);
-        int perspath_len = strlen(PERSISTENT_PATH);
-        if(0 == strcmp("broadband", DEVICE_TYPE))   // Update config for broadband
-        {
-            char *tmp_seek_file = "/.telemetry/tmp/rtl_";
-            char *tmp_log_file = "/";
-            char *tmp = NULL;
-            int tmp_seek_len = strlen(tmp_seek_file) + 1;
-            int tmp_log_len = strlen(tmp_log_file) + 1;
-            if(NULL == perspath || strcmp(perspath, "") == 0)
-            {
-                tmp = realloc(PERSISTENT_PATH, perspath_len + tmp_seek_len);
-                if(NULL != tmp)
-                {
-                    PERSISTENT_PATH = tmp;
-                    strncat(PERSISTENT_PATH, tmp_seek_file, tmp_seek_len);
-                }
-                else
-                {
-                    free(PERSISTENT_PATH);
-                    PERSISTENT_PATH = NULL;
-                }
-            }
-
-            if(NULL == logpath || strcmp(logpath, "") == 0)
-            {
-                tmp = realloc(LOG_PATH, logpath_len + tmp_log_len);;
-                if(NULL != tmp)
-                {
-                    LOG_PATH = tmp;
-                    strncat(LOG_PATH, tmp_log_file, tmp_log_len);
-                }
-                else
-                {
-                    free(LOG_PATH);
-                    LOG_PATH = NULL;
-                }
-            }
-        }
-        else
-        {
-            /* FIXME */
-            char *tmp_seek_file = DEFAULT_SEEK_PREFIX;
-            char *tmp_log_file = DEFAULT_LOG_PATH;
-            char *tmp = NULL;
-            int tmp_seek_len = strlen(tmp_seek_file) + 1;
-            int tmp_log_len = strlen(tmp_log_file) + 1;
-            if(NULL == perspath || strcmp(perspath, "") == 0)
-            {
-                tmp = realloc(PERSISTENT_PATH, tmp_seek_len);
-                if(NULL != tmp)
-                {
-                    PERSISTENT_PATH = tmp;
-                    strncpy(PERSISTENT_PATH, tmp_seek_file, tmp_seek_len);
-                }
-                else
-                {
-                    free(PERSISTENT_PATH);
-                    PERSISTENT_PATH = NULL;
-                }
-            }
-
-            if(NULL == logpath || strcmp(logpath, "") == 0)
-            {
-                tmp = realloc(LOG_PATH, tmp_log_len);
-                if(NULL != tmp)
-                {
-                    LOG_PATH = tmp;
-                    strncpy(LOG_PATH, tmp_log_file, tmp_log_len);
-                }
-                else
-                {
-                    free(LOG_PATH);
-                    LOG_PATH = NULL;
-                }
-            }
-        }
-    }
-    #endif
-    
     *pagesize = sysconf(_SC_PAGESIZE);
 
-    isPropsIntialized = true ;
     T2Debug("%s --out \n", __FUNCTION__);
-}
-
-bool isPropsInitialized()
-{
-
-    return isPropsIntialized ;
 }

@@ -23,8 +23,6 @@ lib_LTLIBRARIES = librbusmethod.la
 librbusmethod_la_SOURCES = rbusmethodinterface.c
 librbusmethod_la_LDFLAGS = -shared -fPIC -lrbus
 librbusmethod_la_CPPFLAGS = -fPIC \
-                            -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \
-                            -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/dbus-1.0/include \
                             -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ \
                             -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ccsp \
                             -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/rbus \

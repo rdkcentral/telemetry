@@ -150,24 +150,6 @@ ssp_T2Mbi_MessageBusEngage
     CcspBaseIf_SetCallback2(bus_handle, "busCheck", ssp_T2Mbi_Buscheck, NULL);
 
 
-    /* Register service callback functions */
-    returnStatus =
-        CCSP_Message_Bus_Register_Path
-        (
-            bus_handle,
-            path,
-            T2_path_message_func,
-            bus_handle
-        );
-
-    if ( returnStatus != CCSP_Message_Bus_OK )
-    {
-        CcspTraceError((" !!! CCSP_Message_Bus_Register_Path ERROR returnStatus: %lu\n!!!\n", returnStatus));
-
-        return returnStatus;
-    }
-
-
     /* Register event/signal */
     returnStatus =
         CcspBaseIf_Register_Event
@@ -185,35 +167,6 @@ ssp_T2Mbi_MessageBusEngage
     }
 
     return ANSC_STATUS_SUCCESS;
-}
-
-DBusHandlerResult
-T2_path_message_func
-(
-    DBusConnection  *conn,
-    DBusMessage     *message,
-    void            *user_data
-)
-{
-    CCSP_MESSAGE_BUS_INFO *bus_info = (CCSP_MESSAGE_BUS_INFO *) user_data;
-    const char *interface = dbus_message_get_interface(message);
-    const char *method   = dbus_message_get_member(message);
-    DBusMessage *reply;
-    reply = dbus_message_new_method_return (message);
-    if (reply == NULL)
-    {
-        return DBUS_HANDLER_RESULT_HANDLED;
-    }
-
-    return CcspBaseIf_base_path_message_func
-           (
-               conn,
-               message,
-               reply,
-               interface,
-               method,
-               bus_info
-           );
 }
 
 int

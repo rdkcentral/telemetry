@@ -345,7 +345,8 @@ static int getCountPatternMatch(FileDescriptor* fileDescriptor, const char* patt
 {
     if (!fileDescriptor || !fileDescriptor->addr || !pattern || !*pattern || fileDescriptor->file_size <= 0)
     {
-        return -1; // Invalid arguments
+        T2Error("Invalid file descriptor arguments pattern match\n");
+	return -1; // Invalid arguments
     }
 
     const char* buffer = fileDescriptor->addr;
@@ -427,6 +428,7 @@ static char* getAbsolutePatternMatch(FileDescriptor* fileDescriptor, const char*
 {
     if (!fileDescriptor || !fileDescriptor->addr || fileDescriptor->file_size <= 0 || !pattern || !*pattern)
     {
+	T2Error("Invalid file descriptor arguments\n");
         return NULL;
     }
 
@@ -915,7 +917,7 @@ static int parseMarkerListOptimized(char* profileName, Vector* ip_vMarkerList, V
                 }
                 continue;
             }
-            //buffer = fileDescriptor->addr;
+            prevfile = updateFilename(prevfile, log_file_for_this_iteration);
 
         }
 

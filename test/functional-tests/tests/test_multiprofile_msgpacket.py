@@ -189,7 +189,6 @@ def test_reporting_interval_working():
 # absolute - grep marker validation
 # Trim - grep marker validation
 # Datamodel validation
-'''
 @pytest.mark.run(order=6)
 def test_for_Generate_Now():
     clear_T2logs()
@@ -217,7 +216,6 @@ def test_for_Generate_Now():
     assert "FILE_Upload_Progress\":\" newfile1 20%" in grep_T2logs("cJSON Report ") #  absolute - grep marker validation
     assert "FILE_Read_Progress\":\"newfile2 line 10" in grep_T2logs("cJSON Report ") #  Trim - grep marker validation
     assert "MODEL_NAME" in grep_T2logs("cJSON Report ") #  Datamodel validation
-'''
 
 # Negative case with activation timeout less than reporting interval
 # Postive case for Empty report sent when reportEmpty is true

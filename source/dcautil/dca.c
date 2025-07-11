@@ -905,7 +905,6 @@ static int parseMarkerListOptimized(char* profileName, Vector* ip_vMarkerList, V
                 printf("Error opening file %s\n", log_file_for_this_iteration);
             }
 
-            prevfile = updateFilename(prevfile, log_file_for_this_iteration);
             fileDescriptor = getFileDeltaInMemMapAndSearch(fd, seek_value, logPath, log_file_for_this_iteration, check_rotated_logs);
             if (fileDescriptor == NULL)
             {

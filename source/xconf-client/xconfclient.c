@@ -474,7 +474,7 @@ T2ERROR appendRequestParams(CURLU *uri)
     }
 
     // TODO Check relevance of this existing hardcoded data - can be removed if not used in production
-    rc = curl_url_set(uri, CURLUPART_QUERY, "controllerId=2504&channelMapId=2345&vodId=15660&", CURLU_URLENCODE | CURLU_APPENDQUERY);
+    rc = curl_url_set(uri, CURLUPART_QUERY, "controllerId=2504&channelMapId=2345&vodId=15660&", CURLU_APPENDQUERY);
     if(rc != CURLUE_OK)
     {
         T2Warning("Error in using curl_url_set code : %d, %s Line No : %d\n", (int)rc, curl_url_strerror(rc), __LINE__);
@@ -500,7 +500,7 @@ T2ERROR appendRequestParams(CURLU *uri)
         goto error;
     }
 #endif
-    rc = curl_url_set(uri, CURLUPART_QUERY, "version=2", CURLU_URLENCODE | CURLU_APPENDQUERY);
+    rc = curl_url_set(uri, CURLUPART_QUERY, "version=2", CURLU_APPENDQUERY);
     if(rc != CURLUE_OK)
     {
         T2Warning("Error in using curl_url_set code : %d, %s Line No : %d\n", (int)rc, curl_url_strerror(rc), __LINE__);
@@ -509,7 +509,7 @@ T2ERROR appendRequestParams(CURLU *uri)
     if(T2ERROR_SUCCESS == getParameterValue(PRIVACYMODES_RFC, &paramVal))
     {
         memset(tempBuf, 0, MAX_URL_ARG_LEN);
-        snprintf(tempBuf, MAX_URL_ARG_LEN, "&privacyModes=%s", paramVal);
+        snprintf(tempBuf, MAX_URL_ARG_LEN, "privacyModes=%s", paramVal);
         rc = curl_url_set(uri, CURLUPART_QUERY, tempBuf, CURLU_URLENCODE | CURLU_APPENDQUERY);
         if(rc != CURLUE_OK)
         {

@@ -301,13 +301,13 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
 
             if(header != NULL && content != NULL && logfile != NULL)
             {
-                if(skipFrequency > 0)
-                {
-                    // T2Debug("Skip Frequency is Present, Need to do grep\n");
+                /*if(skipFrequency > 0)
+                 {
+                     // T2Debug("Skip Frequency is Present, Need to do grep\n");
 
-                    ret = addParameter(profile, header, content, logfile, skipFrequency);
-                }
-                else if(!strncmp(logfile, MT_TR181PARAM_PATTERN, MT_TR181PATAM_PATTERN_LENGTH))
+                     ret = addParameter(profile, header, content, logfile, skipFrequency);
+                 }*/
+                if(!strncmp(logfile, MT_TR181PARAM_PATTERN, MT_TR181PATAM_PATTERN_LENGTH))
                 {
                     ret = addParameter(profile, header, content, NULL, -1);
                 }

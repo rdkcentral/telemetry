@@ -264,7 +264,7 @@ int getProcUsage(char *processName, Vector* grepResultList, bool trim, char* reg
 
             if (!(cmdPid = popen(psCommand, "r")))
             {
-		free(pid);
+                free(pid);
                 return 0;
             }
 

@@ -24,10 +24,19 @@ import os
 import time
 import re
 import signal
+from urllib.parse import unquote, quote, urlparse, parse_qsl
 
 
 def run_telemetry():
     return subprocess.run("/usr/local/bin/telemetry2_0", shell=True)
+
+def run_shell_silent(command):
+    subprocess.run(command, shell=True, capture_output=False, text=False)
+    return 
+
+def run_shell_command(command):
+    result = subprocess.run(command, shell=True, capture_output=True, text=True)
+    return result.stdout.strip()
 
 def kill_telemetry(signal: int=9):
     print(f"Recived Signal to kill telemetry2_0 {signal} with pid {get_pid('telemetry2_0')}")
@@ -175,3 +184,27 @@ def adminSupport_DLReport_requestData():
     except:
         return_json = []
     return return_json
+
+def is_url_encoded_correctly(uri_string):
+    try:
+        parsed_url = urlparse(uri_string)
+        scheme = parsed_url.scheme
+        if scheme not in ["http", "https"]:
+            return False
+
+        # Check path
+        decoded_path = unquote(parsed_url.path)
+        re_encoded_path = quote(decoded_path, safe='/:')
+        if parsed_url.path != re_encoded_path:
+            return False
+
+        # Check query by comparing key-value pairs
+        original_query_pairs = parse_qsl(parsed_url.query)
+        decoded_query_pairs = parse_qsl(unquote(parsed_url.query))
+        if original_query_pairs != decoded_query_pairs:
+            return False
+
+        return True
+    except Exception as e:
+        print(f"Error: {e}")
+        return False

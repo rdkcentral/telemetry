@@ -25,12 +25,11 @@
 /**
  * Caller should be freeing vectorMarkerList and grepResultList
  */
-int getDCAResultsInJson(char* profileName, void* vectorMarkerList, cJSON** grepResultList);
 
-int getDCAResultsInVector(char* profileName, Vector* vectorMarkerList, Vector** grepResultList, bool check_rotated, char* customLogPath);
+int getDCAResultsInVector(char* profileName, Vector* vectorMarkerList, Vector** out_grepResultList, bool check_rotated, char* customLogPath);
 
-char *strSplit(char *str, char *delim);
+void T2InitProperties(); // declaration for initProperties
 
-int getErrorCode(char *str, char *ec);
+int processTopPattern(char* profileName, Vector* topMarkerList, Vector* out_grepResultList);
 
 #endif /* SRC_DCA_H_ */

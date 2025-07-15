@@ -636,6 +636,10 @@ T2ERROR initReportProfiles()
 
     }
 
+    //Initialise the properties file RDK-58222
+    T2InitProperties();
+    T2Info("InitProperties is successful\n");
+
     // This indicates telemetry has started
     FILE* bootFlag = NULL ;
     bootFlag = fopen(BOOTFLAG, "w+");

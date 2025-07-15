@@ -28,6 +28,17 @@
 #include "legacyutils.h"
 #include "persistence.h"
 
+/**
+ * @brief Get the Grep Results object. Main function called by rest of the consumers.
+ *
+ * @param profileName
+ * @param markerList
+ * @param grepResultList
+ * @param isClearSeekMap
+ * @param check_rotated
+ * @param customLogPath
+ * @return T2ERROR
+ */
 
 T2ERROR
 getGrepResults (char *profileName, Vector *markerList, Vector **grepResultList, bool isClearSeekMap, bool check_rotated, char *customLogPath)

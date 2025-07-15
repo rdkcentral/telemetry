@@ -733,7 +733,6 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
 
     if(seek_value < sb.st_size)
     {
-	check_rotated = true;
 	T2Info("check rotated %d\n",check_rotated);
         if(check_rotated == true)
         {

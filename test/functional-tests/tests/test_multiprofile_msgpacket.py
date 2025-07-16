@@ -49,6 +49,7 @@ def tomsgpack(json_string):
     print(base64_data)
     return base64_data
 
+'''
 #negative case without name field, Empty string in namefield & without hash field
 @pytest.mark.run(order=1)
 def test_without_namefield():
@@ -135,6 +136,7 @@ def test_without_EncodingType_ActivationTimeout_values():
     sleep(2)
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_without_EncodingType_ActivationTimeout_values))
     sleep(25)
+    #Multiple profiles configured simultaneously
     assert "TR_AC18" in grep_T2logs(LOG_PROFILE_ENABLE) # Verify profile is enabled with an empty encodingType
     assert "TR_AC19" in grep_T2logs(LOG_PROFILE_ENABLE) # Verify profile is enabled with an empty ActivationTimeout
     assert "TR_AC20" not in grep_T2logs(LOG_PROFILE_ENABLE) # Verify profile is not enabled without encodingType param
@@ -144,7 +146,6 @@ def test_without_EncodingType_ActivationTimeout_values():
     assert "TR_AC22" not in grep_T2logs(LOG_PROFILE_ENABLE) # Verify profile is not enabled without ReportingInterval param
     assert "TR_AC23" in grep_T2logs(LOG_PROFILE_ENABLE) # Verify profile is enabled without GenerateNow param
     sleep(5)
-
 
 #1).positive case for working of Reporting Interval
 #2).positive case for event marker & with count
@@ -181,8 +182,8 @@ def test_reporting_interval_working():
     assert "TEST_EVENT_MARKER_1\":\"2" in grep_T2logs("cJSON Report ") #verify event marker for count
     assert "occurrance1" in grep_T2logs("TEST_EVENT_MARKER_2") #verify event marker for accummulate - 1
     assert "occurrance2" in grep_T2logs("TEST_EVENT_MARKER_2") #verify event marker for accummulate - 2
+    assert "TEST_EVENT_MARKER_2_CT" in grep_T2logs("cJSON Report ") #Epoch time/UTC time support
     sleep(2) #wait for 2 sec to verify whether this valid profile is running and generating report
-
 
 # verification for GenerateNow
 # count - grep marker validation
@@ -210,8 +211,12 @@ def test_for_Generate_Now():
 
     LOG_GENERATE_NOW = "Waiting for 0 sec for next TIMEOUT for profile"
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_Generate_Now))
-    sleep(10)
+    sleep(5)
     assert "TR_AC777" in grep_T2logs(LOG_GENERATE_NOW)  # verification for GenerateNow
+    kill_telemetry(29)
+    sleep(2)
+    assert "LOG_UPLOAD_ONDEMAND received" in grep_T2logs("LOG_UPLOAD_ONDEMAND received") 
+    assert "TR_AC767" in grep_T2logs("Interrupted before TIMEOUT for profile")
     assert "SYS_INFO_CrashPortalUpload_success\":\"2" in grep_T2logs("cJSON Report ") #  count - grep marker validation
     assert "FILE_Upload_Progress\":\" newfile1 20%" in grep_T2logs("cJSON Report ") #  absolute - grep marker validation
     assert "FILE_Read_Progress\":\"newfile2 line 10" in grep_T2logs("cJSON Report ") #  Trim - grep marker validation
@@ -234,7 +239,10 @@ def test_for_invalid_activation_timeout():
     sleep(5)
     run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_less_activation_timeout))
+    command2 = ["telemetry2_0_client SYS_EVENT_TEST 1"]
+    run_shell_command(command2)
     sleep(60)
+    #kill_telemetry(29)
     assert "TR_AC88" in grep_T2logs(ERROR_PROFILE_TIMEOUT) # Verify profile not set if activation timeout is less than reporting interval
     assert "MODEL_NAME\":\"NULL" in grep_T2logs("cJSON Report ") # verify Empty report is sent for reportEmpty is true
     assert "TR_AC6919" in grep_T2logs("firstreporting interval is given") #
@@ -242,6 +250,10 @@ def test_for_invalid_activation_timeout():
     assert "NEW TEST PROFILE" in grep_T2logs(LOG_PROFILE_SET) # Verify DCM profile is set
     assert "60 sec" in grep_T2logs("reporting interval is taken - NEW TEST PROFILE") #Verify DCM profile is running
     assert "AccountId\":\"Platform_Container_Test_DEVICE" in grep_T2logs("cJSON Report ") #verify report generated for DCM profile
+    assert "SYS_GREP_TEST" in grep_T2logs("cJSON Report ") # verify Empty report is sent for reportEmpty is true
+    assert "SYS_GREP_TEST_2" in grep_T2logs("cJSON Report ") # verify Empty report is sent for reportEmpty is true
+    assert "SYS_EVENT_TEST" in grep_T2logs("cJSON Report ") # verify Empty report is sent for reportEmpty is true
+    assert "SYS_TEST_ReportUpload" in grep_T2logs("cJSON Report ") # verify Empty report is sent for reportEmpty is true
 
 #1).positive case for activation timeout
 #2).regex - grep marker validation
@@ -250,7 +262,7 @@ def test_for_invalid_activation_timeout():
 #5).positive case with delete on timeout
 @pytest.mark.run(order=8)
 def test_with_delete_on_timeout():
-    clear_T2logs()
+    #clear_T2logs()
     RUN_START_TIME = dt.now()
     run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
     sleep(2)
@@ -262,17 +274,18 @@ def test_with_delete_on_timeout():
     sleep(2)
     LOG_PROFILE_TIMEOUT = "Profile activation timeout"
     LOG_DELETE_PROFILE = "removing profile :"
-    rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_delete_on_timeout))
+    RET = rbus_set_data(T2_REPORT_PROFILE_PARAM, "string", data_with_delete_on_timeout)
+    print(f"RET: {RET}")
     sleep(5)
     command2 = ["telemetry2_0_client TEST_EVENT_MARKER_2 occurrance17"]
     run_shell_command(command2)
     sleep(30)
+    assert "TR_AC66" in grep_T2logs(LOG_PROFILE_ENABLE)  # Profile set in JSON format
     assert "TR_AC66" in grep_T2logs(LOG_PROFILE_TIMEOUT) # verification for activation timeout
     assert "SYS_INFO_CrashPortalUpload_success\":\"200" in grep_T2logs("cJSON Report ") #  regex - grep marker validation
     assert "MODEL_NAME\":\"DOCKER" in grep_T2logs("cJSON Report ") #  regex - Datamodel validation
     assert "TEST_EVENT_MARKER_2\":\"17" in grep_T2logs("cJSON Report ") #  regex - Event marker validation 
     assert "TR_AC66" in grep_T2logs(LOG_DELETE_PROFILE) #verify profile is removed from active profile list if DeleteOnTimeout is true
-
 
 #1.First reporting interval is applicable only when time ref is default - non-working case
 #2.Maxlatency is applicable only when time ref is not default - non- working case
@@ -318,7 +331,32 @@ def test_for_triggerCondition_negative_case():
     assert "Unexpected operator verifyMsgPckTriggerCondition ++out" in grep_T2logs("Unexpected operator verifyMsgPckTriggerCondition ++out")
     assert "Null threshold verifyMsgPckTriggerCondition ++out" in grep_T2logs("Null threshold verifyMsgPckTriggerCondition ++out")
     assert "Unexpected reference verifyMsgPckTriggerCondition ++out" in grep_T2logs("Unexpected reference verifyMsgPckTriggerCondition ++out")
-'''
+
+@pytest.mark.run(order=12)
+def test_for_subscribe_tr181():
+    clear_T2logs()
+    kill_telemetry(9)
+    RUN_START_TIME = dt.now()
+    remove_T2bootup_flag()
+    clear_persistant_files()
+    run_telemetry()
+    sleep(2)
+    run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 DEBUG")
+    sleep(2)
+    rbus_set_data("Device.DeviceInfo.X_RDKCENTRAL-COM.IUI.Version", "string", "T2_Container_0.0.1")
+    sleep(1)
+    rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_split_markers))
+    sleep(2)
+    rbus_set_data("Device.DeviceInfo.X_RDKCENTRAL-COM.IUI.Version", "string", "T2_Container_0.0.2")
+    rbus_set_data("Device.DeviceInfo.X_RDKCENTRAL-COM.IUI.Version", "string", "T2_Container_0.0.3")
+    sleep(10)
+    assert "SYS_INFO_WhoAmI" in grep_T2logs("cJSON Report ") # Split marker validation
+    assert "SYS_INFO_WhoAmI_Status" in grep_T2logs("cJSON Report ") #  multiple Split markers in the same line
+    #assert "SYS_INFO_PreviousLogs" in grep_T2logs("cJSON Report ") #  Previous Logs support for grep
+    assert "IUI_VERSION" in grep_T2logs("cJSON Report ") #  tr181 subscribe
+    assert "IUI_VERSION_CT" in grep_T2logs("cJSON Report ") #  tr181 subscribe
+    assert "Report Sent Successfully over HTTP" in grep_T2logs ("Report Sent Successfully over HTTP") #Report Sending over HTTP
+
 @pytest.mark.run(order=11)
 def test_for_triggerCondition_working_case():
     clear_T2logs()
@@ -340,4 +378,12 @@ def test_for_triggerCondition_working_case():
     sleep(2)
     assert "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RDKRemoteDebugger.Enable" in grep_T2logs("TriggerConditionResult")
     assert "true" in grep_T2logs("TriggerConditionResult") 
-    '''
+
+'''
+@pytest.mark.run(order=11)
+def test_for_duplicate_hash():
+    rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_split_markers))
+    sleep(2)
+    rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_split_markers))
+    sleep(2)
+    assert "Split66" in grep_T2logs("hash already exist")

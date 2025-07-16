@@ -899,7 +899,7 @@ data_with_reporting_interval = '''{
                 "Name": "RDKB_Profile_3",
                 "Description": "RDKB_Profile",
                 "Version": "0.1",
-                "Protocol": "HTTP",
+                "Protocol": "RBUS_METHOD",
                 "EncodingType": "JSON",
                 "ActivationTimeout": 3600,
                 "ReportingInterval": 20,
@@ -916,7 +916,8 @@ data_with_reporting_interval = '''{
                         "type": "event",
                         "eventName": "TEST_EVENT_MARKER_2",
                         "component": "sysint",
-                        "use": "accumulate"
+                        "use": "accumulate",
+                        "reportTimestamp":"Unix-Epoch"
                     },
                     {
                         "type": "grep",
@@ -934,17 +935,16 @@ data_with_reporting_interval = '''{
                         "MaxUploadLatency": 20000
                     }
                 ],
-                "HTTP": {
-                    "URL": "https://mockxconf:50051/dataLakeMock/",
-                    "Compression": "None",
-                    "Method": "POST",
-                    "RequestURIParameter": [
-                        {
-                            "Name": "reportName",
-                            "Reference": "Profile.Name"
-                        }
-                    ]
-                },
+                    "RBUS_METHOD": {
+        "Method":"Device.X_RDK_Xmidt.SendData",
+        "Parameters": [
+            {"name":"msg_type", "value":"event"},
+            {"name":"source", "value":"telemetry2"},
+            {"name":"dest", "value":"event:/profile-notify/CellMgr-Notify"},
+            {"name":"content_type", "value":"application/json"},
+            {"name":"qos", "value":"50"}
+        ]
+    },
                 "JSONEncoding": {
                     "ReportFormat": "NameValuePair",
                     "ReportTimestamp": "None"
@@ -967,7 +967,6 @@ data_with_Generate_Now = '''{
                 "EncodingType": "JSON",
                 "ActivationTimeOut": 50,
                 "ReportingInterval": 20,
-                "GenerateNow": true,
                 "RootName": "FR2_US_TC3",
                 "Parameter": [
                     {
@@ -1221,9 +1220,8 @@ data_with_less_activation_timeout = '''{
                 "Version": "0.1",
                 "Protocol": "HTTP",
                 "EncodingType": "JSON",
-                "ActivationTimeOut": 20,
-                "DeleteOnTimeout": true,
-                "ReportingInterval": 10,
+                "ActivationTimeOut": 200,
+                "ReportingInterval": 100,
                 "GenerateNow": false,
                 "RootName": "FR2_US_TC3",
                 "Parameter": [
@@ -1261,71 +1259,84 @@ data_with_less_activation_timeout = '''{
     ]
 }'''
 
-data_with_delete_on_timeout = '''{
-    "profiles": [
-        {
-            "name": "TR_AC66",
-            "hash": "Hash66",
-            "value": {
-                "Name": "RDKB_Profile_1",
-                "Description": "RDKB_Profile",
-                "Version": "0.1",
-                "Protocol": "HTTP",
-                "EncodingType": "JSON",
-                "ActivationTimeOut": 20,
-                "DeleteOnTimeout": true,
-                "ReportingInterval": 10,
-                "GenerateNow": false,
-                "RootName": "FR2_US_TC3",
-                "TimeReference": "2023-01-25T13:47:00Z",
-                "Parameter": [
-                    {
-                        "type": "dataModel",
-                        "name": "MODEL_NAME",
-                        "reference": "Device.DeviceInfo.ModelName",
-                        "use": "absolute",
-                        "regex":"[A-Z]+"
-                    },
-                    {
-                        "type": "event",
-                        "eventName": "TEST_EVENT_MARKER_2",
-                        "component": "sysint",
-                        "use": "absolute",
-                        "regex":"[0-9]+"
-                    },
-                    {
-                        "type": "grep",
-                        "marker": "SYS_INFO_CrashPortalUpload_success",
-                        "search": "Success uploading",
-                        "logFile": "core_log.txt",
-                        "use": "absolute",
-                        "regex":"[0-9]+"
-                    }
-                ],
-                "ReportingAdjustments": 
-                    {
-                        "ReportOnUpdate": true,
-                        "FirstReportingInterval": 5,
-                        "MaxUploadLatency": 10
-                    },
-                "HTTP": {
-                    "URL": "https://mockxconf:50051/dataLakeMock/",
-                    "Compression": "None",
-                    "Method": "POST",
-                    "RequestURIParameter": [
-                        {
-                            "Name": "reportName",
-                            "Reference": "Profile.Name"
-                        }
-                    ]
-                },
-                "JSONEncoding": {
-                    "ReportFormat": "NameValuePair",
-                    "ReportTimestamp": "None"
-                }
+data_with_delete_on_timeout = '{ "profiles": [ { "name": "TR_AC66", "hash": "Hash66", "value": { "Name": "RDKB_Profile_1", "Description": "RDKB_Profile", "Version": "0.1", "Protocol": "HTTP", "EncodingType": "JSON", "ActivationTimeOut": 20, "DeleteOnTimeout": true, "ReportingInterval": 10, "GenerateNow": false, "RootName": "FR2_US_TC3", "TimeReference": "2023-01-25T13:47:00Z", "Parameter": [ { "type": "dataModel", "name": "MODEL_NAME", "reference": "Device.DeviceInfo.ModelName", "use": "absolute", "regex":"[A-Z]+" }, { "type": "event", "eventName": "TEST_EVENT_MARKER_2", "component": "sysint", "use": "absolute", "regex":"[0-9]+" }, { "type": "grep", "marker": "SYS_INFO_CrashPortalUpload_success", "search": "Success uploading", "logFile": "core_log.txt", "use": "absolute", "regex":"[0-9]+" } ], "ReportingAdjustments": { "ReportOnUpdate": true, "FirstReportingInterval": 5, "MaxUploadLatency": 10 }, "HTTP": { "URL": "https://mockxconf:50051/dataLakeMock/", "Compression": "None", "Method": "POST", "RequestURIParameter": [ { "Name": "reportName", "Reference": "Profile.Name" } ] }, "JSONEncoding": { "ReportFormat": "NameValuePair", "ReportTimestamp": "None" } } } ] }'
+
+data_with_split_markers = '''{
+  "profiles": [
+    {
+      "name": "Split66",
+      "hash": "Split66",
+      "value": {
+        "Name": "RDKB_Profile_1",
+        "Description": "RDKB_Profile",
+        "Version": "0.1",
+        "Protocol": "HTTP",
+        "EncodingType": "JSON",
+        "ActivationTimeOut": 20,
+        "ReportingInterval": 10,
+        "GenerateNow": false,
+        "RootName": "Split_Marker",
+        "TimeReference": "2023-01-25T13:47:00Z",
+        "Parameter": [
+          {
+            "type": "dataModel",
+            "name": "IUI_VERSION",
+            "reference": "Device.DeviceInfo.X_RDKCENTRAL-COM.IUI.Version",
+            "method":"subscribe",
+            "use": "accumulate",
+            "reportTimestamp":"Unix-Epoch"
+          },
+          {
+            "type": "event",
+            "eventName": "TEST_EVENT_MARKER_2",
+            "component": "sysint",
+            "use": "absolute"
+          },
+          {
+            "type": "grep",
+            "marker": "SYS_INFO_PreviousLogs",
+            "search": "This log file is for previous logs",
+            "logFile": "session0.txt",
+            "use": "absolute"
+          },
+          {
+            "type": "grep",
+            "marker": "SYS_INFO_WhoAmI",
+            "search": "WhoAmI feature is",
+            "logFile": "telemetry2_0.txt.0",
+            "use": "absolute"
+          },
+          {
+            "type": "grep",
+            "marker": "SYS_INFO_WhoAmI_Status",
+            "search": "WhoAmI feature",
+            "logFile": "telemetry2_0.txt.0",
+            "use": "absolute"
+          }
+        ],
+        "ReportingAdjustments": {
+          "ReportOnUpdate": true,
+          "FirstReportingInterval": 5,
+          "MaxUploadLatency": 10
+        },
+        "HTTP": {
+          "URL": "https://mockxconf:50051/dataLookeMock/",
+          "Compression": "None",
+          "Method": "POST",
+          "RequestURIParameter": [
+            {
+              "Name": "reportName",
+              "Reference": "Profile.Name"
             }
+          ]
+        },
+        "JSONEncoding": {
+          "ReportFormat": "NameValuePair",
+          "ReportTimestamp": "Unix-Epoch"
         }
-    ]
+      }
+    }
+  ]
 }'''
 
 data_with_first_reporting_interval_max_latency = '''{

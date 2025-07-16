@@ -172,7 +172,7 @@ static void freeProfile(void *data)
         {
             Vector_Destroy(profile->gMarkerList, freeGMarker);
         }
-	if(profile->topMarkerList)
+        if(profile->topMarkerList)
         {
             Vector_Destroy(profile->topMarkerList, freeGMarker);
         }
@@ -445,7 +445,7 @@ static void* CollectAndReport(void* data)
                     }
                     Vector_Destroy(profileParamVals, freeProfileValues);
                 }
-		if(profile->topMarkerList != NULL && Vector_Size(profile->topMarkerList) > 0)
+                if(profile->topMarkerList != NULL && Vector_Size(profile->topMarkerList) > 0)
                 {
                     Vector *topMarkerResultList = NULL;
                     Vector_Create(&topMarkerResultList);

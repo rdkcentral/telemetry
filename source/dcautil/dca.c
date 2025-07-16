@@ -66,9 +66,12 @@ static bool firstreport_after_bootup = false; // the rotated logs check should r
 typedef struct
 {
     int fd;
-    off_t file_size;
-    char* addr;
+    off_t cf_file_size;
+    off_t rf_file_size;
+    char* cfaddr;
+    char* rfaddr;
     void* baseAddr;
+    void* rotatedAddr;
 } FileDescriptor;
 
 /**
@@ -343,41 +346,62 @@ static int getCountPatternMatch(const char* buffer, const char* pattern) {
 
 static int getCountPatternMatch(FileDescriptor* fileDescriptor, const char* pattern)
 {
-    if (!fileDescriptor || !fileDescriptor->addr || !pattern || !*pattern || fileDescriptor->file_size <= 0)
+    if (!fileDescriptor || !fileDescriptor->cfaddr || !pattern || !*pattern || fileDescriptor->cf_file_size <= 0)
     {
         T2Error("Invalid file descriptor arguments pattern match\n");
         return -1; // Invalid arguments
     }
 
-    const char* buffer = fileDescriptor->addr;
-    size_t buflen = (size_t)fileDescriptor->file_size;
+    const char* buffer;
+    size_t buflen = 0;
     size_t patlen = strlen(pattern);
-
-    if (patlen == 0 || buflen < patlen)
-    {
-        return 0;
-    }
-
     int count = 0;
-    const char *cur = buffer;
-    size_t bytes_left = buflen;
 
-    while (bytes_left >= patlen)
+    for(int i = 0; i < 2; i++)
     {
-        const char *found = strnstr(cur, pattern, bytes_left);
-        if (!found)
+        if (i == 0)
         {
-            break;
+            buffer = fileDescriptor->cfaddr;
+            buflen = (size_t)fileDescriptor->cf_file_size;
         }
-        count++;
-        size_t advance = (size_t)(found - cur) + patlen;
-        cur = found + patlen;
-        if (bytes_left < advance)
+        else
         {
-            break;
+            buffer = fileDescriptor->rfaddr;
+            buflen = (size_t)fileDescriptor->rf_file_size;
         }
-        bytes_left -= advance;
+        if(buffer == NULL)
+        {
+            T2Debug("Invalid file descriptor arguments pattern match\n");
+            continue;
+        }
+        if (patlen == 0 || buflen < patlen)
+        {
+            T2Info("File size is less than pattern length so ignoring the file\n");
+            continue;
+        }
+
+        const char *cur = buffer;
+        size_t bytes_left = buflen;
+
+        while (bytes_left >= patlen)
+        {
+            const char *found = strnstr(cur, pattern, bytes_left);
+            if (!found)
+            {
+                break;
+            }
+            count++;
+            size_t advance = (size_t)(found - cur) + patlen;
+            cur = found + patlen;
+            if (bytes_left < advance)
+            {
+                break;
+            }
+            bytes_left -= advance;
+        }
+
     }
+    T2Info(" count is %d\n", count);
     return count;
 }
 
@@ -426,42 +450,72 @@ static char* getAbsolutePatternMatch(const char* buffer, const char* pattern) {
 
 static char* getAbsolutePatternMatch(FileDescriptor* fileDescriptor, const char* pattern)
 {
-    if (!fileDescriptor || !fileDescriptor->addr || fileDescriptor->file_size <= 0 || !pattern || !*pattern)
+    if (!fileDescriptor || !fileDescriptor->cfaddr || fileDescriptor->cf_file_size <= 0 || !pattern || !*pattern)
     {
-        T2Error("Invalid file descriptor arguments\n");
+        T2Error("Invalid file descriptor arguments absolute\n");
         return NULL;
     }
 
-    const char* buffer = fileDescriptor->addr;
-    size_t buflen = (size_t)fileDescriptor->file_size;
+    const char* buffer;
+    size_t buflen = 0;
     size_t patlen = strlen(pattern);
-
-    const char *cur = buffer;
-    size_t bytes_left = buflen;
     const char *last_found = NULL;
 
-    while (bytes_left >= patlen)
+    for ( int i = 0; i < 2; i++ )
     {
-        const char *found = strnstr(cur, pattern, bytes_left);
-        if (!found)
+        if (i == 0)
+        {
+            buffer = fileDescriptor->cfaddr;
+            T2Info("current file for absolute\n");
+            buflen = (size_t)fileDescriptor->cf_file_size;
+        }
+        else
+        {
+            buffer = fileDescriptor->rfaddr;
+            T2Info("Rotated file for absolute\n");
+            buflen = (size_t)fileDescriptor->rf_file_size;
+        }
+
+        if(buffer == NULL)
+        {
+            T2Info("Invalid file descriptor arguments absolute match\n");
+            continue;
+        }
+        const char *cur = buffer;
+        size_t bytes_left = buflen;
+
+        while (bytes_left >= patlen)
+        {
+            const char *found = strnstr(cur, pattern, bytes_left);
+            if (!found)
+            {
+                break;
+            }
+            last_found = found;
+            size_t advance = (size_t)(found - cur) + patlen;
+            cur = found + patlen;
+            if (bytes_left < advance)
+            {
+                break;
+            }
+            bytes_left -= advance;
+        }
+
+        if (!last_found)
+        {
+            continue;
+        }
+        if(last_found && i == 0)
         {
             break;
         }
-        last_found = found;
-        size_t advance = (size_t)(found - cur) + patlen;
-        cur = found + patlen;
-        if (bytes_left < advance)
-        {
-            break;
-        }
-        bytes_left -= advance;
     }
 
-    if (!last_found)
+    if(!last_found)
     {
+        T2Info("NULL value for absolute\n");
         return NULL;
     }
-
     // Move pointer just after the pattern
     const char *start = last_found + patlen;
     size_t chars_left = buflen - (start - buffer);
@@ -477,6 +531,7 @@ static char* getAbsolutePatternMatch(FileDescriptor* fileDescriptor, const char*
     }
     memcpy(result, start, length);
     result[length] = '\0';
+    T2Info("result is %s\n", result);
     return result;
 }
 
@@ -484,10 +539,15 @@ static int processPatternWithOptimizedFunction(const GrepMarker* marker, Vector*
 {
     // Sanitize the input
 
-    const char* memmmapped_data = filedescriptor->addr;
-    if (!marker || !out_grepResultList || !memmmapped_data)
+    const char* memmmapped_data_cf = filedescriptor->cfaddr;
+    const char* memmmapped_data_rf = filedescriptor->rfaddr;
+    if (!marker || !out_grepResultList || !memmmapped_data_cf)
     {
         T2Error("Invalid arguments for %s\n", __FUNCTION__);
+        return -1;
+    }
+    if( !memmmapped_data_cf && !memmmapped_data_rf)
+    {
         return -1;
     }
     // Extract the pattern and other parameters from the marker
@@ -643,16 +703,21 @@ static void freeFileDescriptor(FileDescriptor* fileDescriptor)
 {
     if (fileDescriptor)
     {
-        munmap(fileDescriptor->baseAddr, fileDescriptor->file_size);
+        munmap(fileDescriptor->baseAddr, fileDescriptor->cf_file_size);
+        if(fileDescriptor->rotatedAddr)
+        {
+            munmap(fileDescriptor->rotatedAddr, fileDescriptor->rf_file_size);
+        }
         close(fileDescriptor->fd);
         free(fileDescriptor);
     }
 }
-
+/*
 static size_t align_up(size_t x, size_t page_size)
 {
     return ((x + page_size - 1) / page_size) * page_size;
 }
+
 static void *map_files_rotated(int fd_main, int fd_rotated, size_t size_main, size_t size_rotated, off_t rotated_offset)
 {
     size_t total_size = size_main + size_rotated;
@@ -692,10 +757,12 @@ static void *map_files_rotated(int fd_main, int fd_rotated, size_t size_main, si
     close(fd_rotated);
     return base_addr;
 }
+*/
 
 static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t seek_value, const char* logPath, const char* logFile, bool check_rotated )
 {
-    char *addr = NULL;
+    char *addrcf = NULL;
+    char *addrrf = NULL;
     if (fd == -1)
     {
         T2Error("Error opening file\n");
@@ -703,6 +770,7 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
     }
     // Read the file contents using mmap
     struct stat sb;
+    struct stat rb;
     if(fstat(fd, &sb) == -1)
     {
         T2Error("Error getting file size\n");
@@ -717,8 +785,9 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
 
     FileDescriptor* fileDescriptor = NULL;
     off_t offset_in_page_size_multiple ;
-    unsigned int bytes_ignored = 0;
-
+    unsigned int bytes_ignored = 0, bytes_ignored_main = 0, bytes_ignored_rotated = 0;
+    size_t size_main = 0, size_rotated = 0;
+    size_main = sb.st_size;
     // Find the nearest multiple of page size
     if (seek_value > 0)
     {
@@ -730,7 +799,6 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
         offset_in_page_size_multiple = 0;
         bytes_ignored = 0;
     }
-
     if(seek_value < sb.st_size)
     {
 	T2Info("check rotated %d\n",check_rotated);
@@ -739,15 +807,16 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
             int rd = getRotatedLogFileDescriptor(logPath, logFile);
             if (rd == -1)
             {
-		 T2Error("Error opening rotated file. Start search in current file\n");
-		 T2Info("File size rounded to nearest page size used for offset read: %ld bytes\n", offset_in_page_size_multiple);
-                 addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
+                T2Error("Error opening rotated file. Start search in current file\n");
+                T2Info("File size rounded to nearest page size used for offset read: %ld bytes\n", offset_in_page_size_multiple);
+                // addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
+                addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
+                bytes_ignored_main = bytes_ignored;
             }
             else
             {
-                struct stat rb;
-	       	int fs = 0;
-		fs = fstat(rd, &rb);
+                int fs = 0;
+                fs = fstat(rd, &rb);
                 if(fs == -1)
                 {
                     T2Error("Error getting file size\n");
@@ -762,25 +831,32 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
 
                 if(rb.st_size > 0)
                 {
-                    size_t size_main = sb.st_size;
-                    size_t size_rotated = rb.st_size - seek_value;
+                    size_main = sb.st_size;
+                    size_rotated = rb.st_size - seek_value;
                     T2Info("main = %zu, rotated = %zu, seek_value = %lu\n", size_main, size_rotated, seek_value);
-                    addr =  map_files_rotated(fd, rd, size_main, size_rotated, offset_in_page_size_multiple);
+                    //addr =  map_files_rotated(fd, rd, size_main, size_rotated, offset_in_page_size_multiple);
+                    addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+                    addrrf = mmap(NULL, rb.st_size, PROT_READ, MAP_PRIVATE, rd, offset_in_page_size_multiple);
+                    bytes_ignored_rotated = bytes_ignored;
+                    close(rd);
                 }
 
                 if(rb.st_size == 0 || fs == -1)
                 {
                     T2Info("File size rounded to nearest page size used for offset read: %ld bytes\n", offset_in_page_size_multiple);
-                    addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
+                    // addr =  mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
+                    addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
+                    bytes_ignored_main = bytes_ignored;
                 }
             }
         }
         else
         {
             T2Info("File size rounded to nearest page size used for offset read: %ld bytes\n", offset_in_page_size_multiple);
-            addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
+            //addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
+            addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
+            bytes_ignored_main = bytes_ignored;
         }
-        close(fd);
     }
 
     if(seek_value > sb.st_size)
@@ -789,13 +865,15 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
         if (rd == -1)
         {
             T2Error("Error opening rotated file. Start search in current file\n");
-            T2Info("File size rounded to nearest page size used for offset read: %ld bytes\n", offset_in_page_size_multiple);   
-            addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
+            T2Info("File size rounded to nearest page size used for offset read: %ld bytes\n", offset_in_page_size_multiple);
+            //addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
+            addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
+            bytes_ignored_main = bytes_ignored;
         }
         else
         {
-            struct stat rb;
-            int fs = 0;                                                                                                                          fs = fstat(rd, &rb);
+            int fs = 0;
+            fs = fstat(rd, &rb);
             if(fs == -1)
             {
                 T2Error("Error getting file size\n");
@@ -810,22 +888,34 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
 
             if(rb.st_size > 0)
             {
-                size_t size_main = sb.st_size;
-                size_t size_rotated = rb.st_size - seek_value;
+                size_main = sb.st_size;
+                size_rotated = rb.st_size - seek_value;
                 T2Info("main = %zu, rotated = %zu, seek_value = %lu\n", size_main, size_rotated, seek_value);
-                addr =  map_files_rotated(fd, rd, size_main, size_rotated, offset_in_page_size_multiple);
+                //addr =  map_files_rotated(fd, rd, size_main, size_rotated, offset_in_page_size_multiple);
+                addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+                addrrf = mmap(NULL, rb.st_size, PROT_READ, MAP_PRIVATE, rd, offset_in_page_size_multiple);
+                bytes_ignored_rotated = bytes_ignored;
+                close(rd);
+
             }
 
             if(rb.st_size == 0 && fs == -1)
             {
                 T2Debug("No contents in rotated log file. File size rounded to nearest page size used for offset read: %ld bytes\n", offset_in_page_size_multiple);
-                addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
+                addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
+                bytes_ignored_main = bytes_ignored;
             }
         }
-        close(fd);
     }
 
-    if (addr == MAP_FAILED)
+    close(fd);
+
+    if (addrcf == MAP_FAILED)
+    {
+        T2Error("Error in memory mapping file %d: %s\n", fd, strerror(errno));
+        return NULL;
+    }
+    if (addrrf == MAP_FAILED)
     {
         T2Error("Error in memory mapping file %d: %s\n", fd, strerror(errno));
         return NULL;
@@ -833,17 +923,39 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
     fileDescriptor = malloc(sizeof(FileDescriptor));
     if (!fileDescriptor)
     {
-        perror("Error allocating memory");
+        T2Error("Error allocating memory for FileDescriptor\n");
         return NULL;
     }
     memset(fileDescriptor, 0, sizeof(FileDescriptor));
     // addr needs to ignore the first bytes_ignored bytes
-    fileDescriptor->baseAddr = (void *)addr;
-    addr += bytes_ignored;
-    fileDescriptor->addr = addr;
+    /* fileDescriptor->baseAddr = (void *)addr;
+     addr += bytes_ignored;
+     fileDescriptor->addr = addr;
+     */
+    fileDescriptor->baseAddr = (void *)addrcf;
+    addrcf += bytes_ignored_main;
+    if(addrrf != NULL)
+    {
+        fileDescriptor->rotatedAddr = (void *)addrrf;
+        addrrf += bytes_ignored_rotated;
+        fileDescriptor->rfaddr = addrrf;
+    }
+    else
+    {
+        fileDescriptor->rotatedAddr = NULL;
+        fileDescriptor->rfaddr = NULL;
+    }
+    fileDescriptor->cfaddr = addrcf;
     fileDescriptor->fd = fd;
-    fileDescriptor->file_size = sb.st_size;
-
+    fileDescriptor->cf_file_size = sb.st_size;
+    if(fileDescriptor->rfaddr != NULL)
+    {
+        fileDescriptor->rf_file_size = rb.st_size;
+    }
+    else
+    {
+        fileDescriptor->rf_file_size = 0;
+    }
     return fileDescriptor;
 }
 
@@ -894,7 +1006,6 @@ static int parseMarkerListOptimized(char* profileName, Vector * ip_vMarkerList, 
     // Reuse the file descriptor or memmory mapped I/O when the log file is same between iterations
 
     int fd = -1;
-    //char *buffer = NULL;
     FileDescriptor* fileDescriptor = NULL;
 
     for (var = 0; var < vCount; ++var) // Loop of marker list starts here

@@ -145,7 +145,6 @@ static T2ERROR addParameter(ProfileXConf *profile, const char* name, const char*
         gMarker->skipFreq = skipFreq;
         if(strncmp("top_log.txt", fileName, sizeof("top_log.txt")) == 0)
         {
-            T2Debug("This is a topMarker add it to topmarker list \n");
             T2Debug("This is a TopMarker name :%s and value: %s add it to topmarker list \n", name, ref);
             Vector_PushBack(profile->topMarkerList, gMarker);
         }
@@ -237,7 +236,7 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
     {
         addParameter(profile, "mac", TR181_DEVICE_WAN_MAC, NULL, -1);
         addParameter(profile, "StbIp", TR181_DEVICE_WAN_IPv6, NULL, -1);
-        addParameter(profile, "PartnerId", TR181_DEVICE_PARTNER_ID, NULL, -1);
+        isWhoAmiEnabled() ? addParameter(profile, "PartnerId", TR181_DEVICE_PARTNER_NAME, NULL, -1) : addParameter(profile, "PartnerId", TR181_DEVICE_PARTNER_ID, NULL, -1);
         addParameter(profile, "Version", TR181_DEVICE_FW_VERSION, NULL, -1);
         addParameter(profile, "AccountId", TR181_DEVICE_ACCOUNT_ID, NULL, -1);
         addParameter(profile, "immui_ver_split", TR181_IUI_VERSION, NULL, -1);
@@ -256,7 +255,7 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
     addParameter(profile, "StbIp", TR181_DEVICE_WAN_IPv6, NULL, -1);
     addParameter(profile, "immui_ver_split", TR181_IUI_VERSION, NULL, -1);
 #endif
-    addParameter(profile, "PartnerId", TR181_DEVICE_PARTNER_ID, NULL, -1);
+    isWhoAmiEnabled() ? addParameter(profile, "PartnerId", TR181_DEVICE_PARTNER_NAME, NULL, -1) : addParameter(profile, "PartnerId", TR181_DEVICE_PARTNER_ID, NULL, -1);
     addParameter(profile, "Version", TR181_DEVICE_FW_VERSION, NULL, -1);
     addParameter(profile, "AccountId", TR181_DEVICE_ACCOUNT_ID, NULL, -1);
 #endif
@@ -302,19 +301,13 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
 
             if(header != NULL && content != NULL && logfile != NULL)
             {
-                /*if(skipFrequency > 0)
-                 {
-                     // T2Debug("Skip Frequency is Present, Need to do grep\n");
-
-                     ret = addParameter(profile, header, content, logfile, skipFrequency);
-                 }*/
                 if(!strncmp(logfile, MT_TR181PARAM_PATTERN, MT_TR181PATAM_PATTERN_LENGTH))
                 {
-                    ret = addParameter(profile, header, content, NULL, -1);
+                    ret = addParameter(profile, header, content, NULL, -1); //skip freq is not supported for datamodel markers
                 }
                 else if(!strncmp(logfile, MT_EVENT_PATTERN, MT_EVENT_PATTERN_LENGTH))
                 {
-                    ret = addParameter(profile, header, content, NULL, skipFrequency);
+                    ret = addParameter(profile, header, content, NULL, 0); //skip freq is not supported for event markers
                 }
                 else
                 {

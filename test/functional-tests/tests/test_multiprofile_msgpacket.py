@@ -247,13 +247,13 @@ def test_for_invalid_activation_timeout():
     assert "MODEL_NAME\":\"NULL" in grep_T2logs("cJSON Report ") # verify Empty report is sent for reportEmpty is true
     assert "TR_AC6919" in grep_T2logs("firstreporting interval is given") #
     assert "5 sec" in grep_T2logs("firstreporting interval is given") #} Verify Firstreporting Interval is working
-    assert "NEW TEST PROFILE" in grep_T2logs(LOG_PROFILE_SET) # Verify DCM profile is set
+    assert "NEW TEST PROFILE" in grep_T2logs(LOG_PROFILE_SET) # Report fetch and parse via HTTP
     assert "60 sec" in grep_T2logs("reporting interval is taken - NEW TEST PROFILE") #Verify DCM profile is running
     assert "AccountId\":\"Platform_Container_Test_DEVICE" in grep_T2logs("cJSON Report ") #verify report generated for DCM profile
-    assert "SYS_GREP_TEST" in grep_T2logs("cJSON Report ") # verify Empty report is sent for reportEmpty is true
-    assert "SYS_GREP_TEST_2" in grep_T2logs("cJSON Report ") # verify Empty report is sent for reportEmpty is true
-    assert "SYS_EVENT_TEST" in grep_T2logs("cJSON Report ") # verify Empty report is sent for reportEmpty is true
-    assert "SYS_TEST_ReportUpload" in grep_T2logs("cJSON Report ") # verify Empty report is sent for reportEmpty is true
+    assert "SYS_GREP_TEST" in grep_T2logs("cJSON Report ") # Data harvesting from previous logs folder for DCA profiles with log file search markers. 
+    assert "SYS_GREP_TEST_2" in grep_T2logs("cJSON Report ") # Capability to support multiple split markers for the same log line
+    assert "SYS_EVENT_TEST" in grep_T2logs("cJSON Report ") # Include data from data source as T2 events 
+    assert "SYS_TEST_ReportUpload" in grep_T2logs("cJSON Report ") # Include data from data source as log files with string match pattern
 
 #1).positive case for activation timeout
 #2).regex - grep marker validation

@@ -143,7 +143,15 @@ static T2ERROR addParameter(ProfileXConf *profile, const char* name, const char*
         }
         gMarker->skipFreq = skipFreq;
 
-        Vector_PushBack(profile->gMarkerList, gMarker);
+        if(strncmp("top_log.txt", fileName, sizeof("top_log.txt")) == 0)
+        {
+            T2Debug("This is a TopMarker name :%s and value: %s add it to topmarker list \n", name, ref);
+            Vector_PushBack(profile->topMarkerList, gMarker);
+        }
+        else
+        {
+            Vector_PushBack(profile->gMarkerList, gMarker);
+        }
     }
     profile->paramNumOfEntries++;
     return T2ERROR_SUCCESS;
@@ -214,6 +222,7 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
     Vector_Create(&profile->paramList);
     Vector_Create(&profile->eMarkerList);
     Vector_Create(&profile->gMarkerList);
+    Vector_Create(&profile->topMarkerList);
     Vector_Create(&profile->cachedReportList);
 
 #if defined(PRIVACYMODES_CONTROL)
@@ -295,7 +304,6 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
                 if(skipFrequency > 0)
                 {
                     // T2Debug("Skip Frequency is Present, Need to do grep\n");
-
                     ret = addParameter(profile, header, content, logfile, skipFrequency);
                 }
                 else if(!strncmp(logfile, MT_TR181PARAM_PATTERN, MT_TR181PATAM_PATTERN_LENGTH))

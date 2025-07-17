@@ -29,8 +29,7 @@ int getDCAResultsInJson(char* profileName, void* vectorMarkerList, cJSON** grepR
 
 int getDCAResultsInVector(char* profileName, Vector* vectorMarkerList, Vector** grepResultList, bool check_rotated, char* customLogPath);
 
-char *strSplit(char *str, char *delim);
-
 int getErrorCode(char *str, char *ec);
 
+int processTopPattern(char* profileName, Vector* topMarkerList, Vector* out_grepResultList);
 #endif /* SRC_DCA_H_ */

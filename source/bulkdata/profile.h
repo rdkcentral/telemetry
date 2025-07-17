@@ -76,6 +76,7 @@ typedef struct _Profile
     T2HTTP *t2HTTPDest;
     T2RBUS *t2RBUSDest;
     Vector *eMarkerList;
+    Vector *topMarkerList;
     Vector *gMarkerList;
     Vector *cachedReportList;
     cJSON *jsonReportObj;

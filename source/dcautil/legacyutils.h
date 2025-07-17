@@ -101,7 +101,7 @@ void addToSearchResult(char *key, char *value);
 
 void clearSearchResultJson(cJSON **root);
 
-int getProcUsage(char *processName, Vector* grepResultList, bool trim, char* regex);
+int getProcUsage(char *processName, Vector* grepResultList, bool trim, char* regex, char* filename);
 
 bool isPropsInitialized();
 

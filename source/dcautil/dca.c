@@ -525,7 +525,7 @@ static char* getAbsolutePatternMatch(FileDescriptor* fileDescriptor, const char*
 
         if(buffer == NULL)
         {
-            T2Warning("Invalid file descriptor arguments absolute match\n");
+            T2Debug("Invalid file descriptor arguments absolute match\n");
             continue;
         }
         const char *cur = buffer;
@@ -730,7 +730,7 @@ static int getRotatedLogFileDescriptor(const char* logPath, const char* logFile)
     else
     {
         strncat(rotatedlogFilePath, fileExtn, sizeof(rotatedlogFilePath) - strlen(rotatedlogFilePath) - 1);
-        T2Info("Rotated log file name is %s\n", rotatedlogFilePath);
+        T2Debug("Rotated log file name is %s\n", rotatedlogFilePath);
     }
 
     int rd = open(rotatedlogFilePath, O_RDONLY);
@@ -860,61 +860,13 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
         offset_in_page_size_multiple = 0;
         bytes_ignored = 0;
     }
-    /*if(seek_value < sb.st_size)
-    {
-            int rd = getRotatedLogFileDescriptor(logPath, logFile);
-            if (rd == -1)
-            {
-                T2Error("Error opening rotated file. Start search in current file\n");
-                T2Info("File size rounded to nearest page size used for offset read: %ld bytes\n", offset_in_page_size_multiple);
-                addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
-                bytes_ignored_main = bytes_ignored;
-            }
-            else
-            {
-                int fs = 0;
-                fs = fstat(rd, &rb);
-                if(fs == -1)
-                {
-                    T2Error("Error getting file size\n");
-                }
-                else
-                {
-                   if(rb.st_size == 0)
-                    {
-                        T2Error("The Size of the logfile is 0\n");
-                    }
-                }
-
-                if(rb.st_size > 0)
-                {
-                    size_main = sb.st_size;
-                    size_rotated = rb.st_size - seek_value;
-                    T2Info("main = %zu, rotated = %zu, seek_value = %lu\n", size_main, size_rotated, seek_value);
-                    //addr =  map_files_rotated(fd, rd, size_main, size_rotated, offset_in_page_size_multiple);
-                    addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-                    addrrf = mmap(NULL, rb.st_size, PROT_READ, MAP_PRIVATE, rd, offset_in_page_size_multiple);
-                    bytes_ignored_rotated = bytes_ignored;
-                    close(rd);
-                }
-
-                if(rb.st_size == 0 || fs == -1)
-                {
-                    T2Info("File size rounded to nearest page size used for offset read: %ld bytes\n", offset_in_page_size_multiple);
-                    // addr =  mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
-                    addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
-                    bytes_ignored_main = bytes_ignored;
-                }
-            }
-    }
-    */
 
     if(seek_value > sb.st_size || check_rotated == true)
     {
         int rd = getRotatedLogFileDescriptor(logPath, logFile);
         if (rd == -1)
         {
-            T2Error("Error opening rotated file. Start search in current file\n");
+            T2Debug("Error opening rotated file. Start search in current file\n");
             T2Info("File size rounded to nearest page size used for offset read: %ld bytes\n", offset_in_page_size_multiple);
             //addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
             addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
@@ -935,15 +887,14 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
                     T2Error("The Size of the logfile is 0\n");
                 }
             }
-
+            T2Info("rd size is %ld", rb.st_size);
             if(rb.st_size > 0)
             {
                 size_main = sb.st_size;
                 size_rotated = rb.st_size - seek_value;
                 T2Info("main = %zu, rotated = %zu, seek_value = %lu\n", size_main, size_rotated, seek_value);
-                //addr =  map_files_rotated(fd, rd, size_main, size_rotated, offset_in_page_size_multiple);
                 addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-                addrrf = mmap(NULL, rb.st_size, PROT_READ, MAP_PRIVATE, rd, offset_in_page_size_multiple);
+                addrrf = mmap(NULL, size_rotated, PROT_READ, MAP_PRIVATE, rd, offset_in_page_size_multiple);
                 bytes_ignored_rotated = bytes_ignored;
                 close(rd);
 
@@ -1004,10 +955,10 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
     }
     fileDescriptor->cfaddr = addrcf;
     fileDescriptor->fd = fd;
-    fileDescriptor->cf_file_size = sb.st_size;
+    fileDescriptor->cf_file_size = sb.st_size - bytes_ignored_main;
     if(fileDescriptor->rfaddr != NULL)
     {
-        fileDescriptor->rf_file_size = rb.st_size;
+        fileDescriptor->rf_file_size = rb.st_size - bytes_ignored_rotated ;
     }
     else
     {
@@ -1044,7 +995,6 @@ static int parseMarkerListOptimized(GrepSeekProfile *gsProfile, Vector * ip_vMar
         T2Error("%s Unable to retrieve/create logSeekMap for profile \n", __FUNCTION__);
         return -1;
     }
-    printf("address of logFileSeekMap: %p\n", gsProfile->logFileSeekMap);
     int profileExecCounter = gsProfile->execCounter;
     // checking the execution count and first report after bootup because after config reload again execution count will get initialised and again reaches 1.
     // check_rotated logs flag is to check the rotated log files even when seekvalue is less than filesize for the first time.

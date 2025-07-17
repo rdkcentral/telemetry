@@ -110,7 +110,7 @@ static T2ERROR addParameter(ProfileXConf *profile, const char* name, const char*
 
         Vector_PushBack(profile->eMarkerList, eMarker);
     }
-    else if(skipFreq == -1 || strncmp(fileName,ALIAS_DATAMODEL,5) == 0)
+    else if(skipFreq == -1 || strncmp(fileName, ALIAS_DATAMODEL, 5) == 0)
     {
         // T2Debug("Adding TR-181 Parameter : %s\n", ref);
         Param *param = (Param *)malloc(sizeof(Param));
@@ -219,7 +219,7 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
 
     profile->t2HTTPDest->URL = strdup(juploadUrl->valuestring);
     profile->encodingType = strdup("JSON");
-    
+
     profile->GrepSeekProfile = createGrepSeekProfile(0);
 
     Vector_Create(&profile->paramList);

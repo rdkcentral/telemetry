@@ -150,7 +150,8 @@ int processTopPattern(char* profileName,  Vector* topMarkerList, Vector* out_gre
     //int profileExecCounter = gsProfile->execCounter;
     char* filename = NULL;
 
-    for (var = 0; var < vCount; ++var){
+    for (var = 0; var < vCount; ++var)
+    {
         GrepMarker* grepMarkerObj = (GrepMarker*) Vector_At(topMarkerList, var);
         if (!grepMarkerObj || !grepMarkerObj->logFile || !grepMarkerObj->searchString || !grepMarkerObj->markerName)
         {
@@ -165,18 +166,19 @@ int processTopPattern(char* profileName,  Vector* topMarkerList, Vector* out_gre
             T2Debug("Skipping marker %s for profile %s as per skip frequency %d \n", grepMarkerObj->markerName, profileName, tmp_skip_interval);
             continue;
         }
-        else{
-            
+        else
+        {
+
             //ProcessSnapshot *snapshot = createProcessSnapshot();
-            #if !defined(ENABLE_RDKC_SUPPORT) && !defined(ENABLE_RDKB_SUPPORT)
+#if !defined(ENABLE_RDKC_SUPPORT) && !defined(ENABLE_RDKB_SUPPORT)
             filename = saveTopOutput(profileName);
-            #endif
+#endif
             break;
         }
         T2Debug("topMarkerList[%lu] markerName = %s, logFile = %s, searchString = %s \n", (unsigned long)var, grepMarkerObj->markerName, grepMarkerObj->logFile, grepMarkerObj->searchString);
     }
     // TODO Generate the top output file - should be profile specific and thread safe
-    
+
     // If the header contains "Load_Average", it calls getLoadAvg() to retrieve load average data.
     // If the header does not contain "Load_Average", it checks if the pattern field is present in the top out put snapshot.
     for (; var < vCount; ++var) // Loop of marker list starts here
@@ -449,7 +451,6 @@ static int getCountPatternMatch(FileDescriptor* fileDescriptor, const char* patt
         }
 
     }
-    T2Info(" count is %d\n", count);
     return count;
 }
 
@@ -514,19 +515,17 @@ static char* getAbsolutePatternMatch(FileDescriptor* fileDescriptor, const char*
         if (i == 0)
         {
             buffer = fileDescriptor->cfaddr;
-            T2Info("current file for absolute\n");
             buflen = (size_t)fileDescriptor->cf_file_size;
         }
         else
         {
             buffer = fileDescriptor->rfaddr;
-            T2Info("Rotated file for absolute\n");
             buflen = (size_t)fileDescriptor->rf_file_size;
         }
 
         if(buffer == NULL)
         {
-            T2Info("Invalid file descriptor arguments absolute match\n");
+            T2Warning("Invalid file descriptor arguments absolute match\n");
             continue;
         }
         const char *cur = buffer;
@@ -561,7 +560,6 @@ static char* getAbsolutePatternMatch(FileDescriptor* fileDescriptor, const char*
 
     if(!last_found)
     {
-        T2Info("NULL value for absolute\n");
         return NULL;
     }
     // Move pointer just after the pattern
@@ -579,7 +577,7 @@ static char* getAbsolutePatternMatch(FileDescriptor* fileDescriptor, const char*
     }
     memcpy(result, start, length);
     result[length] = '\0';
-    T2Info("result is %s\n", result);
+    T2Debug("Found pattern '%s' in file, result: '%s'\n", pattern, result);
     return result;
 }
 
@@ -588,14 +586,9 @@ static int processPatternWithOptimizedFunction(const GrepMarker* marker, Vector*
     // Sanitize the input
 
     const char* memmmapped_data_cf = filedescriptor->cfaddr;
-    const char* memmmapped_data_rf = filedescriptor->rfaddr;
     if (!marker || !out_grepResultList || !memmmapped_data_cf)
     {
         T2Error("Invalid arguments for %s\n", __FUNCTION__);
-        return -1;
-    }
-    if( !memmmapped_data_cf && !memmmapped_data_rf)
-    {
         return -1;
     }
     // Extract the pattern and other parameters from the marker
@@ -654,7 +647,6 @@ static int processPatternWithOptimizedFunction(const GrepMarker* marker, Vector*
 static int getLogFileDescriptor(GrepSeekProfile* gsProfile, const char* logPath, const char* logFile, int old_fd, off_t* out_seek_value)
 {
     long seek_value_from_map = 0;
-    printf("address of logFileSeekMap: %p\n", gsProfile->logFileSeekMap);
     getLogSeekValue(gsProfile->logFileSeekMap, logFile, &seek_value_from_map);
     if (old_fd != -1)
     {
@@ -662,8 +654,10 @@ static int getLogFileDescriptor(GrepSeekProfile* gsProfile, const char* logPath,
     }
 
     char logFilePath[PATH_MAX];
-    if(logFile[0]=='/'){
+    if(logFile[0] == '/')
+    {
         // If the logFile is an absolute path, use it directly
+        T2Info("Log file is an absolute path not prefix in the directory: %s\n", logFile);
         snprintf(logFilePath, sizeof(logFilePath), "%s", logFile);
     }
     else
@@ -716,15 +710,26 @@ static int getRotatedLogFileDescriptor(const char* logPath, const char* logFile)
     char *fileExtn = ".1";
     char rotatedlogFilePath[PATH_MAX];
     size_t name_len = strlen(logFilePath);
-    if(name_len > 2 && logFilePath[name_len - 2] == '.' && logFilePath[name_len - 1] == '0')
+    if(logFile[0] == '/')
     {
-        snprintf(rotatedlogFilePath, sizeof(rotatedlogFilePath), "%s/%s", logPath, logFile);
-        rotatedlogFilePath[name_len - 1] = '1';
-        T2Info("Log file name seems to be having .0 extension hence Rotated log file name is %s\n", rotatedlogFilePath);
+        // If the logFile is an absolute path, use it directly
+        T2Debug("RotatedLog file is an absolute path not prefix in the directory: %s\n", logFile);
+        snprintf(rotatedlogFilePath, sizeof(logFilePath), "%s", logFile);
     }
     else
     {
-        snprintf(rotatedlogFilePath, sizeof(rotatedlogFilePath), "%s/%s%s", logPath, logFile, fileExtn);
+        // If the logFile is not an absolute path, prefix it with the logPath
+        T2Debug("RotatedLog file is not an absolute path, prefixing with directory: %s\n", logPath);
+        snprintf(rotatedlogFilePath, sizeof(rotatedlogFilePath), "%s/%s", logPath, logFile);
+    }
+    if(name_len > 2 && logFilePath[name_len - 2] == '.' && logFilePath[name_len - 1] == '0')
+    {
+        rotatedlogFilePath[name_len - 1] = '1';
+        T2Debug("Log file name seems to be having .0 extension hence Rotated log file name is %s\n", rotatedlogFilePath);
+    }
+    else
+    {
+        strncat(rotatedlogFilePath, fileExtn, sizeof(rotatedlogFilePath) - strlen(rotatedlogFilePath) - 1);
         T2Info("Rotated log file name is %s\n", rotatedlogFilePath);
     }
 
@@ -855,17 +860,13 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
         offset_in_page_size_multiple = 0;
         bytes_ignored = 0;
     }
-    if(seek_value < sb.st_size)
+    /*if(seek_value < sb.st_size)
     {
-	T2Info("check rotated %d\n",check_rotated);
-        if(check_rotated == true)
-        {
             int rd = getRotatedLogFileDescriptor(logPath, logFile);
             if (rd == -1)
             {
                 T2Error("Error opening rotated file. Start search in current file\n");
                 T2Info("File size rounded to nearest page size used for offset read: %ld bytes\n", offset_in_page_size_multiple);
-                // addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
                 addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
                 bytes_ignored_main = bytes_ignored;
             }
@@ -879,7 +880,7 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
                 }
                 else
                 {
-                    if(rb.st_size == 0)
+                   if(rb.st_size == 0)
                     {
                         T2Error("The Size of the logfile is 0\n");
                     }
@@ -905,17 +906,10 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
                     bytes_ignored_main = bytes_ignored;
                 }
             }
-        }
-        else
-        {
-            T2Info("File size rounded to nearest page size used for offset read: %ld bytes\n", offset_in_page_size_multiple);
-            //addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
-            addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
-            bytes_ignored_main = bytes_ignored;
-        }
     }
+    */
 
-    if(seek_value > sb.st_size)
+    if(seek_value > sb.st_size || check_rotated == true)
     {
         int rd = getRotatedLogFileDescriptor(logPath, logFile);
         if (rd == -1)
@@ -962,6 +956,13 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
                 bytes_ignored_main = bytes_ignored;
             }
         }
+    }
+    else
+    {
+        T2Info("File size rounded to nearest page size used for offset read: %ld bytes\n", offset_in_page_size_multiple);
+        addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
+        bytes_ignored_main = bytes_ignored;
+        addrrf = NULL; // No rotated file in this case
     }
 
     close(fd);

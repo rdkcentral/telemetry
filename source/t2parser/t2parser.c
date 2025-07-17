@@ -1368,7 +1368,7 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
 
     profile->GrepSeekProfile = NULL;
 
-    
+
     if(jprofileDeleteOnTimeout)
     {
         profile->deleteonTimeout = (cJSON_IsTrue(jprofileDeleteOnTimeout) == 1);

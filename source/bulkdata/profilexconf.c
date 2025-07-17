@@ -222,7 +222,7 @@ static void* CollectAndReportXconf(void* data)
         char* jsonReport = NULL;
         char* customLogPath = NULL;
         bool checkRotated = true;
-        
+
         int count = profile->GrepSeekProfile->execCounter;
         T2Debug("CollectAndReportXconf count = %d\n", count);
 
@@ -267,7 +267,7 @@ static void* CollectAndReportXconf(void* data)
 
             if(profile->paramList != NULL && Vector_Size(profile->paramList) > 0)
             {
-                profileParamVals = getProfileParameterValues(profile->paramList,count);
+                profileParamVals = getProfileParameterValues(profile->paramList, count);
                 T2Info("Fetch complete for TR-181 Object/Parameter Values for parameters \n");
                 if(profileParamVals != NULL)
                 {
@@ -309,7 +309,8 @@ static void* CollectAndReportXconf(void* data)
             ret = prepareJSONReport(profile->jsonReportObj, &jsonReport);
             destroyJSONReport(profile->jsonReportObj);
             profile->jsonReportObj = NULL;
-
+            clock_gettime(CLOCK_REALTIME, &endTime);
+            T2Info("Processing time for profile %s is %ld seconds\n", profile->name, (long)(endTime.tv_sec - startTime.tv_sec));
             if(ret != T2ERROR_SUCCESS)
             {
                 T2Error("Unable to generate report for : %s\n", profile->name);
@@ -529,7 +530,7 @@ T2ERROR ProfileXConf_init(bool checkPreviousSeek)
             if(T2ERROR_SUCCESS == processConfigurationXConf(config->configData, &profile))
             {
 #ifdef PERSIST_LOG_MON_REF
-                if(checkPreviousSeek && profile->GrepSeekProfile && loadSavedSeekConfig(profile->name,profile->GrepSeekProfile) == T2ERROR_SUCCESS && firstBootStatus())
+                if(checkPreviousSeek && profile->GrepSeekProfile && loadSavedSeekConfig(profile->name, profile->GrepSeekProfile) == T2ERROR_SUCCESS && firstBootStatus())
                 {
                     profile->checkPreviousSeek = true;
                 }
@@ -674,7 +675,7 @@ bool ProfileXConf_isNameEqual(char* profileName)
         {
             isName = true;
             T2Info("singleProfile->name = %s and profileName = %s and return %s\n", singleProfile->name, profileName, isName ? "true" : "false");
-            
+
         }
     }
     pthread_mutex_unlock(&plMutex);

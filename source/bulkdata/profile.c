@@ -350,7 +350,7 @@ static void* CollectAndReport(void* data)
         struct timespec endTime;
         struct timespec elapsedTime;
         char* customLogPath = NULL;
-        
+
 
 
         T2ERROR ret = T2ERROR_FAILURE;
@@ -443,7 +443,7 @@ static void* CollectAndReport(void* data)
                 if(profile->paramList != NULL && Vector_Size(profile->paramList) > 0)
                 {
                     T2Debug("Fetching TR-181 Object/Parameter Values\n");
-                    profileParamVals = getProfileParameterValues(profile->paramList,count);
+                    profileParamVals = getProfileParameterValues(profile->paramList, count);
                     if(profileParamVals != NULL)
                     {
                         encodeParamResultInJSON(valArray, profile->paramList, profileParamVals);
@@ -454,7 +454,7 @@ static void* CollectAndReport(void* data)
                 {
                     Vector *topMarkerResultList = NULL;
                     Vector_Create(&topMarkerResultList);
-                    processTopPattern(profile->name, profile->topMarkerList, topMarkerResultList,0);
+                    processTopPattern(profile->name, profile->topMarkerList, topMarkerResultList, 0);
                     long int reportSize = Vector_Size(topMarkerResultList);
                     if(reportSize != 0)
                     {
@@ -1301,7 +1301,7 @@ T2ERROR deleteProfile(const char *profileName)
 
     if(profile->GrepSeekProfile)
     {
-            freeGrepSeekProfile(profile->GrepSeekProfile);
+        freeGrepSeekProfile(profile->GrepSeekProfile);
     }
 
     pthread_mutex_destroy(&profile->reportInProgressMutex);
@@ -1418,7 +1418,7 @@ static void loadReportProfilesFromDisk(bool checkPreviousSeek)
             if(T2ERROR_SUCCESS == addProfile(profile))
             {
 #ifdef PERSIST_LOG_MON_REF
-                if(checkPreviousSeek && profile->generateNow == false && profile->triggerConditionList == NULL && profile->GrepSeekProfile && loadSavedSeekConfig(profile->name,profile->GrepSeekProfile) == T2ERROR_SUCCESS && firstBootStatus() )
+                if(checkPreviousSeek && profile->generateNow == false && profile->triggerConditionList == NULL && profile->GrepSeekProfile && loadSavedSeekConfig(profile->name, profile->GrepSeekProfile) == T2ERROR_SUCCESS && firstBootStatus() )
                 {
                     profile->checkPreviousSeek = true;
                 }

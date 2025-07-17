@@ -265,7 +265,8 @@ Vector* getCCSPProfileParamValues(Vector *paramList, int execount)
             free(profVals);
             continue;
         }
-        if(param->skipFreq > 0 && (execount % param->skipFreq + 1) != 0){
+        if(param->skipFreq > 0 && (execount % param->skipFreq + 1) != 0)
+        {
             T2Info("Skipping parameter : %s as per skipFreq : %d\n", paramNames[0], param->skipFreq);
             free(paramNames[0]);
             profVals->paramName = NULL;

@@ -29,6 +29,8 @@
 #include "t2eventreceiver.h"
 #include "vector.h"
 #include "reportgen.h"
+#include "t2collection.h"
+#include "legacyutils.h"
 
 typedef enum
 {
@@ -65,6 +67,7 @@ typedef struct _ProfileXConf
     Vector *cachedReportList;
     cJSON *jsonReportObj;
     pthread_t reportThread;
+    GrepSeekProfile *GrepSeekProfile; // To store GrepConfig
 } ProfileXConf;
 
 T2ERROR ProfileXConf_init(bool checkPreviousSeek);

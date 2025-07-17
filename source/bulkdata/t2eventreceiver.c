@@ -44,14 +44,14 @@ static pthread_mutex_t sTDMutex;
 
 T2ERROR ReportProfiles_storeMarkerEvent(char *profileName, T2Event *eventInfo);
 
- /**
- * @brief Function like strstr but based on the string delimiter.
- *
- * @param[in] str    String.
- * @param[in] delim  Delimiter.
- *
- * @return Returns the output string.
- */
+/**
+* @brief Function like strstr but based on the string delimiter.
+*
+* @param[in] str    String.
+* @param[in] delim  Delimiter.
+*
+* @return Returns the output string.
+*/
 static char *strSplit(char *str, char *delim)
 {
     static char *next_str;

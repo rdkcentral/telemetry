@@ -218,7 +218,8 @@ void ReportProfiles_Interrupt()
 void ReportProfiles_TimeoutCb(char* profileName, bool isClearSeekMap)
 {
     T2Info("%s ++in\n", __FUNCTION__);
-
+    
+    T2Info("calling ProfileXConf_isNameEqual function form %s and line %d\n", __FUNCTION__, __LINE__);
     if(ProfileXConf_isNameEqual(profileName))
     {
         T2Debug("isclearSeekmap = %s \n", isClearSeekMap ? "true" : "false");
@@ -238,6 +239,8 @@ void ReportProfiles_ActivationTimeoutCb(char* profileName)
     T2Info("%s ++in\n", __FUNCTION__);
 
     bool isDeleteRequired = false;
+    T2Info("calling ProfileXConf_isNameEqual function form %s and line %d\n", __FUNCTION__, __LINE__);
+
     if(ProfileXConf_isNameEqual(profileName))
     {
         T2Error("ActivationTimeout received for Xconf profile. Ignoring!!!! \n");
@@ -281,6 +284,7 @@ void ReportProfiles_ActivationTimeoutCb(char* profileName)
 T2ERROR ReportProfiles_storeMarkerEvent(char *profileName, T2Event *eventInfo)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("calling ProfileXConf_isNameEqual function form %s and line %d\n", __FUNCTION__, __LINE__);
 
     if(ProfileXConf_isNameEqual(profileName))
     {
@@ -674,7 +678,7 @@ void generateDcaReport(bool isDelayed, bool isOnDemand)
 #ifdef PERSIST_LOG_MON_REF
             sleep(180); // increase the delay if we are reporting previous logs
 #else
-            sleep(120); // 2 minutes delay
+            sleep(20); // 2 minutes delay
 #endif
         }
         else
@@ -1384,7 +1388,7 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
             {
                 ReportProfiles_addReportProfile(profile);
 #ifdef PERSIST_LOG_MON_REF
-                if(checkPreviousSeek && profile->generateNow == false && profile->triggerConditionList == NULL && loadSavedSeekConfig(profile->name) == T2ERROR_SUCCESS && firstBootStatus() )
+                if(checkPreviousSeek && profile->generateNow == false && profile->triggerConditionList == NULL &&profile->GrepSeekProfile && loadSavedSeekConfig(profile->name,profile->GrepSeekProfile) == T2ERROR_SUCCESS && firstBootStatus() )
                 {
                     T2Info("Previous seek is enabled for profile %s \n", profile->name);
                     profile->checkPreviousSeek = true;

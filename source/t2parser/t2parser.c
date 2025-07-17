@@ -786,6 +786,9 @@ T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, i
     Vector_Create(&profile->topMarkerList);
     Vector_Create(&profile->cachedReportList);
 
+    profile->GrepSeekProfile = createGrepSeekProfile(0);
+
+
     char* paramtype = NULL;
     char* use = NULL;
     bool reportEmpty = false;
@@ -1362,6 +1365,10 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     profile->isSchedulerstarted = false;
     profile->saveSeekConfig = false;
     profile->checkPreviousSeek = false;
+
+    profile->GrepSeekProfile = NULL;
+
+    
     if(jprofileDeleteOnTimeout)
     {
         profile->deleteonTimeout = (cJSON_IsTrue(jprofileDeleteOnTimeout) == 1);
@@ -1867,6 +1874,8 @@ T2ERROR addParameterMsgpack_marker_config(Profile* profile, msgpack_object* valu
     Vector_Create(&profile->gMarkerList);
     Vector_Create(&profile->topMarkerList);
     Vector_Create(&profile->cachedReportList);
+
+    profile->GrepSeekProfile = createGrepSeekProfile(0);
 
     Parameter_array = msgpack_get_map_value(value_map, "Parameter");
     if(Parameter_array == NULL)
@@ -2450,6 +2459,8 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     profile->isSchedulerstarted = false;
     profile->saveSeekConfig = false;
     profile->checkPreviousSeek = false;
+
+    profile->GrepSeekProfile = NULL;
 
     DeleteOnTimout_boolean = msgpack_get_map_value(value_map, "DeleteOnTimeout");
     msgpack_print(DeleteOnTimout_boolean, msgpack_get_obj_name(DeleteOnTimeout_boolean));

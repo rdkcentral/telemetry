@@ -41,39 +41,26 @@
  */
 
 T2ERROR
-getGrepResults (char *profileName, Vector *markerList, Vector **grepResultList, bool isClearSeekMap, bool check_rotated, char *customLogPath)
+getGrepResults (GrepSeekProfile **GSP, Vector *markerList, Vector **grepResultList, bool isClearSeekMap, bool check_rotated, char *customLogPath)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
-    if(profileName == NULL || markerList == NULL || grepResultList == NULL)
+    if(GSP == NULL || markerList == NULL || grepResultList == NULL)
     {
         T2Error("Invalid Args or Args are NULL\n");
         return T2ERROR_FAILURE;
     }
 
-    getDCAResultsInVector(profileName, markerList, grepResultList, check_rotated, customLogPath);
+    getDCAResultsInVector(*GSP, markerList, grepResultList, check_rotated, customLogPath);
     if (isClearSeekMap)
     {
-        removeProfileFromSeekMap(profileName);
+        int count = (*GSP)->execCounter;
+        freeGrepSeekProfile(*GSP);
+        *GSP = createGrepSeekProfile(count);
+        printf("address of logFileSeekMap: %p\n", (*GSP)->logFileSeekMap);
     }
 
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
-}
-
-void removeGrepConfig(char* profileName, bool clearSeekMap, bool clearExecMap)
-{
-    T2Debug("%s ++in\n", __FUNCTION__);
-
-    if(clearSeekMap)
-    {
-        removeProfileFromSeekMap(profileName);
-    }
-
-    if (clearExecMap)
-    {
-        removeProfileFromExecMap(profileName);
-    }
-    T2Debug("%s ++out\n", __FUNCTION__);
 }
 
 // dcaFlagReportCompleation this function is used to create legacy DCA Flag DCADONEFLAG
@@ -93,7 +80,7 @@ void dcaFlagReportCompleation()
 }
 
 # ifdef PERSIST_LOG_MON_REF
-T2ERROR saveSeekConfigtoFile(char* profileName)
+T2ERROR saveSeekConfigtoFile(char* profileName, GrepSeekProfile *ProfileSeekMap)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
     if(profileName == NULL)
@@ -101,7 +88,6 @@ T2ERROR saveSeekConfigtoFile(char* profileName)
         T2Error("Profile Name is not available\n");
         return T2ERROR_FAILURE;
     }
-    GrepSeekProfile *ProfileSeekMap = getLogSeekMapForProfile(profileName);
     if(ProfileSeekMap == NULL)
     {
         T2Error("ProfileSeekMap is NULL\n");
@@ -139,7 +125,7 @@ T2ERROR saveSeekConfigtoFile(char* profileName)
     return T2ERROR_SUCCESS;
 }
 
-T2ERROR loadSavedSeekConfig(char *profileName)
+T2ERROR loadSavedSeekConfig(char *profileName, GrepSeekProfile *ProfileSeekMap)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
 
@@ -174,12 +160,7 @@ T2ERROR loadSavedSeekConfig(char *profileName)
     data[fileSize] = '\0';
     cJSON *json = cJSON_Parse(data);
     cJSON *item = NULL;
-    GrepSeekProfile *ProfileSeekMap = NULL;
-    ProfileSeekMap = (GrepSeekProfile *) getLogSeekMapForProfile(profileName);
-    if (ProfileSeekMap == NULL)
-    {
-        ProfileSeekMap = (GrepSeekProfile *) addToProfileSeekMap(profileName);
-    }
+    //GrepSeekProfile *ProfileSeekMap = NULL;
     cJSON_ArrayForEach(item, json)
     {
         // Each `item` is an object in the array

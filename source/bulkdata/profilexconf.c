@@ -35,6 +35,7 @@
 #include "vector.h"
 #include "dcautil.h"
 #include "t2parserxconf.h"
+#include "legacyutils.h"
 
 #define T2REPORT_HEADER "T2"
 #define T2REPORT_HEADERVAL  "1.0"
@@ -119,7 +120,7 @@ static void freeProfileXConf()
         {
             Vector_Destroy(singleProfile->gMarkerList, freeGMarker);
         }
-	if(singleProfile->topMarkerList)
+        if(singleProfile->topMarkerList)
         {
             Vector_Destroy(singleProfile->topMarkerList, freeGMarker);
         }
@@ -139,6 +140,10 @@ static void freeProfileXConf()
         {
             free(singleProfile->cachedReportList);
             singleProfile->cachedReportList = NULL;
+        }
+        if(singleProfile->GrepSeekProfile)
+        {
+            freeGrepSeekProfile(singleProfile->GrepSeekProfile);
         }
         free(singleProfile);
         singleProfile = NULL;
@@ -206,6 +211,7 @@ static void* CollectAndReportXconf(void* data)
     }
     pthread_cond_init(&reuseThread, NULL);
     reportThreadExits = true;
+    //GrepSeekProfile *GPF = profile->GrepSeekProfile;
     do
     {
         T2Info("%s while Loop -- START \n", __FUNCTION__);
@@ -216,10 +222,15 @@ static void* CollectAndReportXconf(void* data)
         char* jsonReport = NULL;
         char* customLogPath = NULL;
         bool checkRotated = true;
+        
+        int count = profile->GrepSeekProfile->execCounter;
+        T2Debug("CollectAndReportXconf count = %d\n", count);
 
         struct timespec startTime;
         struct timespec endTime;
         struct timespec elapsedTime;
+
+
 
         T2ERROR ret = T2ERROR_FAILURE;
         if(profile->name != NULL)
@@ -256,7 +267,7 @@ static void* CollectAndReportXconf(void* data)
 
             if(profile->paramList != NULL && Vector_Size(profile->paramList) > 0)
             {
-                profileParamVals = getProfileParameterValues(profile->paramList);
+                profileParamVals = getProfileParameterValues(profile->paramList,count);
                 T2Info("Fetch complete for TR-181 Object/Parameter Values for parameters \n");
                 if(profileParamVals != NULL)
                 {
@@ -264,11 +275,11 @@ static void* CollectAndReportXconf(void* data)
                 }
                 Vector_Destroy(profileParamVals, freeProfileValues);
             }
-	    if(profile->topMarkerList != NULL && Vector_Size(profile->topMarkerList) > 0)
+            if(profile->topMarkerList != NULL && Vector_Size(profile->topMarkerList) > 0)
             {
                 Vector *topMarkerResultList = NULL;
                 Vector_Create(&topMarkerResultList);
-                processTopPattern(profile->name, profile->topMarkerList, topMarkerResultList);
+                processTopPattern(profile->name, profile->topMarkerList, topMarkerResultList, count);
                 long int reportSize = Vector_Size(topMarkerResultList);
                 if(reportSize != 0)
                 {
@@ -283,7 +294,7 @@ static void* CollectAndReportXconf(void* data)
             }
             if(profile->gMarkerList != NULL && Vector_Size(profile->gMarkerList) > 0)
             {
-                getGrepResults(profile->name, profile->gMarkerList, &grepResultList, profile->bClearSeekMap, checkRotated, customLogPath); // Passing 5th argument as true to check rotated logs only in case of single profile
+                getGrepResults(&(profile->GrepSeekProfile), profile->gMarkerList, &grepResultList, profile->bClearSeekMap, checkRotated, customLogPath); // Passing 5th argument as true to check rotated logs only in case of single profile
                 T2Info("Grep complete for %lu markers \n", (unsigned long)Vector_Size(profile->gMarkerList));
                 encodeGrepResultInJSON(valArray, grepResultList);
                 Vector_Destroy(grepResultList, freeGResult);
@@ -369,7 +380,7 @@ static void* CollectAndReportXconf(void* data)
 #ifdef PERSIST_LOG_MON_REF
                 if(profile->saveSeekConfig)
                 {
-                    saveSeekConfigtoFile(profile->name);
+                    saveSeekConfigtoFile(profile->name, profile->GrepSeekProfile);
                 }
                 if(profile->checkPreviousSeek)
                 {
@@ -426,7 +437,7 @@ static void* CollectAndReportXconf(void* data)
         }
 
 # ifdef PERSIST_LOG_MON_REF
-        if(T2ERROR_SUCCESS == saveSeekConfigtoFile(profile->name))
+        if(T2ERROR_SUCCESS == saveSeekConfigtoFile(profile->name, profile->GrepSeekProfile))
         {
             T2Info("Successfully saved grep config to file for profile: %s\n", profile->name);
         }
@@ -518,7 +529,7 @@ T2ERROR ProfileXConf_init(bool checkPreviousSeek)
             if(T2ERROR_SUCCESS == processConfigurationXConf(config->configData, &profile))
             {
 #ifdef PERSIST_LOG_MON_REF
-                if(checkPreviousSeek && loadSavedSeekConfig(profile->name) == T2ERROR_SUCCESS && firstBootStatus())
+                if(checkPreviousSeek && profile->GrepSeekProfile && loadSavedSeekConfig(profile->name,profile->GrepSeekProfile) == T2ERROR_SUCCESS && firstBootStatus())
                 {
                     profile->checkPreviousSeek = true;
                 }
@@ -661,8 +672,9 @@ bool ProfileXConf_isNameEqual(char* profileName)
     {
         if(singleProfile && (singleProfile->name != NULL) && (profileName != NULL) && !strcmp(singleProfile->name, profileName)) //Adding NULL check to avoid strcmp crash
         {
-            T2Info("singleProfile->name = %s and profileName = %s\n", singleProfile->name, profileName);
             isName = true;
+            T2Info("singleProfile->name = %s and profileName = %s and return %s\n", singleProfile->name, profileName, isName ? "true" : "false");
+            
         }
     }
     pthread_mutex_unlock(&plMutex);
@@ -677,7 +689,7 @@ T2ERROR ProfileXConf_delete(ProfileXConf *profile)
         T2Error("profile list is not initialized yet, ignoring\n");
         return T2ERROR_FAILURE;
     }
-
+    T2Info("calling ProfileXConf_isNameEqual function form %s and line %d\n", __FUNCTION__, __LINE__);
     bool isNameEqual = ProfileXConf_isNameEqual(profile->name);
 
     pthread_mutex_lock(&plMutex);
@@ -808,10 +820,12 @@ T2ERROR ProfileXConf_delete(ProfileXConf *profile)
 
     if (Vector_Size(singleProfile->gMarkerList) > 0 )
     {
-        bool clearSeekMap = true;
         if(isNameEqual)
         {
-            clearSeekMap = false;
+            freeGrepSeekProfile(profile->GrepSeekProfile);
+            profile->GrepSeekProfile = singleProfile->GrepSeekProfile;
+            profile->GrepSeekProfile->execCounter = 0;
+            singleProfile->GrepSeekProfile = NULL;
         }
 #ifdef PERSIST_LOG_MON_REF
         else
@@ -819,7 +833,6 @@ T2ERROR ProfileXConf_delete(ProfileXConf *profile)
             removeProfileFromDisk(SEEKFOLDER, singleProfile->name);
         }
 #endif
-        removeGrepConfig(singleProfile->name, clearSeekMap, true);
     }
 
 

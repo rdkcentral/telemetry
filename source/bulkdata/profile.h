@@ -31,6 +31,7 @@
 #include "t2common.h"
 #include "vector.h"
 #include "reportgen.h"
+#include "legacyutils.h"
 
 typedef struct _JSONEncoding
 {
@@ -91,6 +92,7 @@ typedef struct _Profile
     pthread_cond_t reuseThread;
     pthread_mutex_t reuseThreadMutex;
     bool threadExists;
+    GrepSeekProfile *GrepSeekProfile; // To store GrepConfig
 } Profile;
 
 T2ERROR initProfileList(bool checkPreviousSeek);

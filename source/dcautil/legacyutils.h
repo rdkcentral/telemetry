@@ -29,6 +29,8 @@
  * @{
  **/
 
+#ifndef SRC_LEGACY_H_
+#define SRC_LEGACY_H_
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -79,14 +81,6 @@ extern cJSON *ROOT_JSON;
 /* utility functions */
 int getLoadAvg(Vector* grepResultList, bool trim, char* regex);
 
-void removeProfileFromSeekMap(char *profileName);
-
-void removeProfileFromExecMap(char *profileName);
-
-GrepSeekProfile *addToProfileSeekMap(char* profileName);
-
-GrepSeekProfile *getLogSeekMapForProfile(char* profileName);
-
 /**
  * Get log line from log file including the rotated log file if applicable
  */
@@ -98,8 +92,6 @@ void updatePropsFromIncludeFile(char *logpath, char *perspath);
 
 void initProperties(char **logpath, char **perspath, long *pagesize);
 
-T2ERROR updateLogSeek(hash_map_t *logSeekMap, const char *name, const long logfileSize);
-
 
 /* JSON functions */
 void initSearchResultJson(cJSON **root, cJSON **sr);
@@ -110,6 +102,11 @@ void clearSearchResultJson(cJSON **root);
 
 int getProcUsage(char *processName, Vector* grepResultList, bool trim, char* regex, char* filename);
 
+void freeGrepSeekProfile(GrepSeekProfile *gsProfile);
+
+GrepSeekProfile *createGrepSeekProfile(int execCounter);
+
+#endif /* SRC_LEGACY_H_ */
 /** @} */
 
 /** @} */

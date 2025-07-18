@@ -1056,6 +1056,7 @@ static int parseMarkerListOptimized(GrepSeekProfile *gsProfile, Vector * ip_vMar
             // Get a valid file descriptor for the current log file
             off_t seek_value = 0;
             fd = getLogFileDescriptor(gsProfile, logPath, log_file_for_this_iteration, fd, &seek_value);
+            prevfile = updateFilename(prevfile, log_file_for_this_iteration);
             if (fd == -1)
             {
                 T2Error("Error opening file %s\n", log_file_for_this_iteration);
@@ -1073,8 +1074,6 @@ static int parseMarkerListOptimized(GrepSeekProfile *gsProfile, Vector * ip_vMar
                 }
                 continue;
             }
-            prevfile = updateFilename(prevfile, log_file_for_this_iteration);
-
         }
 
         if(tmp_skip_interval <= 0)
@@ -1083,8 +1082,9 @@ static int parseMarkerListOptimized(GrepSeekProfile *gsProfile, Vector * ip_vMar
         }
         is_skip_param = (profileExecCounter % (tmp_skip_interval + 1) == 0) ? 0 : 1;
         // If skip param is 0, then process the pattern with optimized function
-        if (is_skip_param == 0)
+        if (is_skip_param == 0 && fileDescriptor != NULL)
         {
+
             // Call the optimized function to process the pattern
             processPatternWithOptimizedFunction(grepMarkerObj, out_grepResultList, fileDescriptor);
         }

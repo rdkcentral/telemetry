@@ -53,6 +53,7 @@ typedef struct _Param
     const char* alias;
     bool trimParam;
     char* regexParam;
+    int skipFreq;
 } Param;
 
 typedef struct _StaticParam

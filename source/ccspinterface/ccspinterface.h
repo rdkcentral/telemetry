@@ -33,7 +33,7 @@ bool isCCSPInitialized();
 
 T2ERROR getCCSPParamVal(const char* paramName, char **paramValue);
 
-Vector* getCCSPProfileParamValues(Vector *paramList);
+Vector* getCCSPProfileParamValues(Vector *paramList, int execount);
 
 T2ERROR registerCcspT2EventListener(TelemetryEventCallback eventCB);
 

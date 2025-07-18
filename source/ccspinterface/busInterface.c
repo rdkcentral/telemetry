@@ -88,7 +88,7 @@ T2ERROR getParameterValue(const char* paramName, char **paramValue)
     return ret;
 }
 
-Vector* getProfileParameterValues(Vector *paramList)
+Vector* getProfileParameterValues(Vector *paramList, int count)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
     Vector *profileValueList = NULL;
@@ -99,12 +99,12 @@ Vector* getProfileParameterValues(Vector *paramList)
 
     if(isRbus)
     {
-        profileValueList = getRbusProfileParamValues(paramList);
+        profileValueList = getRbusProfileParamValues(paramList, count);
     }
 #if defined(CCSP_SUPPORT_ENABLED)
     else
     {
-        profileValueList = getCCSPProfileParamValues(paramList);
+        profileValueList = getCCSPProfileParamValues(paramList, count);
     }
 #endif
 

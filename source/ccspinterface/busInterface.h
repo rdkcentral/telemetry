@@ -85,7 +85,7 @@ bool isRbusEnabled();
 
 T2ERROR getParameterValue(const char* paramName, char **paramValue);
 
-Vector* getProfileParameterValues(Vector *paramList);
+Vector* getProfileParameterValues(Vector *paramList, int count);
 
 void freeParamValueSt(tr181ValStruct_t **valStructs, int valSize);
 

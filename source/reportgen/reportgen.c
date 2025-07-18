@@ -162,10 +162,12 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
     }
     size_t index = 0;
     T2Debug("%s ++in \n", __FUNCTION__);
+    //printf("%ld %ld\n", Vector_Size(paramNameList), Vector_Size(paramValueList));
 
     for(; index < Vector_Size(paramNameList); index++)
     {
         Param* param = (Param *)Vector_At(paramNameList, index);
+        //printf("Parameter Name : %s\n", param->name);
         tr181ValStruct_t **paramValues = ((profileValues *)Vector_At(paramValueList, index))->paramValues;
         if(param == NULL || paramValues == NULL )
         {

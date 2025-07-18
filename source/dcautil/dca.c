@@ -326,7 +326,11 @@ static char* updateFilename(char* previousFile, const char* newFile)
 
     if (!previousFile || strcmp(previousFile, newFile) != 0)
     {
-        free(previousFile);
+        if(previousFile)
+        {
+            free(previousFile);
+            previousFile = NULL;
+        }
         previousFile = strdup(newFile);
         if (!previousFile)
         {
@@ -764,12 +768,19 @@ static void freeFileDescriptor(FileDescriptor* fileDescriptor)
 {
     if (fileDescriptor)
     {
-        munmap(fileDescriptor->baseAddr, fileDescriptor->cf_file_size);
+        if(fileDescriptor->baseAddr)
+        {
+            munmap(fileDescriptor->baseAddr, fileDescriptor->cf_file_size);
+        }
         if(fileDescriptor->rotatedAddr)
         {
             munmap(fileDescriptor->rotatedAddr, fileDescriptor->rf_file_size);
         }
-        close(fileDescriptor->fd);
+        if(fileDescriptor->fd != -1)
+        {
+            close(fileDescriptor->fd);
+            fileDescriptor->fd = -1;
+        }
         free(fileDescriptor);
     }
 }
@@ -868,7 +879,6 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
         {
             T2Debug("Error opening rotated file. Start search in current file\n");
             T2Info("File size rounded to nearest page size used for offset read: %ld bytes\n", offset_in_page_size_multiple);
-            //addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
             addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
             bytes_ignored_main = bytes_ignored;
         }
@@ -879,12 +889,14 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
             if(fs == -1)
             {
                 T2Error("Error getting file size\n");
+                close(rd);
             }
             else
             {
                 if(rb.st_size == 0)
                 {
                     T2Error("The Size of the logfile is 0\n");
+                    close(rd);
                 }
             }
             T2Info("rd size is %ld", rb.st_size);
@@ -925,6 +937,7 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
     }
     if (addrrf == MAP_FAILED)
     {
+        munmap(addrcf, sb.st_size);
         T2Error("Error in memory mapping file %d: %s\n", fd, strerror(errno));
         return NULL;
     }
@@ -1056,6 +1069,7 @@ static int parseMarkerListOptimized(GrepSeekProfile *gsProfile, Vector * ip_vMar
             // Get a valid file descriptor for the current log file
             off_t seek_value = 0;
             fd = getLogFileDescriptor(gsProfile, logPath, log_file_for_this_iteration, fd, &seek_value);
+            prevfile = updateFilename(prevfile, log_file_for_this_iteration);
             if (fd == -1)
             {
                 T2Error("Error opening file %s\n", log_file_for_this_iteration);
@@ -1073,8 +1087,6 @@ static int parseMarkerListOptimized(GrepSeekProfile *gsProfile, Vector * ip_vMar
                 }
                 continue;
             }
-            prevfile = updateFilename(prevfile, log_file_for_this_iteration);
-
         }
 
         if(tmp_skip_interval <= 0)
@@ -1083,8 +1095,9 @@ static int parseMarkerListOptimized(GrepSeekProfile *gsProfile, Vector * ip_vMar
         }
         is_skip_param = (profileExecCounter % (tmp_skip_interval + 1) == 0) ? 0 : 1;
         // If skip param is 0, then process the pattern with optimized function
-        if (is_skip_param == 0)
+        if (is_skip_param == 0 && fileDescriptor != NULL)
         {
+
             // Call the optimized function to process the pattern
             processPatternWithOptimizedFunction(grepMarkerObj, out_grepResultList, fileDescriptor);
         }
@@ -1098,6 +1111,7 @@ static int parseMarkerListOptimized(GrepSeekProfile *gsProfile, Vector * ip_vMar
     if (prevfile != NULL)
     {
         free(prevfile);
+        prevfile = NULL;
     }
 
     if (fd != -1)

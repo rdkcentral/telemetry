@@ -120,7 +120,7 @@ typedef struct _curlResponseData
 
 T2ERROR getBuildType(char* buildType);
 
-T2ERROR appendRequestParams(char *buf, const int maxArgLen);
+T2ERROR appendRequestParams(CURLU *buf);
 
 T2ERROR doHttpGet(char* httpsUrl, char **data);
 

@@ -329,7 +329,6 @@ static char* updateFilename(char* previousFile, const char* newFile)
         if(previousFile)
         {
             free(previousFile);
-            previousFile = NULL;
         }
         previousFile = strdup(newFile);
         if (!previousFile)
@@ -776,6 +775,8 @@ static void freeFileDescriptor(FileDescriptor* fileDescriptor)
         {
             munmap(fileDescriptor->rotatedAddr, fileDescriptor->rf_file_size);
         }
+        fileDescriptor->cfaddr = NULL;
+        fileDescriptor->rfaddr = NULL;
         if(fileDescriptor->fd != -1)
         {
             close(fileDescriptor->fd);
@@ -932,6 +933,10 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
 
     if (addrcf == MAP_FAILED)
     {
+        if(addrrf != NULL)
+        {
+            munmap(addrrf, size_rotated);
+        }
         T2Error("Error in memory mapping file %d: %s\n", fd, strerror(errno));
         return NULL;
     }

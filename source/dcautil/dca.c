@@ -859,7 +859,7 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
     FileDescriptor* fileDescriptor = NULL;
     off_t offset_in_page_size_multiple ;
     unsigned int bytes_ignored = 0, bytes_ignored_main = 0, bytes_ignored_rotated = 0;
-    off_t size_main = 0, size_rotated = 0;
+    off_t size_rotated = 0, size_main = 0;
     size_main = sb.st_size;
     // Find the nearest multiple of page size
     if (seek_value > 0)
@@ -880,7 +880,7 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
         {
             T2Debug("Error opening rotated file. Start search in current file\n");
             T2Info("File size rounded to nearest page size used for offset read: %ld bytes\n", offset_in_page_size_multiple);
-            addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
+            addrcf = mmap(NULL, size_main, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
             bytes_ignored_main = bytes_ignored;
         }
         else
@@ -903,10 +903,9 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
             T2Info("rd size is %jd", (intmax_t)rb.st_size);
             if(rb.st_size > 0)
             {
-                size_main = sb.st_size;
                 size_rotated = rb.st_size - seek_value;
-                T2Info("main = %jd, rotated = %jd, seek_value = %jd\n", (intmax_t)size_main, (intmax_t)size_rotated, (intmax_t)seek_value);
-                addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+                T2Debug("main = %jd, rotated = %jd, seek_value = %jd\n", (intmax_t)size_main, (intmax_t)size_rotated, (intmax_t)seek_value);
+                addrcf = mmap(NULL, size_main, PROT_READ, MAP_PRIVATE, fd, 0);
                 addrrf = mmap(NULL, size_rotated, PROT_READ, MAP_PRIVATE, rd, offset_in_page_size_multiple);
                 bytes_ignored_rotated = bytes_ignored;
                 close(rd);
@@ -916,7 +915,7 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
             if(rb.st_size == 0 && fs == -1)
             {
                 T2Debug("No contents in rotated log file. File size rounded to nearest page size used for offset read: %ld bytes\n", offset_in_page_size_multiple);
-                addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
+                addrcf = mmap(NULL, size_main, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
                 bytes_ignored_main = bytes_ignored;
             }
         }
@@ -924,7 +923,7 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
     else
     {
         T2Info("File size rounded to nearest page size used for offset read: %ld bytes\n", offset_in_page_size_multiple);
-        addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
+        addrcf = mmap(NULL, size_main, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
         bytes_ignored_main = bytes_ignored;
         addrrf = NULL; // No rotated file in this case
     }
@@ -953,11 +952,6 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
         return NULL;
     }
     memset(fileDescriptor, 0, sizeof(FileDescriptor));
-    // addr needs to ignore the first bytes_ignored bytes
-    /* fileDescriptor->baseAddr = (void *)addr;
-     addr += bytes_ignored;
-     fileDescriptor->addr = addr;
-     */
     fileDescriptor->baseAddr = (void *)addrcf;
     addrcf += bytes_ignored_main;
     if(addrrf != NULL)
@@ -973,11 +967,10 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
     }
     fileDescriptor->cfaddr = addrcf;
     fileDescriptor->fd = fd;
-    fileDescriptor->cf_file_size = sb.st_size;
+    fileDescriptor->cf_file_size = size_main;
     if(fileDescriptor->rfaddr != NULL)
     {
-        T2Info("bytes ignored = %u and %zu\n", bytes_ignored_rotated, rb.st_size);
-        fileDescriptor->rf_file_size = size_rotated ;
+        fileDescriptor->rf_file_size = size_rotated;
     }
     else
     {

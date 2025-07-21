@@ -90,6 +90,36 @@ static rdkcertselector_h xcCertSelector = NULL;
 static int retryCount = 0;
 #endif
 
+
+#if LIBCURL_VERSION_NUM >= 0x075000 /* 7.80.0 */
+#define T2_CURL_APPENDREQUEST_ERROR(rc) \
+    do { \
+        if ((rc) != CURLUE_OK) \
+            T2Warning("Error in using curl_url_set code : %d, %s Line No : %d\n", \
+                      (int)(rc), curl_url_strerror((rc)), __LINE__); \
+    } while(0)
+
+#define T2_CURL_ERRROR(rc) \
+    do{ \
+        T2Warning("Error in using curl_url_set code : %d, %s Line No : %d\n", \
+                      (int)(rc), curl_url_strerror((rc)), __LINE__); \
+    } while(0)
+
+#else // curl_url_strerror is not defined use direct error code
+#define T2_CURL_APPENDREQUEST_ERROR(rc) \
+    do { \
+        if ((rc) != CURLUE_OK) \
+            T2Warning("T2: Curl Error in using curl_url_set code : %d Line No : %d\n", \
+                      (int)(rc), __LINE__); \
+    } while(0)
+
+#define T2_CURL_ERRROR(rc) \
+    do{ \
+        T2Warning("T2: Curl Error in using curl_url_set code : %d, Line No : %d\n", \
+                      (int)(rc), __LINE__); \
+    } while(0)
+#endif
+
 T2ERROR ReportProfiles_deleteProfileXConf(ProfileXConf *profile);
 
 T2ERROR ReportProfiles_setProfileXConf(ProfileXConf *profile);
@@ -291,10 +321,7 @@ T2ERROR appendRequestParams(CURLU *uri)
         memset(tempBuf, 0, MAX_URL_ARG_LEN);
         snprintf(tempBuf, MAX_URL_ARG_LEN, "estbMacAddress=%s", paramVal);
         rc = curl_url_set(uri, CURLUPART_QUERY, tempBuf, CURLU_URLENCODE | CURLU_APPENDQUERY);
-        if(rc != CURLUE_OK)
-        {
-            T2Warning("Error in using curl_url_set code : %d, %s Line No : %d\n", (int)rc, curl_url_strerror(rc), __LINE__);
-        }
+        T2_CURL_APPENDREQUEST_ERROR(rc);
         free(paramVal);
         paramVal = NULL;
     }
@@ -309,10 +336,7 @@ T2ERROR appendRequestParams(CURLU *uri)
         memset(tempBuf, 0, MAX_URL_ARG_LEN);
         snprintf(tempBuf, MAX_URL_ARG_LEN, "firmwareVersion=%s", paramVal);
         rc = curl_url_set(uri, CURLUPART_QUERY, tempBuf, CURLU_URLENCODE | CURLU_APPENDQUERY);
-        if(rc != CURLUE_OK)
-        {
-            T2Warning("Error in using curl_url_set code : %d, %s Line No : %d\n", (int)rc, curl_url_strerror(rc), __LINE__);
-        }
+        T2_CURL_APPENDREQUEST_ERROR(rc);
         free(paramVal);
         paramVal = NULL;
     }
@@ -327,10 +351,7 @@ T2ERROR appendRequestParams(CURLU *uri)
         memset(tempBuf, 0, MAX_URL_ARG_LEN);
         snprintf(tempBuf, MAX_URL_ARG_LEN, "model=%s", paramVal);
         rc = curl_url_set(uri, CURLUPART_QUERY, tempBuf, CURLU_URLENCODE | CURLU_APPENDQUERY);
-        if(rc != CURLUE_OK)
-        {
-            T2Warning("Error in using curl_url_set code : %d, %s Line No : %d\n", (int)rc, curl_url_strerror(rc), __LINE__);
-        }
+        T2_CURL_APPENDREQUEST_ERROR(rc);
         free(paramVal);
         paramVal = NULL;
     }
@@ -345,10 +366,7 @@ T2ERROR appendRequestParams(CURLU *uri)
         memset(tempBuf, 0, MAX_URL_ARG_LEN);
         snprintf(tempBuf, MAX_URL_ARG_LEN, "manufacturer=%s", paramVal);
         rc = curl_url_set(uri, CURLUPART_QUERY, tempBuf, CURLU_URLENCODE | CURLU_APPENDQUERY);
-        if(rc != CURLUE_OK)
-        {
-            T2Warning("Error in using curl_url_set code : %d, %s Line No : %d\n", (int)rc, curl_url_strerror(rc), __LINE__);
-        }
+        T2_CURL_APPENDREQUEST_ERROR(rc);
         free(paramVal);
         paramVal = NULL;
     }
@@ -366,10 +384,7 @@ T2ERROR appendRequestParams(CURLU *uri)
             memset(tempBuf, 0, MAX_URL_ARG_LEN);
             snprintf(tempBuf, MAX_URL_ARG_LEN, "osClass=%s", paramVal);
             rc = curl_url_set(uri, CURLUPART_QUERY, tempBuf, CURLU_URLENCODE | CURLU_APPENDQUERY);
-            if(rc != CURLUE_OK)
-            {
-                T2Warning("Error in using curl_url_set code : %d, %s Line No : %d\n", (int)rc, curl_url_strerror(rc), __LINE__);
-            }
+            T2_CURL_APPENDREQUEST_ERROR(rc);
             free(paramVal);
             paramVal = NULL;
         }
@@ -384,11 +399,7 @@ T2ERROR appendRequestParams(CURLU *uri)
             memset(tempBuf, 0, MAX_URL_ARG_LEN);
             snprintf(tempBuf, MAX_URL_ARG_LEN, "partnerId=%s", paramVal);
             rc = curl_url_set(uri, CURLUPART_QUERY, tempBuf, CURLU_URLENCODE | CURLU_APPENDQUERY);
-            if(rc != CURLUE_OK)
-            {
-                T2Warning("Error in using curl_url_set code : %d, %s Line No : %d\n", (int)rc, curl_url_strerror(rc), __LINE__);
-            }
-            free(paramVal);
+            T2_CURL_APPENDREQUEST_ERROR(rc);
             paramVal = NULL;
         }
         else
@@ -404,10 +415,7 @@ T2ERROR appendRequestParams(CURLU *uri)
             memset(tempBuf, 0, MAX_URL_ARG_LEN);
             snprintf(tempBuf, MAX_URL_ARG_LEN, "partnerId=%s", paramVal);
             rc = curl_url_set(uri, CURLUPART_QUERY, tempBuf, CURLU_URLENCODE | CURLU_APPENDQUERY);
-            if(rc != CURLUE_OK)
-            {
-                T2Warning("Error in using curl_url_set code : %d, %s Line No : %d\n", (int)rc, curl_url_strerror(rc), __LINE__);
-            }
+            T2_CURL_APPENDREQUEST_ERROR(rc);
             free(paramVal);
             paramVal = NULL;
         }
@@ -423,10 +431,7 @@ T2ERROR appendRequestParams(CURLU *uri)
         memset(tempBuf, 0, MAX_URL_ARG_LEN);
         snprintf(tempBuf, MAX_URL_ARG_LEN, "accountId=%s", paramVal);
         rc = curl_url_set(uri, CURLUPART_QUERY, tempBuf, CURLU_URLENCODE | CURLU_APPENDQUERY);
-        if(rc != CURLUE_OK)
-        {
-            T2Warning("Error in using curl_url_set code : %d, %s Line No : %d\n", (int)rc, curl_url_strerror(rc), __LINE__);
-        }
+        T2_CURL_APPENDREQUEST_ERROR(rc);
         free(paramVal);
         paramVal = NULL;
     }
@@ -441,10 +446,7 @@ T2ERROR appendRequestParams(CURLU *uri)
         memset(tempBuf, 0, MAX_URL_ARG_LEN);
         snprintf(tempBuf, MAX_URL_ARG_LEN, "ecmMacAddress=%s", paramVal);
         rc = curl_url_set(uri, CURLUPART_QUERY, tempBuf, CURLU_URLENCODE | CURLU_APPENDQUERY);
-        if(rc != CURLUE_OK)
-        {
-            T2Warning("Error in using curl_url_set code : %d, %s Line No : %d\n", (int)rc, curl_url_strerror(rc), __LINE__);
-        }
+        T2_CURL_APPENDREQUEST_ERROR(rc);
         free(paramVal);
         paramVal = NULL;
     }
@@ -459,10 +461,7 @@ T2ERROR appendRequestParams(CURLU *uri)
         memset(tempBuf, 0, MAX_URL_ARG_LEN);
         snprintf(tempBuf, MAX_URL_ARG_LEN, "env=%s", build_type);
         rc = curl_url_set(uri, CURLUPART_QUERY, tempBuf, CURLU_URLENCODE | CURLU_APPENDQUERY);
-        if(rc != CURLUE_OK)
-        {
-            T2Warning("Error in using curl_url_set code : %d, %s Line No : %d\n", (int)rc, curl_url_strerror(rc), __LINE__);
-        }
+        T2_CURL_APPENDREQUEST_ERROR(rc);
         free(paramVal);
         paramVal = NULL;
         ret = T2ERROR_SUCCESS;
@@ -475,10 +474,7 @@ T2ERROR appendRequestParams(CURLU *uri)
 
     // TODO Check relevance of this existing hardcoded data - can be removed if not used in production
     rc = curl_url_set(uri, CURLUPART_QUERY, "controllerId=2504&channelMapId=2345&vodId=15660&", CURLU_APPENDQUERY);
-    if(rc != CURLUE_OK)
-    {
-        T2Warning("Error in using curl_url_set code : %d, %s Line No : %d\n", (int)rc, curl_url_strerror(rc), __LINE__);
-    }
+    T2_CURL_APPENDREQUEST_ERROR(rc);
 
 #if !defined(ENABLE_RDKB_SUPPORT) && !defined(ENABLE_RDKC_SUPPORT)
     timezone = getTimezone();
@@ -487,10 +483,7 @@ T2ERROR appendRequestParams(CURLU *uri)
         memset(tempBuf, 0, MAX_URL_ARG_LEN);
         snprintf(tempBuf, MAX_URL_ARG_LEN, "timezone=%s", timezone);
         rc = curl_url_set(uri, CURLUPART_QUERY, tempBuf, CURLU_URLENCODE | CURLU_APPENDQUERY);
-        if(rc != CURLUE_OK)
-        {
-            T2Warning("Error in using curl_url_set code : %d, %s Line No : %d\n", (int)rc, curl_url_strerror(rc), __LINE__);
-        }
+        T2_CURL_APPENDREQUEST_ERROR(rc);
         free(timezone);
     }
     else
@@ -501,20 +494,14 @@ T2ERROR appendRequestParams(CURLU *uri)
     }
 #endif
     rc = curl_url_set(uri, CURLUPART_QUERY, "version=2", CURLU_APPENDQUERY);
-    if(rc != CURLUE_OK)
-    {
-        T2Warning("Error in using curl_url_set code : %d, %s Line No : %d\n", (int)rc, curl_url_strerror(rc), __LINE__);
-    }
+    T2_CURL_APPENDREQUEST_ERROR(rc);
 #if defined(PRIVACYMODES_CONTROL)
     if(T2ERROR_SUCCESS == getParameterValue(PRIVACYMODES_RFC, &paramVal))
     {
         memset(tempBuf, 0, MAX_URL_ARG_LEN);
         snprintf(tempBuf, MAX_URL_ARG_LEN, "privacyModes=%s", paramVal);
         rc = curl_url_set(uri, CURLUPART_QUERY, tempBuf, CURLU_URLENCODE | CURLU_APPENDQUERY);
-        if(rc != CURLUE_OK)
-        {
-            T2Warning("Error in using curl_url_set code : %d, %s Line No : %d\n", (int)rc, curl_url_strerror(rc), __LINE__);
-        }
+        T2_CURL_APPENDREQUEST_ERROR(rc);
         free(paramVal);
         paramVal = NULL;
     }
@@ -1038,7 +1025,8 @@ static T2ERROR fetchRemoteReportProfileConfiguration(char **configData)
         rc = curl_url_set(requestURL, CURLUPART_URL, configURL, 0);
         if(rc != CURLUE_OK)
         {
-            T2Error("T2: Curl unable to set config url %s return error : %s with code :%d \n", configURL, curl_url_strerror(rc), (int)rc);
+            T2Error("T2: Curl unable to set config url %s\n",  configURL);
+            T2_CURL_ERRROR(rc);
             curl_url_cleanup(requestURL);
             return ret;
         }
@@ -1185,7 +1173,8 @@ T2ERROR fetchRemoteConfiguration(char *configURL, char **configData)
         rc = curl_url_set(requestURL, CURLUPART_URL, configURL, 0);
         if(rc != CURLUE_OK)
         {
-            T2Error("T2: Curl unable to set config url %s return error : %s with code :%d \n", configURL, curl_url_strerror(rc), (int)rc);
+            T2Error("T2: Curl unable to set config url %s\n", curl_url_strerror(rc));
+            T2_CURL_ERRROR(rc);
             curl_url_cleanup(requestURL);
             return ret;
         }
@@ -1210,7 +1199,7 @@ T2ERROR fetchRemoteConfiguration(char *configURL, char **configData)
             }
             else
             {
-                T2Error("T2 : Curl url_get return error : %s with code :%d \n", curl_url_strerror(rc), (int)rc);
+                T2_CURL_ERRROR(rc);
             }
             curl_free(urlWithParams);
         }

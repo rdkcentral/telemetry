@@ -900,12 +900,12 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
                     close(rd);
                 }
             }
-            T2Info("rd size is %jd", (intmax_t)rb.st_size);
+            //T2Info("rd size is %jd", (intmax_t)rb.st_size);
             if(rb.st_size > 0)
             {
                 size_main = sb.st_size;
                 size_rotated = rb.st_size - seek_value;
-                T2Info("main = %jd, rotated = %jd, seek_value = %jd\n", (intmax_t)size_main, (intmax_t)size_rotated, (intmax_t)seek_value);
+                //T2Debug("main = %jd, rotated = %jd, seek_value = %jd\n", (intmax_t)size_main, (intmax_t)size_rotated, (intmax_t)seek_value);
                 addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
                 addrrf = mmap(NULL, size_rotated, PROT_READ, MAP_PRIVATE, rd, offset_in_page_size_multiple);
                 bytes_ignored_rotated = bytes_ignored;
@@ -953,11 +953,6 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
         return NULL;
     }
     memset(fileDescriptor, 0, sizeof(FileDescriptor));
-    // addr needs to ignore the first bytes_ignored bytes
-    /* fileDescriptor->baseAddr = (void *)addr;
-     addr += bytes_ignored;
-     fileDescriptor->addr = addr;
-     */
     fileDescriptor->baseAddr = (void *)addrcf;
     addrcf += bytes_ignored_main;
     if(addrrf != NULL)
@@ -976,7 +971,6 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
     fileDescriptor->cf_file_size = sb.st_size;
     if(fileDescriptor->rfaddr != NULL)
     {
-        T2Info("bytes ignored = %u and %zu\n", bytes_ignored_rotated, rb.st_size);
         fileDescriptor->rf_file_size = size_rotated ;
     }
     else

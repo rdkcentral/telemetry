@@ -900,11 +900,10 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
                     close(rd);
                 }
             }
-            T2Info("rd size is %jd", (intmax_t)rb.st_size);
+            //T2Info("rd size is %jd", (intmax_t)rb.st_size);
             if(rb.st_size > 0)
             {
                 size_rotated = rb.st_size - seek_value;
-                T2Debug("main = %jd, rotated = %jd, seek_value = %jd\n", (intmax_t)size_main, (intmax_t)size_rotated, (intmax_t)seek_value);
                 addrcf = mmap(NULL, size_main, PROT_READ, MAP_PRIVATE, fd, 0);
                 addrrf = mmap(NULL, size_rotated, PROT_READ, MAP_PRIVATE, rd, offset_in_page_size_multiple);
                 bytes_ignored_rotated = bytes_ignored;

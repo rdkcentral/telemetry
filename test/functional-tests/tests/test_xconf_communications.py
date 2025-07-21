@@ -98,21 +98,46 @@ def test_change_profile():
     sleep(10)
     assert os.path.exists(XCONF_PERSISTANT_FILE)
     assert "NEW TEST PROFILE" in grep_T2logs("NEW TEST PROFILE")
-    
+
 @pytest.mark.run(order=6)
+def test_verify_urlencoding():
+    CHECK_MSG = "T2: Curl Using XCONF URI :"
+    response = grep_T2logs(CHECK_MSG)
+    assert CHECK_MSG in response
+    command = ["grep -inra 'doHttpGet with url' /opt/logs/telemetry2_0.txt.0 | tail -n 1 | awk -F' ' '{print $NF}' "]
+    url_string = run_shell_command(command)
+    
+    assert True == is_url_encoded_correctly(url_string)
+
+@pytest.mark.run(order=7)
 def test_verify_schedule():
+    #Trigger an event to be validated in next step
+    command = ["telemetry2_0_client SYS_EVENT_TEST 1"]
+    run_shell_command(command)
+    #Add Grep Logs to validate in next Step
+    os.makedirs('/opt/logs', exist_ok=True)
+    command = ["echo 'This is Test Log' > /opt/logs/test.log"]
+    run_shell_command(command)
     sleep(60)
     ERROR_MSG = "Waiting for 60 sec for next TIMEOUT for profile as reporting interval is taken - NEW TEST PROFILE"
     assert ERROR_MSG in grep_T2logs(ERROR_MSG)
 
-@pytest.mark.run(order=7)
+@pytest.mark.run(order=8)
+def test_verify_markers():
+    CHECK_MSG1 = "SYS_GREP_TEST"
+    CHECK_MSG2 = "SYS_EVENT_TEST"
+    report = grep_T2logs("cJSON Report")
+    assert CHECK_MSG1 in report
+    assert CHECK_MSG2 in report
+
+@pytest.mark.run(order=9)
 def test_verify_report():
     ERROR_MSG1 = "CollectAndReportXconf ++in profileName : NEW TEST PROFILE"
     ERROR_MSG2 = "cJSON Report ="
     assert ERROR_MSG1 in grep_T2logs(ERROR_MSG1)
     assert ERROR_MSG2 in grep_T2logs(ERROR_MSG2)
 
-@pytest.mark.run(order=8)
+@pytest.mark.run(order=10)
 def test_log_upload():
     LOG_MSG1 = "CollectAndReportXconf ++in profileName : NEW TEST PROFILE"
     LOG_MSG2 = "cJSON Report ="
@@ -122,7 +147,7 @@ def test_log_upload():
     assert LOG_MSG1 in grep_T2logs(LOG_MSG1)
     assert LOG_MSG2 in grep_T2logs(LOG_MSG2)
 
-@pytest.mark.run(order=9)
+@pytest.mark.run(order=11)
 def test_log_upload_on_demand():
     LOG_MSG1 = "CollectAndReportXconf ++in profileName : NEW TEST PROFILE"
     LOG_MSG2 = "cJSON Report ="
@@ -132,11 +157,11 @@ def test_log_upload_on_demand():
     assert LOG_MSG1 in grep_T2logs(LOG_MSG1)
     assert LOG_MSG2 in grep_T2logs(LOG_MSG2)
 
-@pytest.mark.run(order=10)
+@pytest.mark.run(order=12)
 def test_verify_persistant_file():
     assert os.path.exists(XCONF_PERSISTANT_FILE)
 
-@pytest.mark.run(order=11)
+@pytest.mark.run(order=13)
 def test_xconf_retry_for_connection_errors():
     clear_T2logs()
     rbus_set_data("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.ConfigURL", "string", "https://mockxconf:80/loguploader1/getT2DCMSettings")

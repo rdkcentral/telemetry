@@ -90,8 +90,9 @@ static rdkcertselector_h xcCertSelector = NULL;
 static int retryCount = 0;
 #endif
 
-
-#if LIBCURL_VERSION_NUM >= 0x075000 /* 7.80.0 */
+/* commenting this to code, we have limitations in using curl_url_strerror API.
+We have enough information from the error code to debug.
+#if LIBCURL_VERSION_NUM >= 0x075000  // 7.80.0
 #define T2_CURL_APPENDREQUEST_ERROR(rc) \
     do { \
         if ((rc) != CURLUE_OK) \
@@ -106,6 +107,8 @@ static int retryCount = 0;
     } while(0)
 
 #else // curl_url_strerror is not defined use direct error code
+*/
+
 #define T2_CURL_APPENDREQUEST_ERROR(rc) \
     do { \
         if ((rc) != CURLUE_OK) \
@@ -118,7 +121,6 @@ static int retryCount = 0;
         T2Warning("T2: Curl Error in using curl_url_set code : %d, Line No : %d\n", \
                       (int)(rc), __LINE__); \
     } while(0)
-#endif
 
 T2ERROR ReportProfiles_deleteProfileXConf(ProfileXConf *profile);
 

@@ -1175,7 +1175,7 @@ T2ERROR fetchRemoteConfiguration(char *configURL, char **configData)
         rc = curl_url_set(requestURL, CURLUPART_URL, configURL, 0);
         if(rc != CURLUE_OK)
         {
-            T2Error("T2: Curl unable to set config url %s\n", curl_url_strerror(rc));
+            T2Error("T2: Curl unable to set config url %s\n", configURL);
             T2_CURL_ERRROR(rc);
             curl_url_cleanup(requestURL);
             return ret;

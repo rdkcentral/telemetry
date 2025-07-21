@@ -31,7 +31,7 @@ bin_PROGRAMS = t2parser_gtest.bin
 
 t2parser_gtest_bin_CPPFLAGS = -I$(PKG_CONFIG_SYSROOT_DIR)$(includedir)/gtest -I$(PKG_CONFIG_SYSROOT_DIR)$(includedir)/glib-2.0  -I$(PKG_CONFIG_SYSROOT_DIR)/usr/local/lib -I${top_srcdir}/source/include -I${top_srcdir}/source/xconf-client -I${top_srcdir}/source/dcautil -I${top_srcdir}/source/t2parser -I${top_srcdir}/source/bulkdata -I${top_srcdir}/source/utils -I${top_srcdir}/source/ccspinterface -I${top_srcdir}/source -I${top_srcdir}/include -I${top_srcdir}/source/reportgen -I$(PKG_CONFIG_SYSROOT_DIR)/usr/lib -I$(PKG_CONFIG_SYSROOT_DIR)/usr/include -I$(PKG_CONFIG_SYSROOT_DIR)/usr/include/cjson -I$(PKG_CONFIG_SYSROOT_DIR)/usr/include/gmock -I$(PKG_CONFIG_SYSROOT_DIR)/usr/src/googletest/googlemock/include -I$(PKG_CONFIG_SYSROOT_DIR)/usr/lib/glib-2.0/include  -I$(PKG_CONFIG_SYSROOT_DIR)/usr/include/glib-2.0 -I${RDK_PROJECT_ROOT_PATH}/$(GLIB_CFLAGS) -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/glib-2.0 -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/glib-2.0/include
 
-t2parser_gtest_bin_SOURCES = gtest_main.cpp t2parserMock.cpp  ../mocks/rdklogMock.cpp ../mocks/rbusMock.cpp t2parserTest.cpp ../../utils/vector.c ../../utils/t2common.c ../../utils/t2log_wrapper.c ../../t2parser/t2parserxconf.c ../../t2parser/t2parser.c
+t2parser_gtest_bin_SOURCES = gtest_main.cpp t2parserMock.cpp  ../mocks/rdklogMock.cpp ../mocks/rbusMock.cpp t2parserTest.cpp ../../utils/vector.c ../../utils/t2common.c ../../utils/t2log_wrapper.c ../../t2parser/t2parserxconf.c ../../t2parser/t2parser.c ../../dcautil/legacyutils.c ../../utils/t2collection.c
 
 t2parser_gtest_bin_LDFLAGS = -lgtest -lgcov -L/src/googletest/googlemock/lib -L/usr/src/googletest/googlemock/lib/.libs -lgmock -lcjson -lcurl -lmsgpackc -L/usr/include/glib-2.0 -lglib-2.0
 

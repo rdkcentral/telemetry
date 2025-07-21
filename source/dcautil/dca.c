@@ -946,7 +946,7 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
         T2Error("Error in memory mapping file %d: %s\n", fd, strerror(errno));
         return NULL;
     }
-    fileDescriptor = malloc(sizeof(FileDescriptor));
+    fileDescriptor = (FileDescriptor*)malloc(sizeof(FileDescriptor));
     if (!fileDescriptor)
     {
         T2Error("Error allocating memory for FileDescriptor\n");

@@ -244,6 +244,7 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
             {
                 param->regexParam = strdup(regex);
             }
+            param->skipFreq = 0; // adding this parameter to make this work in sync with single profile tr181 parameter.
             Vector_PushBack(profile->paramList, param);
         }
     }

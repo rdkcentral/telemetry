@@ -220,7 +220,7 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
     profile->t2HTTPDest->URL = strdup(juploadUrl->valuestring);
     profile->encodingType = strdup("JSON");
 
-    profile->GrepSeekProfile = createGrepSeekProfile(0);
+    profile->grepSeekProfile = createGrepSeekProfile(0);
 
     Vector_Create(&profile->paramList);
     Vector_Create(&profile->eMarkerList);

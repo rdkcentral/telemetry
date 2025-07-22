@@ -141,9 +141,9 @@ static void freeProfileXConf()
             free(singleProfile->cachedReportList);
             singleProfile->cachedReportList = NULL;
         }
-        if(singleProfile->GrepSeekProfile)
+        if(singleProfile->grepSeekProfile)
         {
-            freeGrepSeekProfile(singleProfile->GrepSeekProfile);
+            freeGrepSeekProfile(singleProfile->grepSeekProfile);
         }
         free(singleProfile);
         singleProfile = NULL;
@@ -211,7 +211,7 @@ static void* CollectAndReportXconf(void* data)
     }
     pthread_cond_init(&reuseThread, NULL);
     reportThreadExits = true;
-    //GrepSeekProfile *GPF = profile->GrepSeekProfile;
+    //GrepSeekProfile *GPF = profile->grepSeekProfile;
     do
     {
         T2Info("%s while Loop -- START \n", __FUNCTION__);
@@ -223,7 +223,7 @@ static void* CollectAndReportXconf(void* data)
         char* customLogPath = NULL;
         bool checkRotated = true;
 
-        int count = profile->GrepSeekProfile->execCounter;
+        int count = profile->grepSeekProfile->execCounter;
         T2Debug("CollectAndReportXconf count = %d\n", count);
 
         struct timespec startTime;
@@ -294,7 +294,7 @@ static void* CollectAndReportXconf(void* data)
             }
             if(profile->gMarkerList != NULL && Vector_Size(profile->gMarkerList) > 0)
             {
-                getGrepResults(&(profile->GrepSeekProfile), profile->gMarkerList, &grepResultList, profile->bClearSeekMap, checkRotated, customLogPath); // Passing 5th argument as true to check rotated logs only in case of single profile
+                getGrepResults(&(profile->grepSeekProfile), profile->gMarkerList, &grepResultList, profile->bClearSeekMap, checkRotated, customLogPath); // Passing 5th argument as true to check rotated logs only in case of single profile
                 T2Info("Grep complete for %lu markers \n", (unsigned long)Vector_Size(profile->gMarkerList));
                 encodeGrepResultInJSON(valArray, grepResultList);
                 Vector_Destroy(grepResultList, freeGResult);
@@ -381,7 +381,7 @@ static void* CollectAndReportXconf(void* data)
 #ifdef PERSIST_LOG_MON_REF
                 if(profile->saveSeekConfig)
                 {
-                    saveSeekConfigtoFile(profile->name, profile->GrepSeekProfile);
+                    saveSeekConfigtoFile(profile->name, profile->grepSeekProfile);
                 }
                 if(profile->checkPreviousSeek)
                 {
@@ -438,7 +438,7 @@ static void* CollectAndReportXconf(void* data)
         }
 
 # ifdef PERSIST_LOG_MON_REF
-        if(T2ERROR_SUCCESS == saveSeekConfigtoFile(profile->name, profile->GrepSeekProfile))
+        if(T2ERROR_SUCCESS == saveSeekConfigtoFile(profile->name, profile->grepSeekProfile))
         {
             T2Info("Successfully saved grep config to file for profile: %s\n", profile->name);
         }
@@ -530,7 +530,7 @@ T2ERROR ProfileXConf_init(bool checkPreviousSeek)
             if(T2ERROR_SUCCESS == processConfigurationXConf(config->configData, &profile))
             {
 #ifdef PERSIST_LOG_MON_REF
-                if(checkPreviousSeek && profile->GrepSeekProfile && loadSavedSeekConfig(profile->name, profile->GrepSeekProfile) == T2ERROR_SUCCESS && firstBootStatus())
+                if(checkPreviousSeek && profile->grepSeekProfile && loadSavedSeekConfig(profile->name, profile->grepSeekProfile) == T2ERROR_SUCCESS && firstBootStatus())
                 {
                     profile->checkPreviousSeek = true;
                 }
@@ -690,7 +690,7 @@ T2ERROR ProfileXConf_delete(ProfileXConf *profile)
         T2Error("profile list is not initialized yet, ignoring\n");
         return T2ERROR_FAILURE;
     }
-    T2Info("calling ProfileXConf_isNameEqual function form %s and line %d\n", __FUNCTION__, __LINE__);
+    T2Debug("calling ProfileXConf_isNameEqual function form %s and line %d\n", __FUNCTION__, __LINE__);
     bool isNameEqual = ProfileXConf_isNameEqual(profile->name);
 
     pthread_mutex_lock(&plMutex);
@@ -823,10 +823,10 @@ T2ERROR ProfileXConf_delete(ProfileXConf *profile)
     {
         if(isNameEqual)
         {
-            freeGrepSeekProfile(profile->GrepSeekProfile);
-            profile->GrepSeekProfile = singleProfile->GrepSeekProfile;
-            profile->GrepSeekProfile->execCounter = 0;
-            singleProfile->GrepSeekProfile = NULL;
+            freeGrepSeekProfile(profile->grepSeekProfile);
+            profile->grepSeekProfile = singleProfile->grepSeekProfile;
+            profile->grepSeekProfile->execCounter = 0;
+            singleProfile->grepSeekProfile = NULL;
         }
 #ifdef PERSIST_LOG_MON_REF
         else

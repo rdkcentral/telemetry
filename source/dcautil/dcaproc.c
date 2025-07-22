@@ -99,8 +99,12 @@ int getProcUsage(char *processName, Vector* grepResultList, bool trim, char* reg
         memcpy(pInfo.processName, processName, strlen(processName) + 1);
 
         T2Debug("Command for collecting process info : \n pidof %s", processName);
+#ifdef LIBSYSWRAPPER_BUILD
+        cmdPid = v_secure_popen("r", "pidof %s", processName);
+#else
         snprintf(pidofCommand, sizeof(pidofCommand), "pidof %s", processName);
         cmdPid = popen(pidofCommand, "r");
+#endif
         if(!cmdPid)
         {
             T2Debug("Failed to execute %s", pidofCommand);
@@ -109,7 +113,11 @@ int getProcUsage(char *processName, Vector* grepResultList, bool trim, char* reg
         pid = (int *) malloc(sizeof(pid_t));
         if(NULL == pid)
         {
+#ifdef LIBSYSWRAPPER_BUILD
+            pclose_ret = v_secure_pclose(cmdPid);
+#else
             pclose_ret = pclose(cmdPid);
+#endif
             if(pclose_ret != 0)
             {
                 T2Debug("failed in closing pipe! ret %d\n", pclose_ret);
@@ -131,7 +139,11 @@ int getProcUsage(char *processName, Vector* grepResultList, bool trim, char* reg
                 {
                     free(pid);
                 }
+#ifdef LIBSYSWRAPPER_BUILD
+                pclose_ret = v_secure_pclose(cmdPid);
+#else
                 pclose_ret = pclose(cmdPid);
+#endif
                 if(pclose_ret != 0)
                 {
                     T2Debug("failed in closing pipe! ret %d\n", pclose_ret);
@@ -142,7 +154,11 @@ int getProcUsage(char *processName, Vector* grepResultList, bool trim, char* reg
         }
 
 
+#ifdef LIBSYSWRAPPER_BUILD
+        pclose_ret = v_secure_pclose(cmdPid);
+#else
         pclose_ret = pclose(cmdPid);
+#endif
         if(pclose_ret != 0)
         {
             T2Debug("failed in closing pipe! ret %d\n", pclose_ret);
@@ -155,9 +171,13 @@ int getProcUsage(char *processName, Vector* grepResultList, bool trim, char* reg
             // pidof was empty, see if we can grab the pid via ps
             snprintf(psCommand, sizeof(psCommand), "busybox ps | grep %s | grep -v grep | awk '{ print $1 }' | tail -n1", processName);
 
+#ifdef LIBSYSWRAPPER_BUILD
+            if (!(cmdPid = v_secure_popen("r", "busybox ps | grep %s | grep -v grep | awk '{ print $1 }' | tail -n1", processName)))
+#else
             if (!(cmdPid = popen(psCommand, "r")))
+#endif
             {
-                free(pid);
+                free(pid);//CID 172839:Resource leak (RESOURCE_LEAK)
                 return 0;
             }
 
@@ -174,13 +194,21 @@ int getProcUsage(char *processName, Vector* grepResultList, bool trim, char* reg
                 if ( NULL == temp )
                 {
                     free(pid);
+#ifdef LIBSYSWRAPPER_BUILD
+                    v_secure_pclose(cmdPid);
+#else
                     pclose(cmdPid);
+#endif
                     return 0;
                 }
                 pid = temp;
             }
 
+#ifdef LIBSYSWRAPPER_BUILD
+            v_secure_pclose(cmdPid);
+#else
             pclose(cmdPid);
+#endif
 
             // If pidof command output is empty
             if ((*pid) <= 0)
@@ -466,6 +494,10 @@ char* saveTopOutput(char* profilename)
     else
     {
         T2Error("return value of system command to create %s is not successful with code %d \n", filename, ret);
+        if(retfile != NULL)
+        {
+            free(retfile);
+        }
         return NULL;
     }
     T2Debug("%s --out \n", __FUNCTION__);

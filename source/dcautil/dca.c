@@ -177,10 +177,7 @@ int processTopPattern(char* profileName,  Vector* topMarkerList, Vector* out_gre
         }
         T2Debug("topMarkerList[%lu] markerName = %s, logFile = %s, searchString = %s \n", (unsigned long)var, grepMarkerObj->markerName, grepMarkerObj->logFile, grepMarkerObj->searchString);
     }
-    // TODO Generate the top output file - should be profile specific and thread safe
 
-    // If the header contains "Load_Average", it calls getLoadAvg() to retrieve load average data.
-    // If the header does not contain "Load_Average", it checks if the pattern field is present in the top out put snapshot.
     for (; var < vCount; ++var) // Loop of marker list starts here
     {
         GrepMarker* grepMarkerObj = (GrepMarker*) Vector_At(topMarkerList, var);
@@ -377,25 +374,6 @@ static inline void formatCount(char* buffer, size_t size, int count)
     }
     snprintf(buffer, size, "%d", count);
 }
-/*
-static int getCountPatternMatch(const char* buffer, const char* pattern) {
-
-    if (!buffer || !pattern) {
-        return -1; // Invalid arguments
-    }
-
-   // Search for number of matches of specific string in the file
-   // const char *search_str = "Induced log entries from test";
-   char *found = strstr(buffer, pattern);
-   // Capture the last line that finds a match
-   int count = 0;
-   while (found) {
-       count++;
-       found = strstr(found + 1, pattern);
-    }
-    return count;
-
-}*/
 
 static int getCountPatternMatch(FileDescriptor* fileDescriptor, const char* pattern)
 {
@@ -456,49 +434,6 @@ static int getCountPatternMatch(FileDescriptor* fileDescriptor, const char* patt
     }
     return count;
 }
-
-/*
-
-static char* getAbsolutePatternMatch(const char* buffer, const char* pattern) {
-
-    if (!buffer || !pattern) {
-        return NULL; // Invalid arguments
-    }
-
-   char *found = strstr(buffer, pattern);
-   char *last_found = NULL ;
-   // Capture the last line that finds a match
-   while (found)
-   {
-       last_found = found;
-       found = strstr(found + 1, pattern);
-  }
-
-    if (last_found)
-    {
-        // Exclude the pattern from the results
-        last_found = last_found + strlen(pattern);
-        char *end_of_line = strchr(last_found, '\n');
-        if (end_of_line)
-        {
-            size_t length = end_of_line - last_found;
-            char *result = (char*)malloc(length + 1);
-            if (result)
-            {
-                strncpy(result, last_found, length);
-                result[length] = '\0';
-                return result;
-            }
-        }
-    } else {
-        T2Error("Pattern not found in the buffer\n");
-        last_found = NULL;
-    }
-
-
-   return last_found;
-}
- */
 
 static char* getAbsolutePatternMatch(FileDescriptor* fileDescriptor, const char* pattern)
 {
@@ -785,52 +720,6 @@ static void freeFileDescriptor(FileDescriptor* fileDescriptor)
         free(fileDescriptor);
     }
 }
-/*
-static size_t align_up(size_t x, size_t page_size)
-{
-    return ((x + page_size - 1) / page_size) * page_size;
-}
-
-static void *map_files_rotated(int fd_main, int fd_rotated, size_t size_main, size_t size_rotated, off_t rotated_offset)
-{
-    size_t total_size = size_main + size_rotated;
-    T2Info("Before conversion fd_main = %d, fd_rotated = %d, size_main = %zu, size_rotated = %zu, rotated_offset = %ld\n",
-           fd_main, fd_rotated, size_main, size_rotated, rotated_offset);
-    size_main = align_up(size_main, PAGESIZE);
-    size_rotated = align_up(size_rotated, PAGESIZE);
-    total_size = align_up(total_size, PAGESIZE);
-
-    T2Info("fd_main = %d, fd_rotated = %d, size_main = %zu, size_rotated = %zu, rotated_offset = %ld\n",
-           fd_main, fd_rotated, size_main, size_rotated, rotated_offset);
-    void *base_addr = mmap(NULL, total_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    if (base_addr == MAP_FAILED)
-    {
-        T2Error("Error allocating memory region");
-        return NULL;
-    }
-
-    // Map the first file into the allocated region
-    void *addr1 = mmap(base_addr, size_rotated, PROT_READ, MAP_PRIVATE | MAP_FIXED, fd_rotated, rotated_offset);
-    if (addr1 == MAP_FAILED)
-    {
-        T2Error("Error mapping rotated file");
-        munmap(base_addr, total_size); // Clean up
-        return NULL;
-    }
-
-    // Map the second file into the allocated region, right after the first file
-    void *addr2 = mmap(base_addr + size_rotated, size_main, PROT_READ, MAP_PRIVATE | MAP_FIXED, fd_main, 0);
-    if (addr2 == MAP_FAILED)
-    {
-        T2Error("Error mapping file main: %s\n", strerror(errno));
-        munmap(base_addr, total_size); // Clean up
-        return NULL;
-    }
-    T2Info("loaded the files in address map\n");
-    close(fd_rotated);
-    return base_addr;
-}
-*/
 
 static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t seek_value, const char* logPath, const char* logFile, bool check_rotated )
 {
@@ -907,9 +796,13 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
                 addrcf = mmap(NULL, size_main, PROT_READ, MAP_PRIVATE, fd, 0);
                 addrrf = mmap(NULL, size_rotated, PROT_READ, MAP_PRIVATE, rd, offset_in_page_size_multiple);
                 bytes_ignored_rotated = bytes_ignored;
-                close(rd);
-
+                if(rd != -1)
+                {
+                    close(rd);
+                }
+                rd = -1;
             }
+
 
             if(rb.st_size == 0 && fs == -1)
             {

@@ -56,7 +56,6 @@ getGrepResults (GrepSeekProfile **GSP, Vector *markerList, Vector **grepResultLi
         int count = (*GSP)->execCounter;
         freeGrepSeekProfile(*GSP);
         *GSP = createGrepSeekProfile(count);
-        printf("address of logFileSeekMap: %p\n", (*GSP)->logFileSeekMap);
     }
 
     T2Debug("%s --out\n", __FUNCTION__);

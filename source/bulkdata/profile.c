@@ -327,7 +327,7 @@ static void* CollectAndReport(void* data)
     pthread_cond_init(&profile->reuseThread, NULL);
     pthread_mutex_lock(&profile->reuseThreadMutex);
     profile->threadExists = true;
-    //GrepSeekProfile *GPF = profile->GrepSeekProfile;
+    //GrepSeekProfile *GPF = profile->GrepSeekProfle;
     do
     {
         T2Info("%s while Loop -- START \n", __FUNCTION__);
@@ -336,7 +336,7 @@ static void* CollectAndReport(void* data)
         pthread_cond_signal(&profile->reportInProgressCond);
         pthread_mutex_unlock(&profile->reportInProgressMutex);
 
-        int count = profile->GrepSeekProfile->execCounter;
+        int count = profile->grepSeekProfile->execCounter;
 
         Vector *profileParamVals = NULL;
         Vector *grepResultList = NULL;
@@ -469,7 +469,7 @@ static void* CollectAndReport(void* data)
                 }
                 if(profile->gMarkerList != NULL && Vector_Size(profile->gMarkerList) > 0)
                 {
-                    getGrepResults(&(profile->GrepSeekProfile), profile->gMarkerList, &grepResultList, profile->bClearSeekMap, false, customLogPath); // Passing 5th argument as false so that it doesn't check rotated logs for the first reporting after bootup for multiprofiles.
+                    getGrepResults(&(profile->grepSeekProfile), profile->gMarkerList, &grepResultList, profile->bClearSeekMap, false, customLogPath); // Passing 5th argument as false so that it doesn't check rotated logs for the first reporting after bootup for multiprofiles.
                     encodeGrepResultInJSON(valArray, grepResultList);
                     Vector_Destroy(grepResultList, freeGResult);
                 }
@@ -510,7 +510,7 @@ static void* CollectAndReport(void* data)
 #ifdef PERSIST_LOG_MON_REF
                 if(profile->saveSeekConfig)
                 {
-                    saveSeekConfigtoFile(profile->name, profile->GrepSeekProfile);
+                    saveSeekConfigtoFile(profile->name, profile->grepSeekProfile);
                 }
                 if(profile->checkPreviousSeek)
                 {
@@ -1194,9 +1194,9 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
             pthread_join(tempProfile->reportThread, NULL);
             tempProfile->threadExists = false;
         }
-        if(tempProfile->GrepSeekProfile)
+        if(tempProfile->grepSeekProfile)
         {
-            freeGrepSeekProfile(tempProfile->GrepSeekProfile);
+            freeGrepSeekProfile(tempProfile->grepSeekProfile);
         }
         pthread_mutex_unlock(&plMutex);
         if(delFromDisk == true)
@@ -1299,9 +1299,9 @@ T2ERROR deleteProfile(const char *profileName)
         rbusT2ConsumerUnReg(profile->triggerConditionList);
     }
 
-    if(profile->GrepSeekProfile)
+    if(profile->grepSeekProfile)
     {
-        freeGrepSeekProfile(profile->GrepSeekProfile);
+        freeGrepSeekProfile(profile->grepSeekProfile);
     }
 
     pthread_mutex_destroy(&profile->reportInProgressMutex);
@@ -1418,7 +1418,7 @@ static void loadReportProfilesFromDisk(bool checkPreviousSeek)
             if(T2ERROR_SUCCESS == addProfile(profile))
             {
 #ifdef PERSIST_LOG_MON_REF
-                if(checkPreviousSeek && profile->generateNow == false && profile->triggerConditionList == NULL && profile->GrepSeekProfile && loadSavedSeekConfig(profile->name, profile->GrepSeekProfile) == T2ERROR_SUCCESS && firstBootStatus() )
+                if(checkPreviousSeek && profile->generateNow == false && profile->triggerConditionList == NULL && profile->grepSeekProfile && loadSavedSeekConfig(profile->name, profile->grepSeekProfile) == T2ERROR_SUCCESS && firstBootStatus() )
                 {
                     profile->checkPreviousSeek = true;
                 }

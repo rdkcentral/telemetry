@@ -239,7 +239,7 @@ void ReportProfiles_ActivationTimeoutCb(char* profileName)
     T2Info("%s ++in\n", __FUNCTION__);
 
     bool isDeleteRequired = false;
-    T2Info("calling ProfileXConf_isNameEqual function form %s and line %d\n", __FUNCTION__, __LINE__);
+    T2Debug("calling ProfileXConf_isNameEqual function form %s and line %d\n", __FUNCTION__, __LINE__);
 
     if(ProfileXConf_isNameEqual(profileName))
     {
@@ -284,7 +284,7 @@ void ReportProfiles_ActivationTimeoutCb(char* profileName)
 T2ERROR ReportProfiles_storeMarkerEvent(char *profileName, T2Event *eventInfo)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
-    T2Info("calling ProfileXConf_isNameEqual function form %s and line %d\n", __FUNCTION__, __LINE__);
+    T2Debug("calling ProfileXConf_isNameEqual function form %s and line %d\n", __FUNCTION__, __LINE__);
 
     if(ProfileXConf_isNameEqual(profileName))
     {
@@ -678,7 +678,7 @@ void generateDcaReport(bool isDelayed, bool isOnDemand)
 #ifdef PERSIST_LOG_MON_REF
             sleep(180); // increase the delay if we are reporting previous logs
 #else
-            sleep(20); // 2 minutes delay
+            sleep(120); // 2 minutes delay
 #endif
         }
         else
@@ -1388,7 +1388,7 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
             {
                 ReportProfiles_addReportProfile(profile);
 #ifdef PERSIST_LOG_MON_REF
-                if(checkPreviousSeek && profile->generateNow == false && profile->triggerConditionList == NULL && profile->GrepSeekProfile && loadSavedSeekConfig(profile->name, profile->GrepSeekProfile) == T2ERROR_SUCCESS && firstBootStatus() )
+                if(checkPreviousSeek && profile->generateNow == false && profile->triggerConditionList == NULL && profile->grepSeekProfile && loadSavedSeekConfig(profile->name, profile->grepSeekProfile) == T2ERROR_SUCCESS && firstBootStatus() )
                 {
                     T2Info("Previous seek is enabled for profile %s \n", profile->name);
                     profile->checkPreviousSeek = true;

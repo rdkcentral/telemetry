@@ -67,7 +67,7 @@ typedef struct _ProfileXConf
     Vector *cachedReportList;
     cJSON *jsonReportObj;
     pthread_t reportThread;
-    GrepSeekProfile *GrepSeekProfile; // To store GrepConfig
+    GrepSeekProfile *grepSeekProfile; // To store GrepConfig
 } ProfileXConf;
 
 T2ERROR ProfileXConf_init(bool checkPreviousSeek);

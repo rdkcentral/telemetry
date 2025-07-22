@@ -92,7 +92,7 @@ typedef struct _Profile
     pthread_cond_t reuseThread;
     pthread_mutex_t reuseThreadMutex;
     bool threadExists;
-    GrepSeekProfile *GrepSeekProfile; // To store GrepConfig
+    GrepSeekProfile *grepSeekProfile; // To store GrepConfig
 } Profile;
 
 T2ERROR initProfileList(bool checkPreviousSeek);

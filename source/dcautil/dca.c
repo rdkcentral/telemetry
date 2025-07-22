@@ -84,12 +84,16 @@ static const char *strnstr(const char *haystack, const char *needle, size_t len)
 {
     // Handle empty needle case
     if (!*needle)
+    {
         return haystack;
+    }
 
     const size_t needle_len = strlen(needle);
     if (needle_len == 0 || needle_len > len)
+    {
         return NULL;
-        
+    }
+
     // Cache first and last chars for quick rejection
     const unsigned char first = (unsigned char)needle[0];
     const unsigned char last = (unsigned char)needle[needle_len - 1];
@@ -99,13 +103,15 @@ static const char *strnstr(const char *haystack, const char *needle, size_t len)
     {
         for (size_t i = 0; i + needle_len <= len; i++)
         {
-            if (haystack[i] == first && 
-                memcmp(haystack + i, needle, needle_len) == 0)
+            if (haystack[i] == first &&
+                    memcmp(haystack + i, needle, needle_len) == 0)
             {
                 return haystack + i;
             }
             if (haystack[i] == '\0')
+            {
                 break;
+            }
         }
         return NULL;
     }
@@ -114,13 +120,13 @@ static const char *strnstr(const char *haystack, const char *needle, size_t len)
     // Note: first and last are already defined above
     const size_t max_scan = len - needle_len;
     const char* const end = haystack + max_scan;
-    
+
     // Use first and last char optimization
     for (const char* cur = haystack; cur <= end; cur++)
     {
         // Quick check of first and last chars before full comparison
         if ((unsigned char)cur[0] == first &&
-            (unsigned char)cur[needle_len - 1] == last)
+                (unsigned char)cur[needle_len - 1] == last)
         {
             // Only if boundary chars match, check the rest
             if (memcmp(cur + 1, needle + 1, needle_len - 2) == 0)
@@ -128,12 +134,15 @@ static const char *strnstr(const char *haystack, const char *needle, size_t len)
                 return cur;
             }
         }
-        
+
         // Skip ahead if we can
         if (cur < end)
         {
             const char* next = memchr(cur + 1, first, end - cur);
-            if (!next) break;
+            if (!next)
+            {
+                break;
+            }
             cur = next - 1; // -1 because loop will increment
         }
     }
@@ -361,19 +370,19 @@ static GrepResult* createGrepResultObj(const char* markerName, const char* marke
         T2Error("Failed to allocate memory for GrepResult\n");
         return NULL;
     }
-    
+
     // Initialize pointers to NULL for safer cleanup
     grepResult->markerName = NULL;
     grepResult->markerValue = NULL;
     grepResult->regexParameter = NULL;
-    
+
     if ((grepResult->markerName = strdup(markerName)) == NULL)
     {
         T2Error("Failed to duplicate markerName\n");
         free(grepResult);
         return NULL;
     }
-    
+
     if ((grepResult->markerValue = strdup(markerValue)) == NULL)
     {
         T2Error("Failed to duplicate markerValue\n");
@@ -381,9 +390,9 @@ static GrepResult* createGrepResultObj(const char* markerName, const char* marke
         free(grepResult);
         return NULL;
     }
-    
+
     grepResult->trimParameter = trimParameter;
-    
+
     if (regexParameter != NULL)
     {
         if ((grepResult->regexParameter = strdup(regexParameter)) == NULL)
@@ -450,8 +459,8 @@ static int getCountPatternMatch(FileDescriptor* fileDescriptor, const char* patt
         while (cur <= end)
         {
             // Quick check first and last chars before full comparison
-            if (cur[0] == first && cur[patlen-1] == last && 
-                memcmp(cur + 1, pattern + 1, patlen - 2) == 0)
+            if (cur[0] == first && cur[patlen - 1] == last &&
+                    memcmp(cur + 1, pattern + 1, patlen - 2) == 0)
             {
                 count++;
                 cur += patlen; // Skip the whole pattern length
@@ -460,7 +469,10 @@ static int getCountPatternMatch(FileDescriptor* fileDescriptor, const char* patt
             {
                 // Jump to next potential match using first char
                 const unsigned char* next = (const unsigned char*)memchr(cur + 1, first, end - cur);
-                if (!next) break;
+                if (!next)
+                {
+                    break;
+                }
                 cur = next;
             }
         }
@@ -495,11 +507,11 @@ static char* getAbsolutePatternMatch(FileDescriptor* fileDescriptor, const char*
 
         // Start from end of buffer for faster last occurrence finding
         const unsigned char* cur = buf + buflen - patlen;
-        
+
         while (cur >= buf)
         {
             // Quick check of first and last chars
-            if (cur[0] == first && cur[patlen-1] == last)
+            if (cur[0] == first && cur[patlen - 1] == last)
             {
                 // Full pattern check only if boundary chars match
                 if (memcmp(cur + 1, pattern + 1, patlen - 2) == 0)
@@ -507,7 +519,10 @@ static char* getAbsolutePatternMatch(FileDescriptor* fileDescriptor, const char*
                     last_found = (const char*)cur;
                     current_buflen = buflen;
                     // For current file (i==0), we can stop at first match from end
-                    if (i == 0) goto found;
+                    if (i == 0)
+                    {
+                        goto found;
+                    }
                     break;
                 }
             }
@@ -558,15 +573,15 @@ static int processPatternWithOptimizedFunction(const GrepMarker* marker, Vector*
     // Stack allocation for small strings
     char result_buffer[16] = {0}; // For count results
     GrepResult* result = NULL;
-    
+
     if (marker->mType == MTYPE_COUNTER)
     {
         int count = getCountPatternMatch(filedescriptor, pattern);
         if (count > 0)
         {
             formatCount(result_buffer, sizeof(result_buffer), count);
-            result = createGrepResultObj(marker->markerName, result_buffer, 
-                                      marker->trimParam, marker->regexParam);
+            result = createGrepResultObj(marker->markerName, result_buffer,
+                                         marker->trimParam, marker->regexParam);
         }
     }
     else
@@ -574,8 +589,8 @@ static int processPatternWithOptimizedFunction(const GrepMarker* marker, Vector*
         char* match = getAbsolutePatternMatch(filedescriptor, pattern);
         if (match)
         {
-            result = createGrepResultObj(marker->markerName, match, 
-                                       marker->trimParam, marker->regexParam);
+            result = createGrepResultObj(marker->markerName, match,
+                                         marker->trimParam, marker->regexParam);
             free(match);
         }
     }
@@ -758,9 +773,13 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
     size_t map_size = main_size;
 
     // For large files, only map the portion we need
-    if (main_size > CHUNK_SIZE) {
+    if (main_size > CHUNK_SIZE)
+    {
         map_size = CHUNK_SIZE + (seek_value % CHUNK_SIZE);
-        if (map_size > main_size) map_size = main_size;
+        if (map_size > main_size)
+        {
+            map_size = main_size;
+        }
     }
 
     int rd = -1;
@@ -782,7 +801,10 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
             main_addr = mmap(NULL, main_size, PROT_READ, MAP_PRIVATE, fd, offset);
             rot_addr = NULL;
             rot_size = 0;
-            if (rd != -1) close(rd);
+            if (rd != -1)
+            {
+                close(rd);
+            }
         }
     }
     else
@@ -796,7 +818,8 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
     // Check main file mapping first
     if (main_addr == MAP_FAILED)
     {
-        if (rot_addr && rot_addr != MAP_FAILED) {
+        if (rot_addr && rot_addr != MAP_FAILED)
+        {
             munmap(rot_addr, rot_size);
         }
         T2Error("Error in memory mapping main file\n");
@@ -814,8 +837,14 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
     FileDescriptor* fileDescriptor = (FileDescriptor*)malloc(sizeof(FileDescriptor));
     if (!fileDescriptor)
     {
-        if (main_addr) munmap(main_addr, main_size);
-        if (rot_addr) munmap(rot_addr, rot_size);
+        if (main_addr)
+        {
+            munmap(main_addr, main_size);
+        }
+        if (rot_addr)
+        {
+            munmap(rot_addr, rot_size);
+        }
         T2Error("Error allocating memory for FileDescriptor\n");
         return NULL;
     }
@@ -879,7 +908,7 @@ static int parseMarkerListOptimized(GrepSeekProfile *gsProfile, Vector * ip_vMar
     {
         GrepMarker* marker = (GrepMarker*) Vector_At(ip_vMarkerList, var);
         if (!marker || !marker->logFile || !marker->searchString || !marker->markerName ||
-            strcmp(marker->searchString, "") == 0 || strcmp(marker->logFile, "") == 0)
+                strcmp(marker->searchString, "") == 0 || strcmp(marker->logFile, "") == 0)
         {
             continue;
         }
@@ -949,10 +978,10 @@ static int parseMarkerListOptimized(GrepSeekProfile *gsProfile, Vector * ip_vMar
 
     T2Debug("%s --out \n", __FUNCTION__);
     return 0;
-    }
+}
 
-    T2Debug("%s --out \n", __FUNCTION__);
-    return 0;
+T2Debug("%s --out \n", __FUNCTION__);
+return 0;
 }
 
 void T2InitProperties()

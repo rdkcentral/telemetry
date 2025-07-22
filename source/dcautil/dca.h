@@ -21,16 +21,16 @@
 #include <cjson/cJSON.h>
 #include "vector.h"
 #include <stdbool.h>
+#include "legacyutils.h"
 
 /**
  * Caller should be freeing vectorMarkerList and grepResultList
  */
-int getDCAResultsInJson(char* profileName, void* vectorMarkerList, cJSON** grepResultList);
 
-int getDCAResultsInVector(char* profileName, Vector* vectorMarkerList, Vector** grepResultList, bool check_rotated, char* customLogPath);
+int getDCAResultsInVector(GrepSeekProfile *gSeekProfile, Vector* vectorMarkerList, Vector** out_grepResultList, bool check_rotated, char* customLogPath);
 
-char *strSplit(char *str, char *delim);
+void T2InitProperties(); // declaration for initProperties
 
-int getErrorCode(char *str, char *ec);
+int processTopPattern(char* profileName, Vector* topMarkerList, Vector* out_grepResultList, int execCount);
 
 #endif /* SRC_DCA_H_ */

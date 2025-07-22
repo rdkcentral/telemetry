@@ -23,8 +23,12 @@
 #include <stdbool.h>
 #include "telemetry2_0.h"
 #include "vector.h"
+#include "dca.h"
+#include <dirent.h>
+#include <ctype.h>
+#include "legacyutils.h"
 
-#define TOPTEMP "/tmp/.t2toplog"
+#define TOPTEMP "/tmp/t2toplog"
 #define DCADONEFLAG "/tmp/.dca_done"
 
 #define PREVIOUS_LOG "PREVIOUS_LOG"
@@ -40,14 +44,14 @@ typedef struct _GrepResult
 } GrepResult;
 
 #if !defined(ENABLE_RDKC_SUPPORT) && !defined(ENABLE_RDKB_SUPPORT)
-void saveTopOutput();
-void removeTopOutput();
+char* saveTopOutput(char* profilename);
+void removeTopOutput(char* filename);
 #endif
 
 void removeGrepConfig(char* profileName, bool clearSeek, bool clearExec);
 void freeGResult(void *data);
 T2ERROR saveGrepConfig(char *name, Vector* grepMarkerList);
-T2ERROR getGrepResults(char* profileName, Vector *markerList, Vector **grepResultList, bool isClearSeekMap, bool check_rotated, char *customLogPath);
+T2ERROR getGrepResults(GrepSeekProfile **GSP, Vector *markerList, Vector **grepResultList, bool isClearSeekMap, bool check_rotated, char *customLogPath);
 #define PREFIX_SIZE 5
 #define BUF_LEN 16
 
@@ -70,17 +74,17 @@ typedef struct _procMemCpuInfo
 } procMemCpuInfo;
 
 /* @} */ // End of group DCA_TYPES
-int getProcInfo(procMemCpuInfo *pInfo);
+int getProcInfo(procMemCpuInfo *pInfo, char* filename);
 int getMemInfo(procMemCpuInfo *pmInfo);
-int getCPUInfo(procMemCpuInfo *pInfo);
+int getCPUInfo(procMemCpuInfo *pInfo, char* filename);
 int getProcPidStat(int pid, procinfo * pinfo);
 int getTotalCpuTimes(int * totalTime);
 
 
 #ifdef PERSIST_LOG_MON_REF
 typedef void (*freeconfigdata)(void *data);
-T2ERROR saveSeekConfigtoFile(char* profileName);
-T2ERROR loadSavedSeekConfig(char *profileName);
+T2ERROR saveSeekConfigtoFile(char* profileName, GrepSeekProfile *ProfileSeekMap);
+T2ERROR loadSavedSeekConfig(char *profileName, GrepSeekProfile *ProfileSeekMap);
 bool firstBootStatus();
 #endif
 

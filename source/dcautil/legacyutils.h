@@ -29,6 +29,8 @@
  * @{
  **/
 
+#ifndef SRC_LEGACY_H_
+#define SRC_LEGACY_H_
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -59,25 +61,25 @@
 #define DEFAULT_LOG_PATH "/opt/logs/"
 #endif
 
+/*
+ * Used to store the log file seek position for each profile.
+ * The key is the profile name and
+ *   value is a hash_map_t which contains the log file name as key and the seek position as value.
+ */
 typedef struct _GrepSeekProfile
 {
     hash_map_t *logFileSeekMap;
     int execCounter;
 } GrepSeekProfile;
 
+
+/** If this can access the Profile object, then seek map can be updated accordingly */
+
 extern cJSON *SEARCH_RESULT_JSON;
 extern cJSON *ROOT_JSON;
 
 /* utility functions */
 int getLoadAvg(Vector* grepResultList, bool trim, char* regex);
-
-void removeProfileFromSeekMap(char *profileName);
-
-void removeProfileFromExecMap(char *profileName);
-
-GrepSeekProfile *addToProfileSeekMap(char* profileName);
-
-GrepSeekProfile *getLogSeekMapForProfile(char* profileName);
 
 /**
  * Get log line from log file including the rotated log file if applicable
@@ -88,11 +90,8 @@ void clearConfVal(void);
 
 void updatePropsFromIncludeFile(char *logpath, char *perspath);
 
-void initProperties(char *logpath, char *perspath);
+void initProperties(char **logpath, char **perspath, long *pagesize);
 
-T2ERROR updateLogSeek(hash_map_t *logSeekMap, char *name);
-
-void updateLastSeekval(hash_map_t *logSeekMap, char **prev_file, char* filename);
 
 /* JSON functions */
 void initSearchResultJson(cJSON **root, cJSON **sr);
@@ -101,10 +100,13 @@ void addToSearchResult(char *key, char *value);
 
 void clearSearchResultJson(cJSON **root);
 
-int getProcUsage(char *processName, Vector* grepResultList, bool trim, char* regex);
+int getProcUsage(char *processName, Vector* grepResultList, bool trim, char* regex, char* filename);
 
-bool isPropsInitialized();
+void freeGrepSeekProfile(GrepSeekProfile *gsProfile);
 
+GrepSeekProfile *createGrepSeekProfile(int execCounter);
+
+#endif /* SRC_LEGACY_H_ */
 /** @} */
 
 /** @} */

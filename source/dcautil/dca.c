@@ -82,29 +82,59 @@ typedef struct
  */
 static const char *strnstr(const char *haystack, const char *needle, size_t len)
 {
-    size_t needle_len;
-
-    if (*needle == '\0')
-    {
+    // Handle empty needle case
+    if (!*needle)
         return haystack;
-    }
 
-    needle_len = strlen(needle);
+    const size_t needle_len = strlen(needle);
+    if (needle_len == 0 || needle_len > len)
+        return NULL;
+        
+    // Cache first and last chars for quick rejection
+    const unsigned char first = (unsigned char)needle[0];
+    const unsigned char last = (unsigned char)needle[needle_len - 1];
 
-    if (needle_len == 0)
+    // For short patterns or short haystack, use simple search
+    if (needle_len < 8 || len < 16)
     {
-        return haystack;
-    }
-
-    for (size_t i = 0; i + needle_len <= len; i++)
-    {
-        if (memcmp(haystack + i, needle, needle_len) == 0)
+        for (size_t i = 0; i + needle_len <= len; i++)
         {
-            return haystack + i;
+            if (haystack[i] == first && 
+                memcmp(haystack + i, needle, needle_len) == 0)
+            {
+                return haystack + i;
+            }
+            if (haystack[i] == '\0')
+                break;
         }
-        if (haystack[i] == '\0')
+        return NULL;
+    }
+
+    // Optimized search for longer patterns (8+ chars)
+    // Note: first and last are already defined above
+    const size_t max_scan = len - needle_len;
+    const char* const end = haystack + max_scan;
+    
+    // Use first and last char optimization
+    for (const char* cur = haystack; cur <= end; cur++)
+    {
+        // Quick check of first and last chars before full comparison
+        if ((unsigned char)cur[0] == first &&
+            (unsigned char)cur[needle_len - 1] == last)
         {
-            break;
+            // Only if boundary chars match, check the rest
+            if (memcmp(cur + 1, needle + 1, needle_len - 2) == 0)
+            {
+                return cur;
+            }
+        }
+        
+        // Skip ahead if we can
+        if (cur < end)
+        {
+            const char* next = memchr(cur + 1, first, end - cur);
+            if (!next) break;
+            cur = next - 1; // -1 because loop will increment
         }
     }
     return NULL;
@@ -331,16 +361,39 @@ static GrepResult* createGrepResultObj(const char* markerName, const char* marke
         T2Error("Failed to allocate memory for GrepResult\n");
         return NULL;
     }
-    grepResult->markerName = strdup(markerName);
-    grepResult->markerValue = strdup(markerValue);
+    
+    // Initialize pointers to NULL for safer cleanup
+    grepResult->markerName = NULL;
+    grepResult->markerValue = NULL;
+    grepResult->regexParameter = NULL;
+    
+    if ((grepResult->markerName = strdup(markerName)) == NULL)
+    {
+        T2Error("Failed to duplicate markerName\n");
+        free(grepResult);
+        return NULL;
+    }
+    
+    if ((grepResult->markerValue = strdup(markerValue)) == NULL)
+    {
+        T2Error("Failed to duplicate markerValue\n");
+        free(grepResult->markerName);
+        free(grepResult);
+        return NULL;
+    }
+    
     grepResult->trimParameter = trimParameter;
+    
     if (regexParameter != NULL)
     {
-        grepResult->regexParameter = strdup(regexParameter);
-    }
-    else
-    {
-        grepResult->regexParameter = NULL;
+        if ((grepResult->regexParameter = strdup(regexParameter)) == NULL)
+        {
+            T2Error("Failed to duplicate regexParameter\n");
+            free(grepResult->markerName);
+            free(grepResult->markerValue);
+            free(grepResult);
+            return NULL;
+        }
     }
     return grepResult;
 }
@@ -678,6 +731,8 @@ static void freeFileDescriptor(FileDescriptor* fileDescriptor)
 
 static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t seek_value, const char* logPath, const char* logFile, bool check_rotated )
 {
+    // Size threshold for chunked reading (1MB)
+    const size_t CHUNK_SIZE = 1024 * 1024;
 
     // Portable, memory-efficient mmap logic for embedded devices
     if (fd == -1)
@@ -700,6 +755,13 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
     char *main_addr = NULL, *rot_addr = NULL;
     size_t main_size = sb.st_size;
     size_t rot_size = 0;
+    size_t map_size = main_size;
+
+    // For large files, only map the portion we need
+    if (main_size > CHUNK_SIZE) {
+        map_size = CHUNK_SIZE + (seek_value % CHUNK_SIZE);
+        if (map_size > main_size) map_size = main_size;
+    }
 
     int rd = -1;
     struct stat rb;
@@ -709,8 +771,9 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
         rd = getRotatedLogFileDescriptor(logPath, logFile);
         if (rd != -1 && fstat(rd, &rb) == 0 && rb.st_size > 0)
         {
-            main_addr = mmap(NULL, main_size, PROT_READ, MAP_PRIVATE, fd, 0);
-            rot_addr = mmap(NULL, rb.st_size, PROT_READ, MAP_PRIVATE, rd, offset);
+            size_t rot_map_size = rb.st_size > CHUNK_SIZE ? CHUNK_SIZE : rb.st_size;
+            main_addr = mmap(NULL, map_size, PROT_READ, MAP_PRIVATE, fd, 0);
+            rot_addr = mmap(NULL, rot_map_size, PROT_READ, MAP_PRIVATE, rd, offset);
             rot_size = rb.st_size;
             close(rd);
         }
@@ -730,13 +793,18 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
     }
     close(fd);
 
+    // Check main file mapping first
     if (main_addr == MAP_FAILED)
     {
-        if (rot_addr && rot_addr != MAP_FAILED) munmap(rot_addr, rot_size);
+        if (rot_addr && rot_addr != MAP_FAILED) {
+            munmap(rot_addr, rot_size);
+        }
         T2Error("Error in memory mapping main file\n");
         return NULL;
     }
-    if (rot_addr == MAP_FAILED)
+
+    // Check rotated file mapping if it was attempted
+    if (rot_addr && rot_addr == MAP_FAILED)
     {
         munmap(main_addr, main_size);
         T2Error("Error in memory mapping rotated file\n");

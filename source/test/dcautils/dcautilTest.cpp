@@ -190,6 +190,90 @@ TEST(GETLOADAVG, VECTOR_REGEX_NULL)
     EXPECT_EQ(0, getLoadAvg(NULL, true, "[0-9]"));
 }
 
+// Test createGrepResultObj with NULL parameters
+TEST(CreateGrepResultObj, NullParameters)
+{
+    GrepResult* result = createGrepResultObj(NULL, "value", false, NULL);
+    EXPECT_EQ(result, nullptr);
+    
+    result = createGrepResultObj("name", NULL, false, NULL);
+    EXPECT_EQ(result, nullptr);
+}
+
+// Test createGrepResultObj with valid parameters
+TEST(CreateGrepResultObj, ValidParameters)
+{
+    const char* name = "testMarker";
+    const char* value = "testValue";
+    const char* regex = "test.*";
+    
+    GrepResult* result = createGrepResultObj(name, value, true, regex);
+    EXPECT_NE(result, nullptr);
+    EXPECT_STREQ(result->markerName, name);
+    EXPECT_STREQ(result->markerValue, value);
+    EXPECT_STREQ(result->regexParameter, regex);
+    EXPECT_TRUE(result->trimParameter);
+    
+    // Cleanup
+    free(result->markerName);
+    free(result->markerValue);
+    free(result->regexParameter);
+    free(result);
+}
+
+// Test strnstr optimizations
+TEST(StrnStr, PatternMatchOptimization)
+{
+    // Test short pattern
+    const char* haystack = "This is a test string for pattern matching";
+    const char* shortNeedle = "test";
+    const char* result = strnstr(haystack, shortNeedle, strlen(haystack));
+    EXPECT_NE(result, nullptr);
+    EXPECT_EQ(result - haystack, 10);  // "test" starts at index 10
+    
+    // Test long pattern (8+ chars)
+    const char* longNeedle = "pattern matching";
+    result = strnstr(haystack, longNeedle, strlen(haystack));
+    EXPECT_NE(result, nullptr);
+    EXPECT_EQ(result - haystack, 23);  // "pattern matching" starts at index 23
+    
+    // Test pattern not found
+    const char* notFound = "nonexistent";
+    result = strnstr(haystack, notFound, strlen(haystack));
+    EXPECT_EQ(result, nullptr);
+}
+
+// Test chunked memory mapping
+TEST_F(dcaTestFixture, ChunkedMemoryMapping)
+{
+    const size_t CHUNK_SIZE = 1024 * 1024; // 1MB
+    const char* testFile = "test.log";
+    const char* logPath = "/tmp";
+    
+    // Create a test file larger than CHUNK_SIZE
+    FILE* fp = fopen("/tmp/test.log", "w");
+    ASSERT_NE(fp, nullptr);
+    for(int i = 0; i < CHUNK_SIZE + 1000; i++) {
+        fputc('a', fp);
+    }
+    fclose(fp);
+    
+    int fd = open("/tmp/test.log", O_RDONLY);
+    ASSERT_NE(fd, -1);
+    
+    FileDescriptor* desc = getFileDeltaInMemMapAndSearch(fd, 0, logPath, testFile, false);
+    EXPECT_NE(desc, nullptr);
+    if(desc) {
+        EXPECT_NE(desc->baseAddr, nullptr);
+        EXPECT_EQ(desc->rf_file_size, 0);  // No rotated file
+        EXPECT_LE(desc->cf_file_size, CHUNK_SIZE + (PAGESIZE - 1));
+        
+        freeFileDescriptor(desc);
+    }
+    
+    unlink("/tmp/test.log");
+}
+
 TEST(CREATEGREPSEEKPROFILE, SEEKMAPCREATE_CHECK)
 {
     GrepSeekProfile *gsProfile = createGrepSeekProfile(0);
@@ -273,6 +357,117 @@ protected:
 }; 
 
 //dcautil.c
+// Test memory mapping with various file sizes
+TEST_F(dcaTestFixture, MemoryMappingWithDifferentSizes) {
+    const char* testFile = "test.log";
+    const char* logPath = "/tmp";
+    const size_t sizes[] = {
+        1024,                // 1KB - small file
+        1024 * 1024,        // 1MB - chunk size
+        1024 * 1024 + 100,  // Just over chunk size
+        1024 * 1024 * 2     // 2MB - multiple chunks
+    };
+
+    for(size_t i = 0; i < sizeof(sizes)/sizeof(sizes[0]); i++) {
+        // Create test file
+        FILE* fp = fopen("/tmp/test.log", "w");
+        ASSERT_NE(fp, nullptr);
+        for(size_t j = 0; j < sizes[i]; j++) {
+            fputc('a', fp);
+        }
+        fclose(fp);
+
+        int fd = open("/tmp/test.log", O_RDONLY);
+        ASSERT_NE(fd, -1);
+
+        FileDescriptor* desc = getFileDeltaInMemMapAndSearch(fd, 0, logPath, testFile, false);
+        EXPECT_NE(desc, nullptr);
+        if(desc) {
+            EXPECT_NE(desc->baseAddr, nullptr);
+            EXPECT_EQ(desc->rf_file_size, 0);
+            if(sizes[i] > 1024 * 1024) {
+                EXPECT_LE(desc->cf_file_size, 1024 * 1024 + (PAGESIZE - 1));
+            } else {
+                EXPECT_EQ(desc->cf_file_size, sizes[i]);
+            }
+            freeFileDescriptor(desc);
+        }
+        unlink("/tmp/test.log");
+    }
+}
+
+// Test pattern matching with various pattern lengths
+TEST_F(dcaTestFixture, PatternMatchingOptimization) {
+    // Create test data with known patterns
+    const char* data = "This is a test string with multiple patterns: "
+                      "short pat and longerpattern and verylongpatternhere";
+    const size_t data_len = strlen(data);
+
+    // Test cases with different pattern lengths
+    struct {
+        const char* pattern;
+        bool should_find;
+        size_t expected_pos;
+    } test_cases[] = {
+        {"short", true, 38},              // Short pattern
+        {"longerpattern", true, 48},      // Medium pattern (>= 8 chars)
+        {"verylongpatternhere", true, 63},// Long pattern
+        {"nonexistent", false, 0},        // Not found
+        {"", false, 0},                   // Empty pattern
+        {"shortpat", false, 0}            // Almost matching
+    };
+
+    for(size_t i = 0; i < sizeof(test_cases)/sizeof(test_cases[0]); i++) {
+        const char* result = strnstr(data, test_cases[i].pattern, data_len);
+        if(test_cases[i].should_find) {
+            EXPECT_NE(result, nullptr) << "Pattern: " << test_cases[i].pattern;
+            if(result) {
+                EXPECT_EQ(result - data, test_cases[i].expected_pos)
+                    << "Pattern: " << test_cases[i].pattern;
+            }
+        } else {
+            EXPECT_EQ(result, nullptr) << "Pattern: " << test_cases[i].pattern;
+        }
+    }
+}
+
+// Test rotated file handling
+TEST_F(dcaTestFixture, RotatedFileHandling) {
+    const char* testFile = "test.log.0";
+    const char* logPath = "/tmp";
+    
+    // Create main and rotated test files
+    FILE* fp = fopen("/tmp/test.log.0", "w");
+    ASSERT_NE(fp, nullptr);
+    fprintf(fp, "current log content\n");
+    fclose(fp);
+    
+    fp = fopen("/tmp/test.log.1", "w");
+    ASSERT_NE(fp, nullptr);
+    fprintf(fp, "rotated log content\n");
+    fclose(fp);
+
+    int fd = open("/tmp/test.log.0", O_RDONLY);
+    ASSERT_NE(fd, -1);
+
+    FileDescriptor* desc = getFileDeltaInMemMapAndSearch(fd, 0, logPath, testFile, true);
+    EXPECT_NE(desc, nullptr);
+    if(desc) {
+        EXPECT_NE(desc->baseAddr, nullptr);
+        EXPECT_NE(desc->rotatedAddr, nullptr);
+        EXPECT_GT(desc->rf_file_size, 0);
+        
+        // Verify we can read from both current and rotated files
+        EXPECT_NE(strnstr((const char*)desc->cfaddr, "current", desc->cf_file_size), nullptr);
+        EXPECT_NE(strnstr((const char*)desc->rfaddr, "rotated", desc->rf_file_size), nullptr);
+        
+        freeFileDescriptor(desc);
+    }
+    
+    unlink("/tmp/test.log.0");
+    unlink("/tmp/test.log.1");
+}
+
 TEST_F(dcaTestFixture, firstBootstatus){
     EXPECT_CALL(*g_systemMock, access(_,_))
             .Times(1)
@@ -731,6 +926,98 @@ TEST_F(dcaTestFixture, getLoadAvg1)
     Vector_Destroy(grepResultList, freeGResult);
 }
 
+// Test memory management in GrepResult creation
+TEST_F(dcaTestFixture, GrepResultMemoryManagement) {
+    const char* testCases[][4] = {
+        // markerName, markerValue, regex, should_succeed
+        {"test1", "value1", "[0-9]+", "true"},
+        {nullptr, "value2", nullptr, "false"},
+        {"test3", nullptr, "[0-9]+", "false"},
+        {"test4", "value4", nullptr, "true"},
+        {"", "value5", "[0-9]+", "false"}
+    };
+
+    for(size_t i = 0; i < sizeof(testCases)/sizeof(testCases[0]); i++) {
+        const bool should_succeed = strcmp(testCases[i][3], "true") == 0;
+        GrepResult* result = createGrepResultObj(
+            testCases[i][0], 
+            testCases[i][1], 
+            true, 
+            (char*)testCases[i][2]
+        );
+
+        if(should_succeed) {
+            EXPECT_NE(result, nullptr);
+            if(result) {
+                EXPECT_STREQ(result->markerName, testCases[i][0]);
+                EXPECT_STREQ(result->markerValue, testCases[i][1]);
+                if(testCases[i][2]) {
+                    EXPECT_STREQ(result->regexParameter, testCases[i][2]);
+                } else {
+                    EXPECT_EQ(result->regexParameter, nullptr);
+                }
+                // Cleanup
+                free(result->markerName);
+                free(result->markerValue);
+                free(result->regexParameter);
+                free(result);
+            }
+        } else {
+            EXPECT_EQ(result, nullptr);
+        }
+    }
+}
+
+// Test count pattern matching with different pattern sizes
+TEST_F(dcaTestFixture, CountPatternMatching) {
+    const char* testData = "This is a test with multiple patterns.\n"
+                          "Pattern1 appears here and Pattern1 appears there.\n"
+                          "ShortPat is here and ShortPat is there.\n"
+                          "LongerPattern12345 shows up once.\n";
+    
+    const size_t dataLen = strlen(testData);
+    
+    // Create a temporary file with test data
+    FILE* fp = fopen("/tmp/pattern_test.log", "w");
+    ASSERT_NE(fp, nullptr);
+    fwrite(testData, 1, dataLen, fp);
+    fclose(fp);
+    
+    int fd = open("/tmp/pattern_test.log", O_RDONLY);
+    ASSERT_NE(fd, -1);
+    
+    FileDescriptor* desc = (FileDescriptor*)malloc(sizeof(FileDescriptor));
+    ASSERT_NE(desc, nullptr);
+    memset(desc, 0, sizeof(FileDescriptor));
+    
+    desc->cfaddr = (char*)mmap(NULL, dataLen, PROT_READ, MAP_PRIVATE, fd, 0);
+    ASSERT_NE(desc->cfaddr, MAP_FAILED);
+    desc->cf_file_size = dataLen;
+    
+    // Test different pattern lengths
+    struct {
+        const char* pattern;
+        int expected_count;
+    } patterns[] = {
+        {"Pattern1", 2},           // Appears twice
+        {"ShortPat", 2},          // Short pattern appears twice
+        {"LongerPattern12345", 1}, // Long pattern appears once
+        {"NonExistent", 0},        // Doesn't appear
+        {"test", 1}               // Appears once
+    };
+    
+    for(size_t i = 0; i < sizeof(patterns)/sizeof(patterns[0]); i++) {
+        int count = getCountPatternMatch(desc, patterns[i].pattern);
+        EXPECT_EQ(count, patterns[i].expected_count) 
+            << "Pattern: " << patterns[i].pattern;
+    }
+    
+    munmap(desc->cfaddr, dataLen);
+    close(fd);
+    free(desc);
+    unlink("/tmp/pattern_test.log");
+}
+
 TEST_F(dcaTestFixture, getLoadAvg2)
 {
     Vector* grepResultList;
@@ -753,6 +1040,90 @@ TEST_F(dcaTestFixture, getLoadAvg2)
             .WillOnce(Return(0));
     EXPECT_EQ(1, getLoadAvg(grepResultList, true, "[0-9]+"));
     Vector_Destroy(grepResultList, freeGResult);
+}
+
+// Test error handling in file operations
+TEST_F(dcaTestFixture, FileOperationErrorHandling) {
+    const char* testFile = "nonexistent.log";
+    const char* logPath = "/nonexistent";
+    
+    // Test non-existent file
+    int fd = open("/nonexistent/test.log", O_RDONLY);
+    FileDescriptor* desc = getFileDeltaInMemMapAndSearch(fd, 0, logPath, testFile, false);
+    EXPECT_EQ(desc, nullptr);
+    
+    // Test with invalid seek value
+    fd = open("/tmp/test.log", O_CREAT | O_RDWR, 0644);
+    ASSERT_NE(fd, -1);
+    write(fd, "test", 4);
+    close(fd);
+    
+    fd = open("/tmp/test.log", O_RDONLY);
+    desc = getFileDeltaInMemMapAndSearch(fd, 1000000, logPath, testFile, false);
+    EXPECT_EQ(desc, nullptr);
+    
+    // Test with zero-length file
+    fd = open("/tmp/empty.log", O_CREAT | O_RDWR, 0644);
+    ASSERT_NE(fd, -1);
+    close(fd);
+    
+    fd = open("/tmp/empty.log", O_RDONLY);
+    desc = getFileDeltaInMemMapAndSearch(fd, 0, logPath, testFile, false);
+    EXPECT_EQ(desc, nullptr);
+    
+    unlink("/tmp/test.log");
+    unlink("/tmp/empty.log");
+}
+
+// Test boundary conditions in pattern matching
+TEST_F(dcaTestFixture, PatternMatchingBoundary) {
+    // Test data at different buffer boundaries
+    const char* patterns[] = {
+        "pattern",           // Normal case
+        "patternAtEnd",      // Pattern at end
+        "StartPattern",      // Pattern at start
+        "pat\ntern",         // Pattern across newline
+        "pattern\0hidden"    // Pattern with null byte
+    };
+    
+    for(size_t i = 0; i < sizeof(patterns)/sizeof(patterns[0]); i++) {
+        // Create test data with pattern at different positions
+        char* testData = (char*)malloc(1024);
+        ASSERT_NE(testData, nullptr);
+        
+        // Fill with dummy data
+        memset(testData, 'x', 1023);
+        testData[1023] = '\0';
+        
+        // Insert pattern at start
+        strcpy(testData, patterns[i]);
+        
+        // Insert pattern in middle
+        strcpy(testData + 500, patterns[i]);
+        
+        // Insert pattern at end
+        strcpy(testData + 1023 - strlen(patterns[i]), patterns[i]);
+        
+        // Test pattern matching at each position
+        const char* result = strnstr(testData, patterns[i], 1023);
+        EXPECT_NE(result, nullptr);
+        if(result) {
+            EXPECT_EQ(result, testData);
+        }
+        
+        result = strnstr(testData + 500, patterns[i], 523);
+        EXPECT_NE(result, nullptr);
+        if(result) {
+            EXPECT_EQ(result, testData + 500);
+        }
+        
+        result = strnstr(testData + 1023 - strlen(patterns[i]), 
+                        patterns[i], 
+                        strlen(patterns[i]));
+        EXPECT_NE(result, nullptr);
+        
+        free(testData);
+    }
 }
 
 TEST_F(dcaTestFixture, initProperties)

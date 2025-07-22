@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "prompts": [
+    {
+      "name": "telemetry-best-practices",
+      "description": "Follow these best practices for the RDK telemetry project",
+      "pattern": ".*\\.(c|h)$",
+      "prompt": "You are working on an RDK telemetry service that handles data collection and reporting. Follow these guidelines:\n- Use proper error handling and logging\n- Follow memory management best practices\n- Ensure thread safety in concurrent operations\n- Validate all input parameters\n- Follow RDK coding standards\n- Use appropriate data structures for performance"
+    },
+    {
+      "name": "security-requirements",
+      "description": "Security requirements for telemetry code",
+      "pattern": ".*\\.(c|h)$",
+      "prompt": "Ensure all code follows these security practices:\n- Validate buffer sizes to prevent overflows\n- Sanitize all input data\n- Use secure memory handling functions\n- Protect sensitive data\n- Implement proper access controls\n- Follow secure coding guidelines"
+    },
+    {
+      "name": "data-handling",
+      "description": "Guidelines for handling telemetry data",
+      "pattern": ".*\\.(c|h)$",
+      "prompt": "When handling telemetry data:\n- Validate data format and structure\n- Implement proper data serialization\n- Handle data privacy requirements\n- Implement efficient data processing\n- Follow data retention policies\n- Ensure proper error handling for data operations"
+    },
+    {
+      "name": "bus-interface",
+      "description": "Guidelines for bus interface implementations",
+      "pattern": ".*/ccspinterface/.*\\.(c|h)$",
+      "prompt": "For CCSP and RBUS interface implementations:\n- Ensure proper message handling\n- Implement retry mechanisms\n- Handle connection failures gracefully\n- Follow bus protocol specifications\n- Implement proper error reporting"
+    },
+    {
+      "name": "reporting",
+      "description": "Guidelines for report generation",
+      "pattern": ".*/reportgen/.*\\.(c|h)$",
+      "prompt": "For report generation code:\n- Implement efficient data aggregation\n- Handle large datasets appropriately\n- Follow report format specifications\n- Implement proper error handling\n- Ensure accurate data representation"
+    },{
+        "name": "performance-optimization",
+        "description": "Guidelines for performance optimization",
+        "pattern": ".*\\.(c|h)$",
+        "prompt": "When optimizing performance:\n- Identify and eliminate bottlenecks\n- Use efficient algorithms and data structures\n- Minimize memory allocations and copies\n- Use profiling tools to guide optimizations\n- Follow best practices for concurrency and parallelism"
+    }, {
+        "name": "runs-on-low-end-embedded-devices",
+        "description": "Guidelines for code that runs on low-end embedded devices",
+        "pattern": ".*\\.(c|h)$",
+        "prompt": "When writing code for low-end embedded devices:\n- Optimize for low memory usage\n- Minimize CPU cycles\n- Use fixed-point arithmetic where applicable\n- Avoid dynamic memory allocation\n- Ensure compatibility with limited hardware resources\n- Implement power-efficient algorithms"
+    }
+  ],
+  "requirements": {
+    "enforcePatternMatching": true,
+    "enforceSecurityChecks": true,
+    "style": {
+      "indentation": "    ",
+      "lineLength": 120,
+      "braceStyle": "allman"
+    },
+    "documentation": {
+      "requireFunctionComments": true,
+      "requireHeaderComments": true
+    },
+    "testing": {
+      "requireUnitTests": true,
+      "requireErrorHandling": true
+    }
+  }
+}

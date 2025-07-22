@@ -169,7 +169,6 @@ int processTopPattern(char* profileName,  Vector* topMarkerList, Vector* out_gre
         else
         {
 
-            //ProcessSnapshot *snapshot = createProcessSnapshot();
 #if !defined(ENABLE_RDKC_SUPPORT) && !defined(ENABLE_RDKB_SUPPORT)
             filename = saveTopOutput(profileName);
 #endif
@@ -212,23 +211,11 @@ int processTopPattern(char* profileName,  Vector* topMarkerList, Vector* out_gre
         }
         else
         {
-            // This block is for process level usage
-            // TODO - Move this to a separate function which adds the results to the out_grepResultList
-            /*ProcessInfo *info = lookupProcess(snapshot, grepMarkerObj->markerName);
-            if (info) {
-                printf("Process found: PID=%d, Name=%s, Mem=%s, CPU=%s\n",
-                    info->pid, info->processName, info->memUsage, info->cpuUsage);
-            } else {
-                printf("Process %s not found\n", grepMarkerObj->markerName);
-            }*/
-
             getProcUsage(grepMarkerObj->searchString, out_grepResultList, grepMarkerObj->trimParam, grepMarkerObj->regexParam, filename);
         }
 
     }
 
-    // TODO Clear the top output file
-    //freeProcessSnapshot(snapshot);
 #if !defined(ENABLE_RDKC_SUPPORT) && !defined(ENABLE_RDKB_SUPPORT)
     removeTopOutput(filename);
 #endif
@@ -748,8 +735,6 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
     FileDescriptor* fileDescriptor = NULL;
     off_t offset_in_page_size_multiple ;
     unsigned int bytes_ignored = 0, bytes_ignored_main = 0, bytes_ignored_rotated = 0;
-    off_t size_rotated = 0, size_main = 0;
-    size_main = sb.st_size;
     // Find the nearest multiple of page size
     if (seek_value > 0)
     {
@@ -767,9 +752,9 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
         int rd = getRotatedLogFileDescriptor(logPath, logFile);
         if (rd == -1)
         {
-            T2Debug("Error opening rotated file. Start search in current file\n");
-            T2Info("File size rounded to nearest page size used for offset read: %ld bytes\n", offset_in_page_size_multiple);
-            addrcf = mmap(NULL, size_main, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
+            T2Error("Error opening rotated file. Start search in current file\n");
+            T2Debug("File size rounded to nearest page size used for offset read: %jd bytes\n", (intmax_t)offset_in_page_size_multiple);
+            addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
             bytes_ignored_main = bytes_ignored;
         }
         else
@@ -789,33 +774,32 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
                     close(rd);
                 }
             }
-            //T2Info("rd size is %jd", (intmax_t)rb.st_size);
+
             if(rb.st_size > 0)
             {
-                size_rotated = rb.st_size - seek_value;
-                addrcf = mmap(NULL, size_main, PROT_READ, MAP_PRIVATE, fd, 0);
-                addrrf = mmap(NULL, size_rotated, PROT_READ, MAP_PRIVATE, rd, offset_in_page_size_multiple);
+                addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+                addrrf = mmap(NULL, rb.st_size, PROT_READ, MAP_PRIVATE, rd, offset_in_page_size_multiple);
                 bytes_ignored_rotated = bytes_ignored;
                 if(rd != -1)
                 {
                     close(rd);
+                    rd = -1;
                 }
-                rd = -1;
             }
 
 
             if(rb.st_size == 0 && fs == -1)
             {
-                T2Debug("No contents in rotated log file. File size rounded to nearest page size used for offset read: %ld bytes\n", offset_in_page_size_multiple);
-                addrcf = mmap(NULL, size_main, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
+                T2Debug("No contents in rotated log file. File size rounded to nearest page size used for offset read: %jd bytes\n", (intmax_t)offset_in_page_size_multiple);
+                addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
                 bytes_ignored_main = bytes_ignored;
             }
         }
     }
     else
     {
-        T2Info("File size rounded to nearest page size used for offset read: %ld bytes\n", offset_in_page_size_multiple);
-        addrcf = mmap(NULL, size_main, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
+        T2Info("File size rounded to nearest page size used for offset read: %jd bytes\n", (intmax_t)offset_in_page_size_multiple);
+        addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
         bytes_ignored_main = bytes_ignored;
         addrrf = NULL; // No rotated file in this case
     }
@@ -826,7 +810,7 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
     {
         if(addrrf != NULL)
         {
-            munmap(addrrf, size_rotated);
+            munmap(addrrf, rb.st_size);
         }
         T2Error("Error in memory mapping file %d: %s\n", fd, strerror(errno));
         return NULL;
@@ -859,10 +843,10 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
     }
     fileDescriptor->cfaddr = addrcf;
     fileDescriptor->fd = fd;
-    fileDescriptor->cf_file_size = size_main;
+    fileDescriptor->cf_file_size = sb.st_size;
     if(fileDescriptor->rfaddr != NULL)
     {
-        fileDescriptor->rf_file_size = size_rotated;
+        fileDescriptor->rf_file_size = rb.st_size;
     }
     else
     {
@@ -890,7 +874,6 @@ static int parseMarkerListOptimized(GrepSeekProfile *gsProfile, Vector * ip_vMar
     //GrepSeekProfile* gsProfile = NULL;
     size_t var = 0;
     size_t vCount = Vector_Size(ip_vMarkerList);
-    //T2Debug("vMarkerList for profile %s is of count = %lu \n", profileName, (unsigned long )vCount);
 
     // Get logfile -> seek value map associated with the profile
     //gsProfile = (GrepSeekProfile *) getLogSeekMapForProfile(profileName);

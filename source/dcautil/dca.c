@@ -74,80 +74,7 @@ typedef struct
     void* rotatedAddr;
 } FileDescriptor;
 
-/**
- * Portable implementation of strnstr (BSD function).
- * Searches for the first occurrence of the substring 'needle' in the
- * first 'len' bytes of 'haystack'.
- * Returns pointer to the beginning of the match, or NULL if not found.
- */
-static const char *strnstr(const char *haystack, const char *needle, size_t len)
-{
-    // Handle empty needle case
-    if (!*needle)
-    {
-        return haystack;
-    }
 
-    const size_t needle_len = strlen(needle);
-    if (needle_len == 0 || needle_len > len)
-    {
-        return NULL;
-    }
-
-    // Cache first and last chars for quick rejection
-    const unsigned char first = (unsigned char)needle[0];
-    const unsigned char last = (unsigned char)needle[needle_len - 1];
-
-    // For short patterns or short haystack, use simple search
-    if (needle_len < 8 || len < 16)
-    {
-        for (size_t i = 0; i + needle_len <= len; i++)
-        {
-            if (haystack[i] == first &&
-                    memcmp(haystack + i, needle, needle_len) == 0)
-            {
-                return haystack + i;
-            }
-            if (haystack[i] == '\0')
-            {
-                break;
-            }
-        }
-        return NULL;
-    }
-
-    // Optimized search for longer patterns (8+ chars)
-    // Note: first and last are already defined above
-    const size_t max_scan = len - needle_len;
-    const char* const end = haystack + max_scan;
-
-    // Use first and last char optimization
-    for (const char* cur = haystack; cur <= end; cur++)
-    {
-        // Quick check of first and last chars before full comparison
-        if ((unsigned char)cur[0] == first &&
-                (unsigned char)cur[needle_len - 1] == last)
-        {
-            // Only if boundary chars match, check the rest
-            if (memcmp(cur + 1, needle + 1, needle_len - 2) == 0)
-            {
-                return cur;
-            }
-        }
-
-        // Skip ahead if we can
-        if (cur < end)
-        {
-            const char* next = memchr(cur + 1, first, end - cur);
-            if (!next)
-            {
-                break;
-            }
-            cur = next - 1; // -1 because loop will increment
-        }
-    }
-    return NULL;
-}
 
 cJSON *SEARCH_RESULT_JSON = NULL, *ROOT_JSON = NULL;
 
@@ -379,15 +306,15 @@ static GrepResult* createGrepResultObj(const char* markerName, const char* marke
     if ((grepResult->markerName = strdup(markerName)) == NULL)
     {
         T2Error("Failed to duplicate markerName\n");
-        free(grepResult);
+        free((void*)grepResult);
         return NULL;
     }
 
     if ((grepResult->markerValue = strdup(markerValue)) == NULL)
     {
         T2Error("Failed to duplicate markerValue\n");
-        free(grepResult->markerName);
-        free(grepResult);
+        free((void*)grepResult->markerName);
+        free((void*)grepResult);
         return NULL;
     }
 
@@ -398,9 +325,9 @@ static GrepResult* createGrepResultObj(const char* markerName, const char* marke
         if ((grepResult->regexParameter = strdup(regexParameter)) == NULL)
         {
             T2Error("Failed to duplicate regexParameter\n");
-            free(grepResult->markerName);
-            free(grepResult->markerValue);
-            free(grepResult);
+            free((void*)grepResult->markerName);
+            free((void*)grepResult->markerValue);
+            free((void*)grepResult);
             return NULL;
         }
     }
@@ -424,6 +351,29 @@ static inline void formatCount(char* buffer, size_t size, int count)
     snprintf(buffer, size, "%d", count);
 }
 
+
+// Simple substring count for patterns <8 chars
+static int getCountPatternMatch_std(FileDescriptor* fileDescriptor, const char* pattern) {
+    if (!fileDescriptor || !fileDescriptor->cfaddr || !pattern || !*pattern || fileDescriptor->cf_file_size <= 0)
+        return -1;
+
+    int count = 0;
+    size_t patlen = strlen(pattern);
+    for (int i = 0; i < 2; i++) {
+        const char* buf = (const char*)(i == 0 ? fileDescriptor->cfaddr : fileDescriptor->rfaddr);
+        size_t buflen = (size_t)(i == 0 ? fileDescriptor->cf_file_size : fileDescriptor->rf_file_size);
+        if (!buf || buflen < patlen)
+            continue;
+        for (size_t pos = 0; pos + patlen <= buflen; pos++) {
+            if (memcmp(buf + pos, pattern, patlen) == 0) {
+                count++;
+                pos += patlen - 1; // skip overlapping
+            }
+        }
+    }
+    return count;
+}
+
 static int getCountPatternMatch(FileDescriptor* fileDescriptor, const char* pattern)
 {
     if (!fileDescriptor || !fileDescriptor->cfaddr || !pattern || !*pattern || fileDescriptor->cf_file_size <= 0)
@@ -433,10 +383,10 @@ static int getCountPatternMatch(FileDescriptor* fileDescriptor, const char* patt
     }
 
     const size_t patlen = strlen(pattern);
-    if (patlen < 8)
+    if (patlen < 15)
     {
-        T2Debug("Pattern length < 8, using standard search\n");
-        return getCountPatternMatch_std(fileDescriptor, pattern);
+        T2Debug("Pattern length < 15, using standard search\n");
+        return getCountPatternMatch_std(fileDescriptor, pattern); // Call to the new function
     }
 
     int count = 0;
@@ -790,7 +740,7 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
         rd = getRotatedLogFileDescriptor(logPath, logFile);
         if (rd != -1 && fstat(rd, &rb) == 0 && rb.st_size > 0)
         {
-            size_t rot_map_size = rb.st_size > CHUNK_SIZE ? CHUNK_SIZE : rb.st_size;
+            size_t rot_map_size = (size_t)rb.st_size > CHUNK_SIZE ? CHUNK_SIZE : (size_t)rb.st_size;
             main_addr = mmap(NULL, map_size, PROT_READ, MAP_PRIVATE, fd, 0);
             rot_addr = mmap(NULL, rot_map_size, PROT_READ, MAP_PRIVATE, rd, offset);
             rot_size = rb.st_size;
@@ -978,10 +928,6 @@ static int parseMarkerListOptimized(GrepSeekProfile *gsProfile, Vector * ip_vMar
 
     T2Debug("%s --out \n", __FUNCTION__);
     return 0;
-}
-
-T2Debug("%s --out \n", __FUNCTION__);
-return 0;
 }
 
 void T2InitProperties()

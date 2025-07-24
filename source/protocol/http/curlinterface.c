@@ -315,6 +315,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
     struct curl_slist *headerList = NULL;
     CURLcode curl_code = CURLE_OK;
 #ifdef LIBRDKCERTSEL_BUILD
+    rdkcertselector_h thisCertSel = NULL;
     rdkcertselectorStatus_t curlGetCertStatus;
     bool state_red_enable = false;
 #endif
@@ -466,11 +467,13 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
                 else
                 {
 #endif
+#ifndef LIBRDKCERTSEL_BUILD
                     if((mtls_enable == true) && (setMtlsHeaders(curl, pCertFile, pCertPC, &childCurlResponse) != T2ERROR_SUCCESS))
                     {
                         curl_easy_cleanup(curl); // CID 189985: Resource leak
                         goto child_cleanReturn;
                     }
+#endif
                     pthread_once(&curlFileMutexOnce, sendOverHTTPInit);
                     pthread_mutex_lock(&curlFileMutex);
 

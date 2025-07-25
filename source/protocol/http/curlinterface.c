@@ -39,7 +39,7 @@
 #include "busInterface.h"
 #ifdef LIBRDKCERTSEL_BUILD
 #include "rdkcertselector.h"
-#include "rrdkSetTlsCert.h"
+#include "rdkSetTlsCert.h"
 #endif
 #ifdef LIBRDKCONFIG_BUILD
 #include "rdkconfig.h"

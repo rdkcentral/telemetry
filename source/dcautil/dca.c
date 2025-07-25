@@ -159,6 +159,10 @@ int processTopPattern(char* profileName,  Vector* topMarkerList, Vector* out_gre
         }
         int tmp_skip_interval, is_skip_param;
         tmp_skip_interval = grepMarkerObj->skipFreq;
+        if(tmp_skip_interval <= 0)
+        {
+            tmp_skip_interval = 0;
+        }
         is_skip_param = (profileExecCounter % (tmp_skip_interval + 1) == 0) ? 0 : 1;
         if (is_skip_param != 0)
         {
@@ -193,6 +197,10 @@ int processTopPattern(char* profileName,  Vector* topMarkerList, Vector* out_gre
         // If the skip frequency is set, skip the marker processing for this interval
         int tmp_skip_interval, is_skip_param;
         tmp_skip_interval = grepMarkerObj->skipFreq;
+        if(tmp_skip_interval <= 0)
+        {
+            tmp_skip_interval = 0;
+        }
         is_skip_param = (profileExecCounter % (tmp_skip_interval + 1) == 0) ? 0 : 1;
         if (is_skip_param != 0)
         {
@@ -736,7 +744,7 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
     off_t offset_in_page_size_multiple ;
     unsigned int bytes_ignored = 0, bytes_ignored_main = 0, bytes_ignored_rotated = 0;
     // Find the nearest multiple of page size
-    if (seek_value > 0)
+    if (seek_value > 0 && PAGESIZE > 0)
     {
         offset_in_page_size_multiple = (seek_value / PAGESIZE) * PAGESIZE;
         bytes_ignored = seek_value - offset_in_page_size_multiple;
@@ -765,6 +773,7 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
             {
                 T2Error("Error getting file size\n");
                 close(rd);
+                rd = -1;
             }
             else
             {
@@ -772,6 +781,7 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
                 {
                     T2Error("The Size of the logfile is 0\n");
                     close(rd);
+                    rd = -1;
                 }
             }
 
@@ -805,6 +815,7 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
     }
 
     close(fd);
+    fd = -1;
 
     if (addrcf == MAP_FAILED)
     {

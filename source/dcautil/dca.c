@@ -98,14 +98,15 @@ static const char *strnstr(const char *haystack, const char *needle, size_t len)
 
     for (size_t i = 0; i + needle_len <= len; i++)
     {
-        if (memcmp(haystack + i, needle, needle_len) == 0)
-        {
-            return haystack + i;
-        }
         if (haystack[i] == '\0')
         {
             break;
         }
+        if (memcmp(haystack + i, needle, needle_len) == 0)
+        {
+            return haystack + i;
+        }
+        
     }
     return NULL;
 }
@@ -815,7 +816,6 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
     }
 
     close(fd);
-    fd = -1;
 
     if (addrcf == MAP_FAILED)
     {

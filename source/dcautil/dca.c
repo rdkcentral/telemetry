@@ -484,6 +484,7 @@ static char* getAbsolutePatternMatch(FileDescriptor* fileDescriptor, const char*
 
         if (!last_found)
         {
+            T2Info("given string not found\n");
             continue;
         }
         if(last_found && i == 0)
@@ -494,6 +495,7 @@ static char* getAbsolutePatternMatch(FileDescriptor* fileDescriptor, const char*
 
     if(!last_found)
     {
+	T2Info("given string not found\n");
         return NULL;
     }
     // Move pointer just after the pattern
@@ -511,14 +513,14 @@ static char* getAbsolutePatternMatch(FileDescriptor* fileDescriptor, const char*
     }
     memcpy(result, start, length);
     result[length] = '\0';
-    T2Debug("Found pattern '%s' in file, result: '%s'\n", pattern, result);
+    T2Info("Found pattern '%s' in file, result: '%s'\n", pattern, result);
     return result;
 }
 
 static int processPatternWithOptimizedFunction(const GrepMarker* marker, Vector* out_grepResultList, FileDescriptor* filedescriptor)
 {
     // Sanitize the input
-
+    T2Info("processPatternWithOptimizedFunction in++\n");
     const char* memmmapped_data_cf = filedescriptor->cfaddr;
     if (!marker || !out_grepResultList || !memmmapped_data_cf)
     {
@@ -563,6 +565,7 @@ static int processPatternWithOptimizedFunction(const GrepMarker* marker, Vector*
             GrepResult* result = createGrepResultObj(header, last_found, trimParameter, regexParameter);
             if(last_found)
             {
+		T2Info("last found = %s", last_found);
                 free(last_found);
                 last_found = NULL;
             }
@@ -701,10 +704,12 @@ static void freeFileDescriptor(FileDescriptor* fileDescriptor)
         if(fileDescriptor->baseAddr)
         {
             munmap(fileDescriptor->baseAddr, fileDescriptor->cf_file_size);
+            fileDescriptor->baseAddr = NULL;
         }
         if(fileDescriptor->rotatedAddr)
         {
             munmap(fileDescriptor->rotatedAddr, fileDescriptor->rf_file_size);
+            fileDescriptor->rotatedAddr = NULL;
         }
         fileDescriptor->cfaddr = NULL;
         fileDescriptor->rfaddr = NULL;
@@ -764,6 +769,12 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
             T2Error("Error opening rotated file. Start search in current file\n");
             T2Debug("File size rounded to nearest page size used for offset read: %jd bytes\n", (intmax_t)offset_in_page_size_multiple);
             addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
+           /* addrcf = (char*) malloc(sb.st_size);
+            ssize_t bytes_read = read(fd, addrcf, sb.st_size);
+            if (bytes_read != sb.st_size) {
+               T2Error("Failed to read file %s\n", logFile);
+               free(addrcf);
+            }*/
             bytes_ignored_main = bytes_ignored;
         }
         else
@@ -788,8 +799,21 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
 
             if(rb.st_size > 0)
             {
-                addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+                
+		addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
                 addrrf = mmap(NULL, rb.st_size, PROT_READ, MAP_PRIVATE, rd, offset_in_page_size_multiple);
+                /*addrcf = (char*) malloc(sb.st_size);
+                ssize_t bytes_read = read(fd, addrcf, sb.st_size);
+                if (bytes_read != sb.st_size) {
+                   T2Error("Failed to read file %s\n", logFile);
+                   free(addrcf);
+                }
+                addrrf = (char*) malloc(rb.st_size);
+                bytes_read = read(rd, addrrf, rb.st_size);
+                if (bytes_read != rb.st_size) {
+                   T2Error("Failed to read rotated file %s\n", logFile);
+                   free(addrrf);
+                }*/
                 bytes_ignored_rotated = bytes_ignored;
                 if(rd != -1)
                 {
@@ -803,6 +827,12 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
             {
                 T2Debug("No contents in rotated log file. File size rounded to nearest page size used for offset read: %jd bytes\n", (intmax_t)offset_in_page_size_multiple);
                 addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
+               /* addrcf = (char*) malloc(sb.st_size);
+                ssize_t bytes_read = read(fd, addrcf, sb.st_size);
+                if (bytes_read != sb.st_size) {
+                   T2Error("Failed to read file %s\n", logFile);
+                   free(addrcf);
+                }*/
                 bytes_ignored_main = bytes_ignored;
             }
         }
@@ -811,12 +841,18 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
     {
         T2Info("File size rounded to nearest page size used for offset read: %jd bytes\n", (intmax_t)offset_in_page_size_multiple);
         addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
+        /*addrcf = (char*) malloc(sb.st_size);
+        ssize_t bytes_read = read(fd, addrcf, sb.st_size);
+        if (bytes_read != sb.st_size) {
+           T2Error("Failed to read file %s\n", logFile);
+           free(addrcf);
+        }*/
         bytes_ignored_main = bytes_ignored;
         addrrf = NULL; // No rotated file in this case
     }
 
     close(fd);
-
+    
     if (addrcf == MAP_FAILED)
     {
         if(addrrf != NULL)
@@ -839,10 +875,12 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
         return NULL;
     }
     memset(fileDescriptor, 0, sizeof(FileDescriptor));
+    //fileDescriptor->baseAddr = addrcf;
     fileDescriptor->baseAddr = (void *)addrcf;
     addrcf += bytes_ignored_main;
     if(addrrf != NULL)
     {
+       // fileDescriptor->rotatedAddr = addrrf;
         fileDescriptor->rotatedAddr = (void *)addrrf;
         addrrf += bytes_ignored_rotated;
         fileDescriptor->rfaddr = addrrf;
@@ -986,6 +1024,7 @@ static int parseMarkerListOptimized(GrepSeekProfile *gsProfile, Vector * ip_vMar
             // Call the optimized function to process the pattern
             processPatternWithOptimizedFunction(grepMarkerObj, out_grepResultList, fileDescriptor);
         }
+	T2Info("processed successfully\n");
 
     }  // Loop of marker list ends here
 

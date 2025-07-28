@@ -31,6 +31,7 @@ AC_CONFIG_SRCDIR([source/protocol])
 AC_CONFIG_SRCDIR([source/protocol/http])
 AC_CONFIG_SRCDIR([source/protocol/rbusMethod])
 AC_CONFIG_SRCDIR([source/dcautil])
+AC_CONFIG_SRCDIR([source/nativeProtocolSimulator])
 AM_INIT_AUTOMAKE([foreign no-dist-gzip dist-bzip2 1.9])
 
 LT_INIT
@@ -218,6 +219,7 @@ AC_CONFIG_FILES([Makefile
                  source/commonlib/Makefile
                  source/protocol/Makefile
                  source/dcautil/Makefile
+                 source/nativeProtocolSimulator/Makefile
                  source/protocol/http/Makefile
                  source/protocol/rbusMethod/Makefile])
 

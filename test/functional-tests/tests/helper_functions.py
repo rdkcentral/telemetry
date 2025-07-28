@@ -85,7 +85,7 @@ def rbus_get_data(param: str):
     return subprocess.run(RBUSCLI_GET_CMD + param, shell=True, capture_output=True).stdout.decode('utf-8')
 
 def rbus_set_data(param: str, type:str, value: str):
-    if param == T2_REPORT_PROFILE_PARAM:
+    if param in [T2_REPORT_PROFILE_PARAM, T2_TEMP_REPORT_PROFILE_PARAM]:
         # Put the value between single quotes
         value = f"'{value}'"
     return subprocess.run(f"{RBUSCLI_SET_CMD} {param} {type} {value}", shell=True, capture_output=True).stdout.decode('utf-8')

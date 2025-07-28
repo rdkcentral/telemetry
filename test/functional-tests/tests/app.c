@@ -4,14 +4,14 @@
 
 void main(int argc, char *argv[])
 {
-    int i=0, n;
-    n= (argc < 2)?100:atoi(argv[1]);
+    int i = 0, n;
+    n = (argc < 2) ? 100 : atoi(argv[1]);
     // Initialize Telemetry2.0
     t2_init("event_spammer");
 
-    while(i<=n)
+    while(i <= n)
     {
-	t2_event_d("T2_INFO_Test", i);
+        t2_event_d("T2_INFO_Test", i);
         i++;
     }
     t2_uninit();

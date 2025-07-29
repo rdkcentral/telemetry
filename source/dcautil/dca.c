@@ -415,9 +415,11 @@ static int getCountPatternMatch(FileDescriptor* fileDescriptor, const char* patt
             const char *found = strnstr(cur, pattern, bytes_left);
             if (!found)
             {
+                T2Info("count pattern not found\n");
                 break;
             }
             count++;
+	    T2Info("count value = %d\n", count);
             size_t advance = (size_t)(found - cur) + patlen;
             cur = found + patlen;
             if (bytes_left < advance)
@@ -428,6 +430,7 @@ static int getCountPatternMatch(FileDescriptor* fileDescriptor, const char* patt
         }
 
     }
+    T2Info("count = %d\n", count);
     return count;
 }
 
@@ -646,7 +649,7 @@ static int getRotatedLogFileDescriptor(const char* logPath, const char* logFile)
     //get the rotated filename
     char *fileExtn = ".1";
     char rotatedlogFilePath[PATH_MAX];
-    size_t name_len = strlen(logFilePath);
+    //size_t name_len = strlen(logFilePath);
     if(logFile[0] == '/')
     {
         // If the logFile is an absolute path, use it directly
@@ -659,7 +662,7 @@ static int getRotatedLogFileDescriptor(const char* logPath, const char* logFile)
         T2Debug("RotatedLog file is not an absolute path, prefixing with directory: %s\n", logPath);
         snprintf(rotatedlogFilePath, sizeof(rotatedlogFilePath), "%s/%s", logPath, logFile);
     }
-    if(name_len > 2 && logFilePath[name_len - 2] == '.' && logFilePath[name_len - 1] == '0')
+    /*if(name_len > 2 && logFilePath[name_len - 2] == '.' && logFilePath[name_len - 1] == '0')
     {
         rotatedlogFilePath[name_len - 1] = '1';
         T2Debug("Log file name seems to be having .0 extension hence Rotated log file name is %s\n", rotatedlogFilePath);
@@ -668,7 +671,10 @@ static int getRotatedLogFileDescriptor(const char* logPath, const char* logFile)
     {
         strncat(rotatedlogFilePath, fileExtn, sizeof(rotatedlogFilePath) - strlen(rotatedlogFilePath) - 1);
         T2Debug("Rotated log file name is %s\n", rotatedlogFilePath);
-    }
+    }*/
+
+    strncat(rotatedlogFilePath, fileExtn, sizeof(rotatedlogFilePath) - strlen(rotatedlogFilePath) - 1);
+    T2Debug("Rotated log file name is %s\n", rotatedlogFilePath);
 
     int rd = open(rotatedlogFilePath, O_RDONLY);
     if (rd == -1)

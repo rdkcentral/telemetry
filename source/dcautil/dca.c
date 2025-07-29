@@ -145,10 +145,7 @@ int processTopPattern(char* profileName,  Vector* topMarkerList, Vector* out_gre
     size_t var = 0;
     size_t vCount = Vector_Size(topMarkerList);
     T2Debug("topMarkerList for profile %s is of count = %lu \n", profileName, (unsigned long )vCount);
-    // Get logfile -> seek value map associated with the profile
 
-    // We are getting the exec count directly from the profileExecCounter parameter
-    //int profileExecCounter = gsProfile->execCounter;
     char* filename = NULL;
 
     for (var = 0; var < vCount; ++var)
@@ -419,7 +416,7 @@ static int getCountPatternMatch(FileDescriptor* fileDescriptor, const char* patt
                 break;
             }
             count++;
-	    T2Info("count value = %d\n", count);
+            T2Info("count value = %d\n", count);
             size_t advance = (size_t)(found - cur) + patlen;
             cur = found + patlen;
             if (bytes_left < advance)
@@ -561,7 +558,6 @@ static int processPatternWithOptimizedFunction(const GrepMarker* marker, Vector*
     {
         // Get the last occurrence of the pattern in the memory-mapped data
         last_found = getAbsolutePatternMatch(filedescriptor, pattern);
-        // TODO : If trimParameter is true, trim the pattern before adding to the result list
         if (last_found)
         {
             // If a match is found, process it accordingly
@@ -613,7 +609,6 @@ static int getLogFileDescriptor(GrepSeekProfile* gsProfile, const char* logPath,
         return -1;
     }
 
-    // Calculate the file size
     struct stat sb;
     if (fstat(fd, &sb) == -1)
     {
@@ -622,7 +617,6 @@ static int getLogFileDescriptor(GrepSeekProfile* gsProfile, const char* logPath,
         return -1;
     }
 
-    // Check if the file size is 0
     if (sb.st_size == 0)
     {
         T2Error("The size of the logfile is 0 for %s\n", logFile);
@@ -649,7 +643,7 @@ static int getRotatedLogFileDescriptor(const char* logPath, const char* logFile)
     //get the rotated filename
     char *fileExtn = ".1";
     char rotatedlogFilePath[PATH_MAX];
-    //size_t name_len = strlen(logFilePath);
+    size_t name_len = strlen(logFilePath);
     if(logFile[0] == '/')
     {
         // If the logFile is an absolute path, use it directly
@@ -662,7 +656,7 @@ static int getRotatedLogFileDescriptor(const char* logPath, const char* logFile)
         T2Debug("RotatedLog file is not an absolute path, prefixing with directory: %s\n", logPath);
         snprintf(rotatedlogFilePath, sizeof(rotatedlogFilePath), "%s/%s", logPath, logFile);
     }
-    /*if(name_len > 2 && logFilePath[name_len - 2] == '.' && logFilePath[name_len - 1] == '0')
+    if(name_len > 2 && logFilePath[name_len - 2] == '.' && logFilePath[name_len - 1] == '0')
     {
         rotatedlogFilePath[name_len - 1] = '1';
         T2Debug("Log file name seems to be having .0 extension hence Rotated log file name is %s\n", rotatedlogFilePath);
@@ -671,10 +665,7 @@ static int getRotatedLogFileDescriptor(const char* logPath, const char* logFile)
     {
         strncat(rotatedlogFilePath, fileExtn, sizeof(rotatedlogFilePath) - strlen(rotatedlogFilePath) - 1);
         T2Debug("Rotated log file name is %s\n", rotatedlogFilePath);
-    }*/
-
-    strncat(rotatedlogFilePath, fileExtn, sizeof(rotatedlogFilePath) - strlen(rotatedlogFilePath) - 1);
-    T2Debug("Rotated log file name is %s\n", rotatedlogFilePath);
+    }
 
     int rd = open(rotatedlogFilePath, O_RDONLY);
     if (rd == -1)
@@ -683,7 +674,6 @@ static int getRotatedLogFileDescriptor(const char* logPath, const char* logFile)
         return -1;
     }
 
-    // Calculate the file size
     struct stat rb;
     if (fstat(rd, &rb) == -1)
     {
@@ -816,15 +806,35 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
         {
             T2Error("Error opening rotated file. Start search in current file\n");
             T2Debug("File size rounded to nearest page size used for offset read: %jd bytes\n", (intmax_t)offset_in_page_size_multiple);
-            addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, offset_in_page_size_multiple);
-            bytes_ignored_main = bytes_ignored;
+            if(seek_value < sb.st_size)
+            {
+                addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, offset_in_page_size_multiple);
+                bytes_ignored_main = bytes_ignored;
+            }
+            else
+            {
+                T2Debug("Log file got rotated. Ignoring invalid mapping\n");
+                close(tmp_fd);
+                close(fd);
+                return NULL;
+            }
         }
     }
     else
     {
         T2Info("File size rounded to nearest page size used for offset read: %jd bytes\n", (intmax_t)offset_in_page_size_multiple);
-        addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, offset_in_page_size_multiple);
-        bytes_ignored_main = bytes_ignored;
+        if(seek_value < sb.st_size)
+        {
+            addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, offset_in_page_size_multiple);
+            bytes_ignored_main = bytes_ignored;
+        }
+        else
+        {
+            T2Debug("Log file got rotated. Ignoring invalid mapping\n");
+            close(tmp_fd);
+            close(fd);
+            return NULL;
+        }
         addrrf = NULL;
     }
     close(tmp_fd);
@@ -852,12 +862,10 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
         return NULL;
     }
     memset(fileDescriptor, 0, sizeof(FileDescriptor));
-    //fileDescriptor->baseAddr = addrcf;
     fileDescriptor->baseAddr = (void *)addrcf;
     addrcf += bytes_ignored_main;
     if(addrrf != NULL)
     {
-        // fileDescriptor->rotatedAddr = addrrf;
         fileDescriptor->rotatedAddr = (void *)addrrf;
         addrrf += bytes_ignored_rotated;
         fileDescriptor->rfaddr = addrrf;
@@ -897,12 +905,10 @@ static int parseMarkerListOptimized(GrepSeekProfile *gsProfile, Vector * ip_vMar
     }
 
     char *prevfile = NULL;
-    //GrepSeekProfile* gsProfile = NULL;
+
     size_t var = 0;
     size_t vCount = Vector_Size(ip_vMarkerList);
 
-    // Get logfile -> seek value map associated with the profile
-    //gsProfile = (GrepSeekProfile *) getLogSeekMapForProfile(profileName);
     if(NULL == gsProfile)
     {
         T2Error("%s Unable to retrieve/create logSeekMap for profile \n", __FUNCTION__);

@@ -412,11 +412,9 @@ static int getCountPatternMatch(FileDescriptor* fileDescriptor, const char* patt
             const char *found = strnstr(cur, pattern, bytes_left);
             if (!found)
             {
-                T2Info("count pattern not found\n");
                 break;
             }
             count++;
-            T2Info("count value = %d\n", count);
             size_t advance = (size_t)(found - cur) + patlen;
             cur = found + patlen;
             if (bytes_left < advance)
@@ -427,7 +425,6 @@ static int getCountPatternMatch(FileDescriptor* fileDescriptor, const char* patt
         }
 
     }
-    T2Info("count = %d\n", count);
     return count;
 }
 
@@ -484,7 +481,6 @@ static char* getAbsolutePatternMatch(FileDescriptor* fileDescriptor, const char*
 
         if (!last_found)
         {
-            T2Info("given string not found\n");
             continue;
         }
         if(last_found && i == 0)
@@ -495,7 +491,6 @@ static char* getAbsolutePatternMatch(FileDescriptor* fileDescriptor, const char*
 
     if(!last_found)
     {
-        T2Info("given string not found\n");
         return NULL;
     }
     // Move pointer just after the pattern
@@ -513,14 +508,13 @@ static char* getAbsolutePatternMatch(FileDescriptor* fileDescriptor, const char*
     }
     memcpy(result, start, length);
     result[length] = '\0';
-    T2Info("Found pattern '%s' in file, result: '%s'\n", pattern, result);
+    T2Debug("Found pattern '%s' in file, result: '%s'\n", pattern, result);
     return result;
 }
 
 static int processPatternWithOptimizedFunction(const GrepMarker* marker, Vector* out_grepResultList, FileDescriptor* filedescriptor)
 {
     // Sanitize the input
-    T2Info("processPatternWithOptimizedFunction in++\n");
     const char* memmmapped_data_cf = filedescriptor->cfaddr;
     if (!marker || !out_grepResultList || !memmmapped_data_cf)
     {
@@ -564,7 +558,6 @@ static int processPatternWithOptimizedFunction(const GrepMarker* marker, Vector*
             GrepResult* result = createGrepResultObj(header, last_found, trimParameter, regexParameter);
             if(last_found)
             {
-                T2Info("last found = %s", last_found);
                 free(last_found);
                 last_found = NULL;
             }
@@ -822,7 +815,7 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
     }
     else
     {
-        T2Info("File size rounded to nearest page size used for offset read: %jd bytes\n", (intmax_t)offset_in_page_size_multiple);
+        T2Debug("File size rounded to nearest page size used for offset read: %jd bytes\n", (intmax_t)offset_in_page_size_multiple);
         if(seek_value < sb.st_size)
         {
             addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, offset_in_page_size_multiple);

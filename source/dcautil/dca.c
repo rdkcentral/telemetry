@@ -106,7 +106,7 @@ static const char *strnstr(const char *haystack, const char *needle, size_t len)
         {
             return haystack + i;
         }
-        
+
     }
     return NULL;
 }
@@ -484,6 +484,7 @@ static char* getAbsolutePatternMatch(FileDescriptor* fileDescriptor, const char*
 
         if (!last_found)
         {
+            T2Info("given string not found\n");
             continue;
         }
         if(last_found && i == 0)
@@ -494,6 +495,7 @@ static char* getAbsolutePatternMatch(FileDescriptor* fileDescriptor, const char*
 
     if(!last_found)
     {
+        T2Info("given string not found\n");
         return NULL;
     }
     // Move pointer just after the pattern
@@ -511,14 +513,14 @@ static char* getAbsolutePatternMatch(FileDescriptor* fileDescriptor, const char*
     }
     memcpy(result, start, length);
     result[length] = '\0';
-    T2Debug("Found pattern '%s' in file, result: '%s'\n", pattern, result);
+    T2Info("Found pattern '%s' in file, result: '%s'\n", pattern, result);
     return result;
 }
 
 static int processPatternWithOptimizedFunction(const GrepMarker* marker, Vector* out_grepResultList, FileDescriptor* filedescriptor)
 {
     // Sanitize the input
-
+    T2Info("processPatternWithOptimizedFunction in++\n");
     const char* memmmapped_data_cf = filedescriptor->cfaddr;
     if (!marker || !out_grepResultList || !memmmapped_data_cf)
     {
@@ -563,6 +565,7 @@ static int processPatternWithOptimizedFunction(const GrepMarker* marker, Vector*
             GrepResult* result = createGrepResultObj(header, last_found, trimParameter, regexParameter);
             if(last_found)
             {
+                T2Info("last found = %s", last_found);
                 free(last_found);
                 last_found = NULL;
             }
@@ -701,10 +704,12 @@ static void freeFileDescriptor(FileDescriptor* fileDescriptor)
         if(fileDescriptor->baseAddr)
         {
             munmap(fileDescriptor->baseAddr, fileDescriptor->cf_file_size);
+            fileDescriptor->baseAddr = NULL;
         }
         if(fileDescriptor->rotatedAddr)
         {
             munmap(fileDescriptor->rotatedAddr, fileDescriptor->rf_file_size);
+            fileDescriptor->rotatedAddr = NULL;
         }
         fileDescriptor->cfaddr = NULL;
         fileDescriptor->rfaddr = NULL;
@@ -758,14 +763,16 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
     //create a tmp file for main file fd
     char tmp_fdmain[] = "/tmp/dca_tmpfile_fdmainXXXXXX";
     int tmp_fd = mkstemp(tmp_fdmain);
-    if (tmp_fd == -1) {
+    if (tmp_fd == -1)
+    {
         T2Error("Failed to create temp file: %s\n", strerror(errno));
         return NULL;
     }
-
+    unlink(tmp_fdmain);
     off_t offset = 0;
     ssize_t sent = sendfile(tmp_fd, fd, &offset, sb.st_size);
-    if (sent != sb.st_size) {
+    if (sent != sb.st_size)
+    {
         T2Error("sendfile failed: %s\n", strerror(errno));
         close(tmp_fd);
         return NULL;
@@ -773,19 +780,21 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
 
     if(seek_value > sb.st_size || check_rotated == true)
     {
-       int rd = getRotatedLogFileDescriptor(logPath, logFile);
-       if (rd != -1 && fstat(rd, &rb) == 0 && rb.st_size > 0)
+        int rd = getRotatedLogFileDescriptor(logPath, logFile);
+        if (rd != -1 && fstat(rd, &rb) == 0 && rb.st_size > 0)
         {
             char tmp_fdrotated[] = "/tmp/dca_tmpfile_fdrotatedXXXXXX";
             int tmp_rd = mkstemp(tmp_fdrotated);
-            if (tmp_rd == -1) {
+            if (tmp_rd == -1)
+            {
                 T2Error("Failed to create temp file: %s\n", strerror(errno));
                 return NULL;
             }
-
+            unlink(tmp_fdrotated);
             offset = 0;
             sent = sendfile(tmp_rd, rd, &offset, rb.st_size);
-            if (sent != rb.st_size) {
+            if (sent != rb.st_size)
+            {
                 T2Error("sendfile failed: %s\n", strerror(errno));
                 close(tmp_rd);
                 return NULL;
@@ -837,10 +846,12 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
         return NULL;
     }
     memset(fileDescriptor, 0, sizeof(FileDescriptor));
+    //fileDescriptor->baseAddr = addrcf;
     fileDescriptor->baseAddr = (void *)addrcf;
     addrcf += bytes_ignored_main;
     if(addrrf != NULL)
     {
+        // fileDescriptor->rotatedAddr = addrrf;
         fileDescriptor->rotatedAddr = (void *)addrrf;
         addrrf += bytes_ignored_rotated;
         fileDescriptor->rfaddr = addrrf;
@@ -984,6 +995,7 @@ static int parseMarkerListOptimized(GrepSeekProfile *gsProfile, Vector * ip_vMar
             // Call the optimized function to process the pattern
             processPatternWithOptimizedFunction(grepMarkerObj, out_grepResultList, fileDescriptor);
         }
+        T2Info("processed successfully\n");
 
     }  // Loop of marker list ends here
 

@@ -72,7 +72,6 @@ def test_without_namefield():
     assert LOG_MSG not in grep_T2logs(LOG_MSG) #Empty string in namefield 
     assert HASH_ERROR_MSG in grep_T2logs(HASH_ERROR_MSG) #without hash field
 
-
 #negative case without hashvalue, without version field & without Protocol field
 @pytest.mark.run(order=2)
 def test_without_hashvalue():
@@ -87,7 +86,6 @@ def test_without_hashvalue():
     assert "TR_AC14" in grep_T2logs(LOG_PROFILE_ENABLE)  # without version field
     assert "TR_AC15" not in grep_T2logs(LOG_PROFILE_ENABLE)  # without Protocol field
     assert PROTOCOL_ERROR_MSG in grep_T2logs(PROTOCOL_ERROR_MSG) # verify whether the protocol is given
-
 
 #negative cases:
 # random value for Protocol 
@@ -111,8 +109,6 @@ def test_with_wrong_protocol_value():
     assert "TR_AC17" in grep_T2logs(LOG_PROFILE_ENABLE) # Verify Profile can be enabled for empty version
     assert "TR_AC13" not in grep_T2logs(LOG_PROFILE_ENABLE) # Verify Profile cannot be enabled for empty protocol
     sleep(2)
-
-
 
 #negative cases
 # without EncodingType & ActivationTimeout values
@@ -231,7 +227,10 @@ def test_for_Generate_Now():
 @pytest.mark.run(order=7)
 def test_for_invalid_activation_timeout():
     ERROR_PROFILE_TIMEOUT = "activationTimeoutPeriod is less than reporting interval. invalid profile: "
-    rbus_set_data("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.ConfigURL", "string", "https://mockxconf:50050/loguploader1/getT2DCMSettings")
+    rbus_set_data("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.ConfigURL", "string", "https://mockxconf:50050/loguploader2/getT2DCMSettings")
+    file = open('/opt/logs/session0.txt', 'w')
+    file.write("This log file is for previous logs\n")
+    file.close()
     clear_T2logs()
     kill_telemetry(9)
     RUN_START_TIME = dt.now()
@@ -399,8 +398,6 @@ def test_for_triggerCondition_working_case():
 
 @pytest.mark.run(order=13)
 def test_for_duplicate_hash():
-    run_telemetry()
-    sleep(5)
     run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 DEBUG")
     run_shell_command("cp /opt/logs/core_log.txt /opt/logs/core_log.txt.0")
     run_shell_command("cp /opt/logs/core_log.txt /opt/logs/core_log.txt.1")
@@ -410,7 +407,13 @@ def test_for_duplicate_hash():
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_split_markers))
     sleep(2)
     assert "Split66" in grep_T2logs("hash already exist") # Check for HASH value matches of profile to avoid duplicate processing
-    sleep(20)
+    run_shell_command("cp test/functional-tests/tests/rotated.txt /opt/logs/")
+    sleep(6)
+    assert "SYS_INFO_Rotated_Log\":\"1" in grep_T2logs("cJSON Report ") 
+    run_shell_command("cp test/functional-tests/tests/rotated.txt.1 /opt/logs/")
+    run_shell_command("cp test/functional-tests/tests/rotated.txt.reduced /opt/logs/rotated.txt")
+    sleep(10)
+    assert "SYS_INFO_Rotated_Log\":\"2" in grep_T2logs("cJSON Report ") 
     assert "Split66" in grep_T2logs("URL: https://mockxconf:50051/dataLookeMock") # Configurable reporting end points
                                                                                   # Configurable URL parameters for HTTP Protocol
     assert "Split66" in grep_T2logs("removing profile :") # Profile persistence - 1
@@ -422,6 +425,7 @@ def test_for_duplicate_hash():
     run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
     sleep(5)
     assert "Split66" in grep_T2logs(LOG_PROFILE_ENABLE)  # Profile persistence - 2
+
 @pytest.mark.run(order=14)
 def test_stress_test():
     command_to_get_pid = "pidof telemetry2_0"

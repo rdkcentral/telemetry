@@ -890,7 +890,7 @@ data_without_EncodingType_ActivationTimeout_values = '''{
     ]
 }'''
 
-data_with_reporting_interval = '{ "profiles": [ { "name": "TR_AC732", "hash": "Hash732", "value": { "Name": "RDKB_Profile_3", "Description": "RDKB_Profile", "Version": "0.1", "Protocol": "HTTP", "EncodingType": "JSON", "ActivationTimeout": 3600, "ReportingInterval": 20, "GenerateNow": false, "RootName": "FR2_US_TC3", "Parameter": [ { "type": "event", "eventName": "TEST_EVENT_MARKER_1", "component": "sysint", "use": "count" }, { "type": "event", "eventName": "TEST_EVENT_MARKER_2", "component": "sysint", "use": "accumulate" }, { "type": "grep", "marker": "SYS_INFO_CrashPortalUpload_success", "search": "Success loading", "logFile": "core_log.txt", "use": "count", "reportEmpty":true } ], "ReportingAdjustments": [ { "ReportOnUpdate": false, "FirstReportingInterval": 15, "MaxUploadLatency": 20000 } ], "HTTP": { "URL": "https://mockxconf:50051/dataLakeMock/", "Compression": "None", "Method": "POST", "RequestURIParameter": [ { "Name": "reportName", "Reference": "Profile.Name" } ] }, "JSONEncoding": { "ReportFormat": "NameValuePair", "ReportTimestamp": "None" } } } ] }'
+data_with_reporting_interval = '{ "profiles": [ { "name": "TR_AC732", "hash": "Hash732", "value": { "Name": "RDKB_Profile_3", "Description": "RDKB_Profile", "Version": "0.1", "Protocol": "RBUS_METHOD", "EncodingType": "JSON", "ActivationTimeout": 3600, "ReportingInterval": 20, "GenerateNow": false, "RootName": "FR2_US_TC3", "Parameter": [ { "type": "event", "eventName": "TEST_EVENT_MARKER_1", "component": "sysint", "use": "count" }, { "type": "event", "eventName": "TEST_EVENT_MARKER_2", "component": "sysint", "use": "accumulate", "reportTimestamp":"Unix-Epoch" }, { "type": "grep", "marker": "SYS_INFO_CrashPortalUpload_success", "search": "Success loading", "logFile": "core_log.txt", "use": "count", "reportEmpty":true } ], "ReportingAdjustments": [ { "ReportOnUpdate": false, "FirstReportingInterval": 15, "MaxUploadLatency": 20000 } ], "RBUS_METHOD":{"Method":"Device.X_RDK_Xmidt.SendData","Parameters":[{"name":"msg_type","value":"event"},{"name":"source","value":"telemetry2"},{"name":"dest","value":"event:/profile-report/LTE-report"},{"name":"content_type","value":"application/json"},{"name":"qos","value":"75"}]}, "JSONEncoding": { "ReportFormat": "NameValuePair", "ReportTimestamp": "None" } } } ] }'
 
 data_with_Generate_Now = '''{
     "profiles": [
@@ -1257,6 +1257,13 @@ data_with_split_markers = '''{
             "search": "WhoAmI feature",
             "logFile": "telemetry2_0.txt.0",
             "use": "absolute"
+          },
+          {
+            "type": "grep",
+            "marker": "SYS_INFO_Rotated_Log",
+            "search": "some random lines for filling the file",
+            "logFile": "rotated.txt",
+            "use": "count"
           }
         ],
         "ReportingAdjustments": {

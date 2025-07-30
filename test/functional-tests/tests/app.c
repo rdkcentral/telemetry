@@ -17,5 +17,3 @@ void main(int argc, char *argv[])
     t2_uninit();
     printf("Sent %d t2_event_d events.\n", n);
 }
-
-

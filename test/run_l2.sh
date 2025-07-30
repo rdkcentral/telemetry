@@ -31,6 +31,8 @@ if ! grep -q "PERSISTENT_PATH=/opt/" /etc/include.properties; then
     echo "PERSISTENT_PATH=/opt/" >> /etc/include.properties
 fi
 
+gcc test/functional-tests/tests/app.c -o test/functional-tests/tests/t2_app -ltelemetry_msgsender -lt2utils
+
 # removing --exitfirst flag as it is causing the test to exit after first failure
 pytest -v --json-report --json-report-summary --json-report-file $RESULT_DIR/runs_as_daemon.json test/functional-tests/tests/test_runs_as_daemon.py 
 pytest -v --json-report --json-report-summary --json-report-file $RESULT_DIR/bootup_sequence.json test/functional-tests/tests/test_bootup_sequence.py 

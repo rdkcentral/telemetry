@@ -897,71 +897,6 @@ data_temp_with_reporting_interval = '{ "profiles": [ { "name": "temp_AC732", "ha
 data_with_Generate_Now = '''{
     "profiles": [
         {
-            "name": "TR_AC767",
-            "hash": "Hash767",
-            "value": {
-                "Name": "RDKB_Profile_1",
-                "Description": "RDKB_Profile",
-                "Version": "0.1",
-                "Protocol": "HTTP",
-                "EncodingType": "JSON",
-                "ActivationTimeOut": 50,
-                "ReportingInterval": 20,
-                "RootName": "FR2_US_TC3",
-                "Parameter": [
-                    {
-                        "type": "dataModel",
-                        "name": "MODEL_NAME",
-                        "reference": "Device.DeviceInfo.ModelName",
-                        "use": "absolute"
-                    },
-                    {
-                        "type": "event",
-                        "eventName": "USED_MEM1_split",
-                        "component": "sysint",
-                        "use": "absolute",
-                        "reportEmpty":true
-                    },
-                    {
-                        "type": "grep",
-                        "marker": "SYS_INFO_CrashPortalUpload_success",
-                        "search": "Success uploading",
-                        "logFile": "core_log.txt",
-                        "use": "count"
-                    },
-                    {
-                        "type": "grep",
-                        "marker": "FILE_Upload_Progress",
-                        "search": "file uploading",
-                        "logFile": "core_log.txt",
-                        "use": "absolute"
-                    }
-                ],
-                "ReportingAdjustments": [
-                    {
-                        "ReportOnUpdate": false,
-                        "FirstReportingInterval": 15,
-                        "MaxUploadLatency": 20000
-                    }
-                ],
-                "HTTP": {
-                    "URL": "https://mockxconf:50051/dataLakeMock/",
-                    "Compression": "None",
-                    "Method": "POST",
-                    "RequestURIParameter": [
-                        {
-                            "Name": "reportName",
-                            "Reference": "Profile.Name"
-                        }
-                    ]
-                },
-                "JSONEncoding": {
-                    "ReportFormat": "NameValuePair",
-                    "ReportTimestamp": "None"
-                }
-            }
-        },
-        {
             "name": "TR_AC777",
             "hash": "Hash777",
             "value": {
@@ -1014,16 +949,10 @@ data_with_Generate_Now = '''{
                     "ReportTimestamp": "None"
                 }
             }
-        }
-    ]
-}'''
-
-
-data_temp_with_Generate_Now = '''{
-    "profiles": [
+        },
         {
-            "name": "temp_AC767",
-            "hash": "temp_767",
+            "name": "TR_AC767",
+            "hash": "Hash767",
             "value": {
                 "Name": "RDKB_Profile_1",
                 "Description": "RDKB_Profile",
@@ -1031,21 +960,14 @@ data_temp_with_Generate_Now = '''{
                 "Protocol": "HTTP",
                 "EncodingType": "JSON",
                 "ActivationTimeOut": 50,
-                "ReportingInterval": 20,
-                "RootName": "temp_767",
+                "ReportingInterval": 15,
+                "RootName": "FR2_US_TC3",
                 "Parameter": [
                     {
                         "type": "dataModel",
                         "name": "MODEL_NAME",
                         "reference": "Device.DeviceInfo.ModelName",
                         "use": "absolute"
-                    },
-                    {
-                        "type": "event",
-                        "eventName": "USED_MEM1_split",
-                        "component": "sysint",
-                        "use": "absolute",
-                        "reportEmpty":true
                     },
                     {
                         "type": "grep",
@@ -1085,7 +1007,13 @@ data_temp_with_Generate_Now = '''{
                     "ReportTimestamp": "None"
                 }
             }
-        },
+        }
+    ]
+}'''
+
+
+data_temp_with_Generate_Now = '''{
+    "profiles": [
         {
             "name": "temp_AC777",
             "hash": "temp_777",
@@ -1114,6 +1042,71 @@ data_temp_with_Generate_Now = '''{
                         "search": "file writing",
                         "logFile": "core_log.txt",
                         "use": "accumulate"
+                    }
+                ],
+                "ReportingAdjustments": [
+                    {
+                        "ReportOnUpdate": false,
+                        "FirstReportingInterval": 15,
+                        "MaxUploadLatency": 20000
+                    }
+                ],
+                "HTTP": {
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
+                },
+                "JSONEncoding": {
+                    "ReportFormat": "NameValuePair",
+                    "ReportTimestamp": "None"
+                }
+            }
+        },
+        {
+            "name": "temp_AC767",
+            "hash": "temp_767",
+            "value": {
+                "Name": "RDKB_Profile_1",
+                "Description": "RDKB_Profile",
+                "Version": "0.1",
+                "Protocol": "HTTP",
+                "EncodingType": "JSON",
+                "ActivationTimeOut": 50,
+                "ReportingInterval": 15,
+                "RootName": "temp_767",
+                "Parameter": [
+                    {
+                        "type": "dataModel",
+                        "name": "MODEL_NAME",
+                        "reference": "Device.DeviceInfo.ModelName",
+                        "use": "absolute"
+                    },
+                    {
+                        "type": "event",
+                        "eventName": "USED_MEM1_split",
+                        "component": "sysint",
+                        "use": "absolute",
+                        "reportEmpty":true
+                    },
+                    {
+                        "type": "grep",
+                        "marker": "SYS_INFO_CrashPortalUpload_success",
+                        "search": "Success uploading",
+                        "logFile": "core_log.txt",
+                        "use": "count"
+                    },
+                    {
+                        "type": "grep",
+                        "marker": "FILE_Upload_Progress",
+                        "search": "file uploading",
+                        "logFile": "core_log.txt",
+                        "use": "absolute"
                     }
                 ],
                 "ReportingAdjustments": [

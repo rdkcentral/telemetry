@@ -443,12 +443,12 @@ def test_for_duplicate_hash():
     run_shell_command("cp /opt/logs/core_log.txt /opt/logs/core_log.txt.0")
     run_shell_command("cp /opt/logs/core_log.txt /opt/logs/core_log.txt.1")
     run_shell_command("echo Rotated_log_line >> /opt/logs/core_log.txt.1")
-    rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_split_markers))
-    rbus_set_data(T2_TEMP_REPORT_PROFILE_PARAM, "string", (data_temp_with_split_markers))
+    rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_for_persistence))
+    rbus_set_data(T2_TEMP_REPORT_PROFILE_PARAM, "string", (data_temp_for_persistence))
     sleep(2)
-    rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_split_markers))
+    rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_for_persistence))
     sleep(2)
-    assert "Split66" in grep_T2logs("hash already exist") # 203 - Check for HASH value matches of profile to avoid duplicate processing
+    assert "per_66" in grep_T2logs("hash already exist") # 203 - Check for HASH value matches of profile to avoid duplicate processing
     run_shell_command("cp test/functional-tests/tests/rotated.txt /opt/logs/")
     sleep(6)
     assert "SYS_INFO_Rotated_Log\":\"1" in grep_T2logs("cJSON Report ") 
@@ -456,12 +456,12 @@ def test_for_duplicate_hash():
     run_shell_command("cp test/functional-tests/tests/rotated.txt.reduced /opt/logs/rotated.txt")
     sleep(10)
     assert "SYS_INFO_Rotated_Log\":\"1" in grep_T2logs("cJSON Report ") # 247 - Report generation for profiles with log grep markers during log file rotation scenarios.
-    assert "Split66" in grep_T2logs("URL: https://mockxconf:50051/dataLookeMock") # 226 - Configurable reporting end points
+    assert "per_66" in grep_T2logs("URL: https://mockxconf:50051/dataLookeMock") # 226 - Configurable reporting end points
                                                                                   # 227 - Configurable URL parameters for HTTP Protocol
     #assert "temp_Split66" in grep_T2logs("URL: https://mockxconf:50051/dataTempLookeMock") # 322 - Configurable reporting end points
                                                                                   # 323 - Configurable URL parameters for HTTP Protocol
-    assert "Split66" in grep_T2logs("removing profile :") # 229 - Profile persistence - 1
-    assert "temp_Split66" in grep_T2logs("removing profile :") # 326 - Profile persistence - 1
+    assert "per_66" in grep_T2logs("removing profile :") # 229 - Profile persistence - 1
+    assert "temp_per_66" in grep_T2logs("removing profile :") # 326 - Profile persistence - 1
     clear_T2logs()
     RUN_START_TIME = dt.now()
     kill_telemetry(9)
@@ -469,8 +469,8 @@ def test_for_duplicate_hash():
     run_telemetry()
     run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
     sleep(5)
-    assert "Split66" in grep_T2logs(LOG_PROFILE_ENABLE)  # 229 - Profile persistence - 2
-    assert "temp_Split66" not in grep_T2logs(LOG_PROFILE_ENABLE)  # 326 - Profile persistence - 2
+    assert "per_66" in grep_T2logs(LOG_PROFILE_ENABLE)  # 229 - Profile persistence - 2
+    assert "temp_per_66" not in grep_T2logs(LOG_PROFILE_ENABLE)  # 326 - Profile persistence - 2
 
 @pytest.mark.run(order=14)
 def test_stress_test():

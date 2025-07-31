@@ -1512,6 +1512,191 @@ data_temp_with_split_markers = '''{
   ]
 }'''
 
+
+data_for_persistence = '''{
+  "profiles": [
+    {
+      "name": "per_66",
+      "hash": "per_66",
+      "value": {
+        "Name": "RDKB_Profile_1",
+        "Description": "RDKB_Profile",
+        "Version": "0.1",
+        "Protocol": "HTTP",
+        "EncodingType": "JSON",
+        "ActivationTimeOut": 20,
+        "ReportingInterval": 10,
+        "GenerateNow": false,
+        "RootName": "rp_Split_Marker",
+        "TimeReference": "2023-01-25T13:47:00Z",
+        "Parameter": [
+          {
+            "type": "dataModel",
+            "name": "IUI_VERSION",
+            "reference": "Device.DeviceInfo.X_RDKCENTRAL-COM.IUI.Version",
+            "method":"subscribe",
+            "use": "accumulate",
+            "reportTimestamp":"Unix-Epoch"
+          },
+          {
+            "type": "event",
+            "eventName": "TEST_EVENT_MARKER_2",
+            "component": "sysint",
+            "use": "absolute"
+          },
+          {
+            "type": "grep",
+            "marker": "SYS_INFO_Rotated_Log",
+            "search": "Rotated_log_line",
+            "logFile": "core_log.txt",
+            "use": "absolute"
+          },
+          {
+            "type": "grep",
+            "marker": "SYS_INFO_PreviousLogs",
+            "search": "This log file is for previous logs",
+            "logFile": "session0.txt",
+            "use": "absolute"
+          },
+          {
+            "type": "grep",
+            "marker": "SYS_INFO_WhoAmI",
+            "search": "WhoAmI feature is",
+            "logFile": "telemetry2_0.txt.0",
+            "use": "absolute"
+          },
+          {
+            "type": "grep",
+            "marker": "SYS_INFO_WhoAmI_Status",
+            "search": "WhoAmI feature",
+            "logFile": "telemetry2_0.txt.0",
+            "use": "absolute"
+          },
+          {
+            "type": "grep",
+            "marker": "SYS_INFO_Rotated_Log",
+            "search": "some random lines for filling the file",
+            "logFile": "rotated.txt",
+            "use": "count"
+          }
+        ],
+        "ReportingAdjustments": {
+          "ReportOnUpdate": true,
+          "FirstReportingInterval": 5,
+          "MaxUploadLatency": 10
+        },
+        "HTTP": {
+          "URL": "https://mockxconf:50051/dataLookeMock/",
+          "Compression": "None",
+          "Method": "POST",
+          "RequestURIParameter": [
+            {
+              "Name": "reportName",
+              "Reference": "Profile.Name"
+            }
+          ]
+        },
+        "JSONEncoding": {
+          "ReportFormat": "NameValuePair",
+          "ReportTimestamp": "Unix-Epoch"
+        }
+      }
+    }
+  ]
+}'''
+
+data_temp_for_persistence = '''{
+  "profiles": [
+    {
+      "name": "temp_per_66",
+      "hash": "temp_per_66",
+      "value": {
+        "Name": "RDKB_Profile_1",
+        "Description": "RDKB_Profile",
+        "Version": "0.1",
+        "Protocol": "HTTP",
+        "EncodingType": "JSON",
+        "ActivationTimeOut": 20,
+        "ReportingInterval": 10,
+        "GenerateNow": false,
+        "RootName": "temp_Split_Marker",
+        "TimeReference": "2023-01-25T13:47:00Z",
+        "Parameter": [
+          {
+            "type": "dataModel",
+            "name": "IUI_VERSION",
+            "reference": "Device.DeviceInfo.X_RDKCENTRAL-COM.IUI.Version",
+            "method":"subscribe",
+            "use": "accumulate",
+            "reportTimestamp":"Unix-Epoch"
+          },
+          {
+            "type": "event",
+            "eventName": "TEST_EVENT_MARKER_2",
+            "component": "sysint",
+            "use": "absolute"
+          },
+          {
+            "type": "grep",
+            "marker": "SYS_INFO_Rotated_Log",
+            "search": "Rotated_log_line",
+            "logFile": "core_log.txt",
+            "use": "absolute"
+          },
+          {
+            "type": "grep",
+            "marker": "SYS_INFO_PreviousLogs",
+            "search": "This log file is for previous logs",
+            "logFile": "session0.txt",
+            "use": "absolute"
+          },
+          {
+            "type": "grep",
+            "marker": "SYS_INFO_WhoAmI",
+            "search": "WhoAmI feature is",
+            "logFile": "telemetry2_0.txt.0",
+            "use": "absolute"
+          },
+          {
+            "type": "grep",
+            "marker": "SYS_INFO_WhoAmI_Status",
+            "search": "WhoAmI feature",
+            "logFile": "telemetry2_0.txt.0",
+            "use": "absolute"
+          },
+          {
+            "type": "grep",
+            "marker": "SYS_INFO_Rotated_Log",
+            "search": "some random lines for filling the file",
+            "logFile": "rotated.txt",
+            "use": "count"
+          }
+        ],
+        "ReportingAdjustments": {
+          "ReportOnUpdate": true,
+          "FirstReportingInterval": 5,
+          "MaxUploadLatency": 10
+        },
+        "HTTP": {
+          "URL": "https://mockxconf:50051/dataTempLookeMock/",
+          "Compression": "None",
+          "Method": "POST",
+          "RequestURIParameter": [
+            {
+              "Name": "reportName",
+              "Reference": "Profile.Name"
+            }
+          ]
+        },
+        "JSONEncoding": {
+          "ReportFormat": "NameValuePair",
+          "ReportTimestamp": "Unix-Epoch"
+        }
+      }
+    }
+  ]
+}'''
+
 data_with_first_reporting_interval_max_latency = '''{
     "profiles": [
         {

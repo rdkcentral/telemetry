@@ -155,6 +155,7 @@ def test_reporting_interval_working():
     clear_persistant_files()
     run_telemetry()
     run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
+    rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_empty_profile))
     sleep(2)
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_reporting_interval))
     sleep(2)
@@ -332,6 +333,7 @@ def test_for_first_reporting_interval_Maxlatency():
     run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
     sleep(2)
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_empty_profile)) # instead of telemetry restart giving empty profile to clear previous profile data 
+    rbus_set_data(T2_TEMP_REPORT_PROFILE_PARAM, "string", data_empty_profile)
     sleep(2)
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_first_reporting_interval_max_latency))
     sleep(5)
@@ -439,6 +441,8 @@ def test_for_triggerCondition_working_case():
 
 @pytest.mark.run(order=13)
 def test_for_duplicate_hash():
+    rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_empty_profile))
+    sleep(2)
     run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 DEBUG")
     run_shell_command("cp /opt/logs/core_log.txt /opt/logs/core_log.txt.0")
     run_shell_command("cp /opt/logs/core_log.txt /opt/logs/core_log.txt.1")

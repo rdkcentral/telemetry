@@ -176,7 +176,7 @@ def test_reporting_interval_working():
     run_shell_command(command3)
     sleep(2)
     assert "20 sec" in REPORTING_INTERVAL_LOG1
-    sleep(10)
+    sleep(15)
     assert "TIMEOUT for profile" in grep_T2logs("TR_AC732") # 218 -Report on interval  
     assert "TEST_EVENT_MARKER_1\":\"2" in grep_T2logs("FR2_US_TC3") # 234 -Include data from data source T2 events as count
     assert "occurrance1\",\"occurrance2" in grep_T2logs("FR2_US_TC3") # 212 - Include data from data source as T2 events - 1
@@ -193,6 +193,9 @@ def test_reporting_interval_working():
     assert "Report Cached, No. of reportes cached = " in grep_T2logs("Report Cached, No. of reportes cached = ") # 321 - Caching of upload failed reports
 
     run_shell_command("/usr/local/bin/rbus_timeout.sh")
+    rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_empty_profile)) # instead of telemetry restart giving empty profile to clear previous profile data 
+    rbus_set_data(T2_TEMP_REPORT_PROFILE_PARAM, "string", data_empty_profile)
+    sleep(2)
 
 # verification for GenerateNow
 # count - grep marker validation

@@ -171,27 +171,27 @@ void* TimeoutThread(void *arg)
         return NULL;
     }
 
+    //Set the clock source for the condition variable as CLOCK_MONOTONIC
+    // This is important to prevent timer from drifting because of systemtime drift ( such as NTP sync)
+    if (pthread_condattr_setclock(&Profile_attr, CLOCK_MONOTONIC) != 0) {
+        T2Error("pthread_condattr_setclock failed");
+        pthread_condattr_destroy(&Profile_attr);
+        return NULL;
+    }
+
+    //Initialize the condition variable with the attributes
+    if (pthread_cond_init(&tProfile->tCond, &Profile_attr) != 0) {
+        T2Error("pthread_cond_init failed");
+        pthread_condattr_destroy(&Profile_attr);
+        return NULL;
+    }
+
+    pthread_condattr_destroy(&Profile_attr);
+
     while(tProfile->repeat && !tProfile->terminated && tProfile->name)
     {
         memset(&_ts, 0, sizeof(struct timespec));
         memset(&_now, 0, sizeof(struct timespec));
-
-        //Set the clock source for the condition variable as CLOCK_MONOTONIC
-       // This is important to prevent timer from drifting because of systemtime drift ( such as NTP sync)
-       if (pthread_condattr_setclock(&Profile_attr, CLOCK_MONOTONIC) != 0) {
-           perror("pthread_condattr_setclock failed");
-           pthread_condattr_destroy(&Profile_attr);
-           return NULL;
-       }
-
-       //Initialize the condition variable with the attributes
-       if (pthread_cond_init(&tProfile->tCond, &Profile_attr) != 0) {
-          perror("pthread_cond_init failed");
-          pthread_condattr_destroy(&Profile_attr);
-          return NULL;
-       }
-
-       pthread_condattr_destroy(&Profile_attr);
 
         if(pthread_mutex_lock(&tProfile->tMutex) != 0)
         {

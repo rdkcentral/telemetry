@@ -144,6 +144,9 @@ def test_without_EncodingType_ActivationTimeout_values():
     assert "TR_AC22" not in grep_T2logs(LOG_PROFILE_ENABLE) # Verify profile is not enabled without ReportingInterval param
     assert "TR_AC23" in grep_T2logs(LOG_PROFILE_ENABLE) # Verify profile is enabled without GenerateNow param
     sleep(5)
+    rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_empty_profile)) # instead of telemetry restart giving empty profile to clear previous profile data 
+    rbus_set_data(T2_TEMP_REPORT_PROFILE_PARAM, "string", data_empty_profile)
+    sleep(2)
 
 #1).positive case for working of Reporting Interval
 #2).positive case for event marker & with count

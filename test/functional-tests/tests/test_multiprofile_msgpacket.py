@@ -119,6 +119,8 @@ def test_with_wrong_protocol_value():
 
 @pytest.mark.run(order=4)
 def test_without_EncodingType_ActivationTimeout_values():
+    rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_empty_profile)) # instead of telemetry restart giving empty profile to clear previous profile data 
+    sleep(2)
     ERROR_REPORTING_INTERVAL = "If TriggerCondition is not given ReportingInterval parameter is mandatory"
     ERROR_ENCODING = "Incomplete Profile information, ignoring profile"
     clear_T2logs()
@@ -130,7 +132,7 @@ def test_without_EncodingType_ActivationTimeout_values():
     run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
     sleep(2)
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_without_EncodingType_ActivationTimeout_values))
-    sleep(25)
+    sleep(5)
     # 215 - Multiple profiles configured simultaneously
     # 202 - Profile setting and parsing in message pack format
     assert "TR_AC18" in grep_T2logs(LOG_PROFILE_ENABLE) # Verify profile is enabled with an empty encodingType

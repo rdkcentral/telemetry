@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ##########################################################################
-SUBDIRS = nativeProtocolSimulator utils 
+SUBDIRS = utils 
 
 #add privacymode utils if the flag is enabled
 if IS_PRIVACYCONTROL_ENABLED

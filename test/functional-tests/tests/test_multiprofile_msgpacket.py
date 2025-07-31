@@ -363,7 +363,9 @@ def test_for_subscribe_tr181():
     assert "SYS_INFO_WhoAmI" in grep_T2logs("cJSON Report ") # Split marker validation
     assert "SYS_INFO_WhoAmI_Status" in grep_T2logs("cJSON Report ") #  multiple Split markers in the same line
     assert "SYS_INFO_PreviousLogs" in grep_T2logs("cJSON Report ") #  Previous Logs support for grep
-    assert "IUI_VERSION" in grep_T2logs("cJSON Report ") #  tr181 subscribe
+    assert "T2_Container_0.0.1" in grep_T2logs("IUI_VERSION\":") #  tr181 subscribe
+    assert "T2_Container_0.0.2" in grep_T2logs("IUI_VERSION\":") #  tr181 subscribe
+    assert "T2_Container_0.0.3" in grep_T2logs("IUI_VERSION\":") #  tr181 subscribe
     assert "IUI_VERSION_CT" in grep_T2logs("cJSON Report ") #  tr181 subscribe
     assert "Report Sent Successfully over HTTP" in grep_T2logs ("Report Sent Successfully over HTTP") #Report Sending over HTTP
 

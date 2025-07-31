@@ -1814,10 +1814,11 @@ data_with_triggerconditon_pos = '''{
         "Description": "Trigger condition working case",
         "Version": ".01",
         "Protocol": "HTTP",
+        "ReportingInterval": 520,
         "EncodingType": "JSON",
         "GenerateNow": false,
+        "ActivationTimeout": 520,
         "TimeReference": "0001-01-01T00:00:00Z",
-        "ActivationTimeout": 120,
         "Parameter": [],
         "TriggerCondition": [
           {

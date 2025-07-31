@@ -36,46 +36,6 @@ RUN_START_TIME = None
 LOG_PROFILE_ENABLE = "Successfully enabled profile :"
 LOG_PROFILE_SET = "Successfully set profile :"
 
-'''
-#negative case without name field, Empty string in namefield & without hash field
-@pytest.mark.run(order=1)
-def test_without_namefield():
-    clear_T2logs()
-    kill_telemetry(9)
-    RUN_START_TIME = dt.now()
-    remove_T2bootup_flag()
-    clear_persistant_files()
-    run_telemetry()
-    #Enabling debug log lines to get the HASH_ERROR_MSG in the logs
-    sleep(2)
-
-    rbus_set_data(T2_TEMP_REPORT_PROFILE_PARAM, "string", (data_without_namefield))
-    sleep(10) 
-
-    #Verify that profile is running
-    ERROR_MSG = "Incomplete profile object information, unable to create profile"
-    LOG_MSG = "Successfully enabled profile : \n"
-    HASH_ERROR_MSG = "Hash value is null checking for versionHash value"
-    assert ERROR_MSG in grep_T2logs(ERROR_MSG) #Without name field
-    assert LOG_MSG not in grep_T2logs(LOG_MSG) #Empty string in namefield 
-    assert HASH_ERROR_MSG in grep_T2logs(HASH_ERROR_MSG) #without hash field
-
-#negative case without hashvalue, without version field & without Protocol field
-@pytest.mark.run(order=2)
-def test_without_hashvalue():
-    clear_T2logs()
-    RUN_START_TIME = dt.now()
-    run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
-    sleep(2)
-    rbus_set_data(T2_TEMP_REPORT_PROFILE_PARAM, "string", (data_without_hashvalue))
-    sleep(20) #All profiles are erorr case profiles so adding 20 sec for processing of profiles
-    PROTOCOL_ERROR_MSG = "Incomplete Profile information, ignoring profile"
-    assert "TR_AC12" not in grep_T2logs(LOG_PROFILE_ENABLE)  # without hash value
-    assert "TR_AC14" in grep_T2logs(LOG_PROFILE_ENABLE)  # without version field
-    assert "TR_AC15" not in grep_T2logs(LOG_PROFILE_ENABLE)  # without Protocol field
-    assert PROTOCOL_ERROR_MSG in grep_T2logs(PROTOCOL_ERROR_MSG) # verify whether the protocol is given
-
-
 #negative cases:
 # random value for Protocol 
 # empty string for version
@@ -92,14 +52,12 @@ def test_with_wrong_protocol_value():
     sleep(2)
     rbus_set_data(T2_TEMP_REPORT_PROFILE_PARAM, "string", (data_with_wrong_protocol_value))
     sleep(10)
-    ERROR_WRONG_PROTOCOL = "Unsupported report sending protocol"
+    ERROR_WRONG_PROTOCOL = "Unsupported protocol"
     assert ERROR_WRONG_PROTOCOL in grep_T2logs(ERROR_WRONG_PROTOCOL) #Verify the right protocol is given
     assert "TR_AC16" not in grep_T2logs(LOG_PROFILE_ENABLE) # Verify profile is not enabled with an incorrect protocol
     assert "TR_AC17" in grep_T2logs(LOG_PROFILE_ENABLE) # Verify Profile can be enabled for empty version
     assert "TR_AC13" not in grep_T2logs(LOG_PROFILE_ENABLE) # Verify Profile cannot be enabled for empty protocol
     sleep(2)
-
-
 
 #negative cases
 # without EncodingType & ActivationTimeout values
@@ -111,7 +69,7 @@ def test_with_wrong_protocol_value():
 @pytest.mark.run(order=4)
 def test_without_EncodingType_ActivationTimeout_values():
     ERROR_REPORTING_INTERVAL = "If TriggerCondition is not given ReportingInterval parameter is mandatory"
-    ERROR_ENCODING = "Incomplete Profile information, ignoring profile"
+    ERROR_ENCODING = "Incomplete profile information, unable to create profile"
     clear_T2logs()
     kill_telemetry(9)
     RUN_START_TIME = dt.now()
@@ -124,7 +82,7 @@ def test_without_EncodingType_ActivationTimeout_values():
     sleep(25)
     #Multiple profiles configured simultaneously
     assert "TR_AC18" in grep_T2logs(LOG_PROFILE_ENABLE) # Verify profile is enabled with an empty encodingType
-    assert "TR_AC19" in grep_T2logs(LOG_PROFILE_ENABLE) # Verify profile is enabled with an empty ActivationTimeout
+    assert "TR_AC19" not in grep_T2logs(LOG_PROFILE_ENABLE) # Verify profile is not enabled with an empty ActivationTimeout #differs to rp behaviour
     assert "TR_AC20" not in grep_T2logs(LOG_PROFILE_ENABLE) # Verify profile is not enabled without encodingType param
     assert ERROR_ENCODING in grep_T2logs(ERROR_ENCODING)
     assert "TR_AC21" in grep_T2logs(LOG_PROFILE_ENABLE) # Verify profile is enabled without ActivationTimeout param
@@ -198,7 +156,7 @@ def test_for_Generate_Now():
     file.close()
     sleep(2)
 
-    LOG_GENERATE_NOW = "Waiting for 0 sec for next TIMEOUT for profile"
+    LOG_GENERATE_NOW = "Waiting for timeref or reporting interval for the profile"
     rbus_set_data(T2_TEMP_REPORT_PROFILE_PARAM, "string", (data_with_Generate_Now))
     sleep(5)
     assert "TR_AC777" in grep_T2logs(LOG_GENERATE_NOW)  # verification for GenerateNow
@@ -242,15 +200,7 @@ def test_for_invalid_activation_timeout():
     assert "MODEL_NAME\":\"NULL" in grep_T2logs("cJSON Report ") # verify Empty report is sent for reportEmpty is true
     assert "TR_AC6919" in grep_T2logs("firstreporting interval is given") #
     assert "5 sec" in grep_T2logs("firstreporting interval is given") #} Verify Firstreporting Interval is working
-    assert "NEW TEST PROFILE" in grep_T2logs(LOG_PROFILE_SET) # Report fetch and parse via HTTP
-    assert "60 sec" in grep_T2logs("reporting interval is taken - NEW TEST PROFILE") #Verify DCM profile is running
-    assert "AccountId\":\"Platform_Container_Test_DEVICE" in grep_T2logs("cJSON Report ") #verify report generated for DCM profile
-    assert "SYS_GREP_TEST" in grep_T2logs("cJSON Report ") # Data harvesting from previous logs folder for DCA profiles with log file search markers. 
-    assert "SYS_GREP_TEST_2" in grep_T2logs("cJSON Report ") # Capability to support multiple split markers for the same log line
-    assert "SYS_EVENT_TEST_accum\":[\"7\",\"6\"" in grep_T2logs("cJSON Report ") # Include data from data source as T2 events
                                                                                  # Include data from data source T2 events as Accumulate
-    assert "SYS_TEST_ReportUpload" in grep_T2logs("cJSON Report ") # Include data from data source as log files with string match pattern
-    assert "Report Cached, No. of reportes cached = " in grep_T2logs("Report Cached, No. of reportes cached = ") # Caching of upload failed reports - xconf
     rbus_set_data("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.ConfigURL", "string", "https://mockxconf:50050/loguploader1/getT2DCMSettings")
 
 #1).positive case for activation timeout
@@ -322,13 +272,13 @@ def test_for_triggerCondition_negative_case():
     rbus_set_data(T2_TEMP_REPORT_PROFILE_PARAM, "string", (data_with_triggerconditon_neg))
     sleep(5)
     assert TC_ERROR_LOG in grep_T2logs(TC_ERROR_LOG)
-    assert "Null type verifyMsgPckTriggerCondition ++out" in grep_T2logs("Null type verifyMsgPckTriggerCondition ++out")
-    assert "Null reference verifyMsgPckTriggerCondition ++out" in grep_T2logs("Null reference verifyMsgPckTriggerCondition ++out")
-    assert "Unexpected type verifyMsgPckTriggerCondition ++out" in grep_T2logs("Unexpected type verifyMsgPckTriggerCondition ++out")
-    assert "Null operator verifyMsgPckTriggerCondition ++out" in grep_T2logs("Null operator verifyMsgPckTriggerCondition ++out")
-    assert "Unexpected operator verifyMsgPckTriggerCondition ++out" in grep_T2logs("Unexpected operator verifyMsgPckTriggerCondition ++out")
-    assert "Null threshold verifyMsgPckTriggerCondition ++out" in grep_T2logs("Null threshold verifyMsgPckTriggerCondition ++out")
-    assert "Unexpected reference verifyMsgPckTriggerCondition ++out" in grep_T2logs("Unexpected reference verifyMsgPckTriggerCondition ++out")
+    assert "Null type verifyTriggerCondition ++out" in grep_T2logs("Null type verifyTriggerCondition ++out")
+    assert "Null reference verifyTriggerCondition ++out" in grep_T2logs("Null reference verifyTriggerCondition ++out")
+    assert "Unexpected type verifyTriggerCondition ++out" in grep_T2logs("Unexpected type verifyTriggerCondition ++out")
+    assert "Null operator verifyTriggerCondition ++out" in grep_T2logs("Null operator verifyTriggerCondition ++out")
+    assert "Unexpected operator verifyTriggerCondition ++out" in grep_T2logs("Unexpected operator verifyTriggerCondition ++out")
+    assert "Null threshold verifyTriggerCondition ++out" in grep_T2logs("Null threshold verifyTriggerCondition ++out")
+    assert "Unexpected reference verifyTriggerCondition ++out" in grep_T2logs("Unexpected reference verifyTriggerCondition ++out")
 
 @pytest.mark.run(order=12)
 def test_for_subscribe_tr181():
@@ -346,12 +296,17 @@ def test_for_subscribe_tr181():
     rbus_set_data(T2_TEMP_REPORT_PROFILE_PARAM, "string", (data_with_split_markers))
     sleep(2)
     rbus_set_data("Device.DeviceInfo.X_RDKCENTRAL-COM.IUI.Version", "string", "T2_Container_0.0.2")
+    sleep(1)
     rbus_set_data("Device.DeviceInfo.X_RDKCENTRAL-COM.IUI.Version", "string", "T2_Container_0.0.3")
+    #sleep(1)
+    #rbus_set_data("Device.DeviceInfo.X_RDKCENTRAL-COM.IUI.Version", "string", "T2_Container_0.0.4")
     sleep(10)
     assert "SYS_INFO_WhoAmI" in grep_T2logs("cJSON Report ") # Split marker validation
     assert "SYS_INFO_WhoAmI_Status" in grep_T2logs("cJSON Report ") #  multiple Split markers in the same line
-    #assert "SYS_INFO_PreviousLogs" in grep_T2logs("cJSON Report ") #  Previous Logs support for grep
-    assert "IUI_VERSION" in grep_T2logs("cJSON Report ") #  tr181 subscribe
+    assert "SYS_INFO_PreviousLogs" in grep_T2logs("cJSON Report ") #  Previous Logs support for grep
+    assert "T2_Container_0.0.1" in grep_T2logs("IUI_VERSION\":") #  tr181 subscribe
+    assert "T2_Container_0.0.2" in grep_T2logs("IUI_VERSION\":") #  tr181 subscribe
+    assert "T2_Container_0.0.3" in grep_T2logs("IUI_VERSION\":") #  tr181 subscribe
     assert "IUI_VERSION_CT" in grep_T2logs("cJSON Report ") #  tr181 subscribe
     assert "Report Sent Successfully over HTTP" in grep_T2logs ("Report Sent Successfully over HTTP") #Report Sending over HTTP
 
@@ -365,39 +320,24 @@ def test_for_triggerCondition_working_case():
     run_telemetry()
     sleep(5)
     run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
+    subprocess.run("rbuscli set Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RDKRemoteDebugger.Enable  bool true", shell=True)
     sleep(2)
     rbus_set_data(T2_TEMP_REPORT_PROFILE_PARAM, "string", (data_with_triggerconditon_pos))
-    #subprocess.run("rbuscli set Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RDKRemoteDebugger.Enable  bool false", shell=True)
-    #subprocess.run("rbuscli set Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RDKRemoteDebugger.Enable  bool true", shell=True)
     sleep(5)
     subprocess.run("rbuscli set Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RDKRemoteDebugger.Enable  bool false", shell=True)
     sleep(2)
     assert "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RDKRemoteDebugger.Enable" in grep_T2logs("TriggerConditionResult")
     assert "false" in grep_T2logs("TriggerConditionResult")
-    subprocess.run("rbuscli set Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RDKRemoteDebugger.Enable  bool true", shell=True)
-    sleep(2)
-    assert "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RDKRemoteDebugger.Enable" in grep_T2logs("TriggerConditionResult")
-    assert "true" in grep_T2logs("TriggerConditionResult") 
-    sleep(1)
-    subprocess.run("rbuscli set Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RDKRemoteDebugger.Enable  bool false", shell=True)
-    subprocess.run("rbuscli set Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RDKRemoteDebugger.Enable  bool true", shell=True)
-    subprocess.run("rbuscli set Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RDKRemoteDebugger.Enable  bool false", shell=True)
-    subprocess.run("rbuscli set Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RDKRemoteDebugger.Enable  bool true", shell=True)
 
-'''
 @pytest.mark.run(order=13)
 def test_for_profile_non_persistence():
-   # run_telemetry()
     run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 DEBUG")
-    sleep(5)
-    run_shell_command("cp /opt/logs/core_log.txt /opt/logs/core_log.txt.0")
-    run_shell_command("cp /opt/logs/core_log.txt /opt/logs/core_log.txt.1")
-    run_shell_command("echo Rotated_log_line >> /opt/logs/core_log.txt.1")
+    sleep(1)
     rbus_set_data(T2_TEMP_REPORT_PROFILE_PARAM, "string", (data_with_split_markers))
     sleep(20)
     assert "Split66" in grep_T2logs("URL: https://mockxconf:50051/dataLookeMock") # Configurable reporting end points
                                                                                   # Configurable URL parameters for HTTP Protocol
-    assert "Split66" in grep_T2logs("removing profile :") # Profile persistence - 1
+    assert "Split66" in grep_T2logs("removing profile :") # Profile non persistence - 1
     clear_T2logs()
     RUN_START_TIME = dt.now()
     kill_telemetry(9)
@@ -405,4 +345,4 @@ def test_for_profile_non_persistence():
     run_telemetry()
     run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
     sleep(5)
-    assert "Split66" not in grep_T2logs(LOG_PROFILE_ENABLE)  # Profile persistence - 2
+    assert "Split66" not in grep_T2logs(LOG_PROFILE_ENABLE)  # Profile non persistence - 2

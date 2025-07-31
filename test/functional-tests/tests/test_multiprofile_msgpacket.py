@@ -131,7 +131,8 @@ def test_without_EncodingType_ActivationTimeout_values():
     sleep(2)
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_without_EncodingType_ActivationTimeout_values))
     sleep(25)
-    #Multiple profiles configured simultaneously
+    # 215 - Multiple profiles configured simultaneously
+    # 202 - Profile setting and parsing in message pack format
     assert "TR_AC18" in grep_T2logs(LOG_PROFILE_ENABLE) # Verify profile is enabled with an empty encodingType
     assert "TR_AC19" in grep_T2logs(LOG_PROFILE_ENABLE) # Verify profile is enabled with an empty ActivationTimeout
     assert "TR_AC20" not in grep_T2logs(LOG_PROFILE_ENABLE) # Verify profile is not enabled without encodingType param
@@ -173,14 +174,15 @@ def test_reporting_interval_working():
     sleep(2)
     assert "20 sec" in REPORTING_INTERVAL_LOG1
     sleep(10)
-    assert "TIMEOUT for profile" in grep_T2logs("TR_AC732") #Verify reporting interval 
-    assert "TEST_EVENT_MARKER_1\":\"2" in grep_T2logs("cJSON Report ") #verify event marker for count
-    assert "occurrance1" in grep_T2logs("TEST_EVENT_MARKER_2") #verify event marker for accummulate - 1
-    assert "occurrance2" in grep_T2logs("TEST_EVENT_MARKER_2") #verify event marker for accummulate - 2
-    assert "TEST_EVENT_MARKER_2_CT" in grep_T2logs("cJSON Report ") #Epoch time/UTC time support
-    assert "Device.X_RDK_Xmidt.SendData" in grep_T2logs("T2 asyncMethodHandler called: ") # Report sending with protocol as RBUS_METHOD in report profiles.
-    assert "send via rbusMethod is failure" in grep_T2logs("send via rbusMethod is failure") # Caching of upload failed reports - 1
-    assert "Report Cached, No. of reportes cached = " in grep_T2logs("Report Cached, No. of reportes cached = ") # Caching of upload failed reports - 2
+    assert "TIMEOUT for profile" in grep_T2logs("TR_AC732") # 218 -Report on interval  
+    assert "TEST_EVENT_MARKER_1\":\"2" in grep_T2logs("cJSON Report ") # 234 -Include data from data source T2 events as count
+    assert "occurrance1" in grep_T2logs("TEST_EVENT_MARKER_2") # 212 - Include data from data source as T2 events - 1
+    assert "occurrance2" in grep_T2logs("TEST_EVENT_MARKER_2") # 212 - Include data from data source as T2 events - 2
+    assert "TEST_EVENT_MARKER_2_CT" in grep_T2logs("cJSON Report ") # 248 - Event accumulate with and without timestamp in report profiles for event markers.
+                                                                    # 216 - Epoch time/UTC time support
+    assert "Device.X_RDK_Xmidt.SendData" in grep_T2logs("T2 asyncMethodHandler called: ") # 228 - Report sending with protocol as RBUS_METHOD in report profiles.
+    assert "send via rbusMethod is failure" in grep_T2logs("send via rbusMethod is failure") # 225 - Caching of upload failed reports - 1
+    assert "Report Cached, No. of reportes cached = " in grep_T2logs("Report Cached, No. of reportes cached = ") # 225 - Caching of upload failed reports - 2
     run_shell_command("/usr/local/bin/rbus_timeout.sh")
 
 # verification for GenerateNow
@@ -210,15 +212,15 @@ def test_for_Generate_Now():
     LOG_GENERATE_NOW = "Waiting for 0 sec for next TIMEOUT for profile"
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_Generate_Now))
     sleep(5)
-    assert "TR_AC777" in grep_T2logs(LOG_GENERATE_NOW)  # verification for GenerateNow
+    assert "TR_AC777" in grep_T2logs(LOG_GENERATE_NOW)  # 235 - Support for Generate Now of profiles
     kill_telemetry(29)
     sleep(2)
-    assert "LOG_UPLOAD_ONDEMAND received" in grep_T2logs("LOG_UPLOAD_ONDEMAND received") 
-    assert "TR_AC767" in grep_T2logs("Interrupted before TIMEOUT for profile")
-    assert "SYS_INFO_CrashPortalUpload_success\":\"2" in grep_T2logs("cJSON Report ") #  count - grep marker validation
-    assert "FILE_Upload_Progress\":\" newfile1 20%" in grep_T2logs("cJSON Report ") #  absolute - grep marker validation
-    assert "FILE_Read_Progress\":\"newfile2 line 10" in grep_T2logs("cJSON Report ") #  Trim - grep marker validation
-    assert "MODEL_NAME" in grep_T2logs("cJSON Report ") #  Datamodel validation
+    assert "LOG_UPLOAD_ONDEMAND received" in grep_T2logs("LOG_UPLOAD_ONDEMAND received") # 221, 252 - Forced on demand reporting outside the regular reporting intervals. - 1
+    assert "TR_AC767" in grep_T2logs("Interrupted before TIMEOUT for profile") # 252 - Forced on demand reporting outside the regular reporting intervals. - 2
+    assert "SYS_INFO_CrashPortalUpload_success\":\"2" in grep_T2logs("cJSON Report ") # 236 - Include data from data source as log files with string match pattern as Count
+    assert "FILE_Upload_Progress\":\" newfile1 20%" in grep_T2logs("cJSON Report ") # 237 - Include data from data source as log files with string match pattern as absolute
+    assert "FILE_Read_Progress\":\"newfile2 line 10" in grep_T2logs("cJSON Report ") # 238 - Include data from data source as log files with string match pattern as with Trim 
+    assert "MODEL_NAME" in grep_T2logs("cJSON Report ") # 206 - Include data from data source as TR181 Parameter
 
 # Negative case with activation timeout less than reporting interval
 # Postive case for Empty report sent when reportEmpty is true
@@ -251,18 +253,19 @@ def test_for_invalid_activation_timeout():
     sleep(60)
     #kill_telemetry(29)
     assert "TR_AC88" in grep_T2logs(ERROR_PROFILE_TIMEOUT) # Verify profile not set if activation timeout is less than reporting interval
-    assert "MODEL_NAME\":\"NULL" in grep_T2logs("cJSON Report ") # verify Empty report is sent for reportEmpty is true
-    assert "TR_AC6919" in grep_T2logs("firstreporting interval is given") #
-    assert "5 sec" in grep_T2logs("firstreporting interval is given") #} Verify Firstreporting Interval is working
-    assert "NEW TEST PROFILE" in grep_T2logs(LOG_PROFILE_SET) # Report fetch and parse via HTTP
-    assert "60 sec" in grep_T2logs("reporting interval is taken - NEW TEST PROFILE") #Verify DCM profile is running
-    assert "AccountId\":\"Platform_Container_Test_DEVICE" in grep_T2logs("cJSON Report ") #verify report generated for DCM profile
-    assert "SYS_GREP_TEST" in grep_T2logs("cJSON Report ") # Data harvesting from previous logs folder for DCA profiles with log file search markers. 
-    assert "SYS_GREP_TEST_2" in grep_T2logs("cJSON Report ") # Capability to support multiple split markers for the same log line
-    assert "SYS_EVENT_TEST_accum\":[\"7\",\"6\"" in grep_T2logs("cJSON Report ") # Include data from data source as T2 events
-                                                                                 # Include data from data source T2 events as Accumulate
-    assert "SYS_TEST_ReportUpload" in grep_T2logs("cJSON Report ") # Include data from data source as log files with string match pattern
-    assert "Report Cached, No. of reportes cached = " in grep_T2logs("Report Cached, No. of reportes cached = ") # Caching of upload failed reports - xconf
+    assert "MODEL_NAME\":\"NULL" in grep_T2logs("cJSON Report ") # 239 - Support for reportEmpty of profiles
+    assert "TR_AC6919" in grep_T2logs("firstreporting interval is given") # 240 - Support for First Reporting Interval -1 
+    assert "5 sec" in grep_T2logs("firstreporting interval is given") # 240 - Support for First Reporting Interval - 2
+    assert "NEW TEST PROFILE" in grep_T2logs(LOG_PROFILE_SET) # 101 - Report fetch and parse via HTTP
+    assert "60 sec" in grep_T2logs("reporting interval is taken - NEW TEST PROFILE") # 107 - Configurable reporting interval 
+                                                                                     # 241 - Support for DCM profile and multiprofile parallel execution
+    assert "AccountId\":\"Platform_Container_Test_DEVICE" in grep_T2logs("cJSON Report ") # 102 - Include data from data source as TR181 Parameter
+    assert "SYS_GREP_TEST" in grep_T2logs("cJSON Report ") # 110, 111 - Data harvesting from previous logs folder for DCA profiles with log file search markers. 
+    assert "SYS_GREP_TEST_2" in grep_T2logs("cJSON Report ") # 104 - Capability to support multiple split markers for the same log line
+    assert "SYS_EVENT_TEST_accum\":[\"7\",\"6\"" in grep_T2logs("cJSON Report ") # 105 - Include data from data source as T2 events
+                                                                                 # 106 - Include data from data source T2 events as Accumulate
+    assert "SYS_TEST_ReportUpload" in grep_T2logs("cJSON Report ") # 103 - Include data from data source as log files with string match pattern
+    assert "Report Cached, No. of reportes cached = " in grep_T2logs("Report Cached, No. of reportes cached = ") # 108 - Caching of upload failed reports - xconf
     rbus_set_data("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.ConfigURL", "string", "https://mockxconf:50050/loguploader1/getT2DCMSettings")
 
 #1).positive case for activation timeout
@@ -290,12 +293,12 @@ def test_with_delete_on_timeout():
     command2 = ["telemetry2_0_client TEST_EVENT_MARKER_2 occurrance17"]
     run_shell_command(command2)
     sleep(30)
-    assert "TR_AC66" in grep_T2logs(LOG_PROFILE_ENABLE)  # Profile set in JSON format
-    assert "TR_AC66" in grep_T2logs(LOG_PROFILE_TIMEOUT) # verification for activation timeout
-    assert "SYS_INFO_CrashPortalUpload_success\":\"200" in grep_T2logs("cJSON Report ") #  regex - grep marker validation
-    assert "MODEL_NAME\":\"DOCKER" in grep_T2logs("cJSON Report ") #  regex - Datamodel validation
-    assert "TEST_EVENT_MARKER_2\":\"17" in grep_T2logs("cJSON Report ") #  regex - Event marker validation 
-    assert "TR_AC66" in grep_T2logs(LOG_DELETE_PROFILE) #verify profile is removed from active profile list if DeleteOnTimeout is true
+    assert "TR_AC66" in grep_T2logs(LOG_PROFILE_ENABLE)  # 201 - Profile setting and parsing in JSON format
+    assert "TR_AC66" in grep_T2logs(LOG_PROFILE_TIMEOUT) # 219 - Support for activation timeout of profiles
+    assert "SYS_INFO_CrashPortalUpload_success\":\"200" in grep_T2logs("cJSON Report ") # 222, 250 - Regex support for data formating on log grep patterns in report profiles.
+    assert "MODEL_NAME\":\"DOCKER" in grep_T2logs("cJSON Report ") # 243 - Include data from data source as TR181 Parameter with regex
+    assert "TEST_EVENT_MARKER_2\":\"17" in grep_T2logs("cJSON Report ") # 242 - Include data from data source as T2 events with regex
+    assert "TR_AC66" in grep_T2logs(LOG_DELETE_PROFILE) # 232 -Support for Delete on Timeout of profiles
 
 #1.First reporting interval is applicable only when time ref is default - non-working case
 #2.Maxlatency is applicable only when time ref is not default - non- working case
@@ -320,7 +323,8 @@ def test_for_first_reporting_interval_Maxlatency():
     assert "NA_FRI" not in grep_T2logs("Waiting for 5 sec for next TIMEOUT for profile as firstreporting interval is given")
     sleep(10)
     assert "NA_FRI" in grep_T2logs(TIMEOUT_LOG)
-    assert "NA_MLU" in grep_T2logs(TIMEOUT_LOG) #verify when timeref is not default max uploadlatency is accepted
+    assert "NA_MLU" in grep_T2logs(TIMEOUT_LOG) # verify when timeref is not default max uploadlatency is accepted 
+                                                # 217, 245 - Delayed reporting support/ Maxlatency
     assert MLU_ERROR_LOG in grep_T2logs(MLU_ERROR_LOG)
 
 @pytest.mark.run(order=10)
@@ -360,14 +364,15 @@ def test_for_subscribe_tr181():
     rbus_set_data("Device.DeviceInfo.X_RDKCENTRAL-COM.IUI.Version", "string", "T2_Container_0.0.2")
     rbus_set_data("Device.DeviceInfo.X_RDKCENTRAL-COM.IUI.Version", "string", "T2_Container_0.0.3")
     sleep(10)
-    assert "SYS_INFO_WhoAmI" in grep_T2logs("cJSON Report ") # Split marker validation
-    assert "SYS_INFO_WhoAmI_Status" in grep_T2logs("cJSON Report ") #  multiple Split markers in the same line
-    assert "SYS_INFO_PreviousLogs" in grep_T2logs("cJSON Report ") #  Previous Logs support for grep
-    assert "T2_Container_0.0.1" in grep_T2logs("IUI_VERSION\":") #  tr181 subscribe
-    assert "T2_Container_0.0.2" in grep_T2logs("IUI_VERSION\":") #  tr181 subscribe
-    assert "T2_Container_0.0.3" in grep_T2logs("IUI_VERSION\":") #  tr181 subscribe
-    assert "IUI_VERSION_CT" in grep_T2logs("cJSON Report ") #  tr181 subscribe
-    assert "Report Sent Successfully over HTTP" in grep_T2logs ("Report Sent Successfully over HTTP") #Report Sending over HTTP
+    assert "SYS_INFO_WhoAmI" in grep_T2logs("cJSON Report ") # 209 - Include data from data source as log files with string match pattern
+    assert "SYS_INFO_WhoAmI_Status" in grep_T2logs("cJSON Report ") # 211 - Capability to support multiple split markers for the same log line
+    assert "SYS_INFO_PreviousLogs" in grep_T2logs("cJSON Report ") # 210, 231, 246 - Data harvesting from previous logs folder for report profiles with log file search markers.
+    assert "T2_Container_0.0.1" in grep_T2logs("IUI_VERSION\":") # 207 - Support for subscribing to TR181 Parameter value change
+                                                                 # 214 -Include data from data source Tr181 parameters as Accumulate
+    assert "T2_Container_0.0.2" in grep_T2logs("IUI_VERSION\":") # 214 -Include data from data source Tr181 parameters as Accumulate
+    assert "T2_Container_0.0.3" in grep_T2logs("IUI_VERSION\":") # 214 -Include data from data source Tr181 parameters as Accumulate
+    assert "IUI_VERSION_CT" in grep_T2logs("cJSON Report ") # 249 - Event accumulate with and without timestamp in report profiles for datamodel markers.
+    assert "Report Sent Successfully over HTTP" in grep_T2logs ("Report Sent Successfully over HTTP") # 223 - Report sending over HTTP protocol
 
 @pytest.mark.run(order=11)
 def test_for_triggerCondition_working_case():
@@ -386,12 +391,12 @@ def test_for_triggerCondition_working_case():
     sleep(5)
     subprocess.run("rbuscli set Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RDKRemoteDebugger.Enable  bool false", shell=True)
     sleep(2)
-    assert "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RDKRemoteDebugger.Enable" in grep_T2logs("TriggerConditionResult")
-    assert "false" in grep_T2logs("TriggerConditionResult")
+    assert "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RDKRemoteDebugger.Enable" in grep_T2logs("TriggerConditionResult") # 220, 244 - Report on trigger condition
+    assert "false" in grep_T2logs("TriggerConditionResult") # 251 - Report generation on trigger condition with stress testing for covering deadlock scenarios - 1
     subprocess.run("rbuscli set Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RDKRemoteDebugger.Enable  bool true", shell=True)
     sleep(2)
     assert "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RDKRemoteDebugger.Enable" in grep_T2logs("TriggerConditionResult")
-    assert "true" in grep_T2logs("TriggerConditionResult") 
+    assert "true" in grep_T2logs("TriggerConditionResult") # 251 - Report generation on trigger condition with stress testing for covering deadlock scenarios - 2
     sleep(1)
     subprocess.run("rbuscli set Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RDKRemoteDebugger.Enable  bool false", shell=True)
     subprocess.run("rbuscli set Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RDKRemoteDebugger.Enable  bool true", shell=True)
@@ -408,17 +413,17 @@ def test_for_duplicate_hash():
     sleep(2)
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_split_markers))
     sleep(2)
-    assert "Split66" in grep_T2logs("hash already exist") # Check for HASH value matches of profile to avoid duplicate processing
+    assert "Split66" in grep_T2logs("hash already exist") # 203 - Check for HASH value matches of profile to avoid duplicate processing
     run_shell_command("cp test/functional-tests/tests/rotated.txt /opt/logs/")
     sleep(6)
     assert "SYS_INFO_Rotated_Log\":\"1" in grep_T2logs("cJSON Report ") 
     run_shell_command("cp test/functional-tests/tests/rotated.txt.1 /opt/logs/")
     run_shell_command("cp test/functional-tests/tests/rotated.txt.reduced /opt/logs/rotated.txt")
     sleep(10)
-    assert "SYS_INFO_Rotated_Log\":\"2" in grep_T2logs("cJSON Report ") 
-    assert "Split66" in grep_T2logs("URL: https://mockxconf:50051/dataLookeMock") # Configurable reporting end points
-                                                                                  # Configurable URL parameters for HTTP Protocol
-    assert "Split66" in grep_T2logs("removing profile :") # Profile persistence - 1
+    assert "SYS_INFO_Rotated_Log\":\"2" in grep_T2logs("cJSON Report ") # 247 - Report generation for profiles with log grep markers during log file rotation scenarios.
+    assert "Split66" in grep_T2logs("URL: https://mockxconf:50051/dataLookeMock") # 226 - Configurable reporting end points
+                                                                                  # 227 - Configurable URL parameters for HTTP Protocol
+    assert "Split66" in grep_T2logs("removing profile :") # 229 - Profile persistence - 1
     clear_T2logs()
     RUN_START_TIME = dt.now()
     kill_telemetry(9)
@@ -426,7 +431,7 @@ def test_for_duplicate_hash():
     run_telemetry()
     run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
     sleep(5)
-    assert "Split66" in grep_T2logs(LOG_PROFILE_ENABLE)  # Profile persistence - 2
+    assert "Split66" in grep_T2logs(LOG_PROFILE_ENABLE)  # 229 - Profile persistence - 2
 
 @pytest.mark.run(order=14)
 def test_stress_test():
@@ -435,6 +440,5 @@ def test_stress_test():
     run_shell_command("test/functional-tests/tests/t2_app 9999")
     sleep(5)
     pid2 = run_shell_command(command_to_get_pid)
-    assert pid1==pid2 #Stress testing of interaction with rbus interface to check for any deadlocks or rbus timeouts.
-    #add case for cache
+    assert pid1==pid2 #  253 - Stress testing of interaction with rbus interface to check for any deadlocks or rbus timeouts.
 

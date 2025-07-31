@@ -157,7 +157,9 @@ def test_reporting_interval_working():
     run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
     sleep(2)
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_reporting_interval))
-    sleep(5)
+    sleep(2)
+    rbus_set_data(T2_TEMP_REPORT_PROFILE_PARAM, "string", data_temp_with_reporting_interval)
+    sleep(2)
     REPORTING_INTERVAL_LOG1 = grep_T2logs("reporting interval is taken - TR_AC732")
 
     command1 = ["telemetry2_0_client TEST_EVENT_MARKER_1 300"]
@@ -175,14 +177,20 @@ def test_reporting_interval_working():
     assert "20 sec" in REPORTING_INTERVAL_LOG1
     sleep(10)
     assert "TIMEOUT for profile" in grep_T2logs("TR_AC732") # 218 -Report on interval  
-    assert "TEST_EVENT_MARKER_1\":\"2" in grep_T2logs("cJSON Report ") # 234 -Include data from data source T2 events as count
-    assert "occurrance1" in grep_T2logs("TEST_EVENT_MARKER_2") # 212 - Include data from data source as T2 events - 1
-    assert "occurrance2" in grep_T2logs("TEST_EVENT_MARKER_2") # 212 - Include data from data source as T2 events - 2
-    assert "TEST_EVENT_MARKER_2_CT" in grep_T2logs("cJSON Report ") # 248 - Event accumulate with and without timestamp in report profiles for event markers.
+    assert "TEST_EVENT_MARKER_1\":\"2" in grep_T2logs("FR2_US_TC3") # 234 -Include data from data source T2 events as count
+    assert "occurrance1\",\"occurrance2" in grep_T2logs("FR2_US_TC3") # 212 - Include data from data source as T2 events - 1
+    assert "TEST_EVENT_MARKER_2_CT" in grep_T2logs("FR2_US_TC3") # 248 - Event accumulate with and without timestamp in report profiles for event markers.
                                                                     # 216 - Epoch time/UTC time support
     assert "Device.X_RDK_Xmidt.SendData" in grep_T2logs("T2 asyncMethodHandler called: ") # 228 - Report sending with protocol as RBUS_METHOD in report profiles.
     assert "send via rbusMethod is failure" in grep_T2logs("send via rbusMethod is failure") # 225 - Caching of upload failed reports - 1
     assert "Report Cached, No. of reportes cached = " in grep_T2logs("Report Cached, No. of reportes cached = ") # 225 - Caching of upload failed reports - 2
+
+    assert "TIMEOUT for profile" in grep_T2logs("temp_AC732") # 314 - Report on interval
+    assert "occurrance1\",\"occurrance2" in grep_T2logs("temp_AC732") # 212 - Include data from data source as T2 events - 1
+    assert "Device.X_RDK_Xmidt.SendData" in grep_T2logs("T2 asyncMethodHandler called: ") # 324 - Report sending over RBUS_METHOD
+    assert "send via rbusMethod is failure" in grep_T2logs("send via rbusMethod is failure") # 321 - Caching of upload failed reports
+    assert "Report Cached, No. of reportes cached = " in grep_T2logs("Report Cached, No. of reportes cached = ") # 321 - Caching of upload failed reports
+
     run_shell_command("/usr/local/bin/rbus_timeout.sh")
 
 # verification for GenerateNow
@@ -211,12 +219,15 @@ def test_for_Generate_Now():
 
     LOG_GENERATE_NOW = "Waiting for 0 sec for next TIMEOUT for profile"
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_Generate_Now))
-    sleep(5)
+    sleep(2)
+    rbus_set_data(T2_TEMP_REPORT_PROFILE_PARAM, "string", (data_temp_with_Generate_Now))
+    sleep(2)
     assert "TR_AC777" in grep_T2logs(LOG_GENERATE_NOW)  # 235 - Support for Generate Now of profiles
     kill_telemetry(29)
     sleep(2)
-    assert "LOG_UPLOAD_ONDEMAND received" in grep_T2logs("LOG_UPLOAD_ONDEMAND received") # 221, 252 - Forced on demand reporting outside the regular reporting intervals. - 1
+    assert "LOG_UPLOAD_ONDEMAND received" in grep_T2logs("LOG_UPLOAD_ONDEMAND received") # 221, 252, 317 - Forced on demand reporting outside the regular reporting intervals. - 1
     assert "TR_AC767" in grep_T2logs("Interrupted before TIMEOUT for profile") # 252 - Forced on demand reporting outside the regular reporting intervals. - 2
+    assert "temp_AC767" in grep_T2logs("Interrupted before TIMEOUT for profile") # 317 - Forced on demand reporting to support log upload
     assert "SYS_INFO_CrashPortalUpload_success\":\"2" in grep_T2logs("cJSON Report ") # 236 - Include data from data source as log files with string match pattern as Count
     assert "FILE_Upload_Progress\":\" newfile1 20%" in grep_T2logs("cJSON Report ") # 237 - Include data from data source as log files with string match pattern as absolute
     assert "FILE_Read_Progress\":\"newfile2 line 10" in grep_T2logs("cJSON Report ") # 238 - Include data from data source as log files with string match pattern as with Trim 
@@ -287,20 +298,14 @@ def test_with_delete_on_timeout():
     sleep(2)
     LOG_PROFILE_TIMEOUT = "Profile activation timeout"
     LOG_DELETE_PROFILE = "removing profile :"
-    RET = rbus_set_data(T2_REPORT_PROFILE_PARAM, "string", data_with_delete_on_timeout)
-    print(f"RET: {RET}")
-    sleep(5)
+    rbus_set_data(T2_REPORT_PROFILE_PARAM, "string", data_with_delete_on_timeout)
+    sleep(2)
+    rbus_set_data(T2_TEMP_REPORT_PROFILE_PARAM, "string", data_temp_with_delete_on_timeout)
+    sleep(2)
     command2 = ["telemetry2_0_client TEST_EVENT_MARKER_2 occurrance17"]
     run_shell_command(command2)
     sleep(30)
 
-    assert "TR_AC66" in grep_T2logs(LOG_PROFILE_ENABLE)  # 201 - Profile setting and parsing in JSON format
-    assert "TR_AC66" in grep_T2logs(LOG_PROFILE_TIMEOUT) # 219 - Support for activation timeout of profiles
-    assert "SYS_INFO_CrashPortalUpload_success\":\"200" in grep_T2logs("cJSON Report ") # 222, 250 - Regex support for data formating on log grep patterns in report profiles.
-    assert "MODEL_NAME\":\"DOCKER" in grep_T2logs("cJSON Report ") # 243 - Include data from data source as TR181 Parameter with regex
-    assert "TEST_EVENT_MARKER_2\":\"17" in grep_T2logs("cJSON Report ") # 242 - Include data from data source as T2 events with regex
-    assert "TR_AC66" in grep_T2logs(LOG_DELETE_PROFILE) # 232 -Support for Delete on Timeout of profiles
-'''
     assert "rp_TR_AC66" in grep_T2logs(LOG_PROFILE_ENABLE)  # 201 - Profile setting and parsing in JSON format
     assert "rp_TR_AC66" in grep_T2logs(LOG_PROFILE_TIMEOUT) # 219 - Support for activation timeout of profiles
     assert "SYS_INFO_CrashPortalUpload_success\":\"200" in grep_T2logs("rp_TR_AC66") # 222, 250 - Regex support for data formating on log grep patterns in report profiles.
@@ -313,7 +318,6 @@ def test_with_delete_on_timeout():
     assert "SYS_INFO_CrashPortalUpload_success\":\"200" in grep_T2logs("temp_TR_AC66") # 318 - Regex support for log grep patterns
     assert "MODEL_NAME\":\"DOCKER" in grep_T2logs("temp_TR_AC66") # 304 - Include data from data source as TR181 Parameter
     assert "TEST_EVENT_MARKER_2\":\"17" in grep_T2logs("temp_TR_AC66") # 309 - Include data from data source as T2 events
-'''
 
 #1.First reporting interval is applicable only when time ref is default - non-working case
 #2.Maxlatency is applicable only when time ref is not default - non- working case

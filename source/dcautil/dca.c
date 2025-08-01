@@ -82,32 +82,56 @@ typedef struct
  */
 static const char *strnstr(const char *haystack, const char *needle, size_t len)
 {
-    size_t needle_len;
+    if (!haystack || !needle) {
+        return NULL;
+    }
 
-    if (*needle == '\0')
-    {
+    size_t needle_len = strlen(needle);
+    if (needle_len == 0) {
         return haystack;
     }
 
-    needle_len = strlen(needle);
-
-    if (needle_len == 0)
-    {
-        return haystack;
+    // Check if search is possible
+    if (len < needle_len) {
+        return NULL;
     }
 
-    for (size_t i = 0; i + needle_len <= len; i++)
-    {
-        if (haystack[i] == '\0')
-        {
-            break;
+    // Adjust search length to prevent overflow
+    size_t search_len = len - needle_len + 1;
+    
+    // For longer patterns (which is our common case), use multi-char checking
+    const char first_char = *needle;
+    const char second_char = needle[1];
+    const char last_char = needle[needle_len - 1];
+    const char prelast_char = needle[needle_len - 2];
+    
+    // Skip value for Boyer-Moore-like optimization
+    size_t skip = (needle_len >= 4) ? needle_len / 4 : 1;
+    
+    // Main search loop optimized for longer patterns
+    for (size_t i = 0; i < search_len;) {
+        if (haystack[i] == '\0') break;
+        
+        // Quick boundary check using multiple characters
+        if (haystack[i] == first_char && 
+            haystack[i + 1] == second_char &&
+            haystack[i + needle_len - 1] == last_char &&
+            haystack[i + needle_len - 2] == prelast_char) {
+            
+            // Only if all boundary chars match, do a full comparison
+            if (memcmp(haystack + i + 2, needle + 2, needle_len - 4) == 0) {
+                return haystack + i;
+            }
+            i++; // Move one by one after a partial match
+        } else {
+            i += skip;
+            // But don't skip past a potential match
+            while (i < search_len && haystack[i] != first_char) {
+                i++;
+            }
         }
-        if (memcmp(haystack + i, needle, needle_len) == 0)
-        {
-            return haystack + i;
-        }
-
     }
+
     return NULL;
 }
 

@@ -226,23 +226,21 @@ def test_for_Generate_Now():
     file.close()
     sleep(2)
 
-'''
     LOG_GENERATE_NOW = "Waiting for 0 sec for next TIMEOUT for profile"
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_Generate_Now))
     sleep(2)
     #rbus_set_data(T2_TEMP_REPORT_PROFILE_PARAM, "string", (data_temp_with_Generate_Now))
     #sleep(2)
     assert "TR_AC777" in grep_T2logs(LOG_GENERATE_NOW)  # 235 - Support for Generate Now of profiles
-    kill_telemetry(29)
-    sleep(2)
-    assert "LOG_UPLOAD_ONDEMAND received" in grep_T2logs("LOG_UPLOAD_ONDEMAND received") # 221, 252, 317 - Forced on demand reporting outside the regular reporting intervals. - 1
-    assert "TR_AC767" in grep_T2logs("Interrupted before TIMEOUT for profile") # 252 - Forced on demand reporting outside the regular reporting intervals. - 2
+    #kill_telemetry(29)
+    #sleep(2)
+    #assert "LOG_UPLOAD_ONDEMAND received" in grep_T2logs("LOG_UPLOAD_ONDEMAND received") # 221, 252, 317 - Forced on demand reporting outside the regular reporting intervals. - 1
+    #assert "TR_AC767" in grep_T2logs("Interrupted before TIMEOUT for profile") # 252 - Forced on demand reporting outside the regular reporting intervals. - 2
     #assert "temp_AC767" in grep_T2logs("Interrupted before TIMEOUT for profile") # 317 - Forced on demand reporting to support log upload
     assert "SYS_INFO_CrashPortalUpload_success\":\"2" in grep_T2logs("cJSON Report ") # 236 - Include data from data source as log files with string match pattern as Count
     assert "FILE_Upload_Progress\":\" newfile1 20%" in grep_T2logs("cJSON Report ") # 237 - Include data from data source as log files with string match pattern as absolute
     assert "FILE_Read_Progress\":\"newfile2 line 10" in grep_T2logs("cJSON Report ") # 238 - Include data from data source as log files with string match pattern as with Trim 
     assert "MODEL_NAME" in grep_T2logs("cJSON Report ") # 206 - Include data from data source as TR181 Parameter
-'''
 
 # Negative case with activation timeout less than reporting interval
 # Postive case for Empty report sent when reportEmpty is true

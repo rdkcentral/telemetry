@@ -21,7 +21,7 @@
 Feature: Telemetry temporary profile configuration and report generation
 
 Scenario: Verify co-existence of Report profile and Temporary report profile
-    Given a multiprofile is configured and running
+    Given a temp profile is configured and running
     When a temporary profile is configured
     Then both profiles should be running without any interference from each other
 
@@ -69,15 +69,15 @@ Scenario: Multiple profiles configured simultaneously
     Then the temp profile should be enabled
     Then the profile should be disabled after the expiring of ActivationTimeout
 
-Scenario: Multiprofile with TriggerConditions                         
+Scenario: temp profile with TriggerConditions                         
     Given When the telemetry daemon is already running                                                     
-    When a multiprofile is configured with TriggerConditions
-    Then Multiprofile should be accepted and report should be generated whenever trigger condition is triggered
+    When a temp profile is configured with TriggerConditions
+    Then temp profile should be accepted and report should be generated whenever trigger condition is triggered
 
-  Scenario: Multiprofile configuration with grep marker, use as absolute and with regex
+  Scenario: temp profile configuration with grep marker, use as absolute and with regex
     Given When the telemetry daemon is already running
-    When a multiprofile is configured with grep marker, use as absolute and with regex
-    Then the multiprofile should be enabled
+    When a temp profile is configured with grep marker, use as absolute and with regex
+    Then the temp profile should be enabled
     Then generated report should contain the content after the search string until the end of the line matching the given regex 
 
 Scenario: Caching of upload failed reports

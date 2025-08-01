@@ -226,3 +226,91 @@ Scenario: Multiprofile with TriggerConditions
     Given When the telemetry daemon is already running                                                     
     When a multiprofile is configured with TriggerConditions
     Then Multiprofile should be accepted and report should be generated whenever trigger condition is triggered
+
+Scenario: Check for HASH value matches of profile to avoid duplicate processing
+    Given a multiprofile is running
+    When another multiprofile with same name and hash is configured
+    Then the configuration will be ignored
+
+Scenario: Support for subscribing to TR181 Parameter value change
+    Given a datamodel marker is configured as method subscribe
+    When the tr181 parameter value changes
+    Then the value change will be sent as an event to the telemetry daemon
+
+Scenario: Data harvesting from previous logs folder for report profiles with log file search markers
+    Given the device has logs from the previous session in the PreviousLogs folder
+    When a profile goes through log files for report generation
+    Then the log files in PreviousLogs folder will also be grepped for log lines
+
+Scenario: Capability to support multiple split markers for the same log line
+    When two split markers are configured for the same log line in a file
+    Then both the markers will be reported
+
+Scenario: Include data from data source Tr181 parameters as Accumulate
+    Given a datamodel marker is configured as method subscribe and use accumulate
+    When the tr181 parameter value changes multiple time inside the reporting interval
+    Then all the changes will be reported with values
+
+Scenario: Epoch time/UTC time support
+    Given an event marker or tr181 marker with subscribe are configured with reportTimeStamp
+    When the event is sent to the telementry
+    Then the telemetry report will have the time the event was received as timestamp
+
+Scenario: Report sending over HTTP protocol
+    Given a profile is confugred with report sending protocol as HTTP along with the respective endpoint
+    Then the report will be sent to the configured endpoint
+
+Scenario: Caching of upload failed reports
+    Given 
+    When 
+    Then 
+
+Scenario: Configurable reporting end points
+    Given 
+    When 
+    Then 
+
+Scenario: Configurable URL parameters for HTTP Protocol
+    Given 
+    When 
+    Then 
+
+Scenario: Report sending with protocol set as RBUS_METHOD in report profiles.
+    Given 
+    When 
+    Then 
+
+Scenario: Data harvesting from previous logs folder for report profiles with log file search markers                    
+    Given 
+    When 
+    Then 
+
+Scenario: Report generation for profiles with log grep markers during log file rotation scenarios                     
+    Given 
+    When 
+    Then 
+
+Scenario: Event accumulate with and without timestamp in report profiles for event markers.                              
+    Given 
+    When 
+    Then 
+
+Scenario: Event accumulate with and without timestamp in report profiles for datamodel markers.                          
+    Given 
+    When 
+    Then 
+
+Scenario: Report generation on trigger condition with stress testing for covering deadlock scenarios.                    
+    Given 
+    When 
+    Then 
+
+Scenario: Forced on demand reporting outside the regular reporting intervals.
+    Given 
+    When 
+    Then 
+
+Scenario: Stress testing of interaction with rbus interface to check for any deadlocks or rbus timeouts.
+    Given 
+    When 
+    Then 

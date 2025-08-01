@@ -229,14 +229,7 @@ def test_for_Generate_Now():
     LOG_GENERATE_NOW = "Waiting for 0 sec for next TIMEOUT for profile"
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_Generate_Now))
     sleep(2)
-    #rbus_set_data(T2_TEMP_REPORT_PROFILE_PARAM, "string", (data_temp_with_Generate_Now))
-    #sleep(2)
     assert "TR_AC777" in grep_T2logs(LOG_GENERATE_NOW)  # 235 - Support for Generate Now of profiles
-    #kill_telemetry(29)
-    #sleep(2)
-    #assert "LOG_UPLOAD_ONDEMAND received" in grep_T2logs("LOG_UPLOAD_ONDEMAND received") # 221, 252, 317 - Forced on demand reporting outside the regular reporting intervals. - 1
-    #assert "TR_AC767" in grep_T2logs("Interrupted before TIMEOUT for profile") # 252 - Forced on demand reporting outside the regular reporting intervals. - 2
-    #assert "temp_AC767" in grep_T2logs("Interrupted before TIMEOUT for profile") # 317 - Forced on demand reporting to support log upload
     assert "SYS_INFO_CrashPortalUpload_success\":\"2" in grep_T2logs("cJSON Report ") # 236 - Include data from data source as log files with string match pattern as Count
     assert "FILE_Upload_Progress\":\" newfile1 20%" in grep_T2logs("cJSON Report ") # 237 - Include data from data source as log files with string match pattern as absolute
     assert "FILE_Read_Progress\":\"newfile2 line 10" in grep_T2logs("cJSON Report ") # 238 - Include data from data source as log files with string match pattern as with Trim 
@@ -273,7 +266,6 @@ def test_for_invalid_activation_timeout():
     command2 = ["telemetry2_0_client SYS_EVENT_TEST_accum 6"]
     run_shell_command(command2)
     sleep(60)
-    #kill_telemetry(29)
     assert "TR_AC88" in grep_T2logs(ERROR_PROFILE_TIMEOUT) # Verify profile not set if activation timeout is less than reporting interval
     assert "MODEL_NAME\":\"NULL" in grep_T2logs("cJSON Report ") # 239 - Support for reportEmpty of profiles
     assert "TR_AC6919" in grep_T2logs("firstreporting interval is given") # 240 - Support for First Reporting Interval -1 
@@ -289,6 +281,7 @@ def test_for_invalid_activation_timeout():
     assert "SYS_TEST_ReportUpload" in grep_T2logs("cJSON Report ") # 103 - Include data from data source as log files with string match pattern
     assert "Report Cached, No. of reportes cached = " in grep_T2logs("Report Cached, No. of reportes cached = ") # 108 - Caching of upload failed reports - xconf
     rbus_set_data("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.ConfigURL", "string", "https://mockxconf:50050/loguploader1/getT2DCMSettings")
+
 
 #1).positive case for activation timeout
 #2).regex - grep marker validation
@@ -487,6 +480,11 @@ def test_for_duplicate_hash():
     sleep(5)
     assert "per_66" in grep_T2logs(LOG_PROFILE_ENABLE)  # 229 - Profile persistence - 2
     assert "temp_per_66" not in grep_T2logs(LOG_PROFILE_ENABLE)  # 326 - Profile persistence - 2
+    kill_telemetry(29)
+    sleep(2)
+    assert "LOG_UPLOAD_ONDEMAND received" in grep_T2logs("LOG_UPLOAD_ONDEMAND received") # 221, 252- Forced on demand reporting outside the regular reporting intervals. - 1
+    assert "per_66" in grep_T2logs("Sending Interrupt signal to Timeout Thread of profile") # 252 - Forced on demand reporting outside the regular reporting intervals. - 2
+    assert "rp_Split_Marker" in grep_T2logs("cJSON Report ") # 247 - Report generation for profiles with log grep markers during log file rotation scenarios.
 
 @pytest.mark.run(order=14)
 def test_stress_test():

@@ -35,7 +35,7 @@ typedef void (*rbusMethodCallBackPtr) (rbusHandle_t handle, char const* methodNa
 
 T2ERROR getRbusParameterVal(const char* paramName, char **paramValue);
 
-Vector* getRbusProfileParamValues(Vector *paramList);
+Vector* getRbusProfileParamValues(Vector *paramList, int count);
 
 T2ERROR registerRbusT2EventListener(TelemetryEventCallback eventCB);
 

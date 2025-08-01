@@ -30,7 +30,6 @@ import pytest
 import msgpack
 import json
 import base64
-from test_runs_as_daemon import run_shell_command
 
 RUN_START_TIME = None
 LOG_PROFILE_ENABLE = "Successfully enabled profile :"

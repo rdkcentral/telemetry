@@ -140,12 +140,13 @@ TEST_F(xconfclientTestFixture, appendRequestParams1)
      EXPECT_CALL(*m_xconfclientMock, getParameterValue(_,_))
             .Times(1)
             .WillOnce(Return(T2ERROR_FAILURE));
-     char* urlWithParams = (char*) malloc(1024 * sizeof(char));
-     memset(urlWithParams, '0', 1024 * sizeof(char));
-     snprintf(urlWithParams, 1024, "%s?", "https://mockxconf:50050/loguploader/getT2DCMSettings?");
-     EXPECT_EQ(T2ERROR_FAILURE, appendRequestParams(urlWithParams, 970));
-     free(urlWithParams);
-     urlWithParams = NULL;
+     //char* urlWithParams = (char*) malloc(1024 * sizeof(char));
+     //memset(urlWithParams, '0', 1024 * sizeof(char));
+     CURLU *requestURL = curl_url();
+     curl_url_set(requestURL, CURLUPART_URL, "https://mockxconf:50050/loguploader/getT2DCMSettings", 0);
+     EXPECT_EQ(T2ERROR_FAILURE, appendRequestParams(requestURL));
+     curl_free(requestURL);
+     requestURL = NULL;
 }
 
 TEST_F(xconfclientTestFixture, appendRequestParams2)
@@ -154,12 +155,11 @@ TEST_F(xconfclientTestFixture, appendRequestParams2)
             .Times(2)
 	    .WillOnce(::testing::Return(T2ERROR_SUCCESS))
             .WillOnce(::testing::Return(T2ERROR_FAILURE));
-     char* urlWithParams = (char*) malloc(1024 * sizeof(char));
-     memset(urlWithParams, '0', 1024 * sizeof(char));
-     snprintf(urlWithParams, 1024, "%s?", "https://mockxconf:50050/loguploader/getT2DCMSettings?");
-     EXPECT_EQ(T2ERROR_FAILURE, appendRequestParams(urlWithParams, 968));
-     free(urlWithParams);
-     urlWithParams = NULL;
+     CURLU *requestURL = curl_url();
+     curl_url_set(requestURL, CURLUPART_URL, "https://mockxconf:50050/loguploader/getT2DCMSettings", 0);
+     EXPECT_EQ(T2ERROR_FAILURE, appendRequestParams(requestURL));
+     curl_free(requestURL);
+     requestURL = NULL;
 }
 
 TEST_F(xconfclientTestFixture, appendRequestParams3)
@@ -169,12 +169,11 @@ TEST_F(xconfclientTestFixture, appendRequestParams3)
             .WillOnce(::testing::Return(T2ERROR_SUCCESS))
 	    .WillOnce(::testing::Return(T2ERROR_SUCCESS))
             .WillOnce(::testing::Return(T2ERROR_FAILURE));
-     char* urlWithParams = (char*) malloc(1024 * sizeof(char));
-     memset(urlWithParams, '0', 1024 * sizeof(char));
-     snprintf(urlWithParams, 1024, "%s?", "https://mockxconf:50050/loguploader/getT2DCMSettings?");
-     EXPECT_EQ(T2ERROR_FAILURE, appendRequestParams(urlWithParams, 968));
-     free(urlWithParams);
-     urlWithParams = NULL;
+     CURLU *requestURL = curl_url();
+     curl_url_set(requestURL, CURLUPART_URL, "https://mockxconf:50050/loguploader/getT2DCMSettings", 0);
+     EXPECT_EQ(T2ERROR_FAILURE, appendRequestParams(requestURL));
+     curl_free(requestURL);
+     requestURL = NULL;
 }
 
 TEST_F(xconfclientTestFixture, appendRequestParams4)
@@ -185,12 +184,11 @@ TEST_F(xconfclientTestFixture, appendRequestParams4)
             .WillOnce(::testing::Return(T2ERROR_SUCCESS))
             .WillOnce(::testing::Return(T2ERROR_SUCCESS))
             .WillOnce(::testing::Return(T2ERROR_FAILURE));
-     char* urlWithParams = (char*) malloc(1024 * sizeof(char));
-     memset(urlWithParams, '0', 1024 * sizeof(char));
-     snprintf(urlWithParams, 1024, "%s?", "https://mockxconf:50050/loguploader/getT2DCMSettings?");
-     EXPECT_EQ(T2ERROR_FAILURE, appendRequestParams(urlWithParams, 968));
-     free(urlWithParams);
-     urlWithParams = NULL;
+     CURLU *requestURL = curl_url();
+     curl_url_set(requestURL, CURLUPART_URL, "https://mockxconf:50050/loguploader/getT2DCMSettings", 0);
+     EXPECT_EQ(T2ERROR_FAILURE, appendRequestParams(requestURL));
+     curl_free(requestURL);
+     requestURL = NULL;
 }
 
 TEST_F(xconfclientTestFixture, appendRequestParams5)
@@ -202,12 +200,11 @@ TEST_F(xconfclientTestFixture, appendRequestParams5)
             .WillOnce(::testing::Return(T2ERROR_SUCCESS))
             .WillOnce(::testing::Return(T2ERROR_SUCCESS))
             .WillOnce(::testing::Return(T2ERROR_FAILURE));
-     char* urlWithParams = (char*) malloc(1024 * sizeof(char));
-     memset(urlWithParams, '0', 1024 * sizeof(char));
-     snprintf(urlWithParams, 1024, "%s?", "https://mockxconf:50050/loguploader/getT2DCMSettings?");
-     EXPECT_EQ(T2ERROR_FAILURE, appendRequestParams(urlWithParams, 968));
-     free(urlWithParams);
-     urlWithParams = NULL;
+     CURLU *requestURL = curl_url();
+     curl_url_set(requestURL, CURLUPART_URL, "https://mockxconf:50050/loguploader/getT2DCMSettings", 0);
+     EXPECT_EQ(T2ERROR_FAILURE, appendRequestParams(requestURL));
+     curl_free(requestURL);
+     requestURL = NULL;
 }
 
 TEST_F(xconfclientTestFixture, appendRequestParams6)
@@ -220,12 +217,11 @@ TEST_F(xconfclientTestFixture, appendRequestParams6)
             .WillOnce(::testing::Return(T2ERROR_SUCCESS))
             .WillOnce(::testing::Return(T2ERROR_SUCCESS))
             .WillOnce(::testing::Return(T2ERROR_FAILURE));
-     char* urlWithParams = (char*) malloc(1024 * sizeof(char));
-     memset(urlWithParams, '0', 1024 * sizeof(char));
-     snprintf(urlWithParams, 1024, "%s?", "https://mockxconf:50050/loguploader/getT2DCMSettings?");
-     EXPECT_EQ(T2ERROR_FAILURE, appendRequestParams(urlWithParams, 968));
-     free(urlWithParams);
-     urlWithParams = NULL;
+     CURLU *requestURL = curl_url();
+     curl_url_set(requestURL, CURLUPART_URL, "https://mockxconf:50050/loguploader/getT2DCMSettings", 0);
+     EXPECT_EQ(T2ERROR_FAILURE, appendRequestParams(requestURL));
+     curl_free(requestURL);
+     requestURL = NULL;
 }
 
 TEST_F(xconfclientTestFixture, appendRequestParams7)
@@ -245,12 +241,11 @@ TEST_F(xconfclientTestFixture, appendRequestParams7)
      EXPECT_CALL(*g_fileIOMock, fopen(_,_))
             .Times(1)
             .WillOnce(Return(mockfp));
-     char* urlWithParams = (char*) malloc(1024 * sizeof(char));
-     memset(urlWithParams, '0', 1024 * sizeof(char));
-     snprintf(urlWithParams, 1024, "%s?", "https://mockxconf:50050/loguploader/getT2DCMSettings?");
-     EXPECT_EQ(T2ERROR_FAILURE, appendRequestParams(urlWithParams, 968));
-     free(urlWithParams);
-     urlWithParams = NULL;
+     CURLU *requestURL = curl_url();
+     curl_url_set(requestURL, CURLUPART_URL, "https://mockxconf:50050/loguploader/getT2DCMSettings", 0);
+     EXPECT_EQ(T2ERROR_FAILURE, appendRequestParams(requestURL));
+     curl_free(requestURL);
+     requestURL = NULL;
 }
 TEST_F(xconfclientTestFixture, fetchRemoteConfiguration)
 {

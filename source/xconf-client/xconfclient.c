@@ -90,6 +90,38 @@ static rdkcertselector_h xcCertSelector = NULL;
 static int retryCount = 0;
 #endif
 
+/* commenting this to code, we have limitations in using curl_url_strerror API.
+We have enough information from the error code to debug.
+#if LIBCURL_VERSION_NUM >= 0x075000  // 7.80.0
+#define T2_CURL_APPENDREQUEST_ERROR(rc) \
+    do { \
+        if ((rc) != CURLUE_OK) \
+            T2Warning("Error in using curl_url_set code : %d, %s Line No : %d\n", \
+                      (int)(rc), curl_url_strerror((rc)), __LINE__); \
+    } while(0)
+
+#define T2_CURL_ERRROR(rc) \
+    do{ \
+        T2Warning("Error in using curl_url_set code : %d, %s Line No : %d\n", \
+                      (int)(rc), curl_url_strerror((rc)), __LINE__); \
+    } while(0)
+
+#else // curl_url_strerror is not defined use direct error code
+*/
+
+#define T2_CURL_APPENDREQUEST_ERROR(rc) \
+    do { \
+        if ((rc) != CURLUE_OK) \
+            T2Warning("T2: Curl Error in using curl_url_set code : %d Line No : %d\n", \
+                      (int)(rc), __LINE__); \
+    } while(0)
+
+#define T2_CURL_ERRROR(rc) \
+    do{ \
+        T2Warning("T2: Curl Error in using curl_url_set code : %d, Line No : %d\n", \
+                      (int)(rc), __LINE__); \
+    } while(0)
+
 T2ERROR ReportProfiles_deleteProfileXConf(ProfileXConf *profile);
 
 T2ERROR ReportProfiles_setProfileXConf(ProfileXConf *profile);
@@ -262,17 +294,17 @@ static char *getTimezone ()
 }
 #endif
 
-T2ERROR appendRequestParams(char *buf, const int maxArgLen)
+T2ERROR appendRequestParams(CURLU *uri)
 {
 
     T2ERROR ret = T2ERROR_FAILURE;
+    CURLUcode rc;
     T2Debug("%s ++in\n", __FUNCTION__);
-    if(buf == NULL)
+    if(uri == NULL)
     {
-        T2Error("Buffer is NULL for appendRequestParams\n");
+        T2Error("URI is NULL for appendRequestParams\n");
         return T2ERROR_FAILURE;
     }
-    int avaBufSize = maxArgLen, write_size = 0, slen = 0;
     char *paramVal = NULL;
     char *tempBuf = (char*) malloc(MAX_URL_ARG_LEN);
     char build_type[BUILD_TYPE_MAX_LENGTH] = { 0 };
@@ -289,9 +321,9 @@ T2ERROR appendRequestParams(char *buf, const int maxArgLen)
     if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_WAN_MAC, &paramVal))
     {
         memset(tempBuf, 0, MAX_URL_ARG_LEN);
-        write_size = snprintf(tempBuf, MAX_URL_ARG_LEN, "estbMacAddress=%s&", paramVal);
-        strncat(buf, tempBuf, avaBufSize);
-        avaBufSize = avaBufSize - write_size;
+        snprintf(tempBuf, MAX_URL_ARG_LEN, "estbMacAddress=%s", paramVal);
+        rc = curl_url_set(uri, CURLUPART_QUERY, tempBuf, CURLU_URLENCODE | CURLU_APPENDQUERY);
+        T2_CURL_APPENDREQUEST_ERROR(rc);
         free(paramVal);
         paramVal = NULL;
     }
@@ -304,9 +336,9 @@ T2ERROR appendRequestParams(char *buf, const int maxArgLen)
     if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_FW_VERSION, &paramVal))
     {
         memset(tempBuf, 0, MAX_URL_ARG_LEN);
-        write_size = snprintf(tempBuf, MAX_URL_ARG_LEN, "firmwareVersion=%s&", paramVal);
-        strncat(buf, tempBuf, avaBufSize);
-        avaBufSize = avaBufSize - write_size;
+        snprintf(tempBuf, MAX_URL_ARG_LEN, "firmwareVersion=%s", paramVal);
+        rc = curl_url_set(uri, CURLUPART_QUERY, tempBuf, CURLU_URLENCODE | CURLU_APPENDQUERY);
+        T2_CURL_APPENDREQUEST_ERROR(rc);
         free(paramVal);
         paramVal = NULL;
     }
@@ -319,9 +351,9 @@ T2ERROR appendRequestParams(char *buf, const int maxArgLen)
     if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_MODEL, &paramVal))
     {
         memset(tempBuf, 0, MAX_URL_ARG_LEN);
-        write_size = snprintf(tempBuf, MAX_URL_ARG_LEN, "model=%s&", paramVal);
-        strncat(buf, tempBuf, avaBufSize);
-        avaBufSize = avaBufSize - write_size;
+        snprintf(tempBuf, MAX_URL_ARG_LEN, "model=%s", paramVal);
+        rc = curl_url_set(uri, CURLUPART_QUERY, tempBuf, CURLU_URLENCODE | CURLU_APPENDQUERY);
+        T2_CURL_APPENDREQUEST_ERROR(rc);
         free(paramVal);
         paramVal = NULL;
     }
@@ -334,9 +366,9 @@ T2ERROR appendRequestParams(char *buf, const int maxArgLen)
     if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_MFR, &paramVal))
     {
         memset(tempBuf, 0, MAX_URL_ARG_LEN);
-        write_size = snprintf(tempBuf, MAX_URL_ARG_LEN, "manufacturer=%s&", paramVal);
-        strncat(buf, tempBuf, avaBufSize);
-        avaBufSize = avaBufSize - write_size;
+        snprintf(tempBuf, MAX_URL_ARG_LEN, "manufacturer=%s", paramVal);
+        rc = curl_url_set(uri, CURLUPART_QUERY, tempBuf, CURLU_URLENCODE | CURLU_APPENDQUERY);
+        T2_CURL_APPENDREQUEST_ERROR(rc);
         free(paramVal);
         paramVal = NULL;
     }
@@ -352,9 +384,9 @@ T2ERROR appendRequestParams(char *buf, const int maxArgLen)
         if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_OSCLASS, &paramVal))
         {
             memset(tempBuf, 0, MAX_URL_ARG_LEN);
-            write_size = snprintf(tempBuf, MAX_URL_ARG_LEN, "osClass=%s&", paramVal);
-            strncat(buf, tempBuf, avaBufSize);
-            avaBufSize = avaBufSize - write_size;
+            snprintf(tempBuf, MAX_URL_ARG_LEN, "osClass=%s", paramVal);
+            rc = curl_url_set(uri, CURLUPART_QUERY, tempBuf, CURLU_URLENCODE | CURLU_APPENDQUERY);
+            T2_CURL_APPENDREQUEST_ERROR(rc);
             free(paramVal);
             paramVal = NULL;
         }
@@ -367,10 +399,9 @@ T2ERROR appendRequestParams(char *buf, const int maxArgLen)
         if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_PARTNER_NAME, &paramVal))
         {
             memset(tempBuf, 0, MAX_URL_ARG_LEN);
-            write_size = snprintf(tempBuf, MAX_URL_ARG_LEN, "partnerId=%s&", paramVal);
-            strncat(buf, tempBuf, avaBufSize);
-            avaBufSize = avaBufSize - write_size;
-            free(paramVal);
+            snprintf(tempBuf, MAX_URL_ARG_LEN, "partnerId=%s", paramVal);
+            rc = curl_url_set(uri, CURLUPART_QUERY, tempBuf, CURLU_URLENCODE | CURLU_APPENDQUERY);
+            T2_CURL_APPENDREQUEST_ERROR(rc);
             paramVal = NULL;
         }
         else
@@ -384,9 +415,9 @@ T2ERROR appendRequestParams(char *buf, const int maxArgLen)
         if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_PARTNER_ID, &paramVal))
         {
             memset(tempBuf, 0, MAX_URL_ARG_LEN);
-            write_size = snprintf(tempBuf, MAX_URL_ARG_LEN, "partnerId=%s&", paramVal);
-            strncat(buf, tempBuf, avaBufSize);
-            avaBufSize = avaBufSize - write_size;
+            snprintf(tempBuf, MAX_URL_ARG_LEN, "partnerId=%s", paramVal);
+            rc = curl_url_set(uri, CURLUPART_QUERY, tempBuf, CURLU_URLENCODE | CURLU_APPENDQUERY);
+            T2_CURL_APPENDREQUEST_ERROR(rc);
             free(paramVal);
             paramVal = NULL;
         }
@@ -400,9 +431,9 @@ T2ERROR appendRequestParams(char *buf, const int maxArgLen)
     if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_ACCOUNT_ID, &paramVal))
     {
         memset(tempBuf, 0, MAX_URL_ARG_LEN);
-        write_size = snprintf(tempBuf, MAX_URL_ARG_LEN, "accountId=%s&", paramVal);
-        strncat(buf, tempBuf, avaBufSize);
-        avaBufSize = avaBufSize - write_size;
+        snprintf(tempBuf, MAX_URL_ARG_LEN, "accountId=%s", paramVal);
+        rc = curl_url_set(uri, CURLUPART_QUERY, tempBuf, CURLU_URLENCODE | CURLU_APPENDQUERY);
+        T2_CURL_APPENDREQUEST_ERROR(rc);
         free(paramVal);
         paramVal = NULL;
     }
@@ -415,9 +446,9 @@ T2ERROR appendRequestParams(char *buf, const int maxArgLen)
     if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_CM_MAC, &paramVal))
     {
         memset(tempBuf, 0, MAX_URL_ARG_LEN);
-        write_size = snprintf(tempBuf, MAX_URL_ARG_LEN, "ecmMacAddress=%s&", paramVal);
-        strncat(buf, tempBuf, avaBufSize);
-        avaBufSize = avaBufSize - write_size;
+        snprintf(tempBuf, MAX_URL_ARG_LEN, "ecmMacAddress=%s", paramVal);
+        rc = curl_url_set(uri, CURLUPART_QUERY, tempBuf, CURLU_URLENCODE | CURLU_APPENDQUERY);
+        T2_CURL_APPENDREQUEST_ERROR(rc);
         free(paramVal);
         paramVal = NULL;
     }
@@ -430,9 +461,9 @@ T2ERROR appendRequestParams(char *buf, const int maxArgLen)
     if(T2ERROR_SUCCESS == getBuildType(build_type))
     {
         memset(tempBuf, 0, MAX_URL_ARG_LEN);
-        write_size = snprintf(tempBuf, MAX_URL_ARG_LEN, "env=%s&", build_type);
-        strncat(buf, tempBuf, avaBufSize);
-        avaBufSize = avaBufSize - write_size;
+        snprintf(tempBuf, MAX_URL_ARG_LEN, "env=%s", build_type);
+        rc = curl_url_set(uri, CURLUPART_QUERY, tempBuf, CURLU_URLENCODE | CURLU_APPENDQUERY);
+        T2_CURL_APPENDREQUEST_ERROR(rc);
         free(paramVal);
         paramVal = NULL;
         ret = T2ERROR_SUCCESS;
@@ -444,19 +475,17 @@ T2ERROR appendRequestParams(char *buf, const int maxArgLen)
     }
 
     // TODO Check relevance of this existing hardcoded data - can be removed if not used in production
-    strncat(buf,
-            "controllerId=2504&channelMapId=2345&vodId=15660&",
-            avaBufSize);
-    slen = strlen("controllerId=2504&channelMapId=2345&vodId=15660&");
-    avaBufSize = avaBufSize - slen;
+    rc = curl_url_set(uri, CURLUPART_QUERY, "controllerId=2504&channelMapId=2345&vodId=15660&", CURLU_APPENDQUERY);
+    T2_CURL_APPENDREQUEST_ERROR(rc);
+
 #if !defined(ENABLE_RDKB_SUPPORT) && !defined(ENABLE_RDKC_SUPPORT)
     timezone = getTimezone();
     if(timezone != NULL)
     {
         memset(tempBuf, 0, MAX_URL_ARG_LEN);
-        write_size = snprintf(tempBuf, MAX_URL_ARG_LEN, "timezone=%s&", timezone);
-        strncat(buf, tempBuf, avaBufSize);
-        avaBufSize = avaBufSize - write_size;
+        snprintf(tempBuf, MAX_URL_ARG_LEN, "timezone=%s", timezone);
+        rc = curl_url_set(uri, CURLUPART_QUERY, tempBuf, CURLU_URLENCODE | CURLU_APPENDQUERY);
+        T2_CURL_APPENDREQUEST_ERROR(rc);
         free(timezone);
     }
     else
@@ -466,18 +495,15 @@ T2ERROR appendRequestParams(char *buf, const int maxArgLen)
         goto error;
     }
 #endif
-    strncat(buf, "version=2", avaBufSize);
-    slen = strlen("version=2");
-    avaBufSize = avaBufSize - slen;
-    T2Debug("%s:%d Final http get URL if size %d is : \n %s \n", __func__,
-            __LINE__, avaBufSize, buf);
+    rc = curl_url_set(uri, CURLUPART_QUERY, "version=2", CURLU_APPENDQUERY);
+    T2_CURL_APPENDREQUEST_ERROR(rc);
 #if defined(PRIVACYMODES_CONTROL)
     if(T2ERROR_SUCCESS == getParameterValue(PRIVACYMODES_RFC, &paramVal))
     {
         memset(tempBuf, 0, MAX_URL_ARG_LEN);
-        write_size = snprintf(tempBuf, MAX_URL_ARG_LEN, "&privacyModes=%s", paramVal);
-        strncat(buf, tempBuf, avaBufSize);
-        avaBufSize = avaBufSize - write_size;
+        snprintf(tempBuf, MAX_URL_ARG_LEN, "privacyModes=%s", paramVal);
+        rc = curl_url_set(uri, CURLUPART_QUERY, tempBuf, CURLU_URLENCODE | CURLU_APPENDQUERY);
+        T2_CURL_APPENDREQUEST_ERROR(rc);
         free(paramVal);
         paramVal = NULL;
     }
@@ -487,8 +513,7 @@ T2ERROR appendRequestParams(char *buf, const int maxArgLen)
         ret = T2ERROR_FAILURE;
         goto error;
     }
-    T2Debug("%s:%d Final http get URL when privacymode is enabled of size %d is : \n %s \n", __func__,
-            __LINE__, avaBufSize, buf);
+
 #endif
 error:
     if (NULL != tempBuf)
@@ -992,36 +1017,47 @@ static T2ERROR fetchRemoteReportProfileConfiguration(char **configData)
     T2Debug("%s ++in\n", __FUNCTION__);
     T2ERROR ret = T2ERROR_FAILURE;
 
-    int write_size = 0, availableBufSize = MAX_URL_LEN;
-
-    char* urlWithParams = (char*) malloc(MAX_URL_LEN * sizeof(char));
     char* remoteUrl = getReportProfileConfigUrl();
     T2Info("URL for Report Profile: %s", remoteUrl);
-    T2Debug("%s remoteUrl::%s\n", __FUNCTION__, remoteUrl);
-    if ((NULL != urlWithParams) && (NULL != remoteUrl))
+    CURLUcode rc = CURLUE_OK;
+    CURLU *requestURL = curl_url();
+    if (NULL != requestURL)
     {
-        memset(urlWithParams, '0', MAX_URL_LEN * sizeof(char));
-        write_size = snprintf(urlWithParams, MAX_URL_LEN, "%s?", remoteUrl);
-        availableBufSize = availableBufSize - write_size;
-        // Append device specific arguments to the base URL
-        if(T2ERROR_SUCCESS == appendRequestParams(urlWithParams, availableBufSize))
+        //T2Debug("%s remoteUrl::%s\n", __FUNCTION__, remoteUrl);
+        rc = curl_url_set(requestURL, CURLUPART_URL, configURL, 0);
+        if(rc != CURLUE_OK)
         {
-            ret = doHttpGet(urlWithParams, configData);
+            T2Error("T2: Curl unable to set config url %s\n",  configURL);
+            T2_CURL_ERRROR(rc);
+            curl_url_cleanup(requestURL);
+            return ret;
+        }
+        if(T2ERROR_SUCCESS == appendRequestParams(requestURL))
+        {
+            char* urlWithParams;
+            rc = curl_url_get(requestURL, CURLUPART_URL, &urlWithParams, 0);
+            int urlLength = strlen(urlWithParams);
+            if(urlLength > MAX_URL_LEN)
+            {
+                T2Warning("Length of the URL is greater than MAX_URL_LEN : %d, url_length:%d\n", MAX_URL_LEN, urlLength);
+            }
+            T2Info("T2: Curl Using XCONF URI : %s with Length :%d\n", urlWithParams, urlLength);
+            if (rc == CURLUE_OK)
+            {
+                ret = doHttpGet(urlWithParams, configData);
+            }
             if (ret != T2ERROR_SUCCESS)
             {
                 T2Error("T2:Curl GET of XCONF data failed\n");
             }
+            curl_free(urlWithParams);
         }
     }
     else
     {
         T2Error("Failed to get T2 report profile URL and the required parameters\n");
     }
-    if(urlWithParams)
-    {
-        free(urlWithParams);
-    }
-
+    curl_url_cleanup(requestURL);
     if(remoteUrl)
     {
         free(remoteUrl);
@@ -1132,27 +1168,48 @@ T2ERROR fetchRemoteConfiguration(char *configURL, char **configData)
         T2Error("configURL is NULL\n");
         return T2ERROR_INVALID_ARGS;
     }
-    int write_size = 0, availableBufSize = MAX_URL_LEN;
-    char* urlWithParams = (char*) malloc(MAX_URL_LEN * sizeof(char));
-    if (NULL != urlWithParams)
+    CURLUcode rc = CURLUE_OK;
+    CURLU *requestURL = curl_url();
+    if (NULL != requestURL)
     {
-        memset(urlWithParams, 0, MAX_URL_LEN * sizeof(char));
-        write_size = snprintf(urlWithParams, MAX_URL_LEN, "%s?", configURL);
-        availableBufSize = availableBufSize - write_size;
-        // Append device specific arguments to the base URL
-        if(T2ERROR_SUCCESS == appendRequestParams(urlWithParams, availableBufSize))
+        rc = curl_url_set(requestURL, CURLUPART_URL, configURL, 0);
+        if(rc != CURLUE_OK)
         {
-            ret = doHttpGet(urlWithParams, configData);
-            if (ret != T2ERROR_SUCCESS)
-            {
-                T2Error("T2:Curl GET of XCONF data failed\n");
-            }
+            T2Error("T2: Curl unable to set config url %s\n", configURL);
+            T2_CURL_ERRROR(rc);
+            curl_url_cleanup(requestURL);
+            return ret;
         }
-        free(urlWithParams);
+        // Append device specific arguments to the base URL
+        if(T2ERROR_SUCCESS == appendRequestParams(requestURL))
+        {
+            char* urlWithParams;
+            rc = curl_url_get(requestURL, CURLUPART_URL, &urlWithParams, 0);
+            int urlLength = strlen(urlWithParams);
+            if(urlLength > MAX_URL_LEN)
+            {
+                T2Warning("Length of the URL is greater than MAX_URL_LEN : %d, url_length:%d", MAX_URL_LEN, urlLength);
+            }
+            T2Info("T2: Curl Using XCONF URI : %s with Length :%d\n", urlWithParams, urlLength);
+            if (rc == CURLUE_OK)
+            {
+                ret = doHttpGet(urlWithParams, configData);
+                if (ret != T2ERROR_SUCCESS)
+                {
+                    T2Error("T2:Curl GET of XCONF data failed\n");
+                }
+            }
+            else
+            {
+                T2_CURL_ERRROR(rc);
+            }
+            curl_free(urlWithParams);
+        }
+        curl_url_cleanup(requestURL);
     }
     else
     {
-        T2Error("Malloc failed\n");
+        T2Error("curl_url did not return a valid pointer\n");
     }
     T2Debug("%s --out\n", __FUNCTION__);
     return ret;

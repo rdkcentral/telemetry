@@ -84,7 +84,7 @@ static const char *strnstr(const char *haystack, const char *needle, size_t len)
 {
     size_t needle_len;
 
-    if (*needle == '\0')
+    if (needle[0] == '\0')
     {
         return haystack;
     }
@@ -98,10 +98,14 @@ static const char *strnstr(const char *haystack, const char *needle, size_t len)
 
     for (size_t i = 0; i + needle_len <= len; i++)
     {
-        if (haystack[i] == '\0')
+        for(size_t j = 0; j < needle_len; j++)
         {
-            break;
+            if (haystack[i + j] == '\0')
+            {
+                return NULL; // If any null character is found in the haystack within the length of needle, return NULL
+            }
         }
+
         if (memcmp(haystack + i, needle, needle_len) == 0)
         {
             return haystack + i;

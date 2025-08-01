@@ -546,7 +546,7 @@ data_without_EncodingType_ActivationTimeout_values = '''{
                 "Version": "0.1",
                 "Protocol": "HTTP",
                 "EncodingType": "",
-                "ActivationTimeOut": 1200,
+                "ActivationTimeOut": 21,
                 "ReportingInterval": 20,
                 "GenerateNow": false,
                 "RootName": "FR2_US_TC3",
@@ -663,7 +663,7 @@ data_without_EncodingType_ActivationTimeout_values = '''{
                 "Description": "RDKB_Profile",
                 "Version": "0.1",
                 "Protocol": "HTTP",
-                "ActivationTimeOut": 1200,
+                "ActivationTimeOut": 21,
                 "ReportingInterval": 20,
                 "GenerateNow": false,
                 "RootName": "FR2_US_TC3",
@@ -780,7 +780,7 @@ data_without_EncodingType_ActivationTimeout_values = '''{
                 "Version": "0.1",
                 "Protocol": "HTTP",
                 "EncodingType": "JSON",
-                "ActivationTimeout": 1200,
+                "ActivationTimeout": 21,
                 "GenerateNow": false,
                 "RootName": "FR2_US_TC3",
                 "TimeReference": "2023-01-25T13:47:00Z",
@@ -838,7 +838,7 @@ data_without_EncodingType_ActivationTimeout_values = '''{
                 "Version": "0.1",
                 "Protocol": "HTTP",
                 "EncodingType": "JSON",
-                "ActivationTimeout": 3600,
+                "ActivationTimeout": 36,
                 "ReportingInterval": 30,
                 "RootName": "FR2_US_TC3",
                 "TimeReference": "2023-01-25T13:47:00Z",
@@ -906,7 +906,7 @@ data_with_Generate_Now = '''{
                 "Protocol": "HTTP",
                 "EncodingType": "JSON",
                 "ActivationTimeOut": 50,
-                "ReportingInterval": 20,
+                "ReportingInterval": 40,
                 "GenerateNow": true,
                 "RootName": "FR2_US_TC3",
                 "Parameter": [
@@ -960,7 +960,7 @@ data_with_Generate_Now = '''{
                 "Protocol": "HTTP",
                 "EncodingType": "JSON",
                 "ActivationTimeOut": 50,
-                "ReportingInterval": 15,
+                "ReportingInterval": 40,
                 "RootName": "FR2_US_TC3",
                 "Parameter": [
                     {
@@ -1024,7 +1024,7 @@ data_temp_with_Generate_Now = '''{
                 "Protocol": "HTTP",
                 "EncodingType": "JSON",
                 "ActivationTimeOut": 50,
-                "ReportingInterval": 20,
+                "ReportingInterval": 40,
                 "GenerateNow": true,
                 "RootName": "temp_777",
                 "Parameter": [
@@ -1078,7 +1078,7 @@ data_temp_with_Generate_Now = '''{
                 "Protocol": "HTTP",
                 "EncodingType": "JSON",
                 "ActivationTimeOut": 50,
-                "ReportingInterval": 15,
+                "ReportingInterval": 40,
                 "RootName": "temp_767",
                 "Parameter": [
                     {

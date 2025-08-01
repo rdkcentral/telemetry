@@ -283,3 +283,8 @@ Scenario: Stress testing of interaction with rbus interface to check for any dea
     Given telemetry is running and an event marker is configured
     When the configured event markers is sent in large numbers without any interval
     Then all the events should be captured and telemetry daemon should not be crashing
+
+Scenario: profile persistence
+    Given a multiprofile is expired
+    When the telemetry is restarted 
+    Then the profile will be enabled after restart

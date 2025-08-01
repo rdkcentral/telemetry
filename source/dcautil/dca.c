@@ -1004,7 +1004,6 @@ static int parseMarkerListOptimized(GrepSeekProfile *gsProfile, Vector * ip_vMar
             // Call the optimized function to process the pattern
             processPatternWithOptimizedFunction(grepMarkerObj, out_grepResultList, fileDescriptor);
         }
-        T2Info("processed successfully\n");
 
     }  // Loop of marker list ends here
 

@@ -202,7 +202,6 @@ def test_reporting_interval_working():
     rbus_set_data(T2_TEMP_REPORT_PROFILE_PARAM, "string", data_empty_profile)
     sleep(2)
 
-'''
 # verification for GenerateNow
 # count - grep marker validation
 # absolute - grep marker validation
@@ -227,6 +226,7 @@ def test_for_Generate_Now():
     file.close()
     sleep(2)
 
+'''
     LOG_GENERATE_NOW = "Waiting for 0 sec for next TIMEOUT for profile"
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_Generate_Now))
     sleep(2)

@@ -96,21 +96,43 @@ static const char *strnstr(const char *haystack, const char *needle, size_t len)
         return haystack;
     }
 
-    for (size_t i = 0; i + needle_len <= len; i++)
-    {
-        for(size_t j = 0; j < needle_len; j++)
+    /*
+        int count = 0;
+        T2Info("strnstr len = %d\n", (int)len);
+        for (size_t i = 0; i + needle_len <= len; i++)
         {
-            if (haystack[i + j] == '\0')
+            count++;
+            T2Info("strnstr count = %d\n", count);
+
+
+            for(size_t j = 0; j < needle_len; j++) { //memchr
+
+                if (haystack[i + j] == '\0')
+                {
+                    return NULL; // If any null character is found in the haystack within the length of needle, return NULL
+                }
+            }*/
+    /*
+            if(haystack[i] == '\0')
             {
                 return NULL; // If any null character is found in the haystack within the length of needle, return NULL
             }
-        }
 
-        if (memcmp(haystack + i, needle, needle_len) == 0)
-        {
-            return haystack + i;
-        }
+            if (memcmp(haystack + i, needle, needle_len) == 0)
+            {
+                return haystack + i;
+            }
 
+        }
+        */
+    if(haystack[i] == '\0')
+    {
+        return NULL; // If any null character is found in the haystack within the length of needle, return NULL
+    }
+    const char *result = memmem(haystack, len, needle, needle_len);
+    if(result != NULL)
+    {
+        return result;
     }
     return NULL;
 }
@@ -121,8 +143,6 @@ static char *LOGPATH = NULL;
 static char *PERSISTENTPATH = NULL;
 static long PAGESIZE;
 static pthread_mutex_t dcaMutex = PTHREAD_MUTEX_INITIALIZER;
-
-
 
 
 /* @} */ // End of group DCA_TYPES
@@ -742,6 +762,7 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
     FileDescriptor* fileDescriptor = NULL;
     off_t offset_in_page_size_multiple ;
     unsigned int bytes_ignored = 0, bytes_ignored_main = 0, bytes_ignored_rotated = 0;
+    off_t main_fsize = 0, rotated_fsize = 0;
     // Find the nearest multiple of page size
     if (seek_value > 0 && PAGESIZE > 0)
     {
@@ -795,6 +816,8 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
             addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, 0);
             addrrf = mmap(NULL, rb.st_size, PROT_READ, MAP_PRIVATE, tmp_rd, offset_in_page_size_multiple);
             bytes_ignored_rotated = bytes_ignored;
+            rotated_fsize = rb.st_size - seek_value;
+            main_fsize = sb.st_size;
             close(rd);
             close(tmp_rd);
             rd = -1;
@@ -807,6 +830,7 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
             {
                 addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, offset_in_page_size_multiple);
                 bytes_ignored_main = bytes_ignored;
+                main_fsize = sb.st_size - seek_value;
             }
             else
             {
@@ -824,6 +848,7 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
         {
             addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, offset_in_page_size_multiple);
             bytes_ignored_main = bytes_ignored;
+            main_fsize = sb.st_size - seek_value;
         }
         else
         {
@@ -874,10 +899,10 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
     }
     fileDescriptor->cfaddr = addrcf;
     fileDescriptor->fd = fd;
-    fileDescriptor->cf_file_size = sb.st_size;
+    fileDescriptor->cf_file_size = main_fsize;
     if(fileDescriptor->rfaddr != NULL)
     {
-        fileDescriptor->rf_file_size = rb.st_size;
+        fileDescriptor->rf_file_size = rotated_fsize;
     }
     else
     {

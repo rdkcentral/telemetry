@@ -46,5 +46,14 @@ typedef enum
     ENUM_RDK_LOG_COUNT
 } rdk_LogLevel;
 
+typedef struct rdk_logger_ext_config_t
+ {
+     char fileName[32];
+     char logdir[32];
+     long maxSize;
+     long maxCount;
+ }rdk_logger_ext_config_t;
+
+rdk_Error rdk_logger_ext_init(rdk_logger_ext_config_t* config);
 rdk_Error rdk_logger_init(const char* debugConfigFile);
 

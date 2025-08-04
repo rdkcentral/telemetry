@@ -35,7 +35,12 @@ unsigned int rdkLogLevel = RDK_LOG_INFO;
 void  LOGInit()
 {
 #ifdef RDK_LOGGER
-    rdk_logger_init(DEBUG_INI_NAME);
+     rdk_logger_ext_config_t config;
+    strncpy(config.fileName, "telemetry2_0.txt", sizeof(config.fileName));
+    strncpy(config.logdir, "/opt/logs", sizeof(config.logdir));
+    config.maxSize = 2024;  // 1 MB
+    config.maxCount = 2;
+    rdk_logger_ext_init(&config);
 #else
     printf("LOG.RDK.T2: LOGInit\n");
 #endif

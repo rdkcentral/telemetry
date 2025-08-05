@@ -126,13 +126,15 @@ static const char *strnstr(const char *haystack, const char *needle, size_t len)
                 haystack[i + needle_len - 1] == last_char &&
                 haystack[i + needle_len - 2] == prelast_char)
         {
+            T2Info("starting memcmp needle_len %zu len %zu search len %zu \n", needle_len, len, search_len);
 
             // Only if all boundary chars match, do a full comparison
             if (memcmp(haystack + i + 2, needle + 2, needle_len - 4) == 0)
             {
-		T2Info("strnstr end with match\n");
+                T2Info("strnstr end with match\n");
                 return haystack + i;
             }
+            T2Info("strnstr next iteration\n");
             i++; // Move one by one after a partial match
         }
         else

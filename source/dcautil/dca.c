@@ -130,6 +130,7 @@ static const char *strnstr(const char *haystack, const char *needle, size_t len)
             // Only if all boundary chars match, do a full comparison
             if (memcmp(haystack + i + 2, needle + 2, needle_len - 4) == 0)
             {
+		T2Info("strnstr end with match\n");
                 return haystack + i;
             }
             i++; // Move one by one after a partial match
@@ -144,7 +145,7 @@ static const char *strnstr(const char *haystack, const char *needle, size_t len)
             }
         }
     }
-
+    T2Info("strnstr end without match\n");
     return NULL;
 }
 
@@ -407,6 +408,7 @@ static inline void formatCount(char* buffer, size_t size, int count)
 
 static int getCountPatternMatch(FileDescriptor* fileDescriptor, const char* pattern)
 {
+    T2Info("Inside getCountPatternMatch\n");
     if (!fileDescriptor || !fileDescriptor->cfaddr || !pattern || !*pattern || fileDescriptor->cf_file_size <= 0)
     {
         T2Error("Invalid file descriptor arguments pattern match\n");
@@ -452,7 +454,6 @@ static int getCountPatternMatch(FileDescriptor* fileDescriptor, const char* patt
                 break;
             }
             count++;
-            T2Info("count is %d\n", count);
             size_t advance = (size_t)(found - cur) + patlen;
             cur = found + patlen;
             if (bytes_left < advance)
@@ -463,6 +464,7 @@ static int getCountPatternMatch(FileDescriptor* fileDescriptor, const char* patt
         }
 
     }
+    T2Info("count is %d\n", count);
     return count;
 }
 
@@ -546,7 +548,7 @@ static char* getAbsolutePatternMatch(FileDescriptor* fileDescriptor, const char*
     }
     memcpy(result, start, length);
     result[length] = '\0';
-    T2Debug("Found pattern '%s' in file, result: '%s'\n", pattern, result);
+    T2Info("Found pattern '%s' in file, result: '%s'\n", pattern, result);
     return result;
 }
 

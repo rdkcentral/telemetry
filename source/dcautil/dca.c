@@ -115,7 +115,6 @@ static const char *strnstr(const char *haystack, const char *needle, size_t len)
     // Main search loop optimized for longer patterns
     for (size_t i = 0; i < search_len;)
     {
-	T2Info("for loop \n");
         if (haystack[i] == '\0')
         {
             break;

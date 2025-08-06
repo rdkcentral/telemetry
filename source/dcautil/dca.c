@@ -116,7 +116,6 @@ static const char *strnstr(const char *haystack, const char *needle, size_t len)
     // Main search loop optimized for longer patterns
     for (size_t i = 0; i < search_len;)
     {
-	printf("haystack i = %c\n", haystack[i]);
         if (haystack[i] == '\0')
         {
             break;
@@ -142,7 +141,6 @@ static const char *strnstr(const char *haystack, const char *needle, size_t len)
         else
         {
             i += skip;
-	    T2Info("i value is %zu\t", i);
             // But don't skip past a potential match
             while (i < search_len && haystack[i] != first_char)
             {

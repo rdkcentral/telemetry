@@ -839,9 +839,9 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
             addrrf = mmap(NULL, rb.st_size, PROT_READ, MAP_PRIVATE, tmp_rd, offset_in_page_size_multiple);
             bytes_ignored_rotated = bytes_ignored;
             rotated_fsize = rb.st_size - seek_value;
-	    T2Info("rotated fsize is %zu\n", rotated_fsize);
+	    T2Info("rotated fsize is %jd\n", (intmax_t)rotated_fsize);
             main_fsize = sb.st_size;
-	    T2Info("main fsize is %zu\n", main_fsize);
+	    T2Info("main fsize is %jd\n", (intmax_t)main_fsize);
             close(rd);
             close(tmp_rd);
             rd = -1;

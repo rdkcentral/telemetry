@@ -111,10 +111,12 @@ static const char *strnstr(const char *haystack, const char *needle, size_t len)
 
     // Skip value for Boyer-Moore-like optimization
     size_t skip = (needle_len >= 4) ? needle_len / 4 : 1;
-
+    T2Info("skip = %zu\n", skip);
+    T2Info("before for loop needle_len %zu len %zu search len %zu \n", needle_len, len, search_len);
     // Main search loop optimized for longer patterns
     for (size_t i = 0; i < search_len;)
     {
+	printf("haystack i = %c\n", haystack[i]);
         if (haystack[i] == '\0')
         {
             break;
@@ -140,6 +142,7 @@ static const char *strnstr(const char *haystack, const char *needle, size_t len)
         else
         {
             i += skip;
+	    T2Info("i value is %zu\t", i);
             // But don't skip past a potential match
             while (i < search_len && haystack[i] != first_char)
             {
@@ -836,7 +839,9 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
             addrrf = mmap(NULL, rb.st_size, PROT_READ, MAP_PRIVATE, tmp_rd, offset_in_page_size_multiple);
             bytes_ignored_rotated = bytes_ignored;
             rotated_fsize = rb.st_size - seek_value;
+	    T2Info("rotated fsize is %zu\n", rotated_fsize);
             main_fsize = sb.st_size;
+	    T2Info("main fsize is %zu\n", main_fsize);
             close(rd);
             close(tmp_rd);
             rd = -1;

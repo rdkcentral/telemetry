@@ -321,7 +321,7 @@ int main()
 {
     pid_t process_id = 0;
     pid_t sid = 0;
-    // LOGInit();
+    LOGInit();
 
     /* Abort if another instance of telemetry2_0 is already running */
     if (checkAnotherTelemetryInstance())
@@ -371,7 +371,6 @@ int main()
 
 
     T2Info("Initializing Telemetry 2.0 Component\n");
-    LOGInit();
     t2DaemonMainModeInit();
     return 0;
 }

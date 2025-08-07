@@ -43,7 +43,6 @@
 #include "busInterface.h"
 #ifdef LIBRDKCERTSEL_BUILD
 #include "rdkcertselector.h"
-#define FILESCHEME "file://"
 #endif
 #ifdef LIBRDKCONFIG_BUILD
 #include "rdkconfig.h"
@@ -588,8 +587,6 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
     CURLcode curl_code = CURLE_OK;
 #ifdef LIBRDKCERTSEL_BUILD
     rdkcertselectorStatus_t xcGetCertStatus;
-    char *pCertURI = NULL;
-    char *pEngine = NULL;
 #endif
     char *pCertFile = NULL;
     char *pPasswd = NULL;
@@ -727,25 +724,9 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
             if(mtls_enable == true)
             {
 #ifdef LIBRDKCERTSEL_BUILD
-                pEngine = rdkcertselector_getEngine(xcCertSelector);
-                if(pEngine != NULL)
-                {
-                    code = curl_easy_setopt(curl, CURLOPT_SSLENGINE, pEngine);
-                }
-                else
-                {
-                    code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
-                }
-                if(code != CURLE_OK)
-                {
-                    T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-                }
                 do
                 {
-                    pCertFile = NULL;
-                    pPasswd = NULL;
-                    pCertURI = NULL;
-                    xcGetCertStatus = rdkcertselector_getCert(xcCertSelector, &pCertURI, &pPasswd);
+                    xcGetCertStatus = rdkcertselector_getCertForCurl( curl, xcCertSelector);
                     if(xcGetCertStatus != certselectorOk)
                     {
                         T2Error("%s, T2:Failed to retrieve the certificate.\n", __func__);
@@ -757,47 +738,21 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
                         goto status_return;
                     }
                     else
-                    {
-                        // skip past file scheme in URI
-                        pCertFile = pCertURI;
-                        if ( strncmp( pCertFile, FILESCHEME, sizeof(FILESCHEME) - 1 ) == 0 )
-                        {
-                            pCertFile += (sizeof(FILESCHEME) - 1);
-                        }
+                    { 
+     
 #else
                 if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pPasswd))
                 {
 #endif
-                        code = curl_easy_setopt(curl, CURLOPT_SSLCERTTYPE, "P12");
-                        if(code != CURLE_OK)
-                        {
-                            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-                        }
-                        code = curl_easy_setopt(curl, CURLOPT_SSLCERT, pCertFile);
-                        if(code != CURLE_OK)
-                        {
-                            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-                        }
-                        code = curl_easy_setopt(curl, CURLOPT_KEYPASSWD, pPasswd);
-                        if(code != CURLE_OK)
-                        {
-                            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-                        }
-                        /* disconnect if authentication fails */
-                        code = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
-                        if(code != CURLE_OK)
-                        {
-                            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-                        }
-                        curl_code = curl_easy_perform(curl);
+                curl_code = curl_easy_perform(curl);
 #ifdef LIBRDKCERTSEL_BUILD
                         if(curl_code != CURLE_OK)
                         {
-                            T2Info("%s: Using xpki Certs connection certname : %s \n", __FUNCTION__, pCertFile);
+                            T2Info("%s: Using xpki Certs connection \n", __FUNCTION__);
                             T2Error("Curl failed : %d \n", curl_code);
                         }
                     }
-                }
+                   }
                 while(rdkcertselector_setCurlStatus(xcCertSelector, curl_code, (const char*)httpsUrl) == TRY_ANOTHER);
 #else
                     }

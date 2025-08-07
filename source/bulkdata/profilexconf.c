@@ -306,6 +306,9 @@ static void* CollectAndReportXconf(void* data)
             {
                 encodeEventMarkersInJSON(valArray, profile->eMarkerList);
             }
+            profile->grepSeekProfile->execCounter += 1;
+            T2Info("Execution Count = %d\n", profile->grepSeekProfile->execCounter);
+
             ret = prepareJSONReport(profile->jsonReportObj, &jsonReport);
             destroyJSONReport(profile->jsonReportObj);
             profile->jsonReportObj = NULL;

@@ -836,10 +836,22 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
             T2Info("mmap done\n");
             addrrf = mmap(NULL, rb.st_size, PROT_READ, MAP_PRIVATE, tmp_rd, offset_in_page_size_multiple);
             bytes_ignored_rotated = bytes_ignored;
-            rotated_fsize = rb.st_size - seek_value;
-	    T2Info("rotated fsize is %jd\n", (intmax_t)rotated_fsize);
+            T2Info("seekvalue = %jd\n", (intmax_t)seek_value);
+            T2Info("rb.st_size = %jd\n", (intmax_t)rb.st_size);
+            if(rb.st_size > seek_value)
+            {
+                rotated_fsize = rb.st_size - seek_value;
+                main_fsize = sb.st_size;
+            }
+            else
+            {
+                rotated_fsize = rb.st_size;
+                main_fsize = sb.st_size - seek_value;
+            }
+
+            T2Info("rotated fsize is %jd\n", (intmax_t)rotated_fsize);
             main_fsize = sb.st_size;
-	    T2Info("main fsize is %jd\n", (intmax_t)main_fsize);
+            T2Info("main fsize is %jd\n", (intmax_t)main_fsize);
             close(rd);
             close(tmp_rd);
             rd = -1;
@@ -1057,8 +1069,8 @@ static int parseMarkerListOptimized(GrepSeekProfile *gsProfile, Vector * ip_vMar
     }  // Loop of marker list ends here
 
 
-    gsProfile->execCounter += 1;
-    T2Debug("Execution Count = %d\n", gsProfile->execCounter);
+    // gsProfile->execCounter += 1;
+    // T2Debug("Execution Count = %d\n", gsProfile->execCounter);
 
     if (prevfile != NULL)
     {

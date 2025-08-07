@@ -167,26 +167,32 @@ void* TimeoutThread(void *arg)
     // 1. Initialize condition variable attributes
     pthread_condattr_t Profile_attr;
     if (pthread_condattr_init(&Profile_attr) != 0) {
-        perror("pthread_condattr_init failed");
+        T2Error("pthread_condattr_init failed");
         return NULL;
     }
 
     //Set the clock source for the condition variable as CLOCK_MONOTONIC
     // This is important to prevent timer from drifting because of systemtime drift ( such as NTP sync)
     if (pthread_condattr_setclock(&Profile_attr, CLOCK_MONOTONIC) != 0) {
-        T2Error("pthread_condattr_setclock failed");
-        pthread_condattr_destroy(&Profile_attr);
+        T2Error("pthread_condattr_setclock failed \n");
+        if (pthread_condattr_destroy(&Profile_attr) != 0){
+          T2Error("pthread_condattr_destroy failed \n");
+        }
         return NULL;
     }
 
     //Initialize the condition variable with the attributes
     if (pthread_cond_init(&tProfile->tCond, &Profile_attr) != 0) {
-        T2Error("pthread_cond_init failed");
-        pthread_condattr_destroy(&Profile_attr);
+        T2Error("pthread_cond_init failed\n");
+        if (pthread_condattr_destroy(&Profile_attr) != 0){
+            T2Error("pthread_condattr_destroy failed \n");
+        }
         return NULL;
     }
 
-    pthread_condattr_destroy(&Profile_attr);
+    if (pthread_condattr_destroy(&Profile_attr) != 0){
+       T2Error("pthread_condattr_destroy failed \n");
+    }
 
     while(tProfile->repeat && !tProfile->terminated && tProfile->name)
     {
@@ -199,9 +205,15 @@ void* TimeoutThread(void *arg)
             return NULL;
         }
 
-        clock_gettime(CLOCK_MONOTONIC, &_now);
-        //update the timevalues for profiles
-        _ts.tv_sec = _now.tv_sec;
+        if( clock_gettime(CLOCK_MONOTONIC, &_now) == -1 )
+        {
+           T2Error("clock_gettime failed\n");
+        }
+        else
+        {
+           //update the timevalues for profiles
+           _ts.tv_sec = _now.tv_sec;
+        }
 
         if(tProfile->timeRef && strcmp(tProfile->timeRef, DEFAULT_TIME_REFERENCE) != 0)
         {

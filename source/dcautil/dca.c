@@ -120,7 +120,6 @@ static const char *strnstr(const char *haystack, const char *needle, size_t len)
         {
             break;
         }
-        T2Info("before if loop \n");
         // Quick boundary check using multiple characters
         if (haystack[i] == first_char &&
                 haystack[i + 1] == second_char &&

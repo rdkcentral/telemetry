@@ -82,7 +82,7 @@ typedef struct
  */
 static const char *strnstr(const char *haystack, const char *needle, size_t len)
 {
-    T2Info("Inside strnstr\n");
+    T2Debug("Inside strnstr\n");
     if (!haystack || !needle)
     {
         return NULL;
@@ -146,6 +146,7 @@ static const char *strnstr(const char *haystack, const char *needle, size_t len)
             {
                 i++;
             }
+	    T2Debug("else strnstr\n");
         }
     }
     T2Debug("strnstr end without match\n");
@@ -411,7 +412,7 @@ static inline void formatCount(char* buffer, size_t size, int count)
 
 static int getCountPatternMatch(FileDescriptor* fileDescriptor, const char* pattern)
 {
-    T2Info("Inside getCountPatternMatch\n");
+    T2Debug("Inside getCountPatternMatch\n");
     if (!fileDescriptor || !fileDescriptor->cfaddr || !pattern || !*pattern || fileDescriptor->cf_file_size <= 0)
     {
         T2Error("Invalid file descriptor arguments pattern match\n");
@@ -835,6 +836,8 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
             addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, 0);
             addrrf = mmap(NULL, rb.st_size, PROT_READ, MAP_PRIVATE, tmp_rd, offset_in_page_size_multiple);
             bytes_ignored_rotated = bytes_ignored;
+	    T2Debug("rotated fsize is %jd\n", (intmax_t)rb.st_size);
+            T2Debug("main fsize is %jd\n", (intmax_t)sb.st_size);
             if(rb.st_size > seek_value)
             {
                 rotated_fsize = rb.st_size - seek_value;

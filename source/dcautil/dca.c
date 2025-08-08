@@ -836,21 +836,22 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
             addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, 0);
             addrrf = mmap(NULL, rb.st_size, PROT_READ, MAP_PRIVATE, tmp_rd, offset_in_page_size_multiple);
             bytes_ignored_rotated = bytes_ignored;
-	    T2Debug("rotated fsize is %jd\n", (intmax_t)rb.st_size);
-            T2Debug("main fsize is %jd\n", (intmax_t)sb.st_size);
+            T2Debug("seek_value is %ld\n", seek_value);
+	        T2Debug("rotated fsize is %ld\n", rb.st_size);
+            T2Debug("main fsize is %ld\n", sb.st_size);
             if(rb.st_size > seek_value)
             {
-                rotated_fsize = rb.st_size - seek_value;
+                rotated_fsize = (off_t) (rb.st_size - seek_value);
                 main_fsize = sb.st_size;
             }
             else
             {
                 rotated_fsize = rb.st_size;
-                main_fsize = sb.st_size - seek_value;
+                main_fsize = (off_t) (sb.st_size - seek_value);
             }
 
-            T2Debug("rotated fsize is %jd\n", (intmax_t)rotated_fsize);
-            T2Debug("main fsize is %jd\n", (intmax_t)main_fsize);
+            T2Debug("rotated fsize is %ld\n", rotated_fsize);
+            T2Debug("main fsize is %ld\n", main_fsize);
             close(rd);
             close(tmp_rd);
             rd = -1;
@@ -864,7 +865,10 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
                 addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, offset_in_page_size_multiple);
                 T2Info("mmap done\n");
                 bytes_ignored_main = bytes_ignored;
-                main_fsize = sb.st_size - seek_value;
+                T2Debug("fsize is %ld\n", sb.st_size);
+                T2Debug("seek_value is %ld\n", seek_value);
+                main_fsize = (off_t) (sb.st_size - seek_value);
+                T2Debug("main fsize is %ld\n", main_fsize);
             }
             else
             {
@@ -883,7 +887,10 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
             addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, offset_in_page_size_multiple);
             T2Info("mmap done\n");
             bytes_ignored_main = bytes_ignored;
-            main_fsize = sb.st_size - seek_value;
+            main_fsize = (off_t) (sb.st_size - seek_value);
+            T2Debug("seek_value is %ld\n", seek_value);
+            T2Debug("fsize is %ld\n", sb.st_size);
+            T2Debug("main fsize is %ld\n", main_fsize);
         }
         else
         {

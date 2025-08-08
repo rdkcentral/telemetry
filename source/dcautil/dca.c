@@ -111,8 +111,8 @@ static const char *strnstr(const char *haystack, const char *needle, size_t len)
 
     // Skip value for Boyer-Moore-like optimization
     size_t skip = (needle_len >= 4) ? needle_len / 4 : 1;
-    T2Info("skip = %zu\n", skip);
-    T2Info("before for loop needle_len %zu len %zu search len %zu \n", needle_len, len, search_len);
+    T2Debug("skip = %zu\n", skip);
+    T2Debug("before for loop needle_len %zu len %zu search len %zu \n", needle_len, len, search_len);
     // Main search loop optimized for longer patterns
     for (size_t i = 0; i < search_len;)
     {
@@ -132,10 +132,10 @@ static const char *strnstr(const char *haystack, const char *needle, size_t len)
             // Only if all boundary chars match, do a full comparison
             if (memcmp(haystack + i + 2, needle + 2, needle_len - 4) == 0)
             {
-                T2Info("strnstr end with match\n");
+                T2Debug("strnstr end with match\n");
                 return haystack + i;
             }
-            T2Info("strnstr next iteration\n");
+            T2Debug("strnstr next iteration\n");
             i++; // Move one by one after a partial match
         }
         else
@@ -148,7 +148,7 @@ static const char *strnstr(const char *haystack, const char *needle, size_t len)
             }
         }
     }
-    T2Info("strnstr end without match\n");
+    T2Debug("strnstr end without match\n");
     return NULL;
 }
 
@@ -833,11 +833,8 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
                 return NULL;
             }
             addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, 0);
-            T2Info("mmap done\n");
             addrrf = mmap(NULL, rb.st_size, PROT_READ, MAP_PRIVATE, tmp_rd, offset_in_page_size_multiple);
             bytes_ignored_rotated = bytes_ignored;
-            T2Info("seekvalue = %jd\n", (intmax_t)seek_value);
-            T2Info("rb.st_size = %jd\n", (intmax_t)rb.st_size);
             if(rb.st_size > seek_value)
             {
                 rotated_fsize = rb.st_size - seek_value;
@@ -849,9 +846,8 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
                 main_fsize = sb.st_size - seek_value;
             }
 
-            T2Info("rotated fsize is %jd\n", (intmax_t)rotated_fsize);
-            main_fsize = sb.st_size;
-            T2Info("main fsize is %jd\n", (intmax_t)main_fsize);
+            T2Debug("rotated fsize is %jd\n", (intmax_t)rotated_fsize);
+            T2Debug("main fsize is %jd\n", (intmax_t)main_fsize);
             close(rd);
             close(tmp_rd);
             rd = -1;

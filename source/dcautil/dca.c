@@ -120,7 +120,7 @@ static const char *strnstr(const char *haystack, const char *needle, size_t len)
         {
             break;
         }
-
+        T2Info("before if loop \n");
         // Quick boundary check using multiple characters
         if (haystack[i] == first_char &&
                 haystack[i + 1] == second_char &&
@@ -142,11 +142,12 @@ static const char *strnstr(const char *haystack, const char *needle, size_t len)
         {
             i += skip;
             // But don't skip past a potential match
+	    T2Debug(" else strnstr i value is %zu haystack %c\n", i, haystack[i]);
             while (i < search_len && haystack[i] != first_char)
             {
                 i++;
             }
-	    T2Debug("else strnstr\n");
+	    T2Debug("haystack value is %c\n",haystack[i]);
         }
     }
     T2Debug("strnstr end without match\n");
@@ -836,9 +837,9 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
             addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, 0);
             addrrf = mmap(NULL, rb.st_size, PROT_READ, MAP_PRIVATE, tmp_rd, offset_in_page_size_multiple);
             bytes_ignored_rotated = bytes_ignored;
-            T2Debug("seek_value is %ld\n", seek_value);
-	        T2Debug("rotated fsize is %ld\n", rb.st_size);
-            T2Debug("main fsize is %ld\n", sb.st_size);
+           // T2Debug("seek_value is %ld\n", seek_value);
+	   // T2Debug("rotated fsize is %ld\n", rb.st_size);
+           // T2Debug("main fsize is %ld\n", sb.st_size);
             if(rb.st_size > seek_value)
             {
                 rotated_fsize = (off_t) (rb.st_size - seek_value);
@@ -863,10 +864,9 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
             if(seek_value < sb.st_size)
             {
                 addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, offset_in_page_size_multiple);
-                T2Info("mmap done\n");
                 bytes_ignored_main = bytes_ignored;
-                T2Debug("fsize is %ld\n", sb.st_size);
-                T2Debug("seek_value is %ld\n", seek_value);
+             //   T2Debug("fsize is %ld\n", sb.st_size);
+             //   T2Debug("seek_value is %ld\n", seek_value);
                 main_fsize = (off_t) (sb.st_size - seek_value);
                 T2Debug("main fsize is %ld\n", main_fsize);
             }
@@ -885,11 +885,10 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
         if(seek_value < sb.st_size)
         {
             addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, offset_in_page_size_multiple);
-            T2Info("mmap done\n");
             bytes_ignored_main = bytes_ignored;
             main_fsize = (off_t) (sb.st_size - seek_value);
-            T2Debug("seek_value is %ld\n", seek_value);
-            T2Debug("fsize is %ld\n", sb.st_size);
+          //  T2Debug("seek_value is %ld\n", seek_value);
+          //  T2Debug("fsize is %ld\n", sb.st_size);
             T2Debug("main fsize is %ld\n", main_fsize);
         }
         else

@@ -860,8 +860,7 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
                 close(tmp_rd);
                 return NULL;
             }
-            addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, 0);
-            addrrf = mmap(NULL, rb.st_size, PROT_READ, MAP_PRIVATE, tmp_rd, offset_in_page_size_multiple);
+            
            // bytes_ignored_rotated = bytes_ignored;
            T2Debug("seek_value is %ld rotated fsize is %ld main fsize is %ld\n", seek_value, rb.st_size, sb.st_size);
             if(rb.st_size > seek_value)
@@ -869,6 +868,8 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
                 rotated_fsize = (off_t) (rb.st_size - seek_value);
                 main_fsize = sb.st_size;
 		        bytes_ignored_rotated = bytes_ignored;
+                addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, 0);
+                addrrf = mmap(NULL, rb.st_size, PROT_READ, MAP_PRIVATE, tmp_rd, offset_in_page_size_multiple);
                 T2Debug("bytes ignored rotated is %u bytes_ignored_main %u\n", bytes_ignored_rotated, bytes_ignored_main);
             }
             else
@@ -876,6 +877,8 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
                 rotated_fsize = rb.st_size;
                 main_fsize = (off_t) (sb.st_size - seek_value);
 		        bytes_ignored_main = bytes_ignored;
+                addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, offset_in_page_size_multiple);
+                addrrf = mmap(NULL, rb.st_size, PROT_READ, MAP_PRIVATE, tmp_rd, 0);
                 T2Debug("bytes ignored rotated is %u bytes_ignored_main %u\n", bytes_ignored_rotated, bytes_ignored_main);
             }
 
@@ -897,6 +900,7 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
             }
             else
             {
+                
                 T2Debug("Log file got rotated. Ignoring invalid mapping\n");
                 close(tmp_fd);
                 close(fd);

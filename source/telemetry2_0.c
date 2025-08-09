@@ -269,6 +269,7 @@ static void t2DaemonMainModeInit( )
 
     DAEMONPID = getpid(); // save the pid of the deamon
     T2Debug("Telemetry 2.0 Process PID %d\n", (int)DAEMONPID); //Debug line
+    LOGInit();
     sigaction(SIGTERM, &act, NULL);
     sigaction(SIGUSR1, &act, NULL);
     sigaction(LOG_UPLOAD, &act, NULL);
@@ -321,7 +322,7 @@ int main()
 {
     pid_t process_id = 0;
     pid_t sid = 0;
-    LOGInit();
+   // LOGInit();
 
     /* Abort if another instance of telemetry2_0 is already running */
     if (checkAnotherTelemetryInstance())

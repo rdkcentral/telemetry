@@ -82,25 +82,38 @@ typedef struct
  */
 static const char *strnstr(const char *haystack, const char *needle, size_t len)
 {
-    T2Debug("Inside strnstr\n");
-    if (!haystack || !needle)
+    T2Info("Inside strnstr\n");
+    if (haystack  == NULL|| needle == NULL)
     {
         return NULL;
     }
-
     size_t needle_len = strlen(needle);
     if (needle_len == 0)
     {
         return haystack;
     }
 
-    // Check if search is possible
-    if (len < needle_len)
+    // Check if search is possible and prevent overflow
+    if (len < needle_len || len - needle_len > len)
     {
         return NULL;
     }
 
-    // Adjust search length to prevent overflow
+    // Check minimum length requirements for optimized search
+    if (needle_len < 4)
+    {
+        // Use simple search for short patterns
+        for (size_t i = 0; i <= len - needle_len; i++)
+        {
+            if (memcmp(haystack + i, needle, needle_len) == 0)
+            {
+                return haystack + i;
+            }
+        }
+        return NULL;
+    }
+
+    // Adjust search length for longer patterns
     size_t search_len = len - needle_len + 1;
 
     // For longer patterns (which is our common case), use multi-char checking
@@ -111,16 +124,21 @@ static const char *strnstr(const char *haystack, const char *needle, size_t len)
 
     // Skip value for Boyer-Moore-like optimization
     size_t skip = (needle_len >= 4) ? needle_len / 4 : 1;
-    T2Debug("skip = %zu\n", skip);
-    T2Debug("before for loop needle_len %zu len %zu search len %zu \n", needle_len, len, search_len);
+    T2Info("skip = %zu\n", skip);
+    T2Info("before for loop needle_len %zu len %zu search len %zu \n", needle_len, len, search_len);
     // Main search loop optimized for longer patterns
-    for (size_t i = 0; i < search_len;)
+    for (size_t i = 0; i < search_len && i < len;)
     {
-        if (haystack[i] == '\0')
+        // Safe boundary check for all accesses
+        if ( i + needle_len > len || i >= search_len)
         {
+            T2Info("haystack is %c", haystack[i]);
             break;
         }
+
+        T2Debug("else strnstr i value is %zu haystack %c\n", i, haystack[i]);
         // Quick boundary check using multiple characters
+        // We already know needle_len >= 4 from earlier check
         if (haystack[i] == first_char &&
                 haystack[i + 1] == second_char &&
                 haystack[i + needle_len - 1] == last_char &&
@@ -128,28 +146,37 @@ static const char *strnstr(const char *haystack, const char *needle, size_t len)
         {
             T2Info("starting memcmp needle_len %zu len %zu search len %zu \n", needle_len, len, search_len);
 
-            // Only if all boundary chars match, do a full comparison
-            if (memcmp(haystack + i + 2, needle + 2, needle_len - 4) == 0)
+            // Only if all boundary chars match, do a full comparison of the middle section
+            // We already verified needle_len >= 4 and bounds earlier
+            size_t middle_len = needle_len - 4;
+            if (middle_len > 0 && 
+                i + 2 + middle_len <= len &&
+                memcmp(haystack + i + 2, needle + 2, middle_len) == 0)
             {
-                T2Debug("strnstr end with match\n");
+                T2Info("strnstr end with match\n");
                 return haystack + i;
             }
-            T2Debug("strnstr next iteration\n");
+            T2Info("strnstr next iteration\n");
             i++; // Move one by one after a partial match
         }
         else
         {
-            i += skip;
+            // Ensure skip doesn't cause overflow
+            if (i + skip < search_len && i + skip < len) {
+                i += skip;
+            } else {
+                i++; // If skip would overflow, just move one position
+            }
+            
             // But don't skip past a potential match
-	    T2Debug(" else strnstr i value is %zu haystack %c\n", i, haystack[i]);
-            while (i < search_len && haystack[i] != first_char)
+            while (i < search_len && i < len && haystack[i] != first_char)
             {
                 i++;
             }
-	    T2Debug("haystack value is %c\n",haystack[i]);
+            T2Debug("else strnstr i value is %zu haystack %c\n", i, haystack[i]);
         }
     }
-    T2Debug("strnstr end without match\n");
+    T2Info("strnstr end without match\n");
     return NULL;
 }
 
@@ -426,7 +453,7 @@ static int getCountPatternMatch(FileDescriptor* fileDescriptor, const char* patt
 
     for(int i = 0; i < 2; i++)
     {
-        if (i == 0)
+        if (i == 1)
         {
             buffer = fileDescriptor->cfaddr;
             buflen = (size_t)fileDescriptor->cf_file_size;
@@ -487,7 +514,7 @@ static char* getAbsolutePatternMatch(FileDescriptor* fileDescriptor, const char*
 
     for ( int i = 0; i < 2; i++ )
     {
-        if (i == 0)
+        if (i == 1)
         {
             buffer = fileDescriptor->cfaddr;
             buflen = (size_t)fileDescriptor->cf_file_size;
@@ -527,7 +554,7 @@ static char* getAbsolutePatternMatch(FileDescriptor* fileDescriptor, const char*
         {
             continue;
         }
-        if(last_found && i == 0)
+        if(last_found && i == 1)
         {
             break;
         }
@@ -811,7 +838,7 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
         close(tmp_fd);
         return NULL;
     }
-
+    
     if(seek_value > sb.st_size || check_rotated == true)
     {
         int rd = getRotatedLogFileDescriptor(logPath, logFile);
@@ -835,25 +862,26 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
             }
             addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, 0);
             addrrf = mmap(NULL, rb.st_size, PROT_READ, MAP_PRIVATE, tmp_rd, offset_in_page_size_multiple);
-            bytes_ignored_rotated = bytes_ignored;
-           // T2Debug("seek_value is %ld\n", seek_value);
-	   // T2Debug("rotated fsize is %ld\n", rb.st_size);
-           // T2Debug("main fsize is %ld\n", sb.st_size);
+           // bytes_ignored_rotated = bytes_ignored;
+           T2Debug("seek_value is %ld rotated fsize is %ld main fsize is %ld and sent is %ld\n", seek_value, rb.st_size, sb.st_size,sent );
             if(rb.st_size > seek_value)
             {
                 rotated_fsize = (off_t) (rb.st_size - seek_value);
                 main_fsize = sb.st_size;
+		        bytes_ignored_rotated = bytes_ignored;
+                T2Debug("bytes ignored rotated is %u bytes_ignored_main %u\n", bytes_ignored_rotated, bytes_ignored_main);
             }
             else
             {
                 rotated_fsize = rb.st_size;
                 main_fsize = (off_t) (sb.st_size - seek_value);
+		        bytes_ignored_main = bytes_ignored;
+                T2Debug("bytes ignored rotated is %u bytes_ignored_main %u\n", bytes_ignored_rotated, bytes_ignored_main);
             }
 
-            T2Debug("rotated fsize is %ld\n", rotated_fsize);
-            T2Debug("main fsize is %ld\n", main_fsize);
-            close(rd);
+            T2Debug("rotated fsize is %ld main fsize %ld\n", rotated_fsize, main_fsize);
             close(tmp_rd);
+            close(rd);
             rd = -1;
         }
         else
@@ -864,8 +892,6 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
             {
                 addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, offset_in_page_size_multiple);
                 bytes_ignored_main = bytes_ignored;
-             //   T2Debug("fsize is %ld\n", sb.st_size);
-             //   T2Debug("seek_value is %ld\n", seek_value);
                 main_fsize = (off_t) (sb.st_size - seek_value);
                 T2Debug("main fsize is %ld\n", main_fsize);
             }
@@ -874,6 +900,7 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
                 T2Debug("Log file got rotated. Ignoring invalid mapping\n");
                 close(tmp_fd);
                 close(fd);
+
                 return NULL;
             }
         }
@@ -886,8 +913,6 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
             addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, offset_in_page_size_multiple);
             bytes_ignored_main = bytes_ignored;
             main_fsize = (off_t) (sb.st_size - seek_value);
-          //  T2Debug("seek_value is %ld\n", seek_value);
-          //  T2Debug("fsize is %ld\n", sb.st_size);
             T2Debug("main fsize is %ld\n", main_fsize);
         }
         else
@@ -904,10 +929,6 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
 
     if (addrcf == MAP_FAILED)
     {
-        if(addrrf != NULL)
-        {
-            munmap(addrrf, rb.st_size);
-        }
         T2Error("Error in memory mapping file %d: %s\n", fd, strerror(errno));
         return NULL;
     }

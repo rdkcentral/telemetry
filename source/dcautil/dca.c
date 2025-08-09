@@ -863,7 +863,7 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
             addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, 0);
             addrrf = mmap(NULL, rb.st_size, PROT_READ, MAP_PRIVATE, tmp_rd, offset_in_page_size_multiple);
            // bytes_ignored_rotated = bytes_ignored;
-           T2Debug("seek_value is %ld rotated fsize is %ld main fsize is %ld and sent is %ld\n", seek_value, rb.st_size, sb.st_size,sent );
+           T2Debug("seek_value is %ld rotated fsize is %ld main fsize is %ld\n", seek_value, rb.st_size, sb.st_size);
             if(rb.st_size > seek_value)
             {
                 rotated_fsize = (off_t) (rb.st_size - seek_value);

@@ -909,7 +909,7 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
         {
             addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, offset_in_page_size_multiple);
             bytes_ignored_main = bytes_ignored;
-            main_fsize = (off_t) (sb.st_size - seek_value);
+            main_fsize = sb.st_size - seek_value;
             T2Debug("main fsize is %ld\n", main_fsize);
         }
         else

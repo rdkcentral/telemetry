@@ -269,6 +269,7 @@ static void t2DaemonMainModeInit( )
 
     DAEMONPID = getpid(); // save the pid of the deamon
     T2Debug("Telemetry 2.0 Process PID %d\n", (int)DAEMONPID); //Debug line
+
     sigaction(SIGTERM, &act, NULL);
     sigaction(SIGUSR1, &act, NULL);
     sigaction(LOG_UPLOAD, &act, NULL);

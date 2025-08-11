@@ -42,7 +42,7 @@
 #include "telemetry2_0.h"
 #include "busInterface.h"
 #ifdef LIBRDKCERTSEL_BUILD
-#include "rdkcertselector.h"
+#include "rdkSetTlsCert.h"
 #endif
 #ifdef LIBRDKCONFIG_BUILD
 #include "rdkconfig.h"
@@ -588,9 +588,9 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
 #ifdef LIBRDKCERTSEL_BUILD
     rdkcertselectorStatus_t xcGetCertStatus;
 #endif
+#ifdef LIBRDKCONFIG_BUILD
     char *pCertFile = NULL;
     char *pPasswd = NULL;
-#ifdef LIBRDKCONFIG_BUILD
     size_t sPasswdSize = 0;
 #endif
     // char *pKeyType = "PEM" ;

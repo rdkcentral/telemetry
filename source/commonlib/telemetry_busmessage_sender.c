@@ -313,10 +313,9 @@ void *cacheEventToFile(void *arg)
     fl.l_start = 0;
     fl.l_len = 0;
     fl.l_pid = 0;
-    FILE *fs = NULL;
-    char path[100];
     pthread_detach(pthread_self());
     EVENT_ERROR("%s:%d, Caching the event to File\n", __func__, __LINE__);
+    EVENT_ERROR("telemetry data = %s \n", telemetry_data);
     if(telemetry_data == NULL)
     {
         EVENT_ERROR("%s:%d, Data is NULL\n", __func__, __LINE__);
@@ -324,6 +323,7 @@ void *cacheEventToFile(void *arg)
     }
     pthread_mutex_lock(&FileCacheMutex);
 
+    EVENT_ERROR("opening the lock file\n");
     if ((fd = open(T2_CACHE_LOCK_FILE, O_RDWR | O_CREAT, 0666)) == -1)
     {
         EVENT_ERROR("%s:%d, T2:open failed\n", __func__, __LINE__);
@@ -345,27 +345,38 @@ void *cacheEventToFile(void *arg)
         return NULL;
     }
 
+    FILE *readFp = fopen(T2_CACHE_FILE, "r");
+    if (readFp != NULL)
+    {
+        char ch;
+        while ((ch = fgetc(readFp)) != EOF)
+        {
+            if (ch == '\n')
+                count++;
+        }
+	if (ch != '\n' && count > 0)
+	    count++;
+        fclose(readFp);
+    }
+    EVENT_ERROR("count = %d\n", count);
+    EVENT_ERROR("telemetry data = %s, count = %d\n", telemetry_data, count);
+
     FILE *fp = fopen(T2_CACHE_FILE, "a");
     if (fp == NULL)
     {
         EVENT_ERROR("%s: File open error %s\n", __FUNCTION__, T2_CACHE_FILE);
         goto unlock;
     }
-    fs = popen ("cat /tmp/t2_caching_file | wc -l", "r");
-    if(fs != NULL)
-    {
-        fgets(path, 100, fs);
-        count = atoi ( path );
-        pclose(fs);
-    }
+
     if(count < MAX_EVENT_CACHE)
     {
         fprintf(fp, "%s\n", telemetry_data);
     }
     else
     {
-        EVENT_DEBUG("Reached Max cache limit of 200, Caching is not done\n");
+        EVENT_ERROR("Reached Max cache limit of 200, Caching is not done\n");
     }
+    EVENT_ERROR("telemetry data = %s \n", telemetry_data);
     fclose(fp);
 
 unlock:

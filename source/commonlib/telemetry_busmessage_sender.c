@@ -348,7 +348,7 @@ void *cacheEventToFile(void *arg)
     FILE *readFp = fopen(T2_CACHE_FILE, "r");
     if (readFp != NULL)
     {
-        char ch;
+        int ch;
         while ((ch = fgetc(readFp)) != EOF)
         {
             if (ch == '\n')

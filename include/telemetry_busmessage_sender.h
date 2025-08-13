@@ -76,6 +76,16 @@ T2ERROR t2_event_d(const char* marker, int value);
  */
 void t2_uninit(void);
 
+
+/*
+ * NAME        : filtered_event_send
+ * DESCRIPTION : 
+ *
+ */
+int filtered_event_send(const char* data, const char *markerName);
+
+//static T2ERROR initMessageBus( );
+
 #ifdef __cplusplus
 }
 #endif

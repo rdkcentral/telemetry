@@ -92,6 +92,165 @@ extern "C" rbusError_t rbusMethod_Invoke(rbusHandle_t handle, char const* value,
     return g_rbusMock->rbusMethod_Invoke(handle, value, object, objectpt);
 }
 
+extern "C" rbusError_t rbus_get(rbusHandle_t handle, char const* name, rbusValue_t* value)
+{
+    if (!g_rbusMock)
+    {
+        return RBUS_ERROR_SUCCESS;
+    }
+    return g_rbusMock->rbus_get(handle, name, value); 
+}
+
+extern "C" rbusStatus_t rbus_checkStatus(void)
+{
+    if (!g_rbusMock)
+    {
+        return RBUS_ENABLED;
+    }
+    return g_rbusMock->rbus_checkStatus();
+}
+
+extern "C" rbusError_t rbus_open(rbusHandle_t* handle, char const* componentName)
+{
+    if (!g_rbusMock)
+    {
+        return RBUS_ERROR_SUCCESS;
+    }
+    return g_rbusMock->rbus_open(handle, componentName);
+}
+
+extern "C" rbusValueType_t rbusValue_GetType(rbusValue_t v)
+{
+    if (!g_rbusMock)
+    {
+        return RBUS_OBJECT;
+    }
+    return g_rbusMock->rbusValue_GetType(v);
+}
+
+extern "C" struct _rbusObject* rbusValue_GetObject(rbusValue_t v)
+{
+    if (!g_rbusMock)
+    {
+        return NULL; /* =======================================================> Need Improvemnt */
+    }
+    return g_rbusMock->rbusValue_GetObject(v);
+}
+
+extern "C" bool rbusValue_GetBoolean(rbusValue_t value)
+{
+    if (!g_rbusMock)
+    {
+        return true;
+    }
+    return g_rbusMock->rbusValue_GetBoolean(value);
+}
+
+extern "C" rbusProperty_t rbusProperty_Init(rbusProperty_t* pproperty, char const* name, rbusValue_t value)
+{
+    if (!g_rbusMock)
+    {
+        return NULL; /* =======================================================> Need Improvemnt */
+    }
+    return g_rbusMock->rbusProperty_Init(pproperty, name, value);
+}
+
+extern "C" void rbusValue_SetProperty(rbusValue_t value, struct _rbusProperty* property)
+{
+    if (!g_rbusMock)
+    {
+        return;
+    }
+    return g_rbusMock->rbusValue_SetProperty(value, property);
+}
+
+extern "C" rbusError_t rbus_set(rbusHandle_t handle, char const* name,rbusValue_t value, rbusSetOptions_t* opts)
+{
+    if (!g_rbusMock)
+    {
+        return RBUS_ERROR_SUCCESS;
+    }
+    return g_rbusMock->rbus_set(handle, name, value, opts);
+}
+
+extern "C" void rbusProperty_Release(rbusProperty_t property)
+{
+    if (!g_rbusMock)
+    {
+        return;
+    }
+    return g_rbusMock->rbusProperty_Release(property);
+}
+
+extern "C" rbusError_t rbus_getUint (rbusHandle_t handle, char const* paramName, unsigned int* paramVal)
+{
+    if (!g_rbusMock)
+    {
+	paramVal= (unsigned int *)3;
+        return RBUS_ERROR_SUCCESS;
+    }
+    return g_rbusMock->rbus_getUint(handle, paramName, paramVal);
+}
+
+extern "C" rbusError_t  rbusEvent_Subscribe(
+    rbusHandle_t        handle,
+    char const*         eventName,
+    rbusEventHandler_t  handler,
+    void*               userData,
+    int                 timeout)
+{
+    if (!g_rbusMock)
+    {
+        return RBUS_ERROR_SUCCESS;
+    }
+    return g_rbusMock->rbusEvent_Subscribe(handle, eventName, handler, userData, timeout);
+}
+
+extern "C" rbusError_t rbus_close(rbusHandle_t handle)
+{
+    if (!g_rbusMock)
+    {
+        return RBUS_ERROR_SUCCESS;
+    }
+    return g_rbusMock->rbus_close(handle);
+}
+
+extern "C" rbusProperty_t rbusObject_GetProperties(rbusObject_t object)
+{
+    if (!g_rbusMock)
+    {
+        return NULL; /* =======================================================> Need Improvemnt */
+    }
+    return g_rbusMock->rbusObject_GetProperties(object);
+}
+
+extern "C" rbusProperty_t rbusProperty_GetNext(rbusProperty_t property)
+{
+    if (!g_rbusMock)
+    {
+        return NULL; /* =======================================================> Need Improvemnt */
+    }
+    return g_rbusMock->rbusProperty_GetNext(property);
+}
+
+extern "C" char const* rbusProperty_GetName(rbusProperty_t property)
+{
+    if (!g_rbusMock)
+    {
+        return "propertyName";
+    }
+    return g_rbusMock->rbusProperty_GetName(property);
+}
+
+extern "C" char* rbusValue_ToString(rbusValue_t v, char* buf, size_t buflen)
+{
+    if (!g_rbusMock)
+    {
+        return "propertyName";
+    }
+    return g_rbusMock->rbusValue_ToString(v, buf, buflen);
+}
+
 extern "C" const char* rbusError_ToString(rbusError_t e)
 {
     if (!g_rbusMock)

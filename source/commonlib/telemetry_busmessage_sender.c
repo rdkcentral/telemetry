@@ -352,10 +352,14 @@ void *cacheEventToFile(void *arg)
         while ((ch = fgetc(readFp)) != EOF)
         {
             if (ch == '\n')
+            {
                 count++;
+            }
         }
-	if (ch != '\n' && count > 0)
-	    count++;
+        if (ch != '\n' && count > 0)
+        {
+            count++;
+        }
         fclose(readFp);
     }
     EVENT_ERROR("count = %d\n", count);

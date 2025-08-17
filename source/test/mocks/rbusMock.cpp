@@ -251,6 +251,206 @@ extern "C" char* rbusValue_ToString(rbusValue_t v, char* buf, size_t buflen)
     return g_rbusMock->rbusValue_ToString(v, buf, buflen);
 }
 
+extern "C" rbusValue_t rbusProperty_GetValue(rbusProperty_t property)
+{
+    if (!g_rbusMock)
+    {
+        return NULL;
+    }
+    return g_rbusMock->rbusProperty_GetValue(property);
+}
+
+extern "C" rbusValueError_t rbusValue_GetPropertyEx(rbusValue_t value, struct _rbusProperty** property)
+{
+    if (!g_rbusMock)
+    {
+        return RBUS_VALUE_ERROR_SUCCESS;
+    }
+    return g_rbusMock->rbusValue_GetPropertyEx(value, property);
+}
+
+extern "C" void rbusProperty_SetNext(rbusProperty_t property, rbusProperty_t next)
+{
+    if (!g_rbusMock)
+    {
+        return;
+    }
+    return g_rbusMock->rbusProperty_SetNext(property, next);
+}
+
+extern "C" void rbusProperty_SetValue(rbusProperty_t property, rbusValue_t value)
+{
+    if (!g_rbusMock)
+    {
+        return;
+    }
+    return g_rbusMock->rbusProperty_SetValue(property, value);
+}
+
+extern "C" void rbusValue_SetUInt32(rbusValue_t value, uint32_t u32)
+{
+    if (!g_rbusMock)
+    {
+        return;
+    }
+    return g_rbusMock->rbusValue_SetUInt32(value, u32);
+}
+
+extern "C" void rbusValue_SetObject(rbusValue_t value, struct _rbusObject* object)
+{
+    if (!g_rbusMock)
+    {
+        return;
+    }
+    return g_rbusMock->rbusValue_SetObject(value, object);
+}
+
+/*
+extern "C" rbusValue_t rbusObject_GetValue(rbusObject_t object, char const* name)
+{
+    if (!g_rbusMock)
+    {
+        return NULL;
+    }
+    return g_rbusMock->rbusObject_GetValue(object, name);
+}
+*/
+
+extern "C" void rbusFilter_Release(rbusFilter_t filter)
+{
+    if (!g_rbusMock)
+    {
+        return;
+    }
+    return g_rbusMock->rbusFilter_Release(filter);
+}
+
+extern "C" struct _rbusProperty* rbusValue_GetProperty(rbusValue_t value)
+{
+    if (!g_rbusMock)
+    {
+        return NULL;
+    }
+    return g_rbusMock->rbusValue_GetProperty(value);
+}
+
+extern "C" void rbusObject_SetProperties(rbusObject_t object, rbusProperty_t properties)
+{
+    if (!g_rbusMock)
+    {
+        return;
+    }
+    return g_rbusMock->rbusObject_SetProperties(object, properties);
+}
+
+extern "C" rbusError_t rbusMethod_SendAsyncResponse( rbusMethodAsyncHandle_t asyncHandle, rbusError_t error, rbusObject_t outParams)
+{
+    if (!g_rbusMock)
+    {
+        return RBUS_ERROR_SUCCESS;
+    }
+    return g_rbusMock->rbusMethod_SendAsyncResponse(asyncHandle, error, outParams);
+}
+
+extern "C" rbusValue_t rbusObject_GetValue(rbusObject_t object, char const* name)
+{
+    if (!g_rbusMock)
+    {
+        return NULL;
+    }
+    return g_rbusMock->rbusObject_GetValue(object, name);
+}
+
+extern "C" rbusError_t rbus_registerLogHandler( rbusLogHandler logHandler)
+{
+    if (!g_rbusMock)
+    {
+        return RBUS_ERROR_SUCCESS;
+    }
+    return g_rbusMock->rbus_registerLogHandler(logHandler);
+}
+
+extern "C" rbusError_t rbus_getExt( rbusHandle_t handle, int paramCount, char const** paramNames, int *numProps, rbusProperty_t* properties)   
+{
+    if (!g_rbusMock)
+    {
+        return RBUS_ERROR_SUCCESS;
+    }
+    return g_rbusMock->rbus_getExt(handle, paramCount, paramNames, numProps, properties);
+}
+
+extern "C" rbusError_t rbus_regDataElements( rbusHandle_t handle, int numDataElements, rbusDataElement_t *elements)
+{
+    if (!g_rbusMock)
+    {
+        return RBUS_ERROR_SUCCESS;
+    }
+    return g_rbusMock->rbus_regDataElements(handle, numDataElements, elements);
+}
+
+extern "C" rbusError_t rbusEvent_Unsubscribe( rbusHandle_t handle, char const* eventName)
+{
+    if (!g_rbusMock)
+    {
+        return RBUS_ERROR_SUCCESS;
+    }
+    return g_rbusMock->rbusEvent_Unsubscribe(handle, eventName);
+}
+
+extern "C" rbusError_t rbus_unregDataElements ( rbusHandle_t handle, int numDataElements, rbusDataElement_t *elements)
+{
+    if (!g_rbusMock)
+    {
+        return RBUS_ERROR_SUCCESS;
+    }
+    return g_rbusMock->rbus_unregDataElements(handle, numDataElements, elements);
+}
+
+extern "C" rbusError_t rbusEvent_Publish( rbusHandle_t handle, rbusEvent_t* eventData)
+{
+    if (!g_rbusMock)
+    {
+        return RBUS_ERROR_SUCCESS;
+    }
+    return g_rbusMock->rbusEvent_Publish(handle, eventData);
+}
+
+extern "C" void rbusFilter_InitRelation( rbusFilter_t* filter, rbusFilter_RelationOperator_t op, rbusValue_t value)
+{
+    if (!g_rbusMock)
+    {
+        return NULL;
+    }
+    return g_rbusMock->rbusFilter_InitRelation(filter, op, value);
+}
+
+extern "C" rbusError_t rbusEvent_UnsubscribeEx( rbusHandle_t handle, rbusEventSubscription_t* subscriptions, int numSubscriptions)
+{
+    if (!g_rbusMock)
+    {
+        return RBUS_ERROR_SUCCESS;
+    }
+    return g_rbusMock->rbusEvent_UnsubscribeEx(handle, subscriptions, numSubscriptions);
+}
+
+extern "C" rbusError_t rbusEvent_SubscribeEx( rbusHandle_t handle, rbusEventSubscription_t* subscription, int numSubscriptions, int timeout)   
+{
+    if (!g_rbusMock)
+    {
+        return RBUS_ERROR_SUCCESS;
+    }
+    return g_rbusMock->rbusEvent_SubscribeEx(handle, subscription, numSubscriptions, timeout);
+}
+
+extern "C" rbusError_t rbusMethod_InvokeAsync( rbusHandle_t handle, char const* methodName, rbusObject_t inParams, rbusMethodAsyncRespHandler_t callback, int timeout)
+{
+    if (!g_rbusMock)
+    {
+        return RBUS_ERROR_SUCCESS;
+    }
+    return g_rbusMock->rbusMethod_InvokeAsync(handle, methodName, inParams, callback, timeout);
+}
+
 extern "C" const char* rbusError_ToString(rbusError_t e)
 {
     if (!g_rbusMock)
@@ -301,8 +501,8 @@ extern "C" bool rbusCheckMethodExists(const char* rbusMethodName)
     return g_rbusMock->rbusCheckMethodExists(rbusMethodName);
 }
 
-
-extern "C" T2ERROR rbusMethodCaller(char *methodName, rbusObject_t* inputParams, char* payload, rbusMethodCallBackPtr rbusMethodCallBack){
+extern "C" T2ERROR rbusMethodCaller(char *methodName, rbusObject_t* inputParams, char* payload, rbusMethodCallBackPtr rbusMethodCallBack)
+{
     if (!g_rbusMock)
     {
         return T2ERROR_FAILURE;

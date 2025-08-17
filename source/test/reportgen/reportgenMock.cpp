@@ -223,6 +223,7 @@ extern "C"  void regfree(regex_t *preg)
         return  m_reportgenMock->regfree(preg);
 }
 
+/*
 extern "C" T2ERROR getParameterValue(const char* paramName, char **paramValue)
 {
 	if(!m_reportgenMock)
@@ -230,4 +231,4 @@ extern "C" T2ERROR getParameterValue(const char* paramName, char **paramValue)
                 return T2ERROR_FAILURE;
         }
         return m_reportgenMock->getParameterValue(paramName, paramValue);
-}
+}*/

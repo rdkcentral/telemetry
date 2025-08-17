@@ -80,7 +80,7 @@ public:
     MOCK_METHOD1(regfree, void(regex_t*));
     MOCK_METHOD1(cJSON_Print, char*(const cJSON *));
     //MOCK_METHOD3(curl_easy_escape, char*(CURL *, const char *, int));
-    MOCK_METHOD2(getParameterValue, T2ERROR(const char*, char **));
+//    MOCK_METHOD2(getParameterValue, T2ERROR(const char*, char **));
     MOCK_METHOD3(curl_easy_escape, char*(CURL *, const char *, int));
     MOCK_METHOD1(curl_free, void(void *));
     MOCK_METHOD1(curl_easy_cleanup, void(CURL *));

@@ -419,7 +419,7 @@ extern "C" void rbusFilter_InitRelation( rbusFilter_t* filter, rbusFilter_Relati
 {
     if (!g_rbusMock)
     {
-        return NULL;
+        return;
     }
     return g_rbusMock->rbusFilter_InitRelation(filter, op, value);
 }

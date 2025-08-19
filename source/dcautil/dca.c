@@ -824,7 +824,11 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
         T2Error("Failed to create temp file: %s\n", strerror(errno));
         return NULL;
     }
-    unlink(tmp_fdmain);
+    if(unlink(tmp_fdmain) == -1){
+	T2Error("Failed to unlink the tmp_fdmain\n");
+	close(tmp_fd);
+	return NULL;
+    }
     off_t offset = 0;
     ssize_t sent = sendfile(tmp_fd, fd, &offset, sb.st_size);
     if (sent != sb.st_size)
@@ -845,9 +849,18 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
             {
                 T2Error("Failed to create temp file: %s\n", strerror(errno));
                 close(tmp_fd);
+		close(rd);
+		rd = -1;
                 return NULL;
             }
-            unlink(tmp_fdrotated);
+            if(unlink(tmp_fdrotated) == -1){
+                T2Error("Failed to unlink the tmp_fdmain\n");
+		close(tmp_fd);
+		close(tmp_rd);
+		close(rd);
+		rd = -1;
+		return NULL;
+	    }
             offset = 0;
 
             sent = sendfile(tmp_rd, rd, &offset, rb.st_size);
@@ -856,6 +869,8 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
                 T2Error("sendfile failed: %s\n", strerror(errno));
                 close(tmp_rd);
                 close(tmp_fd);
+		close(rd);
+		rd = -1;
                 return NULL;
             }
 
@@ -940,6 +955,11 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
     if (!fileDescriptor)
     {
         T2Error("Error allocating memory for FileDescriptor\n");
+	munmap(addrcf, sb.st_size);
+        if(addrrf != NULL)
+        {
+            munmap(addrrf, rb.st_size);
+        }
         return NULL;
     }
     memset(fileDescriptor, 0, sizeof(FileDescriptor));

@@ -299,23 +299,19 @@ T2ERROR datamodel_MsgpackProcessProfile(char *str, int strSize)
 T2ERROR datamodel_init(void)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
-    printf("%s : %d \n", __func__, __LINE__);
     rpQueue = t2_queue_create();
-    printf("%s : %d \n", __func__, __LINE__);
     if (rpQueue == NULL)
     {
         T2Error("Failed to create report profile Queue\n");
         return T2ERROR_FAILURE;
     }
     rpMsgPkgQueue = t2_queue_create();
-    printf("%s : %d \n", __func__, __LINE__);
     if (rpMsgPkgQueue == NULL)
     {
         T2Error("Failed to create Msg Pck report profile Queue\n");
         return T2ERROR_FAILURE;
     }
     tmpRpQueue = t2_queue_create();
-    printf("%s : %d \n", __func__, __LINE__);
     if (tmpRpQueue == NULL)
     {
         T2Error("Failed to create report profile Queue\n");
@@ -332,13 +328,9 @@ T2ERROR datamodel_init(void)
     pthread_mutex_lock(&rpMutex);
     stopProcessing = false;
     pthread_mutex_unlock(&rpMutex);
-    printf("%s : %d \n", __func__, __LINE__);
     pthread_create(&rpThread, NULL, process_rp_thread, (void *)NULL);
-    printf("%s : %d \n", __func__, __LINE__);
     pthread_create(&rpMsgThread, NULL, process_msg_thread, (void *)NULL);
-    printf("%s : %d \n", __func__, __LINE__);
     pthread_create(&tmpRpThread, NULL, process_tmprp_thread, (void *)NULL);
-    printf("%s : %d \n", __func__, __LINE__);
 
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;

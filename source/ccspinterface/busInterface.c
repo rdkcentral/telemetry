@@ -48,7 +48,6 @@ bool isRbusEnabled( )
         printf("%s : %d", __func__, __LINE__);
         isRbus = false;
     }
-    isRbus = true;
     printf("%s : %d", __func__, __LINE__);
     T2Debug("RBUS mode active status = %s \n", isRbus ? "true" : "false");
     T2Debug("%s --out \n", __FUNCTION__);

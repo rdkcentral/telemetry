@@ -136,4 +136,9 @@ unsigned int getMinThresholdDuration(char *profileName);
 void reportGenerationCompleteReceiver(char* profileName);
 
 void NotifySchedulerstart(char* profileName, bool isschedulerstarted);
+
+T2ERROR appendTriggerCondition (Profile *tempProfile, const char *referenceName, const char *referenceValue);
+
+T2ERROR ReportProfiles_addReportProfile(Profile *profile);
+T2ERROR RemovePreRPfromDisk(const char* path, hash_map_t *map);
 #endif /* _PROFILE_H_ */

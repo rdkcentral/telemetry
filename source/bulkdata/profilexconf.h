@@ -82,5 +82,9 @@ T2ERROR ProfileXConf_storeMarkerEvent(T2Event *eventInfo);
 char*   ProfileXconf_getName();
 T2ERROR ProfileXConf_terminateReport();
 
+T2ERROR ReportProfiles_setProfileXConf(ProfileXConf *profile);
+
+T2ERROR ReportProfiles_deleteProfileXConf(ProfileXConf *profile);
+
 
 #endif /* _PROFILE_H_ */

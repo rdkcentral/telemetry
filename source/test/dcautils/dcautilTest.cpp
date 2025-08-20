@@ -43,6 +43,8 @@ extern "C" {
 #include "utils/t2log_wrapper.h"
 #include "utils/t2common.h"
 #include "ccspinterface/busInterface.h"
+
+//T2ERROR rbusMethodCaller(char *methodName, rbusObject_t* inputParams, char* payload, rbusMethodCallBackPtr rbusMethodCallBack);
 }
 
 using namespace std;

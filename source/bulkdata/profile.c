@@ -212,19 +212,24 @@ static T2ERROR getProfile(const char *profileName, Profile **profile)
     T2Debug("%s ++in\n", __FUNCTION__);
     if(profileName == NULL)
     {
+        T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
         T2Error("profileName is null\n");
         return T2ERROR_FAILURE;
     }
+    T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
     for(; profileIndex < Vector_Size(profileList); profileIndex++)
     {
+        T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
         tempProfile = (Profile *)Vector_At(profileList, profileIndex);
         if(strcmp(tempProfile->name, profileName) == 0)
         {
+            T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
             *profile = tempProfile;
             T2Debug("%s --out\n", __FUNCTION__);
             return T2ERROR_SUCCESS;
         }
     }
+    T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
     T2Error("Profile with Name : %s not found\n", profileName);
     return T2ERROR_PROFILE_NOT_FOUND;
 }

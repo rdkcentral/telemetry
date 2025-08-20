@@ -26,15 +26,19 @@
 
 queue_t *t2_queue_create(void)
 {
+    printf("%s : %d \n", __func__, __LINE__);
     queue_t *q;
 
+    printf("%s : %d \n", __func__, __LINE__);
     q = (queue_t *)malloc(sizeof(queue_t));
     if (q == NULL)
     {
         return NULL;
     }
 
+    printf("%s : %d \n", __func__, __LINE__);
     memset(q, 0, sizeof(queue_t));
+    printf("%s : %d \n", __func__, __LINE__);
     return q;
 }
 

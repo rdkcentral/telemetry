@@ -664,21 +664,21 @@ static int getLogFileDescriptor(GrepSeekProfile* gsProfile, const char* logPath,
     int fd = open(logFilePath, O_RDONLY);
     if (fd == -1)
     {
-        T2Error("Failed to open log file %s\n", logFilePath);
+        T2Debug("Failed to open log file %s\n", logFilePath);
         return -1;
     }
 
     struct stat sb;
     if (fstat(fd, &sb) == -1)
     {
-        T2Error("Error getting file size for %s\n", logFile);
+        T2Debug("Error getting file size for %s\n", logFile);
         close(fd);
         return -1;
     }
 
     if (sb.st_size == 0)
     {
-        T2Error("The size of the logfile is 0 for %s\n", logFile);
+        T2Debug("The size of the logfile is 0 for %s\n", logFile);
         close(fd);
         return -1; // Consistent error return value
     }
@@ -686,7 +686,7 @@ static int getLogFileDescriptor(GrepSeekProfile* gsProfile, const char* logPath,
     // Check if the file size matches the seek value from the map
     if (sb.st_size == seek_value_from_map)
     {
-        T2Error("The logfile size matches the seek value (%ld) for %s\n", seek_value_from_map, logFile);
+        T2Info("The logfile size matches the seek value (%ld) for %s\n", seek_value_from_map, logFile);
         close(fd);
         return -1; // Consistent error return value
     }
@@ -729,14 +729,14 @@ static int getRotatedLogFileDescriptor(const char* logPath, const char* logFile)
     int rd = open(rotatedlogFilePath, O_RDONLY);
     if (rd == -1)
     {
-        T2Error("Failed to open log file %s\n", rotatedlogFilePath);
+        T2Debug("Failed to open log file %s\n", rotatedlogFilePath);
         return -1;
     }
 
     struct stat rb;
     if (fstat(rd, &rb) == -1)
     {
-        T2Error("Error getting file size for %s\n", rotatedlogFilePath);
+        T2Debug("Error getting file size for %s\n", rotatedlogFilePath);
         close(rd);
         return -1;
     }
@@ -744,7 +744,7 @@ static int getRotatedLogFileDescriptor(const char* logPath, const char* logFile)
     // Check if the file size is 0
     if (rb.st_size == 0)
     {
-        T2Error("The size of the logfile is 0 for %s\n", rotatedlogFilePath);
+        T2Debug("The size of the logfile is 0 for %s\n", rotatedlogFilePath);
         close(rd);
         return -1; // Consistent error return value
     }
@@ -816,67 +816,29 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
         offset_in_page_size_multiple = 0;
         bytes_ignored = 0;
     }
-    //create a tmp file for main file fd
-    char tmp_fdmain[] = "/tmp/dca_tmpfile_fdmainXXXXXX";
-    int tmp_fd = mkstemp(tmp_fdmain);
-    if (tmp_fd == -1)
-    {
-        T2Error("Failed to create temp file: %s\n", strerror(errno));
-        return NULL;
-    }
-    unlink(tmp_fdmain);
-    off_t offset = 0;
-    ssize_t sent = sendfile(tmp_fd, fd, &offset, sb.st_size);
-    if (sent != sb.st_size)
-    {
-        T2Error("sendfile failed: %s\n", strerror(errno));
-        close(tmp_fd);
-        return NULL;
-    }
 
     if(seek_value > sb.st_size || check_rotated == true)
     {
         int rd = getRotatedLogFileDescriptor(logPath, logFile);
         if (rd != -1 && fstat(rd, &rb) == 0 && rb.st_size > 0)
         {
-            char tmp_fdrotated[] = "/tmp/dca_tmpfile_fdrotatedXXXXXX";
-            int tmp_rd = mkstemp(tmp_fdrotated);
-            if (tmp_rd == -1)
-            {
-                T2Error("Failed to create temp file: %s\n", strerror(errno));
-                close(tmp_fd);
-                return NULL;
-            }
-            unlink(tmp_fdrotated);
-            offset = 0;
-
-            sent = sendfile(tmp_rd, rd, &offset, rb.st_size);
-            if (sent != rb.st_size)
-            {
-                T2Error("sendfile failed: %s\n", strerror(errno));
-                close(tmp_rd);
-                close(tmp_fd);
-                return NULL;
-            }
-
             if(rb.st_size > seek_value)
             {
                 rotated_fsize = rb.st_size - seek_value;
                 main_fsize = sb.st_size;
                 bytes_ignored_rotated = bytes_ignored;
-                addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, 0);
-                addrrf = mmap(NULL, rb.st_size, PROT_READ, MAP_PRIVATE, tmp_rd, offset_in_page_size_multiple);
+                addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+                addrrf = mmap(NULL, rb.st_size, PROT_READ, MAP_PRIVATE, rd, offset_in_page_size_multiple);
             }
             else
             {
                 rotated_fsize = rb.st_size;
                 main_fsize = sb.st_size - seek_value;
                 bytes_ignored_main = bytes_ignored;
-                addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, offset_in_page_size_multiple);
-                addrrf = mmap(NULL, rb.st_size, PROT_READ, MAP_PRIVATE, tmp_rd, 0);
+                addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
+                addrrf = mmap(NULL, rb.st_size, PROT_READ, MAP_PRIVATE, rd, 0);
             }
 
-            close(tmp_rd);
             close(rd);
             rd = -1;
         }
@@ -886,7 +848,7 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
             T2Debug("File size rounded to nearest page size used for offset read: %jd bytes\n", (intmax_t)offset_in_page_size_multiple);
             if(seek_value < sb.st_size)
             {
-                addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, offset_in_page_size_multiple);
+                addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
                 bytes_ignored_main = bytes_ignored;
                 main_fsize = sb.st_size - seek_value;
             }
@@ -894,10 +856,19 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
             {
 
                 T2Debug("Log file got rotated. Ignoring invalid mapping\n");
-                close(tmp_fd);
                 close(fd);
+                if(rd != -1)
+                {
+                    close(rd);
+                    rd = -1;
+                }
                 return NULL;
             }
+        }
+        if(rd != -1)
+        {
+            close(rd);
+            rd = -1;
         }
     }
     else
@@ -905,20 +876,18 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
         T2Debug("File size rounded to nearest page size used for offset read: %jd bytes\n", (intmax_t)offset_in_page_size_multiple);
         if(seek_value < sb.st_size)
         {
-            addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, offset_in_page_size_multiple);
+            addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, offset_in_page_size_multiple);
             bytes_ignored_main = bytes_ignored;
             main_fsize = sb.st_size - seek_value;
         }
         else
         {
             T2Debug("Log file got rotated. Ignoring invalid mapping\n");
-            close(tmp_fd);
             close(fd);
             return NULL;
         }
         addrrf = NULL;
     }
-    close(tmp_fd);
     close(fd);
 
     if (addrcf == MAP_FAILED)
@@ -940,6 +909,11 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
     if (!fileDescriptor)
     {
         T2Error("Error allocating memory for FileDescriptor\n");
+        munmap(addrcf, sb.st_size);
+        if(addrrf != NULL)
+        {
+            munmap(addrrf, rb.st_size);
+        }
         return NULL;
     }
     memset(fileDescriptor, 0, sizeof(FileDescriptor));

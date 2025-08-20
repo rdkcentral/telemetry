@@ -40,12 +40,12 @@ bool isRbusEnabled( )
     printf("%s : %d", __func__, __LINE__);
     if(RBUS_ENABLED == rbus_checkStatus())
     {
-    printf("%s : %d", __func__, __LINE__);
+        printf("%s : %d", __func__, __LINE__);
         isRbus = true;
     }
     else
     {
-    printf("%s : %d", __func__, __LINE__);
+        printf("%s : %d", __func__, __LINE__);
         isRbus = false;
     }
     isRbus = true;

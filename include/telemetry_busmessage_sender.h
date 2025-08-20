@@ -79,7 +79,7 @@ void t2_uninit(void);
 
 /*
  * NAME        : filtered_event_send
- * DESCRIPTION : 
+ * DESCRIPTION :
  *
  */
 int filtered_event_send(const char* data, const char *markerName);

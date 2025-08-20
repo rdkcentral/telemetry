@@ -509,24 +509,24 @@ T2ERROR initReportProfiles()
 #ifdef PERSIST_LOG_MON_REF
 //Define scope
     {
-    printf("%s : %d \n", __func__, __LINE__);
+        printf("%s : %d \n", __func__, __LINE__);
         DIR *dir = opendir(SEEKFOLDER);
-    printf("%s : %d \n", __func__, __LINE__);
+        printf("%s : %d \n", __func__, __LINE__);
         if(dir == NULL)
         {
             T2Info("SEEKMAP folder %s not present, creating folder\n", SEEKFOLDER);
-    printf("%s : %d \n", __func__, __LINE__);
+            printf("%s : %d \n", __func__, __LINE__);
             if(mkdir(SEEKFOLDER, S_IRWXU | S_IRWXG | S_IRWXO) != 0)
             {
-    printf("%s : %d \n", __func__, __LINE__);
+                printf("%s : %d \n", __func__, __LINE__);
                 T2Error("%s,%d: Failed to make directory : %s  \n", __FUNCTION__, __LINE__, SEEKFOLDER);
             }
         }
         else
         {
-    printf("%s : %d \n", __func__, __LINE__);
+            printf("%s : %d \n", __func__, __LINE__);
             closedir(dir);
-    printf("%s : %d \n", __func__, __LINE__);
+            printf("%s : %d \n", __func__, __LINE__);
             previousLogCheck = true;
             T2Info("SEEKMAP folder is present notify the profiles for saved seekmap\n");
 
@@ -739,12 +739,12 @@ T2ERROR ReportProfiles_uninit( )
 #endif
 
         // Stop datamodel processing thread;
-    printf("%s : %d \n", __func__, __LINE__);
+        printf("%s : %d \n", __func__, __LINE__);
         datamodel_unInit();
-    printf("%s : %d \n", __func__, __LINE__);
+        printf("%s : %d \n", __func__, __LINE__);
 
         uninitProfileList();
-    printf("%s : %d \n", __func__, __LINE__);
+        printf("%s : %d \n", __func__, __LINE__);
     }
 
 #ifndef DEVICE_EXTENDER

@@ -613,15 +613,15 @@ T2ERROR ProfileXConf_set(ProfileXConf *profile)
         singleProfile->reportInProgress = false ;
         size_t emIndex = 0;
         EventMarker *eMarker = NULL;
-    T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
+        T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
         for(; emIndex < Vector_Size(singleProfile->eMarkerList); emIndex++)
         {
-    T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
+            T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
             eMarker = (EventMarker *)Vector_At(singleProfile->eMarkerList, emIndex);
-    T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
+            T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
             addT2EventMarker(eMarker->markerName, eMarker->compName, singleProfile->name, eMarker->skipFreq);
         }
-    T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
+        T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
         if(registerProfileWithScheduler(singleProfile->name, singleProfile->reportingInterval, INFINITE_TIMEOUT, false, true, false, DEFAULT_FIRST_REPORT_INT, NULL) == T2ERROR_SUCCESS)
         {
             T2Info("Successfully set profile : %s\n", singleProfile->name);
@@ -631,7 +631,7 @@ T2ERROR ProfileXConf_set(ProfileXConf *profile)
         {
             T2Error("Unable to register profile : %s with Scheduler\n", singleProfile->name);
         }
-    T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
+        T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
     }
     else
     {

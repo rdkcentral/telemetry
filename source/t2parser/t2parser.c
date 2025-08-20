@@ -354,7 +354,7 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
         }
         gMarker->skipFreq = skipFreq;
         gMarker->firstSeekFromEOF = firstSeekFromEOF;
-	T2Info("%s %d\n", __FUNCTION__, __LINE__);
+        T2Info("%s %d\n", __FUNCTION__, __LINE__);
         if(strncmp("top_log.txt", fileName, sizeof("top_log.txt")) == 0)
         {
             T2Info("This is a TopMarker name :%s  and value: %s add it to topmarker list \n", name, ref);
@@ -362,7 +362,7 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
         }
         else
         {
-	    T2Info("%s %d\n", __FUNCTION__, __LINE__);
+            T2Info("%s %d\n", __FUNCTION__, __LINE__);
             Vector_PushBack(profile->gMarkerList, gMarker);
         }
 #ifdef PERSIST_LOG_MON_REF
@@ -972,8 +972,8 @@ T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, i
                 T2Error("%s Unknown parameter type %s \n", __FUNCTION__, paramtype);
                 continue;
             }
-	    
-	    T2Info("%s %d : logfile=%s\n", __FUNCTION__, __LINE__, logfile);
+
+            T2Info("%s %d : logfile=%s\n", __FUNCTION__, __LINE__, logfile);
 
             T2Debug("%s : reportTimestamp = %d\n", __FUNCTION__, rtformat);
             //CID 337454: Explicit null dereferenced (FORWARD_NULL) ;CID 337448: Explicit null dereferenced (FORWARD_NULL)
@@ -2060,17 +2060,19 @@ T2ERROR addParameterMsgpack_marker_config(Profile* profile, msgpack_object* valu
 
             Parameter_logFile_str = msgpack_get_map_value(Parameter_array_map, "logFile");
             msgpack_print(Parameter_logFile_str, msgpack_get_obj_name(Parameter_logFile_str));
-	    T2Info("%s %d\n", __FUNCTION__, __LINE__);
-	    if(logfile){
-	    T2Info("%s %d : logfile=%s\n", __FUNCTION__, __LINE__, logfile);
-	    }
+            T2Info("%s %d\n", __FUNCTION__, __LINE__);
+            if(logfile)
+            {
+                T2Info("%s %d : logfile=%s\n", __FUNCTION__, __LINE__, logfile);
+            }
             //T2Info("Filename: %.*s\n", Parameter_logFile_str->via.str.size, Parameter_logFile_str->via.str.ptr);
             //T2Info("%s %d : Parameter_logFile_str=%s\n", __FUNCTION__, __LINE__, Parameter_logFile_str);
             logfile = msgpack_strdup(Parameter_logFile_str);
-	    T2Info("%s %d\n", __FUNCTION__, __LINE__);
-	    if(logfile){
-	    T2Info("%s %d : logfile=%s\n", __FUNCTION__, __LINE__, logfile);
-	    }
+            T2Info("%s %d\n", __FUNCTION__, __LINE__);
+            if(logfile)
+            {
+                T2Info("%s %d : logfile=%s\n", __FUNCTION__, __LINE__, logfile);
+            }
 
             if((Parameter_firstSeekFromEOF_int = msgpack_get_map_value(Parameter_array_map, "firstSeekFromEOF")) != NULL )
             {

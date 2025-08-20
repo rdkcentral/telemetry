@@ -340,13 +340,13 @@ T2ERROR T2ER_Init()
     {
         T2Debug("Register event call back function T2ER_Push \n");
         registerForTelemetryEvents(T2ER_Push);
-    printf("%s: %d\n", __func__, __LINE__);
+        printf("%s: %d\n", __func__, __LINE__);
     }
     else
     {
         T2Debug("Register event call back function T2ER_PushDataWithDelim \n");
         registerForTelemetryEvents(T2ER_PushDataWithDelim);
-    printf("%s: %d\n", __func__, __LINE__);
+        printf("%s: %d\n", __func__, __LINE__);
     }
 
     printf("%s: %d\n", __func__, __LINE__);

@@ -132,7 +132,7 @@ static T2ERROR rBusInterface_Init( )
     ret = rbus_open(&t2bus_handle, COMPONENT_NAME);
     if(ret != RBUS_ERROR_SUCCESS)
     {
-    printf("%s : %d\n", __func__, __LINE__);
+        printf("%s : %d\n", __func__, __LINE__);
         T2Error("%s:%d, init failed with error code %d \n", __func__, __LINE__, ret);
         return T2ERROR_FAILURE;
     }
@@ -1072,7 +1072,7 @@ T2ERROR registerRbusDCMEventListener()
     printf("%s : %d\n", __func__, __LINE__);
     if(!t2bus_handle && T2ERROR_SUCCESS != rBusInterface_Init())
     {
-    printf("%s : %d\n", __func__, __LINE__);
+        printf("%s : %d\n", __func__, __LINE__);
         return T2ERROR_FAILURE;
     }
 
@@ -1105,7 +1105,7 @@ T2ERROR registerRbusDCMEventListener()
     printf("%s : %d\n", __func__, __LINE__);
     if(ret != RBUS_ERROR_SUCCESS)
     {
-    printf("%s : %d\n", __func__, __LINE__);
+        printf("%s : %d\n", __func__, __LINE__);
         T2Error("Failed to subscribe DCM reload event with rbus. Error code : %d\n", ret);
         status = T2ERROR_FAILURE ;
     }
@@ -1243,7 +1243,7 @@ T2ERROR registerRbusT2EventListener(TelemetryEventCallback eventCB)
     printf("%s : %d\n", __func__, __LINE__);
     if(ret != RBUS_ERROR_SUCCESS)
     {
-    printf("%s : %d\n", __func__, __LINE__);
+        printf("%s : %d\n", __func__, __LINE__);
         T2Error("Failed to register T2 data elements with rbus. Error code : %d\n", ret);
         status = T2ERROR_FAILURE ;
     }

@@ -24,7 +24,7 @@
 #include <cjson/cJSON.h>
 #include "telemetry2_0.h"
 //#include "profile.h"
-#include "xconfclient.h"
+//#include "xconfclient.h"
 //#include "profilexconf.h"
 #include "t2eventreceiver.h"
 

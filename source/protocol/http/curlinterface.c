@@ -371,6 +371,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
             memset(waninterface, 0, sizeof(waninterface));
             snprintf(waninterface, sizeof(waninterface), "%s", paramVal);
         }
+
         free(paramVal);
         paramVal = NULL;
     }

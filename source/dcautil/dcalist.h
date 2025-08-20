@@ -71,7 +71,6 @@ void printPCNodes(rdkList_t *pch);
 void clearPCNodes(rdkList_t **pch);
 int comparePattern(const void *np, const void *sp);
 void print_pc_node(void *data, void *user_data);
-int processTopPattern(rdkList_t *pchead, Vector* grepResultList);
 
 /** @} */
 

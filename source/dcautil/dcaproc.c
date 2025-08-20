@@ -64,11 +64,6 @@
  */
 
 /**
- * @addtogroup DCA_APIS
- * @{
- */
-
-/**
  * @brief To get process usage.
  *
  * @param[in] processName   Process name.
@@ -77,7 +72,7 @@
  * @retval  0 on sucess, appropiate errorcode otherwise.
  */
 
-int getProcUsage(char *processName, Vector* grepResultList, bool trim, char* regex)
+int getProcUsage(char *processName, Vector* grepResultList, bool trim, char* regex, char* filename)
 {
     T2Debug("%s ++in \n", __FUNCTION__);
     if(grepResultList == NULL || processName == NULL)
@@ -233,7 +228,7 @@ int getProcUsage(char *processName, Vector* grepResultList, bool trim, char* reg
 
         pInfo.total_instance = index;
         pInfo.pid = pid;
-        if(0 != getProcInfo(&pInfo))
+        if(0 != getProcInfo(&pInfo, filename))
         {
             mem_key = malloc(pname_prefix_len);
             cpu_key = malloc(pname_prefix_len);
@@ -366,7 +361,7 @@ int getProcPidStat(int pid, procinfo * pinfo)
  * @return  Returns status of operation.
  * @retval  Return 1 on success.
  */
-int getProcInfo(procMemCpuInfo *pmInfo)
+int getProcInfo(procMemCpuInfo *pmInfo, char* filename)
 {
     T2Debug("%s ++in \n", __FUNCTION__);
     if(0 == getMemInfo(pmInfo))
@@ -374,7 +369,7 @@ int getProcInfo(procMemCpuInfo *pmInfo)
         return 0;
     }
 
-    if(0 == getCPUInfo(pmInfo))
+    if(0 == getCPUInfo(pmInfo, filename))
     {
         return 0;
     }
@@ -433,19 +428,31 @@ int getMemInfo(procMemCpuInfo *pmInfo)
 
 #if !defined(ENABLE_RDKC_SUPPORT) && !defined(ENABLE_RDKB_SUPPORT)
 
-void saveTopOutput()
+char* saveTopOutput(char* profilename)
 {
+    char filename[128] = {"\0"};
+    char* retfile = NULL;
+    if(profilename != NULL)
+    {
+        snprintf(filename, sizeof(filename), "%s_%s", TOPTEMP, profilename);
+        retfile = strdup(filename);
+    }
+    else
+    {
+        return retfile;
+    }
+
     T2Debug("%s ++in \n", __FUNCTION__);
-    if(access(TOPTEMP, F_OK) == 0)
+    if(access(filename, F_OK) == 0)
     {
         T2Debug("%s --out \n", __FUNCTION__);
-        return;
+        removeTopOutput(strdup(retfile));
     }
     int ret = 0;
     char command[CMD_LEN] = { '\0' };
     int cmd_option = 0;
     /* Check Whether -c option is supported */
-    sprintf(command, "top -b -n 1 -c > %s ", TOPTEMP);
+    sprintf(command, "top -b -n 1 -c > %s ", filename);
 #ifdef LIBSYSWRAPPER_BUILD
     ret = v_secure_system(command);
 #else
@@ -462,43 +469,19 @@ void saveTopOutput()
     /* Format Use:  `top n 1 | grep Receiver` */
     if ( 1 == cmd_option )
     {
-        sprintf(command, "COLUMNS=512 top -n %d -c > %s ", TOPITERATION, TOPTEMP);
+        sprintf(command, "COLUMNS=512 top -n %d -c > %s ", TOPITERATION, filename);
     }
     else
     {
-        sprintf(command, "top -n %d > %s", TOPITERATION, TOPTEMP);
+        sprintf(command, "top -n %d > %s", TOPITERATION, filename);
     }
 #else
     /* ps -C Receiver -o %cpu -o %mem */
     //sprintf(command, "ps -C '%s' -o %%cpu -o %%mem | sed 1d", pInfo->processName);
-    snprintf(command, CMD_LEN, "%s top -b -n %d %s > %s", (cmd_option == 1) ? "COLUMNS=512" : "", TOPITERATION, (cmd_option == 1) ? "-c" : "", TOPTEMP);
+    snprintf(command, CMD_LEN, "%s top -b -n %d %s > %s", (cmd_option == 1) ? "COLUMNS=512" : "", TOPITERATION, (cmd_option == 1) ? "-c" : "", filename);
 
 #endif
 
-#ifdef LIBSYSWRAPPER_BUILD
-    ret = v_secure_system(command);
-#else
-    ret = system(command);
-#endif
-    if(ret != 0)
-    {
-        T2Debug("return value of system command to create %s is success with code %d\n", TOPTEMP, ret);
-    }
-    else
-    {
-        T2Error("return value of system command to create %s is not successful with code \n", TOPTEMP);
-        return;
-    }
-    T2Debug("%s --out \n", __FUNCTION__);
-
-}
-
-void removeTopOutput()
-{
-    T2Debug("%s ++in \n", __FUNCTION__);
-    int ret = 0;
-    char command[256] = {'\0'};
-    snprintf(command, sizeof(command), "rm -rf %s", TOPTEMP);
 #ifdef LIBSYSWRAPPER_BUILD
     ret = v_secure_system(command);
 #else
@@ -506,13 +489,47 @@ void removeTopOutput()
 #endif
     if(ret == 0)
     {
-        T2Debug("return value of system command to remove %s is success with code %d \n", TOPTEMP, ret);
+        T2Debug("return value of system command to create %s is success with code\n", filename);
     }
     else
     {
-        T2Error("return value of system command to remove %s is not successful with code %d \n", TOPTEMP, ret);
+        T2Error("return value of system command to create %s is not successful with code %d \n", filename, ret);
+        if(retfile != NULL)
+        {
+            free(retfile);
+        }
+        return NULL;
     }
     T2Debug("%s --out \n", __FUNCTION__);
+    return retfile;
+
+}
+
+void removeTopOutput(char* filename)
+{
+    T2Debug("%s ++in \n", __FUNCTION__);
+    if(filename != NULL)
+    {
+        int ret = 0;
+        char command[256] = {'\0'};
+        snprintf(command, sizeof(command), "rm -rf %s", filename);
+#ifdef LIBSYSWRAPPER_BUILD
+        ret = v_secure_system(command);
+#else
+        ret = system(command);
+#endif
+        if(ret == 0)
+        {
+            T2Debug("return value of system command to remove %s is success with code %d \n", filename, ret);
+        }
+        else
+        {
+            T2Error("return value of system command to remove %s is not successful with code %d \n", filename, ret);
+        }
+        free(filename);
+        T2Debug("%s --out \n", __FUNCTION__);
+        return;
+    }
 }
 
 //#if !defined(ENABLE_RDKC_SUPPORT) && !defined(ENABLE_RDKB_SUPPORT)
@@ -524,7 +541,7 @@ void removeTopOutput()
  * @return  Returns status of operation.
  * @retval  Return 1 on success,appropiate errorcode otherwise.
  */
-int getCPUInfo(procMemCpuInfo *pInfo)
+int getCPUInfo(procMemCpuInfo *pInfo, char* filename)
 {
     int ret = 0, pclose_ret = 0;
     FILE *inFp = NULL;
@@ -549,9 +566,9 @@ int getCPUInfo(procMemCpuInfo *pInfo)
 
         return 0;
     }
-    if(access(TOPTEMP, F_OK) != 0)
+    if((filename != NULL) && (access(filename, F_OK) != 0))
     {
-        T2Debug("%s ++in the savad temp log %s is not available \n", __FUNCTION__, TOPTEMP);
+        T2Debug("%s ++in the savad temp log %s is not available \n", __FUNCTION__, filename);
         /* Check Whether -c option is supported */
 #ifdef LIBSYSWRAPPER_BUILD
         ret = v_secure_system(" top -c -n 1 2> /dev/null 1> /dev/null");
@@ -597,11 +614,11 @@ int getCPUInfo(procMemCpuInfo *pInfo)
     }
     else
     {
-        T2Debug("%s ++in the savad temp log %s is available \n", __FUNCTION__, TOPTEMP);
+        T2Debug("%s ++in the savad temp log %s is available \n", __FUNCTION__, filename);
 #ifdef LIBSYSWRAPPER_BUILD
         inFp = v_secure_popen("r", "cat %s |grep -i '%s'", TOPTEMP, pInfo->processName);
 #else
-        snprintf(command, sizeof(command), "cat %s |grep -i '%s'", TOPTEMP, pInfo->processName);
+        snprintf(command, sizeof(command), "cat %s |grep -i '%s'", filename, pInfo->processName);
         inFp = popen(command, "r");
 #endif
         normalize = TOPITERATION;
@@ -759,8 +776,9 @@ int getProcessCpuUtilization(int pid, float *procCpuUtil)
     return 1;
 }
 
-int getCPUInfo(procMemCpuInfo *pmInfo)
+int getCPUInfo(procMemCpuInfo *pmInfo, char* filename)
 {
+    (void)filename; // Unused parameter, can be removed if not needed
     float cpu = 0;
     float total_cpu = 0;
     int index = 0;

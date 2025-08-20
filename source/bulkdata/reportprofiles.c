@@ -509,18 +509,24 @@ T2ERROR initReportProfiles()
 #ifdef PERSIST_LOG_MON_REF
 //Define scope
     {
+    printf("%s : %d \n", __func__, __LINE__);
         DIR *dir = opendir(SEEKFOLDER);
+    printf("%s : %d \n", __func__, __LINE__);
         if(dir == NULL)
         {
             T2Info("SEEKMAP folder %s not present, creating folder\n", SEEKFOLDER);
+    printf("%s : %d \n", __func__, __LINE__);
             if(mkdir(SEEKFOLDER, S_IRWXU | S_IRWXG | S_IRWXO) != 0)
             {
+    printf("%s : %d \n", __func__, __LINE__);
                 T2Error("%s,%d: Failed to make directory : %s  \n", __FUNCTION__, __LINE__, SEEKFOLDER);
             }
         }
         else
         {
+    printf("%s : %d \n", __func__, __LINE__);
             closedir(dir);
+    printf("%s : %d \n", __func__, __LINE__);
             previousLogCheck = true;
             T2Info("SEEKMAP folder is present notify the profiles for saved seekmap\n");
 
@@ -528,6 +534,7 @@ T2ERROR initReportProfiles()
     }
 #endif
 
+    printf("%s : %d \n", __func__, __LINE__);
     rpInitialized = true;
 
     bulkdata.enable = false;
@@ -546,6 +553,7 @@ T2ERROR initReportProfiles()
     ProfileXConf_init(previousLogCheck);
 #endif
     t2Version = strdup("2.0.1"); // Setting the version to 2.0.1
+    printf("%s : %d : t2Version = %s\n", __func__, __LINE__, t2Version);
     {
         T2Debug("T2 Version = %s\n", t2Version);
         initProfileList(previousLogCheck);
@@ -619,6 +627,7 @@ T2ERROR initReportProfiles()
         }
     }
 
+    printf("%s : %d \n", __func__, __LINE__);
     if(ProfileXConf_isSet() || getProfileCount() > 0)
     {
 
@@ -640,6 +649,7 @@ T2ERROR initReportProfiles()
 
     }
 
+    printf("%s : %d \n", __func__, __LINE__);
     //Initialise the properties file RDK-58222
     T2InitProperties();
     T2Info("InitProperties is successful\n");
@@ -699,19 +709,27 @@ T2ERROR ReportProfiles_uninit( )
         T2Error("%s ReportProfiles is not initialized yet - ignoring\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
+    printf("%s : %d \n", __func__, __LINE__);
     rpInitialized = false;
     if(isRbusEnabled())
     {
         getMarkerCompRbusSub(false);    // remove Rbus subscription
     }
+    printf("%s : %d \n", __func__, __LINE__);
 #ifdef LIBRDKCERTSEL_BUILD
+    printf("%s : %d \n", __func__, __LINE__);
     curlCertSelectorFree();
 #else
+    printf("%s : %d \n", __func__, __LINE__);
     uninitMtls();
 #endif
+    printf("%s : %d \n", __func__, __LINE__);
     T2ER_Uninit();
+    printf("%s : %d \n", __func__, __LINE__);
     destroyT2MarkerComponentMap();
+    printf("%s : %d \n", __func__, __LINE__);
     uninitScheduler();
+    printf("%s : %d \n", __func__, __LINE__);
 
     if(t2Version && strcmp(t2Version, "2"))
     {
@@ -721,14 +739,19 @@ T2ERROR ReportProfiles_uninit( )
 #endif
 
         // Stop datamodel processing thread;
+    printf("%s : %d \n", __func__, __LINE__);
         datamodel_unInit();
+    printf("%s : %d \n", __func__, __LINE__);
 
         uninitProfileList();
+    printf("%s : %d \n", __func__, __LINE__);
     }
 
 #ifndef DEVICE_EXTENDER
+    printf("%s : %d \n", __func__, __LINE__);
     ProfileXConf_uninit();
 #endif
+    printf("%s : %d \n", __func__, __LINE__);
     free(bulkdata.protocols);
     bulkdata.protocols = NULL ;
     free(bulkdata.encodingTypes);

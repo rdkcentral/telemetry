@@ -35,15 +35,21 @@ static bool isBusInit = false ;
 
 bool isRbusEnabled( )
 {
+    printf("%s : %d", __func__, __LINE__);
     T2Debug("%s ++in \n", __FUNCTION__);
+    printf("%s : %d", __func__, __LINE__);
     if(RBUS_ENABLED == rbus_checkStatus())
     {
+    printf("%s : %d", __func__, __LINE__);
         isRbus = true;
     }
     else
     {
+    printf("%s : %d", __func__, __LINE__);
         isRbus = false;
     }
+    isRbus = true;
+    printf("%s : %d", __func__, __LINE__);
     T2Debug("RBUS mode active status = %s \n", isRbus ? "true" : "false");
     T2Debug("%s --out \n", __FUNCTION__);
     return isRbus;

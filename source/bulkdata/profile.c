@@ -212,19 +212,24 @@ static T2ERROR getProfile(const char *profileName, Profile **profile)
     T2Debug("%s ++in\n", __FUNCTION__);
     if(profileName == NULL)
     {
+    T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
         T2Error("profileName is null\n");
         return T2ERROR_FAILURE;
     }
+    T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
     for(; profileIndex < Vector_Size(profileList); profileIndex++)
     {
+    T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
         tempProfile = (Profile *)Vector_At(profileList, profileIndex);
         if(strcmp(tempProfile->name, profileName) == 0)
         {
+    T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
             *profile = tempProfile;
             T2Debug("%s --out\n", __FUNCTION__);
             return T2ERROR_SUCCESS;
         }
     }
+    T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
     T2Error("Profile with Name : %s not found\n", profileName);
     return T2ERROR_PROFILE_NOT_FOUND;
 }
@@ -852,18 +857,23 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
 
     pthread_mutex_lock(&plMutex);
     Profile *profile = NULL;
+    printf("%s : %d\n", __FUNCTION__, __LINE__);
     if(T2ERROR_SUCCESS != getProfile(profileName, &profile))
     {
+    printf("%s : %d\n", __FUNCTION__, __LINE__);
         T2Error("Profile : %s not found\n", profileName);
         pthread_mutex_unlock(&plMutex);
         return T2ERROR_FAILURE;
     }
+    printf("%s : %d\n", __FUNCTION__, __LINE__);
     pthread_mutex_unlock(&plMutex);
     if(!profile->enable)
     {
+    printf("%s : %d\n", __FUNCTION__, __LINE__);
         T2Warning("Profile : %s is disabled, ignoring the event\n", profileName);
         return T2ERROR_FAILURE;
     }
+    printf("%s : %d\n", __FUNCTION__, __LINE__);
     size_t eventIndex = 0;
     EventMarker *lookupEvent = NULL;
     for(; eventIndex < Vector_Size(profile->eMarkerList); eventIndex++)
@@ -875,6 +885,7 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
             break;
         }
     }
+    printf("%s : %d\n", __FUNCTION__, __LINE__);
     int arraySize = 0;
     if(lookupEvent != NULL)
     {
@@ -882,9 +893,11 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
         char timebuf[256] = {'\0'};
         time_t timestamp = 0;
         pthread_mutex_lock(&profile->eventMutex);
+    printf("%s : %d\n", __FUNCTION__, __LINE__);
         switch(lookupEvent->mType)
         {
         case MTYPE_COUNTER:
+    printf("%s : %d\n", __FUNCTION__, __LINE__);
             lookupEvent->u.count++;
             T2Debug("Increment marker count to : %d\n", lookupEvent->u.count);
             if(lookupEvent->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH)
@@ -915,6 +928,7 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
             break;
 
         case MTYPE_ACCUMULATE:
+    printf("%s : %d\n", __FUNCTION__, __LINE__);
             T2Debug("Marker type is ACCUMULATE Event Value : %s\n", eventInfo->value);
             arraySize = Vector_Size(lookupEvent->u.accumulatedValues);
             T2Debug("Current array size : %d \n", arraySize);
@@ -956,6 +970,7 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
             break;
 
         case MTYPE_ABSOLUTE:
+    printf("%s : %d\n", __FUNCTION__, __LINE__);
         default:
             if(lookupEvent->u.markerValue)
             {
@@ -996,11 +1011,13 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
     }
     else
     {
+    printf("%s : %d\n", __FUNCTION__, __LINE__);
         T2Error("Event name : %s value : %s\n", eventInfo->name, eventInfo->value);
         T2Error("Event doens't match any marker information, shouldn't come here\n");
         return T2ERROR_FAILURE;
     }
 
+    printf("%s : %d\n", __FUNCTION__, __LINE__);
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
@@ -1471,8 +1488,10 @@ static void loadReportProfilesFromDisk(bool checkPreviousSeek)
 T2ERROR initProfileList(bool checkPreviousSeek)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
+    printf("%s : %d\n", __func__, __LINE__);
     if(initialized)
     {
+    printf("%s : %d\n", __func__, __LINE__);
         T2Info("profile list is already initialized\n");
         return T2ERROR_SUCCESS;
     }
@@ -1488,13 +1507,19 @@ T2ERROR initProfileList(bool checkPreviousSeek)
         return T2ERROR_FAILURE;
     }
 
+    printf("%s : %d\n", __func__, __LINE__);
     pthread_mutex_lock(&plMutex);
+    printf("%s : %d\n", __func__, __LINE__);
     Vector_Create(&profileList);
+    printf("%s : %d\n", __func__, __LINE__);
     pthread_mutex_unlock(&plMutex);
+    printf("%s : %d\n", __func__, __LINE__);
 
     registerConditionalReportCallBack(&triggerReportOnCondtion);
+    printf("%s : %d\n", __func__, __LINE__);
 
     loadReportProfilesFromDisk(checkPreviousSeek);
+    printf("%s : %d\n", __func__, __LINE__);
 
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;

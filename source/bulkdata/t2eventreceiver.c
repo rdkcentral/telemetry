@@ -301,6 +301,7 @@ void* T2ER_EventDispatchThread(void *arg)
 T2ERROR T2ER_Init()
 {
     T2Debug("%s ++in\n", __FUNCTION__);
+    printf("%s: %d\n", __func__, __LINE__);
     if(EREnabled)
     {
         T2Debug("T2ER already initialized, ignoring\n");
@@ -333,20 +334,26 @@ T2ERROR T2ER_Init()
     }
 
     EREnabled = true;
+    printf("%s: %d\n", __func__, __LINE__);
 
     if(isRbusEnabled())
     {
         T2Debug("Register event call back function T2ER_Push \n");
         registerForTelemetryEvents(T2ER_Push);
+    printf("%s: %d\n", __func__, __LINE__);
     }
     else
     {
         T2Debug("Register event call back function T2ER_PushDataWithDelim \n");
         registerForTelemetryEvents(T2ER_PushDataWithDelim);
+    printf("%s: %d\n", __func__, __LINE__);
     }
 
+    printf("%s: %d\n", __func__, __LINE__);
     system("touch /tmp/.t2ReadyToReceiveEvents");
+    printf("%s: %d\n", __func__, __LINE__);
     setT2EventReceiveState(T2_STATE_COMPONENT_READY);
+    printf("%s: %d\n", __func__, __LINE__);
     T2Info("T2 is now Ready to Recieve Events\n");
 
     T2Debug("%s --out\n", __FUNCTION__);

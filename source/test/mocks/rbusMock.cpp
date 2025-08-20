@@ -107,7 +107,8 @@ extern "C" rbusStatus_t rbus_checkStatus(void)
     {
         return RBUS_ENABLED;
     }
-    return g_rbusMock->rbus_checkStatus();
+    return RBUS_ENABLED;
+    //return g_rbusMock->rbus_checkStatus();
 }
 
 extern "C" rbusError_t rbus_open(rbusHandle_t* handle, char const* componentName)
@@ -116,7 +117,8 @@ extern "C" rbusError_t rbus_open(rbusHandle_t* handle, char const* componentName
     {
         return RBUS_ERROR_SUCCESS;
     }
-    return g_rbusMock->rbus_open(handle, componentName);
+    return RBUS_ERROR_SUCCESS;
+    //return g_rbusMock->rbus_open(handle, componentName);
 }
 
 extern "C" rbusValueType_t rbusValue_GetType(rbusValue_t v)
@@ -367,7 +369,8 @@ extern "C" rbusError_t rbus_registerLogHandler( rbusLogHandler logHandler)
     {
         return RBUS_ERROR_SUCCESS;
     }
-    return g_rbusMock->rbus_registerLogHandler(logHandler);
+    return RBUS_ERROR_SUCCESS;
+    //return g_rbusMock->rbus_registerLogHandler(logHandler);
 }
 
 extern "C" rbusError_t rbus_getExt( rbusHandle_t handle, int paramCount, char const** paramNames, int *numProps, rbusProperty_t* properties)   
@@ -492,6 +495,7 @@ extern "C" const char* rbusError_ToString(rbusError_t e)
     }
 }
 
+#ifndef BULKDATA
 extern "C" bool rbusCheckMethodExists(const char* rbusMethodName)
 {
     if (!g_rbusMock)
@@ -509,3 +513,4 @@ extern "C" T2ERROR rbusMethodCaller(char *methodName, rbusObject_t* inputParams,
     }
     return g_rbusMock->rbusMethodCaller(methodName, inputParams, payload, rbusMethodCallBack);
 }
+#endif

@@ -664,21 +664,21 @@ static int getLogFileDescriptor(GrepSeekProfile* gsProfile, const char* logPath,
     int fd = open(logFilePath, O_RDONLY);
     if (fd == -1)
     {
-        T2Error("Failed to open log file %s\n", logFilePath);
+        T2Debug("Failed to open log file %s\n", logFilePath);
         return -1;
     }
 
     struct stat sb;
     if (fstat(fd, &sb) == -1)
     {
-        T2Error("Error getting file size for %s\n", logFile);
+        T2Debug("Error getting file size for %s\n", logFile);
         close(fd);
         return -1;
     }
 
     if (sb.st_size == 0)
     {
-        T2Error("The size of the logfile is 0 for %s\n", logFile);
+        T2Debug("The size of the logfile is 0 for %s\n", logFile);
         close(fd);
         return -1; // Consistent error return value
     }
@@ -686,7 +686,7 @@ static int getLogFileDescriptor(GrepSeekProfile* gsProfile, const char* logPath,
     // Check if the file size matches the seek value from the map
     if (sb.st_size == seek_value_from_map)
     {
-        T2Error("The logfile size matches the seek value (%ld) for %s\n", seek_value_from_map, logFile);
+        T2Info("The logfile size matches the seek value (%ld) for %s\n", seek_value_from_map, logFile);
         close(fd);
         return -1; // Consistent error return value
     }
@@ -729,14 +729,14 @@ static int getRotatedLogFileDescriptor(const char* logPath, const char* logFile)
     int rd = open(rotatedlogFilePath, O_RDONLY);
     if (rd == -1)
     {
-        T2Error("Failed to open log file %s\n", rotatedlogFilePath);
+        T2Debug("Failed to open log file %s\n", rotatedlogFilePath);
         return -1;
     }
 
     struct stat rb;
     if (fstat(rd, &rb) == -1)
     {
-        T2Error("Error getting file size for %s\n", rotatedlogFilePath);
+        T2Debug("Error getting file size for %s\n", rotatedlogFilePath);
         close(rd);
         return -1;
     }
@@ -744,7 +744,7 @@ static int getRotatedLogFileDescriptor(const char* logPath, const char* logFile)
     // Check if the file size is 0
     if (rb.st_size == 0)
     {
-        T2Error("The size of the logfile is 0 for %s\n", rotatedlogFilePath);
+        T2Debug("The size of the logfile is 0 for %s\n", rotatedlogFilePath);
         close(rd);
         return -1; // Consistent error return value
     }

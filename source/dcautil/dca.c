@@ -824,10 +824,11 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
         T2Error("Failed to create temp file: %s\n", strerror(errno));
         return NULL;
     }
-    if(unlink(tmp_fdmain) == -1){
-	T2Error("Failed to unlink the tmp_fdmain\n");
-	close(tmp_fd);
-	return NULL;
+    if(unlink(tmp_fdmain) == -1)
+    {
+        T2Error("Failed to unlink the tmp_fdmain\n");
+        close(tmp_fd);
+        return NULL;
     }
     off_t offset = 0;
     ssize_t sent = sendfile(tmp_fd, fd, &offset, sb.st_size);
@@ -849,18 +850,19 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
             {
                 T2Error("Failed to create temp file: %s\n", strerror(errno));
                 close(tmp_fd);
-		close(rd);
-		rd = -1;
+                close(rd);
+                rd = -1;
                 return NULL;
             }
-            if(unlink(tmp_fdrotated) == -1){
+            if(unlink(tmp_fdrotated) == -1)
+            {
                 T2Error("Failed to unlink the tmp_fdmain\n");
-		close(tmp_fd);
-		close(tmp_rd);
-		close(rd);
-		rd = -1;
-		return NULL;
-	    }
+                close(tmp_fd);
+                close(tmp_rd);
+                close(rd);
+                rd = -1;
+                return NULL;
+            }
             offset = 0;
 
             sent = sendfile(tmp_rd, rd, &offset, rb.st_size);
@@ -869,8 +871,8 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
                 T2Error("sendfile failed: %s\n", strerror(errno));
                 close(tmp_rd);
                 close(tmp_fd);
-		close(rd);
-		rd = -1;
+                close(rd);
+                rd = -1;
                 return NULL;
             }
 
@@ -911,12 +913,18 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
                 T2Debug("Log file got rotated. Ignoring invalid mapping\n");
                 close(tmp_fd);
                 close(fd);
-		if(rd != -1){
-		   close(rd);
-                   rd = -1;
-		}
+                if(rd != -1)
+                {
+                    close(rd);
+                    rd = -1;
+                }
                 return NULL;
             }
+        }
+        if(rd != -1)
+        {
+            close(rd);
+            rd = -1;
         }
     }
     else
@@ -959,7 +967,7 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
     if (!fileDescriptor)
     {
         T2Error("Error allocating memory for FileDescriptor\n");
-	munmap(addrcf, sb.st_size);
+        munmap(addrcf, sb.st_size);
         if(addrrf != NULL)
         {
             munmap(addrrf, rb.st_size);

@@ -911,6 +911,10 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
                 T2Debug("Log file got rotated. Ignoring invalid mapping\n");
                 close(tmp_fd);
                 close(fd);
+		if(rd != -1){
+		   close(rd);
+                   rd = -1;
+		}
                 return NULL;
             }
         }

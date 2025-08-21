@@ -280,7 +280,7 @@ static void* CollectAndReportXconf(void* data)
                 T2Info("Fetch complete for TR-181 Object/Parameter Values for parameters \n");
                 if(profileParamVals != NULL)
                 {
-                    encodeParamResultInJSON(valArray, profile->paramList, profileParamVals);
+                    encodeParamResultInJSON(valArray, profile->paramList, profileParamVals, NULL);
                 }
                 Vector_Destroy(profileParamVals, freeProfileValues);
             }

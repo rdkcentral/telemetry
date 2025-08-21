@@ -147,7 +147,25 @@ typedef struct _TriggerCondition
     bool report;
 } TriggerCondition;
 
+typedef struct _DataModelParam
+{
+    char *name;
+    char *reference;
+    bool reportEmpty;
+} DataModelParam;
+
+typedef struct _DataModelTable
+{
+    char *reference;
+    char *index;
+    Vector *paramList; // List of DataModelParam
+} DataModelTable;
+
 void freeParam(void *data);
+
+void freeDataModelParam(void *data);
+
+void freeDataModelTable(void *data);
 
 void freeStaticParam(void *data);
 
@@ -166,5 +184,7 @@ bool getDevicePropertyData(const char *dev_prop_name, char *out_data, unsigned i
 void initWhoamiSupport(void);
 
 bool isWhoAmiEnabled(void);
+
+bool matchesParameter(const char* pattern, const char* paramName);
 
 #endif /* _T2COMMON_H_ */

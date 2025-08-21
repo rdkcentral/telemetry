@@ -80,6 +80,7 @@ typedef struct _Profile
     Vector *gMarkerList;
     Vector *topMarkerList;
     Vector *cachedReportList;
+    Vector *dataModelTableList;   // List of DataModelTable
     cJSON *jsonReportObj;
     pthread_t reportThread;
     pthread_mutex_t triggerCondMutex;

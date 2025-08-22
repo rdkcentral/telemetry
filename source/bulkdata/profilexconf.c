@@ -363,7 +363,7 @@ static void* CollectAndReportXconf(void* data)
             {
                 srand(size + 1);
                 int random_sleep = (int) rand() % 50;
-                sleep(random_sleep+1);
+                sleep(random_sleep + 1);
                 // reducing the MAX sleep value from 100 -> 50 seconds to avoid conflict with regular execution
                 T2Info("This is a Previous Logs Report sleep randomly for 1-50 sec\n");
             }

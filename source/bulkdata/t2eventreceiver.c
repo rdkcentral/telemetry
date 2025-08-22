@@ -281,16 +281,22 @@ void* T2ER_EventDispatchThread(void *arg)
         else
         {
             T2Debug("Event Queue size is 0, Waiting events from T2ER_Push\n");
+            printf("%s : %d\n", __FUNCTION__, __LINE__);
             int ret = pthread_cond_wait(&erCond, &erMutex);
+            printf("%s : %d\n", __FUNCTION__, __LINE__);
             if(ret != 0) // pthread cond wait failed return after unlock
             {
+            printf("%s : %d\n", __FUNCTION__, __LINE__);
                 T2Error("%s pthread_cond_wait failed with error code: %d\n", __FUNCTION__, ret);
             }
+            printf("%s : %d\n", __FUNCTION__, __LINE__);
             if(pthread_mutex_unlock(&erMutex) != 0)
             {
+            printf("%s : %d\n", __FUNCTION__, __LINE__);
                 T2Error("%s pthread_mutex_unlock for erMutex failed\n", __FUNCTION__);
                 return NULL;
             }
+            printf("%s : %d\n", __FUNCTION__, __LINE__);
             T2Debug("Received signal from T2ER_Push\n");
         }
     }

@@ -248,7 +248,7 @@ extern "C" char* rbusValue_ToString(rbusValue_t v, char* buf, size_t buflen)
 {
     if (!g_rbusMock)
     {
-        return "propertyName";
+        return const_cast<char*>("propertyName");
     }
     return g_rbusMock->rbusValue_ToString(v, buf, buflen);
 }

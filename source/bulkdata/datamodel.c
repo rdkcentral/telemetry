@@ -137,6 +137,7 @@ static void *process_msg_thread(void *data)
  */
 T2ERROR datamodel_processProfile(char *JsonBlob, bool rprofiletypes)
 {
+    printf("profile= %s\n", JsonBlob);
     cJSON *rootObj = NULL;
     cJSON *profiles = NULL;
 

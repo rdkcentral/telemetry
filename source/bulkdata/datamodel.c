@@ -155,25 +155,35 @@ T2ERROR datamodel_processProfile(char *JsonBlob, bool rprofiletypes)
 
     T2Info("Number of report profiles in configuration is %d \n", cJSON_GetArraySize(profiles));
 
+    printf("%s : %d \n", __func__, __LINE__);
     pthread_mutex_lock(&rpMutex);
+    printf("%s : %d \n", __func__, __LINE__);
     if (!stopProcessing)
     {
+    printf("%s : %d \n", __func__, __LINE__);
         if(rprofiletypes == T2_RP)
         {
+    printf("%s : %d \n", __func__, __LINE__);
             t2_queue_push(rpQueue, (void *)rootObj);
+    printf("%s : %d \n", __func__, __LINE__);
             pthread_cond_signal(&rpCond);
         }
         else if(rprofiletypes == T2_TEMP_RP)
         {
+    printf("%s : %d \n", __func__, __LINE__);
             t2_queue_push(tmpRpQueue, (void *)rootObj);
+    printf("%s : %d \n", __func__, __LINE__);
             pthread_cond_signal(&tmpRpCond);
         }
+    printf("%s : %d \n", __func__, __LINE__);
     }
     else
     {
         T2Error("Datamodel not initialized, dropping request \n");
+    printf("%s : %d \n", __func__, __LINE__);
         cJSON_Delete(rootObj);
     }
+    printf("%s : %d \n", __func__, __LINE__);
     pthread_mutex_unlock(&rpMutex);
     return T2ERROR_SUCCESS;
 }

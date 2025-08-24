@@ -154,30 +154,39 @@ static void updateComponentList(const char* componentName)
 {
 
     //T2Debug("%s ++in \n", __FUNCTION__);
+    printf("%s : %d\n", __func__, __LINE__);
     if(!componentName)
     {
         T2Error("componentName is null\n");
         T2Debug("%s --out\n", __FUNCTION__);
         return;
     }
+    printf("%s : %d\n", __func__, __LINE__);
     pthread_mutex_lock(&t2CompListMutex);
     if(!componentList)
     {
         T2Error("Component name list is not initialized . Re-initializing \n");
         Vector_Create(&componentList);
+    printf("%s : %d\n", __func__, __LINE__);
     }
 
+    printf("%s : %d\n", __func__, __LINE__);
     int length = Vector_Size(componentList);
+    printf("%s : %d\n", __func__, __LINE__);
     if(0 == length)
     {
+    printf("%s : %d\n", __func__, __LINE__);
         Vector_PushBack(componentList, (void*) strdup(componentName));
+    printf("%s : %d\n", __func__, __LINE__);
     }
     else
     {
         int i = 0;
         for( ; i < length; i++ )
         {
+    printf("%s : %d\n", __func__, __LINE__);
             char* tempName = Vector_At(componentList, i);
+    printf("%s : %d\n", __func__, __LINE__);
             if(strncmp(tempName, componentName, MAX_EVENT_MARKER_NAME_LEN) == 0)
             {
                 pthread_mutex_unlock(&t2CompListMutex);
@@ -185,7 +194,9 @@ static void updateComponentList(const char* componentName)
                 return;
             }
         }
+    printf("%s : %d\n", __func__, __LINE__);
         Vector_PushBack(componentList, (void*) strdup(componentName));
+    printf("%s : %d\n", __func__, __LINE__);
     }
     pthread_mutex_unlock(&t2CompListMutex);
     //T2Debug("%s --out\n", __FUNCTION__);
@@ -194,11 +205,13 @@ static void updateComponentList(const char* componentName)
 
 T2ERROR addT2EventMarker(const char* markerName, const char* compName, const char *profileName, unsigned int skipFreq)
 {
+    printf("%s : %d\n", __func__, __LINE__);
     (void) skipFreq;
     // To do currently have skip frequency only for the grep markers
     // It indicates the intervel to check for the marker during reportgeneration
     // We use this in grep to reduce the log search. we can implement this based on need.
     pthread_mutex_lock(&t2MarkersMutex);
+    printf("%s : %d\n", __func__, __LINE__);
     T2Marker *t2Marker = (T2Marker *)hash_map_get(markerCompMap, markerName);
     //pthread_mutex_unlock(&t2MarkersMutex); unlock after modification is done on t2Marker
     if(t2Marker)
@@ -207,11 +220,15 @@ T2ERROR addT2EventMarker(const char* markerName, const char* compName, const cha
         if(t2Marker->profileList)
         {
             int i = 0;
+    printf("%s : %d\n", __func__, __LINE__);
             int length = Vector_Size(t2Marker->profileList);
+    printf("%s : %d\n", __func__, __LINE__);
             bool isPresent = false;
             for( i = 0; i < length; ++i )
             {
+    printf("%s : %d\n", __func__, __LINE__);
                 char* profNameInlist = (char *) Vector_At(t2Marker->profileList, i);
+    printf("%s : %d\n", __func__, __LINE__);
                 if(!strncmp(profileName, profNameInlist, MAX_EVENT_MARKER_NAME_LEN))
                 {
                     isPresent = true;
@@ -222,6 +239,7 @@ T2ERROR addT2EventMarker(const char* markerName, const char* compName, const cha
             {
                 T2Debug("Found a matching T2Marker, adding new profileName %s to profileList or marker %s \n", profileName, markerName);
                 Vector_PushBack(t2Marker->profileList, (void *) strdup(profileName));
+    printf("%s : %d\n", __func__, __LINE__);
             }
             else
             {
@@ -239,10 +257,15 @@ T2ERROR addT2EventMarker(const char* markerName, const char* compName, const cha
             memset(t2Marker, '\0', sizeof(T2Marker));
             t2Marker->markerName = strdup(markerName);
             t2Marker->componentName = strdup(compName);
+    printf("%s : %d\n", __func__, __LINE__);
             Vector_Create(&t2Marker->profileList);
+    printf("%s : %d\n", __func__, __LINE__);
             Vector_PushBack(t2Marker->profileList, (void *)strdup(profileName));
+    printf("%s : %d\n", __func__, __LINE__);
             updateEventMap(markerName, t2Marker);
+    printf("%s : %d\n", __func__, __LINE__);
             updateComponentList(compName);
+    printf("%s : %d\n", __func__, __LINE__);
         }
         else
         {

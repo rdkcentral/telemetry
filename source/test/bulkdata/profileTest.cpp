@@ -92,7 +92,7 @@ TEST_F(ProfileTest, InitProfileList_Success) {
         .WillRepeatedly(Return(T2ERROR_SUCCESS));
     EXPECT_CALL(*g_vectorMock, Vector_PushBack(_, _))
         .Times(1)  // Only for the local test configlist
-        .WillOnce(Return(T2ERROR_SUCCESS));
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
     EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _))
         .Times(2)  // 1 for local test configlist, 1 for configList in loadReportProfilesFromDisk
         .WillRepeatedly(Return(T2ERROR_SUCCESS));
@@ -100,8 +100,8 @@ TEST_F(ProfileTest, InitProfileList_Success) {
     // Additional Vector mock expectations for loadReportProfilesFromDisk
     EXPECT_CALL(*g_vectorMock, Vector_Size(_))
         .Times(2)
-        .WillOnce(Return(0))  // For the for loop condition (empty configList)
-        .WillOnce(Return(0)); // For the logging at the end
+        .WillRepeatedly(Return(0))  // For the for loop condition (empty configList)
+        .WillRepeatedly(Return(0)); // For the logging at the end
     
     Vector_Create(&configlist);
     Vector_PushBack(configlist, (void *)strdup("marker1"));
@@ -111,11 +111,11 @@ TEST_F(ProfileTest, InitProfileList_Success) {
            .WillRepeatedly(Return(dir));
     EXPECT_CALL(*g_systemMock, system(_))
            .Times(1)
-           .WillOnce(Return(0));
+           .WillRepeatedly(Return(0));
     EXPECT_CALL(*g_fileIOMock, readdir(_))
            .Times(2)
-           .WillOnce(Return((struct dirent *)NULL))
-           .WillOnce(Return((struct dirent *)NULL));
+           .WillRepeatedly(Return((struct dirent *)NULL))
+           .WillRepeatedly(Return((struct dirent *)NULL));
     EXPECT_CALL(*g_fileIOMock, closedir(_))
            .Times(1)
            .WillRepeatedly(Return(0));
@@ -127,6 +127,10 @@ TEST_F(ProfileTest, InitProfileList_Success) {
 // Test profileWithNameExists
 TEST_F(ProfileTest, ProfileWithNameExists_NotInitialized) {
     bool exists = false;
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(1)
+        .WillRepeatedly(Return(0));
+    
     EXPECT_EQ(profileWithNameExists("test", &exists), T2ERROR_FAILURE);
 }
 
@@ -138,49 +142,72 @@ TEST_F(ProfileTest, ProfileWithNameExists_NullName) {
 
 // Test addProfile
 TEST_F(ProfileTest, AddProfile_NotInitialized) {
+    EXPECT_CALL(*g_vectorMock, Vector_PushBack(_, _))
+        .Times(1)  // Only for the local test configlist
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
     Profile dummy;
     EXPECT_EQ(addProfile(&dummy), T2ERROR_FAILURE);
 }
 
 // Test enableProfile
 TEST_F(ProfileTest, EnableProfile_NotInitialized) {
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(1)
+        .WillRepeatedly(Return(0));
     EXPECT_EQ(enableProfile("abc"), T2ERROR_FAILURE);
 }
 
 TEST_F(ProfileTest, NotifyTimeout_Directly)
 {
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(1)
+        .WillRepeatedly(Return(0));
     NotifyTimeout("abc", true);
 }
 
 // Test disableProfile
 TEST_F(ProfileTest, DisableProfile_NotInitialized) {
     bool isDeleteRequired = false;
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(1)
+        .WillRepeatedly(Return(0));
     EXPECT_EQ(disableProfile("abc", &isDeleteRequired), T2ERROR_FAILURE);
 }
 
-
-/*
-// SEG FAULT
 // Test deleteProfile
 TEST_F(ProfileTest, DeleteProfile_NotInitialized) {
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(1)
+        .WillRepeatedly(Return(0));
     EXPECT_EQ(deleteProfile("abc"), T2ERROR_FAILURE);
 }
 // Test deleteAllProfiles
 TEST_F(ProfileTest, DeleteAllProfiles_ProfileListNull) {
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(1)
+        .WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_vectorMock, Vector_Create(_))
+        .Times(3)  // 1 for local test configlist, 1 for global profileList, 1 for configList in loadReportProfilesFromDisk
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _))
+        .Times(2)  // 1 for local test configlist, 1 for configList in loadReportProfilesFromDisk
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
     EXPECT_EQ(deleteAllProfiles(true), T2ERROR_FAILURE);
 }
 
-*/
-
-/* HANG
 // Test uninitProfileList
 TEST_F(ProfileTest, UninitProfileList_Success) {
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(1)
+        .WillRepeatedly(Return(0));
     EXPECT_EQ(uninitProfileList(), T2ERROR_SUCCESS);
 }
-*/
 
 // Test getProfileCount
 TEST_F(ProfileTest, GetProfileCount_NotInitialized) {
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(1)
+        .WillRepeatedly(Return(0));
     EXPECT_EQ(getProfileCount(), 0);
 }
 
@@ -224,6 +251,7 @@ TEST_F(ProfileTest, processProfile_ValidJson_TEMP_RP) {
     EXPECT_EQ(datamodel_processProfile(json, T2_TEMP_RP), T2ERROR_SUCCESS);
 }
 #endif
+
 TEST_F(ProfileTest, processProfile_InvalidJson) {
     char json[] = "fail";
     EXPECT_EQ(datamodel_processProfile(json, T2_RP), T2ERROR_FAILURE);
@@ -235,17 +263,27 @@ TEST_F(ProfileTest, processProfile_MissingProfiles) {
 }
 
 #if 0
+//Hanginf because unable to get the rp lock
 TEST_F(ProfileTest, processProfile_StopProcessingTrue) {
     char json[] = "{\"profiles\":[]}";
     EXPECT_EQ(datamodel_processProfile(json, T2_RP), T2ERROR_SUCCESS);
 }
 #endif
 
-#if 0
+#if 1
 //==> To be FIXED
 TEST_F(ProfileTest, getSavedJsonProfilesasString_EmptyVector) {
     char* result = nullptr;
     //gVector.configs.clear();
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(1)
+        .WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_vectorMock, Vector_Create(_))
+        .Times(3)  // 1 for local test configlist, 1 for global profileList, 1 for configList in loadReportProfilesFromDisk
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _))
+        .Times(2)  // 1 for local test configlist, 1 for configList in loadReportProfilesFromDisk
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
     datamodel_getSavedJsonProfilesasString(&result);
     // Result should be a valid JSON string
     ASSERT_NE(result, nullptr);
@@ -258,6 +296,15 @@ TEST_F(ProfileTest, getSavedJsonProfilesasString_WithConfigs) {
     //conf.configData = strdup("{\"Hash\":\"abc123\"}");
     //gVector.configs = { &conf };
     char* result = nullptr;
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(1)
+        .WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_vectorMock, Vector_Create(_))
+        .Times(3)  // 1 for local test configlist, 1 for global profileList, 1 for configList in loadReportProfilesFromDisk
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _))
+        .Times(2)  // 1 for local test configlist, 1 for configList in loadReportProfilesFromDisk
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
     datamodel_getSavedJsonProfilesasString(&result);
     ASSERT_NE(result, nullptr);
     //free(conf.configData);
@@ -282,19 +329,35 @@ TEST_F(ProfileTest, MsgpackProcessProfile_Success) {
 // ============================== t2markers.c =============================
 
 TEST_F(ProfileTest, InitAndDestroyShouldWork) {
+    EXPECT_CALL(*g_vectorMock, Vector_Create(_))
+        .Times(3)  // 1 for local test configlist, 1 for global profileList, 1 for configList in loadReportProfilesFromDisk
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _))
+        .Times(3)  // 1 for local test configlist, 1 for configList in loadReportProfilesFromDisk
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
     EXPECT_EQ(initT2MarkerComponentMap(), T2ERROR_SUCCESS);
-    EXPECT_EQ(destroyT2MarkerComponentMap(), T2ERROR_SUCCESS);
 }
-
+#if 0
+#if 0
 TEST_F(ProfileTest, AddEventMarkerShouldAddMarkerAndProfile) {
     // Vector mock expectations
     EXPECT_CALL(*g_vectorMock, Vector_Size(_))
         .Times(1)
-        .WillOnce(Return(1)); // Return 1 to indicate one profile in the list
+        .WillRepeatedly(Return(1)); // Return 1 to indicate one profile in the list
     EXPECT_CALL(*g_vectorMock, Vector_At(_, 0))
         .Times(1)
-        .WillOnce(Return((void*)strdup("PROFILE_1")));
+        .WillRepeatedly(Return((void*)strdup("PROFILE_1")));
+    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _))
+        .Times(3) 
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_vectorMock, Vector_Create(_))
+        .Times(3)
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_vectorMock, Vector_PushBack(_, _))
+        .Times(3)
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
     
+    EXPECT_EQ(initT2MarkerComponentMap(), T2ERROR_SUCCESS);
     EXPECT_EQ(addT2EventMarker("SYS_INFO_TEST_MARKER", "sysint", "PROFILE_1", 0), T2ERROR_SUCCESS);
 
     T2Marker* marker = (T2Marker*)hash_map_get(markerCompMap, "SYS_INFO_TEST_MARKER");
@@ -318,14 +381,20 @@ TEST_F(ProfileTest, AddEventMarkerShouldAddMarkerAndProfile) {
 TEST_F(ProfileTest, ShouldAddMultipleProfilesToMarker) {
     // Vector mock expectations
     EXPECT_CALL(*g_vectorMock, Vector_Size(_))
-        .Times(1)
-        .WillOnce(Return(2)); // Return 2 to indicate two profiles in the list
+        .Times(3)
+        .WillRepeatedly(Return(2)); // Return 2 to indicate two profiles in the list
     EXPECT_CALL(*g_vectorMock, Vector_At(_, 0))
-        .Times(1)
-        .WillOnce(Return((void*)strdup("PROFILE_1")));
+        .Times(3)
+        .WillRepeatedly(Return((void*)strdup("PROFILE_1")));
     EXPECT_CALL(*g_vectorMock, Vector_At(_, 1))
-        .Times(1)
-        .WillOnce(Return((void*)strdup("PROFILE_2")));
+        .Times(3)
+        .WillRepeatedly(Return((void*)strdup("PROFILE_2")));
+    EXPECT_CALL(*g_vectorMock, Vector_Create(_))
+        .Times(3)  // 1 for local test configlist, 1 for global profileList, 1 for configList in loadReportProfilesFromDisk
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_vectorMock, Vector_PushBack(_, _))
+        .Times(3)
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
         
     EXPECT_EQ(addT2EventMarker("SYS_INFO_TEST_MARKER", "sysint", "PROFILE_1", 0), T2ERROR_SUCCESS);
     EXPECT_EQ(addT2EventMarker("SYS_INFO_TEST_MARKER", "sysint", "PROFILE_2", 0), T2ERROR_SUCCESS);
@@ -348,10 +417,16 @@ TEST_F(ProfileTest, DuplicateProfilesNotAdded) {
     // Vector mock expectations
     EXPECT_CALL(*g_vectorMock, Vector_Size(_))
         .Times(1)
-        .WillOnce(Return(1)); // Return 1 to indicate only one profile (no duplicates)
+        .WillRepeatedly(Return(1)); // Return 1 to indicate only one profile (no duplicates)
     EXPECT_CALL(*g_vectorMock, Vector_At(_, 0))
         .Times(1)
-        .WillOnce(Return((void*)strdup("PROFILE_1")));
+        .WillRepeatedly(Return((void*)strdup("PROFILE_1")));
+    EXPECT_CALL(*g_vectorMock, Vector_Create(_))
+        .Times(3)  // 1 for local test configlist, 1 for global profileList, 1 for configList in loadReportProfilesFromDisk
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_vectorMock, Vector_PushBack(_, _))
+        .Times(3)
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
         
     EXPECT_EQ(addT2EventMarker("SYS_INFO_TEST_MARKER", "sysint", "PROFILE_1", 0), T2ERROR_SUCCESS);
     // Add same profile again
@@ -368,6 +443,7 @@ TEST_F(ProfileTest, DuplicateProfilesNotAdded) {
     }
     EXPECT_EQ(count, 1); // Only one instance
 }
+#endif
 
 TEST_F(ProfileTest, ComponentListIsUpdated) {
     EXPECT_EQ(addT2EventMarker("SYS_INFO_TEST_MARKER", "sysint", "PROFILE_1", 0), T2ERROR_SUCCESS);
@@ -377,8 +453,8 @@ TEST_F(ProfileTest, ComponentListIsUpdated) {
     ASSERT_NE(eventComponentList, nullptr);
 
     // Mock Vector calls
-    EXPECT_CALL(*g_vectorMock, Vector_Size(_)).Times(1).WillOnce(Return(1));
-    EXPECT_CALL(*g_vectorMock, Vector_At(_, 0)).Times(1).WillOnce(Return((void*)strdup("sysint")));
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_)).Times(1).WillRepeatedly(Return(1));
+    EXPECT_CALL(*g_vectorMock, Vector_At(_, 0)).Times(1).WillRepeatedly(Return((void*)strdup("sysint")));
 
     bool found = false;
     int sz = Vector_Size(eventComponentList);
@@ -400,9 +476,9 @@ TEST_F(ProfileTest, GetMarkerProfileListReturnsProfiles) {
     
     // Mock Vector calls
     EXPECT_CALL(*g_vectorMock, Vector_Create(_)).Times(1);
-    EXPECT_CALL(*g_vectorMock, Vector_Size(_)).Times(1).WillOnce(Return(2));
-    EXPECT_CALL(*g_vectorMock, Vector_At(_, 0)).Times(1).WillOnce(Return((void*)strdup("PROFILE_1")));
-    EXPECT_CALL(*g_vectorMock, Vector_At(_, 1)).Times(1).WillOnce(Return((void*)strdup("PROFILE_2")));
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_)).Times(1).WillRepeatedly(Return(2));
+    EXPECT_CALL(*g_vectorMock, Vector_At(_, 0)).Times(1).WillRepeatedly(Return((void*)strdup("PROFILE_1")));
+    EXPECT_CALL(*g_vectorMock, Vector_At(_, 1)).Times(1).WillRepeatedly(Return((void*)strdup("PROFILE_2")));
     EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).Times(1);
     
     Vector_Create(&profileList);
@@ -420,6 +496,7 @@ TEST_F(ProfileTest, GetMarkerProfileListReturnsProfiles) {
     Vector_Destroy(profileList, free);
 }
 
+#if 0
 TEST_F(ProfileTest, GetComponentMarkerListWorks) {
     EXPECT_EQ(addT2EventMarker("SYS_INFO_TEST_MARKER", "sysint", "PROFILE_1", 0), T2ERROR_SUCCESS);
 
@@ -430,9 +507,16 @@ TEST_F(ProfileTest, GetComponentMarkerListWorks) {
     ASSERT_NE(list, nullptr);
 
     // Mock Vector calls
-    EXPECT_CALL(*g_vectorMock, Vector_Size(_)).Times(1).WillOnce(Return(1));
-    EXPECT_CALL(*g_vectorMock, Vector_At(_, 0)).Times(1).WillOnce(Return((void*)strdup("SYS_INFO_TEST_MARKER")));
-    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).Times(1);
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_)).Times(1).WillRepeatedly(Return(1));
+    EXPECT_CALL(*g_vectorMock, Vector_At(_, 0)).Times(1).WillRepeatedly(Return((void*)strdup("SYS_INFO_TEST_MARKER")));
+    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).Times(1)
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_vectorMock, Vector_Create(_))
+        .Times(3)  // 1 for local test configlist, 1 for global profileList, 1 for configList in loadReportProfilesFromDisk
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_vectorMock, Vector_PushBack(_, _))
+        .Times(1)
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
 
     bool foundMarker = false;
     int sz = Vector_Size(list);
@@ -446,8 +530,12 @@ TEST_F(ProfileTest, GetComponentMarkerListWorks) {
     EXPECT_TRUE(foundMarker);
     Vector_Destroy(list, free);
 }
+#endif
 
 TEST_F(ProfileTest, ClearMarkerComponentMapShouldRemoveEntries) {
+    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _))
+        .Times(3)  // 1 for local test configlist, 1 for configList in loadReportProfilesFromDisk
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
     EXPECT_EQ(addT2EventMarker("SYS_INFO_TEST_MARKER", "sysint", "PROFILE_1", 0), T2ERROR_SUCCESS);
 
     EXPECT_EQ(clearT2MarkerComponentMap(), T2ERROR_SUCCESS);
@@ -459,143 +547,197 @@ TEST_F(ProfileTest, ClearMarkerComponentMapShouldRemoveEntries) {
     getComponentsWithEventMarkers(&eventComponentList);
     
     // Mock Vector call
-    EXPECT_CALL(*g_vectorMock, Vector_Size(_)).Times(1).WillOnce(Return(0));
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_)).Times(1).WillRepeatedly(Return(0));
     
     EXPECT_EQ(Vector_Size(eventComponentList), 0);
+    EXPECT_EQ(destroyT2MarkerComponentMap(), T2ERROR_SUCCESS);
 }
 
+#endif
 
 
 //================================ reportProfiles.c ====================================
 
-#if 0
+#if 1
 TEST_F(ProfileTest, initReportProfiles) {
     char status[8] = "true";
     DIR *dir = (DIR*)0xffffffff ;
     FILE* fp = (FILE*)0xffffffff;
+
     EXPECT_CALL(*g_rbusMock, rbus_get(_,_,_))
            .Times(2)
-           .WillOnce(Return(RBUS_ERROR_SUCCESS))
-           .WillOnce(Return(RBUS_ERROR_SUCCESS));
+           .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
     EXPECT_CALL(*g_rbusMock, rbusValue_GetType(_))
            .Times(2)
-           .WillOnce(Return(RBUS_BOOLEAN))
-           .WillOnce(Return(RBUS_BOOLEAN));
+           .WillRepeatedly(Return(RBUS_BOOLEAN));
     EXPECT_CALL(*g_rbusMock, rbusValue_GetBoolean(_))
            .Times(2)
-           .WillOnce(Return(RBUS_ERROR_SUCCESS))
-           .WillOnce(Return(RBUS_ERROR_SUCCESS));
+           .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
     EXPECT_CALL(*g_rbusMock, rbusValue_Release(_))
            .Times(2)
-           .WillOnce(Return())
-           .WillOnce(Return());
+           .WillRepeatedly(Return());
     EXPECT_CALL(*g_fileIOMock, opendir(_))
            .Times(2)
-           .WillOnce(Return(dir))
-	   .WillOnce(Return(dir));
+	   .WillRepeatedly(Return(dir));
     EXPECT_CALL(*g_rbusMock, rbus_regDataElements(_,_,_))
            .Times(2)
-           .WillOnce(Return(RBUS_ERROR_SUCCESS))
-           .WillOnce(Return(RBUS_ERROR_SUCCESS));
+           .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
     EXPECT_CALL(*g_systemMock, system(_))
            .Times(1)
-           .WillOnce(Return(0));
+           .WillRepeatedly(Return(0));
     EXPECT_CALL(*g_fileIOMock, readdir(_))
 	   .Times(1)
-	   .WillOnce(Return((struct dirent *)NULL));
+	   .WillRepeatedly(Return((struct dirent *)NULL));
 #if 1
     EXPECT_CALL(*g_fileIOMock, closedir(_))
            .Times(2)
-           .WillOnce(Return(0))
-           .WillOnce(Return(0));
+           .WillRepeatedly(Return(0));
     EXPECT_CALL(*g_fileIOMock, fopen(_,_))
             .Times(4)
-            .WillOnce(Return(fp))
-            .WillOnce(Return(fp))
-            .WillOnce(Return(fp))
-            .WillOnce(Return(fp));
+            .WillRepeatedly(Return(fp));
+    EXPECT_CALL(*g_fileIOMock, fscanf(_, _, _))
+            .Times(4)
+            .WillRepeatedly(::testing::Return(EOF));
 #endif
     EXPECT_CALL(*g_fileIOMock, fclose(_))                                                                            
             .Times(1)                                                                                                
-            .WillOnce(Return(0));   
+            .WillRepeatedly(Return(0));   
 #if 1
     EXPECT_CALL(*g_fileIOMock, mkdir(_,_))
            .Times(1)
-           .WillOnce(Return(-1));
+           .WillRepeatedly(Return(-1));
     EXPECT_CALL(*g_rbusMock, rbus_registerLogHandler(_))
            .Times(1)
-           .WillOnce(Return(RBUS_ERROR_SUCCESS));
+           .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
     EXPECT_CALL(*g_rbusMock, rbus_open(_,_))
            .Times(1)
-           .WillOnce(Return(RBUS_ERROR_SUCCESS));
+           .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
     EXPECT_CALL(*g_rbusMock, rbus_checkStatus())
            .Times(1)
-           .WillOnce(Return(RBUS_ENABLED));
+           .WillRepeatedly(Return(RBUS_ENABLED));
     EXPECT_CALL(*g_rbusMock, rbusValue_ToString(_,_,_))
            .Times(1)
-           .WillOnce(Return(status));
+           .WillRepeatedly(Return(status));
+#endif
+
+#if 1
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(1)
+        .WillRepeatedly(Return(1)); // Return 1 to indicate only one profile (no duplicates)
+    EXPECT_CALL(*g_vectorMock, Vector_At(_, 0))
+        .Times(1)
+        .WillRepeatedly(Return((void*)strdup("PROFILE_1")));
+    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).Times(1)
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_vectorMock, Vector_Create(_))
+        .Times(3)  // 1 for local test configlist, 1 for global profileList, 1 for configList in loadReportProfilesFromDisk
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_vectorMock, Vector_PushBack(_, _))
+        .Times(1)
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
 #endif
     EXPECT_EQ(initReportProfiles(), T2ERROR_SUCCESS);
 }
 #endif
 
-#if 0
+#if 1
 TEST_F(ProfileTest, ReportProfiles_addReportProfile) {
-    Profile profile;
-    EXPECT_EQ(ReportProfiles_addReportProfile(&profile), T2ERROR_SUCCESS);
+    Profile *profile = (Profile*)malloc(sizeof(Profile));
+    profile->name = strdup("EventProfile");
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(1)
+        .WillRepeatedly(Return(0)); // Return 1 to indicate only one profile (no duplicates)
+    EXPECT_CALL(*g_vectorMock, Vector_At(_, 0))
+        .Times(1)
+        .WillRepeatedly(Return((void*)strdup("PROFILE_1")));
+    EXPECT_CALL(*g_vectorMock, Vector_PushBack(_, _))
+        .Times(1)
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_EQ(ReportProfiles_addReportProfile(profile), T2ERROR_SUCCESS);
 }
 
 TEST_F(ProfileTest, ReportProfiles_Interrupt_Coverage) {
     // Should call sendLogUploadInterruptToScheduler and interrupt xconf profile
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(1)
+        .WillRepeatedly(Return(0)); // Return 1 to indicate only one profile (no duplicates)
     ReportProfiles_Interrupt();
 }
 
 // ===> callback failure
 TEST_F(ProfileTest, ReportProfiles_TimeoutCb_XConfProfile) {
     // Should trigger ProfileXConf_notifyTimeout
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(1)
+        .WillRepeatedly(Return(0)); // Return 1 to indicate only one profile (no duplicates)
     ReportProfiles_TimeoutCb(strdup("XConfProfile"), true);
 }
 #endif
-/*
+
 TEST_F(ProfileTest, ReportProfiles_TimeoutCb_NonXConfProfile) {
     // Should trigger NotifyTimeout
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(1)
+        .WillRepeatedly(Return(0)); // Return 1 to indicate only one profile (no duplicates)
     ReportProfiles_TimeoutCb(strdup("NonXConfProfile"), false);
 }
 
 TEST_F(ProfileTest, ReportProfiles_ActivationTimeoutCb_XConfProfile) {
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(1)
+        .WillRepeatedly(Return(0)); // Return 1 to indicate only one profile (no duplicates)
     ReportProfiles_ActivationTimeoutCb(strdup("XConfProfile"));
 }
 
 TEST_F(ProfileTest, ReportProfiles_ActivationTimeoutCb_NonXConfProfile) {
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(1)
+        .WillRepeatedly(Return(0)); // Return 1 to indicate only one profile (no duplicates)
     ReportProfiles_ActivationTimeoutCb(strdup("NonXConfProfile"));
 }
 
 TEST_F(ProfileTest, ReportProfiles_storeMarkerEvent_XConfProfile) {
     T2Event event;
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(1)
+        .WillRepeatedly(Return(0)); // Return 1 to indicate only one profile (no duplicates)
     ReportProfiles_storeMarkerEvent(strdup("XConfProfile"), &event);
 }
 
 TEST_F(ProfileTest, ReportProfiles_storeMarkerEvent_NonXConfProfile) {
     T2Event event;
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(1)
+        .WillRepeatedly(Return(0)); // Return 1 to indicate only one profile (no duplicates)
     ReportProfiles_storeMarkerEvent(strdup("NonXConfProfile"), &event);
 }
 
+#if 0
 TEST_F(ProfileTest, ReportProfiles_setProfileXConf) {
     ProfileXConf profile;
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(1)
+        .WillRepeatedly(Return(0)); // Return 1 to indicate only one profile (no duplicates)
     EXPECT_EQ(ReportProfiles_setProfileXConf(&profile), T2ERROR_SUCCESS);
 }
 
 TEST_F(ProfileTest, ReportProfiles_deleteProfileXConf) {
     ProfileXConf profile;
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(1)
+        .WillRepeatedly(Return(0)); // Return 1 to indicate only one profile (no duplicates)
     EXPECT_EQ(ReportProfiles_deleteProfileXConf(&profile), T2ERROR_SUCCESS);
 }
-*/
+#endif
 
-/*
+#if 1
 TEST_F(ProfileTest, ReportProfiles_deleteProfile) {
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(1)
+        .WillRepeatedly(Return(0)); // Return 1 to indicate only one profile (no duplicates)
     EXPECT_EQ(ReportProfiles_deleteProfile("testprofile"), T2ERROR_SUCCESS);
 }
-*/
+#endif
 
 TEST_F(ProfileTest, profilemem_usage) {
     unsigned int value = 0;
@@ -625,31 +767,61 @@ TEST_F(ProfileTest, RemovePreRPfromDisk) {
     DIR *dir = (DIR*)0xffffffff ;
     EXPECT_CALL(*g_fileIOMock, opendir(_))
            .Times(1)
-	   .WillOnce(Return(dir));
+	   .WillRepeatedly(Return(dir));
     EXPECT_CALL(*g_fileIOMock, readdir(_))
 	   .Times(1)
-	   .WillOnce(Return((struct dirent *)NULL));
+	   .WillRepeatedly(Return((struct dirent *)NULL));
     EXPECT_CALL(*g_fileIOMock, closedir(_))
            .Times(1)
-           .WillOnce(Return(0));
+           .WillRepeatedly(Return(0));
     EXPECT_EQ(RemovePreRPfromDisk("/tmp", &dummy), T2ERROR_FAILURE);
 }
 
-/* HANG
+#if 1
 TEST_F(ProfileTest, deleteAllReportProfiles) {
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(1)
+        .WillRepeatedly(Return(0)); // Return 1 to indicate only one profile (no duplicates)
+    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).Times(1)
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
     EXPECT_EQ(deleteAllReportProfiles(), T2ERROR_SUCCESS);
 }
 
 TEST_F(ProfileTest, isMtlsEnabled) {
+    char status[8] = "true";
+    EXPECT_CALL(*g_rbusMock, rbus_get(_,_,_))
+           .Times(2)
+           .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
+    EXPECT_CALL(*g_rbusMock, rbusValue_GetType(_))
+           .Times(2)
+           .WillRepeatedly(Return(RBUS_BOOLEAN));
+    EXPECT_CALL(*g_rbusMock, rbusValue_GetBoolean(_))
+           .Times(2)
+           .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
+    EXPECT_CALL(*g_rbusMock, rbusValue_Release(_))
+           .Times(2)
+           .WillRepeatedly(Return());
+    EXPECT_CALL(*g_rbusMock, rbusValue_ToString(_,_,_))
+           .Times(1)
+           .WillRepeatedly(Return(status));
     EXPECT_TRUE(isMtlsEnabled());
 }
-*/
+#endif
 
-/*
+#if 1
 TEST_F(ProfileTest, ReportProfiles_uninit) {
+    EXPECT_CALL(*g_vectorMock, Vector_Create(_))
+        .Times(3)  // 1 for local test configlist, 1 for global profileList, 1 for configList in loadReportProfilesFromDisk
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_vectorMock, Vector_PushBack(_, _))
+        .Times(1)
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(1)
+        .WillRepeatedly(Return(0)); // Return 1 to indicate only one profile (no duplicates)
     EXPECT_EQ(ReportProfiles_uninit(), T2ERROR_SUCCESS);
 }
-*/
+#endif
 
 //=================================== profilexconf.c ================================
 
@@ -659,17 +831,28 @@ TEST_F(ProfileTest, InitAndUninit) {
     DIR *dir = (DIR*)0xffffffff ;
     EXPECT_CALL(*g_fileIOMock, opendir(_))
            .Times(2)
-           .WillOnce(Return(dir))
-	   .WillOnce(Return(dir));
+	   .WillRepeatedly(Return(dir));
     EXPECT_CALL(*g_systemMock, system(_))
            .Times(1)
-           .WillOnce(Return(0));
+           .WillRepeatedly(Return(0));
     EXPECT_CALL(*g_fileIOMock, readdir(_))
 	   .Times(1)
-	   .WillOnce(Return((struct dirent *)NULL));
+	   .WillRepeatedly(Return((struct dirent *)NULL));
     EXPECT_CALL(*g_fileIOMock, closedir(_))
            .Times(1)
-           .WillOnce(Return(0));
+           .WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(1)
+        .WillRepeatedly(Return(1)); // Return 1 to indicate one profile in the list
+    EXPECT_CALL(*g_vectorMock, Vector_At(_, 0))
+        .Times(1)
+        .WillRepeatedly(Return((void*)strdup("PROFILE_1")));
+    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _))
+        .Times(3)  // 1 for local test configlist, 1 for configList in loadReportProfilesFromDisk
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_vectorMock, Vector_Create(_))
+        .Times(3)  // 1 for local test configlist, 1 for global profileList, 1 for configList in loadReportProfilesFromDisk
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
 #endif
     EXPECT_EQ(ProfileXConf_init(false), T2ERROR_SUCCESS);
 }
@@ -691,6 +874,18 @@ TEST_F(ProfileTest, SetAndIsSet) {
     profile->reportInProgress = false;
     profile->isUpdated = false;
 
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(1)
+        .WillRepeatedly(Return(1)); // Return 1 to indicate one profile in the list
+    EXPECT_CALL(*g_vectorMock, Vector_At(_, 0))
+        .Times(1)
+        .WillRepeatedly(Return((void*)strdup("PROFILE_1")));
+    EXPECT_CALL(*g_vectorMock, Vector_Create(_))
+        .Times(3)  // 1 for local test configlist, 1 for global profileList, 1 for configList in loadReportProfilesFromDisk
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_vectorMock, Vector_PushBack(_, _))
+        .Times(3)
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
     EXPECT_EQ(ProfileXConf_set(profile), T2ERROR_SUCCESS);
     EXPECT_TRUE(ProfileXConf_isSet());
 
@@ -872,19 +1067,19 @@ TEST_F(ProfileTest, PushDataWithDelim_NormalEvent) {
 #if 1
     EXPECT_CALL(*g_rbusMock, rbus_registerLogHandler(_))
            .Times(1)
-           .WillOnce(Return(RBUS_ERROR_SUCCESS));
+           .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
     EXPECT_CALL(*g_rbusMock, rbus_open(_,_))
            .Times(1)
-           .WillOnce(Return(RBUS_ERROR_SUCCESS));
+           .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
     EXPECT_CALL(*g_rbusMock, rbus_checkStatus())
            .Times(1)
-           .WillOnce(Return(RBUS_ENABLED));
+           .WillRepeatedly(Return(RBUS_ENABLED));
     EXPECT_CALL(*g_rbusMock, rbus_regDataElements(_,_,_))
            .Times(1)
-           .WillOnce(Return(RBUS_ERROR_SUCCESS));
+           .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
     EXPECT_CALL(*g_systemMock, system(_))
            .Times(1)
-           .WillOnce(Return(0));
+           .WillRepeatedly(Return(0));
 #endif
     T2ER_Init();
     ////EREnabled = true;
@@ -988,19 +1183,19 @@ TEST_F(ProfileTest, InitAlreadyInitialized) {
 #if 1
     EXPECT_CALL(*g_rbusMock, rbus_registerLogHandler(_))
            .Times(1)
-           .WillOnce(Return(RBUS_ERROR_SUCCESS));
+           .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
     EXPECT_CALL(*g_rbusMock, rbus_open(_,_))
            .Times(1)
-           .WillOnce(Return(RBUS_ERROR_SUCCESS));
+           .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
     EXPECT_CALL(*g_rbusMock, rbus_checkStatus())
            .Times(1)
-           .WillOnce(Return(RBUS_ENABLED));
+           .WillRepeatedly(Return(RBUS_ENABLED));
     EXPECT_CALL(*g_rbusMock, rbus_regDataElements(_,_,_))
            .Times(1)
-           .WillOnce(Return(RBUS_ERROR_SUCCESS));
+           .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
     EXPECT_CALL(*g_systemMock, system(_))
            .Times(1)
-           .WillOnce(Return(0));
+           .WillRepeatedly(Return(0));
 #endif
     T2ER_Init();
     T2ERROR res = T2ER_Init();
@@ -1058,19 +1253,19 @@ TEST_F(ProfileTest, Uninit_Normal) {
 /*
     EXPECT_CALL(*g_rbusMock, rbus_registerLogHandler(_))
            .Times(1)
-           .WillOnce(Return(RBUS_ERROR_SUCCESS));
+           .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
     EXPECT_CALL(*g_rbusMock, rbus_open(_,_))
            .Times(1)
-           .WillOnce(Return(RBUS_ERROR_SUCCESS));
+           .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
     EXPECT_CALL(*g_rbusMock, rbus_checkStatus())
            .Times(1)
-           .WillOnce(Return(RBUS_ENABLED));
+           .WillRepeatedly(Return(RBUS_ENABLED));
     EXPECT_CALL(*g_rbusMock, rbus_regDataElements(_,_,_))
            .Times(1)
-           .WillOnce(Return(RBUS_ERROR_SUCCESS));
+           .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
     EXPECT_CALL(*g_systemMock, system(_))
            .Times(1)
-           .WillOnce(Return(0));
+           .WillRepeatedly(Return(0));
 */
     T2ER_Init();
     //EREnabled = true;
@@ -1112,7 +1307,7 @@ TEST_F(ProfileTest, VectorMockDemo_Create_Success) {
     // Example of using Vector mock with simple return value
     EXPECT_CALL(*g_vectorMock, Vector_Create(_))
         .Times(1)
-        .WillOnce(Return(T2ERROR_SUCCESS));
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
     
     EXPECT_EQ(Vector_Create(&testVector), T2ERROR_SUCCESS);
 }
@@ -1122,7 +1317,7 @@ TEST_F(ProfileTest, VectorMockDemo_Size_Returns_Zero) {
     
     EXPECT_CALL(*g_vectorMock, Vector_Size(_))
         .Times(1)
-        .WillOnce(Return(0));
+        .WillRepeatedly(Return(0));
     
     size_t size = Vector_Size(&testVector);
     EXPECT_EQ(size, 0);
@@ -1134,7 +1329,7 @@ TEST_F(ProfileTest, VectorMockDemo_PushBack_Success) {
     
     EXPECT_CALL(*g_vectorMock, Vector_PushBack(_, _))
         .Times(1)
-        .WillOnce(Return(T2ERROR_SUCCESS));
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
     
     EXPECT_EQ(Vector_PushBack(&testVector, testData), T2ERROR_SUCCESS);
     

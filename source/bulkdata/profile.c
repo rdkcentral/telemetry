@@ -221,6 +221,7 @@ static T2ERROR getProfile(const char *profileName, Profile **profile)
     {
         T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
         tempProfile = (Profile *)Vector_At(profileList, profileIndex);
+        T2Debug("%s : %d : tempProfile->name = %s, profileName = %s\n", __FUNCTION__, __LINE__, tempProfile->name, profileName);
         if(strcmp(tempProfile->name, profileName) == 0)
         {
             T2Debug("%s : %d\n", __FUNCTION__, __LINE__);

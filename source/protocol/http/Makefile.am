@@ -24,7 +24,7 @@ libhttp_la_SOURCES = curlinterface.c
 libhttp_la_LDFLAGS = -shared -fPIC -lcurl
 if IS_LIBRDKCERTSEL_ENABLED
 libhttp_la_CFLAGS = $(LIBRDKCERTSEL_FLAG)
-libhttp_la_LDFLAGS += -lRdkCertSelector
+libhttp_la_LDFLAGS += -lRdkCertSelector -lsetTlsCert
 endif
 libhttp_la_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \
                                 -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/dbus-1.0/include \

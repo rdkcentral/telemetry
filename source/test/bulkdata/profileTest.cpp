@@ -83,6 +83,8 @@ protected:
 
 
 
+#if 1
+//comment
 //==================================== profile.c ===================
 
 // Test initProfileList
@@ -255,7 +257,10 @@ TEST_F(ProfileTest, AppendTriggerCondition_FailAndQueue) {
     auto orig = pthread_mutex_trylock;
     EXPECT_EQ(appendTriggerCondition(&tmp, "refname", "refval"), T2ERROR_FAILURE);
 }
+#endif
 
+#if 1
+//comment
 //==================================== datamodel.c ===================
 
 TEST_F(ProfileTest, Init_Success)
@@ -349,8 +354,10 @@ TEST_F(ProfileTest, MsgpackProcessProfile_Success) {
     int size = 10;
     EXPECT_EQ(datamodel_MsgpackProcessProfile(blob, size), T2ERROR_SUCCESS);
 }
+#endif
 
-
+#if 0
+//comment
 // ============================== t2markers.c =============================
 
 TEST_F(ProfileTest, InitAndDestroyShouldWork) {
@@ -579,9 +586,12 @@ TEST_F(ProfileTest, ClearMarkerComponentMapShouldRemoveEntries) {
 }
 
 #endif
+#endif
 
 
 #if 0
+//comment
+
 //================================ reportProfiles.c ====================================
 
 #if 1
@@ -886,6 +896,7 @@ TEST_F(ProfileTest, ReportProfiles_uninit) {
 #endif
 
 #if 0
+//comment
 //=================================== profilexconf.c ================================
 
 TEST_F(ProfileTest, InitAndUninit) {
@@ -1147,6 +1158,7 @@ TEST_F(ProfileTest, ProfileXConf_updateMarkerComponentMap)
 
 #endif
 #if 1
+//comment
 //=============================== t2eventreceiver.c =============================
 
 

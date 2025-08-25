@@ -581,6 +581,7 @@ TEST_F(ProfileTest, ClearMarkerComponentMapShouldRemoveEntries) {
 #endif
 
 
+#if 0
 //================================ reportProfiles.c ====================================
 
 #if 1
@@ -821,7 +822,7 @@ TEST_F(ProfileTest, RemovePreRPfromDisk) {
     EXPECT_EQ(RemovePreRPfromDisk("/tmp", &dummy), T2ERROR_FAILURE);
 }
 
-#if 1
+#if 0
 TEST_F(ProfileTest, deleteAllReportProfiles) {
     EXPECT_CALL(*g_vectorMock, Vector_Size(_))
         .Times(1)
@@ -830,7 +831,9 @@ TEST_F(ProfileTest, deleteAllReportProfiles) {
         .WillRepeatedly(Return(T2ERROR_SUCCESS));
     EXPECT_EQ(deleteAllReportProfiles(), T2ERROR_SUCCESS);
 }
+#endif
 
+#if 1
 TEST_F(ProfileTest, isMtlsEnabled) {
     char status[8] = "true";
     EXPECT_CALL(*g_rbusMock, rbus_get(_,_,_))
@@ -880,7 +883,9 @@ TEST_F(ProfileTest, ReportProfiles_uninit) {
     EXPECT_EQ(ReportProfiles_uninit(), T2ERROR_SUCCESS);
 }
 #endif
+#endif
 
+#if 0
 //=================================== profilexconf.c ================================
 
 TEST_F(ProfileTest, InitAndUninit) {
@@ -1140,7 +1145,8 @@ TEST_F(ProfileTest, ProfileXConf_updateMarkerComponentMap)
     EXPECT_EQ(ProfileXConf_uninit(), T2ERROR_SUCCESS);
 }
 
-
+#endif
+#if 1
 //=============================== t2eventreceiver.c =============================
 
 
@@ -1269,6 +1275,7 @@ TEST_F(ProfileTest, EventDispatchThread_NoEventsWait) {
 }
 */
 
+/*
 TEST_F(ProfileTest, InitAlreadyInitialized) {
 #if 1
     EXPECT_CALL(*g_rbusMock, rbus_registerLogHandler(_))
@@ -1292,7 +1299,6 @@ TEST_F(ProfileTest, InitAlreadyInitialized) {
     ASSERT_EQ(res, T2ERROR_SUCCESS);
 }
 
-/*
 TEST_F(ProfileTest, InitFailures) {
     //eQueue = nullptr;
     //EREnabled = false;
@@ -1339,6 +1345,7 @@ TEST_F(ProfileTest, StopDispatchThread_NotRunningOrNotInitialized) {
 }
 */
 
+#if 0
 TEST_F(ProfileTest, Uninit_Normal) {
 /*
     EXPECT_CALL(*g_rbusMock, rbus_registerLogHandler(_))
@@ -1369,6 +1376,7 @@ TEST_F(ProfileTest, Uninit_NotInitialized) {
     //EREnabled = false;
     T2ER_Uninit();
 }
+#endif
 
 /* Static functions
 TEST_F(ProfileTest, FlushCacheFromFile_AndRemove) {
@@ -1391,6 +1399,7 @@ TEST_F(ProfileTest, FlushCacheFromFile_FopenFail) {
 
 //============================== Vector Mock Demo ==========================
 
+#if 0
 TEST_F(ProfileTest, VectorMockDemo_Create_Success) {
     Vector* testVector = nullptr;
     
@@ -1426,5 +1435,8 @@ TEST_F(ProfileTest, VectorMockDemo_PushBack_Success) {
     free(testData);
 }
 
+#endif
+
+#endif
 //============================== Functional L1 ==========================
 

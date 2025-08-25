@@ -589,7 +589,7 @@ TEST_F(ProfileTest, ClearMarkerComponentMapShouldRemoveEntries) {
 #endif
 
 
-#if 0
+#if 1
 //comment
 
 //================================ reportProfiles.c ====================================
@@ -895,7 +895,7 @@ TEST_F(ProfileTest, ReportProfiles_uninit) {
 #endif
 #endif
 
-#if 0
+#if 1
 //comment
 //=================================== profilexconf.c ================================
 

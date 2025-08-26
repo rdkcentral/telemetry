@@ -266,16 +266,12 @@ void initProperties(char **logpath, char **perspath, long* pagesize)
 
     FILE *file = NULL;
 
-    printf("%s : %d\n", __func__, __LINE__);
     file = fopen( DEVICE_PROPERTIES, "r");
-    printf("%s : %d\n", __func__, __LINE__);
     if(NULL != file)
     {
         char props[255] = { "" };
-    printf("%s : %d\n", __func__, __LINE__);
         while(fscanf(file, "%254s", props) != EOF)
         {
-    printf("%s : %d\n", __func__, __LINE__);
             char *property = NULL;
             if((property = strstr(props, "DEVICE_TYPE=")))
             {
@@ -288,17 +284,12 @@ void initProperties(char **logpath, char **perspath, long* pagesize)
                 break;
             }
         }
-    printf("%s : %d\n", __func__, __LINE__);
         fclose(file);
-    printf("%s : %d\n", __func__, __LINE__);
     }
 
-    printf("%s : %d\n", __func__, __LINE__);
     updateIncludeConfVal(logpath, perspath);
 
-    printf("%s : %d\n", __func__, __LINE__);
     *pagesize = sysconf(_SC_PAGESIZE);
 
-    printf("%s : %d\n", __func__, __LINE__);
     T2Debug("%s --out \n", __FUNCTION__);
 }

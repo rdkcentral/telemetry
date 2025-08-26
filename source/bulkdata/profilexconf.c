@@ -503,7 +503,6 @@ reportXconfThreadEnd :
 
 T2ERROR ProfileXConf_init(bool checkPreviousSeek)
 {
-    printf("%s : %d\n", __func__, __LINE__);
     (void) checkPreviousSeek; // To fix compiler warning
     T2Debug("%s ++in\n", __FUNCTION__);
     if(!initialized)
@@ -517,29 +516,22 @@ T2ERROR ProfileXConf_init(bool checkPreviousSeek)
             T2Error("%s Mutex init has failed\n", __FUNCTION__);
             return T2ERROR_FAILURE;
         }
-    printf("%s : %d\n", __func__, __LINE__);
         Vector_Create(&configList);
-    printf("%s : %d\n", __func__, __LINE__);
         fetchLocalConfigs(XCONFPROFILE_PERSISTENCE_PATH, configList);
-    printf("%s : %d\n", __func__, __LINE__);
 
         if(Vector_Size(configList) > 1) // This is to address corner cases where if multiple configs are saved, we ignore them and wait for new config.
         {
-    printf("%s : %d\n", __func__, __LINE__);
             T2Info("Found multiple saved profiles, removing all from the disk and waiting for updated configuration\n");
             clearPersistenceFolder(XCONFPROFILE_PERSISTENCE_PATH);
-    printf("%s : %d\n", __func__, __LINE__);
         }
         else if(Vector_Size(configList) == 1)
         {
-    printf("%s : %d\n", __func__, __LINE__);
             config = Vector_At(configList, 0);
             ProfileXConf *profile = 0;
             T2Debug("Processing config with name : %s\n", config->name);
             T2Debug("Config Size = %lu\n", (unsigned long)strlen(config->configData));
             if(T2ERROR_SUCCESS == processConfigurationXConf(config->configData, &profile))
             {
-    printf("%s : %d\n", __func__, __LINE__);
 #ifdef PERSIST_LOG_MON_REF
                 if(checkPreviousSeek && profile->grepSeekProfile && loadSavedSeekConfig(profile->name, profile->grepSeekProfile) == T2ERROR_SUCCESS && firstBootStatus())
                 {
@@ -553,7 +545,6 @@ T2ERROR ProfileXConf_init(bool checkPreviousSeek)
                 profile->checkPreviousSeek = false;
 #endif
 
-    printf("%s : %d\n", __func__, __LINE__);
                 if(T2ERROR_SUCCESS == ProfileXConf_set(profile))
                 {
                     T2Info("Successfully set new profile: %s\n", profile->name);
@@ -564,12 +555,9 @@ T2ERROR ProfileXConf_init(bool checkPreviousSeek)
                         T2Info("Previous Seek is enabled so generate the Xconf report \n");
                         // Trigger a xconf report if previous seek is enabled and valid.
                         ProfileXConf_notifyTimeout(true, true);
-    printf("%s : %d\n", __func__, __LINE__);
                     }
 #endif
-    printf("%s : %d\n", __func__, __LINE__);
                     populateCachedReportList(profile->name, profile->cachedReportList);
-    printf("%s : %d\n", __func__, __LINE__);
                 }
                 else
                 {
@@ -577,9 +565,7 @@ T2ERROR ProfileXConf_init(bool checkPreviousSeek)
                 }
             }
         }
-    printf("%s : %d\n", __func__, __LINE__);
         Vector_Destroy(configList, freeConfig);
-    printf("%s : %d\n", __func__, __LINE__);
     }
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;

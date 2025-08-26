@@ -43,6 +43,7 @@ public:
     MOCK_METHOD(rbusValueType_t, rbusValue_GetType, (rbusValue_t v), ());
     MOCK_METHOD(struct _rbusObject*, rbusValue_GetObject, (rbusValue_t v), ());
     MOCK_METHOD(bool, rbusValue_GetBoolean, (rbusValue_t value), ());
+    MOCK_METHOD(char const*, rbusValue_GetString, (rbusValue_t value, int* len), ());
     MOCK_METHOD(rbusProperty_t, rbusProperty_Init, (rbusProperty_t* pproperty, char const* name, rbusValue_t value), ());
     MOCK_METHOD(void, rbusValue_SetProperty, (rbusValue_t value, struct _rbusProperty* property), ());
     MOCK_METHOD(rbusError_t, rbus_set, (rbusHandle_t handle, char const* name, rbusValue_t value, rbusSetOptions_t* opts), ());
@@ -97,6 +98,7 @@ extern "C" rbusError_t rbus_open(rbusHandle_t* handle, char const* componentName
 extern "C" rbusValueType_t rbusValue_GetType(rbusValue_t v);
 extern "C" struct _rbusObject* rbusValue_GetObject(rbusValue_t v);
 extern "C" bool rbusValue_GetBoolean(rbusValue_t value);
+extern "C" char const* rbusValue_GetString(rbusValue_t value, int* len);
 extern "C" rbusProperty_t rbusProperty_Init(rbusProperty_t* pproperty, char const* name, rbusValue_t value);
 extern "C" void rbusValue_SetProperty(rbusValue_t value, struct _rbusProperty* property);
 extern "C" rbusError_t rbus_set(rbusHandle_t handle, char const* name, rbusValue_t value, rbusSetOptions_t* opts);

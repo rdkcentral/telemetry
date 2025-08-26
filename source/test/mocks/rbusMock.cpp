@@ -107,8 +107,7 @@ extern "C" rbusStatus_t rbus_checkStatus(void)
     {
         return RBUS_ENABLED;
     }
-    return RBUS_ENABLED;
-    //return g_rbusMock->rbus_checkStatus();
+    return g_rbusMock->rbus_checkStatus();
 }
 
 extern "C" rbusError_t rbus_open(rbusHandle_t* handle, char const* componentName)
@@ -117,8 +116,7 @@ extern "C" rbusError_t rbus_open(rbusHandle_t* handle, char const* componentName
     {
         return RBUS_ERROR_SUCCESS;
     }
-    return RBUS_ERROR_SUCCESS;
-    //return g_rbusMock->rbus_open(handle, componentName);
+    return g_rbusMock->rbus_open(handle, componentName);
 }
 
 extern "C" rbusValueType_t rbusValue_GetType(rbusValue_t v)
@@ -146,6 +144,15 @@ extern "C" bool rbusValue_GetBoolean(rbusValue_t value)
         return true;
     }
     return g_rbusMock->rbusValue_GetBoolean(value);
+}
+
+extern "C" char const* rbusValue_GetString(rbusValue_t value, int* len)
+{
+    if (!g_rbusMock)
+    {
+        return "mock_string";
+    }
+    return g_rbusMock->rbusValue_GetString(value, len);
 }
 
 extern "C" rbusProperty_t rbusProperty_Init(rbusProperty_t* pproperty, char const* name, rbusValue_t value)
@@ -369,8 +376,7 @@ extern "C" rbusError_t rbus_registerLogHandler( rbusLogHandler logHandler)
     {
         return RBUS_ERROR_SUCCESS;
     }
-    return RBUS_ERROR_SUCCESS;
-    //return g_rbusMock->rbus_registerLogHandler(logHandler);
+    return g_rbusMock->rbus_registerLogHandler(logHandler);
 }
 
 extern "C" rbusError_t rbus_getExt( rbusHandle_t handle, int paramCount, char const** paramNames, int *numProps, rbusProperty_t* properties)   

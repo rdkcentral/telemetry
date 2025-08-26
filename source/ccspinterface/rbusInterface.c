@@ -120,23 +120,18 @@ void logHandler(
 static T2ERROR rBusInterface_Init( )
 {
     T2Debug("%s ++in\n", __FUNCTION__);
-    printf("%s : %d\n", __func__, __LINE__);
 
     int ret = RBUS_ERROR_SUCCESS;
 
-    printf("%s : %d\n", __func__, __LINE__);
     //rbus_setLogLevel(RBUS_LOG_DEBUG);
     rbus_registerLogHandler(logHandler);
-    printf("%s : %d\n", __func__, __LINE__);
 
     ret = rbus_open(&t2bus_handle, COMPONENT_NAME);
     if(ret != RBUS_ERROR_SUCCESS)
     {
-        printf("%s : %d\n", __func__, __LINE__);
         T2Error("%s:%d, init failed with error code %d \n", __func__, __LINE__, ret);
         return T2ERROR_FAILURE;
     }
-    printf("%s : %d\n", __func__, __LINE__);
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
@@ -1064,19 +1059,15 @@ int getRbusDCMEventStatus()
 T2ERROR registerRbusDCMEventListener()
 {
     T2Debug("%s ++in\n", __FUNCTION__);
-    printf("%s : %d\n", __func__, __LINE__);
 
     T2ERROR status = T2ERROR_SUCCESS;
     rbusError_t ret = RBUS_ERROR_SUCCESS;
 
-    printf("%s : %d\n", __func__, __LINE__);
     if(!t2bus_handle && T2ERROR_SUCCESS != rBusInterface_Init())
     {
-        printf("%s : %d\n", __func__, __LINE__);
         return T2ERROR_FAILURE;
     }
 
-    printf("%s : %d\n", __func__, __LINE__);
     /**
      * Register data elements with rbus for EVENTS and Profile Updates.
      */
@@ -1086,7 +1077,6 @@ T2ERROR registerRbusDCMEventListener()
         {T2_EVENT_DCM_PROCCONF, RBUS_ELEMENT_TYPE_EVENT, {NULL, NULL, NULL, NULL, (rbusEventSubHandler_t)eventSubHandler, NULL}}
     };
 
-    printf("%s : %d\n", __func__, __LINE__);
     ret = rbus_regDataElements(t2bus_handle, 2, dataElements);
     if(ret != RBUS_ERROR_SUCCESS)
     {
@@ -1094,7 +1084,6 @@ T2ERROR registerRbusDCMEventListener()
         status = T2ERROR_FAILURE ;
     }
 
-    printf("%s : %d\n", __func__, __LINE__);
     T2Debug("Subscribing to %s\n", T2_DCM_RELOAD_EVENT);
     /* Subscribe for reload config event */
     ret = rbusEvent_Subscribe(t2bus_handle,
@@ -1102,15 +1091,12 @@ T2ERROR registerRbusDCMEventListener()
                               rbusReloadConf,
                               NULL,
                               0);
-    printf("%s : %d\n", __func__, __LINE__);
     if(ret != RBUS_ERROR_SUCCESS)
     {
-        printf("%s : %d\n", __func__, __LINE__);
         T2Error("Failed to subscribe DCM reload event with rbus. Error code : %d\n", ret);
         status = T2ERROR_FAILURE ;
     }
 
-    printf("%s : %d\n", __func__, __LINE__);
     T2Debug("%s --out\n", __FUNCTION__);
 
     return status;
@@ -1228,7 +1214,6 @@ T2ERROR registerRbusT2EventListener(TelemetryEventCallback eventCB)
         return T2ERROR_FAILURE;
     }
 
-    printf("%s : %d\n", __func__, __LINE__);
     /**
      * Register data elements with rbus for EVENTS and Profile Updates.
      */
@@ -1238,17 +1223,13 @@ T2ERROR registerRbusT2EventListener(TelemetryEventCallback eventCB)
         {T2_PROFILE_UPDATED_NOTIFY, RBUS_ELEMENT_TYPE_EVENT, {NULL, NULL, NULL, NULL, (rbusEventSubHandler_t)eventSubHandler, NULL}},
         {T2_OPERATIONAL_STATUS, RBUS_ELEMENT_TYPE_PROPERTY, {t2PropertyDataGetHandler, NULL, NULL, NULL, NULL, NULL}}
     };
-    printf("%s : %d\n", __func__, __LINE__);
     ret = rbus_regDataElements(t2bus_handle, 3, dataElements);
-    printf("%s : %d\n", __func__, __LINE__);
     if(ret != RBUS_ERROR_SUCCESS)
     {
-        printf("%s : %d\n", __func__, __LINE__);
         T2Error("Failed to register T2 data elements with rbus. Error code : %d\n", ret);
         status = T2ERROR_FAILURE ;
     }
     eventCallBack = eventCB ;
-    printf("%s : %d\n", __func__, __LINE__);
 
     T2Debug("%s --out\n", __FUNCTION__);
     return status;

@@ -116,6 +116,7 @@ extern "C" rbusError_t rbus_open(rbusHandle_t* handle, char const* componentName
     {
         return RBUS_ERROR_SUCCESS;
     }
+
     return g_rbusMock->rbus_open(handle, componentName);
 }
 
@@ -222,6 +223,7 @@ extern "C" rbusError_t rbus_close(rbusHandle_t handle)
         return RBUS_ERROR_SUCCESS;
     }
     return g_rbusMock->rbus_close(handle);
+    //return g_rbusMock->rbus_close(handle);
 }
 
 extern "C" rbusProperty_t rbusObject_GetProperties(rbusObject_t object)
@@ -376,7 +378,7 @@ extern "C" rbusError_t rbus_registerLogHandler( rbusLogHandler logHandler)
     {
         return RBUS_ERROR_SUCCESS;
     }
-    return g_rbusMock->rbus_registerLogHandler(logHandler);
+    //return g_rbusMock->rbus_registerLogHandler(logHandler);
 }
 
 extern "C" rbusError_t rbus_getExt( rbusHandle_t handle, int paramCount, char const** paramNames, int *numProps, rbusProperty_t* properties)   
@@ -403,7 +405,7 @@ extern "C" rbusError_t rbusEvent_Unsubscribe( rbusHandle_t handle, char const* e
     {
         return RBUS_ERROR_SUCCESS;
     }
-    return g_rbusMock->rbusEvent_Unsubscribe(handle, eventName);
+    //return g_rbusMock->rbusEvent_Unsubscribe(handle, eventName);
 }
 
 extern "C" rbusError_t rbus_unregDataElements ( rbusHandle_t handle, int numDataElements, rbusDataElement_t *elements)

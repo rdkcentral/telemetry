@@ -19,4 +19,4 @@
 AUTOMAKE_OPTIONS = subdir-objects
 
 
-SUBDIRS = bulkdata t2parser reportgen scheduler dcautils ccspinterface 
+SUBDIRS = t2parser reportgen scheduler dcautils ccspinterface

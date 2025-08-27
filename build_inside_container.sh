@@ -25,7 +25,7 @@ export top_builddir=`pwd`
 autoreconf --install
 
 # FLags to print compiler warnings
-DEBUG_CFLAGS="-Wall -Werror -Wextra -g"
+DEBUG_CFLAGS="-Wall -Werror -Wextra"
 
 export CFLAGS=" ${DEBUG_CFLAGS} -I${INSTALL_DIR}/include/rtmessage -I${INSTALL_DIR}/include/msgpack -I${INSTALL_DIR}/include/rbus -I${INSTALL_DIR}/include -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/local/include -DFEATURE_SUPPORT_WEBCONFIG -DRDK_LOGGER -DPERSIST_LOG_MON_REF -DDCMAGENT" 
 

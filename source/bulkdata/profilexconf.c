@@ -361,10 +361,11 @@ static void* CollectAndReportXconf(void* data)
 #ifdef PERSIST_LOG_MON_REF
             if(profile->checkPreviousSeek)
             {
-                T2Info("This is a Previous Logs Report sleep randomly for 1-100 sec\n");
                 srand(size + 1);
-                int random_sleep = (int) rand() % 99;
-                sleep(random_sleep);
+                int random_sleep = (int) rand() % 50;
+                sleep(random_sleep + 1);
+                // reducing the MAX sleep value from 100 -> 50 seconds to avoid conflict with regular execution
+                T2Info("This is a Previous Logs Report sleep randomly for 1-50 sec\n");
             }
 #endif
             if(profile->protocol != NULL && strcmp(profile->protocol, "HTTP") == 0)
@@ -554,7 +555,7 @@ T2ERROR ProfileXConf_init(bool checkPreviousSeek)
                     {
                         T2Info("Previous Seek is enabled so generate the Xconf report \n");
                         // Trigger a xconf report if previous seek is enabled and valid.
-                        ProfileXConf_notifyTimeout(true, true);
+                        ProfileXConf_notifyTimeout(true, false);
                     }
 #endif
                     populateCachedReportList(profile->name, profile->cachedReportList);

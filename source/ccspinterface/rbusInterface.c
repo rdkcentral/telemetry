@@ -911,6 +911,7 @@ void publishReportUploadStatus(char* status)
     {
         T2Info("%s rbusMethod_SendAsyncResponse sent successfully \n", __FUNCTION__);
     }
+    onDemandReportCallBackHandler = NULL; // just a safety cleanup
     pthread_mutex_unlock(&asyncMutex);
     rbusValue_Release(value);
     rbusObject_Release(outParams);

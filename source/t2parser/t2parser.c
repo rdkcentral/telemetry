@@ -354,7 +354,8 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
         }
         gMarker->skipFreq = skipFreq;
         gMarker->firstSeekFromEOF = firstSeekFromEOF;
-        if(strncmp("top_log.txt", fileName, sizeof("top_log.txt")) == 0)
+
+        if(fileName != NULL && strncmp("top_log.txt", fileName, sizeof("top_log.txt")) == 0)
         {
             T2Debug("This is a TopMarker name :%s  and value: %s add it to topmarker list \n", name, ref);
             Vector_PushBack(profile->topMarkerList, gMarker);

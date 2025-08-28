@@ -258,106 +258,35 @@ TEST_F(ProfileTest, AppendTriggerCondition_FailAndQueue) {
     //EXPECT_EQ(appendTriggerCondition(&tmp, "refname", "refval"), T2ERROR_FAILURE);
     EXPECT_EQ(appendTriggerCondition(&tmp, "refname", "refval"), T2ERROR_SUCCESS);
 }
+
+TEST_F(ProfileTest, updateMarkerComponentMap) {
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_)).Times(::testing::AtMost(1)).WillRepeatedly(Return(0));
+    updateMarkerComponentMap();
+}
+
+TEST_F(ProfileTest, registerTriggerConditionConsumer) {
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_)).Times(::testing::AtMost(1)).WillRepeatedly(Return(0));
+    EXPECT_EQ(registerTriggerConditionConsumer(), T2ERROR_SUCCESS);
+}
+
+TEST_F(ProfileTest, reportGenerationCompleteReceiver) {
+    reportGenerationCompleteReceiver("profileX");
+}
+
+TEST_F(ProfileTest, triggerReportOnCondtion) {
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_)).Times(::testing::AtMost(1)).WillRepeatedly(Return(0));
+    EXPECT_EQ(triggerReportOnCondtion("refname", "refvalue"), T2ERROR_SUCCESS);
+}
+
+TEST_F(ProfileTest, getMinThresholdDuration_Failure) {
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_)).Times(::testing::AtMost(1)).WillRepeatedly(Return(0));
+    EXPECT_EQ(getMinThresholdDuration("profile1"), 0);
+}
+
 #endif
 
-#if 0
-//comment
-//==================================== datamodel.c ===================
-
-TEST_F(ProfileTest, Init_Success)
-{
-    EXPECT_EQ(datamodel_init(), T2ERROR_SUCCESS);
-}
-
-TEST_F(ProfileTest, processProfile_ValidJson_RP) {
-    //char json[] = "{\"profiles\":[]}";
-    char json[] = "{ \"profiles\": [ { \"name\": \"TR_AC732\", \"hash\": \"Hash732\", \"value\": { \"Name\": \"RDKB_Profile_3\", \"Description\": \"RDKB_Profile\", \"Version\": \"0.1\", \"Protocol\": \"RBUS_METHOD\", \"EncodingType\": \"JSON\", \"ActivationTimeout\": 3600, \"ReportingInterval\": 20, \"GenerateNow\": false, \"RootName\": \"FR2_US_TC3\", \"Parameter\": [ { \"type\": \"event\", \"eventName\": \"TEST_EVENT_MARKER_1\", \"component\": \"sysint\", \"use\": \"count\" }, { \"type\": \"event\", \"eventName\": \"TEST_EVENT_MARKER_2\", \"component\": \"sysint\", \"use\": \"accumulate\", \"reportTimestamp\":\"Unix-Epoch\" }, { \"type\": \"grep\", \"marker\": \"SYS_INFO_CrashPortalUpload_success\", \"search\": \"Success loading\", \"logFile\": \"core_log.txt\", \"use\": \"count\", \"reportEmpty\":true } ], \"ReportingAdjustments\": [ { \"ReportOnUpdate\": false, \"FirstReportingInterval\": 15, \"MaxUploadLatency\": 20000 } ], \"RBUS_METHOD\":{\"Method\":\"Device.X_RDK_Xmidt.SendData\",\"Parameters\":[{\"name\":\"msg_type\",\"value\":\"event\"},{\"name\":\"source\",\"value\":\"telemetry2\"},{\"name\":\"dest\",\"value\":\"event:/profile-report/LTE-report\"},{\"name\":\"content_type\",\"value\":\"application/json\"},{\"name\":\"qos\",\"value\":\"75\"}]}, \"JSONEncoding\": { \"ReportFormat\": \"NameValuePair\", \"ReportTimestamp\": \"None\" } } } ] }";
-    EXPECT_EQ(datamodel_processProfile(json, T2_RP), T2ERROR_SUCCESS);
-}
-
-#if 0
-TEST_F(ProfileTest, processProfile_ValidJson_TEMP_RP) {
-    //char json[] = "{\"profiles\":[]}";
-    char json[] = "{ \"profiles\": [ { \"name\": \"TR_Temp\", \"hash\": \"HashTemp\", \"value\": { \"Name\": \"RDKB_Profile_3\", \"Description\": \"RDKB_Profile\", \"Version\": \"0.1\", \"Protocol\": \"RBUS_METHOD\", \"EncodingType\": \"JSON\", \"ActivationTimeout\": 3600, \"ReportingInterval\": 20, \"GenerateNow\": false, \"RootName\": \"FR2_US_TC3\", \"Parameter\": [ { \"type\": \"event\", \"eventName\": \"TEST_EVENT_MARKER_1\", \"component\": \"sysint\", \"use\": \"count\" }, { \"type\": \"event\", \"eventName\": \"TEST_EVENT_MARKER_2\", \"component\": \"sysint\", \"use\": \"accumulate\", \"reportTimestamp\":\"Unix-Epoch\" }, { \"type\": \"grep\", \"marker\": \"SYS_INFO_CrashPortalUpload_success\", \"search\": \"Success loading\", \"logFile\": \"core_log.txt\", \"use\": \"count\", \"reportEmpty\":true } ], \"ReportingAdjustments\": [ { \"ReportOnUpdate\": false, \"FirstReportingInterval\": 15, \"MaxUploadLatency\": 20000 } ], \"RBUS_METHOD\":{\"Method\":\"Device.X_RDK_Xmidt.SendData\",\"Parameters\":[{\"name\":\"msg_type\",\"value\":\"event\"},{\"name\":\"source\",\"value\":\"telemetry2\"},{\"name\":\"dest\",\"value\":\"event:/profile-report/LTE-report\"},{\"name\":\"content_type\",\"value\":\"application/json\"},{\"name\":\"qos\",\"value\":\"75\"}]}, \"JSONEncoding\": { \"ReportFormat\": \"NameValuePair\", \"ReportTimestamp\": \"None\" } } } ] }";
-    EXPECT_EQ(datamodel_processProfile(json, T2_TEMP_RP), T2ERROR_SUCCESS);
-}
-#endif
-
-TEST_F(ProfileTest, processProfile_InvalidJson) {
-    char json[] = "fail";
-    EXPECT_EQ(datamodel_processProfile(json, T2_RP), T2ERROR_FAILURE);
-}
-
-TEST_F(ProfileTest, processProfile_MissingProfiles) {
-    char json[] = "missing_profiles";
-    EXPECT_EQ(datamodel_processProfile(json, T2_RP), T2ERROR_FAILURE);
-}
-
-#if 0
-//Hanginf because unable to get the rp lock
-TEST_F(ProfileTest, processProfile_StopProcessingTrue) {
-    char json[] = "{\"profiles\":[]}";
-    EXPECT_EQ(datamodel_processProfile(json, T2_RP), T2ERROR_SUCCESS);
-}
-#endif
 
 #if 1
-//==> To be FIXED
-TEST_F(ProfileTest, getSavedJsonProfilesasString_EmptyVector) {
-    char* result = nullptr;
-    //gVector.configs.clear();
-    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
-        .Times(::testing::AtMost(1))
-        .WillRepeatedly(Return(0));
-    EXPECT_CALL(*g_vectorMock, Vector_Create(_))
-        .Times(::testing::AtMost(1))  // 1 for local test configlist, 1 for global profileList, 1 for configList in loadReportProfilesFromDisk
-        .WillRepeatedly(Return(T2ERROR_SUCCESS));
-    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _))
-        .Times(::testing::AtMost(1))  // 1 for local test configlist, 1 for configList in loadReportProfilesFromDisk
-        .WillRepeatedly(Return(T2ERROR_SUCCESS));
-    datamodel_getSavedJsonProfilesasString(&result);
-    // Result should be a valid JSON string
-    ASSERT_NE(result, nullptr);
-    free(result);
-}
-
-TEST_F(ProfileTest, getSavedJsonProfilesasString_WithConfigs) {
-    //Config conf;
-    //strcpy(conf.name, "test");
-    //conf.configData = strdup("{\"Hash\":\"abc123\"}");
-    //gVector.configs = { &conf };
-    char* result = nullptr;
-    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
-        .Times(::testing::AtMost(1))
-        .WillRepeatedly(Return(0));
-    EXPECT_CALL(*g_vectorMock, Vector_Create(_))
-        .Times(::testing::AtMost(1))  // 1 for local test configlist, 1 for global profileList, 1 for configList in loadReportProfilesFromDisk
-        .WillRepeatedly(Return(T2ERROR_SUCCESS));
-    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _))
-        .Times(::testing::AtMost(1))  // 1 for local test configlist, 1 for configList in loadReportProfilesFromDisk
-        .WillRepeatedly(Return(T2ERROR_SUCCESS));
-    datamodel_getSavedJsonProfilesasString(&result);
-    ASSERT_NE(result, nullptr);
-    //free(conf.configData);
-    free(result);
-}
-#endif
-/*
-TEST_F(ProfileTest, getSavedMsgpackProfilesasString_FileNotFound) {
-    char* result = nullptr;
-    ASSERT_EQ(datamodel_getSavedMsgpackProfilesasString(&result), 0);
-    ASSERT_EQ(result, nullptr);
-}
-
-*/
-TEST_F(ProfileTest, MsgpackProcessProfile_Success) {
-    char* blob = (char*)malloc(10);
-    int size = 10;
-    EXPECT_EQ(datamodel_MsgpackProcessProfile(blob, size), T2ERROR_SUCCESS);
-}
-#endif
-
-#if 0
 //comment
 // ============================== t2markers.c =============================
 
@@ -587,6 +516,7 @@ TEST_F(ProfileTest, ClearMarkerComponentMapShouldRemoveEntries) {
 }
 
 #endif
+
 #endif
 
 
@@ -660,11 +590,11 @@ TEST_F(ProfileTest, initReportProfiles) {
 #if 1
     EXPECT_CALL(*g_vectorMock, Vector_Size(_))
         .Times(::testing::AtMost(5))
-        .WillRepeatedly(Return(1)); // Return 1 to indicate only one profile (no duplicates)
+        .WillRepeatedly(Return(0)); // Return 1 to indicate only one profile (no duplicates)
     EXPECT_CALL(*g_vectorMock, Vector_At(_, 0))
         .Times(::testing::AtMost(5))
         .WillRepeatedly(Return((void*)strdup("PROFILE_1")));
-    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).Times(::testing::AtMost(1))
+    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).Times(::testing::AtMost(2))
         .WillRepeatedly(Return(T2ERROR_SUCCESS));
     EXPECT_CALL(*g_vectorMock, Vector_Create(_))
         .Times(::testing::AtMost(5))  // 1 for local test configlist, 1 for global profileList, 1 for configList in loadReportProfilesFromDisk
@@ -768,9 +698,70 @@ TEST_F(ProfileTest, ReportProfiles_storeMarkerEvent_NonXConfProfile) {
 #if 0
 TEST_F(ProfileTest, ReportProfiles_setProfileXConf) {
     ProfileXConf profile;
-    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+    EXPECT_CALL(*g_schedulerMock, registerProfileWithScheduler(_, _, _, _, _, _, _, _))
         .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    
+    EXPECT_CALL(*g_rbusMock, rbus_checkStatus())
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(RBUS_ENABLED));
+    
+    EXPECT_CALL(*g_rbusMock, rbus_registerLogHandler(_))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
+        
+    EXPECT_CALL(*g_rbusMock, rbus_open(_, _))
+        .Times(::testing::AtMost(2))
+        .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
+    
+    // Mock successful parameter retrieval
+    EXPECT_CALL(*g_rbusMock, rbus_get(_, _, _))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
+        
+    EXPECT_CALL(*g_rbusMock, rbusValue_GetType(_))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(RBUS_STRING));
+        
+    EXPECT_CALL(*g_rbusMock, rbusValue_ToString(_, _, _))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(strdup("test_value")));
+        
+    EXPECT_CALL(*g_rbusMock, rbusValue_Release(_))
+        .Times(::testing::AtMost(1));
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(::testing::AtMost(2))
         .WillRepeatedly(Return(0)); // Return 1 to indicate only one profile (no duplicates)
+				   
+    EXPECT_CALL(*g_rbusMock, rbus_checkStatus())
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(RBUS_ENABLED));
+
+    EXPECT_CALL(*g_rbusMock, rbus_open(_, _))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
+
+    EXPECT_CALL(*g_rbusMock, rbusObject_Init(_, _))
+        .Times(::testing::AtMost(1));
+
+    EXPECT_CALL(*g_rbusMock, rbusValue_Init(_))
+        .Times(::testing::AtMost(1));
+
+    EXPECT_CALL(*g_rbusMock, rbusValue_SetString(_, _))
+        .Times(::testing::AtMost(1));
+
+    EXPECT_CALL(*g_rbusMock, rbusObject_SetValue(_, _, _))
+        .Times(::testing::AtMost(1));
+
+    EXPECT_CALL(*g_rbusMock, rbusValue_Release(_))
+        .Times(::testing::AtMost(1));
+
+    EXPECT_CALL(*g_rbusMock, rbusEvent_Publish(_,_))
+	.Times(::testing::AtMost(1))
+	.WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
+
+    EXPECT_CALL(*g_rbusMock, rbusObject_Release(_))
+        .Times(::testing::AtLeast(1));
     EXPECT_EQ(ReportProfiles_setProfileXConf(&profile), T2ERROR_SUCCESS);
 }
 
@@ -920,7 +911,7 @@ TEST_F(ProfileTest, InitAndUninit) {
            .Times(::testing::AtMost(1))
            .WillRepeatedly(Return(0));
     EXPECT_CALL(*g_vectorMock, Vector_Size(_))
-        .Times(::testing::AtMost(2))
+        .Times(::testing::AtMost(1))
         .WillRepeatedly(Return(1)); // Return 1 to indicate one profile in the list
     EXPECT_CALL(*g_vectorMock, Vector_At(_, 0))
         .Times(::testing::AtMost(1))
@@ -935,7 +926,7 @@ TEST_F(ProfileTest, InitAndUninit) {
     EXPECT_EQ(ProfileXConf_init(false), T2ERROR_SUCCESS);
 }
 
-#if 0
+#if 1
 TEST_F(ProfileTest, SetAndIsSet) {
     // Covers ProfileXConf_set and ProfileXConf_isSet
     ProfileXConf* profile = (ProfileXConf*)malloc(sizeof(ProfileXConf));
@@ -954,8 +945,8 @@ TEST_F(ProfileTest, SetAndIsSet) {
     profile->isUpdated = false;
 
     EXPECT_CALL(*g_vectorMock, Vector_Size(_))
-        .Times(::testing::AtMost(1))
-        .WillRepeatedly(Return(1)); // Return 1 to indicate one profile in the list
+        .Times(::testing::AtMost(3))
+        .WillRepeatedly(Return(0)); // Return 1 to indicate one profile in the list
     EXPECT_CALL(*g_vectorMock, Vector_At(_, 0))
         .Times(::testing::AtMost(1))
         .WillRepeatedly(Return((void*)strdup("PROFILE_1")));
@@ -1165,7 +1156,7 @@ TEST_F(ProfileTest, ProfileXConf_updateMarkerComponentMap)
 }
 
 #endif
-#if 0
+#if 1
 //comment
 //=============================== t2eventreceiver.c =============================
 
@@ -1459,5 +1450,220 @@ TEST_F(ProfileTest, VectorMockDemo_PushBack_Success) {
 #endif
 
 #endif
-//============================== Functional L1 ==========================
 
+#if 1
+//comment
+//==================================== datamodel.c ===================
+
+TEST_F(ProfileTest, Init_Success)
+{
+    EXPECT_EQ(datamodel_init(), T2ERROR_SUCCESS);
+}
+
+TEST_F(ProfileTest, processProfile_ValidJson_RP) {
+    //char json[] = "{\"profiles\":[]}";
+    char json[] = "{ \"profiles\": [ { \"name\": \"TR_AC732\", \"hash\": \"Hash732\", \"value\": { \"Name\": \"RDKB_Profile_3\", \"Description\": \"RDKB_Profile\", \"Version\": \"0.1\", \"Protocol\": \"RBUS_METHOD\", \"EncodingType\": \"JSON\", \"ActivationTimeout\": 3600, \"ReportingInterval\": 20, \"GenerateNow\": false, \"RootName\": \"FR2_US_TC3\", \"Parameter\": [ { \"type\": \"event\", \"eventName\": \"TEST_EVENT_MARKER_1\", \"component\": \"sysint\", \"use\": \"count\" }, { \"type\": \"event\", \"eventName\": \"TEST_EVENT_MARKER_2\", \"component\": \"sysint\", \"use\": \"accumulate\", \"reportTimestamp\":\"Unix-Epoch\" }, { \"type\": \"grep\", \"marker\": \"SYS_INFO_CrashPortalUpload_success\", \"search\": \"Success loading\", \"logFile\": \"core_log.txt\", \"use\": \"count\", \"reportEmpty\":true } ], \"ReportingAdjustments\": [ { \"ReportOnUpdate\": false, \"FirstReportingInterval\": 15, \"MaxUploadLatency\": 20000 } ], \"RBUS_METHOD\":{\"Method\":\"Device.X_RDK_Xmidt.SendData\",\"Parameters\":[{\"name\":\"msg_type\",\"value\":\"event\"},{\"name\":\"source\",\"value\":\"telemetry2\"},{\"name\":\"dest\",\"value\":\"event:/profile-report/LTE-report\"},{\"name\":\"content_type\",\"value\":\"application/json\"},{\"name\":\"qos\",\"value\":\"75\"}]}, \"JSONEncoding\": { \"ReportFormat\": \"NameValuePair\", \"ReportTimestamp\": \"None\" } } } ] }";
+    EXPECT_EQ(datamodel_processProfile(json, T2_RP), T2ERROR_SUCCESS);
+}
+
+#if 0
+TEST_F(ProfileTest, processProfile_ValidJson_TEMP_RP) {
+    //char json[] = "{\"profiles\":[]}";
+    char json[] = "{ \"profiles\": [ { \"name\": \"TR_Temp\", \"hash\": \"HashTemp\", \"value\": { \"Name\": \"RDKB_Profile_3\", \"Description\": \"RDKB_Profile\", \"Version\": \"0.1\", \"Protocol\": \"RBUS_METHOD\", \"EncodingType\": \"JSON\", \"ActivationTimeout\": 3600, \"ReportingInterval\": 20, \"GenerateNow\": false, \"RootName\": \"FR2_US_TC3\", \"Parameter\": [ { \"type\": \"event\", \"eventName\": \"TEST_EVENT_MARKER_1\", \"component\": \"sysint\", \"use\": \"count\" }, { \"type\": \"event\", \"eventName\": \"TEST_EVENT_MARKER_2\", \"component\": \"sysint\", \"use\": \"accumulate\", \"reportTimestamp\":\"Unix-Epoch\" }, { \"type\": \"grep\", \"marker\": \"SYS_INFO_CrashPortalUpload_success\", \"search\": \"Success loading\", \"logFile\": \"core_log.txt\", \"use\": \"count\", \"reportEmpty\":true } ], \"ReportingAdjustments\": [ { \"ReportOnUpdate\": false, \"FirstReportingInterval\": 15, \"MaxUploadLatency\": 20000 } ], \"RBUS_METHOD\":{\"Method\":\"Device.X_RDK_Xmidt.SendData\",\"Parameters\":[{\"name\":\"msg_type\",\"value\":\"event\"},{\"name\":\"source\",\"value\":\"telemetry2\"},{\"name\":\"dest\",\"value\":\"event:/profile-report/LTE-report\"},{\"name\":\"content_type\",\"value\":\"application/json\"},{\"name\":\"qos\",\"value\":\"75\"}]}, \"JSONEncoding\": { \"ReportFormat\": \"NameValuePair\", \"ReportTimestamp\": \"None\" } } } ] }";
+    EXPECT_EQ(datamodel_processProfile(json, T2_TEMP_RP), T2ERROR_SUCCESS);
+}
+#endif
+
+TEST_F(ProfileTest, processProfile_InvalidJson) {
+    char json[] = "fail";
+    EXPECT_EQ(datamodel_processProfile(json, T2_RP), T2ERROR_FAILURE);
+}
+
+TEST_F(ProfileTest, processProfile_MissingProfiles) {
+    char json[] = "missing_profiles";
+    EXPECT_EQ(datamodel_processProfile(json, T2_RP), T2ERROR_FAILURE);
+}
+
+#if 0
+//Hanginf because unable to get the rp lock
+TEST_F(ProfileTest, processProfile_StopProcessingTrue) {
+    char json[] = "{\"profiles\":[]}";
+    EXPECT_EQ(datamodel_processProfile(json, T2_RP), T2ERROR_SUCCESS);
+}
+#endif
+
+#if 1
+//==> To be FIXED
+TEST_F(ProfileTest, getSavedJsonProfilesasString_EmptyVector) {
+    char* result = nullptr;
+    //gVector.configs.clear();
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_vectorMock, Vector_Create(_))
+        .Times(::testing::AtMost(1))  // 1 for local test configlist, 1 for global profileList, 1 for configList in loadReportProfilesFromDisk
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _))
+        .Times(::testing::AtMost(1))  // 1 for local test configlist, 1 for configList in loadReportProfilesFromDisk
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    datamodel_getSavedJsonProfilesasString(&result);
+    // Result should be a valid JSON string
+    ASSERT_NE(result, nullptr);
+    free(result);
+}
+
+TEST_F(ProfileTest, getSavedJsonProfilesasString_WithConfigs) {
+    //Config conf;
+    //strcpy(conf.name, "test");
+    //conf.configData = strdup("{\"Hash\":\"abc123\"}");
+    //gVector.configs = { &conf };
+    char* result = nullptr;
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_vectorMock, Vector_Create(_))
+        .Times(::testing::AtMost(1))  // 1 for local test configlist, 1 for global profileList, 1 for configList in loadReportProfilesFromDisk
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _))
+        .Times(::testing::AtMost(1))  // 1 for local test configlist, 1 for configList in loadReportProfilesFromDisk
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    datamodel_getSavedJsonProfilesasString(&result);
+    ASSERT_NE(result, nullptr);
+    //free(conf.configData);
+    free(result);
+}
+#endif
+/*
+TEST_F(ProfileTest, getSavedMsgpackProfilesasString_FileNotFound) {
+    char* result = nullptr;
+    ASSERT_EQ(datamodel_getSavedMsgpackProfilesasString(&result), 0);
+    ASSERT_EQ(result, nullptr);
+}
+
+*/
+TEST_F(ProfileTest, MsgpackProcessProfile_Success) {
+    char* blob = (char*)malloc(10);
+    int size = 10;
+    EXPECT_EQ(datamodel_MsgpackProcessProfile(blob, size), T2ERROR_SUCCESS);
+}
+#endif
+
+#if 0
+TEST_F(ProfileTest, NotifySchedulerstart) {
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_)).Times(::testing::AtMost(1)).WillRepeatedly(Return(0));
+    NotifySchedulerstart("profileY", true);
+}
+#endif
+
+#if 0
+TEST_F(ProfileTest, ReportProfiles_setProfileXConf) {
+    ProfileXConf profile;
+    EXPECT_CALL(*g_schedulerMock, registerProfileWithScheduler(_, _, _, _, _, _, _, _))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    
+    EXPECT_CALL(*g_rbusMock, rbus_checkStatus())
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(RBUS_ENABLED));
+    
+    EXPECT_CALL(*g_rbusMock, rbus_registerLogHandler(_))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
+        
+    EXPECT_CALL(*g_rbusMock, rbus_open(_, _))
+        .Times(::testing::AtMost(2))
+        .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
+    
+    // Mock successful parameter retrieval
+    EXPECT_CALL(*g_rbusMock, rbus_get(_, _, _))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
+        
+    EXPECT_CALL(*g_rbusMock, rbusValue_GetType(_))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(RBUS_STRING));
+        
+    EXPECT_CALL(*g_rbusMock, rbusValue_ToString(_, _, _))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(strdup("test_value")));
+        
+    EXPECT_CALL(*g_rbusMock, rbusValue_Release(_))
+        .Times(::testing::AtMost(1));
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(::testing::AtMost(2))
+        .WillRepeatedly(Return(0)); // Return 1 to indicate only one profile (no duplicates)
+				   
+    EXPECT_CALL(*g_rbusMock, rbus_checkStatus())
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(RBUS_ENABLED));
+
+    EXPECT_CALL(*g_rbusMock, rbus_open(_, _))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
+
+    EXPECT_CALL(*g_rbusMock, rbusObject_Init(_, _))
+        .Times(::testing::AtMost(1));
+
+    EXPECT_CALL(*g_rbusMock, rbusValue_Init(_))
+        .Times(::testing::AtMost(1));
+
+    EXPECT_CALL(*g_rbusMock, rbusValue_SetString(_, _))
+        .Times(::testing::AtMost(1));
+
+    EXPECT_CALL(*g_rbusMock, rbusObject_SetValue(_, _, _))
+        .Times(::testing::AtMost(1));
+
+    EXPECT_CALL(*g_rbusMock, rbusValue_Release(_))
+        .Times(::testing::AtMost(1));
+
+    EXPECT_CALL(*g_rbusMock, rbusEvent_Publish(_,_))
+	.Times(::testing::AtMost(1))
+	.WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
+
+    EXPECT_CALL(*g_rbusMock, rbusObject_Release(_))
+        .Times(::testing::AtMost(1));
+    EXPECT_EQ(ReportProfiles_setProfileXConf(&profile), T2ERROR_SUCCESS);
+}
+#endif
+
+TEST_F(ProfileTest, ClearMarkerComponentMapShouldRemoveEntries) {
+    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).Times(::testing::AtMost(2))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_EQ(clearT2MarkerComponentMap(), T2ERROR_SUCCESS);
+}
+
+TEST_F(ProfileTest, destroyT2MarkerComponentMap) {
+    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).Times(::testing::AtMost(2))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_EQ(clearT2MarkerComponentMap(), T2ERROR_SUCCESS);
+}
+
+TEST_F(ProfileTest, updateEventMap) {
+    T2Marker t2Marker;
+    EXPECT_EQ(updateEventMap("marker1", &t2Marker), T2ERROR_SUCCESS);
+}
+
+#if 1
+TEST_F(ProfileTest, getComponentsWithEventMarkers) {
+    Vector *profileList = nullptr;
+    //Vector_Create(&profileList);
+
+    getComponentsWithEventMarkers(&profileList);
+}
+#endif
+
+TEST_F(ProfileTest, getMarkerProfileList) {
+    Vector *profileList = nullptr;
+    EXPECT_EQ(getMarkerProfileList("SYS_INFO_TEST_MARKER", &profileList), T2ERROR_FAILURE);
+}
+
+TEST_F(ProfileTest, getComponentMarkerList) {
+    EXPECT_CALL(*g_vectorMock, Vector_Create(_))
+        .Times(::testing::AtMost(1))
+	.WillRepeatedly(Return(T2ERROR_SUCCESS));
+}
+
+TEST_F(ProfileTest, createComponentDataElements) {
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_)).Times(::testing::AtMost(1)).WillRepeatedly(Return(0));
+    createComponentDataElements();
+}

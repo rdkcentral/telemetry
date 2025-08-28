@@ -860,6 +860,41 @@ TEST_F(CcspInterfaceTest, T2RbusReportEventConsumer_SubscribeAndUnsubscribe) {
     //EXPECT_TRUE(errUnsub == T2ERROR_SUCCESS || errUnsub == T2ERROR_FAILURE);
 }
 
+
+TEST_F(CcspInterfaceTest, publishEventsProfileUpdates)
+{
+    EXPECT_CALL(*g_rbusMock, rbus_checkStatus())
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(RBUS_ENABLED));
+
+    EXPECT_CALL(*g_rbusMock, rbus_open(_, _))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
+
+    EXPECT_CALL(*g_rbusMock, rbusObject_Init(_, _))
+        .Times(::testing::AtMost(1));
+
+    EXPECT_CALL(*g_rbusMock, rbusValue_Init(_))
+        .Times(::testing::AtMost(1));
+
+    EXPECT_CALL(*g_rbusMock, rbusValue_SetString(_, _))
+        .Times(::testing::AtMost(1));
+
+    EXPECT_CALL(*g_rbusMock, rbusObject_SetValue(_, _, _))
+        .Times(::testing::AtMost(1));
+
+    EXPECT_CALL(*g_rbusMock, rbusValue_Release(_))
+        .Times(::testing::AtMost(1));
+
+    EXPECT_CALL(*g_rbusMock, rbusEvent_Publish(_,_))
+	.Times(::testing::AtMost(1))
+	.WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
+
+    EXPECT_CALL(*g_rbusMock, rbusObject_Release(_))
+        .Times(::testing::AtLeast(1));
+
+    publishEventsProfileUpdates();
+}
 /*
 T2ERROR getRbusParameterVal(const char* paramName, char **paramValue);
 

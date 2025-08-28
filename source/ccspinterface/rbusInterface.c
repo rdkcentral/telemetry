@@ -1550,28 +1550,41 @@ T2ERROR publishEventsProfileUpdates()
         return T2ERROR_FAILURE;
     }
 
+    printf("%s : %d \n", __func__, __LINE__);
     T2Debug("Publishing event for t2profile update notification to components \n");
+    printf("%s : %d \n", __func__, __LINE__);
+    printf("%s : %d \n", __func__, __LINE__);
     rbusValue_Init(&value);
+    printf("%s : %d \n", __func__, __LINE__);
     rbusValue_SetString(value, "t2ProfileUpdated");
+    printf("%s : %d \n", __func__, __LINE__);
     rbusObject_Init(&data, NULL);
+    printf("%s : %d \n", __func__, __LINE__);
     rbusObject_SetValue(data, "t2ProfileUpdated", value);
+    printf("%s : %d \n", __func__, __LINE__);
 
     event.name = T2_PROFILE_UPDATED_NOTIFY;
     event.data = data;
     event.type = RBUS_EVENT_GENERAL;
+    printf("%s : %d \n", __func__, __LINE__);
     ret = rbusEvent_Publish(t2bus_handle, &event);
+    printf("%s : %d \n", __func__, __LINE__);
     if(ret != RBUS_ERROR_SUCCESS)
     {
         T2Debug("provider: rbusEvent_Publish Event1 failed: %d\n", ret);
         status = T2ERROR_FAILURE;
     }
 
+    printf("%s : %d \n", __func__, __LINE__);
     rbusValue_Release(value);
+    printf("%s : %d \n", __func__, __LINE__);
     if(data != NULL)
     {
+    printf("%s : %d \n", __func__, __LINE__);
         T2Debug("Releasing the rbusobject \n");
         rbusObject_Release(data);
     }
+    printf("%s : %d \n", __func__, __LINE__);
     T2Debug("%s --out\n", __FUNCTION__);
     return status;
 

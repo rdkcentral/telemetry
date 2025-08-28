@@ -1863,11 +1863,13 @@ unsigned int getMinThresholdDuration(char *profileName)
     pthread_mutex_lock(&plMutex);
     if(T2ERROR_SUCCESS != getProfile(profileName, &get_profile))
     {
+        T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
         T2Error("Profile : %s not found\n", profileName);
         T2Debug("%s --out\n", __FUNCTION__);
         pthread_mutex_unlock(&plMutex);
         return 0;
     }
+        T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
     minThresholdDuration = get_profile->minThresholdDuration;
     get_profile->minThresholdDuration = 0; // reinit the value
     T2Debug("minThresholdDuration = %u \n", minThresholdDuration);

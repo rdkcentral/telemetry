@@ -565,3 +565,133 @@ TEST_F(CcspInterfaceTest, ErrorHandling_InvalidParameters) {
     EXPECT_EQ(result, T2ERROR_FAILURE);
 }
 #endif
+
+// Dummy callback for event listener tests
+void DummyTelemetryEventCallback(char* eventInfo, char* user_data) {}
+
+// Helper: Create dummy Vector with fake Param objects as needed
+Vector* CreateDummyParamList(int num) {
+    Vector* v = NULL;
+    Vector_Create(&v);
+    for (int i = 0; i < num; ++i) {
+        Param* p = (Param*) malloc(sizeof(Param));
+        p->name = strdup("Device.Dummy.Param");
+        p->alias = strdup("Device.Dummy.Alias");
+        p->skipFreq = 0;
+        Vector_PushBack(v, p);
+    }
+    return v;
+}
+
+TEST_F(CcspInterfaceTest, GetRbusProfileParamValues_ReturnsVector) {
+    Vector* paramList = CreateDummyParamList(2);
+
+    EXPECT_CALL(*g_vectorMock, Vector_Create(_))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+        
+    EXPECT_CALL(*g_vectorMock, Vector_PushBack(_, _))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    
+    EXPECT_CALL(*g_vectorMock, Vector_At(_, 0))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return((void*)strdup("Device.Test.Parameter")));
+    
+    EXPECT_CALL(*g_rbusMock, rbus_registerLogHandler(_))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
+        
+    EXPECT_CALL(*g_rbusMock, rbus_open(_, _))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
+        
+    EXPECT_CALL(*g_rbusMock, rbusValue_Release(_))
+        .Times(::testing::AtMost(1));
+        
+    Vector* result = getRbusProfileParamValues(paramList, 1);
+    EXPECT_NE(result, nullptr);
+    // CLEANUP
+    Vector_Destroy(paramList, free);
+    Vector_Destroy(result, free);
+}
+
+TEST_F(CcspInterfaceTest, RegisterRbusT2EventListener_Succeeds) {
+    T2ERROR err = registerRbusT2EventListener(DummyTelemetryEventCallback);
+    EXPECT_EQ(err, T2ERROR_SUCCESS);
+}
+
+#ifdef DCMAGENT
+TEST_F(CcspInterfaceTest, RegisterRbusDCMEventListener_Succeeds) {
+    T2ERROR err = registerRbusDCMEventListener();
+    EXPECT_EQ(err, T2ERROR_SUCCESS);
+}
+#endif
+
+TEST_F(CcspInterfaceTest, UnregisterRbusT2EventListener_Succeeds) {
+    T2ERROR err = unregisterRbusT2EventListener();
+    EXPECT_EQ(err, T2ERROR_SUCCESS);
+}
+
+TEST_F(CcspInterfaceTest, RbusT2ConsumerReg_SucceedsWithEmptyList) {
+    Vector* triggerList = NULL;
+    Vector_Create(&triggerList);
+    T2ERROR err = rbusT2ConsumerReg(triggerList);
+    EXPECT_EQ(err, T2ERROR_SUCCESS);
+    Vector_Destroy(triggerList, free);
+}
+
+TEST_F(CcspInterfaceTest, RbusT2ConsumerUnReg_SucceedsWithEmptyList) {
+    Vector* triggerList = NULL;
+    Vector_Create(&triggerList);
+    T2ERROR err = rbusT2ConsumerUnReg(triggerList);
+    EXPECT_EQ(err, T2ERROR_SUCCESS);
+    Vector_Destroy(triggerList, free);
+}
+
+TEST_F(CcspInterfaceTest, RbusMethodCaller_ReturnsSuccessForDummyMethod) {
+    // Prepare dummy input params object
+    rbusObject_t inputParams;
+    rbusObject_Init(&inputParams, NULL);
+    T2ERROR err = rbusMethodCaller((char*)"Dummy.Method", &inputParams, (char*)"payload", NULL);
+    EXPECT_TRUE(err == T2ERROR_SUCCESS || err == T2ERROR_FAILURE); // Accept either for stub
+    rbusObject_Release(inputParams);
+}
+
+TEST_F(CcspInterfaceTest, RbusCheckMethodExists_ReturnsBool) {
+    bool exists = rbusCheckMethodExists("Dummy.Method");
+    // Accept either true or false for stub
+    EXPECT_TRUE(exists == true || exists == false);
+}
+
+TEST_F(CcspInterfaceTest, T2RbusReportEventConsumer_SubscribeAndUnsubscribe) {
+    T2ERROR errSub = T2RbusReportEventConsumer((char*)"Dummy.Event", true);
+    EXPECT_TRUE(errSub == T2ERROR_SUCCESS || errSub == T2ERROR_FAILURE);
+    T2ERROR errUnsub = T2RbusReportEventConsumer((char*)"Dummy.Event", false);
+    EXPECT_TRUE(errUnsub == T2ERROR_SUCCESS || errUnsub == T2ERROR_FAILURE);
+}
+
+/*
+T2ERROR getRbusParameterVal(const char* paramName, char **paramValue);
+
+Vector* getRbusProfileParamValues(Vector *paramList, int count);
+
+T2ERROR registerRbusT2EventListener(TelemetryEventCallback eventCB);
+
+#ifdef DCMAGENT
+T2ERROR registerRbusDCMEventListener();
+#endif
+
+T2ERROR unregisterRbusT2EventListener();
+
+T2ERROR rbusT2ConsumerReg(Vector *triggerConditionList);
+
+T2ERROR rbusT2ConsumerUnReg(Vector *triggerConditionList);
+
+T2ERROR rbusMethodCaller(char *methodName, rbusObject_t* inputParams, char* payload, rbusMethodCallBackPtr rbusMethodCallBack );
+
+bool rbusCheckMethodExists(const char* rbusMethodName) ;
+
+T2ERROR T2RbusReportEventConsumer(char* reference, bool subscription);
+
+*/

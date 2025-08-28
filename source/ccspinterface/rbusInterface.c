@@ -1338,20 +1338,27 @@ T2ERROR regDEforCompEventList(const char* componentName, T2EventMarkerListCallba
 void freeComponentEventList(void *data)
 {
     hash_element_t *componentEventList = (hash_element_t*) data;
+    printf("%s : %d \n", __func__, __LINE__);
     if(componentEventList)
     {
+    printf("%s : %d \n", __func__, __LINE__);
         if(componentEventList->data)
         {
+    printf("%s : %d \n", __func__, __LINE__);
             free(componentEventList->data);
             componentEventList->data = NULL;
         }
 
+    printf("%s : %d \n", __func__, __LINE__);
         if(componentEventList->key)
         {
+    printf("%s : %d \n", __func__, __LINE__);
             free(componentEventList->key);
             componentEventList->data = NULL;
         }
+    printf("%s : %d \n", __func__, __LINE__);
         free(componentEventList);
+    printf("%s : %d \n", __func__, __LINE__);
         componentEventList = NULL;
     }
 }

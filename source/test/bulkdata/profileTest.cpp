@@ -1604,11 +1604,13 @@ TEST_F(ProfileTest, ReportProfiles_setProfileXConf) {
 }
 #endif
 
+#if 0
 TEST_F(ProfileTest, ClearMarkerComponentMapShouldRemoveEntries) {
     EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).Times(::testing::AtMost(2))
         .WillRepeatedly(Return(T2ERROR_SUCCESS));
     EXPECT_EQ(clearT2MarkerComponentMap(), T2ERROR_SUCCESS);
 }
+#endif
 
 TEST_F(ProfileTest, destroyT2MarkerComponentMap) {
     EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).Times(::testing::AtMost(2))

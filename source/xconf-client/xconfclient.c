@@ -792,7 +792,7 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
                         curl_code = curl_easy_perform(curl);
 #ifdef LIBRDKCERTSEL_BUILD
                         if(curl_code != CURLE_OK)
-                        {
+                        {                            
                             T2Error("%s: Failed to establish connection using xPKI certificate: %s, Curl failed : %d\n", __func__, pCertFile, curl_code);                            
                         }else{
                             T2Info("%s: Using xpki Certs connection certname : %s \n", __FUNCTION__, pCertFile);   

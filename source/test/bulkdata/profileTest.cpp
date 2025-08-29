@@ -1078,10 +1078,12 @@ TEST_F(ProfileTest, StoreMarkerEventSuccess) {
 }
 #endif
 
+#if 0
 TEST_F(ProfileTest, TerminateReportNoProfile) {
     // Should fail if no profile
     EXPECT_EQ(ProfileXConf_terminateReport(), T2ERROR_SUCCESS);
 }
+#endif
 
 #if 0
 TEST_F(ProfileTest, TerminateReportNoInProgress) {

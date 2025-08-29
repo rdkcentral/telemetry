@@ -310,7 +310,7 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
     else    //Grep Marker
     {
 
-        //T2Debug("Adding Grep Marker :: Param/Marker Name : %s ref/pattern/Comp : %s fileName : %s skipFreq : %d\n", name, ref, fileName, skipFreq);
+        // T2Debug("Adding Grep Marker :: Param/Marker Name : %s ref/pattern/Comp : %s fileName : %s skipFreq : %d\n", name, ref, fileName, skipFreq);
 
         GrepMarker *gMarker = (GrepMarker *) malloc(sizeof(GrepMarker));
         if(gMarker == NULL)

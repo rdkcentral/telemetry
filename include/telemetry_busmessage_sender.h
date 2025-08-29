@@ -84,8 +84,6 @@ void t2_uninit(void);
  */
 int filtered_event_send(const char* data, const char *markerName);
 
-//static T2ERROR initMessageBus( );
-
 #ifdef __cplusplus
 }
 #endif

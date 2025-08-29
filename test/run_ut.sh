@@ -51,11 +51,6 @@ make -C source/test
 # ./source/test/xconf-client/xconfclient_gtest.bin
 # ./source/test/telemetry_gtest.bin
 
-#./source/test/reportgen/reportgen_gtest.bin
-#./source/test/scheduler/scheduler_gtest.bin
-#./source/test/t2parser/t2parser_gtest.bin
-#./source/test/dcautils/dcautil_gtest.bin
-
 tests="
 ./source/test/bulkdata/profile_gtest.bin
 ./source/test/reportgen/reportgen_gtest.bin
@@ -65,7 +60,6 @@ tests="
 ./source/test/ccspinterface/ccspinterface_gtest.bin
 "
 
-#./source/test/bulkdata/profile_gtest.bin
 for test in $tests
 do
     if [ -x "$test" ]; then

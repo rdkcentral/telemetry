@@ -255,13 +255,9 @@ T2ERROR addT2EventMarker(const char* markerName, const char* compName, const cha
 
 void getComponentsWithEventMarkers(Vector **eventComponentList)
 {
-    printf("%s : %d \n", __func__, __LINE__);
     pthread_mutex_lock(&t2CompListMutex);
-    printf("%s : %d \n", __func__, __LINE__);
     *eventComponentList = componentList ;
-    printf("%s : %d \n", __func__, __LINE__);
     pthread_mutex_unlock(&t2CompListMutex);
-    printf("%s : %d \n", __func__, __LINE__);
 }
 
 /**

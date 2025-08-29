@@ -23,9 +23,6 @@
 #include <stdbool.h>
 #include <cjson/cJSON.h>
 #include "telemetry2_0.h"
-//#include "profile.h"
-//#include "xconfclient.h"
-//#include "profilexconf.h"
 #include "t2eventreceiver.h"
 
 //Including Webconfig Framework For Telemetry 2.0 As part of RDKB-28897
@@ -108,19 +105,11 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
 
 void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob, int msgpack_blob_size);
 
-//T2ERROR RemovePreRPfromDisk(const char* path, hash_map_t *map);
-
 T2ERROR ReportProfiles_storeMarkerEvent(char *profileName, T2Event *eventInfo);
 
 T2ERROR privacymode_do_not_share ();
 
 T2ERROR ReportProfiles_deleteProfile(const char* profileName);
-
-//T2ERROR ReportProfiles_addReportProfile(Profile *profile);
-
-//T2ERROR ReportProfiles_setProfileXConf(ProfileXConf *profile);
-
-//T2ERROR ReportProfiles_deleteProfileXConf(ProfileXConf *profile);
 
 bool isMtlsEnabled(void);
 
@@ -157,6 +146,5 @@ void createPrivacyModepath();
     else if (MSGPACK_OBJECT_FLOAT == obj->type)				\
 	item = obj->via.f64;						\
     } while(0)
-
 
 #endif /* _BULKDATA_H_ */

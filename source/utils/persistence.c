@@ -54,25 +54,18 @@ T2ERROR fetchLocalConfigs(const char* path, Vector *configList)
         return T2ERROR_INVALID_ARGS;
     }
     struct dirent *entry;
-    printf("%s : %d\n", __FUNCTION__, __LINE__);
     T2Debug("%s ++in\n", __FUNCTION__);
-    printf("%s : %d : %s\n", __FUNCTION__, __LINE__, path);
     DIR *dir = opendir(path);
-    printf("%s : %d\n", __FUNCTION__, __LINE__);
     if (dir == NULL)
     {
-        printf("%s : %d\n", __FUNCTION__, __LINE__);
         T2Info("Failed to open persistence folder : %s, creating folder\n", path);
         if (mkdir(path, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH) != 0)
         {
-            printf("%s : %d\n", __FUNCTION__, __LINE__);
             T2Error("%s,%d: Failed to make directory : %s  \n", __FUNCTION__, __LINE__, path);
         }
-        printf("%s : %d\n", __FUNCTION__, __LINE__);
 
         return T2ERROR_FAILURE;
     }
-    printf("%s : %d\n", __FUNCTION__, __LINE__);
     if(strcmp(path, SHORTLIVED_PROFILES_PATH) == 0)
     {
         T2Debug("%s alreay created : \n", SHORTLIVED_PROFILES_PATH);
@@ -85,42 +78,33 @@ T2ERROR fetchLocalConfigs(const char* path, Vector *configList)
         }
         return T2ERROR_SUCCESS;
     }
-    printf("%s : %d\n", __FUNCTION__, __LINE__);
 #if defined(DROP_ROOT_PRIV)
 #ifdef LIBSYSWRAPPER_BUILD
-    printf("%s : %d\n", __FUNCTION__, __LINE__);
     v_secure_system("chmod 755 %s", path);
 #else
-    printf("%s : %d\n", __FUNCTION__, __LINE__);
     char cmd[512];
     snprintf(cmd, sizeof(cmd), "chmod 755 %s", path);
     system(cmd);
 #endif
 #endif
 
-    printf("%s : %d\n", __FUNCTION__, __LINE__);
-
     while ((entry = readdir(dir)) != NULL)
     {
-        printf("%s : %d\n", __FUNCTION__, __LINE__);
         struct stat filestat;
         int         status;
         char absfilepath[256] = {'\0'};
 
         if(entry->d_name[0] == '.' || (strcmp(entry->d_name, MSGPACK_REPORTPROFILES_PERSISTENT_FILE) == 0))
         {
-            printf("%s : %d\n", __FUNCTION__, __LINE__);
             continue;
         }
 
         snprintf(absfilepath, sizeof(absfilepath), "%s%s", path, entry->d_name);
         T2Debug("Config file : %s\n", absfilepath);
         int fp = open(absfilepath, O_RDONLY);
-        printf("Failed to open persistence folder : %s, creating folder\n", path);
         if(fp == -1)
         {
             T2Error("Failed to open file : %s\n", entry->d_name);
-            printf("%s : %d\n", __FUNCTION__, __LINE__);
             continue;
         }
 
@@ -151,11 +135,9 @@ T2ERROR fetchLocalConfigs(const char* path, Vector *configList)
         {
             T2Error("Unable to stat, Invalid file : %s\n", entry->d_name);
             close(fp);
-            printf("%s : %d\n", __FUNCTION__, __LINE__);
             continue;
         }
     }
-    printf("%s : %d\n", __FUNCTION__, __LINE__);
 
     T2Info("Returning %lu local configurations \n", (unsigned long)Vector_Size(configList));
     closedir(dir);

@@ -66,62 +66,49 @@ static bool busInit( )
 
 T2ERROR getParameterValue(const char* paramName, char **paramValue)
 {
-    printf("%s : %d \n", __func__, __LINE__);
-    T2Info("%s ++in \n", __FUNCTION__);
+    T2Debug("%s ++in \n", __FUNCTION__);
     T2ERROR ret = T2ERROR_FAILURE ;
     if(!isBusInit)
     {
-        printf("%s : %d \n", __func__, __LINE__);
-        T2Debug("%s : %d \n", __FUNCTION__, __LINE__);
         busInit();
     }
-    printf("%s : %d \n", __func__, __LINE__);
-    T2Debug("%s : %d \n", __FUNCTION__, __LINE__);
 
     if(isRbus)
     {
-        printf("%s : %d \n", __func__, __LINE__);
-        T2Debug("%s : %d \n", __FUNCTION__, __LINE__);
         ret = getRbusParameterVal(paramName, paramValue);
     }
 #if defined(CCSP_SUPPORT_ENABLED)
     else
     {
-        T2Debug("%s : %d \n", __FUNCTION__, __LINE__);
-        printf("%s : %d \n", __func__, __LINE__);
         ret = getCCSPParamVal(paramName, paramValue);
     }
 #endif
 
-    printf("%s : %d \n", __func__, __LINE__);
     T2Debug("%s --out \n", __FUNCTION__);
     return ret;
 }
 
 Vector* getProfileParameterValues(Vector *paramList, int count)
 {
-    T2Info("%s ++in\n", __FUNCTION__);
+    T2Debug("%s ++in\n", __FUNCTION__);
     Vector *profileValueList = NULL;
     if(!isBusInit)
     {
-        T2Info("%s : %d \n", __FUNCTION__, __LINE__);
         busInit();
     }
 
     if(isRbus)
     {
-        T2Info("%s : %d \n", __FUNCTION__, __LINE__);
         profileValueList = getRbusProfileParamValues(paramList, count);
     }
 #if defined(CCSP_SUPPORT_ENABLED)
     else
     {
-        T2Info("%s : %d \n", __FUNCTION__, __LINE__);
         profileValueList = getCCSPProfileParamValues(paramList, count);
     }
 #endif
 
-    T2Info("%s --Out\n", __FUNCTION__);
+    T2Debug("%s --Out\n", __FUNCTION__);
     return profileValueList;
 }
 
@@ -139,15 +126,11 @@ T2ERROR registerForTelemetryEvents(TelemetryEventCallback eventCB)
 
     if (isRbus)
     {
-        printf("%s : %d \n", __func__, __LINE__);
         ret = registerRbusT2EventListener(eventCB);
-        printf("%s : %d \n", __func__, __LINE__);
 
 #ifdef DCMAGENT
         /* Register DCM Events */
-        printf("%s : %d \n", __func__, __LINE__);
         ret = registerRbusDCMEventListener();
-        printf("%s : %d \n", __func__, __LINE__);
 #endif
 
     }

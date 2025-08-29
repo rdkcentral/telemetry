@@ -29,6 +29,7 @@
 #include "t2markers.h"
 #include "t2log_wrapper.h"
 #include "busInterface.h"
+#include "ccspinterface.h"
 #include "curlinterface.h"
 #include "rbusmethodinterface.h"
 #include "scheduler.h"
@@ -194,6 +195,10 @@ static void freeProfile(void *data)
         {
             Vector_Destroy(profile->cachedReportList, free);
             profile->cachedReportList = NULL;
+        }
+        if(profile->dataModelTableList) 
+        {
+            Vector_Destroy(profile->dataModelTableList, freeDataModelTable);
         }
         if(profile->jsonReportObj)
         {
@@ -446,7 +451,14 @@ static void* CollectAndReport(void* data)
                     profileParamVals = getProfileParameterValues(profile->paramList, count);
                     if(profileParamVals != NULL)
                     {
-                        encodeParamResultInJSON(valArray, profile->paramList, profileParamVals);
+                        if (Vector_Size(profile->dataModelTableList) > 0)
+                        {
+                            encodeParamResultInJSON(valArray, profile->paramList, profileParamVals,profile->dataModelTableList);
+                        }
+                        else
+                        {
+                            encodeParamResultInJSON(valArray, profile->paramList, profileParamVals,NULL);
+                        }
                     }
                     Vector_Destroy(profileParamVals, freeProfileValues);
                 }

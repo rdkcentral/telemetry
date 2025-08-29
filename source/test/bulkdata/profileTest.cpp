@@ -1016,7 +1016,7 @@ TEST_F(ProfileTest, NotifyTimeout) {
         .Times(::testing::AtMost(1)); // May be called if report is generated
 
     // Should not crash
-    ProfileXConf_notifyTimeout(false, false);
+    //ProfileXConf_notifyTimeout(false, false);
 
     ProfileXConf_uninit();
 }

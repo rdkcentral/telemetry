@@ -125,6 +125,11 @@ TEST(GET_LOGDEMAND, TEST1)
    EXPECT_EQ( false, get_logdemand());
 }
 
+TEST(SET_LOGDEMAND, TEST1)
+{
+   set_logdemand(true);
+}
+
 TEST(GETLAPSEDTIME, T1_GT_T2)
 {
     struct timespec time1;

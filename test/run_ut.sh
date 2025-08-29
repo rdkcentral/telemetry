@@ -40,7 +40,7 @@ autoreconf --install
 
 # to fix the rbus.h include failure
 mkdir -p /usr/local/include/rbus/
-cp source/test/rbus/include/rbus.h /usr/local/include/rbus/
+cp source/test/rbus/include/* /usr/local/include/rbus/
 
 make -C source/test
 

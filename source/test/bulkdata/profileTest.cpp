@@ -163,6 +163,19 @@ TEST_F(ProfileTest, EnableProfile_NotInitialized) {
     EXPECT_EQ(enableProfile("abc"), T2ERROR_FAILURE);
 }
 
+TEST_F(ProfileTest, NotifyTimeout_Directly)
+{
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(0));
+
+    // NotifyTimeout may call CollectAndReport which calls getLapsedTime
+    EXPECT_CALL(*g_schedulerMock, getLapsedTime(_, _, _))
+        .Times(::testing::AtMost(1)); // Not called because profile list is not initialized
+
+    NotifyTimeout("abc", true);
+}
+
 // Test disableProfile
 TEST_F(ProfileTest, DisableProfile_NotInitialized) {
     bool isDeleteRequired = false;

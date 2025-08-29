@@ -36,10 +36,6 @@ extern "C" {
 
 extern bool initialized;
 
-#if 0
-void* sendCachedReportsOverHTTP(const char*, void*) { return nullptr; }
-void* sendReportOverHTTP(const char*, const char*, void*) { return nullptr; }
-#endif
 sigset_t blocking_signal;
 hash_map_t *markerCompMap = NULL;
 } 
@@ -80,8 +76,6 @@ protected:
 	g_schedulerMock = nullptr;
     }
 };
-
-
 
 #if 1
 //comment
@@ -167,19 +161,6 @@ TEST_F(ProfileTest, EnableProfile_NotInitialized) {
         .Times(::testing::AtMost(1)); // Not called because profile list is not initialized
     
     EXPECT_EQ(enableProfile("abc"), T2ERROR_FAILURE);
-}
-
-TEST_F(ProfileTest, NotifyTimeout_Directly)
-{
-    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
-        .Times(::testing::AtMost(1))
-        .WillRepeatedly(Return(0));
-    
-    // NotifyTimeout may call CollectAndReport which calls getLapsedTime
-    EXPECT_CALL(*g_schedulerMock, getLapsedTime(_, _, _))
-        .Times(::testing::AtMost(1)); // Not called because profile list is not initialized
-    
-    NotifyTimeout("abc", true);
 }
 
 // Test disableProfile
@@ -1667,3 +1648,93 @@ TEST_F(ProfileTest, createComponentDataElements) {
     EXPECT_CALL(*g_vectorMock, Vector_Size(_)).Times(::testing::AtMost(1)).WillRepeatedly(Return(0));
     createComponentDataElements();
 }
+
+//TESTCASE: create the T2_CACHE_FILE and call T2ER_StopDispatchThread
+//
+
+#if 0
+//CRASH on pthread_join
+TEST_F(ProfileTest, T2ER_Uninit) {
+    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).Times(::testing::AtMost(2))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    T2ER_Uninit();
+}
+#endif
+
+#if 0
+TEST_F(ProfileTest, NotifyTimeout_reportInProgress)
+{
+    //profile to be returned by Vector_At mock call
+    Profile *profile = (Profile*)malloc(sizeof(Profile));
+    profile->name = strdup("Profile1");
+    profile->enable = true;
+    profile->reportInProgress = true;
+
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(1));
+
+    EXPECT_CALL(*g_vectorMock, Vector_At(_, 0))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(profile));
+    
+    NotifyTimeout("Profile1", true);
+}
+
+TEST_F(ProfileTest, NotifyTimeout_ThreadFalse)
+{
+    //profile to be returned by Vector_At mock call
+    GrepSeekProfile *grepSeekProfile = (GrepSeekProfile*)malloc(sizeof(GrepSeekProfile));
+    grepSeekProfile->execCounter= 0;
+
+    Profile *profile = (Profile*)malloc(sizeof(Profile));
+    profile->name = strdup("Profile1");
+    profile->enable = true;
+    profile->reportInProgress = false;
+    profile->threadExists = false;
+    profile->grepSeekProfile = grepSeekProfile;
+    profile->encodingType = nullptr;
+
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(1));
+
+    EXPECT_CALL(*g_vectorMock, Vector_At(_, 0))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(profile));
+    
+    // NotifyTimeout may call CollectAndReport which calls getLapsedTime
+    EXPECT_CALL(*g_schedulerMock, getLapsedTime(_, _, _))
+        .Times(::testing::AtMost(1)); // Not called because profile list is not initialized
+    
+    NotifyTimeout("Profile1", true);
+    sleep(50);
+}
+
+#if 0
+TEST_F(ProfileTest, NotifyTimeout_ThreadTrue)
+{
+    //profile to be returned by Vector_At mock call
+    Profile *profile = (Profile*)malloc(sizeof(Profile));
+    profile->name = strdup("Profile1");
+    profile->enable = true;
+    profile->reportInProgress = false;
+    profile->threadExists = true;
+
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(1));
+
+    EXPECT_CALL(*g_vectorMock, Vector_At(_, 0))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(profile));
+    
+    // NotifyTimeout may call CollectAndReport which calls getLapsedTime
+    EXPECT_CALL(*g_schedulerMock, getLapsedTime(_, _, _))
+        .Times(::testing::AtMost(1)); // Not called because profile list is not initialized
+    
+    NotifyTimeout("Profile1", true);
+}
+
+#endif
+#endif

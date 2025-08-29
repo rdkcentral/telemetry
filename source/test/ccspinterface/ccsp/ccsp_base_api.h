@@ -17,7 +17,7 @@ typedef int CCSP_RESULT;
 #define CCSP_SUCCESS 0
 #define CCSP_FAILURE -1
 
-// Mock CCSP function declarations  
+// Mock CCSP function declarations
 #ifdef __cplusplus
 extern "C" {
 #endif

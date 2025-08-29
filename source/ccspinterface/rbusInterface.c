@@ -124,12 +124,9 @@ static T2ERROR rBusInterface_Init( )
     int ret = RBUS_ERROR_SUCCESS;
 
     //rbus_setLogLevel(RBUS_LOG_DEBUG);
-    printf("%s : %d \n", __func__, __LINE__);
     rbus_registerLogHandler(logHandler);
 
-    printf("%s : %d \n", __func__, __LINE__);
     ret = rbus_open(&t2bus_handle, COMPONENT_NAME);
-    printf("%s : %d \n", __func__, __LINE__);
     if(ret != RBUS_ERROR_SUCCESS)
     {
         T2Error("%s:%d, init failed with error code %d \n", __func__, __LINE__, ret);
@@ -162,18 +159,15 @@ T2ERROR getRbusParameterVal(const char* paramName, char **paramValue)
         return T2ERROR_FAILURE;
     }
 
-    printf("%s : %d \n", __func__, __LINE__);
     ret = rbus_get(t2bus_handle, paramName, &paramValue_t);
     if(ret != RBUS_ERROR_SUCCESS)
     {
         T2Error("Unable to get %s\n", paramName);
         return T2ERROR_FAILURE;
     }
-    printf("%s : %d \n", __func__, __LINE__);
     rbusValueType = rbusValue_GetType(paramValue_t);
     if(rbusValueType == RBUS_BOOLEAN)
     {
-    printf("%s : %d \n", __func__, __LINE__);
         if (rbusValue_GetBoolean(paramValue_t))
         {
             stringValue = strdup("true");
@@ -185,10 +179,8 @@ T2ERROR getRbusParameterVal(const char* paramName, char **paramValue)
     }
     else
     {
-    printf("%s : %d \n", __func__, __LINE__);
         stringValue = rbusValue_ToString(paramValue_t, NULL, 0);
     }
-    printf("%s : %d \n", __func__, __LINE__);
 
 #if defined(ENABLE_RDKV_SUPPORT)
     // Workaround as video platforms doesn't have a TR param which gives Firmware name
@@ -1218,10 +1210,8 @@ T2ERROR registerRbusT2EventListener(TelemetryEventCallback eventCB)
 
     T2ERROR status = T2ERROR_SUCCESS;
     rbusError_t ret = RBUS_ERROR_SUCCESS;
-    printf("%s : %d \n", __func__, __LINE__);
     if(!t2bus_handle && T2ERROR_SUCCESS != rBusInterface_Init())
     {
-    printf("%s : %d \n", __func__, __LINE__);
         return T2ERROR_FAILURE;
     }
 
@@ -1234,9 +1224,7 @@ T2ERROR registerRbusT2EventListener(TelemetryEventCallback eventCB)
         {T2_PROFILE_UPDATED_NOTIFY, RBUS_ELEMENT_TYPE_EVENT, {NULL, NULL, NULL, NULL, (rbusEventSubHandler_t)eventSubHandler, NULL}},
         {T2_OPERATIONAL_STATUS, RBUS_ELEMENT_TYPE_PROPERTY, {t2PropertyDataGetHandler, NULL, NULL, NULL, NULL, NULL}}
     };
-    printf("%s : %d \n", __func__, __LINE__);
     ret = rbus_regDataElements(t2bus_handle, 3, dataElements);
-    printf("%s : %d \n", __func__, __LINE__);
     if(ret != RBUS_ERROR_SUCCESS)
     {
         T2Error("Failed to register T2 data elements with rbus. Error code : %d\n", ret);
@@ -1338,27 +1326,20 @@ T2ERROR regDEforCompEventList(const char* componentName, T2EventMarkerListCallba
 void freeComponentEventList(void *data)
 {
     hash_element_t *componentEventList = (hash_element_t*) data;
-    printf("%s : %d \n", __func__, __LINE__);
     if(componentEventList)
     {
-    printf("%s : %d \n", __func__, __LINE__);
         if(componentEventList->data)
         {
-    printf("%s : %d \n", __func__, __LINE__);
             free(componentEventList->data);
             componentEventList->data = NULL;
         }
 
-    printf("%s : %d \n", __func__, __LINE__);
         if(componentEventList->key)
         {
-    printf("%s : %d \n", __func__, __LINE__);
             free(componentEventList->key);
             componentEventList->data = NULL;
         }
-    printf("%s : %d \n", __func__, __LINE__);
         free(componentEventList);
-    printf("%s : %d \n", __func__, __LINE__);
         componentEventList = NULL;
     }
 }
@@ -1550,41 +1531,28 @@ T2ERROR publishEventsProfileUpdates()
         return T2ERROR_FAILURE;
     }
 
-    printf("%s : %d \n", __func__, __LINE__);
     T2Debug("Publishing event for t2profile update notification to components \n");
-    printf("%s : %d \n", __func__, __LINE__);
-    printf("%s : %d \n", __func__, __LINE__);
     rbusValue_Init(&value);
-    printf("%s : %d \n", __func__, __LINE__);
     rbusValue_SetString(value, "t2ProfileUpdated");
-    printf("%s : %d \n", __func__, __LINE__);
     rbusObject_Init(&data, NULL);
-    printf("%s : %d \n", __func__, __LINE__);
     rbusObject_SetValue(data, "t2ProfileUpdated", value);
-    printf("%s : %d \n", __func__, __LINE__);
 
     event.name = T2_PROFILE_UPDATED_NOTIFY;
     event.data = data;
     event.type = RBUS_EVENT_GENERAL;
-    printf("%s : %d \n", __func__, __LINE__);
     ret = rbusEvent_Publish(t2bus_handle, &event);
-    printf("%s : %d \n", __func__, __LINE__);
     if(ret != RBUS_ERROR_SUCCESS)
     {
         T2Debug("provider: rbusEvent_Publish Event1 failed: %d\n", ret);
         status = T2ERROR_FAILURE;
     }
 
-    printf("%s : %d \n", __func__, __LINE__);
     rbusValue_Release(value);
-    printf("%s : %d \n", __func__, __LINE__);
     if(data != NULL)
     {
-    printf("%s : %d \n", __func__, __LINE__);
         T2Debug("Releasing the rbusobject \n");
         rbusObject_Release(data);
     }
-    printf("%s : %d \n", __func__, __LINE__);
     T2Debug("%s --out\n", __FUNCTION__);
     return status;
 

@@ -343,12 +343,12 @@ static void* CollectAndReport(void* data)
         pthread_mutex_lock(&profile->reportInProgressMutex);
         profile->reportInProgress = true;
         pthread_cond_signal(&profile->reportInProgressCond);
-    T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
+        T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
         pthread_mutex_unlock(&profile->reportInProgressMutex);
-    T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
+        T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
 
         int count = profile->grepSeekProfile->execCounter;
-    T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
+        T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
 
         Vector *profileParamVals = NULL;
         Vector *grepResultList = NULL;
@@ -365,11 +365,11 @@ static void* CollectAndReport(void* data)
 
 
 
-    T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
+        T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
         T2ERROR ret = T2ERROR_FAILURE;
         if( profile->name == NULL || profile->encodingType == NULL || profile->protocol == NULL )
         {
-    T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
+            T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
             T2Error("Incomplete profile parameters\n");
             if(profile->triggerReportOnCondition)
             {
@@ -392,7 +392,7 @@ static void* CollectAndReport(void* data)
         clock_gettime(CLOCK_REALTIME, &startTime);
         if( !strcmp(profile->encodingType, "JSON") || !strcmp(profile->encodingType, "MessagePack"))
         {
-    T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
+            T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
             JSONEncoding *jsonEncoding = profile->jsonEncoding;
             if (jsonEncoding->reportFormat != JSONRF_KEYVALUEPAIR)
             {
@@ -420,7 +420,7 @@ static void* CollectAndReport(void* data)
             }
             if(T2ERROR_SUCCESS != initJSONReportProfile(&profile->jsonReportObj, &valArray, profile->RootName))
             {
-    T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
+                T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
                 T2Error("Failed to initialize JSON Report\n");
                 profile->reportInProgress = false;
                 //pthread_mutex_unlock(&profile->triggerCondMutex);
@@ -440,7 +440,7 @@ static void* CollectAndReport(void* data)
             else
             {
 #ifdef PERSIST_LOG_MON_REF
-    T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
+                T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
                 if(profile->checkPreviousSeek)
                 {
                     cJSON *arrayItem = NULL;
@@ -469,7 +469,7 @@ static void* CollectAndReport(void* data)
                 }
                 if(profile->topMarkerList != NULL && Vector_Size(profile->topMarkerList) > 0)
                 {
-    T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
+                    T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
                     Vector *topMarkerResultList = NULL;
                     Vector_Create(&topMarkerResultList);
                     processTopPattern(profile->name, profile->topMarkerList, topMarkerResultList, 0);
@@ -569,7 +569,7 @@ static void* CollectAndReport(void* data)
                     cJSON_Delete(root);
                 }
 
-    T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
+                T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
                 T2Info("Report Size = %ld\n", size);
                 if(size > DEFAULT_MAX_REPORT_SIZE)
                 {
@@ -1882,7 +1882,7 @@ unsigned int getMinThresholdDuration(char *profileName)
         pthread_mutex_unlock(&plMutex);
         return 0;
     }
-        T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
+    T2Debug("%s : %d\n", __FUNCTION__, __LINE__);
     minThresholdDuration = get_profile->minThresholdDuration;
     get_profile->minThresholdDuration = 0; // reinit the value
     T2Debug("minThresholdDuration = %u \n", minThresholdDuration);

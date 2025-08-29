@@ -137,7 +137,6 @@ static void *process_msg_thread(void *data)
  */
 T2ERROR datamodel_processProfile(char *JsonBlob, bool rprofiletypes)
 {
-    printf("profile= %s\n", JsonBlob);
     cJSON *rootObj = NULL;
     cJSON *profiles = NULL;
 
@@ -155,35 +154,25 @@ T2ERROR datamodel_processProfile(char *JsonBlob, bool rprofiletypes)
 
     T2Info("Number of report profiles in configuration is %d \n", cJSON_GetArraySize(profiles));
 
-    printf("%s : %d \n", __func__, __LINE__);
     pthread_mutex_lock(&rpMutex);
-    printf("%s : %d \n", __func__, __LINE__);
     if (!stopProcessing)
     {
-    printf("%s : %d \n", __func__, __LINE__);
         if(rprofiletypes == T2_RP)
         {
-    printf("%s : %d \n", __func__, __LINE__);
             t2_queue_push(rpQueue, (void *)rootObj);
-    printf("%s : %d \n", __func__, __LINE__);
             pthread_cond_signal(&rpCond);
         }
         else if(rprofiletypes == T2_TEMP_RP)
         {
-    printf("%s : %d \n", __func__, __LINE__);
             t2_queue_push(tmpRpQueue, (void *)rootObj);
-    printf("%s : %d \n", __func__, __LINE__);
             pthread_cond_signal(&tmpRpCond);
         }
-    printf("%s : %d \n", __func__, __LINE__);
     }
     else
     {
         T2Error("Datamodel not initialized, dropping request \n");
-    printf("%s : %d \n", __func__, __LINE__);
         cJSON_Delete(rootObj);
     }
-    printf("%s : %d \n", __func__, __LINE__);
     pthread_mutex_unlock(&rpMutex);
     return T2ERROR_SUCCESS;
 }
@@ -329,31 +318,19 @@ T2ERROR datamodel_init(void)
         return T2ERROR_FAILURE;
     }
 
-    printf("%s : %d \n", __func__, __LINE__);
     pthread_mutex_init(&rpMutex, NULL);
-    printf("%s : %d \n", __func__, __LINE__);
     pthread_cond_init(&rpCond, NULL);
-    printf("%s : %d \n", __func__, __LINE__);
     pthread_mutex_init(&rpMsgMutex, NULL);
-    printf("%s : %d \n", __func__, __LINE__);
     pthread_cond_init(&msg_Cond, NULL);
-    printf("%s : %d \n", __func__, __LINE__);
     pthread_mutex_init(&tmpRpMutex, NULL);
-    printf("%s : %d \n", __func__, __LINE__);
     pthread_cond_init(&tmpRpCond, NULL);
-    printf("%s : %d \n", __func__, __LINE__);
 
     pthread_mutex_lock(&rpMutex);
-    printf("%s : %d \n", __func__, __LINE__);
     stopProcessing = false;
     pthread_mutex_unlock(&rpMutex);
-    printf("%s : %d \n", __func__, __LINE__);
     pthread_create(&rpThread, NULL, process_rp_thread, (void *)NULL);
-    printf("%s : %d \n", __func__, __LINE__);
     pthread_create(&rpMsgThread, NULL, process_msg_thread, (void *)NULL);
-    printf("%s : %d \n", __func__, __LINE__);
     pthread_create(&tmpRpThread, NULL, process_tmprp_thread, (void *)NULL);
-    printf("%s : %d \n", __func__, __LINE__);
 
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;

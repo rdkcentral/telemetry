@@ -27,33 +27,34 @@ extern "C" {
 #include "busInterface.h"
 }
 
-class CcspInterfaceMock {
+class CcspInterfaceMock
+{
 public:
     virtual ~CcspInterfaceMock() = default;
-    
+
     // Mock CCSP functions that would be called
-    MOCK_METHOD(int, CcspBaseIf_discComponentSupportingNamespace, 
-                (void* bus_handle, const char* dst_component_id, const char* name_space, 
+    MOCK_METHOD(int, CcspBaseIf_discComponentSupportingNamespace,
+                (void* bus_handle, const char* dst_component_id, const char* name_space,
                  const char* subsystem_prefix, void*** ppComponents, int* psize), ());
-                 
+
     MOCK_METHOD(int, CcspBaseIf_getParameterValues,
                 (void* bus_handle, const char* dst_component_id, char** parameter_names,
                  int param_size, int* val_size, void*** parametervalStruct), ());
-                 
+
     MOCK_METHOD(int, CcspBaseIf_getParameterNames,
                 (void* bus_handle, const char* dst_component_id, const char* parameter_name,
                  int next_level, int* psize, void*** ppParameterInfos), ());
-                 
+
     MOCK_METHOD(void, free_componentStruct, (void* arg), ());
     MOCK_METHOD(void, free_parameterValStruct, (int size, void** val), ());
     MOCK_METHOD(void, free_parameterInfoStruct, (int size, void** val), ());
-    
+
     // Mock for getCCSPParamVal function
     MOCK_METHOD(T2ERROR, getCCSPParamVal, (const char* paramName, char **paramValue), ());
-    
-    // Mock for getCCSPProfileParamValues function  
+
+    // Mock for getCCSPProfileParamValues function
     MOCK_METHOD(Vector*, getCCSPProfileParamValues, (Vector* paramList, int count), ());
-    
+
     // Mock for registerCcspT2EventListener function
     MOCK_METHOD(T2ERROR, registerCcspT2EventListener, (TelemetryEventCallback eventCB), ());
 };

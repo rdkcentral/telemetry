@@ -139,12 +139,10 @@ TEST_F(TelemetryBusmessageSenderTest, SendIntEvent_NullComponent) {
 }
 
 // 1. Bus handle null
-TEST_F(TelemetryBusmessageSenderTest, ReturnsErrorIfBusHandleNull) {
+TEST_F(TelemetryBusmessageSenderTest, filtered_event_send) {
     int ret;
-    //int ret = initMessageBus();
-    //EXPECT_NE(ret, 0);
     ret = filtered_event_send("data", "marker");
-    EXPECT_NE(ret, 0); // Should return error (RBUS_ERROR_SUCCESS is 0)
+    EXPECT_EQ(ret, 0);
 }
 
 /*

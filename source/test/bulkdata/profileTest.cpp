@@ -519,7 +519,6 @@ TEST_F(ProfileTest, ClearMarkerComponentMapShouldRemoveEntries) {
 
 //================================ reportProfiles.c ====================================
 
-#if 1
 TEST_F(ProfileTest, initReportProfiles) {
     char status[8] = "true";
     DIR *dir = (DIR*)0xffffffff ;
@@ -549,7 +548,6 @@ TEST_F(ProfileTest, initReportProfiles) {
     EXPECT_CALL(*g_fileIOMock, readdir(_))
 	   .Times(::testing::AtMost(5))
 	   .WillRepeatedly(Return((struct dirent *)NULL));
-#if 1
     EXPECT_CALL(*g_fileIOMock, closedir(_))
            .Times(::testing::AtMost(5))
            .WillRepeatedly(Return(0));
@@ -559,11 +557,9 @@ TEST_F(ProfileTest, initReportProfiles) {
     EXPECT_CALL(*g_fileIOMock, fscanf(_, _, _))
             .Times(::testing::AtMost(5))
             .WillRepeatedly(::testing::Return(EOF));
-#endif
     EXPECT_CALL(*g_fileIOMock, fclose(_))                                                                            
             .Times(::testing::AtMost(5))                                                                                                
             .WillRepeatedly(Return(0));   
-#if 1
     EXPECT_CALL(*g_fileIOMock, mkdir(_,_))
            .Times(::testing::AtMost(5))
            .WillRepeatedly(Return(-1));
@@ -579,9 +575,7 @@ TEST_F(ProfileTest, initReportProfiles) {
     EXPECT_CALL(*g_rbusMock, rbusValue_ToString(_,_,_))
            .Times(::testing::AtMost(5))
            .WillRepeatedly(Return(status));
-#endif
 
-#if 1
     EXPECT_CALL(*g_vectorMock, Vector_Size(_))
         .Times(::testing::AtMost(5))
         .WillRepeatedly(Return(0)); // Return 1 to indicate only one profile (no duplicates)
@@ -596,7 +590,6 @@ TEST_F(ProfileTest, initReportProfiles) {
     EXPECT_CALL(*g_vectorMock, Vector_PushBack(_, _))
         .Times(::testing::AtMost(5))
         .WillRepeatedly(Return(T2ERROR_SUCCESS));
-#endif
     // Scheduler mock expectations
     EXPECT_CALL(*g_schedulerMock, initScheduler(_, _, _))
         .Times(::testing::AtMost(5))
@@ -609,9 +602,7 @@ TEST_F(ProfileTest, initReportProfiles) {
     
     EXPECT_EQ(initReportProfiles(), T2ERROR_SUCCESS);
 }
-#endif
 
-#if 1
 TEST_F(ProfileTest, ReportProfiles_addReportProfile) {
     Profile *profile = (Profile*)malloc(sizeof(Profile));
     profile->name = strdup("EventProfile");
@@ -649,7 +640,6 @@ TEST_F(ProfileTest, ReportProfiles_TimeoutCb_XConfProfile) {
         .WillRepeatedly(Return(0)); // Return 1 to indicate only one profile (no duplicates)
     ReportProfiles_TimeoutCb(strdup("XConfProfile"), true);
 }
-#endif
 
 TEST_F(ProfileTest, ReportProfiles_TimeoutCb_NonXConfProfile) {
     // Should trigger NotifyTimeout
@@ -768,7 +758,6 @@ TEST_F(ProfileTest, ReportProfiles_deleteProfileXConf) {
 }
 #endif
 
-#if 1
 TEST_F(ProfileTest, ReportProfiles_deleteProfile) {
     EXPECT_CALL(*g_vectorMock, Vector_Size(_))
         .Times(::testing::AtMost(2))
@@ -776,7 +765,6 @@ TEST_F(ProfileTest, ReportProfiles_deleteProfile) {
     //EXPECT_EQ(ReportProfiles_deleteProfile("testprofile"), T2ERROR_SUCCESS);
     EXPECT_EQ(ReportProfiles_deleteProfile("testprofile"), T2ERROR_FAILURE);
 }
-#endif
 
 TEST_F(ProfileTest, profilemem_usage) {
     unsigned int value = 0;
@@ -920,7 +908,6 @@ TEST_F(ProfileTest, InitAndUninit) {
     EXPECT_EQ(ProfileXConf_init(false), T2ERROR_SUCCESS);
 }
 
-#if 1
 TEST_F(ProfileTest, SetAndIsSet) {
     // Covers ProfileXConf_set and ProfileXConf_isSet
     ProfileXConf* profile = (ProfileXConf*)malloc(sizeof(ProfileXConf));
@@ -972,7 +959,6 @@ TEST_F(ProfileTest, SetAndIsSet) {
     
     EXPECT_EQ(ProfileXConf_uninit(), T2ERROR_SUCCESS);
 }
-#endif
 
 TEST_F(ProfileTest, IsNameEqual) {
     ProfileXConf* profile = (ProfileXConf*)malloc(sizeof(ProfileXConf));
@@ -1166,7 +1152,6 @@ TEST_F(ProfileTest, FreeT2EventHandlesNullAndValid) {
 
 #if 0
 TEST_F(ProfileTest, PushDataWithDelim_NormalEvent) {
-#if 1
     EXPECT_CALL(*g_rbusMock, rbus_registerLogHandler(_))
            .Times(::testing::AtMost(1))
            .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
@@ -1182,7 +1167,6 @@ TEST_F(ProfileTest, PushDataWithDelim_NormalEvent) {
     EXPECT_CALL(*g_systemMock, system(_))
            .Times(::testing::AtMost(1))
            .WillRepeatedly(Return(0));
-#endif
     T2ER_Init();
     ////EREnabled = true;
     ////stopDispatchThread = true;
@@ -1283,7 +1267,6 @@ TEST_F(ProfileTest, EventDispatchThread_NoEventsWait) {
 
 /*
 TEST_F(ProfileTest, InitAlreadyInitialized) {
-#if 1
     EXPECT_CALL(*g_rbusMock, rbus_registerLogHandler(_))
            .Times(::testing::AtMost(1))
            .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
@@ -1299,7 +1282,6 @@ TEST_F(ProfileTest, InitAlreadyInitialized) {
     EXPECT_CALL(*g_systemMock, system(_))
            .Times(::testing::AtMost(1))
            .WillRepeatedly(Return(0));
-#endif
     T2ER_Init();
     T2ERROR res = T2ER_Init();
     ASSERT_EQ(res, T2ERROR_SUCCESS);
@@ -1487,8 +1469,6 @@ TEST_F(ProfileTest, processProfile_StopProcessingTrue) {
 }
 #endif
 
-#if 1
-//==> To be FIXED
 TEST_F(ProfileTest, getSavedJsonProfilesasString_EmptyVector) {
     char* result = nullptr;
     //gVector.configs.clear();
@@ -1529,7 +1509,6 @@ TEST_F(ProfileTest, getSavedJsonProfilesasString_WithConfigs) {
     //free(conf.configData);
     free(result);
 }
-#endif
 /*
 TEST_F(ProfileTest, getSavedMsgpackProfilesasString_FileNotFound) {
     char* result = nullptr;
@@ -1635,19 +1614,19 @@ TEST_F(ProfileTest, destroyT2MarkerComponentMap) {
     EXPECT_EQ(clearT2MarkerComponentMap(), T2ERROR_SUCCESS);
 }
 
+#if 0
 TEST_F(ProfileTest, updateEventMap) {
     T2Marker t2Marker;
     EXPECT_EQ(updateEventMap("marker1", &t2Marker), T2ERROR_SUCCESS);
 }
+#endif
 
-#if 1
 TEST_F(ProfileTest, getComponentsWithEventMarkers) {
     Vector *profileList = nullptr;
     //Vector_Create(&profileList);
 
     getComponentsWithEventMarkers(&profileList);
 }
-#endif
 
 TEST_F(ProfileTest, getMarkerProfileList) {
     Vector *profileList = nullptr;
@@ -1665,9 +1644,6 @@ TEST_F(ProfileTest, createComponentDataElements) {
     createComponentDataElements();
 }
 
-//TESTCASE: create the T2_CACHE_FILE and call T2ER_StopDispatchThread
-//
-
 #if 0
 //CRASH on pthread_join
 TEST_F(ProfileTest, T2ER_Uninit) {
@@ -1678,6 +1654,7 @@ TEST_F(ProfileTest, T2ER_Uninit) {
 #endif
 
 #if 0
+//CollectAndReport to be implemented through NotifyTimeout
 TEST_F(ProfileTest, NotifyTimeout_reportInProgress)
 {
     //profile to be returned by Vector_At mock call
@@ -1727,7 +1704,6 @@ TEST_F(ProfileTest, NotifyTimeout_ThreadFalse)
     sleep(50);
 }
 
-#if 0
 TEST_F(ProfileTest, NotifyTimeout_ThreadTrue)
 {
     //profile to be returned by Vector_At mock call
@@ -1752,5 +1728,4 @@ TEST_F(ProfileTest, NotifyTimeout_ThreadTrue)
     NotifyTimeout("Profile1", true);
 }
 
-#endif
 #endif

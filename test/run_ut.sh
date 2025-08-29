@@ -39,8 +39,8 @@ autoreconf --install
 ./configure --enable-gtestapp
 
 # to fix the rbus.h include failure
-mkdir -p /usr/local/include/rbus/
-cp source/test/rbus/include/* /usr/local/include/rbus/
+mkdir -p source/ccspinterface/rbus/
+cp source/test/rbus/include/* source/ccspinterface/rbus/
 
 make -C source/test
 

@@ -55,7 +55,6 @@ static void *bus_handle = NULL;
 static bool isRFCT2Enable = false ;
 static bool isT2Ready = false;
 static bool isRbusEnabled = false ;
-static int count = 0;
 static pthread_mutex_t initMtx = PTHREAD_MUTEX_INITIALIZER;
 static bool isMutexInitialized = false ;
 
@@ -313,90 +312,90 @@ void *cacheEventToFile(void *arg)
     fl.l_start = 0;
     fl.l_len = 0;
     fl.l_pid = 0;
+
     pthread_detach(pthread_self());
+
     EVENT_ERROR("%s:%d, Caching the event to File\n", __func__, __LINE__);
     EVENT_ERROR("telemetry data = %s \n", telemetry_data);
-    if(telemetry_data == NULL)
+    if (telemetry_data == NULL)
     {
         EVENT_ERROR("%s:%d, Data is NULL\n", __func__, __LINE__);
         return NULL;
     }
+
     pthread_mutex_lock(&FileCacheMutex);
-
     EVENT_ERROR("opening the lock file\n");
-    if ((fd = open(T2_CACHE_LOCK_FILE, O_RDWR | O_CREAT, 0666)) == -1)
+
+    fd = open(T2_CACHE_LOCK_FILE, O_RDWR | O_CREAT, 0666);
+    if (fd == -1)
     {
-        EVENT_ERROR("%s:%d, T2:open failed\n", __func__, __LINE__);
+        EVENT_ERROR("%s:%d, Failed to open lock file\n", __func__, __LINE__);
         pthread_mutex_unlock(&FileCacheMutex);
         free(telemetry_data);
         return NULL;
     }
 
-    if(fcntl(fd, F_SETLKW, &fl) == -1)  /* set the lock */
+    EVENT_ERROR("Locking the lock file\n");
+    if (fcntl(fd, F_SETLKW, &fl) == -1)  /* set the lock */
     {
-        EVENT_ERROR("%s:%d, T2:fcntl failed\n", __func__, __LINE__);
+        EVENT_ERROR("%s:%d, Failed to acquire file lock\n", __func__, __LINE__);
+        close(fd);
         pthread_mutex_unlock(&FileCacheMutex);
-        int ret = close(fd);
-        if (ret != 0)
-        {
-            EVENT_ERROR("%s:%d, T2:close failed with error %d\n", __func__, __LINE__, ret);
-        }
         free(telemetry_data);
         return NULL;
     }
 
-    FILE *readFp = fopen(T2_CACHE_FILE, "r");
-    if (readFp != NULL)
-    {
-        int ch;
-        while ((ch = fgetc(readFp)) != EOF)
-        {
-            if (ch == '\n')
-            {
-                count++;
-            }
-        }
-        if (ch != '\n' && count > 0)
-        {
-            count++;
-        }
-        fclose(readFp);
-    }
-    EVENT_ERROR("count = %d\n", count);
-    EVENT_ERROR("telemetry data = %s, count = %d\n", telemetry_data, count);
-
-    FILE *fp = fopen(T2_CACHE_FILE, "a");
+    EVENT_ERROR("%s:%d, Opening the cache file\n", __func__, __LINE__);
+    FILE *fp = fopen(T2_CACHE_FILE, "a+");
     if (fp == NULL)
     {
-        EVENT_ERROR("%s: File open error %s\n", __FUNCTION__, T2_CACHE_FILE);
-        goto unlock;
+        EVENT_ERROR("%s:%d, Failed to open cache file\n", __func__, __LINE__);
+        fl.l_type = F_UNLCK;
+        fcntl(fd, F_SETLK, &fl);
+        close(fd);
+        pthread_mutex_unlock(&FileCacheMutex);
+        free(telemetry_data);
+        return NULL;
     }
 
-    if(count < MAX_EVENT_CACHE)
+    // Check the number of entries in the cache file
+    EVENT_ERROR("Getting the count\n");
+    int line_count = 0;
+    char buffer[1024];
+    while (fgets(buffer, sizeof(buffer), fp) != NULL)
     {
-        fprintf(fp, "%s\n", telemetry_data);
+        line_count++;
     }
-    else
+    EVENT_ERROR("Line count = %d\n", line_count);
+
+    if (line_count >= MAX_EVENT_CACHE)
     {
-        EVENT_ERROR("Reached Max cache limit of 200, Caching is not done\n");
+        EVENT_ERROR("%s:%d, Cache file already contains maximum allowed entries (%d)\n", __func__, __LINE__, MAX_EVENT_CACHE);
+        fclose(fp);
+        fl.l_type = F_UNLCK;
+        fcntl(fd, F_SETLK, &fl);
+        close(fd);
+        pthread_mutex_unlock(&FileCacheMutex);
+        free(telemetry_data);
+        return NULL;
     }
-    EVENT_ERROR("telemetry data = %s \n", telemetry_data);
+
+    EVENT_ERROR("Proceeding to cache the data\n");
+    fprintf(fp, "%s\n", telemetry_data);
+    EVENT_ERROR("%s:%d, Successfully cached telemetry data: %s\n", __func__, __LINE__, telemetry_data);
+
     fclose(fp);
 
-unlock:
-
-    fl.l_type = F_UNLCK;  /* set to unlock same region */
+    fl.l_type = F_UNLCK;  /* unlock the file */
     if (fcntl(fd, F_SETLK, &fl) == -1)
     {
-        EVENT_ERROR("fcntl failed \n");
+        EVENT_ERROR("%s:%d, Failed to release file lock\n", __func__, __LINE__);
     }
-    int ret = close(fd);
-    if (ret != 0)
-    {
-        EVENT_ERROR("%s:%d, T2:close failed with error %d\n", __func__, __LINE__, ret);
-    }
+
+    close(fd);
     pthread_mutex_unlock(&FileCacheMutex);
     free(telemetry_data);
+
     return NULL;
 }
 

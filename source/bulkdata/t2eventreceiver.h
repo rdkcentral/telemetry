@@ -36,4 +36,12 @@ T2ERROR T2ER_StartDispatchThread();
 
 T2ERROR T2ER_StopDispatchThread();
 
+void freeT2Event(void *data);
+
+void* T2ER_EventDispatchThread(void *arg);
+
+void T2ER_PushDataWithDelim(char* eventInfo, char* user_data);
+
+void T2ER_Push(char* eventName, char* eventValue);
+
 #endif /* SOURCE_BULKDATA_T2EVENTRECEIVER_H_ */

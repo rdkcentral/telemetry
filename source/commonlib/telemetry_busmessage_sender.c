@@ -55,7 +55,7 @@ static void *bus_handle = NULL;
 static bool isRFCT2Enable = false ;
 static bool isT2Ready = false;
 static bool isRbusEnabled = false ;
-//static int count = 0;
+static int count = 0;
 static pthread_mutex_t initMtx = PTHREAD_MUTEX_INITIALIZER;
 static bool isMutexInitialized = false ;
 
@@ -70,11 +70,6 @@ static pthread_mutex_t dMutex ;
 static pthread_mutex_t FileCacheMutex ;
 static pthread_mutex_t markerListMutex ;
 static pthread_mutex_t loggerMutex ;
-
-static pthread_t cacheThread;
-static pthread_mutex_t cacheThreadMutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t cacheThreadCond = PTHREAD_COND_INITIALIZER;
-static int cacheThreadRunning = 0; // 0: Not running, 1: Running
 
 static void EVENT_DEBUG(char* format, ...)
 {
@@ -131,6 +126,8 @@ static void initMutex()
 static void uninitMutex()
 {
     pthread_mutex_lock(&initMtx);
+    pthread_mutex_lock(&FileCacheMutex);
+    pthread_mutex_unlock(&FileCacheMutex);
     if ( isMutexInitialized )
     {
         isMutexInitialized = false ;
@@ -318,7 +315,9 @@ void *cacheEventToFile(void *arg)
     fl.l_start = 0;
     fl.l_len = 0;
     fl.l_pid = 0;
-
+    FILE *fs = NULL;
+    char path[100];
+    pthread_detach(pthread_self());
     EVENT_ERROR("%s:%d, Caching the event to File\n", __func__, __LINE__);
     EVENT_ERROR("telemetry data = %s \n", telemetry_data);
     if (telemetry_data == NULL)
@@ -326,14 +325,12 @@ void *cacheEventToFile(void *arg)
         EVENT_ERROR("%s:%d, Data is NULL\n", __func__, __LINE__);
         return NULL;
     }
-
     pthread_mutex_lock(&FileCacheMutex);
     EVENT_ERROR("opening the lock file\n");
 
-    fd = open(T2_CACHE_LOCK_FILE, O_RDWR | O_CREAT, 0666);
-    if (fd == -1)
+    if ((fd = open(T2_CACHE_LOCK_FILE, O_RDWR | O_CREAT, 0666)) == -1)
     {
-        EVENT_ERROR("%s:%d, Failed to open lock file\n", __func__, __LINE__);
+        EVENT_ERROR("%s:%d, T2:open failed\n", __func__, __LINE__);
         pthread_mutex_unlock(&FileCacheMutex);
         free(telemetry_data);
         return NULL;
@@ -342,9 +339,13 @@ void *cacheEventToFile(void *arg)
     EVENT_ERROR("Locking the lock file\n");
     if (fcntl(fd, F_SETLKW, &fl) == -1)  /* set the lock */
     {
-        EVENT_ERROR("%s:%d, Failed to acquire file lock\n", __func__, __LINE__);
-        close(fd);
+        EVENT_ERROR("%s:%d, T2:fcntl failed\n", __func__, __LINE__);
         pthread_mutex_unlock(&FileCacheMutex);
+        int ret = close(fd);
+        if (ret != 0)
+        {
+            EVENT_ERROR("%s:%d, T2:close failed with error %d\n", __func__, __LINE__, ret);
+        }
         free(telemetry_data);
         return NULL;
     }
@@ -353,58 +354,43 @@ void *cacheEventToFile(void *arg)
     FILE *fp = fopen(T2_CACHE_FILE, "a+");
     if (fp == NULL)
     {
-        EVENT_ERROR("%s:%d, Failed to open cache file\n", __func__, __LINE__);
-        fl.l_type = F_UNLCK;
-        fcntl(fd, F_SETLK, &fl);
-        close(fd);
-        pthread_mutex_unlock(&FileCacheMutex);
-        free(telemetry_data);
-        return NULL;
+        EVENT_ERROR("%s: File open error %s\n", __FUNCTION__, T2_CACHE_FILE);
+        goto unlock;
     }
-
-    // Check the number of entries in the cache file
-    EVENT_ERROR("Getting the count\n");
-    int line_count = 0;
-    char buffer[1024];
-    while (fgets(buffer, sizeof(buffer), fp) != NULL)
+    EVENT_ERROR("%s:%d, Getting the count\n", __func__, __LINE__);
+    fs = popen ("cat /tmp/t2_caching_file | wc -l", "r");
+    if(fs != NULL)
     {
-        line_count++;
+        fgets(path, 100, fs);
+        count = atoi ( path );
+        pclose(fs);
     }
-    EVENT_ERROR("Line count = %d\n", line_count);
-
-    if (line_count >= MAX_EVENT_CACHE)
+    EVENT_ERROR("%s:%d, count = %d; proceeding to cache\n", __func__, __LINE__, count);
+    if(count < MAX_EVENT_CACHE)
     {
-        EVENT_ERROR("%s:%d, Cache file already contains maximum allowed entries (%d)\n", __func__, __LINE__, MAX_EVENT_CACHE);
-        fclose(fp);
-        fl.l_type = F_UNLCK;
-        fcntl(fd, F_SETLK, &fl);
-        close(fd);
-        pthread_mutex_unlock(&FileCacheMutex);
-        free(telemetry_data);
-        return NULL;
+        fprintf(fp, "%s\n", telemetry_data);
+        EVENT_ERROR("%s:%d, Successfully cached !!!\n", __func__, __LINE__);
     }
-
-    EVENT_ERROR("Proceeding to cache the data\n");
-    fprintf(fp, "%s\n", telemetry_data);
-    EVENT_ERROR("%s:%d, Successfully cached telemetry data: %s\n", __func__, __LINE__, telemetry_data);
-
+    else
+    {
+        EVENT_DEBUG("Reached Max cache limit of 200, Caching is not done\n");
+    }
     fclose(fp);
 
-    fl.l_type = F_UNLCK;  /* unlock the file */
+unlock:
+
+    fl.l_type = F_UNLCK;  /* set to unlock same region */
     if (fcntl(fd, F_SETLK, &fl) == -1)
     {
-        EVENT_ERROR("%s:%d, Failed to release file lock\n", __func__, __LINE__);
+        EVENT_ERROR("fcntl failed \n");
     }
-
-    close(fd);
+    int ret = close(fd);
+    if (ret != 0)
+    {
+        EVENT_ERROR("%s:%d, T2:close failed with error %d\n", __func__, __LINE__, ret);
+    }
     pthread_mutex_unlock(&FileCacheMutex);
     free(telemetry_data);
-
-    pthread_mutex_lock(&cacheThreadMutex);
-    cacheThreadRunning = 0; // Mark thread as not running
-    pthread_cond_signal(&cacheThreadCond); // Signal completion
-    pthread_mutex_unlock(&cacheThreadMutex);
-
     return NULL;
 }
 
@@ -718,40 +704,35 @@ static bool isCachingRequired( )
 
 static int report_or_cache_data(char* telemetry_data, const char* markerName)
 {
+    int ret = 0;
+    pthread_t tid;
     pthread_mutex_lock(&eventMutex);
-    if (isCachingRequired())
+    if(isCachingRequired())
     {
         EVENT_DEBUG("Caching the event : %s \n", telemetry_data);
         int eventDataLen = strlen(markerName) + strlen(telemetry_data) + strlen(MESSAGE_DELIMITER) + 1;
-        char* buffer = (char*)malloc(eventDataLen * sizeof(char));
-        if (buffer)
+        char* buffer = (char*) malloc(eventDataLen * sizeof(char));
+        if(buffer)
         {
+            // Caching format needs to be same for operation between rbus/dbus modes across reboots
             snprintf(buffer, eventDataLen, "%s%s%s", markerName, MESSAGE_DELIMITER, telemetry_data);
-
-            pthread_mutex_lock(&cacheThreadMutex);
-            if (cacheThreadRunning)
-            {
-                pthread_cond_wait(&cacheThreadCond, &cacheThreadMutex); // Wait for previous thread
-            }
-            cacheThreadRunning = 1; // Mark thread as running
-            pthread_create(&cacheThread, NULL, cacheEventToFile, (void *)buffer);
-            pthread_mutex_unlock(&cacheThreadMutex);
+            pthread_create(&tid, NULL, cacheEventToFile, (void *)buffer);
         }
         pthread_mutex_unlock(&eventMutex);
-        return T2ERROR_SUCCESS;
+        return T2ERROR_SUCCESS ;
     }
     pthread_mutex_unlock(&eventMutex);
 
-    if (isT2Ready)
+    if(isT2Ready)
     {
-        int ret = filtered_event_send(telemetry_data, markerName);
-        if (0 != ret)
+        // EVENT_DEBUG("T2: Sending event : %s\n", telemetry_data);
+        ret = filtered_event_send(telemetry_data, markerName);
+        if(0 != ret)
         {
             EVENT_ERROR("%s:%d, T2:telemetry data send failed, status = %d \n", __func__, __LINE__, ret);
         }
-        return ret;
     }
-    return T2ERROR_FAILURE;
+    return ret;
 }
 
 /**
@@ -764,20 +745,13 @@ void t2_init(char *component)
 
 void t2_uninit(void)
 {
-    pthread_mutex_lock(&cacheThreadMutex);
-    while (cacheThreadRunning)
-    {
-        pthread_cond_wait(&cacheThreadCond, &cacheThreadMutex); // Wait for thread to complete
-    }
-    pthread_mutex_unlock(&cacheThreadMutex);
-
-    if (componentName)
+    if(componentName)
     {
         free(componentName);
-        componentName = NULL;
+        componentName = NULL ;
     }
 
-    if (isRbusEnabled)
+    if(isRbusEnabled)
     {
         rBusInterface_Uninit();
     }

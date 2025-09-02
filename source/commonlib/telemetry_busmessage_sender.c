@@ -55,6 +55,7 @@ static void *bus_handle = NULL;
 static bool isRFCT2Enable = false ;
 static bool isT2Ready = false;
 static bool isRbusEnabled = false ;
+//static int count = 0;
 static pthread_mutex_t initMtx = PTHREAD_MUTEX_INITIALIZER;
 static bool isMutexInitialized = false ;
 
@@ -69,6 +70,11 @@ static pthread_mutex_t dMutex ;
 static pthread_mutex_t FileCacheMutex ;
 static pthread_mutex_t markerListMutex ;
 static pthread_mutex_t loggerMutex ;
+
+static pthread_t cacheThread;
+static pthread_mutex_t cacheThreadMutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t cacheThreadCond = PTHREAD_COND_INITIALIZER;
+static int cacheThreadRunning = 0; // 0: Not running, 1: Running
 
 static void EVENT_DEBUG(char* format, ...)
 {
@@ -313,8 +319,6 @@ void *cacheEventToFile(void *arg)
     fl.l_len = 0;
     fl.l_pid = 0;
 
-    pthread_detach(pthread_self());
-
     EVENT_ERROR("%s:%d, Caching the event to File\n", __func__, __LINE__);
     EVENT_ERROR("telemetry data = %s \n", telemetry_data);
     if (telemetry_data == NULL)
@@ -395,6 +399,11 @@ void *cacheEventToFile(void *arg)
     close(fd);
     pthread_mutex_unlock(&FileCacheMutex);
     free(telemetry_data);
+
+    pthread_mutex_lock(&cacheThreadMutex);
+    cacheThreadRunning = 0; // Mark thread as not running
+    pthread_cond_signal(&cacheThreadCond); // Signal completion
+    pthread_mutex_unlock(&cacheThreadMutex);
 
     return NULL;
 }
@@ -709,35 +718,40 @@ static bool isCachingRequired( )
 
 static int report_or_cache_data(char* telemetry_data, const char* markerName)
 {
-    int ret = 0;
-    pthread_t tid;
     pthread_mutex_lock(&eventMutex);
-    if(isCachingRequired())
+    if (isCachingRequired())
     {
         EVENT_DEBUG("Caching the event : %s \n", telemetry_data);
         int eventDataLen = strlen(markerName) + strlen(telemetry_data) + strlen(MESSAGE_DELIMITER) + 1;
-        char* buffer = (char*) malloc(eventDataLen * sizeof(char));
-        if(buffer)
+        char* buffer = (char*)malloc(eventDataLen * sizeof(char));
+        if (buffer)
         {
-            // Caching format needs to be same for operation between rbus/dbus modes across reboots
             snprintf(buffer, eventDataLen, "%s%s%s", markerName, MESSAGE_DELIMITER, telemetry_data);
-            pthread_create(&tid, NULL, cacheEventToFile, (void *)buffer);
+
+            pthread_mutex_lock(&cacheThreadMutex);
+            if (cacheThreadRunning)
+            {
+                pthread_cond_wait(&cacheThreadCond, &cacheThreadMutex); // Wait for previous thread
+            }
+            cacheThreadRunning = 1; // Mark thread as running
+            pthread_create(&cacheThread, NULL, cacheEventToFile, (void *)buffer);
+            pthread_mutex_unlock(&cacheThreadMutex);
         }
         pthread_mutex_unlock(&eventMutex);
-        return T2ERROR_SUCCESS ;
+        return T2ERROR_SUCCESS;
     }
     pthread_mutex_unlock(&eventMutex);
 
-    if(isT2Ready)
+    if (isT2Ready)
     {
-        // EVENT_DEBUG("T2: Sending event : %s\n", telemetry_data);
-        ret = filtered_event_send(telemetry_data, markerName);
-        if(0 != ret)
+        int ret = filtered_event_send(telemetry_data, markerName);
+        if (0 != ret)
         {
             EVENT_ERROR("%s:%d, T2:telemetry data send failed, status = %d \n", __func__, __LINE__, ret);
         }
+        return ret;
     }
-    return ret;
+    return T2ERROR_FAILURE;
 }
 
 /**
@@ -750,13 +764,20 @@ void t2_init(char *component)
 
 void t2_uninit(void)
 {
-    if(componentName)
+    pthread_mutex_lock(&cacheThreadMutex);
+    while (cacheThreadRunning)
+    {
+        pthread_cond_wait(&cacheThreadCond, &cacheThreadMutex); // Wait for thread to complete
+    }
+    pthread_mutex_unlock(&cacheThreadMutex);
+
+    if (componentName)
     {
         free(componentName);
-        componentName = NULL ;
+        componentName = NULL;
     }
 
-    if(isRbusEnabled)
+    if (isRbusEnabled)
     {
         rBusInterface_Uninit();
     }

@@ -22,7 +22,7 @@ lib_LTLIBRARIES = libt2parser.la
 
 libt2parser_la_SOURCES = t2parser.c t2parserxconf.c
 libt2parser_la_LIBADD = ${top_builddir}/source/ccspinterface/libccspinterface.la ${top_builddir}/source/utils/libt2utils.la
-libt2parser_la_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \
+libt2parser_la_CPPFLAGS = -Wno-format -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \
                                 -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/dbus-1.0/include \
                                 -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ccsp \
                                 -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/rbus \

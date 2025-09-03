@@ -664,21 +664,21 @@ static int getLogFileDescriptor(GrepSeekProfile* gsProfile, const char* logPath,
     int fd = open(logFilePath, O_RDONLY);
     if (fd == -1)
     {
-        T2Debug("Failed to open log file %s\n", logFilePath);
+        T2Error("Failed to open log file %s\n", logFilePath);
         return -1;
     }
 
     struct stat sb;
     if (fstat(fd, &sb) == -1)
     {
-        T2Debug("Error getting file size for %s\n", logFile);
+        T2Error("Error getting file size for %s\n", logFile);
         close(fd);
         return -1;
     }
 
     if (sb.st_size == 0)
     {
-        T2Debug("The size of the logfile is 0 for %s\n", logFile);
+        T2Error("The size of the logfile is 0 for %s\n", logFile);
         close(fd);
         return -1; // Consistent error return value
     }
@@ -783,7 +783,7 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
     char *addrrf = NULL;
     if (fd == -1)
     {
-        T2Error("Error opening file\n");
+        T2Debug("Error opening file\n");
         return NULL;
     }
     // Read the file contents using mmap
@@ -791,13 +791,13 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
     struct stat rb;
     if(fstat(fd, &sb) == -1)
     {
-        T2Error("Error getting file size\n");
+        T2Debug("Error getting file size\n");
         return NULL;
     }
 
     if(sb.st_size == 0)
     {
-        T2Error("The Size of the logfile is 0\n");
+        T2Debug("The Size of the logfile is 0\n");
         return NULL;
     }
 
@@ -1033,7 +1033,7 @@ static int parseMarkerListOptimized(GrepSeekProfile *gsProfile, Vector * ip_vMar
             prevfile = updateFilename(prevfile, log_file_for_this_iteration);
             if (fd == -1)
             {
-                T2Error("Error opening file %s\n", log_file_for_this_iteration);
+                T2Debug("Error in creating file descriptor for file %s\n", log_file_for_this_iteration);
                 continue;
             }
 

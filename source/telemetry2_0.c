@@ -45,6 +45,7 @@
 #include "scheduler.h"
 #include "t2eventreceiver.h"
 #include "t2common.h"
+#include "multicurlinterface.h"
 
 #ifdef INCLUDE_BREAKPAD
 #ifndef ENABLE_RDKC_SUPPORT
@@ -72,6 +73,7 @@ T2ERROR initTelemetry()
     T2Debug("%s ++in\n", __FUNCTION__);
 
     initWhoamiSupport();
+    init_connection_pool();
     if(T2ERROR_SUCCESS == initReportProfiles())
     {
 #ifndef DEVICE_EXTENDER

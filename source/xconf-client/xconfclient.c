@@ -31,6 +31,7 @@
 
 #include <cjson/cJSON.h>
 
+#include "multicurlinterface.h"
 #include "t2log_wrapper.h"
 #include "reportprofiles.h"
 #include "profilexconf.h"
@@ -670,6 +671,9 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
         httpResponse->data = (char*)malloc(1);
         httpResponse->data[0] = '\0'; //CID 282084 : Uninitialized scalar variable (UNINIT)
         httpResponse->size = 0;
+
+        //http_pool_request(httpsUrl, NULL, httpResponse);
+        T2Info("%s : http_pool_request called with url %s \n", __FUNCTION__, httpsUrl);
 
         curl = curl_easy_init();
 

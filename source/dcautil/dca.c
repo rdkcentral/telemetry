@@ -113,64 +113,90 @@ static const char *strnstr(const char *haystack, const char *needle, size_t len)
         }
         return NULL;
     }
+    /*
+        // Adjust search length for longer patterns
+        size_t search_len = len - needle_len + 1;
 
-    // Adjust search length for longer patterns
-    size_t search_len = len - needle_len + 1;
+        // For longer patterns (which is our common case), use multi-char checking
+        const char first_char = *needle;
+        const char second_char = needle[1];
+        const char last_char = needle[needle_len - 1];
+        const char prelast_char = needle[needle_len - 2];
 
-    // For longer patterns (which is our common case), use multi-char checking
-    const char first_char = *needle;
-    const char second_char = needle[1];
-    const char last_char = needle[needle_len - 1];
-    const char prelast_char = needle[needle_len - 2];
-
-    // Skip value for Boyer-Moore-like optimization
-    size_t skip = needle_len / 4 ;
-    // Main search loop optimized for longer patterns
-    for (size_t i = 0; i < search_len && i < len;)
-    {
-        // Safe boundary check for all accesses
-        if ( haystack[i] == '\0' || i + needle_len > len || i >= search_len)
+        // Skip value for Boyer-Moore-like optimization
+        size_t skip = needle_len / 4 ;
+        // Main search loop optimized for longer patterns
+        for (size_t i = 0; i < search_len && i < len;)
         {
-            break;
-        }
-
-        // Quick boundary check using multiple characters
-        // We already know needle_len >= 4 from earlier check
-        if (haystack[i] == first_char &&
-                haystack[i + 1] == second_char &&
-                haystack[i + needle_len - 1] == last_char &&
-                haystack[i + needle_len - 2] == prelast_char)
-        {
-
-            // Only if all boundary chars match, do a full comparison of the middle section
-            // We already verified needle_len >= 4 and bounds earlier
-            size_t middle_len = needle_len - 4;
-            if (middle_len > 0 &&
-                    i + 2 + middle_len <= len &&
-                    memcmp(haystack + i + 2, needle + 2, middle_len) == 0)
+            // Safe boundary check for all accesses
+            if ( haystack[i] == '\0' || i + needle_len > len || i >= search_len)
             {
-                return haystack + i;
+                break;
             }
-            i++; // Move one by one after a partial match
-        }
-        else
-        {
-            // Ensure skip doesn't cause overflow
-            if (i + skip < search_len && i + skip < len)
+
+            // Quick boundary check using multiple characters
+            // We already know needle_len >= 4 from earlier check
+            if (haystack[i] == first_char &&
+                    haystack[i + 1] == second_char &&
+                    haystack[i + needle_len - 1] == last_char &&
+                    haystack[i + needle_len - 2] == prelast_char)
             {
-                i += skip;
+
+                // Only if all boundary chars match, do a full comparison of the middle section
+                // We already verified needle_len >= 4 and bounds earlier
+                size_t middle_len = needle_len - 4;
+                if (middle_len > 0 &&
+                        i + 2 + middle_len <= len &&
+                        memcmp(haystack + i + 2, needle + 2, middle_len) == 0)
+                {
+                    return haystack + i;
+                }
+                i++; // Move one by one after a partial match
             }
             else
             {
-                i++; // If skip would overflow, just move one position
-            }
+                // Ensure skip doesn't cause overflow
+                if (i + skip < search_len && i + skip < len)
+                {
+                    i += skip;
+                }
+                else
+                {
+                    i++; // If skip would overflow, just move one position
+                }
 
-            // But don't skip past a potential match
-            while (i < search_len && i < len && haystack[i] != first_char)
-            {
-                i++;
+                // But don't skip past a potential match
+                while (i < search_len && i < len && haystack[i] != first_char)
+                {
+                    i++;
+                }
             }
         }
+        */
+    size_t skip[256];
+    for (size_t i = 0; i < 256; ++i)
+    {
+        skip[i] = needle_len;
+    }
+    for (size_t i = 0; i < needle_len - 1; ++i)
+    {
+        skip[(unsigned char)needle[i]] = needle_len - i - 1;
+    }
+
+    size_t i = 0;
+    while (i <= len - needle_len)
+    {
+        size_t j = needle_len - 1;
+        while (j < needle_len && haystack[i + j] == needle[j])
+        {
+            j--;
+        }
+        if (j == (size_t) -1)
+        {
+            return haystack + i; // Match found
+        }
+        size_t s = skip[(unsigned char)haystack[i + needle_len - 1]];
+        i += (s > 0) ? s : 1;
     }
     return NULL;
 }

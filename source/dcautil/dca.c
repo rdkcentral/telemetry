@@ -940,6 +940,7 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
         }
         addrrf = NULL;
     }
+    close(tmp_fd);
     close(fd);
 
     if (addrcf == MAP_FAILED)

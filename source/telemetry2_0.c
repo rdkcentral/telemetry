@@ -127,6 +127,7 @@ static void terminate()
 #endif
         ReportProfiles_uninit();
     }
+    http_pool_cleanup();
 
 }
 static void _print_stack_backtrace(void)

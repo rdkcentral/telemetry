@@ -25,7 +25,7 @@
 #include "telemetry2_0.h"
 
 T2ERROR init_connection_pool();
-T2ERROR http_pool_request(const char *url, const char *payload, curlResponseData* response);
+T2ERROR http_pool_request(const char *url, const char *payload, char** data);
 T2ERROR http_pool_cleanup(void); 
 
 #endif /* _MULTI_CURL_INTERFACE_H_ */

@@ -234,7 +234,7 @@ Vector* getRbusProfileParamValues(Vector *paramList, int execcount)
         profileValues* profVals = (profileValues *) malloc(sizeof(profileValues));
         if(parmTemp->skipFreq > 0 && (execcount % parmTemp->skipFreq + 1) != 0)
         {
-            T2Info("Skipping parameter : %s as per skipFreq : %d\n", parmTemp->name, parmTemp->skipFreq);
+            T2Debug("Skipping parameter : %s as per skipFreq : %d\n", parmTemp->name, parmTemp->skipFreq);
             profVals->paramValues = NULL;
             Vector_PushBack(profileValueList, profVals);
             continue;

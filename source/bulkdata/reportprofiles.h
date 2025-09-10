@@ -23,6 +23,7 @@
 #include <stdbool.h>
 #include <cjson/cJSON.h>
 #include "telemetry2_0.h"
+#include "t2eventreceiver.h"
 
 //Including Webconfig Framework For Telemetry 2.0 As part of RDKB-28897
 #if defined(FEATURE_SUPPORT_WEBCONFIG)
@@ -103,6 +104,12 @@ struct __msgpack__
 int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkPreviousSeek);
 
 void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob, int msgpack_blob_size);
+
+T2ERROR ReportProfiles_storeMarkerEvent(char *profileName, T2Event *eventInfo);
+
+T2ERROR privacymode_do_not_share ();
+
+T2ERROR ReportProfiles_deleteProfile(const char* profileName);
 
 bool isMtlsEnabled(void);
 

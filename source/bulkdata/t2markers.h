@@ -40,6 +40,8 @@ T2ERROR destroyT2MarkerComponentMap();
 
 T2ERROR clearT2MarkerComponentMap();
 
+T2ERROR updateEventMap(const char* markerName, T2Marker* t2Marker);
+
 T2ERROR addT2EventMarker(const char* markerName, const char* compName, const char *profileName, unsigned int skipFreq);
 
 void getComponentMarkerList(const char* compName, void **markerList);

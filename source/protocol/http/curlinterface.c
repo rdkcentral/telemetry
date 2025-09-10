@@ -515,13 +515,14 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
                         if(curl_code != CURLE_OK || http_code != 200)
                         {
 #ifdef LIBRDKCERTSEL_BUILD
-                            T2Info("%s: Using xpki Certs connection certname: %s\n", __func__, pCertFile);
+                            T2Error("%s: Failed to establish connection using xPKI certificate: %s, curl failed: %d\n", __func__, pCertFile, curl_code);
 #endif
                             fprintf(stderr, "curl failed: %s\n", curl_easy_strerror(curl_code));
                             childCurlResponse.lineNumber = __LINE__;
                         }
                         else
                         {
+                            T2Info("%s: Using xpki Certs connection certname: %s\n", __func__, pCertFile);
                             childCurlResponse.lineNumber = __LINE__;
                         }
                         childCurlResponse.curlResponse = curl_code;

@@ -633,21 +633,21 @@ static int getLogFileDescriptor(GrepSeekProfile* gsProfile, const char* logPath,
     int fd = open(logFilePath, O_RDONLY);
     if (fd == -1)
     {
-        T2Error("Failed to open log file %s\n", logFilePath);
+        T2Debug("Failed to open log file %s\n", logFilePath);
         return -1;
     }
 
     struct stat sb;
     if (fstat(fd, &sb) == -1)
     {
-        T2Error("Error getting file size for %s\n", logFile);
+        T2Debug("Error getting file size for %s\n", logFile);
         close(fd);
         return -1;
     }
 
     if (sb.st_size == 0)
     {
-        T2Error("The size of the logfile is 0 for %s\n", logFile);
+        T2Debug("The size of the logfile is 0 for %s\n", logFile);
         close(fd);
         return -1; // Consistent error return value
     }
@@ -655,7 +655,7 @@ static int getLogFileDescriptor(GrepSeekProfile* gsProfile, const char* logPath,
     // Check if the file size matches the seek value from the map
     if (sb.st_size == seek_value_from_map)
     {
-        T2Info("The logfile size matches the seek value (%ld) for %s\n", seek_value_from_map, logFile);
+        T2Debug("The logfile size matches the seek value (%ld) for %s\n", seek_value_from_map, logFile);
         close(fd);
         return -1; // Consistent error return value
     }
@@ -794,7 +794,12 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
         T2Error("Failed to create temp file: %s\n", strerror(errno));
         return NULL;
     }
-    unlink(tmp_fdmain);
+    if(unlink(tmp_fdmain) == -1)
+    {
+        T2Error("unlink failed\n");
+        close(tmp_fd);
+        return NULL;
+    }
     off_t offset = 0;
     ssize_t sent = sendfile(tmp_fd, fd, &offset, sb.st_size);
     if (sent != sb.st_size)
@@ -822,9 +827,20 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
                 }
                 return NULL;
             }
-            unlink(tmp_fdrotated);
-            offset = 0;
+            if(unlink(tmp_fdrotated) == -1)
+            {
+                T2Error("unlink failed\n");
+                close(tmp_fd);
+                close(tmp_rd);
+                if(rd != -1)
+                {
+                    close(rd);
+                    rd = -1;
+                }
+                return NULL;
+            }
 
+            offset = 0;
             sent = sendfile(tmp_rd, rd, &offset, rb.st_size);
             if (sent != rb.st_size)
             {

@@ -22,11 +22,30 @@ jobs:
       - name: Run unit tests
         run: sh -c test/run_ut.sh
 
-      - name: Upload test results to automatic test result management system
+
+      - name: Copy l2 test results to runner
+        run: |
+          docker cp native-platform:/tmp/Gtest_Report /tmp/Gtest_Report
+          ls -l
+          ls -l /tmp/Gtest_Report
+
+  upload-test-results:
+    name: Upload L1 test results to automatic test result management system
+    needs: execute-L1-tests-on-pr
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/rdkcentral/docker-rdk-ci:latest
+      volumes:
+        - /tmp/Gtest_Report:/tmp/Gtest_Report
+    steps:
+      - name: Upload results
         if: github.repository_owner == 'rdkcentral'
         run: |
-          git config --global --add safe.directory `pwd`
-          gtest-json-result-push.py /tmp/Gtest_Report https://rdkeorchestrationservice.apps.cloud.comcast.net/rdke_orchestration_api/push_unit_test_results `pwd`
-
- 
-
+            echo "Contents in workspace directory"
+            ls -l
+            echo "==============================="
+            echo "Contents in /tmp/L2_TEST_RESULTS"
+            ls -l /tmp/Gtest_Report
+            echo "==============================="
+            git config --global --add safe.directory `pwd`
+            gtest-json-result-push.py /tmp/Gtest_Report https://rdkeorchestrationservice.apps.cloud.comcast.net/rdke_orchestration_api/push_unit_test_results `pwd`

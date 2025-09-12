@@ -20,7 +20,7 @@ AM_CFLAGS =
 
 lib_LTLIBRARIES = libxconfclient.la
 
-libxconfclient_la_SOURCES = xconfclient.c
+libxconfclient_la_SOURCES = xconfclient.c multicurlinterface.c
 libxconfclient_la_LDFLAGS = -shared -fPIC -lcjson -lcurl
 if IS_LIBRDKCERTSEL_ENABLED
 libxconfclient_la_CFLAGS = $(LIBRDKCERTSEL_FLAG)

@@ -31,6 +31,7 @@
 
 #include <cjson/cJSON.h>
 
+#include "multicurlinterface.h"
 #include "t2log_wrapper.h"
 #include "reportprofiles.h"
 #include "profilexconf.h"
@@ -524,7 +525,7 @@ error:
     T2Debug("%s --out\n", __FUNCTION__);
     return ret;
 }
-
+#if 0
 static size_t httpGetCallBack(void *response, size_t len, size_t nmemb,
                               void *stream)
 {
@@ -546,6 +547,7 @@ static size_t httpGetCallBack(void *response, size_t len, size_t nmemb,
 
     return realsize;
 }
+    #endif
 
 #ifdef LIBRDKCERTSEL_BUILD
 void xcCertSelectorFree()
@@ -582,15 +584,20 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
     T2Debug("%s ++in\n", __FUNCTION__);
 
     T2Info("%s with url %s \n", __FUNCTION__, httpsUrl);
+#if 0
     CURL *curl;
     CURLcode code = CURLE_OK;
     long http_code = 0;
     CURLcode curl_code = CURLE_OK;
+#endif
 #ifdef LIBRDKCERTSEL_BUILD
+#if 0
     rdkcertselectorStatus_t xcGetCertStatus;
     char *pCertURI = NULL;
     char *pEngine = NULL;
 #endif
+#endif
+#if 0
     char *pCertFile = NULL;
     char *pPasswd = NULL;
 #ifdef LIBRDKCONFIG_BUILD
@@ -599,6 +606,7 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
     // char *pKeyType = "PEM" ;
     bool mtls_enable = false;
     pid_t childPid;
+#endif
     int sharedPipeFdStatus[2];
     int sharedPipeFdDataLen[2];
 
@@ -645,7 +653,11 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
     }
 #endif
 #endif
-    mtls_enable = isMtlsEnabled();
+    //mtls_enable = isMtlsEnabled();
+
+    http_pool_request(httpsUrl, NULL, data);
+    T2Info("%s : http_pool_request called with url %s \n", __FUNCTION__, httpsUrl);
+#if 0
     // block the userdefined signal handlers before fork
     pthread_sigmask(SIG_BLOCK, &blocking_signal, NULL);
     if((childPid = fork()) < 0)
@@ -670,6 +682,7 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
         httpResponse->data = (char*)malloc(1);
         httpResponse->data[0] = '\0'; //CID 282084 : Uninitialized scalar variable (UNINIT)
         httpResponse->size = 0;
+
 
         curl = curl_easy_init();
 
@@ -831,6 +844,7 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
                 write(sharedPipeFdDataLen[1], &len, sizeof(size_t));
                 close(sharedPipeFdDataLen[1]);
 
+#if 0
                 FILE *httpOutput = fopen(HTTP_RESPONSE_FILE, "w+");
                 if(httpOutput)
                 {
@@ -842,6 +856,7 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
                 {
                     T2Error("Unable to open %s file \n", HTTP_RESPONSE_FILE);
                 }
+#endif
 
                 free(httpResponse->data);
                 free(httpResponse);
@@ -987,6 +1002,9 @@ status_return :
         return ret;
 
     }
+#endif
+    T2Debug("%s --out\n", __FUNCTION__);
+    return T2ERROR_SUCCESS;
 
 }
 

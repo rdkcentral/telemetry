@@ -591,9 +591,11 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
     CURLcode curl_code = CURLE_OK;
 #endif
 #ifdef LIBRDKCERTSEL_BUILD
+#if 0
     rdkcertselectorStatus_t xcGetCertStatus;
     char *pCertURI = NULL;
     char *pEngine = NULL;
+#endif
 #endif
 #if 0
     char *pCertFile = NULL;

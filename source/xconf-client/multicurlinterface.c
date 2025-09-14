@@ -184,11 +184,17 @@ T2ERROR http_pool_request(const char *url, const char *payload, char **data)
     
     // Set URL and payload
     curl_easy_setopt(easy, CURLOPT_URL, url);
-    //curl_easy_setopt(easy, CURLOPT_POSTFIELDS, payload);
     
     // Response handling
-    curl_easy_setopt(easy, CURLOPT_WRITEFUNCTION, httpGetCallBack);
-    curl_easy_setopt(easy, CURLOPT_WRITEDATA, (void *) response);
+    if (payload)
+    {
+        curl_easy_setopt(easy, CURLOPT_POSTFIELDS, payload);
+    }
+    else
+    {
+        curl_easy_setopt(easy, CURLOPT_WRITEFUNCTION, httpGetCallBack);
+        curl_easy_setopt(easy, CURLOPT_WRITEDATA, (void *) response);
+    }
     
     // Add to multi handle
     curl_multi_add_handle(pool.multi_handle, easy);

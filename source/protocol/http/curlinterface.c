@@ -459,15 +459,15 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
             pEngine = rdkcertselector_getEngine(thisCertSel);
             if(pEngine != NULL)
             {
-                T2Info("debug pEngine %s \n", pEngine);
+                T2Info("%s: debug pEngine %s\n", __func__, pEngine);
                 code = curl_easy_setopt(curl, CURLOPT_SSLENGINE, pEngine);
-                T2Info("debug pEngine %s \n", pEngine);
+                T2Info("%s: debug pEngine %s\n", __func__ ,pEngine);
             }
             else
             {
-                T2Info("debug CURLOPT_SSLENGINE_DEFAULT %s \n", pEngine);
+                T2Info("%s :debug CURLOPT_SSLENGINE_DEFAULT %s\n", __func__ , pEngine);
                 code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
-                T2Info("debug CURLOPT_SSLENGINE_DEFAULT  %s \n", pEngine);
+                T2Info("%s : debug CURLOPT_SSLENGINE_DEFAULT  %s\n",__func__ , pEngine);
             }
             if(code != CURLE_OK)
             {

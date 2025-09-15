@@ -59,8 +59,10 @@ typedef struct
 } childResponse ;
 
 #ifdef LIBRDKCERTSEL_BUILD
+#if 0
 static rdkcertselector_h curlCertSelector = NULL;
 static rdkcertselector_h curlRcvryCertSelector = NULL;
+#endif
 #endif
 
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)

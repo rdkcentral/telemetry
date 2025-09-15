@@ -465,9 +465,9 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
             }
             else
             {
-                T2Info("%s :debug CURLOPT_SSLENGINE_DEFAULT %s\n", __func__ , pEngine);
+                T2Info("%s :debug CURLOPT_SSLENGINE_DEFAULT\n", __func__ );
                 code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
-                T2Info("%s : debug CURLOPT_SSLENGINE_DEFAULT  %s\n",__func__ , pEngine);
+                T2Info("%s : debug CURLOPT_SSLENGINE_DEFAULT 1\n",__func__ );
             }
             if(code != CURLE_OK)
             {

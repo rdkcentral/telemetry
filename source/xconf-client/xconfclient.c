@@ -582,8 +582,6 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
     T2Info("%s with url %s \n", __FUNCTION__, httpsUrl);
-    
-    static bool pool_initialized = false;
 
     if(NULL == httpsUrl)
     {
@@ -591,17 +589,12 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
         return T2ERROR_FAILURE;
     }
 
-    // Initialize connection pool on first use
-    if(!pool_initialized)
+    // Initialize connection pool - now handled internally with thread safety
+    T2ERROR ret = init_connection_pool();
+    if(ret != T2ERROR_SUCCESS)
     {
-        T2ERROR ret = init_connection_pool();
-        if(ret != T2ERROR_SUCCESS)
-        {
-            T2Error("Failed to initialize connection pool\n");
-            return ret;
-        }
-        pool_initialized = true;
-        T2Info("Connection pool initialized successfully\n");
+        T2Error("Failed to initialize connection pool\n");
+        return ret;
     }
 
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
@@ -639,7 +632,7 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
     };
 
     // Use the enhanced connection pool function
-    T2ERROR ret = http_pool_request_ex(&config);
+    ret = http_pool_request_ex(&config);
     
     if(ret == T2ERROR_SUCCESS)
     {

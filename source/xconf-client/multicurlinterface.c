@@ -81,6 +81,17 @@ return realsize;
 
 T2ERROR init_connection_pool()
 {
+    static bool pool_initialized = false;
+    static pthread_mutex_t init_mutex = PTHREAD_MUTEX_INITIALIZER;
+    
+    // Thread-safe initialization check
+    pthread_mutex_lock(&init_mutex);
+    if(pool_initialized) {
+        pthread_mutex_unlock(&init_mutex);
+        T2Info("Connection pool already initialized\n");
+        return T2ERROR_SUCCESS;
+    }
+    
     CURLcode code = CURLE_OK;
     T2Info("%s ++in\n", __FUNCTION__);
     char *pCertFile = NULL;
@@ -138,6 +149,8 @@ T2ERROR init_connection_pool()
     }
     
     pthread_mutex_init(&pool.pool_mutex, NULL);
+    pool_initialized = true;
+    pthread_mutex_unlock(&init_mutex);
     T2Info("%s ++out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }

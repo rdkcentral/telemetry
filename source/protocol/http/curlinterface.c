@@ -318,7 +318,6 @@ static void curlCertSelectorInit()
 T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
 {
     T2ERROR ret = T2ERROR_FAILURE;
-    static bool pool_initialized = false;
 
     T2Debug("%s ++in\n", __FUNCTION__);
     if(httpUrl == NULL || payload == NULL)
@@ -326,17 +325,12 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
         return ret;
     }
 
-    // Initialize connection pool on first use
-    if(!pool_initialized)
+    // Initialize connection pool - now handled internally with thread safety
+    ret = init_connection_pool();
+    if(ret != T2ERROR_SUCCESS)
     {
-        ret = init_connection_pool();
-        if(ret != T2ERROR_SUCCESS)
-        {
-            T2Error("Failed to initialize connection pool\n");
-            return ret;
-        }
-        pool_initialized = true;
-        T2Info("Connection pool initialized successfully\n");
+        T2Error("Failed to initialize connection pool\n");
+        return ret;
     }
 
     // Configure for POST request (sendReportOverHTTP)

@@ -142,25 +142,36 @@ T2ERROR init_connection_pool()
     return T2ERROR_SUCCESS;
 }
 
-T2ERROR http_pool_request(const char *url, const char *payload, char **data)
+T2ERROR http_pool_request_ex(const http_pool_request_config_t *config)
 {
     T2Info("%s ++in\n", __FUNCTION__);
-    T2Info("%s ; url = %s\n", __FUNCTION__, url);
+    
+    if (!config || !config->url) {
+        T2Error("Invalid configuration parameters\n");
+        return T2ERROR_FAILURE;
+    }
+    
+    T2Info("%s ; url = %s, type = %s\n", __FUNCTION__, config->url, 
+           (config->type == HTTP_REQUEST_GET) ? "GET" : "POST");
+    
     CURL *easy;
-    //CURLcode res;
+    //CURLcode code;
     int idx = -1;
-    ssize_t readBytes = 0;
+    //ssize_t readBytes = 0;
+    struct curl_slist *headers = NULL;
+    char *pCertFile = NULL;
+    char *pPasswd = NULL;
+    //FILE *fp = NULL;
 
     curlResponseData* response = (curlResponseData *) malloc(sizeof(curlResponseData));
     response->data = (char*)malloc(1);
-    response->data[0] = '\0'; //CID 282084 : Uninitialized scalar variable (UNINIT)
+    response->data[0] = '\0';
     response->size = 0;
 
-    if(payload)
-    {
-        T2Info("%s ; payload = %s\n", __FUNCTION__, payload);
+    if(config->payload) {
+        T2Info("%s ; payload = %s\n", __FUNCTION__, config->payload);
     }
-    //(void *) response;
+
     pthread_mutex_lock(&pool.pool_mutex);
     
     // Find an available handle
@@ -177,23 +188,66 @@ T2ERROR http_pool_request(const char *url, const char *payload, char **data)
     
     if(idx == -1) {
         T2Error("No available HTTP handles\n");
+        free(response->data);
+        free(response);
         return T2ERROR_FAILURE;
     }
     
     easy = pool.easy_handles[idx];
     
-    // Set URL and payload
-    curl_easy_setopt(easy, CURLOPT_URL, url);
+    // Reset handle to clean state
+    curl_easy_reset(easy);
     
-    // Response handling
-    if (payload)
-    {
-        curl_easy_setopt(easy, CURLOPT_POSTFIELDS, payload);
-    }
-    else
-    {
+    // Set common options
+    curl_easy_setopt(easy, CURLOPT_URL, config->url);
+    curl_easy_setopt(easy, CURLOPT_TIMEOUT, 30);
+    curl_easy_setopt(easy, CURLOPT_CONNECTTIMEOUT, 10);
+    curl_easy_setopt(easy, CURLOPT_TCP_KEEPALIVE, 1L);
+    curl_easy_setopt(easy, CURLOPT_TCP_KEEPIDLE, 120L);
+    curl_easy_setopt(easy, CURLOPT_TCP_KEEPINTVL, 60L);
+    curl_easy_setopt(easy, CURLOPT_MAXCONNECTS, 5L);
+    curl_easy_setopt(easy, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
+
+#if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
+#if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
+    curl_easy_setopt(easy, CURLOPT_INTERFACE, waninterface);
+#else
+    curl_easy_setopt(easy, CURLOPT_INTERFACE, "erouter0");
+#endif
+#endif
+
+    // Configure based on request type
+    if (config->type == HTTP_REQUEST_POST) {
+        // POST request configuration (for sendReportOverHTTP)
+        curl_easy_setopt(easy, CURLOPT_CUSTOMREQUEST, "POST");
+        
+        // Set headers for POST
+        headers = curl_slist_append(NULL, "Accept: application/json");
+        headers = curl_slist_append(headers, "Content-type: application/json");
+        curl_easy_setopt(easy, CURLOPT_HTTPHEADER, headers);
+        
+        if (config->payload) {
+            curl_easy_setopt(easy, CURLOPT_POSTFIELDS, config->payload);
+            curl_easy_setopt(easy, CURLOPT_POSTFIELDSIZE, strlen(config->payload));
+        }
+        
+        // For POST, we might not need response data, use simple callback
         curl_easy_setopt(easy, CURLOPT_WRITEFUNCTION, httpGetCallBack);
         curl_easy_setopt(easy, CURLOPT_WRITEDATA, (void *) response);
+        
+    } else {
+        // GET request configuration (for doHttpGet)
+        curl_easy_setopt(easy, CURLOPT_HTTPGET, 1L);
+        curl_easy_setopt(easy, CURLOPT_WRITEFUNCTION, httpGetCallBack);
+        curl_easy_setopt(easy, CURLOPT_WRITEDATA, (void *) response);
+    }
+
+    // Handle mTLS if enabled
+    if (config->enable_mtls && T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pPasswd)) {
+        curl_easy_setopt(easy, CURLOPT_SSLCERTTYPE, "P12");
+        curl_easy_setopt(easy, CURLOPT_SSLCERT, pCertFile);
+        curl_easy_setopt(easy, CURLOPT_KEYPASSWD, pPasswd);
+        curl_easy_setopt(easy, CURLOPT_SSL_VERIFYPEER, 1L);
     }
     
     // Add to multi handle
@@ -201,74 +255,63 @@ T2ERROR http_pool_request(const char *url, const char *payload, char **data)
     
     int still_running;
     do {
-        T2Info("%s ; Going to Perform curl request\n", __FUNCTION__);
+        T2Info("%s ; Performing curl request\n", __FUNCTION__);
         curl_multi_perform(pool.multi_handle, &still_running);
-        T2Info("%s ; Performing curl request for %s\n", __FUNCTION__, url);
-        // Wait for activity or timeout
         curl_multi_wait(pool.multi_handle, NULL, 0, 1000, NULL);
-        T2Info("%s ; After wait\n", __FUNCTION__);
     } while(still_running);
-
-    T2Info("%s ; Performed curl request\n", __FUNCTION__);
-    if (response->data)
-    {
-        T2Info("%s ; Response data size = %zu\nResponse data = %s\n", __FUNCTION__, response->size, response->data);
-    }
-    else
-    {
-        T2Error("%s ; No response data received\n", __FUNCTION__);
-    }
-
-    FILE *httpOutput = fopen(HTTP_RESPONSE_FILE, "w+");
-    if(httpOutput)
-    {
-        T2Debug("Update config data in response file %s \n", HTTP_RESPONSE_FILE);
-        fputs(response->data, httpOutput);
-        fclose(httpOutput);
-    }
-    else
-    {
-        T2Error("Unable to open %s file \n", HTTP_RESPONSE_FILE);
-    }
-
-    *data = NULL;
-    if(response->size <= SIZE_MAX)
-    {
-        *data = (char*)malloc(response->size + 1);
-    }
-    if(*data == NULL)
-    {
-        T2Error("Unable to allocate memory for XCONF config data \n");
-        //ret = T2ERROR_FAILURE;
-    }
-    else
-    {
-        if(response->size <= SIZE_MAX)
-        {
-            memset(*data, '\0', response->size + 1);
-        }
-        FILE *httpOutput = fopen(HTTP_RESPONSE_FILE, "r+");
-        if(httpOutput)
-        {
-            // Read the whole file content
-            if(response->size <= SIZE_MAX)
-            {
-                readBytes = fread(*data, response->size, 1, httpOutput);
+    
+    T2Info("%s ; Curl request completed\n", __FUNCTION__);
+    
+    // Get response code
+    long http_code;
+    curl_easy_getinfo(easy, CURLINFO_RESPONSE_CODE, &http_code);
+    T2Info("%s ; HTTP response code: %ld\n", __FUNCTION__, http_code);
+    
+    T2ERROR ret = T2ERROR_FAILURE;
+    if (http_code == 200) {
+        ret = T2ERROR_SUCCESS;
+        
+        if (response->data) {
+            T2Info("%s ; Response data size = %zu\n", __FUNCTION__, response->size);
+            
+            // Handle file output for GET requests
+            if (config->type == HTTP_REQUEST_GET && config->enable_file_output) {
+                FILE *httpOutput = fopen(HTTP_RESPONSE_FILE, "w+");
+                if(httpOutput) {
+                    T2Debug("Update config data in response file %s \n", HTTP_RESPONSE_FILE);
+                    fputs(response->data, httpOutput);
+                    fclose(httpOutput);
+                } else {
+                    T2Error("Unable to open %s file \n", HTTP_RESPONSE_FILE);
+                }
             }
-            if(readBytes == -1)
-            {
-                T2Error("Failed to read from pipe\n");
-                return T2ERROR_FAILURE;
+            
+            // Copy response data if requested
+            if (config->response_data && config->type == HTTP_REQUEST_GET) {
+                *config->response_data = NULL;
+                if(response->size <= SIZE_MAX) {
+                    *config->response_data = (char*)malloc(response->size + 1);
+                    if(*config->response_data) {
+                        memcpy(*config->response_data, response->data, response->size);
+                        (*config->response_data)[response->size] = '\0';
+                    }
+                }
             }
-            T2Debug("Configuration obtained from http server : \n %s \n", *data);
-            fclose(httpOutput);
+        } else {
+            T2Error("%s ; No response data received\n", __FUNCTION__);
         }
+    } else {
+        T2Error("%s ; HTTP request failed with code: %ld\n", __FUNCTION__, http_code);
     }
-
-    free(response->data);
-    free(response);
 
     // Cleanup
+    free(response->data);
+    free(response);
+    
+    if (headers) {
+        curl_slist_free_all(headers);
+    }
+    
     curl_multi_remove_handle(pool.multi_handle, easy);
     
     pthread_mutex_lock(&pool.pool_mutex);
@@ -276,7 +319,22 @@ T2ERROR http_pool_request(const char *url, const char *payload, char **data)
     pthread_mutex_unlock(&pool.pool_mutex);
     
     T2Info("%s ++out\n", __FUNCTION__);
-    return T2ERROR_SUCCESS;
+    return ret;
+}
+
+T2ERROR http_pool_request(const char *url, const char *payload, char **data)
+{
+    // Backward compatibility wrapper
+    http_pool_request_config_t config = {
+        .type = payload ? HTTP_REQUEST_POST : HTTP_REQUEST_GET,
+        .url = url,
+        .payload = payload,
+        .response_data = data,
+        .enable_mtls = true,
+        .enable_file_output = (payload == NULL) // Enable file output for GET requests
+    };
+    
+    return http_pool_request_ex(&config);
 }
 
 T2ERROR http_pool_cleanup(void)

@@ -579,7 +579,7 @@ static void xcCertSelectorInit()
 T2ERROR doHttpGet(char* httpsUrl, char **data)
 {
 
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
 
     T2Info("%s with url %s \n", __FUNCTION__, httpsUrl);
     CURL *curl;
@@ -983,7 +983,7 @@ status_return :
                 }
             }
         }
-        T2Debug("%s --out\n", __FUNCTION__);
+        T2Info("%s --out\n", __FUNCTION__);
         return ret;
 
     }

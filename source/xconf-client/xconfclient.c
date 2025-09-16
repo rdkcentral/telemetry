@@ -580,7 +580,7 @@ static void xcCertSelectorInit()
 #endif
 T2ERROR doHttpGet(char* httpsUrl, char **data)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     T2Info("%s with url %s \n", __FUNCTION__, httpsUrl);
 
     if(NULL == httpsUrl)
@@ -643,7 +643,7 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
         T2Error("Failed to perform HTTP GET request using connection pool\n");
     }
 
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return ret;
 }
 

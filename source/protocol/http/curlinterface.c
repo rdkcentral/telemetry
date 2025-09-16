@@ -332,7 +332,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
     pid_t childPid;
     int sharedPipeFds[2];
 
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     if(httpUrl == NULL || payload == NULL)
     {
         return ret;
@@ -430,7 +430,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
         }
 #endif
         pthread_sigmask(SIG_UNBLOCK, &blocking_signal, NULL);
-        T2Debug("%s --out\n", __FUNCTION__);
+        T2Info("%s --out\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
 
@@ -624,7 +624,7 @@ child_cleanReturn :
             ret = T2ERROR_SUCCESS;
             T2Info("Report Sent Successfully over HTTP : %ld\n", childCurlResponse.http_code);
         }
-        T2Debug("%s --out\n", __FUNCTION__);
+        T2Info("%s --out\n", __FUNCTION__);
         return ret;
     }
 

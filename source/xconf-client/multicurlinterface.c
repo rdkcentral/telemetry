@@ -38,6 +38,7 @@
 //Global variables
 #define MAX_POOL_SIZE 5
 #define HTTP_RESPONSE_FILE "/tmp/httpOutput.txt"
+#define RESPONSE_BUFFER_SIZE 8192
 static bool pool_initialized = false;
 
 // High-level design for connection pooling
@@ -47,6 +48,8 @@ typedef struct
     CURL *easy_handles[MAX_POOL_SIZE];
     bool handle_available[MAX_POOL_SIZE];
     pthread_mutex_t pool_mutex;
+    struct curl_slist *post_headers;
+    struct curl_slist *get_headers;
 } http_connection_pool_t;
 
 typedef struct http_pool_config
@@ -117,6 +120,9 @@ T2ERROR init_connection_pool()
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPINTVL, 60L);
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_MAXCONNECTS, 5L);
 
+        curl_easy_setopt(pool.easy_handles[i], CURLOPT_FORBID_REUSE, 0L);
+        curl_easy_setopt(pool.easy_handles[i], CURLOPT_FRESH_CONNECT, 0L);
+        
         code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
         if(code != CURLE_OK)
         {
@@ -152,7 +158,11 @@ T2ERROR init_connection_pool()
             }
         }
     }
-
+    pool.post_headers = curl_slist_append(NULL, "Accept: application/json");
+    pool.post_headers = curl_slist_append(pool.post_headers, "Content-type: application/json");
+    
+    pool.get_headers = curl_slist_append(NULL, "Accept: application/json");
+    
     pthread_mutex_init(&pool.pool_mutex, NULL);
     pool_initialized = true;
     T2Info("%s ++out\n", __FUNCTION__);
@@ -193,7 +203,7 @@ T2ERROR http_pool_request_ex(const http_pool_request_config_t *config)
 
 
     curlResponseData* response = (curlResponseData *) malloc(sizeof(curlResponseData));
-    response->data = (char*)malloc(1);
+    response->data = (char*)malloc(RESPONSE_BUFFER_SIZE);
     response->data[0] = '\0';
     response->size = 0;
 
@@ -243,10 +253,7 @@ T2ERROR http_pool_request_ex(const http_pool_request_config_t *config)
         // POST request configuration (for sendReportOverHTTP)
         curl_easy_setopt(easy, CURLOPT_CUSTOMREQUEST, "POST");
 
-        // Set headers for POST
-        headers = curl_slist_append(NULL, "Accept: application/json");
-        headers = curl_slist_append(headers, "Content-type: application/json");
-        curl_easy_setopt(easy, CURLOPT_HTTPHEADER, headers);
+        curl_easy_setopt(easy, CURLOPT_HTTPHEADER, pool.post_headers);
 
         if (config->payload)
         {
@@ -260,17 +267,9 @@ T2ERROR http_pool_request_ex(const http_pool_request_config_t *config)
     {
         // GET request configuration (for doHttpGet)
         curl_easy_setopt(easy, CURLOPT_HTTPGET, 1L);
+        curl_easy_setopt(easy, CURLOPT_HTTPHEADER, pool.get_headers);
         curl_easy_setopt(easy, CURLOPT_WRITEFUNCTION, httpGetCallBack);
         curl_easy_setopt(easy, CURLOPT_WRITEDATA, (void *) response);
-    }
-
-    // Handle mTLS if enabled
-    if (config->enable_mtls && T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pPasswd))
-    {
-        curl_easy_setopt(easy, CURLOPT_SSLCERTTYPE, "P12");
-        curl_easy_setopt(easy, CURLOPT_SSLCERT, pCertFile);
-        curl_easy_setopt(easy, CURLOPT_KEYPASSWD, pPasswd);
-        curl_easy_setopt(easy, CURLOPT_SSL_VERIFYPEER, 1L);
     }
 
     // Add to multi handle
@@ -281,7 +280,7 @@ T2ERROR http_pool_request_ex(const http_pool_request_config_t *config)
     {
         T2Info("%s ; Performing curl request\n", __FUNCTION__);
         curl_multi_perform(pool.multi_handle, &still_running);
-        curl_multi_wait(pool.multi_handle, NULL, 0, 1000, NULL);
+        curl_multi_wait(pool.multi_handle, NULL, 0, 50, NULL);
     }
     while(still_running);
 
@@ -344,11 +343,6 @@ T2ERROR http_pool_request_ex(const http_pool_request_config_t *config)
     // Cleanup
     free(response->data);
     free(response);
-
-    if (headers)
-    {
-        curl_slist_free_all(headers);
-    }
 
     curl_multi_remove_handle(pool.multi_handle, easy);
 

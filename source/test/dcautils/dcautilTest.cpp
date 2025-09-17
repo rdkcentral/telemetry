@@ -55,6 +55,108 @@ FileMock *g_fileIOMock = NULL;
 SystemMock * g_systemMock = NULL;
 rdklogMock *m_rdklogMock = NULL;
 
+//testing the strnstr function
+static const char *strnstr(const char *haystack, const char *needle, size_t len)
+{
+    if (haystack  == NULL || needle == NULL)
+    {
+        return NULL;
+    }
+    size_t needle_len = strlen(needle);
+    if (needle_len == 0)
+    {
+        return haystack;
+    }
+
+    // Check if search is possible and prevent overflow
+    if (len < needle_len || len - needle_len > len)
+    {
+        return NULL;
+    }
+
+    // Check minimum length requirements for optimized search
+    if (needle_len < 4)
+    {
+        // Use simple search for short patterns
+        for (size_t i = 0; i <= len - needle_len; i++)
+        {
+            if (memcmp(haystack + i, needle, needle_len) == 0)
+            {
+                return haystack + i;
+            }
+        }
+        return NULL;
+    }
+
+    size_t skip[256];
+    for (size_t i = 0; i < 256; ++i)
+    {
+        skip[i] = needle_len;
+    }
+    for (size_t i = 0; i < needle_len - 1; ++i)
+    {
+        skip[(unsigned char)needle[i]] = needle_len - i - 1;
+    }
+
+    size_t i = 0;
+    while (i <= len - needle_len)
+    {
+        size_t j = needle_len - 1;
+        while (j < needle_len && haystack[i + j] == needle[j])
+        {
+            j--;
+        }
+        if (j == (size_t) -1)
+        {
+            return haystack + i; // Match found
+        }
+        size_t s = skip[(unsigned char)haystack[i + needle_len - 1]];
+        i += (s > 0) ? s : 1;
+    }
+    return NULL;
+}
+
+TEST(STRNSTR, SAMPLE1)
+{
+   char *haystack = "fdghfilikeflowershfjkh";
+   char *needle = "ilikeflowers";
+   EXPECT_STREQ(strnstr(haystack, needle, 22), "ilikeflowershfjkh");
+}
+
+TEST(STRNSTR, SAMPLE2)
+{
+   char *haystack = "fdghfilikehjowershfjkhilikeflowers";
+   char *needle = "ilikeflowers";
+   EXPECT_STREQ(strnstr(haystack, needle, 34), "ilikeflowers");
+}
+
+TEST(STRNSTR, SAMPLE3)
+{
+   char *haystack = "filikeflowershfjkhdghf";
+   char *needle = "ilikeflowers";
+   EXPECT_STREQ(strnstr(haystack, needle, 22), "ilikeflowershfjkhdghf");
+}
+
+TEST(STRNSTR, SAMPLE4)
+{
+   char *haystack = "abcabcabcde";
+   char *needle = "abcd";
+   EXPECT_STREQ(strnstr(haystack, needle, 11), "abcde");
+}
+
+TEST(STRNSTR, SAMPLE5)
+{
+   char *haystack = "abcabcabcabcabc";
+   char *needle = "abcd";
+   EXPECT_STREQ(strnstr(haystack, needle, 15), NULL);
+}
+
+TEST(STRNSTR, SAMPLE6)
+{
+   char *haystack = "abcdabcabcabcabc";
+   char *needle = "abcd";
+   EXPECT_STREQ(strnstr(haystack, needle, 15), "abcdabcabcabcabc");
+}
 //dcaproc.c
 
 TEST(GETPROCUSAGE, GREPRESULTLIST_NULL)
@@ -118,6 +220,8 @@ TEST(GETCPUINFO, PINFO_NULL)
 
 
 }
+
+
 //dcautil.c
 char* gmarker1 = "SYS_INFO_BOOTUP";
 char* dcamarker1 = "SYS_INFO1";

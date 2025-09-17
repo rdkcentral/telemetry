@@ -126,6 +126,8 @@ static void initMutex()
 static void uninitMutex()
 {
     pthread_mutex_lock(&initMtx);
+    pthread_mutex_lock(&FileCacheMutex);
+    pthread_mutex_unlock(&FileCacheMutex);
     if ( isMutexInitialized )
     {
         isMutexInitialized = false ;

@@ -277,7 +277,7 @@ T2ERROR http_pool_request_ex(const http_pool_request_config_t *config)
     {
         T2Info("%s ; Performing curl request\n", __FUNCTION__);
         curl_multi_perform(pool.multi_handle, &still_running);
-        curl_multi_wait(pool.multi_handle, NULL, 0, 50, NULL);
+        curl_multi_wait(pool.multi_handle, NULL, 0, 500, NULL);
     }
     while(still_running);
 

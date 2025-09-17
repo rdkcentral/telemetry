@@ -81,6 +81,12 @@ static size_t httpGetCallBack(void *response, size_t len, size_t nmemb,
     return realsize;
 }
 
+static size_t writeToFile(void *ptr, size_t size, size_t nmemb, void *stream)
+{
+    size_t written = fwrite(ptr, size, nmemb, (FILE *) stream);
+    return written;
+}
+
 T2ERROR init_connection_pool()
 {
     static bool pool_initialized = false;
@@ -181,11 +187,6 @@ T2ERROR http_pool_request_ex(const http_pool_request_config_t *config)
     response->data[0] = '\0';
     response->size = 0;
 
-    if(config->payload)
-    {
-        T2Info("%s ; payload = %s\n", __FUNCTION__, config->payload);
-    }
-
     pthread_mutex_lock(&pool.pool_mutex);
 
     // Find an available handle
@@ -250,10 +251,7 @@ T2ERROR http_pool_request_ex(const http_pool_request_config_t *config)
             curl_easy_setopt(easy, CURLOPT_POSTFIELDSIZE, strlen(config->payload));
         }
 
-        // For POST, we might not need response data, use simple callback
-        curl_easy_setopt(easy, CURLOPT_WRITEFUNCTION, httpGetCallBack);
-        curl_easy_setopt(easy, CURLOPT_WRITEDATA, (void *) response);
-
+        curl_easy_setopt(easy, CURLOPT_WRITEFUNCTION, writeToFile);
     }
     else
     {
@@ -286,7 +284,6 @@ T2ERROR http_pool_request_ex(const http_pool_request_config_t *config)
 
     T2Info("%s ; Curl request completed\n", __FUNCTION__);
 
-    // Get response code
     long http_code;
     curl_easy_getinfo(easy, CURLINFO_RESPONSE_CODE, &http_code);
     T2Info("%s ; HTTP response code: %ld\n", __FUNCTION__, http_code);

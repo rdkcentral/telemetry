@@ -319,7 +319,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
 {
     T2ERROR ret = T2ERROR_FAILURE;
 
-    T2Info("%s ++in\n", __FUNCTION__);
+    T2Debug("%s ++in\n", __FUNCTION__);
     if(httpUrl == NULL || payload == NULL)
     {
         return ret;
@@ -334,7 +334,8 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
     }
 
     // Configure for POST request (sendReportOverHTTP)
-    http_pool_request_config_t config = {
+    http_pool_request_config_t config =
+    {
         .type = HTTP_REQUEST_POST,
         .url = httpUrl,
         .payload = payload,
@@ -345,7 +346,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
 
     // Use the enhanced connection pool function
     ret = http_pool_request_ex(&config);
-    
+
     if(ret == T2ERROR_SUCCESS)
     {
         T2Info("Report Sent Successfully over HTTP using connection pool\n");
@@ -361,7 +362,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
         *outForkedPid = 0;
     }
 
-    T2Info("%s --out\n", __FUNCTION__);
+    T2Debug("%s --out\n", __FUNCTION__);
     return ret;
 }
 

@@ -25,13 +25,15 @@
 #include "telemetry2_0.h"
 
 // Request types for different HTTP operations
-typedef enum {
+typedef enum
+{
     HTTP_REQUEST_GET,    // For doHttpGet (XCONF client)
     HTTP_REQUEST_POST    // For sendReportOverHTTP
 } http_request_type_t;
 
 // Request configuration structure
-typedef struct {
+typedef struct
+{
     http_request_type_t type;
     const char *url;
     const char *payload;           // NULL for GET requests
@@ -43,6 +45,6 @@ typedef struct {
 T2ERROR init_connection_pool();
 T2ERROR http_pool_request_ex(const http_pool_request_config_t *config);
 T2ERROR http_pool_request(const char *url, const char *payload, char** data); // Backward compatibility
-T2ERROR http_pool_cleanup(void); 
+T2ERROR http_pool_cleanup(void);
 
 #endif /* _MULTI_CURL_INTERFACE_H_ */

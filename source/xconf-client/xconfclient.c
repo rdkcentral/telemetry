@@ -547,7 +547,7 @@ static size_t httpGetCallBack(void *response, size_t len, size_t nmemb,
 
     return realsize;
 }
-    #endif
+#endif
 
 #ifdef LIBRDKCERTSEL_BUILD
 void xcCertSelectorFree()
@@ -580,7 +580,7 @@ static void xcCertSelectorInit()
 #endif
 T2ERROR doHttpGet(char* httpsUrl, char **data)
 {
-    T2Info("%s ++in\n", __FUNCTION__);
+    T2Debug("%s ++in\n", __FUNCTION__);
     T2Info("%s with url %s \n", __FUNCTION__, httpsUrl);
 
     if(NULL == httpsUrl)
@@ -622,7 +622,8 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
 #endif
 
     // Configure for GET request (doHttpGet)
-    http_pool_request_config_t config = {
+    http_pool_request_config_t config =
+    {
         .type = HTTP_REQUEST_GET,
         .url = httpsUrl,
         .payload = NULL,  // No payload for GET requests
@@ -633,7 +634,7 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
 
     // Use the enhanced connection pool function
     ret = http_pool_request_ex(&config);
-    
+
     if(ret == T2ERROR_SUCCESS)
     {
         T2Info("HTTP GET request completed successfully using connection pool\n");
@@ -643,7 +644,7 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
         T2Error("Failed to perform HTTP GET request using connection pool\n");
     }
 
-    T2Info("%s --out\n", __FUNCTION__);
+    T2Debug("%s --out\n", __FUNCTION__);
     return ret;
 }
 

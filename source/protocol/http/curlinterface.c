@@ -325,14 +325,6 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
         return ret;
     }
 
-    // Initialize connection pool - now handled internally with thread safety
-    ret = init_connection_pool();
-    if(ret != T2ERROR_SUCCESS)
-    {
-        T2Error("Failed to initialize connection pool\n");
-        return ret;
-    }
-
     // Configure for POST request (sendReportOverHTTP)
     http_pool_request_config_t config =
     {

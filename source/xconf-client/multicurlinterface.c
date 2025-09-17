@@ -38,6 +38,7 @@
 //Global variables
 #define MAX_POOL_SIZE 5
 #define HTTP_RESPONSE_FILE "/tmp/httpOutput.txt"
+static bool pool_initialized = false;
 
 // High-level design for connection pooling
 typedef struct
@@ -89,8 +90,6 @@ static size_t writeToFile(void *ptr, size_t size, size_t nmemb, void *stream)
 
 T2ERROR init_connection_pool()
 {
-    static bool pool_initialized = false;
-
     if(pool_initialized)
     {
         T2Info("Connection pool already initialized\n");
@@ -173,6 +172,16 @@ T2ERROR http_pool_request_ex(const http_pool_request_config_t *config)
     T2Info("%s ; url = %s, type = %s\n", __FUNCTION__, config->url,
            (config->type == HTTP_REQUEST_GET) ? "GET" : "POST");
 
+    if (!pool_initialized)
+    {
+        T2ERROR ret = init_connection_pool();
+        if(ret != T2ERROR_SUCCESS)
+        {
+            T2Error("Failed to initialize connection pool\n");
+            return ret;
+        }
+        pool_initialized = true;
+    }
     CURL *easy;
     //CURLcode code;
     int idx = -1;
@@ -181,6 +190,7 @@ T2ERROR http_pool_request_ex(const http_pool_request_config_t *config)
     char *pCertFile = NULL;
     char *pPasswd = NULL;
     //FILE *fp = NULL;
+
 
     curlResponseData* response = (curlResponseData *) malloc(sizeof(curlResponseData));
     response->data = (char*)malloc(1);
@@ -218,13 +228,6 @@ T2ERROR http_pool_request_ex(const http_pool_request_config_t *config)
 
     // Set common options
     curl_easy_setopt(easy, CURLOPT_URL, config->url);
-    curl_easy_setopt(easy, CURLOPT_TIMEOUT, 30);
-    curl_easy_setopt(easy, CURLOPT_CONNECTTIMEOUT, 10);
-    curl_easy_setopt(easy, CURLOPT_TCP_KEEPALIVE, 1L);
-    curl_easy_setopt(easy, CURLOPT_TCP_KEEPIDLE, 120L);
-    curl_easy_setopt(easy, CURLOPT_TCP_KEEPINTVL, 60L);
-    curl_easy_setopt(easy, CURLOPT_MAXCONNECTS, 5L);
-    curl_easy_setopt(easy, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
 
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
 #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)

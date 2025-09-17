@@ -589,14 +589,6 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
         return T2ERROR_FAILURE;
     }
 
-    // Initialize connection pool - now handled internally with thread safety
-    T2ERROR ret = init_connection_pool();
-    if(ret != T2ERROR_SUCCESS)
-    {
-        T2Error("Failed to initialize connection pool\n");
-        return ret;
-    }
-
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
 #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
     char *paramVal = NULL;

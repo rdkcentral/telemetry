@@ -582,6 +582,7 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
 {
     T2Info("%s ++in\n", __FUNCTION__);
     T2Info("%s with url %s \n", __FUNCTION__, httpsUrl);
+    T2ERROR ret;
 
     if(NULL == httpsUrl)
     {

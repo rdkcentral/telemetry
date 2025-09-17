@@ -122,7 +122,7 @@ T2ERROR init_connection_pool()
 
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_FORBID_REUSE, 0L);
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_FRESH_CONNECT, 0L);
-        
+
         code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
         if(code != CURLE_OK)
         {
@@ -160,9 +160,9 @@ T2ERROR init_connection_pool()
     }
     pool.post_headers = curl_slist_append(NULL, "Accept: application/json");
     pool.post_headers = curl_slist_append(pool.post_headers, "Content-type: application/json");
-    
+
     pool.get_headers = curl_slist_append(NULL, "Accept: application/json");
-    
+
     pthread_mutex_init(&pool.pool_mutex, NULL);
     pool_initialized = true;
     T2Info("%s ++out\n", __FUNCTION__);
@@ -196,9 +196,6 @@ T2ERROR http_pool_request_ex(const http_pool_request_config_t *config)
     //CURLcode code;
     int idx = -1;
     //ssize_t readBytes = 0;
-    struct curl_slist *headers = NULL;
-    char *pCertFile = NULL;
-    char *pPasswd = NULL;
     //FILE *fp = NULL;
 
 

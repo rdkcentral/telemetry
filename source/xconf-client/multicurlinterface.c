@@ -49,9 +49,7 @@ typedef struct
     bool handle_available[MAX_POOL_SIZE];
     pthread_mutex_t pool_mutex;
     struct curl_slist *post_headers;
-    struct curl_slist *get_headers;
-    // FIX: Add reusable response buffers to prevent frequent malloc/free
-    curlResponseData response_buffers[MAX_POOL_SIZE];
+    curlResponseData response_buffers[MAX_POOL_SIZE]; //Might need to revisit
     bool buffer_available[MAX_POOL_SIZE];
 } http_connection_pool_t;
 
@@ -123,23 +121,21 @@ T2ERROR init_connection_pool()
         pool.handle_available[i] = true;
 
         // Set common options once
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_TIMEOUT, 30);
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_CONNECTTIMEOUT, 10);
+        curl_easy_setopt(pool.easy_handles[i], CURLOPT_TIMEOUT, 30L);
+        curl_easy_setopt(pool.easy_handles[i], CURLOPT_CONNECTTIMEOUT, 10L);
+        
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPALIVE, 1L);
-
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPIDLE, 120L);
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPINTVL, 60L);
+#ifdef CURLOPT_TCP_KEEPCNT
+        curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPCNT, 15L);  // Allow up to 15 probes
+#endif
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_MAXCONNECTS, 5L);
 
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_FORBID_REUSE, 0L);
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_FRESH_CONNECT, 0L);
 
         code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
-        if(code != CURLE_OK)
-        {
-            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-        }
-        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_WRITEFUNCTION, httpGetCallBack);
         if(code != CURLE_OK)
         {
             T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
@@ -152,7 +148,7 @@ T2ERROR init_connection_pool()
         pool.buffer_available[i] = true;
     }
     
-    // Configure mTLS once and free certificates immediately
+    //mtls
     if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pPasswd))
     {
         for(int i = 0; i < MAX_POOL_SIZE; i++)
@@ -180,7 +176,6 @@ T2ERROR init_connection_pool()
             }
         }
         
-        // FIX: Free certificate memory immediately after use
         if(pCertFile) {
             free(pCertFile);
             pCertFile = NULL;
@@ -193,8 +188,6 @@ T2ERROR init_connection_pool()
     
     pool.post_headers = curl_slist_append(NULL, "Accept: application/json");
     pool.post_headers = curl_slist_append(pool.post_headers, "Content-type: application/json");
-
-    pool.get_headers = curl_slist_append(NULL, "Accept: application/json");
 
     pthread_mutex_init(&pool.pool_mutex, NULL);
     pool_initialized = true;
@@ -291,7 +284,6 @@ T2ERROR http_pool_request_ex(const http_pool_request_config_t *config)
     {
         // GET request configuration (for doHttpGet)
         curl_easy_setopt(easy, CURLOPT_HTTPGET, 1L);
-        curl_easy_setopt(easy, CURLOPT_HTTPHEADER, pool.get_headers);
         curl_easy_setopt(easy, CURLOPT_WRITEFUNCTION, httpGetCallBack);
         curl_easy_setopt(easy, CURLOPT_WRITEDATA, (void *) response);
     }
@@ -406,11 +398,7 @@ T2ERROR http_pool_cleanup(void)
         curl_slist_free_all(pool.post_headers);
         pool.post_headers = NULL;
     }
-    if(pool.get_headers) {
-        curl_slist_free_all(pool.get_headers);
-        pool.get_headers = NULL;
-    }
-    
+
     // Cleanup all easy handles and response buffers
     for(int i = 0; i < MAX_POOL_SIZE; i++)
     {

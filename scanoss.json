@@ -1,0 +1,28 @@
+{
+  "settings": {
+    "skip": {
+      "patterns": {},
+      "sizes": {}
+    }
+  },
+  "bom": {
+    "include": [
+      {
+        "purl": "pkg:github/rdkcentral/docker-device-mgt-service-test"
+      },
+      {
+        "purl": "pkg:github/rdkcentral/rbus"
+      },
+      {
+        "purl": "pkg:github/rdkcentral/telemetry"
+      }
+    ],
+    "replace": [
+      {
+        "path": "source/test/ccspinterface/gtest_main.cpp",
+        "purl": "pkg:github/rdkcentral/notify-component",
+        "replace_with": "pkg:github/rdkcentral/telemetry"
+      }
+    ]
+  }
+}

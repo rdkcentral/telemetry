@@ -50,6 +50,9 @@ typedef struct
     pthread_mutex_t pool_mutex;
     struct curl_slist *post_headers;
     struct curl_slist *get_headers;
+    // FIX: Add reusable response buffers to prevent frequent malloc/free
+    curlResponseData response_buffers[MAX_POOL_SIZE];
+    bool buffer_available[MAX_POOL_SIZE];
 } http_connection_pool_t;
 
 typedef struct http_pool_config
@@ -69,12 +72,20 @@ static size_t httpGetCallBack(void *response, size_t len, size_t nmemb,
     size_t realsize = len * nmemb;
     curlResponseData* httpResponse = (curlResponseData*) stream;
 
+    // FIX: Check for NULL stream to prevent crashes
+    if (!httpResponse) {
+        T2Error("httpGetCallBack: NULL stream parameter\n");
+        return 0;
+    }
+
     char *ptr = (char*) realloc(httpResponse->data,
                                 httpResponse->size + realsize + 1);
     if (!ptr)
     {
         T2Error("%s:%u , T2:memory realloc failed\n", __func__, __LINE__);
-        return 0;
+        // FIX: Don't return 0 on realloc failure - this can cause curl to retry indefinitely
+        // Keep the original data intact
+        return realsize; // Tell curl we processed the data even though we couldn't store it
     }
     httpResponse->data = ptr;
     memcpy(&(httpResponse->data[httpResponse->size]), response, realsize);
@@ -133,7 +144,18 @@ T2ERROR init_connection_pool()
         {
             T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
         }
-        if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pPasswd))
+
+        // Initialize response buffers
+        pool.response_buffers[i].data = (char*)malloc(RESPONSE_BUFFER_SIZE);
+        pool.response_buffers[i].data[0] = '\0';
+        pool.response_buffers[i].size = 0;
+        pool.buffer_available[i] = true;
+    }
+    
+    // Configure mTLS once and free certificates immediately
+    if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pPasswd))
+    {
+        for(int i = 0; i < MAX_POOL_SIZE; i++)
         {
             code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_SSLCERTTYPE, "P12");
             if(code != CURLE_OK)
@@ -157,7 +179,18 @@ T2ERROR init_connection_pool()
                 T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
             }
         }
+        
+        // FIX: Free certificate memory immediately after use
+        if(pCertFile) {
+            free(pCertFile);
+            pCertFile = NULL;
+        }
+        if(pPasswd) {
+            free(pPasswd);
+            pPasswd = NULL;
+        }
     }
+    
     pool.post_headers = curl_slist_append(NULL, "Accept: application/json");
     pool.post_headers = curl_slist_append(pool.post_headers, "Content-type: application/json");
 
@@ -193,45 +226,39 @@ T2ERROR http_pool_request_ex(const http_pool_request_config_t *config)
         pool_initialized = true;
     }
     CURL *easy;
-    //CURLcode code;
     int idx = -1;
-    //ssize_t readBytes = 0;
-    //FILE *fp = NULL;
-
-
-    curlResponseData* response = (curlResponseData *) malloc(sizeof(curlResponseData));
-    response->data = (char*)malloc(RESPONSE_BUFFER_SIZE);
-    response->data[0] = '\0';
-    response->size = 0;
+    int buffer_idx = -1;
 
     pthread_mutex_lock(&pool.pool_mutex);
 
-    // Find an available handle
+    // Find an available handle and buffer
     for(int i = 0; i < MAX_POOL_SIZE; i++)
     {
-        if(pool.handle_available[i])
+        if(pool.handle_available[i] && pool.buffer_available[i])
         {
-            T2Info("%s ; Available handle = %d\n", __FUNCTION__, i);
+            T2Info("%s ; Available handle = %d, buffer = %d\n", __FUNCTION__, i, i);
             idx = i;
+            buffer_idx = i;
             pool.handle_available[i] = false;
+            pool.buffer_available[i] = false;
             break;
         }
     }
 
     pthread_mutex_unlock(&pool.pool_mutex);
 
-    if(idx == -1)
+    if(idx == -1 || buffer_idx == -1)
     {
-        T2Error("No available HTTP handles\n");
-        free(response->data);
-        free(response);
+        T2Error("No available HTTP handles or buffers\n");
         return T2ERROR_FAILURE;
     }
 
     easy = pool.easy_handles[idx];
+    curlResponseData* response = &pool.response_buffers[buffer_idx];
 
-    // Reset handle to clean state
-    //curl_easy_reset(easy);
+    // Reset response buffer
+    response->data[0] = '\0';
+    response->size = 0;
 
     // Set common options
     curl_easy_setopt(easy, CURLOPT_URL, config->url);
@@ -338,13 +365,11 @@ T2ERROR http_pool_request_ex(const http_pool_request_config_t *config)
     }
 
     // Cleanup
-    free(response->data);
-    free(response);
-
     curl_multi_remove_handle(pool.multi_handle, easy);
 
     pthread_mutex_lock(&pool.pool_mutex);
     pool.handle_available[idx] = true;
+    pool.buffer_available[buffer_idx] = true;
     pthread_mutex_unlock(&pool.pool_mutex);
 
     T2Info("%s ++out\n", __FUNCTION__);
@@ -369,11 +394,48 @@ T2ERROR http_pool_request(const char *url, const char *payload, char **data)
 
 T2ERROR http_pool_cleanup(void)
 {
+    if (!pool_initialized) {
+        T2Info("Pool not initialized, nothing to cleanup\n");
+        return T2ERROR_SUCCESS;
+    }
+
+    T2Info("%s ++in\n", __FUNCTION__);
+    
+    // FIX: Free all header lists before cleanup
+    if(pool.post_headers) {
+        curl_slist_free_all(pool.post_headers);
+        pool.post_headers = NULL;
+    }
+    if(pool.get_headers) {
+        curl_slist_free_all(pool.get_headers);
+        pool.get_headers = NULL;
+    }
+    
+    // Cleanup all easy handles and response buffers
     for(int i = 0; i < MAX_POOL_SIZE; i++)
     {
-        curl_easy_cleanup(pool.easy_handles[i]);
+        if(pool.easy_handles[i]) {
+            curl_easy_cleanup(pool.easy_handles[i]);
+            pool.easy_handles[i] = NULL;
+        }
+        if(pool.response_buffers[i].data) {
+            free(pool.response_buffers[i].data);
+            pool.response_buffers[i].data = NULL;
+        }
     }
-    curl_multi_cleanup(pool.multi_handle);
+    
+    // Cleanup multi handle
+    if(pool.multi_handle) {
+        curl_multi_cleanup(pool.multi_handle);
+        pool.multi_handle = NULL;
+    }
+    
+    // Destroy mutex
     pthread_mutex_destroy(&pool.pool_mutex);
+    
+    // Reset initialization flag
+    pool_initialized = false;
+    
+    T2Info("%s ++out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }

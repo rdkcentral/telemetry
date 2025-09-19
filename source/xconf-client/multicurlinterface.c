@@ -413,7 +413,6 @@ T2ERROR http_pool_post(const char *url, const char *payload)
     T2Info("%s ; POST url = %s\n", __FUNCTION__, url);
 
     CURL *easy;
-    curlResponseData *response = NULL; // Not used for POST
     int idx;
 
     T2ERROR ret = acquire_pool_handle(&easy, &idx);

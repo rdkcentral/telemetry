@@ -43,6 +43,12 @@ typedef struct
 } http_pool_request_config_t;
 
 T2ERROR init_connection_pool();
+
+// New dedicated APIs for better separation of concerns
+T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_output);
+T2ERROR http_pool_post(const char *url, const char *payload);
+
+// Legacy APIs (maintained for backward compatibility)
 T2ERROR http_pool_request_ex(const http_pool_request_config_t *config);
 T2ERROR http_pool_request(const char *url, const char *payload, char** data); // Backward compatibility
 T2ERROR http_pool_cleanup(void);

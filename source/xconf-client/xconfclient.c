@@ -614,19 +614,8 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
 #endif
 #endif
 
-    // Configure for GET request (doHttpGet)
-    http_pool_request_config_t config =
-    {
-        .type = HTTP_REQUEST_GET,
-        .url = httpsUrl,
-        .payload = NULL,  // No payload for GET requests
-        .response_data = data,  // Store response data for GET
-        .enable_mtls = true,
-        .enable_file_output = true  // Enable file output for GET requests
-    };
-
-    // Use the enhanced connection pool function
-    ret = http_pool_request_ex(&config);
+    // Use new dedicated GET API
+    ret = http_pool_get(httpsUrl, data, true);
 
     if(ret == T2ERROR_SUCCESS)
     {

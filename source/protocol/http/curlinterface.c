@@ -325,19 +325,8 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
         return ret;
     }
 
-    // Configure for POST request (sendReportOverHTTP)
-    http_pool_request_config_t config =
-    {
-        .type = HTTP_REQUEST_POST,
-        .url = httpUrl,
-        .payload = payload,
-        .response_data = NULL,  // POST doesn't need response data
-        .enable_mtls = true,
-        .enable_file_output = false  // No file output for POST
-    };
-
-    // Use the enhanced connection pool function
-    ret = http_pool_request_ex(&config);
+    // Use new dedicated POST API
+    ret = http_pool_post(httpUrl, payload);
 
     if(ret == T2ERROR_SUCCESS)
     {

@@ -93,12 +93,6 @@ static size_t httpGetCallBack(void *response, size_t len, size_t nmemb,
     return realsize;
 }
 
-static size_t writeToFile(void *ptr, size_t size, size_t nmemb, void *stream)
-{
-    size_t written = fwrite(ptr, size, nmemb, (FILE *) stream);
-    return written;
-}
-
 // Add this debug callback function
 static int curl_debug_callback_func(CURL *handle, curl_infotype type, char *data, size_t size, void *userptr)
 {
@@ -145,7 +139,7 @@ T2ERROR init_connection_pool()
     T2Info("%s ++in\n", __FUNCTION__);
     char *pCertFile = NULL;
     char *pPasswd = NULL;
-    pool.multi_handle = curl_multi_init();
+    //pool.multi_handle = curl_multi_init();
 
     // Pre-allocate easy handles
     for(int i = 0; i < MAX_POOL_SIZE; i++)
@@ -257,6 +251,7 @@ static T2ERROR http_pool_execute_request(CURL *easy, int idx)
 {
     T2Info("%s ++in\n", __FUNCTION__);
     
+#if 0
     // Add to multi handle
     curl_multi_add_handle(pool.multi_handle, easy);
 
@@ -268,7 +263,18 @@ static T2ERROR http_pool_execute_request(CURL *easy, int idx)
         curl_multi_wait(pool.multi_handle, NULL, 0, 100, NULL); // Reduced wait time for better performance
     }
     while(still_running);
+#endif
 
+    CURLcode res = curl_easy_perform(easy);
+    if (res != CURLE_OK) {
+        T2Error("curl_easy_perform failed: %s\n", curl_easy_strerror(res));
+        
+        pthread_mutex_lock(&pool.pool_mutex);
+        pool.handle_available[idx] = true;
+        pthread_mutex_unlock(&pool.pool_mutex);
+        
+        return T2ERROR_FAILURE;
+    }
     T2Info("%s ; Curl request completed\n", __FUNCTION__);
 
     long http_code;
@@ -287,7 +293,7 @@ static T2ERROR http_pool_execute_request(CURL *easy, int idx)
     }
 
     // Cleanup
-    curl_multi_remove_handle(pool.multi_handle, easy);
+    //curl_multi_remove_handle(pool.multi_handle, easy);
 
     pthread_mutex_lock(&pool.pool_mutex);
     pool.handle_available[idx] = true;
@@ -519,7 +525,6 @@ T2ERROR http_pool_post(const char *url, const char *payload)
     curl_easy_setopt(easy, CURLOPT_HTTPHEADER, pool.post_headers);
     curl_easy_setopt(easy, CURLOPT_POSTFIELDS, payload);
     curl_easy_setopt(easy, CURLOPT_POSTFIELDSIZE, strlen(payload));
-    curl_easy_setopt(easy, CURLOPT_WRITEFUNCTION, writeToFile);
 
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
 #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
@@ -638,8 +643,6 @@ T2ERROR http_pool_request_ex(const http_pool_request_config_t *config)
             curl_easy_setopt(easy, CURLOPT_POSTFIELDS, config->payload);
             curl_easy_setopt(easy, CURLOPT_POSTFIELDSIZE, strlen(config->payload));
         }
-
-        curl_easy_setopt(easy, CURLOPT_WRITEFUNCTION, writeToFile);
     }
     else
     {
@@ -778,12 +781,14 @@ T2ERROR http_pool_cleanup(void)
         }
     }
     
+#if 0
     // Cleanup multi handle
     if(pool.multi_handle) {
         curl_multi_cleanup(pool.multi_handle);
         pool.multi_handle = NULL;
     }
-    
+#endif
+
     // Destroy mutex
     pthread_mutex_destroy(&pool.pool_mutex);
     

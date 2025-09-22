@@ -99,6 +99,39 @@ static size_t writeToFile(void *ptr, size_t size, size_t nmemb, void *stream)
     return written;
 }
 
+// Add this debug callback function
+static int curl_debug_callback(CURL *handle, curl_infotype type, char *data, size_t size, void *userptr)
+{
+    const char *text;
+    
+    switch (type) {
+    case CURLINFO_TEXT:
+        T2Info("curl: %.*s", (int)size, data);
+        break;
+    case CURLINFO_HEADER_OUT:
+        T2Info("curl: => Send header: %.*s", (int)size, data);
+        break;
+    case CURLINFO_DATA_OUT:
+        T2Info("curl: => Send data: %zu bytes", size);
+        break;
+    case CURLINFO_SSL_DATA_OUT:
+        T2Info("curl: => Send SSL data: %zu bytes", size);
+        break;
+    case CURLINFO_HEADER_IN:
+        T2Info("curl: <= Recv header: %.*s", (int)size, data);
+        break;
+    case CURLINFO_DATA_IN:
+        T2Info("curl: <= Recv data: %zu bytes", size);
+        break;
+    case CURLINFO_SSL_DATA_IN:
+        T2Info("curl: <= Recv SSL data: %zu bytes", size);
+        break;
+    default:
+        break;
+    }
+    return 0;
+}
+
 T2ERROR init_connection_pool()
 {
     if(pool_initialized)
@@ -149,8 +182,13 @@ T2ERROR init_connection_pool()
         // Certificate selector and SSL/TLS specific options from original code
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_SSL_VERIFYPEER, 1L);
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_SSLENGINE_DEFAULT, 1L);
+        
+        curl_easy_setopt(pool.easy_handles[i], CURLOPT_VERBOSE, 1L);
+        curl_easy_setopt(pool.easy_handles[i], CURLOPT_DEBUGFUNCTION, curl_debug_callback);
+        curl_easy_setopt(pool.easy_handles[i], CURLOPT_DEBUGDATA, NULL);
+
     }
-    
+
     //mtls
     if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pPasswd))
     {

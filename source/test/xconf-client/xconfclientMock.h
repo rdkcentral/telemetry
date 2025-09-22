@@ -54,6 +54,10 @@ public:
     MOCK_METHOD(T2ERROR, ReportProfiles_deleteProfileXConf, (ProfilexConf *), ());
     MOCK_METHOD(T2ERROR, ReportProfiles_setProfileXConf, (ProfilexConf *), ());
     MOCK_METHOD(T2ERROR, getParameterValue, (const char* paramName, char **paramValue), ());
+    MOCK_METHOD(int, getRbusDCMEventStatus, (), ());
+    MOCK_METHOD(T2ERROR, publishEventsDCMSetConf, (char *confPath), ());
+    MOCK_METHOD(T2ERROR, publishEventsDCMProcConf, (), ());
+   //OCK_METHOD(T2ERROR, getMtlsCerts, (char **certName, char **phrase), ());
 };
 
 extern XconfclientMock* m_xconfclientMock;

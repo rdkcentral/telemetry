@@ -25,6 +25,7 @@
 #include "test/rbus/include/rbus.h"
 #include "test/rbus/include/rbus_value.h"
 
+typedef T2ERROR (*dataModelCallBack)(char* dataBlob, bool rprofiletypes);
 typedef void (*rbusMethodCallBackPtr) (rbusHandle_t handle, char const* methodName, rbusError_t retStatus, rbusObject_t params);
 class rbusMock
 {
@@ -78,6 +79,7 @@ public:
     MOCK_METHOD(rbusError_t, rbusMethod_InvokeAsync, ( rbusHandle_t handle, char const* methodName, rbusObject_t inParams, rbusMethodAsyncRespHandler_t callback, int timeout), ());
     MOCK_METHOD(const char*, rbusError_ToString, (rbusError_t error), ());
     MOCK_METHOD(bool, rbusCheckMethodExists, (const char* methodName), ());
+    MOCK_METHOD(void, rbusObject_SetPropertyString, (rbusObject_t object, char const* name, char const* s), ());
     MOCK_METHOD(T2ERROR, rbusMethodCaller, (char *methodName, rbusObject_t* input, char* output, rbusMethodCallBackPtr rbusMethodCallBack), ());
 };
 
@@ -91,7 +93,7 @@ extern "C" void rbusValue_SetInt32(rbusValue_t value, int32_t val);
 extern "C" void rbusValue_Release(rbusValue_t value);
 extern "C" void rbusObject_Release(rbusObject_t obj);
 extern "C" rbusError_t rbusMethod_Invoke(rbusHandle_t handle, char const* methodName, rbusObject_t input, rbusObject_t* output);
-
+extern "C" void rbusObject_SetPropertyString(rbusObject_t object, char const* name, char const* s);
 extern "C" rbusError_t rbus_get(rbusHandle_t handle, char const* name, rbusValue_t* value);
 extern "C" rbusStatus_t rbus_checkStatus();
 extern "C" rbusError_t rbus_open(rbusHandle_t* handle, char const* componentName);

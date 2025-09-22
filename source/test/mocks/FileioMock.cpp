@@ -19,7 +19,12 @@
 #include "test/mocks/FileioMock.h"
 
 #include <dlfcn.h>
+#include <stdarg.h>
+#include <fcntl.h>
 
+
+
+//typedef int (*fcntl_ptr) (int fd, int cmd, long arg);
 typedef FILE* (*popen_ptr) (const char * command, const char * type);
 typedef int (*pclose_ptr) (FILE * stream);
 typedef int (*pipe_ptr) (int str[2]);
@@ -35,22 +40,36 @@ typedef int (*closedir_ptr) (DIR * cd);
 typedef int (*mkdir_ptr) (const char * str, mode_t mode);
 typedef int (*close_ptr) ( int cd);
 typedef DIR * (*opendir_ptr) ( const char *name);
-typedef int (*open_ptr) (const char *pathname, int flags);
+//typedef int (*open_ptr) (const char *pathname, int flags);
+typedef int (*open_ptr)(const char *pathname, int flags, ...);
 typedef int (*fstat_ptr) (int fd, struct stat *buf);
 typedef size_t (*fwrite_ptr) (const void *ptr, size_t size, size_t nitems, FILE * stream);
 typedef CURLcode (*curl_easy_perform_ptr) (CURL *easy_handle);
-typedef struct curl_slist * (*curl_slist_append_ptr) (struct curl_slist *list, const char * string);
+typedef struct curl_slist* (*curl_slist_append_ptr) (struct curl_slist *list, const char * string);
 typedef CURL* (*curl_easy_init_ptr)();
+typedef CURLcode (*curl_easy_setopt_mock_ptr) (CURL *curl, CURLoption option, void* parameter);
+typedef CURLcode (*curl_easy_getinfo_mock_ptr) (CURL *curl, CURLINFO info, void* arg);
 typedef long (*ftell_ptr) (FILE *stream);
 typedef int (*fscanf_ptr) (FILE *, const char *, va_list);
 typedef pid_t (*fork_ptr) ();
 typedef ssize_t (*write_ptr) (int fd, const void *buf, size_t count);
 //typedef int (*stat_ptr) (const char *pathname, struct stat *statbuf);
 typedef int (*fprintf_ptr) (FILE* stream, const char* format, va_list args);
-//typedef CURLcode (*curl_easy_setopt_ptr) (CURL *curl, CURLoption option, parameter);
+//pedef CURLcode (*curl_easy_setopt_ptr) (CURL *curl, CURLoption option, parameter);
 typedef void (*curl_easy_cleanup_ptr) (CURL *handle);
 typedef void (*curl_slist_free_all_ptr) (struct curl_slist *list);
+typedef int (*munmap_ptr) (void *addr, size_t len);
+typedef void* (*mmap_ptr) (void *addr, size_t length, int prot, int flags, int fd, off_t offset);
+typedef int (*mkstemp_ptr) (char *tmpl);
+typedef ssize_t (*sendfile_ptr) (int out_fd, int in_fd, off_t *offset, size_t count);
 
+typedef void (*rdkcertselector_free_ptr) (rdkcertselector_h *thiscertsel);
+typedef rdkcertselector_h (*rdkcertselector_new_ptr) (const char *certsel_path, const char *hrotprop_path, const char *cert_group);
+//protocol
+typedef pid_t (*getpid_ptr) (void);
+typedef void (*exit_ptr) (int status);
+
+//fcntl_ptr fcntl_func = (fcntl_ptr) dlsym(RTLD_NEXT, "fcntl");
 popen_ptr popen_func = (popen_ptr) dlsym(RTLD_NEXT, "popen");
 pclose_ptr pclose_func = (pclose_ptr) dlsym(RTLD_NEXT, "pclose");
 pipe_ptr pipe_func = (pipe_ptr) dlsym(RTLD_NEXT, "pipe");
@@ -66,7 +85,8 @@ closedir_ptr closedir_func = (closedir_ptr) dlsym(RTLD_NEXT, "closedir");
 mkdir_ptr mkdir_func = (mkdir_ptr) dlsym(RTLD_NEXT, "mkdir");
 close_ptr close_func = (close_ptr) dlsym(RTLD_NEXT, "close");
 opendir_ptr opendir_func = (opendir_ptr) dlsym(RTLD_NEXT, "opendir");
-open_ptr open_func = (open_ptr) dlsym(RTLD_NEXT, "open");
+//open_ptr open_func = (open_ptr) dlsym(RTLD_NEXT, "open");
+open_ptr open_func = (open_ptr)dlsym(RTLD_NEXT, "open");
 fstat_ptr fstat_func = (fstat_ptr) dlsym(RTLD_NEXT, "fstat");
 fwrite_ptr fwrite_func = (fwrite_ptr) dlsym(RTLD_NEXT, "fwrite");
 curl_easy_perform_ptr curl_easy_perform_func = (curl_easy_perform_ptr) dlsym(RTLD_NEXT, "curl_easy_perform");
@@ -78,22 +98,65 @@ fork_ptr fork_func = (fork_ptr) dlsym(RTLD_NEXT, "fork");
 write_ptr write_func = (write_ptr) dlsym(RTLD_NEXT, "write");
 //stat_ptr stat_func = (stat_ptr) dlsym(RTLD_NEXT, "stat");
 fprintf_ptr fprintf_func = (fprintf_ptr) dlsym(RTLD_NEXT, "fprintf");
-//curl_easy_setopt_ptr curl_easy_setopt_func = (curl_easy_setopt_ptr) dlsym(RTLD_NEXT, "curl_easy_setopt");
+curl_easy_setopt_mock_ptr curl_easy_setopt_mock_func = (curl_easy_setopt_mock_ptr) dlsym(RTLD_NEXT, "curl_easy_setopt_mock");
+curl_easy_getinfo_mock_ptr curl_easy_getinfo_mock_func = (curl_easy_getinfo_mock_ptr) dlsym(RTLD_NEXT, "curl_easy_getinfo_mock");
 curl_easy_cleanup_ptr curl_easy_cleanup_func = (curl_easy_cleanup_ptr) dlsym(RTLD_NEXT, "curl_easy_cleanup");
 curl_slist_free_all_ptr curl_slist_free_all_func = (curl_slist_free_all_ptr) dlsym(RTLD_NEXT, "curl_slist_free_all");
+//curl_easy_setopt_ptr curl_easy_setopt_func = (curl_easy_setopt_ptr) dlsym(RTLD_NEXT, "curl_easy_setopt");
+munmap_ptr munmap_func = (munmap_ptr) dlsym(RTLD_NEXT, "munmap");
+mmap_ptr mmap_func = (mmap_ptr) dlsym(RTLD_NEXT, "mmap");
+mkstemp_ptr mkstemp_func = (mkstemp_ptr) dlsym(RTLD_NEXT, "mkstemp");
+sendfile_ptr sendfile_func = (sendfile_ptr) dlsym(RTLD_NEXT, "sendfile");
 
+rdkcertselector_new_ptr rdkcertselector_new_func = (rdkcertselector_new_ptr) dlsym(RTLD_NEXT, "rdkcertselector_new");
+rdkcertselector_free_ptr rdkcertselector_free_func = (rdkcertselector_free_ptr) dlsym(RTLD_NEXT, "rdkcertselector_free");
+
+getpid_ptr getpid_func = (getpid_ptr) dlsym(RTLD_NEXT, "getpid");
+exit_ptr exit_func = (exit_ptr) dlsym(RTLD_NEXT, "exit");
+/*
+extern "C" int fcntl(int fd, int cmd, long arg)
+{
+    if (g_fileIOMock) {
+        return g_fileIOMock->fcntl(fd, cmd, arg);
+    }
+    // fallback to real function if needed
+}
+*/
+
+extern "C" void exit(int status)
+{
+    if (g_fileIOMock == nullptr){
+        exit_func(status);
+    }
+    // In test mode, do nothing or handle as needed
+    throw std::runtime_error("Exit called"); 
+}
 
 extern "C" int fscanf(FILE *stream, const char *format, ...)
 {
     va_list args;
     va_start(args, format);
+    static int call_count = 0;
     if (g_fileIOMock == nullptr){
        return fscanf_func(stream, format, args);
     }
-
-    int result = g_fileIOMock->fscanf(stream, format, args);
+    if (strcmp(format, "%d") == 0) {
+        int *out_ptr = va_arg(args, int *);
+        if (call_count == 0) {
+            *out_ptr = 1234;
+            call_count++;
+            va_end(args);
+            return 1;
+       }	    
+       else {
+            va_end(args);
+            return 0; // No more PIDs
+        }
+    }
     va_end(args);
+    int result = g_fileIOMock->fscanf(stream, format, args);
     return result;
+    
 }
 
 extern "C" char* fgets(char *str, int n, FILE *stream)
@@ -240,7 +303,7 @@ extern "C" DIR *opendir( const char *name)
     
     return g_fileIOMock->opendir(name);
 }
-
+/*
 extern "C" int open(const char *pathname, int flags)
 {
     if (g_fileIOMock == nullptr){
@@ -248,6 +311,32 @@ extern "C" int open(const char *pathname, int flags)
     }
     
     return g_fileIOMock->open(pathname, flags);
+}*/
+
+
+extern "C" int open(const char *pathname, int flags, ...)
+{
+    mode_t mode = 0;
+    if (flags & O_CREAT) {
+        va_list args;
+        va_start(args, flags);
+        mode = va_arg(args, mode_t);
+        va_end(args);
+    }
+
+    if (g_fileIOMock == nullptr) {
+        if (flags & O_CREAT) {
+            return open_func(pathname, flags, mode);
+        } else {
+            return open_func(pathname, flags);
+        }
+    }
+
+    if (flags & O_CREAT) {
+        return -1;
+    } else {
+        return g_fileIOMock->open(pathname, flags);
+    }
 }
 
 extern "C" int fstat(int fd, struct stat *buf)
@@ -273,10 +362,29 @@ extern "C" CURLcode curl_easy_perform(CURL *easy_handle)
     if (g_fileIOMock == nullptr){
         return curl_easy_perform_func(easy_handle);
     }
-
-    
     return g_fileIOMock->curl_easy_perform(easy_handle);
 }
+
+extern "C" CURLcode curl_easy_setopt_mock(CURL *handle, CURLoption option, void* parameter)
+{
+  //va_list args;
+   //a_start(args, option);
+   //har *param = va_arg(args, char*);
+   //rintf("option %d param %s\n", option, param);
+   //a_end(args);
+    if (g_fileIOMock == nullptr){
+        return CURLE_OK;
+    }
+    return g_fileIOMock->curl_easy_setopt_mock(handle, option, parameter);
+}
+
+extern "C" CURLcode curl_easy_getinfo_mock(CURL *curl, CURLINFO info, void* arg)
+{
+    if (g_fileIOMock == nullptr){
+        return CURLE_OK;
+    }
+    return g_fileIOMock->curl_easy_getinfo_mock(curl, info, arg);
+}   
 
 extern "C" struct curl_slist *curl_slist_append(struct curl_slist *list, const char * string)
 {
@@ -334,8 +442,8 @@ extern "C" int fprintf(FILE* stream, const char* format, ...) {
     va_end(args);
     return result;
 }
-
-/*extern "C" CURLcode curl_easy_setopt(CURL *curl, CURLoption option, parameter)
+/*
+extern "C" CURLcode curl_easy_setopt(CURL *curl, CURLoption option, ...)
 {
     va_list args;
     va_start(args, option);
@@ -369,3 +477,64 @@ extern "C" void curl_slist_free_all(struct curl_slist *list)
     return g_fileIOMock->curl_slist_free_all(list);
 }
 
+extern "C" int munmap(void *addr, size_t len)
+{
+    if (g_fileIOMock == nullptr){
+        return munmap_func(addr, len);
+    }
+
+    return g_fileIOMock->munmap(addr, len);
+}
+
+extern "C" void* mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
+{
+    if (g_fileIOMock == nullptr){
+        return mmap_func(addr, length, prot, flags, fd, offset);
+    }
+
+    return g_fileIOMock->mmap(addr, length, prot, flags, fd, offset);
+}
+
+extern "C" int mkstemp(char *tmpl)
+{
+    if (g_fileIOMock == nullptr){
+        return mkstemp_func(tmpl);
+    }
+
+    return g_fileIOMock->mkstemp(tmpl);
+}
+
+extern "C" ssize_t sendfile(int out_fd, int in_fd, off_t* offset, size_t count)
+{
+    if (g_fileIOMock == nullptr){
+        return sendfile_func(out_fd, in_fd, offset, count);
+    }
+
+    return g_fileIOMock->sendfile(out_fd, in_fd, offset, count);
+}
+
+extern "C" rdkcertselector_h rdkcertselector_new(const char *certsel_path, const char *hrotprop_path, const char *cert_group)
+{
+    if (g_fileIOMock == nullptr){
+        return rdkcertselector_new_func(certsel_path, hrotprop_path, cert_group);
+    }
+
+    return g_fileIOMock->rdkcertselector_new(certsel_path, hrotprop_path, cert_group);
+}   
+
+extern "C" void rdkcertselector_free(rdkcertselector_h *thiscertsel)
+{
+    if (g_fileIOMock == nullptr){
+        return rdkcertselector_free_func(thiscertsel);
+    }
+
+    return g_fileIOMock->rdkcertselector_free(thiscertsel);
+}
+
+extern "C" pid_t getpid(void)
+{
+   if(g_fileIOMock == nullptr){
+       return getpid_func();
+   }
+   return g_fileIOMock->getpid();
+}

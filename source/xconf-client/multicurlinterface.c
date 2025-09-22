@@ -100,9 +100,10 @@ static size_t writeToFile(void *ptr, size_t size, size_t nmemb, void *stream)
 }
 
 // Add this debug callback function
-static int curl_debug_callback(CURL *handle, curl_infotype type, char *data, size_t size, void *userptr)
+static int curl_debug_callback_func(CURL *handle, curl_infotype type, char *data, size_t size, void *userptr)
 {
-    const char *text;
+    (void)handle;
+    (void)userptr;
     
     switch (type) {
     case CURLINFO_TEXT:
@@ -184,7 +185,7 @@ T2ERROR init_connection_pool()
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_SSLENGINE_DEFAULT, 1L);
         
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_VERBOSE, 1L);
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_DEBUGFUNCTION, curl_debug_callback);
+        curl_easy_setopt(pool.easy_handles[i], CURLOPT_DEBUGFUNCTION, curl_debug_callback_func);
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_DEBUGDATA, NULL);
 
     }

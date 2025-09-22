@@ -157,6 +157,7 @@ T2ERROR init_connection_pool()
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_TIMEOUT, 30L);
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_CONNECTTIMEOUT, 10L); 
 
+#if 0
         // More aggressive keepalive settings for your environment
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPALIVE, 1L);
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPIDLE, 50L);    // 1 minute instead of 2
@@ -185,9 +186,9 @@ T2ERROR init_connection_pool()
         // Connection management options that work with older libcurl
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_PIPEWAIT, 0L);     // Don't wait for pipelining
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1); // Use HTTP/1.1
-        
+#endif
         // Enable connection pooling with limited cache size
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_MAXCONNECTS, 1L); // Only 1 connection per handle
+        curl_easy_setopt(pool.easy_handles[i], CURLOPT_MAXCONNECTS, 3L); // Only 1 connection per handle
 
         code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
         if(code != CURLE_OK)

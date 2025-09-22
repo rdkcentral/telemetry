@@ -151,7 +151,7 @@ T2ERROR init_connection_pool()
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_TIMEOUT, 30L);
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_CONNECTTIMEOUT, 10L); 
 
-#if 0
+#if 1
         // More aggressive keepalive settings for your environment
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPALIVE, 1L);
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPIDLE, 50L);    // 1 minute instead of 2

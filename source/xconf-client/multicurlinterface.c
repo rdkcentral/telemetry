@@ -153,27 +153,42 @@ T2ERROR init_connection_pool()
         pool.easy_handles[i] = curl_easy_init();
         pool.handle_available[i] = true;
 
-        // Set common options once
+        //Set common options once
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_TIMEOUT, 30L);
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_CONNECTTIMEOUT, 30L);
-        
+        curl_easy_setopt(pool.easy_handles[i], CURLOPT_CONNECTTIMEOUT, 10L); 
 
-#if 1
+        // More aggressive keepalive settings for your environment
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPALIVE, 1L);
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPIDLE, 120L); //TODO: get the internal call details
-
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPINTVL, 60L); //TODO: libcurl dev
-#endif
+        curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPIDLE, 50L);    // 1 minute instead of 2
+        curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPINTVL, 30L);   // 30 seconds instead of 60
 
 #ifdef CURLOPT_TCP_KEEPCNT
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPCNT, 15L);  // Allow up to 15 probes
 #endif
 
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_MAXCONNECTS, 5L);  
-#if 1
+        // Add connection reuse validation
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_FORBID_REUSE, 0L);
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_FRESH_CONNECT, 0L);
-#endif
+        
+        // Set connection timeout to handle dead connections faster
+        curl_easy_setopt(pool.easy_handles[i], CURLOPT_CONNECTTIMEOUT, 10L);
+        
+        // Add low-level socket options for better connection health detection
+        curl_easy_setopt(pool.easy_handles[i], CURLOPT_NOSIGNAL, 1L);
+
+        // Add HTTP-level keep-alive headers for better server compatibility
+        curl_easy_setopt(pool.easy_handles[i], CURLOPT_HTTPHEADER, NULL); // Reset any existing headers first
+        
+        // Add low-level socket options for better connection health detection
+        curl_easy_setopt(pool.easy_handles[i], CURLOPT_NOSIGNAL, 1L);
+        
+        // Connection management options that work with older libcurl
+        curl_easy_setopt(pool.easy_handles[i], CURLOPT_PIPEWAIT, 0L);     // Don't wait for pipelining
+        curl_easy_setopt(pool.easy_handles[i], CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1); // Use HTTP/1.1
+        
+        // Enable connection pooling with limited cache size
+        curl_easy_setopt(pool.easy_handles[i], CURLOPT_MAXCONNECTS, 1L); // Only 1 connection per handle
+
         code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
         if(code != CURLE_OK)
         {
@@ -187,7 +202,6 @@ T2ERROR init_connection_pool()
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_VERBOSE, 1L);
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_DEBUGFUNCTION, curl_debug_callback_func);
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_DEBUGDATA, NULL);
-
     }
 
     //mtls

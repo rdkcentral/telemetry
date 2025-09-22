@@ -90,6 +90,40 @@ static size_t writeToFile(void *ptr, size_t size, size_t nmemb, void *stream)
     return written;
 }
 
+static int curl_debug_callback_func(CURL *handle, curl_infotype type, char *data, size_t size, void *userptr)
+{
+    // Suppress unused parameter warnings
+    (void)handle;
+    (void)userptr;
+    
+    switch (type) {
+    case CURLINFO_TEXT:
+        T2Info("curl: %.*s", (int)size, data);
+        break;
+    case CURLINFO_HEADER_OUT:
+        T2Info("curl: => Send header: %.*s", (int)size, data);
+        break;
+    case CURLINFO_DATA_OUT:
+        T2Info("curl: => Send data: %zu bytes", size);
+        break;
+    case CURLINFO_SSL_DATA_OUT:
+        T2Info("curl: => Send SSL data: %zu bytes", size);
+        break;
+    case CURLINFO_HEADER_IN:
+        T2Info("curl: <= Recv header: %.*s", (int)size, data);
+        break;
+    case CURLINFO_DATA_IN:
+        T2Info("curl: <= Recv data: %zu bytes", size);
+        break;
+    case CURLINFO_SSL_DATA_IN:
+        T2Info("curl: <= Recv SSL data: %zu bytes", size);
+        break;
+    default:
+        break;
+    }
+    return 0;
+}
+
 static T2ERROR setHeader(CURL *curl, const char* destURL, struct curl_slist **headerList, childResponse *childCurlResponse)
 {
 
@@ -455,6 +489,10 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
                 curl_easy_cleanup(curl); // CID 189985: Resource leak
                 goto child_cleanReturn;
             }
+            curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+            curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, curl_debug_callback);
+            curl_easy_setopt(curl, CURLOPT_DEBUGDATA, NULL);
+            
 #ifdef LIBRDKCERTSEL_BUILD
             pEngine = rdkcertselector_getEngine(thisCertSel);
             if(pEngine != NULL)

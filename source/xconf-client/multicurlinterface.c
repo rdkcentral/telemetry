@@ -121,21 +121,25 @@ T2ERROR init_connection_pool()
 
         // Set common options once
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_TIMEOUT, 30L);
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_CONNECTTIMEOUT, 10L);
+        curl_easy_setopt(pool.easy_handles[i], CURLOPT_CONNECTTIMEOUT, 30L);
         
+
+#if 0
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPALIVE, 1L);
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPIDLE, 120L); //TODO: get the internal call details
 
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPINTVL, 60L); //TODO: libcurl dev
+#endif
 
 #ifdef CURLOPT_TCP_KEEPCNT
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPCNT, 15L);  // Allow up to 15 probes
 #endif
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_MAXCONNECTS, 5L);  
 
+        curl_easy_setopt(pool.easy_handles[i], CURLOPT_MAXCONNECTS, 5L);  
+#if 0
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_FORBID_REUSE, 0L);
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_FRESH_CONNECT, 0L);
-
+#endif
         code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
         if(code != CURLE_OK)
         {
@@ -307,7 +311,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
     response = (curlResponseData*)malloc(sizeof(curlResponseData));
     if (response)
     {
-        response->data = (char*)malloc(RESPONSE_BUFFER_SIZE);
+        response->data = (char*)malloc(1);
         if (response->data)
         {
             response->data[0] = '\0';

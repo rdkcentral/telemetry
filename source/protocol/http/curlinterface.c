@@ -490,7 +490,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
                 goto child_cleanReturn;
             }
             curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-            curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, curl_debug_callback);
+            curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, curl_debug_callback_func);
             curl_easy_setopt(curl, CURLOPT_DEBUGDATA, NULL);
             
 #ifdef LIBRDKCERTSEL_BUILD

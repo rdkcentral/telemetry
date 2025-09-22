@@ -36,7 +36,7 @@
 #include "t2MtlsUtils.h"
 
 //Global variables
-#define MAX_POOL_SIZE 2
+#define MAX_POOL_SIZE 3
 #define HTTP_RESPONSE_FILE "/tmp/httpOutput.txt"
 #define RESPONSE_BUFFER_SIZE 8192
 static bool pool_initialized = false;
@@ -158,7 +158,7 @@ T2ERROR init_connection_pool()
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_CONNECTTIMEOUT, 30L);
         
 
-#if 0
+#if 1
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPALIVE, 1L);
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPIDLE, 120L); //TODO: get the internal call details
 
@@ -170,7 +170,7 @@ T2ERROR init_connection_pool()
 #endif
 
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_MAXCONNECTS, 5L);  
-#if 0
+#if 1
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_FORBID_REUSE, 0L);
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_FRESH_CONNECT, 0L);
 #endif
@@ -282,6 +282,7 @@ static T2ERROR http_pool_execute_request(CURL *easy, int idx)
     return ret;
 }
 
+#if 0
 // Helper function to acquire handle only
 static T2ERROR acquire_pool_handle(CURL **easy, int *idx)
 {
@@ -322,6 +323,7 @@ static T2ERROR acquire_pool_handle(CURL **easy, int *idx)
     *easy = pool.easy_handles[*idx];
     return T2ERROR_SUCCESS;
 }
+#endif
 
 // Dedicated GET API
 T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_output)
@@ -336,45 +338,55 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
 
     T2Info("%s ; GET url = %s\n", __FUNCTION__, url);
 
+    if (!pool_initialized)
+    {
+        T2ERROR ret = init_connection_pool();
+        if(ret != T2ERROR_SUCCESS)
+        {
+            T2Error("Failed to initialize connection pool\n");
+            return ret;
+        }
+    }
+
+    // Always use handle 0 for GET requests
+    int idx = 0;
     CURL *easy;
-    curlResponseData *response;
-    int idx;
 
-    T2ERROR ret = acquire_pool_handle(&easy, &idx);
-    if (ret != T2ERROR_SUCCESS)
-    {
-        return ret;
-    }
+    pthread_mutex_lock(&pool.pool_mutex);
 
-    // Allocate response buffer locally for GET requests
-    response = (curlResponseData*)malloc(sizeof(curlResponseData));
-    if (response)
+    // Check if handle 0 is available
+    if (!pool.handle_available[idx])
     {
-        response->data = (char*)malloc(1);
-        if (response->data)
-        {
-            response->data[0] = '\0';
-            response->size = 0;
-        }
-        else
-        {
-            free(response);
-            response = NULL;
-            T2Error("Failed to allocate memory for response buffer\n");
-            return T2ERROR_FAILURE;
-        }
-    }
-    else
-    {
-        T2Error("Failed to allocate memory for response structure\n");
+        pthread_mutex_unlock(&pool.pool_mutex);
+        T2Error("GET handle (index 0) is not available\n");
         return T2ERROR_FAILURE;
     }
+
+    // Reserve handle 0 for GET
+    pool.handle_available[idx] = false;
+    easy = pool.easy_handles[idx];
+
+    pthread_mutex_unlock(&pool.pool_mutex);
+
+    // Allocate response buffer locally for GET requests only
+    curlResponseData response;
+    response.data = (char*)malloc(RESPONSE_BUFFER_SIZE);
+    if (!response.data)
+    {
+        T2Error("Failed to allocate response buffer\n");
+        pthread_mutex_lock(&pool.pool_mutex);
+        pool.handle_available[idx] = true;
+        pthread_mutex_unlock(&pool.pool_mutex);
+        return T2ERROR_FAILURE;
+    }
+    response.data[0] = '\0';
+    response.size = 0;
 
     // Configure for GET request
     curl_easy_setopt(easy, CURLOPT_URL, url);
     curl_easy_setopt(easy, CURLOPT_HTTPGET, 1L);
     curl_easy_setopt(easy, CURLOPT_WRITEFUNCTION, httpGetCallBack);
-    curl_easy_setopt(easy, CURLOPT_WRITEDATA, (void *) response);
+    curl_easy_setopt(easy, CURLOPT_WRITEDATA, (void *) &response);
 
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
 #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
@@ -385,11 +397,11 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
 #endif
 
     // Execute the request
-    ret = http_pool_execute_request(easy, idx);
+    T2ERROR ret = http_pool_execute_request(easy, idx);
 
-    if (ret == T2ERROR_SUCCESS && response->data)
+    if (ret == T2ERROR_SUCCESS && response.data)
     {
-        T2Info("%s ; Response data size = %zu\n", __FUNCTION__, response->size);
+        T2Info("%s ; Response data size = %zu\n", __FUNCTION__, response.size);
 
         // Handle file output for GET requests
         if (enable_file_output)
@@ -398,7 +410,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
             if(httpOutput)
             {
                 T2Debug("Update config data in response file %s \n", HTTP_RESPONSE_FILE);
-                fputs(response->data, httpOutput);
+                fputs(response.data, httpOutput);
                 fclose(httpOutput);
             }
             else
@@ -411,13 +423,13 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
         if (response_data)
         {
             *response_data = NULL;
-            if(response->size <= SIZE_MAX)
+            if(response.size <= SIZE_MAX)
             {
-                *response_data = (char*)malloc(response->size + 1);
+                *response_data = (char*)malloc(response.size + 1);
                 if(*response_data)
                 {
-                    memcpy(*response_data, response->data, response->size);
-                    (*response_data)[response->size] = '\0';
+                    memcpy(*response_data, response.data, response.size);
+                    (*response_data)[response.size] = '\0';
                 }
             }
         }
@@ -428,15 +440,8 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
         ret = T2ERROR_FAILURE;
     }
 
-    // Free local response buffer
-    if (response)
-    {
-        if (response->data)
-        {
-            free(response->data);
-        }
-        free(response);
-    }
+    // Clean up local response buffer
+    free(response.data);
 
     T2Info("%s ++out\n", __FUNCTION__);
     return ret;
@@ -455,14 +460,43 @@ T2ERROR http_pool_post(const char *url, const char *payload)
 
     T2Info("%s ; POST url = %s\n", __FUNCTION__, url);
 
-    CURL *easy;
-    int idx;
-
-    T2ERROR ret = acquire_pool_handle(&easy, &idx);
-    if (ret != T2ERROR_SUCCESS)
+    if (!pool_initialized)
     {
-        return ret;
+        T2ERROR ret = init_connection_pool();
+        if(ret != T2ERROR_SUCCESS)
+        {
+            T2Error("Failed to initialize connection pool\n");
+            return ret;
+        }
     }
+
+    // Use handles 1+ for POST requests (handle 0 is reserved for GET)
+    CURL *easy;
+    int idx = -1;
+
+    pthread_mutex_lock(&pool.pool_mutex);
+
+    // Find an available handle starting from index 1
+    for(int i = 1; i < MAX_POOL_SIZE; i++)
+    {
+        if(pool.handle_available[i])
+        {
+            T2Info("%s ; Available POST handle = %d\n", __FUNCTION__, i);
+            idx = i;
+            pool.handle_available[i] = false;
+            break;
+        }
+    }
+
+    pthread_mutex_unlock(&pool.pool_mutex);
+
+    if(idx == -1)
+    {
+        T2Error("No available POST handles (handles 1-%d)\n", MAX_POOL_SIZE - 1);
+        return T2ERROR_FAILURE;
+    }
+
+    easy = pool.easy_handles[idx];
 
     // Configure for POST request
     curl_easy_setopt(easy, CURLOPT_URL, url);
@@ -481,7 +515,7 @@ T2ERROR http_pool_post(const char *url, const char *payload)
 #endif
 
     // Execute the request
-    ret = http_pool_execute_request(easy, idx);
+    T2ERROR ret = http_pool_execute_request(easy, idx);
 
     T2Info("%s ++out\n", __FUNCTION__);
     return ret;

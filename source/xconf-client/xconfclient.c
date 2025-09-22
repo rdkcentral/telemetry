@@ -547,6 +547,40 @@ static size_t httpGetCallBack(void *response, size_t len, size_t nmemb,
     return realsize;
 }
 
+static int curl_debug_callback_func(CURL *handle, curl_infotype type, char *data, size_t size, void *userptr)
+{
+    // Suppress unused parameter warnings
+    (void)handle;
+    (void)userptr;
+    
+    switch (type) {
+    case CURLINFO_TEXT:
+        T2Info("curl: %.*s", (int)size, data);
+        break;
+    case CURLINFO_HEADER_OUT:
+        T2Info("curl: => Send header: %.*s", (int)size, data);
+        break;
+    case CURLINFO_DATA_OUT:
+        T2Info("curl: => Send data: %zu bytes", size);
+        break;
+    case CURLINFO_SSL_DATA_OUT:
+        T2Info("curl: => Send SSL data: %zu bytes", size);
+        break;
+    case CURLINFO_HEADER_IN:
+        T2Info("curl: <= Recv header: %.*s", (int)size, data);
+        break;
+    case CURLINFO_DATA_IN:
+        T2Info("curl: <= Recv data: %zu bytes", size);
+        break;
+    case CURLINFO_SSL_DATA_IN:
+        T2Info("curl: <= Recv SSL data: %zu bytes", size);
+        break;
+    default:
+        break;
+    }
+    return 0;
+}
+
 #ifdef LIBRDKCERTSEL_BUILD
 void xcCertSelectorFree()
 {
@@ -706,6 +740,10 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
             {
                 T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
             }
+curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, curl_debug_callback);
+curl_easy_setopt(curl, CURLOPT_DEBUGDATA, NULL);
+
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
 
 #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)

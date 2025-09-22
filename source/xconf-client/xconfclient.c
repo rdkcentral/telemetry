@@ -741,7 +741,7 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
                 T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
             }
 curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, curl_debug_callback);
+curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, curl_debug_callback_func);
 curl_easy_setopt(curl, CURLOPT_DEBUGDATA, NULL);
 
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)

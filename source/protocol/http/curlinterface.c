@@ -458,11 +458,14 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
 #ifdef LIBRDKCERTSEL_BUILD
             pEngine = rdkcertselector_getEngine(thisCertSel);
             if(pEngine != NULL){
+                T2Error("%s: Default pEngine %s\n", __func__, pEngine);
                 code = curl_easy_setopt(curl, CURLOPT_SSLENGINE, pEngine);
                 if(code != CURLE_OK){
+                    T2Error("%s: Default Engine\n", __func__ );
                     code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
                 }
             }else{
+                T2Error("%s: Default Engine 1\n", __func__ );
                 code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
             }
             if(code != CURLE_OK){

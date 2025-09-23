@@ -442,7 +442,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
      */
     if(childPid == 0)
     {
-        int idx = 0;
+        int idx;
         T2ERROR ret = acquire_pool_handle(&curl, &idx);
         if (ret != T2ERROR_SUCCESS)
         {

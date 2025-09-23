@@ -32,6 +32,7 @@
 #include <curl/curl.h>
 #include <signal.h>
 
+#include "../xconf-client/multicurlinterface.h"
 #include "curlinterface.h"
 #include "reportprofiles.h"
 #include "t2MtlsUtils.h"
@@ -441,18 +442,24 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
      */
     if(childPid == 0)
     {
-        curl = curl_easy_init();
+        int idx = 0;
+        T2ERROR ret = acquire_pool_handle(&curl, &idx);
+        if (ret != T2ERROR_SUCCESS)
+        {
+            return ret;
+        }
+
         if(curl)
         {
             childCurlResponse.curlStatus = true;
             if(setHeader(curl, httpUrl, &headerList, &childCurlResponse) != T2ERROR_SUCCESS)
             {
-                curl_easy_cleanup(curl);
+                //curl_easy_cleanup(curl);
                 goto child_cleanReturn;
             }
             if (setPayload(curl, payload, &childCurlResponse) != T2ERROR_SUCCESS)
             {
-                curl_easy_cleanup(curl); // CID 189985: Resource leak
+                //curl_easy_cleanup(curl); // CID 189985: Resource leak
                 goto child_cleanReturn;
             }
 #ifdef LIBRDKCERTSEL_BUILD
@@ -467,7 +474,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
             }
             if(code != CURLE_OK)
             {
-                curl_easy_cleanup(curl);
+                //curl_easy_cleanup(curl);
                 goto child_cleanReturn;
             }
             do
@@ -480,7 +487,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
                 {
                     T2Error("%s, T2:Failed to retrieve the certificate.\n", __func__);
                     curlCertSelectorFree();
-                    curl_easy_cleanup(curl);
+                    //curl_easy_cleanup(curl);
                     goto child_cleanReturn;
                 }
                 else
@@ -494,7 +501,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
 #endif
                     if((mtls_enable == true) && (setMtlsHeaders(curl, pCertFile, pCertPC, &childCurlResponse) != T2ERROR_SUCCESS))
                     {
-                        curl_easy_cleanup(curl); // CID 189985: Resource leak
+                        //curl_easy_cleanup(curl); // CID 189985: Resource leak
                         goto child_cleanReturn;
                     }
                     pthread_once(&curlFileMutexOnce, sendOverHTTPInit);
@@ -537,12 +544,13 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
             while(rdkcertselector_setCurlStatus(thisCertSel, curl_code, (const char*)httpUrl) == TRY_ANOTHER);
 #endif
             curl_slist_free_all(headerList);
-            curl_easy_cleanup(curl);
+            //curl_easy_cleanup(curl);
         }
         else
         {
             childCurlResponse.curlStatus = false;
         }
+        release_pool_handle(idx);
 
 child_cleanReturn :
 #ifndef LIBRDKCERTSEL_BUILD
@@ -571,6 +579,7 @@ child_cleanReturn :
             T2Error("unable to write \n");
         }
         close(sharedPipeFds[1]);
+        release_pool_handle(idx);
         exit(0);
 
     }

@@ -31,6 +31,7 @@
 
 #include <cjson/cJSON.h>
 
+#include "multicurlinterface.h"
 #include "t2log_wrapper.h"
 #include "reportprofiles.h"
 #include "profilexconf.h"
@@ -671,11 +672,15 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
         httpResponse->data[0] = '\0'; //CID 282084 : Uninitialized scalar variable (UNINIT)
         httpResponse->size = 0;
 
-        curl = curl_easy_init();
+        int idx;
+        ret = acquire_pool_handle(&curl, &idx);
+        if (ret != T2ERROR_SUCCESS)
+        {
+            return ret;
+        }
 
         if(curl)
         {
-
             code = curl_easy_setopt(curl, CURLOPT_URL, httpsUrl);
             if(code != CURLE_OK)
             {
@@ -752,7 +757,7 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
                         xcCertSelectorFree();
                         free(httpResponse->data);
                         free(httpResponse);
-                        curl_easy_cleanup(curl);
+                        //curl_easy_cleanup(curl);
                         ret = T2ERROR_FAILURE;
                         goto status_return;
                     }
@@ -808,7 +813,7 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
                     {
                         free(httpResponse->data);
                         free(httpResponse);
-                        curl_easy_cleanup(curl); //CID 189986:Resource leak
+                        //curl_easy_cleanup(curl); //CID 189986:Resource leak
                         T2Error("mTLS_get failure\n");
                         ret = T2ERROR_FAILURE;
                         goto status_return;
@@ -864,7 +869,7 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
 #endif
                 }
 #endif
-                curl_easy_cleanup(curl);
+                //curl_easy_cleanup(curl);
             }
             else
             {
@@ -891,7 +896,7 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
 #endif
                 }
 #endif
-                curl_easy_cleanup(curl);
+                //curl_easy_cleanup(curl);
                 if(http_code == 404)
                 {
                     ret = T2ERROR_PROFILE_NOT_SET;
@@ -910,10 +915,11 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
             ret = T2ERROR_FAILURE;
             goto status_return ;
         }
-
+        release_pool_handle(idx);
         ret = T2ERROR_SUCCESS ;
 status_return :
 
+        release_pool_handle(idx);
         close(sharedPipeFdStatus[0]);
         write(sharedPipeFdStatus[1], &ret, sizeof(T2ERROR));
         close(sharedPipeFdStatus[1]);

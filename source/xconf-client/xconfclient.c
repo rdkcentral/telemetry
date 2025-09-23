@@ -672,7 +672,7 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
         httpResponse->data[0] = '\0'; //CID 282084 : Uninitialized scalar variable (UNINIT)
         httpResponse->size = 0;
 
-        int idx;
+        int idx=0;
         ret = acquire_pool_handle(&curl, &idx);
         if (ret != T2ERROR_SUCCESS)
         {

@@ -321,29 +321,28 @@ T2ERROR acquire_pool_handle(CURL **easy, int *idx)
         }
     }
 
-    if(*idx == 0)
-    {
-        T2Info("%s %d: Locking\n", __FUNCTION__, __LINE__);
-        pthread_mutex_lock(&pool.pool_mutex);
-        T2Info("%s %d: Locked\n", __FUNCTION__, __LINE__);
-	    if(pool.handle_available[*idx])
-        {
-            T2Info("acquire_pool_handle ; Available handle = %d\n", *idx);
-            pool.handle_available[*idx] = false;
-        }
-        *easy = pool.easy_handles[*idx];
-        T2Info("%s %d: unlocking\n", __FUNCTION__, __LINE__);
-        pthread_mutex_unlock(&pool.pool_mutex);
-        T2Info("%s %d: locking\n", __FUNCTION__, __LINE__);
-        T2Info("%s --out\n", __FUNCTION__);
-        return T2ERROR_SUCCESS;
-    }
-
-    *idx = -1;
-
     T2Info("%s %d: Locking\n", __FUNCTION__, __LINE__);
     pthread_mutex_lock(&pool.pool_mutex);
     T2Info("%s %d: Locked\n", __FUNCTION__, __LINE__);
+
+    if(*idx == 0)
+    {
+        if(pool.handle_available[0])
+        {
+            T2Info("acquire_pool_handle: Acquired handle 0\n");
+            pool.handle_available[0] = false;
+            *easy = pool.easy_handles[0];
+            pthread_mutex_unlock(&pool.pool_mutex);
+            T2Info("%s --out (handle 0 acquired)\n", __FUNCTION__);
+            return T2ERROR_SUCCESS;
+        }
+        else
+        {
+            T2Error("acquire_pool_handle: Handle 0 is not available\n");
+            pthread_mutex_unlock(&pool.pool_mutex);
+            return T2ERROR_FAILURE;
+        }
+    }
 
     // Find an available handle
     for(int i = 1; i < MAX_POOL_SIZE; i++)
@@ -353,22 +352,18 @@ T2ERROR acquire_pool_handle(CURL **easy, int *idx)
             T2Info("acquire_pool_handle ; Available handle = %d\n", i);
             *idx = i;
             pool.handle_available[i] = false;
-            break;
+            *easy = pool.easy_handles[*idx];
+            pthread_mutex_unlock(&pool.pool_mutex);
+            T2Info("%s --out (handle %d acquired)\n", __FUNCTION__, i);
+            return T2ERROR_SUCCESS;
         }
     }
 
+    T2Error("acquire_pool_handle: No available handles in pool\n");
     T2Info("%s %d: unlocking\n", __FUNCTION__, __LINE__);
     pthread_mutex_unlock(&pool.pool_mutex);
-    T2Info("%s %d: locking\n", __FUNCTION__, __LINE__);
+    T2Info("%s %d: unlocked\n", __FUNCTION__, __LINE__);
 
-    if(*idx == -1)
-    {
-        T2Error("No available HTTP handles\n");
-        T2Info("%s --out\n", __FUNCTION__);
-        return T2ERROR_FAILURE;
-    }
-
-    *easy = pool.easy_handles[*idx];
     T2Info("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }

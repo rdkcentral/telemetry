@@ -456,16 +456,17 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
             }
 #ifdef LIBRDKCERTSEL_BUILD
             pEngine = rdkcertselector_getEngine(thisCertSel);
-            if(pEngine != NULL)
-            {
+            if(pEngine != NULL){
                 code = curl_easy_setopt(curl, CURLOPT_SSLENGINE, pEngine);
-            }
-            else
-            {
+                if(code != CURLE_OK){                    
+                    code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
+                }
+            }else{
                 code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
             }
             if(code != CURLE_OK)
             {
+                childCurlResponse.curlSetopCode = code;
                 curl_easy_cleanup(curl);
                 goto child_cleanReturn;
             }

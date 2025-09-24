@@ -137,8 +137,8 @@ T2ERROR init_connection_pool()
 
     CURLcode code = CURLE_OK;
     T2Info("%s ++in\n", __FUNCTION__);
-    //char *pCertFile = NULL;
-    //char *pPasswd = NULL;
+    char *pCertFile = NULL;
+    char *pPasswd = NULL;
     //pool.multi_handle = curl_multi_init();
 
     // Pre-allocate easy handles
@@ -151,7 +151,7 @@ T2ERROR init_connection_pool()
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_TIMEOUT, 30L);
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_CONNECTTIMEOUT, 10L); 
 
-#if 0
+#if 1
         // More aggressive keepalive settings for your environment
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPALIVE, 1L);
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPIDLE, 50L);    // 1 minute instead of 2
@@ -190,18 +190,15 @@ T2ERROR init_connection_pool()
             T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
         }
 
-#if 0
         // Certificate selector and SSL/TLS specific options from original code
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_SSL_VERIFYPEER, 1L);
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_SSLENGINE_DEFAULT, 1L);
-#endif
-
+        
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_VERBOSE, 1L);
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_DEBUGFUNCTION, curl_debug_callback_func);
         curl_easy_setopt(pool.easy_handles[i], CURLOPT_DEBUGDATA, NULL);
     }
 
-#if 0
     //mtls
     if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pPasswd))
     {
@@ -242,7 +239,6 @@ T2ERROR init_connection_pool()
     pool.post_headers = curl_slist_append(NULL, "Accept: application/json");
     pool.post_headers = curl_slist_append(pool.post_headers, "Content-type: application/json");
 
-#endif        
     pthread_mutex_init(&pool.pool_mutex, NULL);
     pool_initialized = true;
     T2Info("%s ++out\n", __FUNCTION__);

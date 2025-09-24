@@ -32,12 +32,12 @@
 #include <curl/curl.h>
 #include <signal.h>
 
-#include "../xconf-client/multicurlinterface.h"
 #include "curlinterface.h"
 #include "reportprofiles.h"
 #include "t2MtlsUtils.h"
 #include "t2log_wrapper.h"
 #include "busInterface.h"
+#include "../xconf-client/multicurlinterface.h"
 #ifdef LIBRDKCERTSEL_BUILD
 #include "rdkcertselector.h"
 #define FILESCHEME "file://"
@@ -48,9 +48,21 @@
 
 extern sigset_t blocking_signal;
 
+typedef struct
+{
+    bool curlStatus;
+    CURLcode curlResponse;
+    CURLcode curlSetopCode;
+    long http_code;
+    int lineNumber;
+
+} childResponse ;
+
 #ifdef LIBRDKCERTSEL_BUILD
+#if 0
 static rdkcertselector_h curlCertSelector = NULL;
 static rdkcertselector_h curlRcvryCertSelector = NULL;
+#endif
 #endif
 
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
@@ -59,8 +71,8 @@ static rdkcertselector_h curlRcvryCertSelector = NULL;
 static char waninterface[256];
 #endif
 #endif
-static pthread_once_t curlFileMutexOnce = PTHREAD_ONCE_INIT;
-static pthread_mutex_t curlFileMutex;
+//static pthread_once_t curlFileMutexOnce = PTHREAD_ONCE_INIT;
+//static pthread_mutex_t curlFileMutex;
 
 typedef enum _ADDRESS_TYPE
 {
@@ -69,23 +81,192 @@ typedef enum _ADDRESS_TYPE
     ADDR_IPV6
 } ADDRESS_TYPE;
 
+#if 0
 static void sendOverHTTPInit()
 {
     pthread_mutex_init(&curlFileMutex, NULL);
 }
+
+
 
 static size_t writeToFile(void *ptr, size_t size, size_t nmemb, void *stream)
 {
     size_t written = fwrite(ptr, size, nmemb, (FILE *) stream);
     return written;
 }
+#endif
 
+#if 0
+static T2ERROR setHeader(CURL *curl, const char* destURL, struct curl_slist **headerList, childResponse *childCurlResponse)
+{
+
+    //T2Debug("%s ++in\n", __FUNCTION__);
+    if(curl == NULL || destURL == NULL)
+    {
+        childCurlResponse->lineNumber = __LINE__;
+        return T2ERROR_FAILURE;
+    }
+
+    //T2Debug("%s DEST URL %s \n", __FUNCTION__, destURL);
+    CURLcode code = CURLE_OK;
+    code = curl_easy_setopt(curl, CURLOPT_URL, destURL);
+    if(code != CURLE_OK)
+    {
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+        return T2ERROR_FAILURE;
+    }
+    code = curl_easy_setopt(curl, CURLOPT_SSLVERSION, TLSVERSION);
+    if(code != CURLE_OK)
+    {
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+        return T2ERROR_FAILURE;
+    }
+    code = curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, HTTP_METHOD);
+    if(code != CURLE_OK)
+    {
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+        return T2ERROR_FAILURE;
+    }
+    code = curl_easy_setopt(curl, CURLOPT_TIMEOUT, TIMEOUT);
+    if(code != CURLE_OK)
+    {
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+        return T2ERROR_FAILURE;
+    }
+
+#if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
+
+#if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
+    code = curl_easy_setopt(curl, CURLOPT_INTERFACE, waninterface);
+    if(code != CURLE_OK)
+    {
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+        return T2ERROR_FAILURE;
+    }
+#else
+    /* CID 125287: Unchecked return value from library */
+    code = curl_easy_setopt(curl, CURLOPT_INTERFACE, INTERFACE);
+    if(code != CURLE_OK)
+    {
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+        return T2ERROR_FAILURE;
+    }
+
+#endif
+#endif
+    *headerList = curl_slist_append(NULL, "Accept: application/json");
+    curl_slist_append(*headerList, "Content-type: application/json");
+
+    code = curl_easy_setopt(curl, CURLOPT_HTTPHEADER, *headerList);
+    if(code != CURLE_OK)
+    {
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+        return T2ERROR_FAILURE;
+    }
+
+    code = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeToFile);
+    if(code != CURLE_OK)
+    {
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+        return T2ERROR_FAILURE;
+    }
+    childCurlResponse->curlSetopCode = code;
+    childCurlResponse->lineNumber = __LINE__;
+    //T2Debug("%s --out\n", __FUNCTION__);
+    return T2ERROR_SUCCESS;
+}
+
+static T2ERROR setMtlsHeaders(CURL *curl, const char* certFile, const char* pPasswd, childResponse *childCurlResponse)
+{
+    if(curl == NULL || certFile == NULL || pPasswd == NULL)
+    {
+        childCurlResponse->lineNumber = __LINE__;
+        return T2ERROR_FAILURE;
+    }
+    CURLcode code = CURLE_OK;
+#ifndef LIBRDKCERTSEL_BUILD
+    code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
+    if(code != CURLE_OK)
+    {
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+        return T2ERROR_FAILURE;
+    }
+#endif
+    code = curl_easy_setopt(curl, CURLOPT_SSLCERTTYPE, "P12");
+    if(code != CURLE_OK)
+    {
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+        return T2ERROR_FAILURE;
+    }
+    /* set the cert for client authentication */
+    code = curl_easy_setopt(curl, CURLOPT_SSLCERT, certFile);
+    if(code != CURLE_OK)
+    {
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+        return T2ERROR_FAILURE;
+    }
+    code = curl_easy_setopt(curl, CURLOPT_KEYPASSWD, pPasswd);
+    if(code != CURLE_OK)
+    {
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+        return T2ERROR_FAILURE;
+    }
+    /* disconnect if we cannot authenticate */
+    code = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+    if(code != CURLE_OK)
+    {
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+        return T2ERROR_FAILURE;
+    }
+    childCurlResponse->curlSetopCode = code;
+    childCurlResponse->lineNumber = __LINE__;
+    return T2ERROR_SUCCESS;
+}
+
+static T2ERROR setPayload(CURL *curl, const char* payload, childResponse *childCurlResponse)
+{
+    if(curl == NULL || payload == NULL)
+    {
+        childCurlResponse->lineNumber = __LINE__;
+        return T2ERROR_FAILURE;
+    }
+    CURLcode code = CURLE_OK ;
+    code = curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload);
+    if(code != CURLE_OK)
+    {
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+        return T2ERROR_FAILURE;
+    }
+    code = curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(payload));
+    if(code != CURLE_OK)
+    {
+        childCurlResponse->curlSetopCode = code;
+        childCurlResponse->lineNumber = __LINE__;
+        return T2ERROR_FAILURE;
+    }
+    childCurlResponse->curlSetopCode = code;
+    childCurlResponse->lineNumber = __LINE__;
+    return T2ERROR_SUCCESS;
+}
 #ifdef LIBRDKCERTSEL_BUILD
 bool isStateRedEnabled(void)
 {
     return access("/tmp/stateRedEnabled", F_OK) == 0;
 }
-
 void curlCertSelectorFree()
 {
     rdkcertselector_free(&curlCertSelector);
@@ -99,7 +280,6 @@ void curlCertSelectorFree()
         T2Info("%s, T2:Cert selector memory free failed\n", __func__);
     }
 }
-
 static void curlCertSelectorInit()
 {
     bool state_red_enable = isStateRedEnabled();
@@ -133,29 +313,11 @@ static void curlCertSelectorInit()
 }
 #endif
 
+#endif
+
 T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
 {
-    CURL *curl = NULL;
-    FILE *fp = NULL;
-    CURLcode code = CURLE_OK;
     T2ERROR ret = T2ERROR_FAILURE;
-    struct curl_slist *headerList = NULL;
-    CURLcode curl_code = CURLE_OK;
-#ifdef LIBRDKCERTSEL_BUILD
-    rdkcertselector_h thisCertSel = NULL;
-    rdkcertselectorStatus_t curlGetCertStatus;
-    char *pCertURI = NULL;
-    char *pEngine = NULL;
-    bool state_red_enable = false;
-#endif
-    char *pCertFile = NULL;
-    char *pCertPC = NULL;
-#ifdef LIBRDKCONFIG_BUILD
-    size_t sKey = 0;
-#endif
-    long http_code;
-    bool mtls_enable = false;
-    int idx;
 
     T2Info("%s ++in\n", __FUNCTION__);
     if(httpUrl == NULL || payload == NULL)
@@ -163,340 +325,22 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
         return ret;
     }
 
-    // Since we no longer use child processes, set the pid to 0
+    // Use new dedicated POST API
+    ret = http_pool_post(httpUrl, payload);
+
+    if(ret == T2ERROR_SUCCESS)
+    {
+        T2Info("Report Sent Successfully over HTTP using connection pool\n");
+    }
+    else
+    {
+        T2Error("Failed to send report using connection pool\n");
+    }
+
+    // Set outForkedPid to 0 since we're not forking anymore
     if(outForkedPid)
     {
         *outForkedPid = 0;
-    }
-
-#ifdef LIBRDKCERTSEL_BUILD
-    curlCertSelectorInit();
-    state_red_enable = isStateRedEnabled();
-    T2Info("%s: state_red_enable: %d\n", __func__, state_red_enable );
-
-    if (state_red_enable)
-    {
-        thisCertSel = curlRcvryCertSelector;
-    }
-    else
-    {
-        thisCertSel = curlCertSelector;
-    }
-#endif
-
-#if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
-#if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
-    char *paramVal = NULL;
-    memset(waninterface, 0, sizeof(waninterface));
-    snprintf(waninterface, sizeof(waninterface), "%s", INTERFACE);
-
-    if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_CURRENT_WAN_IFNAME, &paramVal))
-    {
-        if(strlen(paramVal) > 0)
-        {
-            memset(waninterface, 0, sizeof(waninterface));
-            snprintf(waninterface, sizeof(waninterface), "%s", paramVal);
-        }
-
-        free(paramVal);
-        paramVal = NULL;
-    }
-    else
-    {
-        T2Error("Failed to get Value for %s\n", TR181_DEVICE_CURRENT_WAN_IFNAME);
-    }
-#endif
-#endif
-
-    mtls_enable = isMtlsEnabled();
-
-#ifndef LIBRDKCERTSEL_BUILD
-    if(mtls_enable == true && T2ERROR_SUCCESS != getMtlsCerts(&pCertFile, &pCertPC))
-    {
-        T2Error("mTLS_cert get failed\n");
-        if(NULL != pCertFile)
-        {
-            free(pCertFile);
-        }
-        if(NULL != pCertPC)
-        {
-#ifdef LIBRDKCONFIG_BUILD
-            sKey = strlen(pCertPC);
-            if (rdkconfig_free((unsigned char**)&pCertPC, sKey) == RDKCONFIG_FAIL)
-            {
-                return T2ERROR_FAILURE;
-            }
-#else
-            free(pCertPC);
-#endif
-        }
-        return ret;
-    }
-#endif
-
-    // Acquire curl handle from pool
-    ret = acquire_pool_handle(&curl, &idx);
-    if (ret != T2ERROR_SUCCESS)
-    {
-        T2Error("Failed to acquire curl handle from pool\n");
-        goto cleanup;
-    }
-
-    if(curl)
-    {
-        // Set URL
-        code = curl_easy_setopt(curl, CURLOPT_URL, httpUrl);
-        if(code != CURLE_OK)
-        {
-            T2Error("Failed to set URL: %s\n", curl_easy_strerror(code));
-            goto cleanup;
-        }
-
-        // Set SSL version
-        code = curl_easy_setopt(curl, CURLOPT_SSLVERSION, TLSVERSION);
-        if(code != CURLE_OK)
-        {
-            T2Error("Failed to set SSL version: %s\n", curl_easy_strerror(code));
-            goto cleanup;
-        }
-
-        // Set HTTP method
-        code = curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, HTTP_METHOD);
-        if(code != CURLE_OK)
-        {
-            T2Error("Failed to set HTTP method: %s\n", curl_easy_strerror(code));
-            goto cleanup;
-        }
-
-        // Set timeout
-        code = curl_easy_setopt(curl, CURLOPT_TIMEOUT, TIMEOUT);
-        if(code != CURLE_OK)
-        {
-            T2Error("Failed to set timeout: %s\n", curl_easy_strerror(code));
-            goto cleanup;
-        }
-
-#if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
-#if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
-        code = curl_easy_setopt(curl, CURLOPT_INTERFACE, waninterface);
-        if(code != CURLE_OK)
-        {
-            T2Error("Failed to set interface: %s\n", curl_easy_strerror(code));
-            goto cleanup;
-        }
-#else
-        code = curl_easy_setopt(curl, CURLOPT_INTERFACE, INTERFACE);
-        if(code != CURLE_OK)
-        {
-            T2Error("Failed to set interface: %s\n", curl_easy_strerror(code));
-            goto cleanup;
-        }
-#endif
-#endif
-
-        // Set headers
-        headerList = curl_slist_append(NULL, "Accept: application/json");
-        curl_slist_append(headerList, "Content-type: application/json");
-        code = curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headerList);
-        if(code != CURLE_OK)
-        {
-            T2Error("Failed to set headers: %s\n", curl_easy_strerror(code));
-            goto cleanup;
-        }
-
-        // Set payload
-        code = curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload);
-        if(code != CURLE_OK)
-        {
-            T2Error("Failed to set payload: %s\n", curl_easy_strerror(code));
-            goto cleanup;
-        }
-
-        code = curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(payload));
-        if(code != CURLE_OK)
-        {
-            T2Error("Failed to set payload size: %s\n", curl_easy_strerror(code));
-            goto cleanup;
-        }
-
-        // Set write function and file
-        code = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeToFile);
-        if(code != CURLE_OK)
-        {
-            T2Error("Failed to set write function: %s\n", curl_easy_strerror(code));
-            goto cleanup;
-        }
-
-        if(mtls_enable == true)
-        {
-#ifdef LIBRDKCERTSEL_BUILD
-            pEngine = rdkcertselector_getEngine(thisCertSel);
-            if(pEngine != NULL)
-            {
-                code = curl_easy_setopt(curl, CURLOPT_SSLENGINE, pEngine);
-            }
-            else
-            {
-                code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
-            }
-            if(code != CURLE_OK)
-            {
-                T2Error("Failed to set SSL engine: %s\n", curl_easy_strerror(code));
-                goto cleanup;
-            }
-
-            do
-            {
-                pCertFile = NULL;
-                pCertPC = NULL;
-                pCertURI = NULL;
-                curlGetCertStatus = rdkcertselector_getCert(thisCertSel, &pCertURI, &pCertPC);
-                if(curlGetCertStatus != certselectorOk)
-                {
-                    T2Error("%s, T2:Failed to retrieve the certificate.\n", __func__);
-                    curlCertSelectorFree();
-                    goto cleanup;
-                }
-                else
-                {
-                    // skip past file scheme in URI
-                    pCertFile = pCertURI;
-                    if ( strncmp( pCertFile, FILESCHEME, sizeof(FILESCHEME) - 1 ) == 0 )
-                    {
-                        pCertFile += (sizeof(FILESCHEME) - 1);
-                    }
-#endif
-                    // Set mTLS options
-                    code = curl_easy_setopt(curl, CURLOPT_SSLCERTTYPE, "P12");
-                    if(code != CURLE_OK)
-                    {
-                        T2Error("Failed to set cert type: %s\n", curl_easy_strerror(code));
-                        goto cleanup;
-                    }
-
-                    code = curl_easy_setopt(curl, CURLOPT_SSLCERT, pCertFile);
-                    if(code != CURLE_OK)
-                    {
-                        T2Error("Failed to set cert file: %s\n", curl_easy_strerror(code));
-                        goto cleanup;
-                    }
-
-                    code = curl_easy_setopt(curl, CURLOPT_KEYPASSWD, pCertPC);
-                    if(code != CURLE_OK)
-                    {
-                        T2Error("Failed to set key password: %s\n", curl_easy_strerror(code));
-                        goto cleanup;
-                    }
-
-                    code = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
-                    if(code != CURLE_OK)
-                    {
-                        T2Error("Failed to set SSL verify peer: %s\n", curl_easy_strerror(code));
-                        goto cleanup;
-                    }
-
-                    // Perform the HTTP request
-                    pthread_once(&curlFileMutexOnce, sendOverHTTPInit);
-                    pthread_mutex_lock(&curlFileMutex);
-
-                    fp = fopen(CURL_OUTPUT_FILE, "wb");
-                    if(fp)
-                    {
-                        code = curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)fp);
-                        if(code != CURLE_OK)
-                        {
-                            T2Error("Failed to set write data: %s\n", curl_easy_strerror(code));
-                        }
-
-                        curl_code = curl_easy_perform(curl);
-                        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-
-                        if(curl_code != CURLE_OK || http_code != 200)
-                        {
-#ifdef LIBRDKCERTSEL_BUILD
-                            T2Error("%s: Failed to establish connection using xPKI certificate: %s, curl failed: %d\n", __func__, pCertFile, curl_code);
-#endif
-                            T2Error("curl failed: %s\n", curl_easy_strerror(curl_code));
-                        }
-                        else
-                        {
-                            T2Info("%s: Using xpki Certs connection certname: %s\n", __func__, pCertFile);
-                            ret = T2ERROR_SUCCESS;
-                        }
-
-                        fclose(fp);
-                    }
-                    pthread_mutex_unlock(&curlFileMutex);
-#ifdef LIBRDKCERTSEL_BUILD
-                }
-            }
-            while(rdkcertselector_setCurlStatus(thisCertSel, curl_code, (const char*)httpUrl) == TRY_ANOTHER);
-#endif
-        }
-        else
-        {
-            // Non-mTLS request
-            pthread_once(&curlFileMutexOnce, sendOverHTTPInit);
-            pthread_mutex_lock(&curlFileMutex);
-
-            fp = fopen(CURL_OUTPUT_FILE, "wb");
-            if(fp)
-            {
-                code = curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)fp);
-                if(code != CURLE_OK)
-                {
-                    T2Error("Failed to set write data: %s\n", curl_easy_strerror(code));
-                }
-
-                curl_code = curl_easy_perform(curl);
-                curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-
-                if(curl_code == CURLE_OK && http_code == 200)
-                {
-                    ret = T2ERROR_SUCCESS;
-                    T2Info("Report Sent Successfully over HTTP : %ld\n", http_code);
-                }
-                else
-                {
-                    T2Error("curl failed: %s, HTTP code: %ld\n", curl_easy_strerror(curl_code), http_code);
-                }
-
-                fclose(fp);
-            }
-            pthread_mutex_unlock(&curlFileMutex);
-        }
-    }
-
-cleanup:
-    // Clean up resources
-    if(headerList)
-    {
-        curl_slist_free_all(headerList);
-    }
-
-#ifndef LIBRDKCERTSEL_BUILD
-    if(NULL != pCertFile)
-    {
-        free(pCertFile);
-    }
-    if(NULL != pCertPC)
-    {
-#ifdef LIBRDKCONFIG_BUILD
-        sKey = strlen(pCertPC);
-        if (rdkconfig_free((unsigned char**)&pCertPC, sKey) == RDKCONFIG_FAIL)
-        {
-            T2Error("Failed to free certificate password\n");
-        }
-#else
-        free(pCertPC);
-#endif
-    }
-#endif
-
-    // Release curl handle back to pool
-    if (curl)
-    {
-        release_pool_handle(idx);
     }
 
     T2Info("%s --out\n", __FUNCTION__);

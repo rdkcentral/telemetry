@@ -732,12 +732,12 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
             {
 #ifdef LIBRDKCERTSEL_BUILD
                 pEngine = rdkcertselector_getEngine(xcCertSelector);
-                if(pEngine != NULL)
-                {
+                if(pEngine != NULL){
                     code = curl_easy_setopt(curl, CURLOPT_SSLENGINE, pEngine);
-                }
-                else
-                {
+                    if(code != CURLE_OK){                    
+                        code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
+                    }                    
+                } else {
                     code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
                 }
                 if(code != CURLE_OK)

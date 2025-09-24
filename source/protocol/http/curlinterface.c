@@ -513,6 +513,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
                             // This might not be working we need to review this
                             childCurlResponse.curlSetopCode = code;
                         }
+                         code = curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
                         curl_code = curl_easy_perform(curl);
                         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
                         if(curl_code != CURLE_OK || http_code != 200)

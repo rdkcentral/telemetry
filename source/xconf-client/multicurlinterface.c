@@ -310,6 +310,7 @@ static T2ERROR http_pool_execute_request(CURL *easy, int idx)
 // Helper function to acquire handle only
 T2ERROR acquire_pool_handle(CURL **easy, int *idx)
 {
+    T2Info("%s ++in\n", __FUNCTION__);
     if (!pool_initialized)
     {
         T2ERROR ret = init_connection_pool();
@@ -320,23 +321,29 @@ T2ERROR acquire_pool_handle(CURL **easy, int *idx)
         }
     }
 
-    pthread_mutex_lock(&pool.pool_mutex);
     if(*idx == 0)
     {
-	if(pool.handle_available[*idx])
+        T2Info("%s %d: Locking\n", __FUNCTION__, __LINE__);
+        pthread_mutex_lock(&pool.pool_mutex);
+        T2Info("%s %d: Locked\n", __FUNCTION__, __LINE__);
+	    if(pool.handle_available[*idx])
         {
             T2Info("acquire_pool_handle ; Available handle = %d\n", *idx);
             pool.handle_available[*idx] = false;
         }
         *easy = pool.easy_handles[*idx];
+        T2Info("%s %d: unlocking\n", __FUNCTION__, __LINE__);
+        pthread_mutex_unlock(&pool.pool_mutex);
+        T2Info("%s %d: locking\n", __FUNCTION__, __LINE__);
+        T2Info("%s --out\n", __FUNCTION__);
         return T2ERROR_SUCCESS;
     }
 
-    pthread_mutex_unlock(&pool.pool_mutex);
-
     *idx = -1;
 
+    T2Info("%s %d: Locking\n", __FUNCTION__, __LINE__);
     pthread_mutex_lock(&pool.pool_mutex);
+    T2Info("%s %d: Locked\n", __FUNCTION__, __LINE__);
 
     // Find an available handle
     for(int i = 1; i < MAX_POOL_SIZE; i++)
@@ -350,22 +357,28 @@ T2ERROR acquire_pool_handle(CURL **easy, int *idx)
         }
     }
 
+    T2Info("%s %d: unlocking\n", __FUNCTION__, __LINE__);
     pthread_mutex_unlock(&pool.pool_mutex);
+    T2Info("%s %d: locking\n", __FUNCTION__, __LINE__);
 
     if(*idx == -1)
     {
         T2Error("No available HTTP handles\n");
+        T2Info("%s --out\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
 
     *easy = pool.easy_handles[*idx];
+    T2Info("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 #endif
 
 T2ERROR release_pool_handle(int i)
 {
+    T2Info("%s ++in\n", __FUNCTION__);
     pool.handle_available[i] = true;
+    T2Info("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 

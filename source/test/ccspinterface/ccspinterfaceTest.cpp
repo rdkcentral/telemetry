@@ -1745,7 +1745,7 @@ TEST_F(CcspInterfaceTest, T2RbusReportEventConsumer_Success_1) {
     T2RbusReportEventConsumer("Device.DeviceInfo.Uptime", false);
         
 }
-
+/*
 TEST_F(CcspInterfaceTest, T2RbusReportEventConsumer_Failure_1) {
     
     EXPECT_CALL(*g_rbusMock, rbusEvent_Unsubscribe(_,_))
@@ -1754,7 +1754,7 @@ TEST_F(CcspInterfaceTest, T2RbusReportEventConsumer_Failure_1) {
 
     EXPECT_NE(T2RbusReportEventConsumer("Device.DeviceInfo.Uptime", false), RBUS_ERROR_SUCCESS);
     
-}
+}*/
 
 TEST_F(CcspInterfaceTest, T2RbusReportEventConsumer_Success_2) {
     

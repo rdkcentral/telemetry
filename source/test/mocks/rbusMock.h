@@ -22,8 +22,8 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include "telemetry2_0.h"
-#include "test/rbus/include/rbus.h"
-#include "test/rbus/include/rbus_value.h"
+#include <rbus/rbus.h>
+#include <rbus/rbus_value.h>
 
 typedef T2ERROR (*dataModelCallBack)(char* dataBlob, bool rprofiletypes);
 typedef void (*rbusMethodCallBackPtr) (rbusHandle_t handle, char const* methodName, rbusError_t retStatus, rbusObject_t params);

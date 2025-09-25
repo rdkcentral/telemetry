@@ -230,7 +230,7 @@ TEST(TIMEOUTTHREAD, TEST1)
     tProfile->repeat = true;
     tProfile->terminated = false;
     tProfile->timeOutDuration = 10;
-    tProfile->timeToLive = 360;
+    tProfile->timeToLive = 100;
     tProfile->deleteonTime = true;
     tProfile->reportonupdate = true;
     tProfile->firstreportint = 20;

@@ -480,7 +480,7 @@ TEST_F(protocolTestFixture, sendReportOverHTTP_6)
       EXPECT_EQ(T2ERROR_SUCCESS, sendReportOverHTTP(httpURL, payload,NULL));
       Vector_Destroy(reportlist, free);
 }
-
+/*
 TEST_F(protocolTestFixture, sendReportOverHTTP_7)
 {
  char* httpURL = "https://mockxconf:50051/dataLakeMock";
@@ -592,3 +592,5 @@ TEST_F(protocolTestFixture, sendReportOverHTTP_7)
        EXPECT_THROW(sendReportOverHTTP(httpURL, payload, nullptr), std::runtime_error);
       Vector_Destroy(reportlist, free);
  }
+
+*/

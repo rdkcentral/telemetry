@@ -184,26 +184,24 @@ T2ERROR init_connection_pool()
         {
             T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
         }
-        
-        // Much more aggressive keepalive - detect dead connections faster
-        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPIDLE, 15L);    // Start probes after 15 seconds instead of 30
+        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPIDLE, 30L);    // 1 minute instead of 2
         if(code != CURLE_OK)
         {
             T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
         }
-        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPINTVL, 5L);   // Send probes every 5 seconds instead of 30
+        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPINTVL, 100L);   // 30 seconds instead of 60
         if(code != CURLE_OK)
         {
             T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
         }
 
 #ifdef CURLOPT_TCP_KEEPCNT
-        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPCNT, 3L);  // Reduced from 15 to 3 for faster detection
+        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPCNT, 15L);
         if(code != CURLE_OK)
         {
             T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
         }
-        T2Info("Set TCP keepalive probe count to 3 via CURLOPT_TCP_KEEPCNT\n");
+        T2Info("Set TCP keepalive probe count to 15 via CURLOPT_TCP_KEEPCNT\n");
 #else
         // Fallback: Use socket callback for older libcurl versions
         code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_SOCKOPTFUNCTION, sockopt_callback);
@@ -214,63 +212,25 @@ T2ERROR init_connection_pool()
         T2Info("Using socket callback for TCP keepalive settings (CURLOPT_TCP_KEEPCNT not available)\n");
 #endif
 
-        // Force fresh connections to avoid dead connection reuse
-        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_FORBID_REUSE, 1L);  // Changed from 0L to 1L
+        // Add connection reuse validation
+        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_FORBID_REUSE, 0L);
         if(code != CURLE_OK)
         {
             T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
         }
-        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_FRESH_CONNECT, 1L);  // Changed from 0L to 1L
-        if(code != CURLE_OK)
-        {
-            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-        }
-        
-        // Reduce timeouts for faster dead connection detection
-        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_CONNECTTIMEOUT, 5L);  // Reduced from 10L to 5L
-        if(code != CURLE_OK)
-        {
-            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-        }
-        
-        // Add low speed limit to detect slow/stalled connections
-        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_LOW_SPEED_LIMIT, 1L);  // 1 byte/sec minimum
-        if(code != CURLE_OK)
-        {
-            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-        }
-        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_LOW_SPEED_TIME, 10L);  // Abort after 10 sec below limit
-        if(code != CURLE_OK)
-        {
-            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-        }
-        
-        // Disable connection caching completely to avoid dead connections
-        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_MAXCONNECTS, 0L); // Changed from 3L to 0L
+        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_FRESH_CONNECT, 0L);
         if(code != CURLE_OK)
         {
             T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
         }
 
-        // Add low-level socket options for better connection health detection
-        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_NOSIGNAL, 1L);
-        if(code != CURLE_OK)
-        {
-            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-        }
-        
-        // Connection management options that work with older libcurl
-        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_PIPEWAIT, 0L);     // Don't wait for pipelining
-        if(code != CURLE_OK)
-        {
-            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-        }
-        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1); // Use HTTP/1.1
-        if(code != CURLE_OK)
-        {
-            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-        }
 #endif
+        // Enable connection pooling with limited cache size
+        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_MAXCONNECTS, 3L); // Only 1 connection per handle
+        if(code != CURLE_OK)
+        {
+            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+        }
 
         code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
         if(code != CURLE_OK)

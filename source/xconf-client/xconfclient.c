@@ -680,16 +680,15 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
             {
 #ifdef LIBRDKCERTSEL_BUILD
                 pEngine = rdkcertselector_getEngine(xcCertSelector);
-                if(pEngine != NULL)
-                {
+                if(pEngine != NULL) {
                     code = curl_easy_setopt(curl, CURLOPT_SSLENGINE, pEngine);
-                }
-                else
-                {
+                    if(code != CURLE_OK){                    
+                        code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
+                    }
+                } else {
                     code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
                 }
-                if(code != CURLE_OK)
-                {
+                if(code != CURLE_OK) {
                     T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
                 }
                 do

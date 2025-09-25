@@ -41,6 +41,10 @@
 #include "persistence.h"
 #include "telemetry2_0.h"
 #include "busInterface.h"
+#ifdef GTEST_ENABLE
+#define curl_easy_setopt curl_easy_setopt_mock
+#define curl_easy_getinfo curl_easy_getinfo_mock
+#endif
 #ifdef LIBRDKCERTSEL_BUILD
 #include "rdkcertselector.h"
 #define FILESCHEME "file://"

@@ -30,6 +30,10 @@
 #include <sys/wait.h>
 #include <curl/curl.h>
 #include <signal.h>
+#include <errno.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
 #include "multicurlinterface.h"
 #include "t2log_wrapper.h"
 #include "xconfclient.h"
@@ -127,6 +131,20 @@ static int curl_debug_callback_func(CURL *handle, curl_infotype type, char *data
     return 0;
 }
 
+static int sockopt_callback(void *clientp, curl_socket_t curlfd, curlsocktype purpose)
+{
+    (void) clientp;
+    if (purpose == CURLSOCKTYPE_IPCXN) {
+        int keepcnt = 15;
+        if (setsockopt(curlfd, IPPROTO_TCP, TCP_KEEPCNT, &keepcnt, sizeof(keepcnt)) != 0) {
+            T2Error("Failed to set TCP_KEEPCNT via setsockopt: %s\n", strerror(errno));
+            return CURL_SOCKOPT_ERROR;
+        }
+        T2Info("Set TCP_KEEPCNT to %d via socket option\n", keepcnt);
+    }
+    return CURL_SOCKOPT_OK;
+}
+
 T2ERROR init_connection_pool()
 {
     if(pool_initialized)
@@ -148,41 +166,111 @@ T2ERROR init_connection_pool()
         pool.handle_available[i] = true;
 
         //Set common options once
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_TIMEOUT, 30L);
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_CONNECTTIMEOUT, 10L); 
+        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_TIMEOUT, 30L);
+        if(code != CURLE_OK)
+        {
+            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+        }
+        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_CONNECTTIMEOUT, 10L);
+        if(code != CURLE_OK)
+        {
+            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+        }
 
 #if 1
         // More aggressive keepalive settings for your environment
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPALIVE, 1L);
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPIDLE, 50L);    // 1 minute instead of 2
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPINTVL, 30L);   // 30 seconds instead of 60
+        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPALIVE, 1L);
+        if(code != CURLE_OK)
+        {
+            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+        }
+        
+        // Much more aggressive keepalive - detect dead connections faster
+        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPIDLE, 15L);    // Start probes after 15 seconds instead of 30
+        if(code != CURLE_OK)
+        {
+            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+        }
+        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPINTVL, 5L);   // Send probes every 5 seconds instead of 30
+        if(code != CURLE_OK)
+        {
+            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+        }
 
 #ifdef CURLOPT_TCP_KEEPCNT
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPCNT, 15L);  // Allow up to 15 probes
+        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPCNT, 3L);  // Reduced from 15 to 3 for faster detection
+        if(code != CURLE_OK)
+        {
+            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+        }
+        T2Info("Set TCP keepalive probe count to 3 via CURLOPT_TCP_KEEPCNT\n");
+#else
+        // Fallback: Use socket callback for older libcurl versions
+        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_SOCKOPTFUNCTION, sockopt_callback);
+        if(code != CURLE_OK)
+        {
+            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+        }
+        T2Info("Using socket callback for TCP keepalive settings (CURLOPT_TCP_KEEPCNT not available)\n");
 #endif
 
-        // Add connection reuse validation
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_FORBID_REUSE, 0L);
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_FRESH_CONNECT, 0L);
+        // Force fresh connections to avoid dead connection reuse
+        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_FORBID_REUSE, 1L);  // Changed from 0L to 1L
+        if(code != CURLE_OK)
+        {
+            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+        }
+        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_FRESH_CONNECT, 1L);  // Changed from 0L to 1L
+        if(code != CURLE_OK)
+        {
+            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+        }
         
-        // Set connection timeout to handle dead connections faster
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_CONNECTTIMEOUT, 10L);
+        // Reduce timeouts for faster dead connection detection
+        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_CONNECTTIMEOUT, 5L);  // Reduced from 10L to 5L
+        if(code != CURLE_OK)
+        {
+            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+        }
         
-        // Add low-level socket options for better connection health detection
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_NOSIGNAL, 1L);
+        // Add low speed limit to detect slow/stalled connections
+        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_LOW_SPEED_LIMIT, 1L);  // 1 byte/sec minimum
+        if(code != CURLE_OK)
+        {
+            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+        }
+        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_LOW_SPEED_TIME, 10L);  // Abort after 10 sec below limit
+        if(code != CURLE_OK)
+        {
+            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+        }
+        
+        // Disable connection caching completely to avoid dead connections
+        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_MAXCONNECTS, 0L); // Changed from 3L to 0L
+        if(code != CURLE_OK)
+        {
+            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+        }
 
-        // Add HTTP-level keep-alive headers for better server compatibility
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_HTTPHEADER, NULL); // Reset any existing headers first
-        
         // Add low-level socket options for better connection health detection
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_NOSIGNAL, 1L);
+        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_NOSIGNAL, 1L);
+        if(code != CURLE_OK)
+        {
+            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+        }
         
         // Connection management options that work with older libcurl
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_PIPEWAIT, 0L);     // Don't wait for pipelining
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1); // Use HTTP/1.1
+        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_PIPEWAIT, 0L);     // Don't wait for pipelining
+        if(code != CURLE_OK)
+        {
+            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+        }
+        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1); // Use HTTP/1.1
+        if(code != CURLE_OK)
+        {
+            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+        }
 #endif
-        // Enable connection pooling with limited cache size
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_MAXCONNECTS, 3L); // Only 1 connection per handle
 
         code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
         if(code != CURLE_OK)
@@ -191,12 +279,32 @@ T2ERROR init_connection_pool()
         }
 
         // Certificate selector and SSL/TLS specific options from original code
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_SSL_VERIFYPEER, 1L);
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_SSLENGINE_DEFAULT, 1L);
+        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_SSL_VERIFYPEER, 1L);
+        if(code != CURLE_OK)
+        {
+            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+        }
+        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_SSLENGINE_DEFAULT, 1L);
+        if(code != CURLE_OK)
+        {
+            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+        }
         
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_VERBOSE, 1L);
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_DEBUGFUNCTION, curl_debug_callback_func);
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_DEBUGDATA, NULL);
+        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_VERBOSE, 1L);
+        if(code != CURLE_OK)
+        {
+            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+        }
+        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_DEBUGFUNCTION, curl_debug_callback_func);
+        if(code != CURLE_OK)
+        {
+            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+        }
+        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_DEBUGDATA, NULL);
+        if(code != CURLE_OK)
+        {
+            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+        }
     }
 
     //mtls
@@ -431,16 +539,40 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
     response.size = 0;
 
     // Configure for GET request
-    curl_easy_setopt(easy, CURLOPT_URL, url);
-    curl_easy_setopt(easy, CURLOPT_HTTPGET, 1L);
-    curl_easy_setopt(easy, CURLOPT_WRITEFUNCTION, httpGetCallBack);
-    curl_easy_setopt(easy, CURLOPT_WRITEDATA, (void *) &response);
+    CURLcode code = curl_easy_setopt(easy, CURLOPT_URL, url);
+    if(code != CURLE_OK)
+    {
+        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+    }
+    code = curl_easy_setopt(easy, CURLOPT_HTTPGET, 1L);
+    if(code != CURLE_OK)
+    {
+        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+    }
+    code = curl_easy_setopt(easy, CURLOPT_WRITEFUNCTION, httpGetCallBack);
+    if(code != CURLE_OK)
+    {
+        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+    }
+    code = curl_easy_setopt(easy, CURLOPT_WRITEDATA, (void *) &response);
+    if(code != CURLE_OK)
+    {
+        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+    }
 
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
 #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
-    curl_easy_setopt(easy, CURLOPT_INTERFACE, waninterface);
+    code = curl_easy_setopt(easy, CURLOPT_INTERFACE, waninterface);
+    if(code != CURLE_OK)
+    {
+        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+    }
 #else
-    curl_easy_setopt(easy, CURLOPT_INTERFACE, "erouter0");
+    code = curl_easy_setopt(easy, CURLOPT_INTERFACE, "erouter0");
+    if(code != CURLE_OK)
+    {
+        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+    }
 #endif
 #endif
 
@@ -547,17 +679,45 @@ T2ERROR http_pool_post(const char *url, const char *payload)
     easy = pool.easy_handles[idx];
 
     // Configure for POST request
-    curl_easy_setopt(easy, CURLOPT_URL, url);
-    curl_easy_setopt(easy, CURLOPT_CUSTOMREQUEST, "POST");
-    curl_easy_setopt(easy, CURLOPT_HTTPHEADER, pool.post_headers);
-    curl_easy_setopt(easy, CURLOPT_POSTFIELDS, payload);
-    curl_easy_setopt(easy, CURLOPT_POSTFIELDSIZE, strlen(payload));
+    CURLcode code = curl_easy_setopt(easy, CURLOPT_URL, url);
+    if(code != CURLE_OK)
+    {
+        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+    }
+    code = curl_easy_setopt(easy, CURLOPT_CUSTOMREQUEST, "POST");
+    if(code != CURLE_OK)
+    {
+        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+    }
+    code = curl_easy_setopt(easy, CURLOPT_HTTPHEADER, pool.post_headers);
+    if(code != CURLE_OK)
+    {
+        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+    }
+    code = curl_easy_setopt(easy, CURLOPT_POSTFIELDS, payload);
+    if(code != CURLE_OK)
+    {
+        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+    }
+    code = curl_easy_setopt(easy, CURLOPT_POSTFIELDSIZE, strlen(payload));
+    if(code != CURLE_OK)
+    {
+        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+    }
 
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
 #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
-    curl_easy_setopt(easy, CURLOPT_INTERFACE, waninterface);
+    code = curl_easy_setopt(easy, CURLOPT_INTERFACE, waninterface);
+    if(code != CURLE_OK)
+    {
+        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+    }
 #else
-    curl_easy_setopt(easy, CURLOPT_INTERFACE, "erouter0");
+    code = curl_easy_setopt(easy, CURLOPT_INTERFACE, "erouter0");
+    if(code != CURLE_OK)
+    {
+        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+    }
 #endif
 #endif
 

@@ -195,6 +195,12 @@ T2ERROR init_connection_pool()
             T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
         }
 
+        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPCNT, 15L);
+        if(code != CURLE_OK)
+        {
+            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+        }
+        T2Info("Set TCP keepalive probe count to 15 via CURLOPT_TCP_KEEPCNT\n");
 #ifdef CURLOPT_TCP_KEEPCNT
         code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPCNT, 15L);
         if(code != CURLE_OK)

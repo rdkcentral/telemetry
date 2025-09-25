@@ -224,7 +224,7 @@ T2ERROR getCCSPParamVal(const char* paramName, char **paramValue)
     return T2ERROR_SUCCESS;
 }
 
-Vector* getCCSPProfileParamValues(Vector *paramList)
+Vector* getCCSPProfileParamValues(Vector *paramList, int execount)
 {
     unsigned int i = 0;
     int count = Vector_Size(paramList);
@@ -257,11 +257,20 @@ Vector* getCCSPProfileParamValues(Vector *paramList)
             T2Error("Unable allocate memory for profVals\n");
             continue;
         }
-        paramNames[0] = strdup(((Param *) Vector_At(paramList, i))->alias);
+        Param *param = (Param *) Vector_At(paramList, i);
+        paramNames[0] = strdup(param->alias);
         if(paramNames[0] == NULL)
         {
             T2Error("Unable allocate memory for paramNames[0]\n");
             free(profVals);
+            continue;
+        }
+        if(param->skipFreq > 0 && (execount % param->skipFreq + 1) != 0)
+        {
+            T2Debug("Skipping parameter : %s as per skipFreq : %d\n", paramNames[0], param->skipFreq);
+            free(paramNames[0]);
+            profVals->paramValues = NULL;
+            Vector_PushBack(profileValueList, profVals);
             continue;
         }
         if(T2ERROR_SUCCESS != ccspGetParameterValues((const char**)paramNames, 1, &ccspParamValues, &paramValCount))

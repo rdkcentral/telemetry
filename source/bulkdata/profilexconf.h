@@ -29,6 +29,8 @@
 #include "t2eventreceiver.h"
 #include "vector.h"
 #include "reportgen.h"
+#include "t2collection.h"
+#include "legacyutils.h"
 
 typedef enum
 {
@@ -61,9 +63,11 @@ typedef struct _ProfileXConf
     T2HTTP *t2HTTPDest;
     Vector *eMarkerList;
     Vector *gMarkerList;
+    Vector *topMarkerList;
     Vector *cachedReportList;
     cJSON *jsonReportObj;
     pthread_t reportThread;
+    GrepSeekProfile *grepSeekProfile; // To store GrepConfig
 } ProfileXConf;
 
 T2ERROR ProfileXConf_init(bool checkPreviousSeek);
@@ -77,6 +81,10 @@ void    ProfileXConf_notifyTimeout(bool isClearSeekMap, bool isOnDemand);
 T2ERROR ProfileXConf_storeMarkerEvent(T2Event *eventInfo);
 char*   ProfileXconf_getName();
 T2ERROR ProfileXConf_terminateReport();
+
+T2ERROR ReportProfiles_setProfileXConf(ProfileXConf *profile);
+
+T2ERROR ReportProfiles_deleteProfileXConf(ProfileXConf *profile);
 
 
 #endif /* _PROFILE_H_ */

@@ -219,6 +219,7 @@ void ReportProfiles_TimeoutCb(char* profileName, bool isClearSeekMap)
 {
     T2Info("%s ++in\n", __FUNCTION__);
 
+    T2Info("calling ProfileXConf_isNameEqual function form %s and line %d\n", __FUNCTION__, __LINE__);
     if(ProfileXConf_isNameEqual(profileName))
     {
         T2Debug("isclearSeekmap = %s \n", isClearSeekMap ? "true" : "false");
@@ -238,6 +239,8 @@ void ReportProfiles_ActivationTimeoutCb(char* profileName)
     T2Info("%s ++in\n", __FUNCTION__);
 
     bool isDeleteRequired = false;
+    T2Debug("calling ProfileXConf_isNameEqual function form %s and line %d\n", __FUNCTION__, __LINE__);
+
     if(ProfileXConf_isNameEqual(profileName))
     {
         T2Error("ActivationTimeout received for Xconf profile. Ignoring!!!! \n");
@@ -281,6 +284,7 @@ void ReportProfiles_ActivationTimeoutCb(char* profileName)
 T2ERROR ReportProfiles_storeMarkerEvent(char *profileName, T2Event *eventInfo)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
+    T2Debug("calling ProfileXConf_isNameEqual function form %s and line %d\n", __FUNCTION__, __LINE__);
 
     if(ProfileXConf_isNameEqual(profileName))
     {
@@ -635,6 +639,10 @@ T2ERROR initReportProfiles()
         T2ER_StartDispatchThread();
 
     }
+
+    //Initialise the properties file RDK-58222
+    T2InitProperties();
+    T2Info("InitProperties is successful\n");
 
     // This indicates telemetry has started
     FILE* bootFlag = NULL ;
@@ -1380,7 +1388,7 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
             {
                 ReportProfiles_addReportProfile(profile);
 #ifdef PERSIST_LOG_MON_REF
-                if(checkPreviousSeek && profile->generateNow == false && profile->triggerConditionList == NULL && loadSavedSeekConfig(profile->name) == T2ERROR_SUCCESS && firstBootStatus() )
+                if(checkPreviousSeek && profile->generateNow == false && profile->triggerConditionList == NULL && profile->grepSeekProfile && loadSavedSeekConfig(profile->name, profile->grepSeekProfile) == T2ERROR_SUCCESS && firstBootStatus() )
                 {
                     T2Info("Previous seek is enabled for profile %s \n", profile->name);
                     profile->checkPreviousSeek = true;
@@ -1484,7 +1492,8 @@ bool isMtlsEnabled(void)
     }
     if(isT2MtlsEnable != true)
     {
-        if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_PARTNER_ID, &paramValue))
+        const char* returnPartnerInfo = isWhoAmiEnabled() ? TR181_DEVICE_PARTNER_ID : TR181_DEVICE_PARTNER_NAME;
+        if(T2ERROR_SUCCESS == getParameterValue(returnPartnerInfo, &paramValue))
         {
             if(paramValue != NULL && (strncasecmp(paramValue, "sky-uk", 6) == 0))
             {

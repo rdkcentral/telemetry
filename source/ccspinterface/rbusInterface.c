@@ -208,7 +208,7 @@ T2ERROR getRbusParameterVal(const char* paramName, char **paramValue)
     return T2ERROR_SUCCESS;
 }
 
-Vector* getRbusProfileParamValues(Vector *paramList)
+Vector* getRbusProfileParamValues(Vector *paramList, int execcount)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
     unsigned int i = 0;
@@ -230,8 +230,17 @@ Vector* getRbusProfileParamValues(Vector *paramList)
         rbusProperty_t rbusPropertyValues = NULL;
         int paramValCount = 0;
         int iterate = 0;
+        Param *parmTemp = Vector_At(paramList, i);
         profileValues* profVals = (profileValues *) malloc(sizeof(profileValues));
-        char *param = (char*)((Param *) Vector_At(paramList, i))->alias ;
+        if(parmTemp->skipFreq > 0 && (execcount % parmTemp->skipFreq + 1) != 0)
+        {
+            T2Debug("Skipping parameter : %s as per skipFreq : %d\n", parmTemp->name, parmTemp->skipFreq);
+            profVals->paramValues = NULL;
+            Vector_PushBack(profileValueList, profVals);
+            continue;
+        }
+
+        char *param = (char*)parmTemp->alias ;
         if(param != NULL)
         {
             paramNames[0] = strdup(param);
@@ -894,6 +903,7 @@ void publishReportUploadStatus(char* status)
     {
         T2Info("%s rbusMethod_SendAsyncResponse sent successfully \n", __FUNCTION__);
     }
+    onDemandReportCallBackHandler = NULL; // just a safety cleanup
     pthread_mutex_unlock(&asyncMutex);
     rbusValue_Release(value);
     rbusObject_Release(outParams);

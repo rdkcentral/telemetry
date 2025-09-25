@@ -1,3 +1,4 @@
+
 /*
  * If not stated otherwise in this file or this component's LICENSE file the
  * following copyright and licenses apply:
@@ -37,6 +38,7 @@
 #define MT_EVENT_PATTERN   "<event>"
 #define MT_EVENT_PATTERN_LENGTH 7
 #define MT_TR181PARAM_PATTERN   "<message_bus>"
+#define ALIAS_DATAMODEL "<DM>"
 #define MT_TR181PATAM_PATTERN_LENGTH 13
 #define SPLITMARKER_SUFFIX  "_split"
 #define ACCUMULATE_MARKER_SUFFIX  "_accum"
@@ -77,18 +79,7 @@ static int getScheduleInSeconds(const char* cronPattern)
 
 static T2ERROR addParameter(ProfileXConf *profile, const char* name, const char* ref, const char* fileName, int skipFreq)
 {
-    if(skipFreq == -1)
-    {
-        // T2Debug("Adding TR-181 Parameter : %s\n", ref);
-        Param *param = (Param *)malloc(sizeof(Param));
-        memset(param, 0, sizeof(Param));
-        param->name = strdup(name);
-        param->alias = strdup(ref);
-        param->regexParam = NULL;
-
-        Vector_PushBack(profile->paramList, param);
-    }
-    else if(fileName == NULL) //Event Marker
+    if(fileName == NULL) //Event Marker
     {
         char *splitSuffix = NULL;
         char *accumulateSuffix = NULL;
@@ -119,6 +110,17 @@ static T2ERROR addParameter(ProfileXConf *profile, const char* name, const char*
 
         Vector_PushBack(profile->eMarkerList, eMarker);
     }
+    else if(skipFreq == -1 || strncmp(fileName, ALIAS_DATAMODEL, 5) == 0)
+    {
+        // T2Debug("Adding TR-181 Parameter : %s\n", ref);
+        Param *param = (Param *)malloc(sizeof(Param));
+        memset(param, 0, sizeof(Param));
+        param->name = strdup(name);
+        param->alias = strdup(ref);
+        param->regexParam = NULL;
+        param->skipFreq = skipFreq;
+        Vector_PushBack(profile->paramList, param);
+    }
     else //Grep Marker
     {
         char *splitSuffix = NULL;
@@ -142,8 +144,15 @@ static T2ERROR addParameter(ProfileXConf *profile, const char* name, const char*
             gMarker->u.count = 0;
         }
         gMarker->skipFreq = skipFreq;
-
-        Vector_PushBack(profile->gMarkerList, gMarker);
+        if(strncmp("top_log.txt", fileName, sizeof("top_log.txt")) == 0)
+        {
+            T2Debug("This is a TopMarker name :%s and value: %s add it to topmarker list \n", name, ref);
+            Vector_PushBack(profile->topMarkerList, gMarker);
+        }
+        else
+        {
+            Vector_PushBack(profile->gMarkerList, gMarker);
+        }
     }
     profile->paramNumOfEntries++;
     return T2ERROR_SUCCESS;
@@ -211,9 +220,12 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
     profile->t2HTTPDest->URL = strdup(juploadUrl->valuestring);
     profile->encodingType = strdup("JSON");
 
+    profile->grepSeekProfile = createGrepSeekProfile(0);
+
     Vector_Create(&profile->paramList);
     Vector_Create(&profile->eMarkerList);
     Vector_Create(&profile->gMarkerList);
+    Vector_Create(&profile->topMarkerList);
     Vector_Create(&profile->cachedReportList);
 
 #if defined(PRIVACYMODES_CONTROL)
@@ -221,34 +233,34 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
     getPrivacyMode(&paramValue);
     if(strncmp(paramValue, "DO_NOT_SHARE", MAX_PARAM_LEN) == 0)
     {
-        addParameter(profile, "PrivacyMode", PRIVACYMODES_RFC, NULL, -1);
+        addParameter(profile, "PrivacyMode", PRIVACYMODES_RFC, ALIAS_DATAMODEL, -1);
     }
     else
     {
-        addParameter(profile, "mac", TR181_DEVICE_WAN_MAC, NULL, -1);
-        addParameter(profile, "StbIp", TR181_DEVICE_WAN_IPv6, NULL, -1);
-        addParameter(profile, "PartnerId", TR181_DEVICE_PARTNER_ID, NULL, -1);
-        addParameter(profile, "Version", TR181_DEVICE_FW_VERSION, NULL, -1);
-        addParameter(profile, "AccountId", TR181_DEVICE_ACCOUNT_ID, NULL, -1);
-        addParameter(profile, "immui_ver_split", TR181_IUI_VERSION, NULL, -1);
+        addParameter(profile, "mac", TR181_DEVICE_WAN_MAC, ALIAS_DATAMODEL, -1);
+        addParameter(profile, "StbIp", TR181_DEVICE_WAN_IPv6, ALIAS_DATAMODEL, -1);
+        isWhoAmiEnabled() ? addParameter(profile, "PartnerId", TR181_DEVICE_PARTNER_NAME, ALIAS_DATAMODEL, -1) : addParameter(profile, "PartnerId", TR181_DEVICE_PARTNER_ID, ALIAS_DATAMODEL, -1);
+        addParameter(profile, "Version", TR181_DEVICE_FW_VERSION, ALIAS_DATAMODEL, -1);
+        addParameter(profile, "AccountId", TR181_DEVICE_ACCOUNT_ID, ALIAS_DATAMODEL, -1);
+        addParameter(profile, "immui_ver_split", TR181_IUI_VERSION, ALIAS_DATAMODEL, -1);
     }
     free(paramValue);
     paramValue = NULL;
 #else
-    addParameter(profile, "mac", TR181_DEVICE_WAN_MAC, NULL, -1);
+    addParameter(profile, "mac", TR181_DEVICE_WAN_MAC, ALIAS_DATAMODEL, -1);
 #if defined(ENABLE_RDKB_SUPPORT)
-    addParameter(profile, "erouterIpv4", TR181_DEVICE_WAN_IPv4, NULL, -1);
-    addParameter(profile, "erouterIpv6", TR181_DEVICE_WAN_IPv6, NULL, -1);
+    addParameter(profile, "erouterIpv4", TR181_DEVICE_WAN_IPv4, ALIAS_DATAMODEL, -1);
+    addParameter(profile, "erouterIpv6", TR181_DEVICE_WAN_IPv6, ALIAS_DATAMODEL, -1);
 #elif defined (ENABLE_RDKC_SUPPORT)
-    addParameter(profile, "camIp", TR181_DEVICE_WAN_IPv4, NULL, -1);
-    addParameter(profile, "camIpv6", TR181_DEVICE_WAN_IPv6, NULL, -1);
+    addParameter(profile, "camIp", TR181_DEVICE_WAN_IPv4, ALIAS_DATAMODEL, -1);
+    addParameter(profile, "camIpv6", TR181_DEVICE_WAN_IPv6, ALIAS_DATAMODEL, -1);
 #else
-    addParameter(profile, "StbIp", TR181_DEVICE_WAN_IPv6, NULL, -1);
-    addParameter(profile, "immui_ver_split", TR181_IUI_VERSION, NULL, -1);
+    addParameter(profile, "StbIp", TR181_DEVICE_WAN_IPv6, ALIAS_DATAMODEL, -1);
+    addParameter(profile, "immui_ver_split", TR181_IUI_VERSION, ALIAS_DATAMODEL, -1);
 #endif
-    addParameter(profile, "PartnerId", TR181_DEVICE_PARTNER_ID, NULL, -1);
-    addParameter(profile, "Version", TR181_DEVICE_FW_VERSION, NULL, -1);
-    addParameter(profile, "AccountId", TR181_DEVICE_ACCOUNT_ID, NULL, -1);
+    isWhoAmiEnabled() ? addParameter(profile, "PartnerId", TR181_DEVICE_PARTNER_NAME, ALIAS_DATAMODEL, -1) : addParameter(profile, "PartnerId", TR181_DEVICE_PARTNER_ID, ALIAS_DATAMODEL, -1);
+    addParameter(profile, "Version", TR181_DEVICE_FW_VERSION, ALIAS_DATAMODEL, -1);
+    addParameter(profile, "AccountId", TR181_DEVICE_ACCOUNT_ID, ALIAS_DATAMODEL, -1);
 #endif
     int markerIndex = 0;
     char* header = NULL;
@@ -292,19 +304,13 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
 
             if(header != NULL && content != NULL && logfile != NULL)
             {
-                if(skipFrequency > 0)
+                if(!strncmp(logfile, MT_TR181PARAM_PATTERN, MT_TR181PATAM_PATTERN_LENGTH))
                 {
-                    // T2Debug("Skip Frequency is Present, Need to do grep\n");
-
-                    ret = addParameter(profile, header, content, logfile, skipFrequency);
-                }
-                else if(!strncmp(logfile, MT_TR181PARAM_PATTERN, MT_TR181PATAM_PATTERN_LENGTH))
-                {
-                    ret = addParameter(profile, header, content, NULL, -1);
+                    ret = addParameter(profile, header, content, ALIAS_DATAMODEL, skipFrequency);
                 }
                 else if(!strncmp(logfile, MT_EVENT_PATTERN, MT_EVENT_PATTERN_LENGTH))
                 {
-                    ret = addParameter(profile, header, content, NULL, skipFrequency);
+                    ret = addParameter(profile, header, content, NULL, 0); //skip freq is not supported for event markers
                 }
                 else
                 {

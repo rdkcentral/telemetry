@@ -20,17 +20,8 @@
 
 import subprocess
 from time import sleep
+from helper_functions import *
 
-# TODO Helper functions to be moved to common utils class
-def run_shell_silent(command):
-    subprocess.run(command, shell=True, capture_output=False, text=False)
-    return 
-
-def run_shell_command(command):
-    result = subprocess.run(command, shell=True, capture_output=True, text=True)
-    return result.stdout.strip()
-
-# End of Helper functions
 
 def test_check_telemetry_is_starting():
     print("Starting telemetry process")

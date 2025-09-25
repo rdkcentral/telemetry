@@ -31,6 +31,7 @@
 #include "t2common.h"
 #include "vector.h"
 #include "reportgen.h"
+#include "legacyutils.h"
 
 typedef struct _JSONEncoding
 {
@@ -44,6 +45,8 @@ typedef struct _Profile
     bool isSchedulerstarted;
     bool isUpdated;
     bool reportInProgress;
+    pthread_cond_t reportInProgressCond;
+    pthread_mutex_t reportInProgressMutex;
     bool generateNow;
     bool deleteonTimeout;
     bool bClearSeekMap;
@@ -75,6 +78,7 @@ typedef struct _Profile
     T2RBUS *t2RBUSDest;
     Vector *eMarkerList;
     Vector *gMarkerList;
+    Vector *topMarkerList;
     Vector *cachedReportList;
     cJSON *jsonReportObj;
     pthread_t reportThread;
@@ -88,6 +92,7 @@ typedef struct _Profile
     pthread_cond_t reuseThread;
     pthread_mutex_t reuseThreadMutex;
     bool threadExists;
+    GrepSeekProfile *grepSeekProfile; // To store GrepConfig
 } Profile;
 
 T2ERROR initProfileList(bool checkPreviousSeek);
@@ -131,4 +136,9 @@ unsigned int getMinThresholdDuration(char *profileName);
 void reportGenerationCompleteReceiver(char* profileName);
 
 void NotifySchedulerstart(char* profileName, bool isschedulerstarted);
+
+T2ERROR appendTriggerCondition (Profile *tempProfile, const char *referenceName, const char *referenceValue);
+
+T2ERROR ReportProfiles_addReportProfile(Profile *profile);
+T2ERROR RemovePreRPfromDisk(const char* path, hash_map_t *map);
 #endif /* _PROFILE_H_ */

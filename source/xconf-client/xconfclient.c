@@ -578,7 +578,6 @@ static void xcCertSelectorInit()
 #endif
 T2ERROR doHttpGet(char* httpsUrl, char **data)
 {
-
     T2Debug("%s ++in\n", __FUNCTION__);
 
     T2Info("%s with url %s \n", __FUNCTION__, httpsUrl);
@@ -596,11 +595,8 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
 #ifdef LIBRDKCONFIG_BUILD
     size_t sPasswdSize = 0;
 #endif
-    // char *pKeyType = "PEM" ;
     bool mtls_enable = false;
-    pid_t childPid;
-    int sharedPipeFdStatus[2];
-    int sharedPipeFdDataLen[2];
+    T2ERROR ret = T2ERROR_FAILURE;
 
     if(NULL == httpsUrl)
     {
@@ -608,19 +604,6 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
         return T2ERROR_FAILURE;
     }
 
-    if(pipe(sharedPipeFdStatus) != 0)
-    {
-        T2Error("Failed to create pipe for status !!! exiting...\n");
-        T2Debug("%s --out\n", __FUNCTION__);
-        return T2ERROR_FAILURE;
-    }
-
-    if(pipe(sharedPipeFdDataLen) != 0)
-    {
-        T2Error("Failed to create pipe for data length!!! exiting...\n");
-        T2Debug("%s --out\n", __FUNCTION__);
-        return T2ERROR_FAILURE;
-    }
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
 
 #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
@@ -646,348 +629,265 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
 #endif
 #endif
     mtls_enable = isMtlsEnabled();
-    // block the userdefined signal handlers before fork
-    pthread_sigmask(SIG_BLOCK, &blocking_signal, NULL);
-    if((childPid = fork()) < 0)
+
+    // Execute curl operations directly in main process (no fork)
+    curlResponseData* httpResponse = (curlResponseData *) malloc(sizeof(curlResponseData));
+    if (!httpResponse)
     {
-        T2Error("Failed to fork !!! exiting...\n");
-        // Unblock the userdefined signal handlers
-        pthread_sigmask(SIG_UNBLOCK, &blocking_signal, NULL);
-        T2Debug("%s --out\n", __FUNCTION__);
+        T2Error("Failed to allocate memory for httpResponse\n");
         return T2ERROR_FAILURE;
     }
-
-    /**
-     * Openssl has growing RSS which gets cleaned up only with OPENSSL_cleanup .
-     * This cleanup is not thread safe and classified as run once per application life cycle.
-     * Forking the libcurl calls so that it executes and terminates to release memory per execution.
-     */
-    if(childPid == 0)
+    httpResponse->data = (char*)malloc(1);
+    if (!httpResponse->data)
     {
+        T2Error("Failed to allocate memory for httpResponse->data\n");
+        free(httpResponse);
+        return T2ERROR_FAILURE;
+    }
+    httpResponse->data[0] = '\0';
+    httpResponse->size = 0;
 
-        T2ERROR ret = T2ERROR_FAILURE;
-        curlResponseData* httpResponse = (curlResponseData *) malloc(sizeof(curlResponseData));
-        httpResponse->data = (char*)malloc(1);
-        httpResponse->data[0] = '\0'; //CID 282084 : Uninitialized scalar variable (UNINIT)
-        httpResponse->size = 0;
+    curl = curl_easy_init();
 
-        curl = curl_easy_init();
-
-        if(curl)
+    if(curl)
+    {
+        code = curl_easy_setopt(curl, CURLOPT_URL, httpsUrl);
+        if(code != CURLE_OK)
         {
-
-            code = curl_easy_setopt(curl, CURLOPT_URL, httpsUrl);
-            if(code != CURLE_OK)
-            {
-                T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-            }
-            code = curl_easy_setopt(curl, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
-            if(code != CURLE_OK)
-            {
-                T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-            }
-            code = curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 30L);
-            if(code != CURLE_OK)
-            {
-                T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-            }
-            code = curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
-            if(code != CURLE_OK)
-            {
-                T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-            }
-            code = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, httpGetCallBack);
-            if(code != CURLE_OK)
-            {
-                T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-            }
-            code = curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *) httpResponse);
-            if(code != CURLE_OK)
-            {
-                T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-            }
+            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+        }
+        code = curl_easy_setopt(curl, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
+        if(code != CURLE_OK)
+        {
+            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+        }
+        code = curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 30L);
+        if(code != CURLE_OK)
+        {
+            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+        }
+        code = curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
+        if(code != CURLE_OK)
+        {
+            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+        }
+        code = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, httpGetCallBack);
+        if(code != CURLE_OK)
+        {
+            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+        }
+        code = curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *) httpResponse);
+        if(code != CURLE_OK)
+        {
+            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+        }
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
 
 #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
-            code = curl_easy_setopt(curl, CURLOPT_INTERFACE, waninterface);
-            T2Info("TR181_DEVICE_CURRENT_WAN_IFNAME ---- %s\n", waninterface);
+        code = curl_easy_setopt(curl, CURLOPT_INTERFACE, waninterface);
+        T2Info("TR181_DEVICE_CURRENT_WAN_IFNAME ---- %s\n", waninterface);
+        if(code != CURLE_OK)
+        {
+            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+        }
+#else
+        code = curl_easy_setopt(curl, CURLOPT_INTERFACE, IFINTERFACE);
+        if(code != CURLE_OK)
+        {
+            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+        }
+#endif
+
+#endif
+        if(mtls_enable == true)
+        {
+#ifdef LIBRDKCERTSEL_BUILD
+            pEngine = rdkcertselector_getEngine(xcCertSelector);
+            if(pEngine != NULL)
+            {
+                code = curl_easy_setopt(curl, CURLOPT_SSLENGINE, pEngine);
+            }
+            else
+            {
+                code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
+            }
             if(code != CURLE_OK)
             {
                 T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
             }
-#else
-            code = curl_easy_setopt(curl, CURLOPT_INTERFACE, IFINTERFACE);
-            if(code != CURLE_OK)
+            do
             {
-                T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-            }
-#endif
-
-#endif
-            if(mtls_enable == true)
-            {
-#ifdef LIBRDKCERTSEL_BUILD
-                pEngine = rdkcertselector_getEngine(xcCertSelector);
-                if(pEngine != NULL)
+                pCertFile = NULL;
+                pPasswd = NULL;
+                pCertURI = NULL;
+                xcGetCertStatus = rdkcertselector_getCert(xcCertSelector, &pCertURI, &pPasswd);
+                if(xcGetCertStatus != certselectorOk)
                 {
-                    code = curl_easy_setopt(curl, CURLOPT_SSLENGINE, pEngine);
-                }
-                else
-                {
-                    code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
-                }
-                if(code != CURLE_OK)
-                {
-                    T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-                }
-                do
-                {
-                    pCertFile = NULL;
-                    pPasswd = NULL;
-                    pCertURI = NULL;
-                    xcGetCertStatus = rdkcertselector_getCert(xcCertSelector, &pCertURI, &pPasswd);
-                    if(xcGetCertStatus != certselectorOk)
-                    {
-                        T2Error("%s, T2:Failed to retrieve the certificate.\n", __func__);
-                        xcCertSelectorFree();
-                        free(httpResponse->data);
-                        free(httpResponse);
-                        curl_easy_cleanup(curl);
-                        ret = T2ERROR_FAILURE;
-                        goto status_return;
-                    }
-                    else
-                    {
-                        // skip past file scheme in URI
-                        pCertFile = pCertURI;
-                        if ( strncmp( pCertFile, FILESCHEME, sizeof(FILESCHEME) - 1 ) == 0 )
-                        {
-                            pCertFile += (sizeof(FILESCHEME) - 1);
-                        }
-#else
-                if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pPasswd))
-                {
-#endif
-                        code = curl_easy_setopt(curl, CURLOPT_SSLCERTTYPE, "P12");
-                        if(code != CURLE_OK)
-                        {
-                            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-                        }
-                        code = curl_easy_setopt(curl, CURLOPT_SSLCERT, pCertFile);
-                        if(code != CURLE_OK)
-                        {
-                            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-                        }
-                        code = curl_easy_setopt(curl, CURLOPT_KEYPASSWD, pPasswd);
-                        if(code != CURLE_OK)
-                        {
-                            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-                        }
-                        /* disconnect if authentication fails */
-                        code = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
-                        if(code != CURLE_OK)
-                        {
-                            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-                        }
-                        curl_code = curl_easy_perform(curl);
-#ifdef LIBRDKCERTSEL_BUILD
-                        if(curl_code != CURLE_OK)
-                        {
-                            T2Error("%s: Failed to establish connection using xPKI certificate: %s, Curl failed : %d\n", __func__, pCertFile, curl_code);
-                        }
-                        else
-                        {
-                            T2Info("%s: Using xpki Certs connection certname : %s \n", __FUNCTION__, pCertFile);
-                        }
-                    }
-                }
-                while(rdkcertselector_setCurlStatus(xcCertSelector, curl_code, (const char*)httpsUrl) == TRY_ANOTHER);
-#else
-                    }
-                    else
-                    {
-                        free(httpResponse->data);
-                        free(httpResponse);
-                        curl_easy_cleanup(curl); //CID 189986:Resource leak
-                        T2Error("mTLS_get failure\n");
-                        ret = T2ERROR_FAILURE;
-                        goto status_return;
-                    }
-#endif
-            }
-            else
-            {
-                curl_code = curl_easy_perform(curl);
-            }
-            curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-
-            if(http_code == 200 && curl_code == CURLE_OK)
-            {
-                T2Info("%s:%d, T2:Telemetry XCONF communication success\n", __func__, __LINE__);
-                size_t len = strlen(httpResponse->data);
-
-                // Share data with parent
-                close(sharedPipeFdDataLen[0]);
-                write(sharedPipeFdDataLen[1], &len, sizeof(size_t));
-                close(sharedPipeFdDataLen[1]);
-
-                FILE *httpOutput = fopen(HTTP_RESPONSE_FILE, "w+");
-                if(httpOutput)
-                {
-                    T2Debug("Update config data in response file %s \n", HTTP_RESPONSE_FILE);
-                    fputs(httpResponse->data, httpOutput);
-                    fclose(httpOutput);
-                }
-                else
-                {
-                    T2Error("Unable to open %s file \n", HTTP_RESPONSE_FILE);
-                }
-
-                free(httpResponse->data);
-                free(httpResponse);
-#ifndef LIBRDKCERTSEL_BUILD
-                if(NULL != pCertFile)
-                {
-                    free(pCertFile);
-                }
-
-                if(NULL != pPasswd)
-                {
-#ifdef LIBRDKCONFIG_BUILD
-                    sPasswdSize = strlen(pPasswd);
-                    if (rdkconfig_free((unsigned char**)&pPasswd, sPasswdSize)  == RDKCONFIG_FAIL)
-                    {
-                        return T2ERROR_FAILURE;
-                    }
-#else
-                    free(pPasswd);
-#endif
-                }
-#endif
-                curl_easy_cleanup(curl);
-            }
-            else
-            {
-                T2Error("%s:%d, T2:Telemetry XCONF communication Failed with http code : %ld Curl code : %d \n", __func__, __LINE__, http_code,
-                        curl_code);
-                T2Error("%s : curl_easy_perform failed with error message %s from curl \n", __FUNCTION__, curl_easy_strerror(curl_code));
-                free(httpResponse->data);
-                free(httpResponse);
-#ifndef LIBRDKCERTSEL_BUILD
-                if(NULL != pCertFile)
-                {
-                    free(pCertFile);
-                }
-                if(NULL != pPasswd)
-                {
-#ifdef LIBRDKCONFIG_BUILD
-                    sPasswdSize = strlen(pPasswd);
-                    if (rdkconfig_free((unsigned char**)&pPasswd, sPasswdSize)  == RDKCONFIG_FAIL)
-                    {
-                        return T2ERROR_FAILURE;
-                    }
-#else
-                    free(pPasswd);
-#endif
-                }
-#endif
-                curl_easy_cleanup(curl);
-                if(http_code == 404)
-                {
-                    ret = T2ERROR_PROFILE_NOT_SET;
-                }
-                else
-                {
+                    T2Error("%s, T2:Failed to retrieve the certificate.\n", __func__);
+                    xcCertSelectorFree();
+                    free(httpResponse->data);
+                    free(httpResponse);
+                    curl_easy_cleanup(curl);
                     ret = T2ERROR_FAILURE;
+                    goto cleanup_return;
                 }
-                goto status_return ;
+                else
+                {
+                    // skip past file scheme in URI
+                    pCertFile = pCertURI;
+                    if ( strncmp( pCertFile, FILESCHEME, sizeof(FILESCHEME) - 1 ) == 0 )
+                    {
+                        pCertFile += (sizeof(FILESCHEME) - 1);
+                    }
+#else
+            if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pPasswd))
+            {
+#endif
+                    code = curl_easy_setopt(curl, CURLOPT_SSLCERTTYPE, "P12");
+                    if(code != CURLE_OK)
+                    {
+                        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+                    }
+                    code = curl_easy_setopt(curl, CURLOPT_SSLCERT, pCertFile);
+                    if(code != CURLE_OK)
+                    {
+                        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+                    }
+                    code = curl_easy_setopt(curl, CURLOPT_KEYPASSWD, pPasswd);
+                    if(code != CURLE_OK)
+                    {
+                        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+                    }
+                    /* disconnect if authentication fails */
+                    code = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+                    if(code != CURLE_OK)
+                    {
+                        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+                    }
+                    curl_code = curl_easy_perform(curl);
+#ifdef LIBRDKCERTSEL_BUILD
+                    if(curl_code != CURLE_OK)
+                    {
+                        T2Error("%s: Failed to establish connection using xPKI certificate: %s, Curl failed : %d\n", __func__, pCertFile, curl_code);
+                    }
+                    else
+                    {
+                        T2Info("%s: Using xpki Certs connection certname : %s \n", __FUNCTION__, pCertFile);
+                    }
+                }
             }
+            while(rdkcertselector_setCurlStatus(xcCertSelector, curl_code, (const char*)httpsUrl) == TRY_ANOTHER);
+#else
+                }
+                else
+                {
+                    free(httpResponse->data);
+                    free(httpResponse);
+                    curl_easy_cleanup(curl);
+                    T2Error("mTLS_get failure\n");
+                    ret = T2ERROR_FAILURE;
+                    goto cleanup_return;
+                }
+#endif
         }
         else
         {
-            free(httpResponse->data);
-            free(httpResponse);
-            ret = T2ERROR_FAILURE;
-            goto status_return ;
+            curl_code = curl_easy_perform(curl);
         }
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
 
-        ret = T2ERROR_SUCCESS ;
-status_return :
-
-        close(sharedPipeFdStatus[0]);
-        write(sharedPipeFdStatus[1], &ret, sizeof(T2ERROR));
-        close(sharedPipeFdStatus[1]);
-        exit(0);
-
-    }
-    else    // Parent
-    {
-        T2ERROR ret = T2ERROR_FAILURE;
-        // Use waitpid insted of wait
-        waitpid(childPid, NULL, 0);
-        // Unblock the userdefined signal handlers after wait
-        pthread_sigmask(SIG_UNBLOCK, &blocking_signal, NULL);
-        // Get the return status via IPC from child process
-        close(sharedPipeFdStatus[1]);
-        ssize_t readBytes = read(sharedPipeFdStatus[0], &ret, sizeof(T2ERROR));
-        if(readBytes == -1)
+        if(http_code == 200 && curl_code == CURLE_OK)
         {
-            T2Error("Failed to read from pipe\n");
-            return T2ERROR_FAILURE;
-        }
-        close(sharedPipeFdStatus[0]);
+            T2Info("%s:%d, T2:Telemetry XCONF communication success\n", __func__, __LINE__);
+            size_t len = strlen(httpResponse->data);
 
-        // Get the datas via IPC from child process
-        if(ret == T2ERROR_SUCCESS)
-        {
-            size_t len = 0;
-            close(sharedPipeFdDataLen[1]);
-            readBytes = read(sharedPipeFdDataLen[0], &len, sizeof(size_t));
-            if(readBytes == -1)
+            FILE *httpOutput = fopen(HTTP_RESPONSE_FILE, "w+");
+            if(httpOutput)
             {
-                T2Error("Failed to read from pipe\n");
-                return T2ERROR_FAILURE;
+                T2Debug("Update config data in response file %s \n", HTTP_RESPONSE_FILE);
+                fputs(httpResponse->data, httpOutput);
+                fclose(httpOutput);
             }
-            close(sharedPipeFdDataLen[0]);
+            else
+            {
+                T2Error("Unable to open %s file \n", HTTP_RESPONSE_FILE);
+            }
+
+            // Copy data to output parameter
             *data = NULL;
             if(len <= SIZE_MAX)
             {
                 *data = (char*)malloc(len + 1);
+                if(*data)
+                {
+                    memcpy(*data, httpResponse->data, len);
+                    (*data)[len] = '\0';
+                    T2Debug("Configuration obtained from http server : \n %s \n", *data);
+                }
+                else
+                {
+                    T2Error("Unable to allocate memory for XCONF config data \n");
+                    ret = T2ERROR_FAILURE;
+                    goto cleanup_return;
+                }
             }
-            if(*data == NULL)
+
+            ret = T2ERROR_SUCCESS;
+        }
+        else
+        {
+            T2Error("%s:%d, T2:Telemetry XCONF communication Failed with http code : %ld Curl code : %d \n", __func__, __LINE__, http_code, curl_code);
+            T2Error("%s : curl_easy_perform failed with error message %s from curl \n", __FUNCTION__, curl_easy_strerror(curl_code));
+            
+            if(http_code == 404)
             {
-                T2Error("Unable to allocate memory for XCONF config data \n");
-                ret = T2ERROR_FAILURE;
+                ret = T2ERROR_PROFILE_NOT_SET;
             }
             else
             {
-                if(len <= SIZE_MAX)
-                {
-                    memset(*data, '\0', len + 1);
-                }
-                FILE *httpOutput = fopen(HTTP_RESPONSE_FILE, "r+");
-                if(httpOutput)
-                {
-                    // Read the whole file content
-                    if(len <= SIZE_MAX)
-                    {
-                        readBytes = fread(*data, len, 1, httpOutput);
-                    }
-                    if(readBytes == -1)
-                    {
-                        T2Error("Failed to read from pipe\n");
-                        return T2ERROR_FAILURE;
-                    }
-                    T2Debug("Configuration obtained from http server : \n %s \n", *data);
-                    fclose(httpOutput);
-                }
+                ret = T2ERROR_FAILURE;
             }
         }
-        T2Debug("%s --out\n", __FUNCTION__);
-        return ret;
 
+        curl_easy_cleanup(curl);
+    }
+    else
+    {
+        ret = T2ERROR_FAILURE;
     }
 
+cleanup_return:
+    if(httpResponse)
+    {
+        if(httpResponse->data)
+        {
+            free(httpResponse->data);
+        }
+        free(httpResponse);
+    }
+
+#ifndef LIBRDKCERTSEL_BUILD
+    if(NULL != pCertFile)
+    {
+        free(pCertFile);
+    }
+
+    if(NULL != pPasswd)
+    {
+#ifdef LIBRDKCONFIG_BUILD
+        sPasswdSize = strlen(pPasswd);
+        if (rdkconfig_free((unsigned char**)&pPasswd, sPasswdSize) == RDKCONFIG_FAIL)
+        {
+            T2Error("Failed to free certificate password\n");
+        }
+#else
+        free(pPasswd);
+#endif
+    }
+#endif
+
+    T2Debug("%s --out\n", __FUNCTION__);
+    return ret;
 }
 
 #if defined(ENABLE_REMOTE_PROFILE_DOWNLOAD)

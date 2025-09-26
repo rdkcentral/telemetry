@@ -461,7 +461,7 @@ reportXconfThreadEnd :
     reportThreadExits = false;
     pthread_mutex_unlock(&plMutex);
     pthread_cond_destroy(&reuseThread);
-    T2Debug("%s --out exiting the CollectAndReportXconf thread \n", __FUNCTION__);
+    T2Info("%s --out exiting the CollectAndReportXconf thread \n", __FUNCTION__);
     return NULL;
 }
 

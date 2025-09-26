@@ -265,6 +265,8 @@ static void t2DaemonMainModeInit( )
     sigaddset(&blocking_signal, LOG_UPLOAD_ONDEMAND);
     sigaddset(&blocking_signal, SIGIO);
 
+    act.sa_mask = blocking_signal; // block these signals while inside handler
+
     DAEMONPID = getpid(); // save the pid of the deamon
     T2Debug("Telemetry 2.0 Process PID %d\n", (int)DAEMONPID); //Debug line
 

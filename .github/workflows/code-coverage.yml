@@ -43,8 +43,8 @@ jobs:
           docker cp native-platform:/tmp/Gtest_Report/ /tmp/Gtest_Report/
 
   upload-test-results:
-    name: Upload L1 test results to automatic test result management system
-    needs: execute-L1-tests-on-pr
+    name: Upload L1 coverage reports
+    needs: execute-unit-code-coverage-report-on-release
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/rdkcentral/docker-rdk-ci:latest

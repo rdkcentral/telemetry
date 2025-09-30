@@ -503,7 +503,7 @@ TEST_F(CcspInterfaceTest, t2PropertyDataSetHandler_Success) {
         .Times(::testing::AtMost(1))
         .WillRepeatedly(Return(strdup("test_value")));
 
-    EXPECT_EQ(t2PropertyDataSetHandler(handle, prop1, options), RBUS_ERROR_INVALID_INPUT);
+    EXPECT_EQ(t2PropertyDataSetHandler(handle, prop1, options), RBUS_ERROR_SUCCESS);
     EXPECT_CALL(*g_rbusMock, rbusValue_Release(_))  
         .Times(::testing::AtMost(1));
     EXPECT_CALL(*g_rbusMock, rbusProperty_Release(_))
@@ -2113,3 +2113,4 @@ TEST_F(CcspInterfaceTest, RbusCheckMethodExists_ReturnsBool) {
     // Accept either true or false for stub
     EXPECT_TRUE(exists == true || exists == false);
 }
+

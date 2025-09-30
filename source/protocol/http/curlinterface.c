@@ -44,7 +44,10 @@
 #ifdef LIBRDKCONFIG_BUILD
 #include "rdkconfig.h"
 #endif
-
+#ifdef GTEST_ENABLE
+#define curl_easy_setopt curl_easy_setopt_mock
+#define curl_easy_getinfo curl_easy_getinfo_mock
+#endif
 extern sigset_t blocking_signal;
 
 typedef struct

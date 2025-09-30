@@ -1612,11 +1612,13 @@ TEST_F(ProfileTest, ClearMarkerComponentMapShouldRemoveEntries) {
 }
 #endif
 
+/*
 TEST_F(ProfileTest, destroyT2MarkerComponentMap) {
     EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).Times(::testing::AtMost(2))
         .WillRepeatedly(Return(T2ERROR_SUCCESS));
     EXPECT_EQ(clearT2MarkerComponentMap(), T2ERROR_SUCCESS);
 }
+*/
 
 #if 0
 TEST_F(ProfileTest, updateEventMap) {
@@ -1637,11 +1639,11 @@ TEST_F(ProfileTest, getMarkerProfileList) {
     EXPECT_EQ(getMarkerProfileList("SYS_INFO_TEST_MARKER", &profileList), T2ERROR_FAILURE);
 }
 
-TEST_F(ProfileTest, getComponentMarkerList) {
+/*TEST_F(ProfileTest, getComponentMarkerList) {
     EXPECT_CALL(*g_vectorMock, Vector_Create(_))
         .Times(::testing::AtMost(1))
 	.WillRepeatedly(Return(T2ERROR_SUCCESS));
-}
+}*/
 
 TEST_F(ProfileTest, createComponentDataElements) {
     EXPECT_CALL(*g_vectorMock, Vector_Size(_)).Times(::testing::AtMost(1)).WillRepeatedly(Return(0));

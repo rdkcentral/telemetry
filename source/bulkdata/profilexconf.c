@@ -53,6 +53,11 @@ static pid_t xconfReportPid;
 static bool isAbortTriggered = false ;
 static bool isOnDemandReport = false ;
 
+#ifdef GTEST_ENABLE
+#define sendReportOverHTTP __wrap_sendReportOverHTTP
+#define sendCachedReportsOverHTTP __wrap_sendCachedReportsOverHTTP
+#endif
+
 static char *getTimeStamp (void)
 {
     char *timeStamp;
@@ -440,7 +445,6 @@ static void* CollectAndReportXconf(void* data)
         {
             T2Error("Unsupported encoding format : %s\n", profile->encodingType);
         }
-
 # ifdef PERSIST_LOG_MON_REF
         if(T2ERROR_SUCCESS == saveSeekConfigtoFile(profile->name, profile->grepSeekProfile))
         {
@@ -451,7 +455,6 @@ static void* CollectAndReportXconf(void* data)
             T2Warning("Failed to save grep config to file for profile: %s\n", profile->name);
         }
 #endif
-
         clock_gettime(CLOCK_REALTIME, &endTime);
         getLapsedTime(&elapsedTime, &endTime, &startTime);
         T2Info("Elapsed Time for : %s = %lu.%lu (Sec.NanoSec)\n", profile->name, (unsigned long)elapsedTime.tv_sec, elapsedTime.tv_nsec);

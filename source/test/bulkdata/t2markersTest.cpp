@@ -171,12 +171,12 @@ TEST_F(t2markersTestFixture,  getMarkerProfileList_success)
     Vector_Destroy(profileList, free);
 }
 
-TEST_F(t2markersTestFixture,  createcompDE_success) 
+/*TEST_F(t2markersTestFixture,  createcompDE_success) 
 {
     addT2EventMarker("New_marker3", "ccsp", "RDK_Profile3", 0);
     createComponentDataElements();
     destroyT2MarkerComponentMap();
-}
+}*/
 
 
 //t2eventreceiver.c

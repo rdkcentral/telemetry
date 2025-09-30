@@ -17,11 +17,11 @@
 # limitations under the License.
 ##########################################################################
 
-AM_CFLAGS = -DGTEST_ENABLE
+AM_CFLAGS = -DGTEST_ENABLE -g
 
-CFLAGS := $(filter-out -DFEATURE_SUPPORT_WEBCONFIG, $(CFLAGS))
+#CFLAGS := $(filter-out -DFEATURE_SUPPORT_WEBCONFIG, $(CFLAGS))
 
-AM_CXXFLAGS = -std=c++11 -DGTEST_ENABLE
+AM_CXXFLAGS = -std=c++11 -DGTEST_ENABLE -g
 
 AUTOMAKE_OPTIONS = subdir-objects
 

@@ -32,25 +32,40 @@ extern "C" {
 #include <ccspinterface/busInterface.h>
 #include <ccspinterface/rbusInterface.h>
 #include <reportgen/reportgen.h>
+
+typedef struct
+{
+    bool curlStatus;
+    CURLcode curlResponse;
+    CURLcode curlSetopCode;
+    long http_code;
+    int lineNumber;
+
+} childResponse ;
+
 }
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "test/rbus/include/rbus.h"
-#include "test/rbus/include/rbus_value.h"
+#include <rbus/rbus.h>
+#include <rbus/rbus_value.h>
 using namespace std;
 
 #include <iostream>
 #include <stdexcept>
+#define curl_easy_setopt curl_easy_setopt_mock
+#define curl_easy_getinfo curl_easy_getinfo_mock
 #include "test/mocks/SystemMock.h"
 #include "test/mocks/FileioMock.h"
+#undef curl_easy_setopt
+#undef curl_easy_getinfo
 #include "test/mocks/rbusMock.h"
 #include "test/mocks/rdklogMock.h"
 #include "test/xconf-client/xconfclientMock.h"
 #include "protocolMock.h"
 #include "test/mocks/rdkconfigMock.h"
 
-
+extern FileMock *g_fileIOMock;
 using ::testing::_;
 using ::testing::Return;
 using ::testing::StrEq;
@@ -182,7 +197,7 @@ TEST_F(protocolTestFixture, SENDREPORTOVERHTTP2)
               .WillOnce(Return(0));
       #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
       #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
-      EXPECT_CALL(*m_xconfclientMock, getParameterValue(_,_)
+      EXPECT_CALL(*m_xconfclientMock, getParameterValue(_,_))
               .Times(1)
               .WillOnce(Return(T2ERROR_SUCCESS));
       #endif
@@ -205,6 +220,7 @@ TEST_F(protocolTestFixture, SENDREPORTOVERHTTP2)
       free(payload);
 }
 
+//parent process
 TEST_F(protocolTestFixture, SENDREPORTOVERHTTP3)
 {
       char* httpURL = "https://mockxconf:50051/dataLakeMock";
@@ -215,7 +231,7 @@ TEST_F(protocolTestFixture, SENDREPORTOVERHTTP3)
               .WillOnce(Return(0));
       #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
       #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
-      EXPECT_CALL(*m_xconfclientMock, getParameterValue(_,_)
+      EXPECT_CALL(*m_xconfclientMock, getParameterValue(_,_))
               .Times(1)
               .WillOnce(Return(T2ERROR_SUCCESS));
       #endif
@@ -258,7 +274,7 @@ TEST_F(protocolTestFixture, SENDCACHEDREPORTOVERHTTP)
               .WillOnce(Return(0));
       #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
       #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
-      EXPECT_CALL(*m_xconfclientMock, getParameterValue(_,_)
+      EXPECT_CALL(*m_xconfclientMock, getParameterValue(_,_))
               .Times(1)
               .WillOnce(Return(T2ERROR_SUCCESS));
       #endif
@@ -287,6 +303,7 @@ TEST_F(protocolTestFixture, SENDCACHEDREPORTOVERHTTP)
       EXPECT_EQ(T2ERROR_SUCCESS, sendCachedReportsOverHTTP(httpURL, reportlist));
       Vector_Destroy(reportlist, free);
 }
+
 
 TEST_F(protocolTestFixture, SENDREPORTSOVERRBUSMETHOD1)
 {
@@ -400,4 +417,66 @@ TEST_F(protocolTestFixture, sendCachedReportsOverRBUSMethod)
     free(method);
     Vector_Destroy(inputParams, free);
     Vector_Destroy(reportlist,free);
+}
+
+//sendReportOverHTTP
+TEST_F(protocolTestFixture, sendReportOverHTTP_6)
+{
+ char* httpURL = "https://mockxconf:50051/dataLakeMock";
+      char* payload = strdup("This is a payload string");
+      Vector* reportlist = NULL;
+      Vector_Create(&reportlist);
+      Vector_PushBack(reportlist, payload);
+      char *cm = (char*)0xFFFFFFFF;
+      EXPECT_CALL(*g_fileIOMock, pipe(_))
+              .Times(1)
+              .WillOnce(Return(0));
+      #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
+      #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
+      EXPECT_CALL(*m_xconfclientMock, getParameterValue(_,_))
+        .WillOnce([](const char* paramName, char** paramValue) {
+            if (strcmp(paramName, "Device.X_RDK_WanManager.CurrentActiveInterface") == 0)
+                *paramValue = strdup("erouter0");
+            else
+                *paramValue = strdup("unknown");
+            return T2ERROR_SUCCESS;
+     });
+      #endif
+      #endif
+      EXPECT_CALL(*m_xconfclientMock, isMtlsEnabled())
+              .Times(1)
+              .WillOnce(Return(true));
+      EXPECT_CALL(*g_systemMock, access(_,_))
+             .Times(1)
+             .WillOnce(Return(0));
+      #ifdef LIBRDKCONFIG_BUILD
+      EXPECT_CALL(*g_rdkconfigMock, rdkconfig_get(_,_,_))
+             .Times(1)
+             .WillOnce(Return(RDKCONFIG_OK));
+      #endif
+      EXPECT_CALL(*g_fileIOMock, fork())
+              .Times(1)
+              .WillOnce(Return(1));
+      EXPECT_CALL(*g_fileIOMock, close(_))
+              .Times(2)
+              .WillOnce(Return(-1))
+              .WillOnce(Return(-1));
+      EXPECT_CALL(*g_fileIOMock, read(_,_,_))
+              .Times(1)
+              .WillOnce([](int fd, void *buf, size_t count) {
+                 childResponse* resp = (childResponse*)buf;
+                 resp->curlStatus = true;
+                 resp->curlResponse = CURLE_OK;
+                 resp->curlSetopCode = CURLE_OK;
+                 resp->http_code = 200;
+                 resp->lineNumber = 123; // Set to test value
+                 return sizeof(childResponse);
+              });
+     #ifdef LIBRDKCONFIG_BUILD
+      EXPECT_CALL(*g_rdkconfigMock, rdkconfig_free(_, _))
+             .Times(1)
+             .WillOnce(Return(RDKCONFIG_OK));
+      #endif
+      EXPECT_EQ(T2ERROR_SUCCESS, sendReportOverHTTP(httpURL, payload,NULL));
+      Vector_Destroy(reportlist, free);
 }

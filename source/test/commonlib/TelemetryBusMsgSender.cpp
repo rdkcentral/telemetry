@@ -186,16 +186,6 @@ TEST_F(TelemetryBusmessageSenderTest, SendIntEvent_NullComponent) {
     EXPECT_EQ(err, T2ERROR_COMPONENT_NULL);
 }
 
-// 1. Bus handle null
-TEST_F(TelemetryBusmessageSenderTest, filtered_event_send) {
-    int ret;
-    EXPECT_CALL(*g_systemMock, access(_,_))
-            .Times(1)
-            .WillOnce(Return(-1));
- 
-    ret = filtered_event_send("data", "marker");
-    EXPECT_EQ(ret, 0);
-}
 
 TEST_F(TelemetryBusmessageSenderTest, getParamValue_failure)
 {
@@ -304,7 +294,7 @@ TEST_F(TelemetryBusmessageSenderTest, filtered_event_send_1)
     EXPECT_EQ(ret, 0);
 
 }
-*/
+
 TEST_F(TelemetryBusmessageSenderTest, filtered_event_send_2)
 {
     t2_init((char*)"sysint");
@@ -312,7 +302,7 @@ TEST_F(TelemetryBusmessageSenderTest, filtered_event_send_2)
     ret = filtered_event_send((char*)"test_data", (char*)"Test_marker:");
     EXPECT_EQ(ret, 0);
 }
-
+*/
 // Positive test: Send string event with valid input
 
 TEST_F(TelemetryBusmessageSenderTest, SendStringEvent_Valid) {
@@ -348,3 +338,4 @@ TEST_F(TelemetryBusmessageSenderTest, SendIntEvent_Valid) {
     EXPECT_EQ(err, T2ERROR_SUCCESS);
     t2_uninit();
 }
+

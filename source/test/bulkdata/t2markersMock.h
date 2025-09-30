@@ -28,7 +28,7 @@ typedef void (*TelemetryEventCallback)(char* eventInfo, char* user_data);
 class t2markersMock
 {
 public:
-    
+
     MOCK_METHOD(T2ERROR, ReportProfiles_storeMarkerEvent, (char *profileName, T2Event *eventInfo), ());
     MOCK_METHOD(bool, isRbusEnabled, (), ());
     MOCK_METHOD(T2ERROR, registerForTelemetryEvents, (TelemetryEventCallback eventCB), ());

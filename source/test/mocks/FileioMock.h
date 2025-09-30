@@ -40,17 +40,18 @@
 #define LIST_MAX 6
 typedef struct rdkcertselector_s rdkcertselector_t;
 typedef rdkcertselector_t *rdkcertselector_h;
-typedef struct rdkcertselector_s {
-  char certSelPath[PATH_MAX+1];
-  char certGroup[PARAM_MAX+1];
-  char certUri[PATH_MAX+1];
-  char certCredRef[PARAM_MAX+1];
-  char certPass[PARAM_MAX+1];
-  char hrotEngine[ENGINE_MAX+1];
-  uint16_t certIndx;
-  uint16_t state;
-  unsigned long certStat[LIST_MAX];  // 0 if ok, file date if cert found to be bad
-  long reserved1;
+typedef struct rdkcertselector_s
+{
+    char certSelPath[PATH_MAX + 1];
+    char certGroup[PARAM_MAX + 1];
+    char certUri[PATH_MAX + 1];
+    char certCredRef[PARAM_MAX + 1];
+    char certPass[PARAM_MAX + 1];
+    char hrotEngine[ENGINE_MAX + 1];
+    uint16_t certIndx;
+    uint16_t state;
+    unsigned long certStat[LIST_MAX];  // 0 if ok, file date if cert found to be bad
+    long reserved1;
 } rdkcertselector_t;
 
 
@@ -79,9 +80,9 @@ public:
     MOCK_METHOD(int, mkdir, (const char* pathname, mode_t mode), ());
     MOCK_METHOD(int, fstat, (int fd, struct stat* statbuf), ());
     MOCK_METHOD(ssize_t, read, (int fd, void* buf, size_t count), ());
-  MOCK_METHOD(struct curl_slist*, curl_slist_append, (struct curl_slist* list, const char* str), ());
-   MOCK_METHOD(CURLcode, curl_easy_perform, (CURL* handle), ());
-   MOCK_METHOD(CURL*, curl_easy_init, (), ());
+    MOCK_METHOD(struct curl_slist*, curl_slist_append, (struct curl_slist* list, const char* str), ());
+    MOCK_METHOD(CURLcode, curl_easy_perform, (CURL* handle), ());
+    MOCK_METHOD(CURL*, curl_easy_init, (), ());
     MOCK_METHOD(ssize_t, getline, (char** lineptr, size_t* n, FILE* stream), ());
     MOCK_METHOD(pid_t, fork, (), ());
     MOCK_METHOD(ssize_t, write, (int fd, const void* buf, size_t count), ());
@@ -94,16 +95,16 @@ public:
     MOCK_METHOD(int, munmap, (void *addr, size_t len), ());
     MOCK_METHOD(void*, mmap, (void *addr, size_t length, int prot, int flags, int fd, off_t offset), ());
     MOCK_METHOD(int, mkstemp, (char *tmpl), ());
-    MOCK_METHOD(ssize_t, sendfile, (int out_fd, int in_fd, off_t *offset,size_t count), ());
+    MOCK_METHOD(ssize_t, sendfile, (int out_fd, int in_fd, off_t *offset, size_t count), ());
 
     //rdkcertselector
-  
+
     MOCK_METHOD(rdkcertselector_h, rdkcertselector_new, (const char *certsel_path, const char *hrotprop_path, const char *cert_group), ());
     MOCK_METHOD(void, rdkcertselector_free, (rdkcertselector_h *thiscertsel), ());
-   //protocol
+    //protocol
     MOCK_METHOD(pid_t, getpid, (), ());
     MOCK_METHOD(void, exit, (int status), ());
-  //  MOCK_METHOD(int, fcntl, (int fd, int cmd, long arg), ());
+    //  MOCK_METHOD(int, fcntl, (int fd, int cmd, long arg), ());
 //MOCK_METHOD(int, fcntl_ptr, (int fd, int cmd, void* arg), ());
 };
 

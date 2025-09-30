@@ -247,17 +247,17 @@ static void* CollectAndReportXconf(void* data)
         clock_gettime(CLOCK_REALTIME, &startTime);
         if(profile->encodingType != NULL && !strcmp(profile->encodingType, "JSON"))
         {
-	    T2Info("inside if\n");
+            T2Info("inside if\n");
             if(T2ERROR_SUCCESS != initJSONReportXconf(&profile->jsonReportObj, &valArray))
             {
-		T2Info("inside init\n");
+                T2Info("inside init\n");
                 T2Error("Failed to initialize JSON Report\n");
                 profile->reportInProgress = false;
                 //pthread_mutex_unlock(&plMutex);
                 //return NULL;
                 goto reportXconfThreadEnd;
             }
-	    T2Info("after init\n");
+            T2Info("after init\n");
 
 #ifdef PERSIST_LOG_MON_REF
             if(profile->checkPreviousSeek)
@@ -434,7 +434,7 @@ static void* CollectAndReportXconf(void* data)
                     ret = sendCachedReportsOverHTTP(profile->t2HTTPDest->URL, profile->cachedReportList);
                     if(ret == T2ERROR_SUCCESS)
                     {
-			T2Info("inside if\n");
+                        T2Info("inside if\n");
                         // Do not get misleaded by function name. Call is to delete the directory for storing cached reports
                         removeProfileFromDisk(CACHED_MESSAGE_PATH, profile->name);
                     }
@@ -666,9 +666,9 @@ void ProfileXConf_updateMarkerComponentMap()
     {
         for(; emIndex < Vector_Size(singleProfile->eMarkerList); emIndex++)
         {
-	    T2Info("inside for loop\n");
+            T2Info("inside for loop\n");
             eMarker = (EventMarker *)Vector_At(singleProfile->eMarkerList, emIndex);
-	    T2Info("marker = %s\n", eMarker->markerName);
+            T2Info("marker = %s\n", eMarker->markerName);
             addT2EventMarker(eMarker->markerName, eMarker->compName, singleProfile->name, eMarker->skipFreq);
         }
     }
@@ -948,9 +948,9 @@ T2ERROR ProfileXConf_storeMarkerEvent(T2Event *eventInfo)
     EventMarker *lookupEvent = NULL;
     for(; eventIndex < Vector_Size(singleProfile->eMarkerList); eventIndex++)
     {
-	T2Info("inside for loop\n");
+        T2Info("inside for loop\n");
         EventMarker *tempEventMarker = (EventMarker *)Vector_At(singleProfile->eMarkerList, eventIndex);
-	T2Info("markername = %s\n", tempEventMarker->markerName);
+        T2Info("markername = %s\n", tempEventMarker->markerName);
         if(!strcmp(tempEventMarker->markerName, eventInfo->name))
         {
             lookupEvent = tempEventMarker;

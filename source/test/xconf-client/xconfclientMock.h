@@ -57,7 +57,7 @@ public:
     MOCK_METHOD(int, getRbusDCMEventStatus, (), ());
     MOCK_METHOD(T2ERROR, publishEventsDCMSetConf, (char *confPath), ());
     MOCK_METHOD(T2ERROR, publishEventsDCMProcConf, (), ());
-   //OCK_METHOD(T2ERROR, getMtlsCerts, (char **certName, char **phrase), ());
+    //OCK_METHOD(T2ERROR, getMtlsCerts, (char **certName, char **phrase), ());
 };
 
 extern XconfclientMock* m_xconfclientMock;

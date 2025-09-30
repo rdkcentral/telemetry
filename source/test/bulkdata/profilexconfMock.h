@@ -27,14 +27,14 @@ typedef void (*T2EventMarkerListCallback)(const char* componentName, void **even
 class profilexconfMock
 {
 public:
-    
+
     MOCK_METHOD(T2ERROR, processConfigurationXConf, (char* configData, ProfileXConf **localProfile), ());
     MOCK_METHOD(Vector*, getProfileParameterValues, (Vector *paramList, int count), ());
     MOCK_METHOD(T2ERROR, regDEforCompEventList, (const char* componentName, T2EventMarkerListCallback callBackHandler), ());
     //MOCK_METHOD(void, freeGrepSeekProfile, (GrepSeekProfile *gsProfile), ());
     MOCK_METHOD(T2ERROR, getParameterValue, (const char* paramName, char **paramValue), ());
-    MOCK_METHOD(void, publishReportUploadStatus, (char* status), ());   
-    MOCK_METHOD(void, freeProfileValues, (void *data), ()); 
+    MOCK_METHOD(void, publishReportUploadStatus, (char* status), ());
+    MOCK_METHOD(void, freeProfileValues, (void *data), ());
     MOCK_METHOD(int, processTopPattern, (char* profileName,  Vector* topMarkerList, Vector* out_grepResultList, int profileExecCounter), ());
     MOCK_METHOD(T2ERROR, getGrepResults, (GrepSeekProfile **GSP, Vector *markerList, Vector **grepResultList, bool isClearSeekMap, bool check_rotated, char *customLogPath), ());
     MOCK_METHOD(void, dcaFlagReportCompleation, (), ());
@@ -44,7 +44,7 @@ public:
     MOCK_METHOD(T2ERROR, saveSeekConfigtoFile, (char* profileName, GrepSeekProfile *ProfileSeekMap), ());
     MOCK_METHOD(T2ERROR, loadSavedSeekConfig, (char *profileName, GrepSeekProfile *ProfileSeekMap), ());
     MOCK_METHOD(bool, firstBootStatus, (), ());
-};  
+};
 
 extern profilexconfMock *g_profileXConfMock;
 

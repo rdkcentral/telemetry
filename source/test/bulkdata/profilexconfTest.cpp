@@ -43,7 +43,7 @@ extern "C" {
 #include "../mocks/SystemMock.h"
 #include "../mocks/FileioMock.h"
 #include "../mocks/rdklogMock.h"
-#include "schedulerMock.h"
+#include "SchedulerMock.h"
 #include "profilexconfMock.h"
 
 using namespace std;

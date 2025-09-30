@@ -46,6 +46,9 @@ make -C source/test
 
 tests="
 ./source/test/bulkdata/profile_gtest.bin
+./source/test/bulkdata/datamodel_gtest.bin
+./source/test/bulkdata/profilexconf_gtest.bin
+./source/test/bulkdata/t2markers_gtest.bin
 ./source/test/reportgen/reportgen_gtest.bin
 ./source/test/scheduler/scheduler_gtest.bin
 ./source/test/t2parser/t2parser_gtest.bin

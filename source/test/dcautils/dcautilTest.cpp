@@ -339,7 +339,7 @@ TEST(PROCESSTOPPATTERN, VECTOR_NULL)
     outgrepResultlist = NULL;
 }
 
-//int getDCAResultsInVector(GrepSeekProfile *gSeekProfile, Vector * vecMarkerList, Vector** out_grepResultList, bool check_rotated, char* customLogPath)
+
 TEST(getDCAResultsInVector, markerlist_NULL)
 {
     
@@ -517,106 +517,7 @@ TEST_F(dcaTestFixture, getProcUsage)
     Vector_Destroy(outgrepResultlist, free);
     free(filename);
 }   
-/*
-TEST_F(dcaTestFixture, getProcUsage1)
-{
-    Vector* topMarkerlist = NULL;
-    Vector_Create(&topMarkerlist);
-    GrepMarker* topMarker = (GrepMarker*) malloc(sizeof(GrepMarker));
-    topMarker->markerName = strdup("cpu_telemetry2_0");
-    topMarker->searchString = strdup("telemetry2_0");
-    topMarker->trimParam = false;
-    topMarker->regexParam = NULL;
-    topMarker->logFile = strdup("top_log.txt");
-    topMarker->skipFreq = 0;
-    topMarker->paramType = strdup("grep");
-    topMarker->reportEmptyParam = true;
-    Vector_PushBack(topMarkerlist, (void*) topMarker);
 
-    Vector* outgrepResultlist = NULL;
-    Vector_Create(&outgrepResultlist);
-    char* filename = strdup("/tmp/t2toplog/RDK_Profile");
-    FILE *fp = (FILE*)0xffffffff;
-    #ifdef LIBSYSWRAPPER_BUILD
-    EXPECT_CALL(*g_fileIOMock, v_secure_popen(_,_))
-            .Times(2)
-            .WillOnce(Return(fp))
-            .WillOnce(Return((FILE*)NULL));
-    #else
-    EXPECT_CALL(*g_fileIOMock, popen(_,_))
-            .Times(1)
-            .WillOnce(Return(fp))
-            .WillOnce(Return((FILE*)NULL));
-    #endif
-    EXPECT_CALL(*g_fileIOMock, fscanf(_,_,_))
-           .Times(1)
-            .WillOnce(Return(1));
-    #ifdef LIBSYSWRAPPER_BUILD
-    EXPECT_CALL(*g_fileIOMock, v_secure_pclose(_))
-            .Times(1)
-            .WillOnce(Return(-1));
-    #else
-    EXPECT_CALL(*g_fileIOMock, pclose(_))
-            .Times(1)
-            .WillOnce(Return(-1));
-    #endif
-    EXPECT_EQ(0, getProcUsage(topMarker->searchString, outgrepResultlist, false, NULL, filename));
-    Vector_Destroy(topMarkerlist, freeGMarker);
-    Vector_Destroy(outgrepResultlist, free);
-    free(filename);
-}
-
-TEST_F(dcaTestFixture, getProcUsage2)
-{
-    Vector* topMarkerlist = NULL;
-    Vector_Create(&topMarkerlist);
-    GrepMarker* topMarker = (GrepMarker*) malloc(sizeof(GrepMarker));
-    topMarker->markerName = strdup("cpu_telemetry2_0");
-    topMarker->searchString = strdup("telemetry2_0");
-    topMarker->trimParam = false;
-    topMarker->regexParam = NULL;
-    topMarker->logFile = strdup("top_log.txt");
-    topMarker->skipFreq = 0;
-    topMarker->paramType = strdup("grep");
-    topMarker->reportEmptyParam = true;
-    Vector_PushBack(topMarkerlist, (void*) topMarker);
-
-    Vector* outgrepResultlist = NULL;
-    Vector_Create(&outgrepResultlist);
-    char* filename = strdup("/tmp/t2toplog/RDK_Profile");
-    FILE* fp = (FILE*)0xffffffff;
-
-    #ifdef LIBSYSWRAPPER_BUILD
-    EXPECT_CALL(*g_fileIOMock, v_secure_popen(_,_))
-            .Times(2)
-            .WillOnce(Return(fp))
-            .WillOnce(Return((FILE*)NULL));
-    #else
-    EXPECT_CALL(*g_fileIOMock, popen(_,_))
-            .Times(1)
-            .WillOnce(Return(fp))
-            .WillOnce(Return((FILE*)NULL));
-    #endif
-
-    EXPECT_CALL(*g_fileIOMock, fscanf(_,_,_))
-            .Times(2)
-            .WillOnce(Return(1))
-	    .WillOnce(Return(0));
-	    
-    #ifdef LIBSYSWRAPPER_BUILD
-    EXPECT_CALL(*g_fileIOMock, v_secure_pclose(_))
-            .Times(1)
-	    .WillOnce(Return(-1));
-    #else
-    EXPECT_CALL(*g_fileIOMock, pclose(_))
-            .Times(1)
-	    .WillOnce(Return(-1));
-    #endif
-    EXPECT_EQ(0, getProcUsage("telemetry2_0", outgrepResultlist, true, "[0-9]",filename));
-    Vector_Destroy(outgrepResultlist, free);
-    free(filename);
-}
-*/
 
 TEST_F(dcaTestFixture, getProcPidStat)
 {
@@ -980,7 +881,7 @@ TEST_F(dcaTestFixture, processTopPattern1)
 
     EXPECT_EQ(0, processTopPattern("RDK_Profile", topMarkerlist, outgrepResultlist, 1));
     Vector_Destroy(topMarkerlist, freeGMarker);
-    Vector_Destroy(outgrepResultlist, free);
+    Vector_Destroy(outgrepResultlist, freeGResult);
 }
 
 TEST_F(dcaTestFixture, processTopPattern2)
@@ -1042,12 +943,7 @@ TEST_F(dcaTestFixture, processTopPattern2)
             .WillOnce(Return(fp))
             .WillOnce(Return(fp));
     #endif
-    /*
-    EXPECT_CALL(*g_fileIOMock, fscanf(_,_,_))
-            .Times(2)
-            .WillOnce(Return(1))
-            .WillOnce(Return(1));
-    */
+    
     #ifdef LIBSYSWRAPPER_BUILD
     EXPECT_CALL(*g_fileIOMock, v_secure_pclose(_))
                 .Times(3)
@@ -1087,9 +983,9 @@ TEST_F(dcaTestFixture, processTopPattern2)
                 return buf;
             })
             .WillOnce(Return((char*)NULL));
-    EXPECT_EQ(0, processTopPattern("RDK_Profile", topMarkerlist,outgrepResultlist, 1));
+    EXPECT_EQ(0, processTopPattern("RDK_Profile", topMarkerlist, outgrepResultlist, 1));
     Vector_Destroy(topMarkerlist, freeGMarker);
-    Vector_Destroy(outgrepResultlist, free);
+    Vector_Destroy(outgrepResultlist, freeGResult);
 }
 
 TEST_F(dcaTestFixture, getDCAResultsInVector_1)
@@ -1173,7 +1069,7 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_1)
     gsProfile->logFileSeekMap = NULL;
     free(gsProfile);
     Vector_Destroy(vecMarkerList, freeGMarker);
-    Vector_Destroy(out_grepResultList, free);
+    Vector_Destroy(out_grepResultList, freeGResult);
 }
 
 
@@ -1259,7 +1155,7 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_2)
     gsProfile->logFileSeekMap = NULL;
     free(gsProfile);
     Vector_Destroy(vecMarkerList, freeGMarker);
-    Vector_Destroy(out_grepResultList, free);
+    Vector_Destroy(out_grepResultList, freeGResult);
 }
 
 TEST_F(dcaTestFixture, getDCAResultsInVector_3)
@@ -1367,7 +1263,7 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_3)
     gsProfile->logFileSeekMap = NULL;
     free(gsProfile);
     Vector_Destroy(vecMarkerList, freeGMarker);
-    Vector_Destroy(out_grepResultList, free);
+    Vector_Destroy(out_grepResultList, freeGResult);
 }
 
 
@@ -1473,6 +1369,6 @@ TEST_F(dcaTestFixture, getGrepResults_success)
     gsProfile->logFileSeekMap = NULL;
     free(gsProfile);
     Vector_Destroy(vecMarkerList, freeGMarker);
-    Vector_Destroy(out_grepResultList, free);
+    Vector_Destroy(out_grepResultList, freeGResult);
 }
 

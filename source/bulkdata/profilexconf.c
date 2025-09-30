@@ -53,6 +53,11 @@ static pid_t xconfReportPid;
 static bool isAbortTriggered = false ;
 static bool isOnDemandReport = false ;
 
+#ifdef GTEST_ENABLE
+#define sendReportOverHTTP __wrap_sendReportOverHTTP
+#define sendCachedReportsOverHTTP __wrap_sendCachedReportsOverHTTP
+#endif
+
 static char *getTimeStamp (void)
 {
     char *timeStamp;
@@ -242,14 +247,17 @@ static void* CollectAndReportXconf(void* data)
         clock_gettime(CLOCK_REALTIME, &startTime);
         if(profile->encodingType != NULL && !strcmp(profile->encodingType, "JSON"))
         {
+	    T2Info("inside if\n");
             if(T2ERROR_SUCCESS != initJSONReportXconf(&profile->jsonReportObj, &valArray))
             {
+		T2Info("inside init\n");
                 T2Error("Failed to initialize JSON Report\n");
                 profile->reportInProgress = false;
                 //pthread_mutex_unlock(&plMutex);
                 //return NULL;
                 goto reportXconfThreadEnd;
             }
+	    T2Info("after init\n");
 
 #ifdef PERSIST_LOG_MON_REF
             if(profile->checkPreviousSeek)
@@ -426,6 +434,7 @@ static void* CollectAndReportXconf(void* data)
                     ret = sendCachedReportsOverHTTP(profile->t2HTTPDest->URL, profile->cachedReportList);
                     if(ret == T2ERROR_SUCCESS)
                     {
+			T2Info("inside if\n");
                         // Do not get misleaded by function name. Call is to delete the directory for storing cached reports
                         removeProfileFromDisk(CACHED_MESSAGE_PATH, profile->name);
                     }
@@ -440,7 +449,7 @@ static void* CollectAndReportXconf(void* data)
         {
             T2Error("Unsupported encoding format : %s\n", profile->encodingType);
         }
-
+        T2Info("after encoding\n");
 # ifdef PERSIST_LOG_MON_REF
         if(T2ERROR_SUCCESS == saveSeekConfigtoFile(profile->name, profile->grepSeekProfile))
         {
@@ -451,7 +460,7 @@ static void* CollectAndReportXconf(void* data)
             T2Warning("Failed to save grep config to file for profile: %s\n", profile->name);
         }
 #endif
-
+        T2Info("clock gettime\n");
         clock_gettime(CLOCK_REALTIME, &endTime);
         getLapsedTime(&elapsedTime, &endTime, &startTime);
         T2Info("Elapsed Time for : %s = %lu.%lu (Sec.NanoSec)\n", profile->name, (unsigned long)elapsedTime.tv_sec, elapsedTime.tv_nsec);
@@ -657,7 +666,9 @@ void ProfileXConf_updateMarkerComponentMap()
     {
         for(; emIndex < Vector_Size(singleProfile->eMarkerList); emIndex++)
         {
+	    T2Info("inside for loop\n");
             eMarker = (EventMarker *)Vector_At(singleProfile->eMarkerList, emIndex);
+	    T2Info("marker = %s\n", eMarker->markerName);
             addT2EventMarker(eMarker->markerName, eMarker->compName, singleProfile->name, eMarker->skipFreq);
         }
     }
@@ -937,7 +948,9 @@ T2ERROR ProfileXConf_storeMarkerEvent(T2Event *eventInfo)
     EventMarker *lookupEvent = NULL;
     for(; eventIndex < Vector_Size(singleProfile->eMarkerList); eventIndex++)
     {
+	T2Info("inside for loop\n");
         EventMarker *tempEventMarker = (EventMarker *)Vector_At(singleProfile->eMarkerList, eventIndex);
+	T2Info("markername = %s\n", tempEventMarker->markerName);
         if(!strcmp(tempEventMarker->markerName, eventInfo->name))
         {
             lookupEvent = tempEventMarker;

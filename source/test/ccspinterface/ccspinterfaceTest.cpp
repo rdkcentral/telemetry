@@ -13,8 +13,6 @@
 #include "test/mocks/rdklogMock.h"
 #include "test/mocks/rbusMock.h"
 #include "test/mocks/rdkconfigMock.h"
-//#include "test/mocks/VectorMock.h"
-//#include "CcspInterfaceMock.h"
 
 using namespace std;
 
@@ -28,18 +26,13 @@ using ::testing::DoAll;
 extern "C" {
 #include "ccspinterface/busInterface.h"
 #include "ccspinterface/rbusInterface.h"
+#include "reportgen.h"
 #include "t2common.h"
 #include "t2log_wrapper.h"
 #include "ccspinterface.h"
 #include "vector.h"
 #include "telemetry2_0.h"
-#if 0
-// Mock T2Log to avoid logging-related hangs in tests
-void T2Log(unsigned int level, const char *msg, ...) {
-    // Do nothing in tests to avoid hang issues
 
-}
-#endif
 // Mock datamodel_init to avoid starting real threads
 T2ERROR datamodel_init(void) {
     return T2ERROR_SUCCESS;
@@ -57,7 +50,6 @@ SystemMock * g_systemMock = NULL;
 rdklogMock *m_rdklogMock = NULL;
 rbusMock *g_rbusMock = NULL;
 rdkconfigMock *g_rdkconfigMock = nullptr;
-//extern CcspInterfaceMock *g_ccspInterfaceMock;
 
 typedef struct
 {
@@ -74,8 +66,6 @@ protected:
         g_rbusMock = new rbusMock();
         g_rdkconfigMock = new rdkconfigMock();
         m_rdklogMock = new rdklogMock();
-	//g_vectorMock = new VectorMock();
-       // g_ccspInterfaceMock = new CcspInterfaceMock();
         
         // Set up default mock expectations for proper test isolation
         EXPECT_CALL(*g_rbusMock, rbus_close(_))
@@ -91,48 +81,50 @@ protected:
         delete g_rbusMock;
         delete g_rdkconfigMock;
 	delete m_rdklogMock;
-       // delete g_vectorMock;
-       // delete g_ccspInterfaceMock;
 
         g_fileIOMock = nullptr;
         g_systemMock = nullptr;
         g_rbusMock = nullptr;
         g_rdkconfigMock = nullptr;
 	m_rdklogMock = nullptr;
-        //g_vectorMock = nullptr;
-       // g_ccspInterfaceMock = nullptr;
     }
 };
 
 //Dummy Callback functions for set and get handlers
+//Dummy callback function for cjson profile processing
 T2ERROR datamodel_processProfile(char *JsonBlob, bool rprofiletypes)
 {
     return T2ERROR_SUCCESS;
 }
 
+//Dummy callback function for msgpack profile processing
 T2ERROR datamodel_MsgpackProcessProfile(char *str, int strSize)
 {
     return T2ERROR_SUCCESS;
 }
 
+//Dummy callback fn to get the cjson profile as string
 void datamodel_getSavedJsonProfilesasString(char** SavedProfiles)
 {
     *SavedProfiles = strdup("Dummy Json Profiles");
     return;
 }
 
+//Dummy callback fn to get the msgpack profile as string
 int datamodel_getSavedMsgpackProfilesasString(char** SavedProfiles)
 {
     *SavedProfiles = strdup("Dummy Msgpack Profiles");
     return 0;
 }
 
+//Dummy memory usage fn
 void profilemem_usage(unsigned int *value)
 {
     *value = 1024;
     return;
 }
 
+//Dummy report on Demand dn
 void* reportOnDemand(void *input)
 {
     return NULL;
@@ -155,6 +147,7 @@ void DummyT2EventMarkerListCallback(const char* componentName, void **eventMarke
 // Dummy callback for event listener tests
 void DummyTelemetryEventCallback(char* eventInfo, char* user_data) {}
 
+//Dummy callback for triggercondition
 T2ERROR triggerReportOnConditionCallBack(const char *referenceName, const char *referenceValue){
     printf("triggerReportOnConditionCallBack invoked with referenceName: %s, referenceValue: %s\n", referenceName, referenceValue);
     return T2ERROR_SUCCESS;
@@ -177,6 +170,7 @@ TEST_F(CcspInterfaceTest, isRbusEnabled_ReturnsFalse) {
     EXPECT_FALSE(isRbusEnabled());
 }
 
+//Test whether the getParameterValue fetches the string value properly for datamodel parameter in rbus mode
 TEST_F(CcspInterfaceTest, getParameterValue_RbusMode_Success) {
     char *paramValue = nullptr;
     
@@ -217,6 +211,7 @@ TEST_F(CcspInterfaceTest, getParameterValue_RbusMode_Success) {
     }
 }
 
+//Test whether the getParameterValue fetches the bool value properly for datamodel parameter in rbus mode
 TEST_F(CcspInterfaceTest, getParameterValue_RbusMode_boolvalue_Success) {
     char *paramValue = nullptr;
 
@@ -254,6 +249,7 @@ TEST_F(CcspInterfaceTest, getParameterValue_RbusMode_boolvalue_Success) {
     }
 }
 
+//Test whether the getParameterValue handles rbus get failure properly
 TEST_F(CcspInterfaceTest, getParameterValue_RbusMode_Failure) {
     char *paramValue = nullptr;
     
@@ -281,6 +277,7 @@ TEST_F(CcspInterfaceTest, getParameterValue_RbusMode_Failure) {
     EXPECT_EQ(result, T2ERROR_FAILURE);
 }
 
+//Test the getRbusProfileParamValues function to return a valid vector of param values
 TEST_F(CcspInterfaceTest, GetRbusProfileParamValues_ReturnsVector) {
     Vector* paramlist = NULL;
     Vector_Create(&paramlist);
@@ -288,6 +285,7 @@ TEST_F(CcspInterfaceTest, GetRbusProfileParamValues_ReturnsVector) {
     p->name = strdup("Device.Dummy.Param");
     p->alias = strdup("Device.Dummy.Alias");
     p->paramType = strdup("dataModel");
+    p->regexParam = NULL;
     p->reportEmptyParam = true;
     p->skipFreq = 2;
     Param* p1 = (Param*) malloc(sizeof(Param));
@@ -295,6 +293,7 @@ TEST_F(CcspInterfaceTest, GetRbusProfileParamValues_ReturnsVector) {
     p1->alias = strdup("Device.Dummy.Alias");
     p1->paramType = strdup("dataModel");
     p1->reportEmptyParam = true;
+    p1->regexParam = NULL;
     p1->skipFreq = 0;
     Vector_PushBack(paramlist, p);
     Vector_PushBack(paramlist, p1);
@@ -314,10 +313,11 @@ TEST_F(CcspInterfaceTest, GetRbusProfileParamValues_ReturnsVector) {
     Vector* profileValueList = getRbusProfileParamValues(paramlist, 2);
 
     EXPECT_NE(profileValueList, nullptr);
-    Vector_Destroy(paramlist, free);
-    Vector_Destroy(profileValueList, free);
+    Vector_Destroy(paramlist, freeParam);
+    Vector_Destroy(profileValueList, freeProfileValues);
 }
 
+//Test the getProfileParameterValues function to return a valid vector of param values
 TEST_F(CcspInterfaceTest, getProfileParameterValues_ReturnsVector_1) {
     Vector* paramlist = NULL;
     Vector_Create(&paramlist);
@@ -326,12 +326,14 @@ TEST_F(CcspInterfaceTest, getProfileParameterValues_ReturnsVector_1) {
     p->alias = strdup("Device.Dummy.Alias");
     p->paramType = strdup("dataModel");
     p->reportEmptyParam = true;
+    p->regexParam = NULL;
     p->skipFreq = 0;
     Param* p1 = (Param*) malloc(sizeof(Param));
     p1->name = strdup("Device.Dummy.Param");
     p1->alias = strdup("Device.Dummy.Alias");
     p1->paramType = strdup("dataModel");
     p1->reportEmptyParam = true;
+    p1->regexParam = NULL;
     p1->skipFreq = 0;
     Vector_PushBack(paramlist, p);
     Vector_PushBack(paramlist, p1);
@@ -354,10 +356,11 @@ TEST_F(CcspInterfaceTest, getProfileParameterValues_ReturnsVector_1) {
     Vector* profileValueList = getProfileParameterValues(paramlist, 2);
 
     EXPECT_NE(profileValueList, nullptr);
-    Vector_Destroy(paramlist, free);
-    Vector_Destroy(profileValueList, free);
+    Vector_Destroy(paramlist, freeParam);
+    Vector_Destroy(profileValueList, freeProfileValues);
 }
 
+//Test the registerRbusT2EventListener function to register the rbus event listener
 TEST_F(CcspInterfaceTest, RegisterRbusT2EventListener_Succeeds)
 {
     TelemetryEventCallback mockCallback = [](char* name, char* value) {
@@ -390,6 +393,7 @@ TEST_F(CcspInterfaceTest, RegisterRbusT2EventListener_Succeeds)
     EXPECT_TRUE(result == T2ERROR_SUCCESS || result == T2ERROR_FAILURE);
 }
 
+//Test the registerRbusT2EventListener function to register the rbus event listener when already registered
 TEST_F(CcspInterfaceTest, RegisterRbusT2EventListener_Success_2)
 {
     TelemetryEventCallback mockCallback = [](char* name, char* value) {
@@ -425,6 +429,7 @@ TEST_F(CcspInterfaceTest, RegisterRbusT2EventListener_Success_2)
     EXPECT_TRUE(result == T2ERROR_SUCCESS || result == T2ERROR_FAILURE);
 }
 
+//Test the registration of profile datamodel parameters in rbus mode
 TEST_F(CcspInterfaceTest, regDEforProfileDataModelTest)
 {
     callBackHandlers *interfaceListForBus = NULL;
@@ -455,6 +460,7 @@ TEST_F(CcspInterfaceTest, regDEforProfileDataModelTest)
     free(interfaceListForBus);
 }
 
+//Test the t2PropertyDataSetHandler function to handle set requests for event markers
 TEST_F(CcspInterfaceTest, t2PropertyDataSetHandler_Success) {
     rbusHandle_t handle;
     rbusSetHandlerOptions_t* options = NULL;
@@ -504,7 +510,7 @@ TEST_F(CcspInterfaceTest, t2PropertyDataSetHandler_Success) {
         .Times(::testing::AtMost(1));
 }
 
-
+//Test the t2PropertyDataGetHandler function to handle get requests for Reportpeofiles set
 TEST_F(CcspInterfaceTest, t2PropertyDataGetHandler_Success_7)
 {
     rbusHandle_t handle;
@@ -534,6 +540,7 @@ TEST_F(CcspInterfaceTest, t2PropertyDataGetHandler_Success_7)
         .Times(::testing::AtMost(1));
 }
 
+//Test the t2PropertyDataGetHandler function to handle get requests for ReportProfiles msgpack set
 TEST_F(CcspInterfaceTest, t2PropertyDataGetHandler_Success_8)
 {
     rbusHandle_t handle;
@@ -563,6 +570,7 @@ TEST_F(CcspInterfaceTest, t2PropertyDataGetHandler_Success_8)
         .Times(::testing::AtMost(1));
 }
 
+//Test the t2PropertyDataSetHandler function to handle set requests for ReportProfiles set
 TEST_F(CcspInterfaceTest, t2PropertyDataSetHandler_Success_0){
     rbusHandle_t handle;
     rbusSetHandlerOptions_t* options = NULL;
@@ -573,6 +581,7 @@ TEST_F(CcspInterfaceTest, t2PropertyDataSetHandler_Success_0){
         .Times(::testing::AtMost(1));  
     EXPECT_CALL(*g_rbusMock, rbusValue_SetString(value, "test_value"))
         .Times(::testing::AtMost(1));
+
     EXPECT_CALL(*g_rbusMock, rbusProperty_Init(&prop1, "Device.X_RDKCENTRAL-COM_T2.ReportProfiles", value))
         .Times(::testing::AtMost(1));
     EXPECT_CALL(*g_rbusMock, rbusValue_Release(_))  
@@ -599,6 +608,7 @@ TEST_F(CcspInterfaceTest, t2PropertyDataSetHandler_Success_0){
         .Times(::testing::AtMost(1));
 }
 
+//Test the t2PropertyDataSetHandler function to handle set requests for privacy mode set FOR SHARE mode
 TEST_F(CcspInterfaceTest, t2PropertyDataSetHandler_Success_1)
 {
     rbusHandle_t handle;
@@ -636,7 +646,7 @@ TEST_F(CcspInterfaceTest, t2PropertyDataSetHandler_Success_1)
         .Times(::testing::AtMost(1));
 }
 
-
+//Test the t2PropertyDataSetHandler function to handle set requests for privacy mode set for DO_NOT_SHARE
 TEST_F(CcspInterfaceTest, t2PropertyDataSetHandler_Success_2)
 {
     rbusHandle_t handle;
@@ -674,6 +684,7 @@ TEST_F(CcspInterfaceTest, t2PropertyDataSetHandler_Success_2)
         .Times(::testing::AtMost(1));
 }
 
+//Test the t2PropertyDataSetHandler function to handle set requests for Temp ReportProfiles set
 TEST_F(CcspInterfaceTest, t2PropertyDataSetHandler_Success_3){
     rbusHandle_t handle;
     rbusSetHandlerOptions_t* options = NULL;
@@ -709,6 +720,7 @@ TEST_F(CcspInterfaceTest, t2PropertyDataSetHandler_Success_3){
     EXPECT_CALL(*g_rbusMock, rbusProperty_Release(_))
         .Times(::testing::AtMost(1));
 }
+
 
 TEST_F(CcspInterfaceTest, t2PropertyDataSetHandler_Success_4){
     rbusHandle_t handle;
@@ -746,6 +758,7 @@ TEST_F(CcspInterfaceTest, t2PropertyDataSetHandler_Success_4){
         .Times(::testing::AtMost(1));
 }
 
+//Test the t2PropertyDataSetHandler function to handle set requests for ReportProfiles set
 TEST_F(CcspInterfaceTest, t2PropertyDataSetHandler_Success_5){
     rbusHandle_t handle;
     rbusSetHandlerOptions_t* options = NULL;
@@ -782,6 +795,7 @@ TEST_F(CcspInterfaceTest, t2PropertyDataSetHandler_Success_5){
         .Times(::testing::AtMost(1));
 }
 
+//Test the t2PropertyDataSetHandler function to handle set requests for invalid datamodel parameter
 TEST_F(CcspInterfaceTest, t2PropertyDataSetHandler_Failure_1){
     rbusHandle_t handle;
     rbusSetHandlerOptions_t* options = NULL;
@@ -803,6 +817,7 @@ TEST_F(CcspInterfaceTest, t2PropertyDataSetHandler_Failure_1){
     EXPECT_EQ(t2PropertyDataSetHandler(handle, prop1, options), RBUS_ERROR_ELEMENT_DOES_NOT_EXIST);
 }
 
+//Test the t2PropertyDataSetHandler function to handle set requests for invalid datamodel parameter
 TEST_F(CcspInterfaceTest, t2PropertyDataSetHandler_Failure_2){
     rbusHandle_t handle;
     rbusSetHandlerOptions_t* options = NULL;
@@ -825,6 +840,7 @@ TEST_F(CcspInterfaceTest, t2PropertyDataSetHandler_Failure_2){
 
 //t2PropertyDataGetHandler cases
 
+//Test the t2PropertyDataGetHandler function to handle get requests for operational status
 TEST_F(CcspInterfaceTest, t2PropertyDataGetHandler_Success_1)
 {
     rbusHandle_t handle;
@@ -858,6 +874,7 @@ TEST_F(CcspInterfaceTest, t2PropertyDataGetHandler_Success_1)
         .Times(::testing::AtMost(1));
 }
 
+//Test the t2PropertyDataGetHandler function to handle get requests for privacy mode
 TEST_F(CcspInterfaceTest, t2PropertyDataGetHandler_Success_2)
 {
     rbusHandle_t handle;
@@ -891,6 +908,7 @@ TEST_F(CcspInterfaceTest, t2PropertyDataGetHandler_Success_2)
         .Times(::testing::AtMost(1));
 }
 
+//Test the t2PropertyDataGetHandler function to handle get requests for TotalUsedMem
 TEST_F(CcspInterfaceTest, t2PropertyDataGetHandler_Success_3)
 {
     rbusHandle_t handle;
@@ -925,6 +943,7 @@ TEST_F(CcspInterfaceTest, t2PropertyDataGetHandler_Success_3)
         .Times(::testing::AtMost(1));
 }
 
+//Test the t2PropertyDataGetHandler function to handle get requests for ReportProfiles set
 TEST_F(CcspInterfaceTest, t2PropertyDataGetHandler_Success_4)
 {
     rbusHandle_t handle;
@@ -954,6 +973,7 @@ TEST_F(CcspInterfaceTest, t2PropertyDataGetHandler_Success_4)
         .Times(::testing::AtMost(1));
 }
 
+//Test the t2PropertyDataGetHandler function to handle get requests for Temp ReportProfiles set
 TEST_F(CcspInterfaceTest, t2PropertyDataGetHandler_Success_5)
 {
     rbusHandle_t handle;
@@ -983,6 +1003,7 @@ TEST_F(CcspInterfaceTest, t2PropertyDataGetHandler_Success_5)
         .Times(::testing::AtMost(1));
 }
 
+//Test the t2PropertyDataGetHandler function to handle get requests for ReportProfiles msgpack set
 TEST_F(CcspInterfaceTest, t2PropertyDataGetHandler_Success_6)
 {
     rbusHandle_t handle;
@@ -1012,6 +1033,7 @@ TEST_F(CcspInterfaceTest, t2PropertyDataGetHandler_Success_6)
         .Times(::testing::AtMost(1));
 }
 
+//Test the t2PropertyDataGetHandler function to handle get requests for invalid datamodel parameter
 TEST_F(CcspInterfaceTest, t2PropertyDataGetHandler_Failure_1)
 {
     rbusHandle_t handle;
@@ -1028,14 +1050,14 @@ TEST_F(CcspInterfaceTest, t2PropertyDataGetHandler_Failure_1)
     EXPECT_EQ(t2PropertyDataGetHandler(handle, prop1, options), RBUS_ERROR_DESTINATION_RESPONSE_FAILURE);
 }
 
-//getRbusDCMEventStatus
+//Test to get the getRbusDCMEventStatus
 TEST_F(CcspInterfaceTest, getRbusDCMEventStatus_Success) {
     
     EXPECT_EQ(false, getRbusDCMEventStatus());
    
 }
 
-//registerRbusDCMEventListener
+//Test whether the registerRbusDCMEventListener succeeds
 TEST_F(CcspInterfaceTest, registerRbusDCMEventListener_Success) {
     
     // Mock RBUS initialization and registration
@@ -1062,7 +1084,7 @@ TEST_F(CcspInterfaceTest, registerRbusDCMEventListener_Success) {
     EXPECT_EQ(result, T2ERROR_SUCCESS);
 }
 
-//publishEventsDCMSetConf
+//Test the publishEventsDCMSetConf to set the config file path and publish the event
 TEST_F(CcspInterfaceTest, publishEventsDCMSetConf_Success) {
     // Mock RBUS initialization
     EXPECT_CALL(*g_rbusMock, rbus_registerLogHandler(_))
@@ -1094,7 +1116,7 @@ TEST_F(CcspInterfaceTest, publishEventsDCMSetConf_Success) {
     EXPECT_EQ(result, T2ERROR_SUCCESS);
 }
 
-//publishEventsDCMProcConf
+//Test the publishEventsDCMProcConf to notify DCM to process the config file
 TEST_F(CcspInterfaceTest, publishEventsDCMProcConf_Success) {
     // Mock RBUS initialization
     EXPECT_CALL(*g_rbusMock, rbus_registerLogHandler(_))
@@ -1126,7 +1148,7 @@ TEST_F(CcspInterfaceTest, publishEventsDCMProcConf_Success) {
     EXPECT_EQ(result, T2ERROR_SUCCESS);
 }
 
-//registerRbusT2EventListener
+//Test the registeration of RbusT2EventListener succeeds
 
 TEST_F(CcspInterfaceTest, RegisterRbusT2EventListener_Success) {
     TelemetryEventCallback mockCallback = [](char* name, char* value) {
@@ -1154,13 +1176,13 @@ TEST_F(CcspInterfaceTest, RegisterRbusT2EventListener_Success) {
     EXPECT_EQ(err, T2ERROR_SUCCESS);
 }
 
-//setT2EventReceiveState
+//Check the status of setT2EventReceiveState
 TEST(CcspInterfacetest, setT2EventReceiveState_Success) {
     setT2EventReceiveState(true);
     setT2EventReceiveState(false);
 }
 
-//unregisterRbusT2EventListener
+//Test the unregister function RbusT2EventListener succeeds when the registration was done
 TEST_F(CcspInterfaceTest, UnregisterRbusT2EventListener_Succeeds) {
    
     EXPECT_CALL(*g_rbusMock, rbusEvent_Unsubscribe(_,_))
@@ -1171,7 +1193,7 @@ TEST_F(CcspInterfaceTest, UnregisterRbusT2EventListener_Succeeds) {
     EXPECT_EQ(err, T2ERROR_SUCCESS);
 }
 
-//regDEforCompEventList
+//Test the registration of DE for component event list
 TEST_F(CcspInterfaceTest, regDEforCompEventList_Success) {
     EXPECT_CALL(*g_rbusMock, rbus_registerLogHandler(_))
         .Times(::testing::AtMost(1))
@@ -1189,6 +1211,7 @@ TEST_F(CcspInterfaceTest, regDEforCompEventList_Success) {
     EXPECT_EQ(result, T2ERROR_SUCCESS);
 }
 
+//Test the t2PropertyDataGetHandler function to handle get requests for EventMarkerList
 TEST_F(CcspInterfaceTest, t2PropertyDataGetHandler_Success_9){
     rbusHandle_t handle;
     rbusGetHandlerOptions_t* options = NULL;
@@ -1248,7 +1271,7 @@ TEST_F(CcspInterfaceTest, freeComponentEventList_Success) {
     freeComponentEventList(elem);
 }
 
-//unregisterDEforCompEventList
+//Test to unregister DE for component event list
 TEST_F(CcspInterfaceTest, unregisterDEforCompEventList_Success) {
     
     EXPECT_CALL(*g_rbusMock, rbus_registerLogHandler(_))
@@ -1265,7 +1288,7 @@ TEST_F(CcspInterfaceTest, unregisterDEforCompEventList_Success) {
     unregisterDEforCompEventList();
 }
 
-//publishEventsProfileUpdates
+//Test the publishEventsProfileUpdates function to publish profile update events
 
 TEST_F(CcspInterfaceTest, publishEventsProfileUpdates)
 {
@@ -1307,7 +1330,7 @@ TEST_F(CcspInterfaceTest, registerConditionalReportCallBack_Success) {
     registerConditionalReportCallBack(triggerReportOnConditionCallBack);
 }
 
-//reportEventHandler
+//Tets the reportEventHandler function to handle the event received from rbus
 
 TEST_F(CcspInterfaceTest, reportEventHandler_Success) {
     rbusHandle_t handle;
@@ -1334,7 +1357,7 @@ TEST_F(CcspInterfaceTest, reportEventHandler_Success) {
     reportEventHandler(handle, &event, subscription);
 }
 
-//triggerCondtionReceiveHandler
+//Test the triggerCondtionReceiveHandler function to handle the trigger condition event received from rbus
 TEST_F(CcspInterfaceTest, triggerCondtionReceiveHandler_Success) {
     rbusHandle_t handle;
     rbusEventSubscription_t* subscription = NULL;
@@ -1435,7 +1458,7 @@ TEST_F(CcspInterfaceTest, triggerCondtionReceiveHandler_Failure_1)
     triggerCondtionReceiveHandler(handle, &event, subscription);
 }
 
-//rbusT2ConsumerReg
+//Test the rbusT2ConsumerReg function to register the consumer for trigger conditions
 TEST_F(CcspInterfaceTest, rbusT2ConsumerReg_Success) {
 
     //populate triggerCondition
@@ -1525,6 +1548,7 @@ TEST_F(CcspInterfaceTest, rbusT2ConsumerReg_Success_2) {
     EXPECT_EQ(result, T2ERROR_SUCCESS);
 }
 
+//Test the rbusT2ConsumerReg function failure scenarios
 TEST_F(CcspInterfaceTest, rbusT2ConsumerReg_Failure_1) {
 
     //populate triggerCondition
@@ -1597,7 +1621,7 @@ TEST_F(CcspInterfaceTest, rbusT2ConsumerReg_Failure_2) {
     EXPECT_EQ(result, T2ERROR_FAILURE);
 }
 
-//rbusT2ConsumerUnReg
+//Test the rbusT2ConsumerUnReg function to unregister the consumer for trigger conditions
 TEST_F(CcspInterfaceTest, rbusT2ConsumerUnReg_Success_1) {
     
     //populate triggerCondition
@@ -1734,7 +1758,7 @@ TEST_F(CcspInterfaceTest, rbusT2ConsumerUnReg_Failure_2)
     EXPECT_EQ(err, T2ERROR_SUCCESS);
 }
 
-//T2RbusReportEventConsumer
+//Test the T2RbusReportEventConsumer function to register/unregister the consumer for event reporting
 
 TEST_F(CcspInterfaceTest, T2RbusReportEventConsumer_Success_1) {
     
@@ -1745,16 +1769,7 @@ TEST_F(CcspInterfaceTest, T2RbusReportEventConsumer_Success_1) {
     T2RbusReportEventConsumer("Device.DeviceInfo.Uptime", false);
         
 }
-/*
-TEST_F(CcspInterfaceTest, T2RbusReportEventConsumer_Failure_1) {
-    
-    EXPECT_CALL(*g_rbusMock, rbusEvent_Unsubscribe(_,_))
-        .Times(::testing::AtMost(1))
-        .WillRepeatedly(Return(RBUS_ERROR_DESTINATION_RESPONSE_FAILURE));
 
-    EXPECT_NE(T2RbusReportEventConsumer("Device.DeviceInfo.Uptime", false), RBUS_ERROR_SUCCESS);
-    
-}*/
 
 TEST_F(CcspInterfaceTest, T2RbusReportEventConsumer_Success_2) {
     
@@ -1789,7 +1804,7 @@ TEST_F(CcspInterfaceTest, T2RbusReportEventConsumer_Failure_2) {
     T2ERROR result = T2RbusReportEventConsumer("Device.WiFi.Radio.1.Stats.X_COMCAST-COM_NoiseFloor", true);
     EXPECT_EQ(result, T2ERROR_FAILURE);   
 }
-//t2TriggerConditionGetHandler
+
 TEST_F(CcspInterfaceTest, t2TriggerConditionGetHandler_Success) {
     rbusHandle_t handle;
     rbusProperty_t prop1;
@@ -1988,38 +2003,6 @@ TEST_F(CcspInterfaceTest, FullWorkflow_RbusMode) {
     EXPECT_EQ(busUninit(), T2ERROR_SUCCESS);
 }
 
-/*
-TEST_F(CcspInterfaceTest, FullWorkflow_CcspMode) {
-    // Test a complete workflow in CCSP mode
-    
-    // 1. Check RBUS is disabled (so CCSP mode is used) - called by busInit()
-    EXPECT_CALL(*g_rbusMock, rbus_checkStatus())
-        .Times(::testing::AtMost(2))  // Called once by isRbusEnabled() and once by busInit()
-        .WillRepeatedly(Return(RBUS_DISABLED));
-        
-    EXPECT_FALSE(isRbusEnabled());
-    
-    // 2. Get a parameter value using CCSP
-    char *paramValue = nullptr;
-    EXPECT_CALL(*g_ccspInterfaceMock, getCCSPParamVal(_, _))
-        .Times(::testing::AtMost(1))
-        .WillOnce(DoAll(
-            SetArgPointee<1>(strdup("ccsp_workflow_value")),
-            Return(T2ERROR_SUCCESS)
-        ));
-    
-    T2ERROR result = getParameterValue("Device.Test.Parameter", &paramValue);
-    EXPECT_EQ(result, T2ERROR_SUCCESS);
-    EXPECT_STREQ(paramValue, "ccsp_workflow_value");
-    
-    if (paramValue) {
-        free(paramValue);
-    }
-    
-    // 3. Clean up
-    EXPECT_EQ(busUninit(), T2ERROR_SUCCESS);
-}
-*/
 
 TEST_F(CcspInterfaceTest, isRbusInitialized) {
     bool ret = isRbusInitialized();

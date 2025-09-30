@@ -47,8 +47,8 @@ typedef struct
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "test/rbus/include/rbus.h"
-#include "test/rbus/include/rbus_value.h"
+#include <rbus/rbus.h>
+#include <rbus/rbus_value.h>
 using namespace std;
 
 #include <iostream>
@@ -65,7 +65,7 @@ using namespace std;
 #include "protocolMock.h"
 #include "test/mocks/rdkconfigMock.h"
 
-
+extern FileMock *g_fileIOMock;
 using ::testing::_;
 using ::testing::Return;
 using ::testing::StrEq;
@@ -480,117 +480,3 @@ TEST_F(protocolTestFixture, sendReportOverHTTP_6)
       EXPECT_EQ(T2ERROR_SUCCESS, sendReportOverHTTP(httpURL, payload,NULL));
       Vector_Destroy(reportlist, free);
 }
-/*
-TEST_F(protocolTestFixture, sendReportOverHTTP_7)
-{
- char* httpURL = "https://mockxconf:50051/dataLakeMock";
-      char* payload = strdup("This is a payload string");
-      Vector* reportlist = NULL;
-      Vector_Create(&reportlist);
-      Vector_PushBack(reportlist, payload);
-      char *cm = (char*)0xFFFFFFFF;
-      EXPECT_CALL(*g_fileIOMock, pipe(_))
-              .Times(1)
-              .WillOnce(Return(0));
-      #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
-      #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
-      EXPECT_CALL(*m_xconfclientMock, getParameterValue(_,_))
-        .WillOnce([](const char* paramName, char** paramValue) {
-            if (strcmp(paramName, "Device.X_RDK_WanManager.CurrentActiveInterface") == 0)
-                *paramValue = strdup("erouter0");
-            else
-                *paramValue = strdup("unknown");
-            return T2ERROR_SUCCESS;
-     });
-      #endif
-      #endif
-      EXPECT_CALL(*m_xconfclientMock, isMtlsEnabled())
-              .Times(1)
-              .WillOnce(Return(true));
-
-      EXPECT_CALL(*g_systemMock, access(_,_))
-             .Times(1)
-             .WillOnce(Return(0));
-      #ifdef LIBRDKCONFIG_BUILD
-      EXPECT_CALL(*g_rdkconfigMock, rdkconfig_get(_,_,_))
-             .Times(1)
-             .WillOnce(Return(RDKCONFIG_OK));
-      #endif
-      EXPECT_CALL(*g_fileIOMock, fork())
-              .Times(1)
-              .WillOnce(Return(0));
-//child process
-     EXPECT_CALL(*g_fileIOMock, curl_easy_init())
-              .Times(1)
-              .WillOnce(Return((CURL*)0xFFFFFFFF));
-      EXPECT_CALL(*g_fileIOMock, curl_easy_setopt_mock(_,_,_))
-              .Times(15)
-              .WillRepeatedly(Return(CURLE_OK));
-
-      EXPECT_CALL(*g_fileIOMock, curl_slist_append(_, _))
-              .Times(2)
-              .WillOnce(Return((struct curl_slist*)0xFFFFFFFF))
-              .WillOnce(Return((struct curl_slist*)0xFFFFFFFF));
-     EXPECT_CALL(*g_fileIOMock, fopen(_,_))
-                  .Times(1)
-                  .WillOnce(Return((FILE*)0xFFFFFFFF));
-        EXPECT_CALL(*g_fileIOMock, curl_easy_perform(_))
-                  .Times(1)
-                  .WillOnce(Return(CURLE_OK));
-        EXPECT_CALL(*g_fileIOMock, curl_easy_getinfo_mock(_,_,_))
-                  .Times(1)
-                  .WillOnce([](CURL *curl, CURLINFO info, void* arg) {
-                      if(info == CURLINFO_RESPONSE_CODE) {
-                          *(long*)arg = 200; // Set to test value
-                      }
-                      return CURLE_OK;
-                  });
-      EXPECT_CALL(*g_fileIOMock, fclose(_))
-              .Times(4)
-              .WillRepeatedly(Return(0));
-      EXPECT_CALL(*g_fileIOMock, curl_easy_cleanup(_))
-                  .Times(1);
-      EXPECT_CALL(*g_fileIOMock,curl_slist_free_all(_))
-              .Times(1);
-      EXPECT_CALL(*g_fileIOMock, close(_))
-              .Times(4)
-              .WillOnce(Return(0))
-              .WillOnce(Return(0))
-              .WillOnce(Return(0))
-              .WillOnce(Return(0));
-
-     EXPECT_CALL(*g_fileIOMock, write(_,_,_))
-              .Times(1)
-              .WillOnce(Return(sizeof(childResponse)));
-
-     EXPECT_CALL(*g_fileIOMock, fprintf(_,_,_))
-              .Times(1)
-              .WillOnce(Return(0));
-
-     #ifdef LIBRDKCONFIG_BUILD
-      EXPECT_CALL(*g_rdkconfigMock, rdkconfig_free(_, _))
-             .Times(1)
-             .WillOnce(Return(RDKCONFIG_OK));
-      #endif
-       EXPECT_CALL(*g_fileIOMock, read(_,_,_))
-              .Times(1)
-              .WillOnce([](int fd, void *buf, size_t count) {
-                 childResponse* resp = (childResponse*)buf;
-                 resp->curlStatus = true;
-                 resp->curlResponse = CURLE_OK;
-                 resp->curlSetopCode = CURLE_OK;
-                 resp->http_code = 200;
-                 resp->lineNumber = 123; // Set to test value
-                 return sizeof(childResponse);
-              });
-
-      EXPECT_CALL(*g_fileIOMock, getpid())
-              .Times(1)
-              .WillOnce(Return(1234));
-      EXPECT_CALL(*g_fileIOMock, exit(_))
-              .Times(1);
-       EXPECT_THROW(sendReportOverHTTP(httpURL, payload, nullptr), std::runtime_error);
-      Vector_Destroy(reportlist, free);
- }
-
-*/

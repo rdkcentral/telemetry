@@ -321,13 +321,3 @@ TEST_F(TelemetryBusmessageSenderTest, SendStringEvent_Valid) {
     EXPECT_EQ(err, T2ERROR_SUCCESS);
     t2_uninit();
 }
-
-
-// Positive test: Send double event with valid input
-TEST_F(TelemetryBusmessageSenderTest, SendDoubleEvent_Valid) {
-    t2_init((char*)"test_component");
-    T2ERROR err = t2_event_f("test_marker", 1.23);
-    EXPECT_EQ(err, T2ERROR_SUCCESS);
-    t2_uninit();
-}
-

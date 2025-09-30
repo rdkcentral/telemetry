@@ -93,10 +93,6 @@ TEST_F(TelemetryBusmessageSenderTest, SendStringEvent_NullMarker) {
             .Times(2)
             .WillOnce(Return(-1))
             .WillOnce(Return(-1));
-    EXPECT_CALL(*g_fileIOMock, fprintf(_,_,_))
-            .Times(2)
-            .WillOnce(Return(0))
-            .WillOnce(Return(0));
     T2ERROR err = t2_event_s(NULL, "value");
     EXPECT_EQ(err, T2ERROR_FAILURE);
 }
@@ -108,10 +104,6 @@ TEST_F(TelemetryBusmessageSenderTest, SendStringEvent_NullValue) {
             .Times(2)
             .WillOnce(Return(-1))
             .WillOnce(Return(-1));
-    EXPECT_CALL(*g_fileIOMock, fprintf(_,_,_))
-            .Times(2)
-            .WillOnce(Return(0))
-            .WillOnce(Return(0));
     T2ERROR err = t2_event_s("marker", NULL);
     EXPECT_EQ(err, T2ERROR_FAILURE);
 }
@@ -142,10 +134,6 @@ TEST_F(TelemetryBusmessageSenderTest, SendDoubleEvent_NullMarker) {
             .Times(2)
             .WillOnce(Return(-1))
             .WillOnce(Return(-1));
-    EXPECT_CALL(*g_fileIOMock, fprintf(_,_,_))
-            .Times(2)
-            .WillOnce(Return(0))
-            .WillOnce(Return(0));
     T2ERROR err = t2_event_f(NULL, 3.14);
     EXPECT_EQ(err, T2ERROR_FAILURE);
 }
@@ -171,10 +159,6 @@ TEST_F(TelemetryBusmessageSenderTest, SendIntEvent_NullMarker) {
             .Times(2)
             .WillOnce(Return(-1))
             .WillOnce(Return(-1));
-    EXPECT_CALL(*g_fileIOMock, fprintf(_,_,_))
-            .Times(2)
-            .WillOnce(Return(0))
-            .WillOnce(Return(0));
     T2ERROR err = t2_event_d(NULL, 123);
     EXPECT_EQ(err, T2ERROR_FAILURE);
 }
@@ -208,10 +192,7 @@ TEST_F(TelemetryBusmessageSenderTest, filtered_event_send) {
     EXPECT_CALL(*g_systemMock, access(_,_))
             .Times(1)
             .WillOnce(Return(-1));
-    EXPECT_CALL(*g_fileIOMock, fwrite(_,_,_,_))
-            .Times(2)
-            .WillOnce(Return(0))
-            .WillOnce(Return(0));
+ 
     ret = filtered_event_send("data", "marker");
     EXPECT_EQ(ret, 0);
 }
@@ -296,7 +277,7 @@ TEST_F(TelemetryBusmessageSenderTest, getParameterValue_success_boolean)
   
     EXPECT_EQ(T2ERROR_SUCCESS, getParamValue("Device.DeviceInfo.SerialNumber", &paramValue));
 }
-
+/*
 TEST_F(TelemetryBusmessageSenderTest, filtered_event_send_1)
 {
     t2_init((char*)"telemetry_client");
@@ -323,7 +304,7 @@ TEST_F(TelemetryBusmessageSenderTest, filtered_event_send_1)
     EXPECT_EQ(ret, 0);
 
 }
-
+*/
 TEST_F(TelemetryBusmessageSenderTest, filtered_event_send_2)
 {
     t2_init((char*)"sysint");

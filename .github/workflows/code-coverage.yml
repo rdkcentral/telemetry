@@ -50,7 +50,7 @@ jobs:
       image: ghcr.io/rdkcentral/docker-rdk-ci:latest
       volumes:
         - /tmp/Gtest_Report:/tmp/Gtest_Report
-
+    steps:
       - name: Update the coverage report to Pull request using actions
         uses: actions/github-script@v4
         with:

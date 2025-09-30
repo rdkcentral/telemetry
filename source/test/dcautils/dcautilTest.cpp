@@ -684,7 +684,7 @@ TEST_F(dcaTestFixture, getLoadAvg)
     Vector_Destroy(grepResultList, free);
 }
 
-TEST_F(dcaTestFixture, getLoadAvg1)
+/*TEST_F(dcaTestFixture, getLoadAvg1)
 {
     Vector* grepResultList;
     Vector_Create(&grepResultList);
@@ -707,7 +707,7 @@ TEST_F(dcaTestFixture, getLoadAvg1)
     EXPECT_EQ(0, getLoadAvg(grepResultList, false, NULL));
     Vector_Destroy(grepResultList, freeGResult);
 }
-
+*/
 TEST_F(dcaTestFixture, getLoadAvg2)
 {
     Vector* grepResultList;

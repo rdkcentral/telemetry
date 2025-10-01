@@ -184,15 +184,7 @@ static T2ERROR setMtlsHeaders(CURL *curl, const char* certFile, const char* pPas
         return T2ERROR_FAILURE;
     }
     CURLcode code = CURLE_OK;
-#ifndef LIBRDKCERTSEL_BUILD
-    code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
-    if(code != CURLE_OK)
-    {
-        childCurlResponse->curlSetopCode = code;
-        childCurlResponse->lineNumber = __LINE__;
-        return T2ERROR_FAILURE;
-    }
-#endif
+
     code = curl_easy_setopt(curl, CURLOPT_SSLCERTTYPE, "P12");
     if(code != CURLE_OK)
     {
@@ -440,20 +432,11 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
             }
 #ifdef LIBRDKCERTSEL_BUILD
             pEngine = rdkcertselector_getEngine(curlCertSelector);
-            if(pEngine != NULL){
-                code = curl_easy_setopt(curl, CURLOPT_SSLENGINE, pEngine);
-                if(code != CURLE_OK){                    
-                    code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
-                }
-            } else {
-                code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
-            }
-            if(code != CURLE_OK)
+            if (pEngine != NULL)
             {
-                childCurlResponse.curlSetopCode = code;
-                curl_easy_cleanup(curl);
-                goto child_cleanReturn;
+                T2Info("%s: SSL engine info from rdkcertselector : %s\n", __func__, pEngine);
             }
+
             do
             {
                 pCertFile = NULL;

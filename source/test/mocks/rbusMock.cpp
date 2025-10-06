@@ -19,6 +19,7 @@
 
 #include "test/mocks/rbusMock.h"
 
+
 extern "C" rbusObject_t rbusObject_Init(rbusObject_t* object, char const* value)
 {
     if (!g_rbusMock)
@@ -26,6 +27,15 @@ extern "C" rbusObject_t rbusObject_Init(rbusObject_t* object, char const* value)
         return NULL;
     }
     return g_rbusMock->rbusObject_Init(object, value);
+}
+
+extern "C" void rbusObject_SetPropertyString(rbusObject_t object, char const* name, char const* s)
+{
+    if (!g_rbusMock)
+    {
+        return;
+    }
+    return g_rbusMock->rbusObject_SetPropertyString(object, name, s);
 }
 
 extern "C" rbusValue_t rbusValue_Init(rbusValue_t* value)
@@ -387,7 +397,23 @@ extern "C" rbusError_t rbus_getExt( rbusHandle_t handle, int paramCount, char co
     {
         return RBUS_ERROR_SUCCESS;
     }
-    return g_rbusMock->rbus_getExt(handle, paramCount, paramNames, numProps, properties);
+    else{
+	    
+       /* *numProps = 2;
+	rbusValue_t value=NULL;
+	rbusProperty_t properties=NULL;
+	rbusProperty_t properties1=NULL;
+	rbusValue_Init(&value);
+        rbusValue_SetString(value, "test1");
+        rbusProperty_Init (&properties, "Device.rbusPropertyTest1", value);
+        rbusValue_Release(value);
+	rbusValue_Init(&value);
+        rbusValue_SetString(value, "test2");
+        rbusProperty_Init (&properties1, "Device.rbusPropertyTest2", value);
+	rbusProperty_SetNext(properties, &properties1);
+        rbusValue_Release(value);*/
+        return g_rbusMock->rbus_getExt(handle, paramCount, paramNames, numProps, properties);
+    }
 }
 
 extern "C" rbusError_t rbus_regDataElements( rbusHandle_t handle, int numDataElements, rbusDataElement_t *elements)
@@ -502,6 +528,14 @@ extern "C" const char* rbusError_ToString(rbusError_t e)
   return s;
     }
 }
+
+/*extern "C" dataModelCallBack dmProcessingCallBack(char *data, bool value)
+{
+    if (g_rbusMock)
+    {
+        return g_rbusMock->dmProcessingCallBack(data, value);
+    }
+}*/
 
 #ifndef BULKDATA
 extern "C" bool rbusCheckMethodExists(const char* rbusMethodName)

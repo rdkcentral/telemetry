@@ -27,6 +27,11 @@ typedef bool (*ProfileXConf_isNameEqual_ptr)(char* profileName);
 typedef T2ERROR (*ReportProfiles_deleteProfileXConf_ptr)(ProfilexConf *profile);
 typedef T2ERROR (*ReportProfiles_setProfileXConf_ptr)(ProfilexConf *profile);
 typedef T2ERROR (*getParameterValue_ptr)(const char* paramName, char **paramValue);
+typedef int (*getRbusDCMEventStatus_ptr)();
+typedef T2ERROR (*publishEventsDCMSetConf_ptr)(char *confPath);
+typedef T2ERROR (*publishEventsDCMProcConf_ptr)();
+//pedef T2ERROR (*getMtlsCerts_ptr)(char **certName, char **phrase);
+
 
 isMtlsEnabled_ptr isMtlsEnabled_func = (isMtlsEnabled_ptr) dlsym(RTLD_NEXT, "isMtlsEnabled");
 ProfileXConf_isSet_ptr ProfileXConf_isSet_func = (ProfileXConf_isSet_ptr) dlsym(RTLD_NEXT, "ProfileXConf_isSet");
@@ -35,6 +40,11 @@ ProfileXConf_isNameEqual_ptr ProfileXConf_isNameEqual_func = (ProfileXConf_isNam
 ReportProfiles_deleteProfileXConf_ptr ReportProfiles_deleteProfileXConf_func = (ReportProfiles_deleteProfileXConf_ptr) dlsym(RTLD_NEXT, "ReportProfiles_deleteProfileXConf");
 ReportProfiles_setProfileXConf_ptr ReportProfiles_setProfileXConf_func = (ReportProfiles_setProfileXConf_ptr) dlsym(RTLD_NEXT, "ReportProfiles_setProfileXConf");
 getParameterValue_ptr getParameterValue_func = (getParameterValue_ptr) dlsym(RTLD_NEXT, "getParameterValue");
+getRbusDCMEventStatus_ptr getRbusDCMEventStatus_func = (getRbusDCMEventStatus_ptr) dlsym(RTLD_NEXT, "getRbusDCMEventStatus");
+publishEventsDCMSetConf_ptr publishEventsDCMSetConf_func = (publishEventsDCMSetConf_ptr) dlsym(RTLD_NEXT, "publishEventsDCMSetConf");
+publishEventsDCMProcConf_ptr publishEventsDCMProcConf_func = (publishEventsDCMProcConf_ptr) dlsym(RTLD_NEXT, "publishEventsDCMProcConf");
+//tMtlsCerts_ptr getMtlsCerts_func = (getMtlsCerts_ptr) dlsym(RTLD_NEXT, "getMtlsCerts");
+
 
 extern "C" bool isMtlsEnabled()
 {
@@ -97,4 +107,31 @@ extern "C" T2ERROR getParameterValue(const char* paramName, char **paramValue)
          return getParameterValue_func(paramName, paramValue);
     }
     return m_xconfclientMock->getParameterValue(paramName, paramValue);
+}
+
+extern "C" int getRbusDCMEventStatus()
+{
+    if (!m_xconfclientMock)
+    {
+         return getRbusDCMEventStatus_func();
+    }
+    return m_xconfclientMock->getRbusDCMEventStatus();
+}
+
+extern "C" T2ERROR publishEventsDCMSetConf(char *confPath)
+{
+    if (!m_xconfclientMock)
+    {
+         return publishEventsDCMSetConf_func(confPath);
+    }
+    return m_xconfclientMock->publishEventsDCMSetConf(confPath);
+}
+
+extern "C" T2ERROR publishEventsDCMProcConf()
+{
+    if (!m_xconfclientMock)
+    {
+         return publishEventsDCMProcConf_func();
+    }
+    return m_xconfclientMock->publishEventsDCMProcConf();
 }

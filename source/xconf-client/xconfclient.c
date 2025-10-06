@@ -41,6 +41,10 @@
 #include "persistence.h"
 #include "telemetry2_0.h"
 #include "busInterface.h"
+#ifdef GTEST_ENABLE
+#define curl_easy_setopt curl_easy_setopt_mock
+#define curl_easy_getinfo curl_easy_getinfo_mock
+#endif
 #ifdef LIBRDKCERTSEL_BUILD
 #include "rdkcertselector.h"
 #define FILESCHEME "file://"
@@ -589,7 +593,6 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
 #ifdef LIBRDKCERTSEL_BUILD
     rdkcertselectorStatus_t xcGetCertStatus;
     char *pCertURI = NULL;
-    char *pEngine = NULL;
 #endif
     char *pCertFile = NULL;
     char *pPasswd = NULL;
@@ -727,19 +730,6 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
             if(mtls_enable == true)
             {
 #ifdef LIBRDKCERTSEL_BUILD
-                pEngine = rdkcertselector_getEngine(xcCertSelector);
-                if(pEngine != NULL)
-                {
-                    code = curl_easy_setopt(curl, CURLOPT_SSLENGINE, pEngine);
-                }
-                else
-                {
-                    code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
-                }
-                if(code != CURLE_OK)
-                {
-                    T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-                }
                 do
                 {
                     pCertFile = NULL;

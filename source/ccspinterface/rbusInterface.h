@@ -23,11 +23,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <vector.h>
-#ifdef GTEST_ENABLE
-#include "test/rbus/include/rbus.h"
-#else
 #include <rbus/rbus.h>
-#endif
 #include "busInterface.h"
 #include "telemetry2_0.h"
 

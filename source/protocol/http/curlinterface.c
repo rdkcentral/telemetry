@@ -44,7 +44,10 @@
 #ifdef LIBRDKCONFIG_BUILD
 #include "rdkconfig.h"
 #endif
-
+#ifdef GTEST_ENABLE
+#define curl_easy_setopt curl_easy_setopt_mock
+#define curl_easy_getinfo curl_easy_getinfo_mock
+#endif
 extern sigset_t blocking_signal;
 
 typedef struct
@@ -185,15 +188,6 @@ static T2ERROR setMtlsHeaders(CURL *curl, const char* certFile, const char* pPas
         return T2ERROR_FAILURE;
     }
     CURLcode code = CURLE_OK;
-#ifndef LIBRDKCERTSEL_BUILD
-    code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
-    if(code != CURLE_OK)
-    {
-        childCurlResponse->curlSetopCode = code;
-        childCurlResponse->lineNumber = __LINE__;
-        return T2ERROR_FAILURE;
-    }
-#endif
     code = curl_easy_setopt(curl, CURLOPT_SSLCERTTYPE, "P12");
     if(code != CURLE_OK)
     {
@@ -319,7 +313,6 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
     rdkcertselector_h thisCertSel = NULL;
     rdkcertselectorStatus_t curlGetCertStatus;
     char *pCertURI = NULL;
-    char *pEngine = NULL;
     bool state_red_enable = false;
 #endif
     char *pCertFile = NULL;
@@ -456,20 +449,6 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
                 goto child_cleanReturn;
             }
 #ifdef LIBRDKCERTSEL_BUILD
-            pEngine = rdkcertselector_getEngine(thisCertSel);
-            if(pEngine != NULL)
-            {
-                code = curl_easy_setopt(curl, CURLOPT_SSLENGINE, pEngine);
-            }
-            else
-            {
-                code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
-            }
-            if(code != CURLE_OK)
-            {
-                curl_easy_cleanup(curl);
-                goto child_cleanReturn;
-            }
             do
             {
                 pCertFile = NULL;

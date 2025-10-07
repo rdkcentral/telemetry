@@ -36,7 +36,9 @@ jobs:
 
       - name: Copy the code coverage to runner
         run: |
-          docker cp native-platform:/tmp/coverage_summary.txt /tmp/coverage_summary.txt
+          docker cp native-platform:/tmp/coverage_summary.txt /tmp/
+          ls -l
+          ls -l /tmp
 
   upload-test-results:
     name: Upload L1 coverage reports

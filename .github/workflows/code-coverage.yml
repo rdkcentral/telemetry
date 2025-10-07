@@ -34,21 +34,9 @@ jobs:
       - name: Run unit tests with coverage flags enabled and Caculate the code coverage summary
         run: docker exec -i native-platform /bin/bash -c "cd /mnt/L1_CONTAINER_SHARED_VOLUME/ && sh test/run_ut.sh --enable-cov && lcov --list coverage.info | grep 'Lines\|Total' > /tmp/coverage_summary.txt"
 
-      - name: Copy the code coverage to runner
-        run: |
-          docker cp native-platform:/tmp/coverage_summary.txt /tmp/
-          ls -l
-          ls -l /tmp
+      - name: Copy coverage summary to runner
+        run: docker cp native-platform:/tmp/coverage_summary.txt /tmp/
 
-  upload-test-results:
-    name: Upload L1 coverage reports
-    needs: execute-unit-code-coverage-report-on-release
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/rdkcentral/docker-rdk-ci:latest
-      volumes:
-        - /tmp:/tmp
-    steps:
       - name: Update the coverage report to Pull request using actions
         uses: actions/github-script@v4
         with:
@@ -69,12 +57,13 @@ jobs:
             });
 
       - name: Generate the html report
-        run: |
-          genhtml coverage.info --output-directory /tmp/coverage_report
+        run: docker exec -i native-platform genhtml coverage.info --output-directory /tmp/coverage_report
+
+      - name: Copy html report to runner
+        run: docker cp native-platform:/tmp/coverage_report /tmp/
 
       - name: Upload the coverage report to Pull request using actions
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
           path: /tmp/coverage_report
-

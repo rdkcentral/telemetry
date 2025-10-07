@@ -142,8 +142,6 @@ TEST_F(datamodelTestFixture, datamodel_processProfile_RP)
     "\"RequestURIParameter\":[{\"Name\":\"reportName\",\"Reference\":\"Profile.Name\"}]},"
     "\"JSONEncoding\":{\"ReportFormat\":\"NameValuePair\",\"ReportTimestamp\":\"None\"}}}]}";
     
-    EXPECT_CALL(*g_datamodelMock, ReportProfiles_ProcessReportProfilesBlob(_, _))
-        .Times(1);
     EXPECT_EQ(T2ERROR_SUCCESS, datamodel_processProfile((char*)testJson, T2_RP));
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }

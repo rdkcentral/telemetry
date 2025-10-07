@@ -36,11 +36,11 @@ jobs:
 
       - name: Caculate the code coverage summary
         run: |
-          lcov --list coverage.info | grep "Lines\|Total" > /tmp/Gtest_Report/coverage_summary.txt
+          docker exec -i native-platform /bin/bash -c "lcov --list coverage.info | grep 'Lines\|Total' > /tmp/coverage_summary.txt"
 
       - name: Copy the code coverage to runner
         run: |
-          docker cp native-platform:/tmp/Gtest_Report/ /tmp/Gtest_Report/
+          docker cp native-platform:/tmp/coverage_summary.txt /tmp/coverage_summary.txt
 
   upload-test-results:
     name: Upload L1 coverage reports
@@ -49,14 +49,14 @@ jobs:
     container:
       image: ghcr.io/rdkcentral/docker-rdk-ci:latest
       volumes:
-        - /tmp/Gtest_Report:/tmp/Gtest_Report
+        - /tmp:/tmp
     steps:
       - name: Update the coverage report to Pull request using actions
         uses: actions/github-script@v4
         with:
           script: |
             const fs = require('fs');
-            const lcov_result = fs.readFileSync('/tmp/Gtest_Report/coverage_summary.txt', 'utf8'); 
+            const lcov_result = fs.readFileSync('/tmp/coverage_summary.txt', 'utf8');
           
             github.issues.createComment({
               issue_number: context.issue.number,

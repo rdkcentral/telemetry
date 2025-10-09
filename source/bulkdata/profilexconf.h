@@ -66,7 +66,6 @@ typedef struct _ProfileXConf
     Vector *topMarkerList;
     Vector *cachedReportList;
     cJSON *jsonReportObj;
-    pthread_t reportThread;
     GrepSeekProfile *grepSeekProfile; // To store GrepConfig
 } ProfileXConf;
 

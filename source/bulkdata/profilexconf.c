@@ -208,7 +208,7 @@ static void* CollectAndReportXconf(void* data)
 {
     (void) data;// To fix compiler warning
     pthread_mutex_lock(&plMutex);
-    volatile ProfileXConf* profile = singleProfile;
+    ProfileXConf* profile = singleProfile;
     if(profile == NULL)
     {
         T2Error("profile is NULL\n");

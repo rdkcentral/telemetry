@@ -95,13 +95,17 @@ typedef struct _GrepMarker
     char* markerName;
     char* searchString;
     char* logFile;
+    reportTimestampFormat reportTimestampParam;
+    char* markerName_CT;
     char* regexParam;
     MarkerType mType;
     union
     {
         unsigned int count;
         char* markerValue;
+        Vector* accumulatedValues;
     } u;
+    Vector* accumulatedTimestamp;
     unsigned int skipFreq;
     int firstSeekFromEOF;
 } GrepMarker;

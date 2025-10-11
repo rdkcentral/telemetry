@@ -346,6 +346,16 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
             gMarker->mType = MTYPE_COUNTER;
             gMarker->u.count = 0;
         }
+        else if (0 == strcmp(use, "accumulate"))
+        {
+            T2Info("marker type is Accumulate \n");
+            gMarker->mType = MTYPE_ACCUMULATE;
+            Vector_Create(&gMarker->u.accumulatedValues);
+            if(gMarker->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH)
+            {
+                Vector_Create(&gMarker->accumulatedTimestamp);
+            }
+        }
         else
         {
             T2Info("Unsupported marker type. Defaulting to absolute \n");

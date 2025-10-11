@@ -547,7 +547,109 @@ static char* getAbsolutePatternMatch(FileDescriptor* fileDescriptor, const char*
     return result;
 }
 
-static int processPatternWithOptimizedFunction(const GrepMarker* marker, Vector* out_grepResultList, FileDescriptor* filedescriptor)
+static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker* marker, Vector* out_grepResultList)
+{
+    T2Info("%s ++in\n", __FUNCTION__);
+    if (!fileDescriptor || !fileDescriptor->cfaddr || fileDescriptor->cf_file_size <= 0 || !marker || !marker->searchString || !*marker->searchString || !out_grepResultList)
+    {
+        T2Error("Invalid file descriptor arguments accumulate\n");
+        return -1;
+    }
+
+    const char* pattern = marker->searchString;
+    const char* buffer;
+    size_t buflen = 0;
+    size_t patlen = strlen(pattern);
+    
+    // Use the existing accumulatedValues Vector from marker's union
+    Vector* accumulatedValues = marker->u.accumulatedValues;
+    if (!accumulatedValues)
+    {
+        T2Error("accumulatedValues vector is NULL in marker\n");
+        return -1;
+    }
+
+    for (int i = 0; i < 2; i++)
+    {
+        T2Info("%s %d \n", __FUNCTION__, __LINE__);
+        if (i == 0)
+        {
+            buffer = fileDescriptor->cfaddr;
+            buflen = (size_t)fileDescriptor->cf_file_size;
+        }
+        else
+        {
+            buffer = fileDescriptor->rfaddr;
+            buflen = (size_t)fileDescriptor->rf_file_size;
+        }
+
+        if (buffer == NULL)
+        {
+            T2Info("Invalid file descriptor arguments accumulate match\n");
+            continue;
+        }
+
+        const char *cur = buffer;
+        size_t bytes_left = buflen;
+
+        while (bytes_left >= patlen)
+        {
+            T2Info("%s %d \n", __FUNCTION__, __LINE__);
+            const char *found = strnstr(cur, pattern, bytes_left);
+            if (!found)
+            {
+                break;
+            }
+
+            // Move pointer just after the pattern
+            const char *start = found + patlen;
+            size_t chars_left = buflen - (start - buffer);
+
+            // Find next newline or end of buffer
+            const char *end = memchr(start, '\n', chars_left);
+            size_t length = end ? (size_t)(end - start) : chars_left;
+
+            // Create result string for this occurrence
+            char *result = (char*)malloc(length + 1);
+            if (result)
+            {
+                memcpy(result, start, length);
+                result[length] = '\0';
+                T2Info("%s %d : result = %s\n", __FUNCTION__, __LINE__, result);
+                Vector_PushBack(accumulatedValues, result);
+            }
+
+            size_t advance = (size_t)(found - cur) + patlen;
+            cur = found + patlen;
+            if (bytes_left < advance)
+            {
+                break;
+            }
+            bytes_left -= advance;
+        }
+        T2Info("%s %d --out\n", __FUNCTION__, __LINE__);
+    }
+
+    // Create individual GrepResult objects for each accumulated value
+    size_t accumulatedCount = Vector_Size(accumulatedValues);
+    for (size_t j = 0; j < accumulatedCount; j++)
+    {
+        char* value = (char*)Vector_At(accumulatedValues, j);
+        if (value)
+        {
+            GrepResult* result = createGrepResultObj(marker->markerName, value, marker->trimParam, marker->regexParam);
+            if (result)
+            {
+                Vector_PushBack(out_grepResultList, result);
+            }
+        }
+    }
+
+    T2Debug("%s --out\n", __FUNCTION__);
+    return 0;
+}
+
+static int processPatternWithOptimizedFunction(GrepMarker* marker, Vector* out_grepResultList, FileDescriptor* filedescriptor)
 {
     // Sanitize the input
     const char* memmmapped_data_cf = filedescriptor->cfaddr;
@@ -583,7 +685,14 @@ static int processPatternWithOptimizedFunction(const GrepMarker* marker, Vector*
             Vector_PushBack(out_grepResultList, result);
         }
     }
-    else
+    else if (mType == MTYPE_ACCUMULATE)
+    {
+        //Get MAX_ACCUMULATE number of occurrences of the pattern in the memory-mapped data
+        T2Info("%s %d : Accumulate is called\n", __FUNCTION__, __LINE__);
+        getAccumulatePatternMatch(filedescriptor, marker, out_grepResultList);
+        T2Info("%s %d : Accumulate is complete\n", __FUNCTION__, __LINE__);
+    }
+    else /* MTYPE_ABSOLUTE */
     {
         // Get the last occurrence of the pattern in the memory-mapped data
         last_found = getAbsolutePatternMatch(filedescriptor, pattern);
@@ -655,7 +764,7 @@ static int getLogFileDescriptor(GrepSeekProfile* gsProfile, const char* logPath,
     // Check if the file size matches the seek value from the map
     if (sb.st_size == seek_value_from_map)
     {
-        T2Debug("The logfile size matches the seek value (%ld) for %s\n", seek_value_from_map, logFile);
+        T2Info("The logfile size matches the seek value (%ld) for %s\n", seek_value_from_map, logFile);
         close(fd);
         return -1; // Consistent error return value
     }

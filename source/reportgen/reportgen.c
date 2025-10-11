@@ -397,35 +397,81 @@ T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepResult)
         T2Error("Invalid or NULL Arguments\n");
         return T2ERROR_INVALID_ARGS;
     }
-    size_t index = 0;
-    cJSON *arrayItem = NULL;
-    for(; index < Vector_Size(grepResult); index++)
+    
+    // Create a hash map to group values by marker name
+    size_t totalResults = Vector_Size(grepResult);
+    if (totalResults == 0) {
+        T2Debug("%s --Out (no results)\n", __FUNCTION__);
+        return T2ERROR_SUCCESS;
+    }
+    
+    // Simple approach: scan through all results and group by marker name
+    for (size_t i = 0; i < totalResults; i++)
     {
-        GrepResult* grep = (GrepResult *)Vector_At(grepResult, index);
-        if(grep)
+        GrepResult* grep = (GrepResult *)Vector_At(grepResult, i);
+        if(!grep || !grep->markerName || !grep->markerValue)
         {
-            if(grep->markerName == NULL || grep->markerValue == NULL ) // Ignore null values
+            continue;
+        }
+        
+        // Check if this marker name has already been processed
+        bool alreadyProcessed = false;
+        for (size_t j = 0; j < i; j++)
+        {
+            GrepResult* prevGrep = (GrepResult *)Vector_At(grepResult, j);
+            if (prevGrep && prevGrep->markerName && strcmp(grep->markerName, prevGrep->markerName) == 0)
             {
-                continue ;
+                alreadyProcessed = true;
+                break;
             }
-            arrayItem = cJSON_CreateObject();
+        }
+        
+        if (alreadyProcessed)
+        {
+            continue; // Skip this one, it's already been processed as part of a group
+        }
+        
+        // Count how many results have the same marker name
+        Vector* sameMarkerResults = NULL;
+        Vector_Create(&sameMarkerResults);
+        
+        for (size_t k = i; k < totalResults; k++)
+        {
+            GrepResult* currentGrep = (GrepResult *)Vector_At(grepResult, k);
+            if (currentGrep && currentGrep->markerName && currentGrep->markerValue && 
+                strcmp(grep->markerName, currentGrep->markerName) == 0)
+            {
+                Vector_PushBack(sameMarkerResults, currentGrep);
+            }
+        }
+        
+        size_t sameMarkerCount = Vector_Size(sameMarkerResults);
+        
+        if (sameMarkerCount == 1)
+        {
+            // Single result - use the original logic
+            GrepResult* singleGrep = (GrepResult *)Vector_At(sameMarkerResults, 0);
+            cJSON *arrayItem = cJSON_CreateObject();
             if(arrayItem == NULL)
             {
                 T2Error("cJSON_CreateObject failed..arrayItem is NULL \n");
+                Vector_Destroy(sameMarkerResults, NULL);
                 return T2ERROR_FAILURE;
             }
-            if(grep->trimParameter)
+            
+            if(singleGrep->trimParameter)
             {
-                trimLeadingAndTrailingws((char*)grep->markerValue);
+                trimLeadingAndTrailingws((char*)singleGrep->markerValue);
             }
-            if(grep->regexParameter != NULL)
+            
+            if(singleGrep->regexParameter != NULL)
             {
                 regex_t regpattern;
                 int rc = 0;
                 size_t nmatch = 1;
                 regmatch_t pmatch[2];
                 char string[256] = {'\0'};
-                rc = regcomp(&regpattern, grep->regexParameter, REG_EXTENDED);
+                rc = regcomp(&regpattern, singleGrep->regexParameter, REG_EXTENDED);
                 if(rc != 0)
                 {
                     T2Warning("regcomp() failed, returning nonzero (%d)\n", rc);
@@ -433,32 +479,122 @@ T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepResult)
                 else
                 {
                     T2Debug("regcomp() successful, returning value (%d)\n", rc);
-                    rc = regexec(&regpattern, grep->markerValue, nmatch, pmatch, 0);
+                    rc = regexec(&regpattern, singleGrep->markerValue, nmatch, pmatch, 0);
                     if(rc != 0)
                     {
-                        T2Warning("regexec() failed, Failed to match '%s' with '%s',returning %d.\n", grep->markerValue, grep->regexParameter, rc);
-                        free((char*)grep->markerValue);
-                        grep->markerValue = strdup("");
+                        T2Warning("regexec() failed, Failed to match '%s' with '%s',returning %d.\n", singleGrep->markerValue, singleGrep->regexParameter, rc);
+                        free((char*)singleGrep->markerValue);
+                        singleGrep->markerValue = strdup("");
                     }
                     else
                     {
-                        T2Debug("regexec successful, Match is found %.*s\n", pmatch[0].rm_eo - pmatch[0].rm_so, &grep->markerValue[pmatch[0].rm_so]);
-                        sprintf(string, "%.*s", pmatch[0].rm_eo - pmatch[0].rm_so, &grep->markerValue[pmatch[0].rm_so]);
-                        free((char*)grep->markerValue);
-                        grep->markerValue = strdup(string);
+                        T2Debug("regexec successful, Match is found %.*s\n", pmatch[0].rm_eo - pmatch[0].rm_so, &singleGrep->markerValue[pmatch[0].rm_so]);
+                        sprintf(string, "%.*s", pmatch[0].rm_eo - pmatch[0].rm_so, &singleGrep->markerValue[pmatch[0].rm_so]);
+                        free((char*)singleGrep->markerValue);
+                        singleGrep->markerValue = strdup(string);
                     }
                     regfree(&regpattern);
                 }
             }
-            if(cJSON_AddStringToObject(arrayItem, grep->markerName, grep->markerValue)  == NULL)
+            
+            if(cJSON_AddStringToObject(arrayItem, singleGrep->markerName, singleGrep->markerValue)  == NULL)
             {
                 T2Error("cJSON_AddStringToObject failed.\n");
                 cJSON_Delete(arrayItem);
+                Vector_Destroy(sameMarkerResults, NULL);
                 return T2ERROR_FAILURE;
             }
             cJSON_AddItemToArray(valArray, arrayItem);
         }
+        else if (sameMarkerCount > 1)
+        {
+            // Multiple results with same marker name - create JSON array
+            cJSON *arrayItem = cJSON_CreateObject();
+            if(arrayItem == NULL)
+            {
+                T2Error("cJSON_CreateObject failed..arrayItem is NULL \n");
+                Vector_Destroy(sameMarkerResults, NULL);
+                return T2ERROR_FAILURE;
+            }
+            
+            cJSON *valuesArray = cJSON_CreateArray();
+            if(valuesArray == NULL)
+            {
+                T2Error("cJSON_CreateArray failed..valuesArray is NULL \n");
+                cJSON_Delete(arrayItem);
+                Vector_Destroy(sameMarkerResults, NULL);
+                return T2ERROR_FAILURE;
+            }
+            
+            // Add all values to the array
+            for (size_t m = 0; m < sameMarkerCount; m++)
+            {
+                GrepResult* multiGrep = (GrepResult *)Vector_At(sameMarkerResults, m);
+                if (!multiGrep || !multiGrep->markerValue)
+                {
+                    continue;
+                }
+                
+                char* processedValue = strdup(multiGrep->markerValue);
+                if (!processedValue)
+                {
+                    continue;
+                }
+                
+                if(multiGrep->trimParameter)
+                {
+                    trimLeadingAndTrailingws(processedValue);
+                }
+                
+                if(multiGrep->regexParameter != NULL)
+                {
+                    regex_t regpattern;
+                    int rc = 0;
+                    size_t nmatch = 1;
+                    regmatch_t pmatch[2];
+                    char string[256] = {'\0'};
+                    rc = regcomp(&regpattern, multiGrep->regexParameter, REG_EXTENDED);
+                    if(rc != 0)
+                    {
+                        T2Warning("regcomp() failed, returning nonzero (%d)\n", rc);
+                    }
+                    else
+                    {
+                        T2Debug("regcomp() successful, returning value (%d)\n", rc);
+                        rc = regexec(&regpattern, processedValue, nmatch, pmatch, 0);
+                        if(rc != 0)
+                        {
+                            T2Warning("regexec() failed, Failed to match '%s' with '%s',returning %d.\n", processedValue, multiGrep->regexParameter, rc);
+                            free(processedValue);
+                            processedValue = strdup("");
+                        }
+                        else
+                        {
+                            T2Debug("regexec successful, Match is found %.*s\n", pmatch[0].rm_eo - pmatch[0].rm_so, &processedValue[pmatch[0].rm_so]);
+                            sprintf(string, "%.*s", pmatch[0].rm_eo - pmatch[0].rm_so, &processedValue[pmatch[0].rm_so]);
+                            free(processedValue);
+                            processedValue = strdup(string);
+                        }
+                        regfree(&regpattern);
+                    }
+                }
+                
+                cJSON *stringItem = cJSON_CreateString(processedValue);
+                if (stringItem != NULL)
+                {
+                    cJSON_AddItemToArray(valuesArray, stringItem);
+                }
+                free(processedValue);
+            }
+            
+            // Add the array to the main object
+            cJSON_AddItemToObject(arrayItem, grep->markerName, valuesArray);
+            cJSON_AddItemToArray(valArray, arrayItem);
+        }
+        
+        Vector_Destroy(sameMarkerResults, NULL);
     }
+    
     T2Debug("%s --Out \n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }

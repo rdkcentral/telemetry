@@ -101,115 +101,167 @@ int getProcUsage(char *processName, GrepMarker* marker, bool trim, char* regex, 
 
         T2Debug("Command for collecting process info : \n pidof %s", processName);
 #ifdef LIBSYSWRAPPER_BUILD
-        snprintf(pidofCommand, sizeof(pidofCommand) - 1, "pidof %s", processName);
-        cmdPid = v_secure_popen(pidofCommand, "r");
+        cmdPid = v_secure_popen("r", "pidof %s", processName);
 #else
-        snprintf(pidofCommand, sizeof(pidofCommand) - 1, "pidof %s", processName);
+        snprintf(pidofCommand, sizeof(pidofCommand), "pidof %s", processName);
         cmdPid = popen(pidofCommand, "r");
 #endif
-        if(cmdPid == NULL)
+        if(!cmdPid)
         {
-            T2Debug("Error in opening command pipe");
+            T2Debug("Failed to execute %s", pidofCommand);
             return 0;
         }
-
-        ret = fscanf(cmdPid, "%d", &pInfo.total_instance);
-        if(ret <= 0)
+        pid = (int *) malloc(sizeof(pid_t));
+        if(NULL == pid)
         {
-            T2Debug("Error in reading command/No Instance found \n");
 #ifdef LIBSYSWRAPPER_BUILD
             pclose_ret = v_secure_pclose(cmdPid);
 #else
             pclose_ret = pclose(cmdPid);
 #endif
-            if (pclose_ret != 0)
+            if(pclose_ret != 0)
             {
-                T2Error("Failed to close the command pipe ret = %d", pclose_ret);
+                T2Debug("failed in closing pipe! ret %d\n", pclose_ret);
             }
             return 0;
         }
-
-        pid = (pid_t *) malloc(sizeof(pid_t) * pInfo.total_instance);
-        if(!pid)
+        *pid = 0;
+        while(fscanf(cmdPid, "%d", (pid + index)) == 1)
         {
-            T2Error("Failed to allocated memory for pids\n");
+            if((*(pid + index)) <= 0)
+            {
+                continue;
+            }
+            index++;
+            temp = (pid_t *) realloc(pid, ((index + 1) * sizeof(pid_t)));
+            if(NULL == temp)
+            {
+                if(pid)
+                {
+                    free(pid);
+                }
 #ifdef LIBSYSWRAPPER_BUILD
-            pclose_ret = v_secure_pclose(cmdPid);
+                pclose_ret = v_secure_pclose(cmdPid);
 #else
-            pclose_ret = pclose(cmdPid);
+                pclose_ret = pclose(cmdPid);
 #endif
-            if (pclose_ret != 0)
-            {
-                T2Error("Failed to close the command pipe ret = %d", pclose_ret);
+                if(pclose_ret != 0)
+                {
+                    T2Debug("failed in closing pipe! ret %d\n", pclose_ret);
+                }
+                return 0;
             }
-            return 0;
+            pid = temp;
         }
 
-        pid[0] = pInfo.total_instance; // The first pid is read by the fscanf statement above.
-        temp = &pid[0];
-        for(index = 1; index < pInfo.total_instance; index++)
-        {
-            temp = &pid[index];
-            ret = fscanf(cmdPid, "%d", temp);
-            if(ret <= 0)
-            {
-                T2Debug("Error in reading pid value");
-                break;
-            }
-        }
-        pInfo.pid = pid;
-        pInfo.total_instance = index;
+
 #ifdef LIBSYSWRAPPER_BUILD
         pclose_ret = v_secure_pclose(cmdPid);
 #else
         pclose_ret = pclose(cmdPid);
 #endif
-        if (pclose_ret != 0)
+        if(pclose_ret != 0)
         {
-            T2Error("Failed to close the command pipe ret = %d", pclose_ret);
+            T2Debug("failed in closing pipe! ret %d\n", pclose_ret);
         }
 
-        // Gather memory info
-        getMemInfo(&pInfo);
-
-        // Gather CPU info
-        getCPUInfo(&pInfo, filename);
-
-        // Create memory and CPU result strings
-        mem_key = (char *) malloc(sizeof(char) * pname_prefix_len);
-        if(mem_key)
+#if defined (ENABLE_PS_PROCESS_SEARCH)
+        // Pidof command output is empty
+        if ((*pid) <= 0)
         {
-            snprintf(mem_key, pname_prefix_len, "%s%s", processName, "_MEM");
+            // pidof was empty, see if we can grab the pid via ps
+            snprintf(psCommand, sizeof(psCommand), "busybox ps | grep %s | grep -v grep | awk '{ print $1 }' | tail -n1", processName);
+
+#ifdef LIBSYSWRAPPER_BUILD
+            if (!(cmdPid = v_secure_popen("r", "busybox ps | grep %s | grep -v grep | awk '{ print $1 }' | tail -n1", processName)))
+#else
+            if (!(cmdPid = popen(psCommand, "r")))
+#endif
+            {
+                free(pid);//CID 172839:Resource leak (RESOURCE_LEAK)
+                return 0;
+            }
+
+            *pid = 0;
+            index = 0;
+            while(fscanf(cmdPid, "%d", (pid + index)) == 1)
+            {
+                if ((*(pid + index)) <= 0)
+                {
+                    continue;
+                }
+                index++;
+                temp = (pid_t *) realloc (pid, ((index + 1) * sizeof(pid_t)) );
+                if ( NULL == temp )
+                {
+                    free(pid);
+#ifdef LIBSYSWRAPPER_BUILD
+                    v_secure_pclose(cmdPid);
+#else
+                    pclose(cmdPid);
+#endif
+                    return 0;
+                }
+                pid = temp;
+            }
+
+#ifdef LIBSYSWRAPPER_BUILD
+            v_secure_pclose(cmdPid);
+#else
+            pclose(cmdPid);
+#endif
+
+            // If pidof command output is empty
+            if ((*pid) <= 0)
+            {
+                free(pid);
+                return 0;
+            }
         }
-        cpu_key = (char *) malloc(sizeof(char) * pname_prefix_len);
-        if(cpu_key)
+#else
+        // If pidof command output is empty
+        if ((*pid) <= 0)
         {
-            snprintf(cpu_key, pname_prefix_len, "%s%s", processName, "_CPU");
+            free(pid);
+            return 0;
         }
+#endif
 
-        // Create combined result string
-        char result_str[512];
-        snprintf(result_str, sizeof(result_str), "%s:%s;%s:%s", 
-                 mem_key ? mem_key : "MEM", pInfo.memUse,
-                 cpu_key ? cpu_key : "CPU", pInfo.cpuUse);
+        pInfo.total_instance = index;
+        pInfo.pid = pid;
+        if(0 != getProcInfo(&pInfo, filename))
+        {
+            T2Debug("Process info - CPU: %s, Memory: %s \n", pInfo.cpuUse, pInfo.memUse);
+            
+            // Check marker name to determine if it's CPU or memory
+            if (strstr(marker->markerName, "cpu_") != NULL) {
+                // This is a CPU marker
+                if (marker->u.markerValue) {
+                    free(marker->u.markerValue);
+                }
+                marker->u.markerValue = strdup(pInfo.cpuUse);
+            } else if (strstr(marker->markerName, "mem_") != NULL) {
+                // This is a memory marker
+                if (marker->u.markerValue) {
+                    free(marker->u.markerValue);
+                }
+                marker->u.markerValue = strdup(pInfo.memUse);
+            } else {
+                // Default fallback - use CPU value
+                if (marker->u.markerValue) {
+                    free(marker->u.markerValue);
+                }
+                marker->u.markerValue = strdup(pInfo.cpuUse);
+            }
+            
+            ret = 1;
 
-        // Populate the marker's union markerValue field directly
-        if(marker->u.markerValue)
-        {
-            free(marker->u.markerValue);
-        }
-        marker->u.markerValue = strdup(result_str);
-        
-        T2Debug("Process usage stored in marker->u.markerValue: %s\n", marker->u.markerValue);
+            if(pid)
+            {
+                free(pid);
+            }
 
-        // Clean up
-        if(mem_key)
-        {
-            free(mem_key);
-        }
-        if(cpu_key)
-        {
-            free(cpu_key);
+            return ret;
         }
         if(pid)
         {

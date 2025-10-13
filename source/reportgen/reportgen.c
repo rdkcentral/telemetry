@@ -688,8 +688,8 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
                             strncpy(stringValue, string, strlen(string) + 1);
                         }
                         regfree(&regpattern);
-}
-                    }
+		    }
+                }
 
                 if (eventMarker->alias)
                 {

@@ -461,7 +461,7 @@ static void* CollectAndReport(void* data)
                     }
                     else
                     {
-                        T2Debug("Top markers report generated but is empty possibly the memory value is changed");
+                        T2Debug("Top markers report generated but is empty possabliy the memory value is changed");
                     }
                 }
                 if(profile->gMarkerList != NULL && Vector_Size(profile->gMarkerList) > 0)
@@ -492,9 +492,8 @@ static void* CollectAndReport(void* data)
                         profile->triggerReportOnCondition = false ;
                         pthread_mutex_unlock(&profile->triggerCondMutex);
 
-                        if(profile->callBackOnReportGenerationComplete != NULL)
+                        if(profile->callBackOnReportGenerationComplete)
                         {
-                            T2Debug("Calling callback function profile->callBackOnReportGenerationComplete \n");
                             profile->callBackOnReportGenerationComplete(profile->name);
                         }
                     }
@@ -599,7 +598,7 @@ static void* CollectAndReport(void* data)
                                     profile->triggerReportOnCondition = false ;
                                     pthread_mutex_unlock(&profile->triggerCondMutex);
 
-                                    if(profile->callBackOnReportGenerationComplete)
+                                    if(profile->callBackOnReportGenerationComplete != NULL)
                                     {
                                         T2Debug("Calling callback function profile->callBackOnReportGenerationComplete \n");
                                         profile->callBackOnReportGenerationComplete(profile->name);

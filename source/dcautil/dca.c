@@ -165,7 +165,7 @@ static pthread_mutex_t dcaMutex = PTHREAD_MUTEX_INITIALIZER;
  *  @return  Returns the status of the operation.
  *  @retval  Returns zero on success, appropriate errorcode otherwise.
  */
-int processTopPattern(char* profileName, Vector* topMarkerList, int profileExecCounter)
+int processTopPattern(char* profileName,  Vector* topMarkerList, int profileExecCounter)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
     if(profileName == NULL || topMarkerList == NULL)
@@ -402,7 +402,7 @@ static inline void formatCount(char* buffer, size_t size, int count)
 static int getCountPatternMatch(FileDescriptor* fileDescriptor, GrepMarker* marker)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
-    if (!fileDescriptor || !fileDescriptor->cfaddr || !marker || !marker->searchString || !*marker->searchString || fileDescriptor->cf_map_size <= 0)
+    if (!fileDescriptor || !fileDescriptor->cfaddr || !marker || !marker->searchString || fileDescriptor->cf_map_size <= 0)
     {
         T2Error("Invalid file descriptor arguments pattern match\n");
         return -1; // Invalid arguments
@@ -459,9 +459,8 @@ static int getCountPatternMatch(FileDescriptor* fileDescriptor, GrepMarker* mark
 
     }
     
-    // Populate the marker's union count field
+    // Using the union instead of the previous out list.
     marker->u.count = count;
-    T2Debug("count is %d, stored in marker->u.count\n", count);
     T2Debug("%s --out\n", __FUNCTION__);
     return 0;
 }
@@ -469,7 +468,7 @@ static int getCountPatternMatch(FileDescriptor* fileDescriptor, GrepMarker* mark
 static int getAbsolutePatternMatch(FileDescriptor* fileDescriptor, GrepMarker* marker)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
-    if (!fileDescriptor || !fileDescriptor->cfaddr || fileDescriptor->cf_map_size <= 0 || !marker || !marker->searchString || !*marker->searchString)
+    if (!fileDescriptor || !fileDescriptor->cfaddr || fileDescriptor->cf_map_size <= 0 || !marker || !marker->searchString)
     {
         T2Error("Invalid file descriptor arguments absolute\n");
         return -1;
@@ -531,7 +530,6 @@ static int getAbsolutePatternMatch(FileDescriptor* fileDescriptor, GrepMarker* m
 
     if(!last_found)
     {
-        // No match found, set markerValue to NULL
         marker->u.markerValue = NULL;
         return 0;
     }
@@ -553,9 +551,7 @@ static int getAbsolutePatternMatch(FileDescriptor* fileDescriptor, GrepMarker* m
     memcpy(result, start, length);
     result[length] = '\0';
     
-    // Populate the marker's union markerValue field
     marker->u.markerValue = result;
-    T2Debug("Absolute match found: %s, stored in marker->u.markerValue\n", result);
     T2Debug("%s --out\n", __FUNCTION__);
     return 0;
 }
@@ -574,7 +570,7 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
     size_t buflen = 0;
     size_t patlen = strlen(pattern);
     
-    // Use the existing accumulatedValues Vector from marker's union
+    // Using the existing accumulatedValues Vector from marker's union
     Vector* accumulatedValues = marker->u.accumulatedValues;
     if (!accumulatedValues)
     {
@@ -702,13 +698,14 @@ static int processPatternWithOptimizedFunction(GrepMarker* marker, Vector* out_g
     {
         //Get MAX_ACCUMULATE number of occurrences of the pattern in the memory-mapped data
         T2Info("%s %d : Accumulate is called\n", __FUNCTION__, __LINE__);
-        getAccumulatePatternMatch(filedescriptor, marker, out_grepResultList);
+        getAccumulatePatternMatch(filedescriptor, marker, out_grepResultList); //TO DO: Add limit of 20
         T2Info("%s %d : Accumulate is complete\n", __FUNCTION__, __LINE__);
     }
     else /* MTYPE_ABSOLUTE */
     {
         // Get the last occurrence of the pattern in the memory-mapped data
         getAbsolutePatternMatch(filedescriptor, marker);
+#if 0
         if (marker->u.markerValue)
         {
             // If a match is found, process it accordingly
@@ -722,6 +719,7 @@ static int processPatternWithOptimizedFunction(GrepMarker* marker, Vector* out_g
             }
             Vector_PushBack(out_grepResultList, result);
         }
+#endif
     }
     return 0;
 }

@@ -31,6 +31,6 @@ int getDCAResultsInVector(GrepSeekProfile *gSeekProfile, Vector* vectorMarkerLis
 
 void T2InitProperties(); // declaration for initProperties
 
-int processTopPattern(char* profileName, Vector* topMarkerList, Vector* out_grepResultList, int execCount);
+int processTopPattern(char* profileName, Vector* topMarkerList, int execCount);
 
 #endif /* SRC_DCA_H_ */

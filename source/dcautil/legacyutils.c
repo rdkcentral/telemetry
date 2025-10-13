@@ -123,19 +123,20 @@ static void freeProfileSeekHashMap(void *data)
  */
 
 /**
- * @brief This API is to find the load average of system and add it to the SearchResult JSON.
+ * @brief This API is to find the load average of system and populate the marker union field.
  *
  * @return  Returns status of operation.
  * @retval  Return 1 on success.
  */
-int getLoadAvg(Vector* grepResultList, bool trim, char* regex)
+int getLoadAvg(GrepMarker* marker, bool trim, char* regex)
 {
     T2Debug("%s ++in \n", __FUNCTION__);
+    T2Debug("%s ++in %d %s\n", __FUNCTION__, trim, regex);
     FILE *fp;
     char str[LEN + 1];
-    if(grepResultList == NULL)
+    if(marker == NULL)
     {
-        T2Debug("grepResultList is NULL\n");
+        T2Debug("marker is NULL\n");
         return 0;
     }
 
@@ -155,18 +156,14 @@ int getLoadAvg(Vector* grepResultList, bool trim, char* regex)
 
     str[LEN] = '\0';
 
-    if(grepResultList != NULL)
+    // Populate the marker's union markerValue field directly
+    if(marker->u.markerValue)
     {
-        GrepResult* loadAvg = (GrepResult*) malloc(sizeof(GrepResult));
-        if(loadAvg)
-        {
-            loadAvg->markerName = strndup("Load_Average", (strlen("Load_Average") + 1));
-            loadAvg->markerValue = strndup(str, LEN);
-            loadAvg->trimParameter = trim;
-            loadAvg->regexParameter = regex;
-            Vector_PushBack(grepResultList, loadAvg);
-        }
+        free(marker->u.markerValue);
     }
+    marker->u.markerValue = strndup(str, LEN);
+    
+    T2Debug("Load average stored in marker->u.markerValue: %s\n", marker->u.markerValue);
     T2Debug("%s --out \n", __FUNCTION__);
     return 1;
 }

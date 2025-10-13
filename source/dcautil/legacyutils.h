@@ -39,6 +39,7 @@
 #include <cjson/cJSON.h>
 
 #include "t2collection.h"
+#include "t2common.h"
 #include "vector.h"
 #include "telemetry2_0.h"
 
@@ -79,7 +80,7 @@ extern cJSON *SEARCH_RESULT_JSON;
 extern cJSON *ROOT_JSON;
 
 /* utility functions */
-int getLoadAvg(Vector* grepResultList, bool trim, char* regex);
+int getLoadAvg(GrepMarker* marker, bool trim, char* regex);
 
 /**
  * Get log line from log file including the rotated log file if applicable
@@ -100,7 +101,7 @@ void addToSearchResult(char *key, char *value);
 
 void clearSearchResultJson(cJSON **root);
 
-int getProcUsage(char *processName, Vector* grepResultList, bool trim, char* regex, char* filename);
+int getProcUsage(char *processName, GrepMarker* marker, bool trim, char* regex, char* filename);
 
 void freeGrepSeekProfile(GrepSeekProfile *gsProfile);
 

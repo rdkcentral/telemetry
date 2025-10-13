@@ -452,25 +452,22 @@ static void* CollectAndReport(void* data)
                 }
                 if(profile->topMarkerList != NULL && Vector_Size(profile->topMarkerList) > 0)
                 {
-                    Vector *topMarkerResultList = NULL;
-                    Vector_Create(&topMarkerResultList);
-                    processTopPattern(profile->name, profile->topMarkerList, topMarkerResultList, 0);
-                    long int reportSize = Vector_Size(topMarkerResultList);
+                    processTopPattern(profile->name, profile->topMarkerList, 0);
+                    long int reportSize = Vector_Size(profile->topMarkerList);
                     if(reportSize != 0)
                     {
-                        T2Info("Top markers report is compleated report size %ld\n", (unsigned long)reportSize);
-                        encodeGrepResultInJSON(valArray, topMarkerResultList);
+                        T2Info("Top markers report is completed report size %ld\n", (unsigned long)reportSize);
+                        encodeGrepResultInJSON(valArray, profile->topMarkerList);
                     }
                     else
                     {
-                        T2Debug("Top markers report generated but is empty possabliy the memory value is changed");
+                        T2Debug("Top markers report generated but is empty possibly the memory value is changed");
                     }
-                    Vector_Destroy(topMarkerResultList, freeGResult);
                 }
                 if(profile->gMarkerList != NULL && Vector_Size(profile->gMarkerList) > 0)
                 {
                     getGrepResults(&(profile->grepSeekProfile), profile->gMarkerList, &grepResultList, profile->bClearSeekMap, false, customLogPath); // Passing 5th argument as false so that it doesn't check rotated logs for the first reporting after bootup for multiprofiles.
-                    encodeGrepResultInJSON(valArray, grepResultList);
+                    encodeGrepResultInJSON(valArray, profile->gMarkerList);
                     Vector_Destroy(grepResultList, freeGResult);
                 }
                 if(profile->eMarkerList != NULL && Vector_Size(profile->eMarkerList) > 0)
@@ -495,8 +492,9 @@ static void* CollectAndReport(void* data)
                         profile->triggerReportOnCondition = false ;
                         pthread_mutex_unlock(&profile->triggerCondMutex);
 
-                        if(profile->callBackOnReportGenerationComplete)
+                        if(profile->callBackOnReportGenerationComplete != NULL)
                         {
+                            T2Debug("Calling callback function profile->callBackOnReportGenerationComplete \n");
                             profile->callBackOnReportGenerationComplete(profile->name);
                         }
                     }
@@ -601,7 +599,7 @@ static void* CollectAndReport(void* data)
                                     profile->triggerReportOnCondition = false ;
                                     pthread_mutex_unlock(&profile->triggerCondMutex);
 
-                                    if(profile->callBackOnReportGenerationComplete != NULL)
+                                    if(profile->callBackOnReportGenerationComplete)
                                     {
                                         T2Debug("Calling callback function profile->callBackOnReportGenerationComplete \n");
                                         profile->callBackOnReportGenerationComplete(profile->name);

@@ -165,10 +165,10 @@ static pthread_mutex_t dcaMutex = PTHREAD_MUTEX_INITIALIZER;
  *  @return  Returns the status of the operation.
  *  @retval  Returns zero on success, appropriate errorcode otherwise.
  */
-int processTopPattern(char* profileName,  Vector* topMarkerList, Vector* out_grepResultList, int profileExecCounter)
+int processTopPattern(char* profileName, Vector* topMarkerList, int profileExecCounter)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
-    if(profileName == NULL || topMarkerList == NULL || out_grepResultList == NULL)
+    if(profileName == NULL || topMarkerList == NULL)
     {
         T2Error("Invalid arguments for %s\n", __FUNCTION__);
         return -1;
@@ -241,14 +241,14 @@ int processTopPattern(char* profileName,  Vector* topMarkerList, Vector* out_gre
 
         if (strcmp(grepMarkerObj->markerName, "Load_Average") == 0)   // This block is for device level load average
         {
-            if (0 == getLoadAvg(out_grepResultList, grepMarkerObj->trimParam, grepMarkerObj->regexParam))
+            if (0 == getLoadAvg(grepMarkerObj, grepMarkerObj->trimParam, grepMarkerObj->regexParam))
             {
                 T2Debug("getLoadAvg() Failed with error");
             }
         }
         else
         {
-            getProcUsage(grepMarkerObj->searchString, out_grepResultList, grepMarkerObj->trimParam, grepMarkerObj->regexParam, filename);
+            getProcUsage(grepMarkerObj->searchString, grepMarkerObj, grepMarkerObj->trimParam, grepMarkerObj->regexParam, filename);
         }
 
     }
@@ -399,15 +399,16 @@ static inline void formatCount(char* buffer, size_t size, int count)
     snprintf(buffer, size, "%d", count);
 }
 
-static int getCountPatternMatch(FileDescriptor* fileDescriptor, const char* pattern)
+static int getCountPatternMatch(FileDescriptor* fileDescriptor, GrepMarker* marker)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
-    if (!fileDescriptor || !fileDescriptor->cfaddr || !pattern || !*pattern || fileDescriptor->cf_map_size <= 0)
+    if (!fileDescriptor || !fileDescriptor->cfaddr || !marker || !marker->searchString || !*marker->searchString || fileDescriptor->cf_map_size <= 0)
     {
         T2Error("Invalid file descriptor arguments pattern match\n");
         return -1; // Invalid arguments
     }
 
+    const char* pattern = marker->searchString;
     const char* buffer;
     size_t buflen = 0;
     size_t patlen = strlen(pattern);
@@ -457,20 +458,24 @@ static int getCountPatternMatch(FileDescriptor* fileDescriptor, const char* patt
         }
 
     }
-    T2Debug("count is %d\n", count);
+    
+    // Populate the marker's union count field
+    marker->u.count = count;
+    T2Debug("count is %d, stored in marker->u.count\n", count);
     T2Debug("%s --out\n", __FUNCTION__);
-    return count;
+    return 0;
 }
 
-static char* getAbsolutePatternMatch(FileDescriptor* fileDescriptor, const char* pattern)
+static int getAbsolutePatternMatch(FileDescriptor* fileDescriptor, GrepMarker* marker)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
-    if (!fileDescriptor || !fileDescriptor->cfaddr || fileDescriptor->cf_map_size <= 0 || !pattern || !*pattern)
+    if (!fileDescriptor || !fileDescriptor->cfaddr || fileDescriptor->cf_map_size <= 0 || !marker || !marker->searchString || !*marker->searchString)
     {
         T2Error("Invalid file descriptor arguments absolute\n");
-        return NULL;
+        return -1;
     }
 
+    const char* pattern = marker->searchString;
     const char* buffer;
     size_t buflen = 0;
     size_t patlen = strlen(pattern);
@@ -526,8 +531,11 @@ static char* getAbsolutePatternMatch(FileDescriptor* fileDescriptor, const char*
 
     if(!last_found)
     {
-        return NULL;
+        // No match found, set markerValue to NULL
+        marker->u.markerValue = NULL;
+        return 0;
     }
+    
     // Move pointer just after the pattern
     const char *start = last_found + patlen;
     size_t chars_left = buflen - (start - buffer);
@@ -539,17 +547,22 @@ static char* getAbsolutePatternMatch(FileDescriptor* fileDescriptor, const char*
     char *result = (char*)malloc(length + 1);
     if (!result)
     {
-        return NULL;
+        marker->u.markerValue = NULL;
+        return -1;
     }
     memcpy(result, start, length);
     result[length] = '\0';
+    
+    // Populate the marker's union markerValue field
+    marker->u.markerValue = result;
+    T2Debug("Absolute match found: %s, stored in marker->u.markerValue\n", result);
     T2Debug("%s --out\n", __FUNCTION__);
-    return result;
+    return 0;
 }
 
 static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker* marker, Vector* out_grepResultList)
 {
-    T2Info("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in", __FUNCTION__);
     if (!fileDescriptor || !fileDescriptor->cfaddr || fileDescriptor->cf_file_size <= 0 || !marker || !marker->searchString || !*marker->searchString || !out_grepResultList)
     {
         T2Error("Invalid file descriptor arguments accumulate\n");
@@ -659,18 +672,18 @@ static int processPatternWithOptimizedFunction(GrepMarker* marker, Vector* out_g
         return -1;
     }
     // Extract the pattern and other parameters from the marker
-    const char* pattern = marker->searchString;
+    //const char* pattern = marker->searchString;
     bool trimParameter = marker->trimParam;
     char* regexParameter = marker->regexParam;
     char* header = marker->markerName;
     int count = 0;
-    char* last_found = NULL;
     MarkerType mType = marker->mType;
 
     if (mType == MTYPE_COUNTER)
     {
         // Count the number of occurrences of the pattern in the memory-mapped data
-        count = getCountPatternMatch(filedescriptor, pattern);
+        getCountPatternMatch(filedescriptor, marker);
+        count = marker->u.count;
         if (count > 0)
         {
             // If matches are found, process them accordingly
@@ -695,16 +708,13 @@ static int processPatternWithOptimizedFunction(GrepMarker* marker, Vector* out_g
     else /* MTYPE_ABSOLUTE */
     {
         // Get the last occurrence of the pattern in the memory-mapped data
-        last_found = getAbsolutePatternMatch(filedescriptor, pattern);
-        if (last_found)
+        getAbsolutePatternMatch(filedescriptor, marker);
+        if (marker->u.markerValue)
         {
             // If a match is found, process it accordingly
-            GrepResult* result = createGrepResultObj(header, last_found, trimParameter, regexParameter);
-            if(last_found)
-            {
-                free(last_found);
-                last_found = NULL;
-            }
+            GrepResult* result = createGrepResultObj(header, marker->u.markerValue, trimParameter, regexParameter);
+            free(marker->u.markerValue);
+            marker->u.markerValue = NULL;
             if (result == NULL)
             {
                 T2Error("Failed to create GrepResult\n");

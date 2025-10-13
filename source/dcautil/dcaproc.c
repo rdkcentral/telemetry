@@ -67,13 +67,9 @@
  * @brief To get process usage.
  *
  * @param[in] processName   Process name.
- * @param[in] marker        GrepMarker object to populate with results.
- * @param[in] trim          Trim parameter flag.
- * @param[in] regex         Regex parameter string.
- * @param[in] filename      Optional filename for top output.
  *
  * @return  Returns status of operation.
- * @retval  0 on success, appropiate errorcode otherwise.
+ * @retval  0 on sucess, appropiate errorcode otherwise.
  */
 
 int getProcUsage(char *processName, GrepMarker* marker, bool trim, char* regex, char* filename)

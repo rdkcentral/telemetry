@@ -123,7 +123,7 @@ static void freeProfileSeekHashMap(void *data)
  */
 
 /**
- * @brief This API is to find the load average of system and populate the marker union field.
+ * @brief This API is to find the load average of system and add it to the SearchResult JSON.
  *
  * @return  Returns status of operation.
  * @retval  Return 1 on success.
@@ -156,14 +156,13 @@ int getLoadAvg(GrepMarker* marker, bool trim, char* regex)
 
     str[LEN] = '\0';
 
-    // Populate the marker's union markerValue field directly
+
     if(marker->u.markerValue)
     {
         free(marker->u.markerValue);
     }
     marker->u.markerValue = strndup(str, LEN);
     
-    T2Debug("Load average stored in marker->u.markerValue: %s\n", marker->u.markerValue);
     T2Debug("%s --out \n", __FUNCTION__);
     return 1;
 }

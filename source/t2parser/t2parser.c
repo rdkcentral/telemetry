@@ -336,6 +336,7 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
         {
             gMarker->regexParam = strdup(regex);
         }
+        gMarker->reportTimestampParam = reportTimestamp;
         if((use == NULL) || (0 == strcmp(use, "absolute")))
         {
             gMarker->mType = MTYPE_ABSOLUTE;

@@ -331,6 +331,7 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
         gMarker->paramType = strdup(ptype);
         gMarker->reportEmptyParam = ReportEmpty;
         gMarker->trimParam = trim;
+        gMarker->markerName_CT = NULL;
         gMarker->regexParam = NULL;
         if(regex != NULL)
         {
@@ -354,6 +355,7 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
             Vector_Create(&gMarker->u.accumulatedValues);
             if(gMarker->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH)
             {
+                T2Info("Timstamp taken as UNIX-EPOCH\n");
                 Vector_Create(&gMarker->accumulatedTimestamp);
             }
         }
@@ -965,6 +967,14 @@ T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, i
                 {
                     logfile = jpSubitemLogFile->valuestring;
                 }
+                cJSON *jpSubitemreportTimestamp = cJSON_GetObjectItem(pSubitem, "reportTimestamp");
+                if(jpSubitemreportTimestamp)
+                {
+                    if(!(strcmp(jpSubitemreportTimestamp->valuestring, "Unix-Epoch")))
+                    {
+                        rtformat = REPORTTIMESTAMP_UNIXEPOCH;
+                    }
+                }
                 if(jpSubitemFirstSeekFromEOF)
                 {
                     if (cJSON_IsNumber(jpSubitemFirstSeekFromEOF))
@@ -983,7 +993,7 @@ T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, i
                 continue;
             }
 
-            T2Debug("%s : reportTimestamp = %d\n", __FUNCTION__, rtformat);
+            T2Info("%s : reportTimestamp = %d\n", __FUNCTION__, rtformat);
             //CID 337454: Explicit null dereferenced (FORWARD_NULL) ;CID 337448: Explicit null dereferenced (FORWARD_NULL)
             if (content != NULL && header != NULL)
             {

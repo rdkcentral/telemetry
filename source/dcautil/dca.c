@@ -610,6 +610,59 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
                 break;
             }
 
+            // Find the beginning of the line containing the pattern
+            const char *line_start = found;
+            T2Info("line_start = %s\n", line_start);
+            //T2Info("buffer = %s\n", buffer);
+            while (line_start > buffer && *(line_start - 1) != '\n')
+            {
+                T2Info("line_start = %s\n", line_start);
+                line_start--;
+            }
+            T2Info("line_start = %s\n", line_start);
+            char timestamp_str[20] = {0};
+            time_t unix_timestamp = 0;
+            
+            //Expected timestamp format : YYYYMMDD HH:MM:SS.mmm
+            if (line_start + 19 <= buffer + buflen && 
+                isdigit(line_start[0]) && isdigit(line_start[1]) && isdigit(line_start[2]) && isdigit(line_start[3]) && // YYYY
+                isdigit(line_start[4]) && isdigit(line_start[5]) && // MM
+                isdigit(line_start[6]) && isdigit(line_start[7]) && // DD
+                line_start[8] == ' ' &&
+                isdigit(line_start[9]) && isdigit(line_start[10]) && // HH
+                line_start[11] == ':' &&
+                isdigit(line_start[12]) && isdigit(line_start[13]) && // MM
+                line_start[14] == ':' &&
+                isdigit(line_start[15]) && isdigit(line_start[16]) && // SS
+                line_start[17] == '.' &&
+                isdigit(line_start[18]) && isdigit(line_start[19]) && isdigit(line_start[20])) // mmm
+            {
+                strncpy(timestamp_str, line_start, 19);
+                timestamp_str[19] = '\0';
+                
+                T2Info("timestamp_str = %s\n", timestamp_str);
+                struct tm raw_time = {0};
+                int year, month, day, hour, min, sec, msec;
+                
+                if (sscanf(timestamp_str, "%4d%2d%2d %2d:%2d:%2d.%3d", 
+                          &year, &month, &day, &hour, &min, &sec, &msec) == 7)
+                {
+                    raw_time.tm_year = year - 1900;
+                    raw_time.tm_mon = month - 1;
+                    raw_time.tm_mday = day;
+                    raw_time.tm_hour = hour;
+                    raw_time.tm_min = min;
+                    raw_time.tm_sec = sec; //millisecond is not included right now
+                    raw_time.tm_isdst = -1;
+                    
+                    unix_timestamp = mktime(&raw_time);
+                    if (unix_timestamp != -1)
+                    {
+                        T2Info("Extracted timestamp: %s -> Unix: %ld\n", timestamp_str, unix_timestamp);
+                    }
+                }
+            }
+
             // Move pointer just after the pattern
             const char *start = found + patlen;
             size_t chars_left = buflen - (start - buffer);
@@ -626,6 +679,17 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
                 result[length] = '\0';
                 T2Info("%s %d : result = %s\n", __FUNCTION__, __LINE__, result);
                 Vector_PushBack(accumulatedValues, result);
+                
+                if (unix_timestamp > 0 && marker->accumulatedTimestamp)
+                {
+                    char *timestamp_str_epoch = (char*)malloc(32);
+                    if (timestamp_str_epoch)
+                    {
+                        snprintf(timestamp_str_epoch, 32, "%ld", unix_timestamp);
+                        Vector_PushBack(marker->accumulatedTimestamp, timestamp_str_epoch);
+                        T2Info("Stored timestamp: %s\n", timestamp_str_epoch);
+                    }
+                }
             }
 
             size_t advance = (size_t)(found - cur) + patlen;

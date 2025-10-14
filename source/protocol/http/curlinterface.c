@@ -250,14 +250,12 @@ static T2ERROR setPayload(CURL *curl, const char* payload, childResponse *childC
     return T2ERROR_SUCCESS;
 }
 #ifdef LIBRDKCERTSEL_BUILD
+#if defined(ENABLE_RED_RECOVERY_SUPPORT)
 bool isStateRedEnabled(void)
 {
-    #if defined(ENABLE_RDKB_SUPPORT)
-        return false;
-    #else
-        return access("/tmp/stateRedEnabled", F_OK) == 0;
-    #endif
+    return access("/tmp/stateRedEnabled", F_OK) == 0;
 }
+#endif
 void curlCertSelectorFree()
 {
     rdkcertselector_free(&curlCertSelector);
@@ -273,7 +271,12 @@ void curlCertSelectorFree()
 }
 static void curlCertSelectorInit()
 {
-    bool state_red_enable = isStateRedEnabled();
+    bool state_red_enable = false;
+    
+    #if defined(ENABLE_RED_RECOVERY_SUPPORT)
+        state_red_enable = isStateRedEnabled();
+    #endif
+    
     if (state_red_enable && curlRcvryCertSelector == NULL )
     {
         curlRcvryCertSelector = rdkcertselector_new( NULL, NULL, "RCVRY" );
@@ -342,9 +345,10 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
     }
 #ifdef LIBRDKCERTSEL_BUILD
     curlCertSelectorInit();
-    state_red_enable = isStateRedEnabled();
-    T2Info("%s: state_red_enable: %d\n", __func__, state_red_enable );
-
+    #if defined(ENABLE_RED_RECOVERY_SUPPORT)
+        state_red_enable = isStateRedEnabled();
+        T2Info("%s: state_red_enable: %d\n", __func__, state_red_enable );
+    #endif
     if (state_red_enable)
     {
         thisCertSel = curlRcvryCertSelector;

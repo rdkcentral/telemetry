@@ -391,7 +391,7 @@ T2ERROR encodeStaticParamsInJSON(cJSON *valArray, Vector *staticParamList)
 
 T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepMarkerList)
 {
-    T2Debug("%s ++in \n", __FUNCTION__);
+    T2Info("%s ++in \n", __FUNCTION__);
     if(valArray == NULL || grepMarkerList == NULL)
     {
         T2Error("Invalid or NULL Arguments\n");
@@ -411,6 +411,7 @@ T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepMarkerList)
         switch(grepMarker->mType)
         {
             case MTYPE_COUNTER:
+            T2Info("%d ++in \n", __LINE__);
                 if(grepMarker->u.count > 0)
                 {
                     char stringValue[10] = {'\0'};
@@ -469,6 +470,7 @@ T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepMarkerList)
                 break;
 
             case MTYPE_ACCUMULATE:
+                T2Info("%d ++in \n", __LINE__);
                 if(grepMarker->u.accumulatedValues != NULL && Vector_Size(grepMarker->u.accumulatedValues))
                 {
                     arrayItem = cJSON_CreateObject();
@@ -540,18 +542,52 @@ T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepMarkerList)
                             regfree(&regpattern);
                         }
                     }
-
+                    T2Info("%d ++in \n", __LINE__);
                     if(regaccumulateValues != NULL && Vector_Size(regaccumulateValues) > 0)
                     {
                         convertVectorToJson(vectorToarray, regaccumulateValues);
                     }
                     else
                     {
+                        T2Info("%d ++in \n", __LINE__);
                         convertVectorToJson(vectorToarray, grepMarker->u.accumulatedValues);
                     }
                     Vector_Clear(grepMarker->u.accumulatedValues, freeAccumulatedParam);
-
+                    T2Info("%d ++in \n", __LINE__);
                     cJSON_AddItemToObject(arrayItem, grepMarker->markerName, vectorToarray);
+                    T2Info("%d ++in \n", __LINE__);
+                    // Add timestamp support for MTYPE_ACCUMULATE
+                    if(grepMarker->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH && grepMarker->accumulatedTimestamp != NULL)
+                    {
+                        T2Info("%d ++in \n", __LINE__);
+                        // Populate markerName_CT if not already set
+                        if(grepMarker->markerName_CT == NULL)
+                        {
+                            T2Info("%d ++in \n", __LINE__);
+                            char buf[512];
+                            snprintf(buf, sizeof(buf), "%s_CT", grepMarker->markerName);
+                            grepMarker->markerName_CT = strdup(buf);
+                        }
+                        T2Info("Timestamp is taken for %s\n", grepMarker->markerName_CT);
+                        
+                        cJSON *TimevectorToarray = cJSON_CreateArray();
+                        if(TimevectorToarray == NULL)
+                        {
+                            T2Error("cJSON_CreateArray failed .. TimevectorToarray is NULL\n");
+                            cJSON_Delete(arrayItem);
+                            if(regaccumulateValues != NULL)
+                            {
+                                Vector_Clear(regaccumulateValues, NULL);
+                                free(regaccumulateValues);
+                            }
+                            return T2ERROR_FAILURE;
+                        }
+                        convertVectorToJson(TimevectorToarray, grepMarker->accumulatedTimestamp);
+                        T2Info("convertVectorToJson is successful for timestamps\n");
+                        Vector_Clear(grepMarker->accumulatedTimestamp, freeAccumulatedParam);
+                        cJSON_AddItemToObject(arrayItem, grepMarker->markerName_CT, TimevectorToarray);
+                    }
+                    
                     cJSON_AddItemToArray(valArray, arrayItem);
                     char *temp = cJSON_Print(vectorToarray);
                     if(temp)

@@ -252,7 +252,11 @@ static T2ERROR setPayload(CURL *curl, const char* payload, childResponse *childC
 #ifdef LIBRDKCERTSEL_BUILD
 bool isStateRedEnabled(void)
 {
-    return access("/tmp/stateRedEnabled", F_OK) == 0;
+    #if defined(ENABLE_RDKB_SUPPORT)
+        return false;
+    #else
+        return access("/tmp/stateRedEnabled", F_OK) == 0;
+    #endif
 }
 void curlCertSelectorFree()
 {

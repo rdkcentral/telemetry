@@ -572,10 +572,11 @@ TEST_F(profileXconfTestFixture, ProfileXConf_notifyTimeout)
             //Vector_Create(&outparamlist);
             return outparamlist;
         });
+   
     EXPECT_CALL(*g_profileXConfMock, encodeParamResultInJSON(_, _))
         .Times(1)
         .WillOnce(Return(T2ERROR_SUCCESS));
-    
+   
     EXPECT_CALL(*g_profileXConfMock, processTopPattern(_,_,_,_))
         .Times(1)
         .WillOnce(Return(0));
@@ -585,6 +586,7 @@ TEST_F(profileXconfTestFixture, ProfileXConf_notifyTimeout)
         .WillOnce([](GrepSeekProfile **GSP, Vector *markerList, Vector **grepResultList, bool isClearSeekMap, bool check_rotated, char *customLogPath) {
             return T2ERROR_SUCCESS;
         });
+    
     EXPECT_CALL(*g_profileXConfMock, encodeGrepResultInJSON(_, _))
         .Times(1)
         .WillOnce(Return(T2ERROR_SUCCESS));
@@ -606,8 +608,8 @@ TEST_F(profileXconfTestFixture, ProfileXConf_notifyTimeout)
         .Times(1);
     ProfileXConf_notifyTimeout(false, true);
     std::this_thread::sleep_for(std::chrono::milliseconds(20000));
-}
-*/
+}*/
+
 //Test the deletion of xconf profile
 TEST_F(profileXconfTestFixture, ProfileXConf_deleteProfile)
 {

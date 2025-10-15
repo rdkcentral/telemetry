@@ -39,6 +39,12 @@
 #include "xconfclient.h"
 #include "t2MtlsUtils.h"
 
+#include "curlinterface.h"
+#include "reportprofiles.h"
+#include "t2MtlsUtils.h"
+#include "t2log_wrapper.h"
+#include "busInterface.h"
+
 //Global variables
 #define MAX_POOL_SIZE 3
 #define HTTP_RESPONSE_FILE "/tmp/httpOutput.txt"
@@ -974,4 +980,5 @@ T2ERROR http_pool_cleanup(void)
     T2Info("%s ++out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
+
 

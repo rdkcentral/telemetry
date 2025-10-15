@@ -44,6 +44,12 @@
 #define HTTP_RESPONSE_FILE "/tmp/httpOutput.txt"
 #define RESPONSE_BUFFER_SIZE 8192
 static bool pool_initialized = false;
+#if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
+
+#if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
+static char waninterface[256];
+#endif
+#endif
 
 // High-level design for connection pooling - Memory optimized
 typedef struct
@@ -195,12 +201,6 @@ T2ERROR init_connection_pool()
             T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
         }
 
-        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPCNT, 15L);
-        if(code != CURLE_OK)
-        {
-            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-        }
-        T2Info("Set TCP keepalive probe count to 15 via CURLOPT_TCP_KEEPCNT\n");
 #ifdef CURLOPT_TCP_KEEPCNT
         code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPCNT, 15L);
         if(code != CURLE_OK)
@@ -525,7 +525,30 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
     {
         T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
     }
+#if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
 
+#if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
+    char *paramVal = NULL;
+    memset(waninterface, 0, sizeof(waninterface));
+    snprintf(waninterface, sizeof(waninterface), "%s", INTERFACE);
+
+    if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_CURRENT_WAN_IFNAME, &paramVal))
+    {
+        if(strlen(paramVal) > 0)
+        {
+            memset(waninterface, 0, sizeof(waninterface));
+            snprintf(waninterface, sizeof(waninterface), "%s", paramVal);
+        }
+
+        free(paramVal);
+        paramVal = NULL;
+    }
+    else
+    {
+        T2Error("Failed to get Value for %s\n", TR181_DEVICE_CURRENT_WAN_IFNAME);
+    }
+#endif
+#endif
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
 #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
     code = curl_easy_setopt(easy, CURLOPT_INTERFACE, waninterface);
@@ -951,3 +974,4 @@ T2ERROR http_pool_cleanup(void)
     T2Info("%s ++out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
+

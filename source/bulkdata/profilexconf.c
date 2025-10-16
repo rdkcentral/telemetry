@@ -47,6 +47,7 @@ static bool initialized = false;
 static ProfileXConf *singleProfile = NULL;
 static pthread_mutex_t plMutex; /* TODO - we can remove plMutex most likely but firseck that CollectAndReport doesn't cause issue */
 static pthread_cond_t reuseThread;
+static pthread_t reportThread; // This is the thread that runs CollectAndReportXconf function
 static bool reportThreadExits = false;
 
 static pid_t xconfReportPid;
@@ -220,6 +221,11 @@ static void* CollectAndReportXconf(void* data)
     do
     {
         T2Info("%s while Loop -- START \n", __FUNCTION__);
+        if(singleProfile == NULL)
+        {
+            T2Error("%s is called with empty profile, profile reload might be in-progress, skip the request\n", __FUNCTION__);
+            goto reportXconfThreadEnd;
+        }
         profile = singleProfile;
         Vector *profileParamVals = NULL;
         Vector *grepResultList = NULL;
@@ -494,7 +500,6 @@ static void* CollectAndReportXconf(void* data)
         //pthread_mutex_unlock(&plMutex);
 reportXconfThreadEnd :
         T2Info("%s while Loop -- END \n", __FUNCTION__);
-        T2Info("%s --out\n", __FUNCTION__);
         pthread_cond_wait(&reuseThread, &plMutex);
     }
     while(initialized);
@@ -591,7 +596,7 @@ T2ERROR ProfileXConf_uninit()
         pthread_mutex_lock(&plMutex);
         pthread_cond_signal(&reuseThread);
         pthread_mutex_unlock(&plMutex);
-        pthread_join(singleProfile->reportThread, NULL);
+        pthread_join(reportThread, NULL);
         reportThreadExits = false;
         singleProfile->reportInProgress = false ;
         T2Info("Final report is completed, releasing profile memory\n");
@@ -727,17 +732,7 @@ T2ERROR ProfileXConf_delete(ProfileXConf *profile)
 
     if(singleProfile->reportInProgress)
     {
-        T2Info("Waiting for CollectAndReport to be complete : %s\n", singleProfile->name);
-        pthread_mutex_lock(&plMutex);
-        initialized = false;
-        T2Info("Sending signal to reuse Thread in CollectAndReportXconf\n");
-        pthread_cond_signal(&reuseThread);
-        pthread_mutex_unlock(&plMutex);
-        pthread_join(singleProfile->reportThread, NULL);
-        T2Info("reportThread exits and initialising the profile list\n");
-        reportThreadExits = false;
-        initialized = true;
-        singleProfile->reportInProgress = false ;
+        T2Info("Waiting for CollectAndReportXconf to be complete : %s\n", singleProfile->name);
     }
 
     pthread_mutex_lock(&plMutex);
@@ -906,7 +901,7 @@ void ProfileXConf_notifyTimeout(bool isClearSeekMap, bool isOnDemand)
         }
         else
         {
-            reportThreadStatus = pthread_create(&singleProfile->reportThread, NULL, CollectAndReportXconf, NULL);
+            reportThreadStatus = pthread_create(&reportThread, NULL, CollectAndReportXconf, NULL);
             if ( reportThreadStatus != 0 )
             {
                 T2Error("Failed to create report thread with error code = %d !!! \n", reportThreadStatus);

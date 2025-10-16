@@ -17,10 +17,13 @@
  * limitations under the License.
 */
 
+#define _GNU_SOURCE
 #include <stdbool.h>
 #include <malloc.h>
 #include <string.h>
 #include <signal.h>
+#include <time.h>
+#include <errno.h>
 #include <cjson/cJSON.h>
 
 #include "profilexconf.h"
@@ -597,9 +600,21 @@ T2ERROR ProfileXConf_uninit()
         pthread_cond_signal(&reuseThread);
         pthread_t threadToJoin = reportThread;
         pthread_mutex_unlock(&plMutex);
-        pthread_join(threadToJoin, NULL);
+        // Use timeout-based join to avoid waiting forever
+        struct timespec timeout;
+        clock_gettime(CLOCK_REALTIME, &timeout);
+        timeout.tv_sec += 5; // 5 second timeout
+        
+        int join_result = pthread_timedjoin_np(threadToJoin, NULL, &timeout);
+        if (join_result == ETIMEDOUT) {
+            T2Warning("Thread join timed out after 5 seconds, proceeding with cleanup\n");
+        } else if (join_result != 0) {
+            T2Error("Failed to join thread with error code = %d\n", join_result);
+        }
+        pthread_mutex_lock(&plMutex);
         reportThreadExits = false;
-        singleProfile->reportInProgress = false ;
+        singleProfile->reportInProgress = false;
+        pthread_mutex_unlock(&plMutex);
         T2Info("Final report is completed, releasing profile memory\n");
     }
     pthread_mutex_lock(&plMutex);

@@ -595,8 +595,9 @@ T2ERROR ProfileXConf_uninit()
         T2Debug("Waiting for final report before uninit\n");
         pthread_mutex_lock(&plMutex);
         pthread_cond_signal(&reuseThread);
+        pthread_t threadToJoin = reportThread;
         pthread_mutex_unlock(&plMutex);
-        pthread_join(reportThread, NULL);
+        pthread_join(threadToJoin, NULL);
         reportThreadExits = false;
         singleProfile->reportInProgress = false ;
         T2Info("Final report is completed, releasing profile memory\n");

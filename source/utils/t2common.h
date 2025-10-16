@@ -110,6 +110,32 @@ typedef struct _GrepMarker
     int firstSeekFromEOF;
 } GrepMarker;
 
+typedef struct _TopMarker
+{
+    bool reportEmptyParam;
+    bool trimParam;
+    char* paramType;
+    char* markerName;
+    char* searchString;
+    char* logFile;
+    char* cpuValue;
+    char* memValue;
+    char* loadAverage;
+    reportTimestampFormat reportTimestampParam;
+    char* markerName_CT;
+    char* regexParam;
+    MarkerType mType;
+    union
+    {
+        unsigned int count;
+        char* markerValue;
+        Vector* accumulatedValues;
+    } u;
+    Vector* accumulatedTimestamp;
+    unsigned int skipFreq;
+    int firstSeekFromEOF;
+} TopMarker;
+
 typedef struct _TriggerCondition
 {
     char* type;

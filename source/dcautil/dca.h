@@ -27,7 +27,7 @@
  * Caller should be freeing vectorMarkerList and grepResultList
  */
 
-int getDCAResultsInVector(GrepSeekProfile *gSeekProfile, Vector* vectorMarkerList, Vector** out_grepResultList, bool check_rotated, char* customLogPath);
+int getDCAResultsInVector(GrepSeekProfile *gSeekProfile, Vector* vectorMarkerList, bool check_rotated, char* customLogPath);
 
 void T2InitProperties(); // declaration for initProperties
 

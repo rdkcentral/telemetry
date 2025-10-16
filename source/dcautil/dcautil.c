@@ -41,16 +41,16 @@
  */
 
 T2ERROR
-getGrepResults (GrepSeekProfile **GSP, Vector *markerList, Vector **grepResultList, bool isClearSeekMap, bool check_rotated, char *customLogPath)
+getGrepResults (GrepSeekProfile **GSP, Vector *markerList, bool isClearSeekMap, bool check_rotated, char *customLogPath)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
-    if(GSP == NULL || markerList == NULL || grepResultList == NULL)
+    if(GSP == NULL || markerList == NULL )
     {
         T2Error("Invalid Args or Args are NULL\n");
         return T2ERROR_FAILURE;
     }
 
-    getDCAResultsInVector(*GSP, markerList, grepResultList, check_rotated, customLogPath);
+    getDCAResultsInVector(*GSP, markerList, check_rotated, customLogPath);
     if (isClearSeekMap)
     {
         int count = (*GSP)->execCounter;

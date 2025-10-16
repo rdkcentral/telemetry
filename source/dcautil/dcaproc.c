@@ -72,8 +72,11 @@
  * @retval  0 on sucess, appropiate errorcode otherwise.
  */
 
-int getProcUsage(char *processName, GrepMarker* marker, bool trim, char* regex, char* filename)
+int getProcUsage(char *processName, TopMarker* marker, bool trim, char* regex, char* filename)
 {
+    //
+    // RE-VISIT
+    //
     T2Debug("%s ++in \n", __FUNCTION__);
     T2Debug("%s ++in %d %s\n", __FUNCTION__, trim, regex);
     if(marker == NULL || processName == NULL)
@@ -232,27 +235,16 @@ int getProcUsage(char *processName, GrepMarker* marker, bool trim, char* regex, 
         if(0 != getProcInfo(&pInfo, filename))
         {
             T2Debug("Process info - CPU: %s, Memory: %s \n", pInfo.cpuUse, pInfo.memUse);
-            
-            // Check marker name to determine if it's CPU or memory
-            if (strstr(marker->markerName, "cpu_") != NULL) {
-                // This is a CPU marker
-                if (marker->u.markerValue) {
-                    free(marker->u.markerValue);
+
+                if (marker->cpuValue) {
+                    free(marker->cpuValue);
                 }
-                marker->u.markerValue = strdup(pInfo.cpuUse);
-            } else if (strstr(marker->markerName, "mem_") != NULL) {
-                // This is a memory marker
-                if (marker->u.markerValue) {
-                    free(marker->u.markerValue);
+                marker->cpuValue = strdup(pInfo.cpuUse);
+
+                if (marker->memValue) {
+                    free(marker->memValue);
                 }
-                marker->u.markerValue = strdup(pInfo.memUse);
-            } else {
-                // Default fallback - use CPU value
-                if (marker->u.markerValue) {
-                    free(marker->u.markerValue);
-                }
-                marker->u.markerValue = strdup(pInfo.cpuUse);
-            }
+                marker->memValue = strdup(pInfo.memUse);
             
             ret = 1;
 

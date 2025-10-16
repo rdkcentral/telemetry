@@ -123,7 +123,43 @@ static T2ERROR addParameter(ProfileXConf *profile, const char* name, const char*
     }
     else //Grep Marker
     {
+        if(strncmp("top_log.txt", fileName, sizeof("top_log.txt")) == 0)
+        {
+            T2Debug("This is a TopMarker name :%s and value: %s add it to topmarker list \n", name, ref);
         char *splitSuffix = NULL;
+        char *accumulateSuffix = NULL;
+        // T2Debug("Adding Grep Marker :: Param/Marker Name : %s ref/pattern/Comp : %s fileName : %s skipFreq : %d\n", name, ref, fileName, skipFreq);
+        TopMarker *tMarker = (TopMarker *)malloc(sizeof(TopMarker));
+        memset(tMarker, 0, sizeof(TopMarker));
+        tMarker->markerName = strdup(name);
+        tMarker->searchString = strdup(ref);
+        tMarker->logFile = strdup(fileName);
+        tMarker->firstSeekFromEOF = 0;// memset will already set to 0 just a safeguard
+        tMarker->regexParam = NULL;
+        splitSuffix = strstr(name, SPLITMARKER_SUFFIX);
+        accumulateSuffix = strstr(name, ACCUMULATE_MARKER_SUFFIX);
+        if(splitSuffix != NULL && strcmp(splitSuffix, SPLITMARKER_SUFFIX) == 0)
+        {
+            tMarker->mType = MTYPE_ABSOLUTE;
+            tMarker->u.markerValue = NULL;
+        }
+        else if(accumulateSuffix != NULL && strcmp(accumulateSuffix, ACCUMULATE_MARKER_SUFFIX) == 0)
+        {
+            tMarker->mType = (MarkerType)MTYPE_XCONF_ACCUMULATE;
+            Vector_Create(&tMarker->u.accumulatedValues);
+        }
+        else
+        {
+            tMarker->mType = MTYPE_COUNTER;
+            tMarker->u.count = 0;
+        }
+        tMarker->skipFreq = skipFreq;
+            Vector_PushBack(profile->topMarkerList, tMarker);
+        }
+        else
+        {
+        char *splitSuffix = NULL;
+        char *accumulateSuffix = NULL;
         // T2Debug("Adding Grep Marker :: Param/Marker Name : %s ref/pattern/Comp : %s fileName : %s skipFreq : %d\n", name, ref, fileName, skipFreq);
         GrepMarker *gMarker = (GrepMarker *)malloc(sizeof(GrepMarker));
         memset(gMarker, 0, sizeof(GrepMarker));
@@ -133,10 +169,16 @@ static T2ERROR addParameter(ProfileXConf *profile, const char* name, const char*
         gMarker->firstSeekFromEOF = 0;// memset will already set to 0 just a safeguard
         gMarker->regexParam = NULL;
         splitSuffix = strstr(name, SPLITMARKER_SUFFIX);
+        accumulateSuffix = strstr(name, ACCUMULATE_MARKER_SUFFIX);
         if(splitSuffix != NULL && strcmp(splitSuffix, SPLITMARKER_SUFFIX) == 0)
         {
             gMarker->mType = MTYPE_ABSOLUTE;
             gMarker->u.markerValue = NULL;
+        }
+        else if(accumulateSuffix != NULL && strcmp(accumulateSuffix, ACCUMULATE_MARKER_SUFFIX) == 0)
+        {
+            gMarker->mType = (MarkerType)MTYPE_XCONF_ACCUMULATE;
+            Vector_Create(&gMarker->u.accumulatedValues);
         }
         else
         {
@@ -144,14 +186,7 @@ static T2ERROR addParameter(ProfileXConf *profile, const char* name, const char*
             gMarker->u.count = 0;
         }
         gMarker->skipFreq = skipFreq;
-        if(strncmp("top_log.txt", fileName, sizeof("top_log.txt")) == 0)
-        {
-            T2Debug("This is a TopMarker name :%s and value: %s add it to topmarker list \n", name, ref);
-            Vector_PushBack(profile->topMarkerList, gMarker);
-        }
-        else
-        {
-            Vector_PushBack(profile->gMarkerList, gMarker);
+        Vector_PushBack(profile->gMarkerList, gMarker);
         }
     }
     profile->paramNumOfEntries++;

@@ -312,6 +312,68 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
 
         // T2Debug("Adding Grep Marker :: Param/Marker Name : %s ref/pattern/Comp : %s fileName : %s skipFreq : %d\n", name, ref, fileName, skipFreq);
 
+        if(fileName != NULL && strncmp("top_log.txt", fileName, sizeof("top_log.txt")) == 0)
+        {
+            T2Debug("This is a TopMarker name :%s  and value: %s add it to topmarker list \n", name, ref);
+            TopMarker *tMarker = (TopMarker *) malloc(sizeof(TopMarker));
+            if(tMarker == NULL)
+            {
+                T2Error("Unable to allocate memory for TopMarker \n");
+                return T2ERROR_FAILURE;
+            }
+            tMarker->markerName = strdup(name);
+            tMarker->searchString = strdup(ref);
+            if(fileName)
+            {
+                tMarker->logFile = strdup(fileName);
+            }
+            else
+            {
+                tMarker->logFile = NULL;
+            }
+            tMarker->paramType = strdup(ptype);
+            tMarker->reportEmptyParam = ReportEmpty;
+            tMarker->trimParam = trim;
+            tMarker->markerName_CT = NULL;
+            tMarker->regexParam = NULL;
+            if(regex != NULL)
+            {
+                tMarker->regexParam = strdup(regex);
+            }
+            tMarker->reportTimestampParam = reportTimestamp;
+            if((use == NULL) || (0 == strcmp(use, "absolute")))
+            {
+                tMarker->mType = MTYPE_ABSOLUTE;
+                tMarker->u.markerValue = NULL;
+            }
+            else if (0 == strcmp(use, "count"))
+            {
+                tMarker->mType = MTYPE_COUNTER;
+                tMarker->u.count = 0;
+            }
+            else if (0 == strcmp(use, "accumulate"))
+            {
+                T2Info("marker type is Accumulate \n");
+                tMarker->mType = MTYPE_ACCUMULATE;
+                Vector_Create(&tMarker->u.accumulatedValues);
+                if(tMarker->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH)
+                {
+                    T2Info("Timstamp taken as UNIX-EPOCH\n");
+                    Vector_Create(&tMarker->accumulatedTimestamp);
+                }
+            }
+            else
+            {
+                T2Info("Unsupported marker type. Defaulting to absolute \n");
+                tMarker->mType = MTYPE_ABSOLUTE;
+                tMarker->u.markerValue = NULL;
+            }
+            tMarker->skipFreq = skipFreq;
+            tMarker->firstSeekFromEOF = firstSeekFromEOF;
+            Vector_PushBack(profile->topMarkerList, tMarker);
+        }
+        else
+        {
         GrepMarker *gMarker = (GrepMarker *) malloc(sizeof(GrepMarker));
         if(gMarker == NULL)
         {
@@ -367,16 +429,9 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
         }
         gMarker->skipFreq = skipFreq;
         gMarker->firstSeekFromEOF = firstSeekFromEOF;
+        Vector_PushBack(profile->gMarkerList, gMarker);
+        }
 
-        if(fileName != NULL && strncmp("top_log.txt", fileName, sizeof("top_log.txt")) == 0)
-        {
-            T2Debug("This is a TopMarker name :%s  and value: %s add it to topmarker list \n", name, ref);
-            Vector_PushBack(profile->topMarkerList, gMarker);
-        }
-        else
-        {
-            Vector_PushBack(profile->gMarkerList, gMarker);
-        }
 #ifdef PERSIST_LOG_MON_REF
         profile->saveSeekConfig = true;
 #endif

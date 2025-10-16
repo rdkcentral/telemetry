@@ -222,7 +222,6 @@ static void* CollectAndReportXconf(void* data)
         T2Info("%s while Loop -- START \n", __FUNCTION__);
         profile = singleProfile;
         Vector *profileParamVals = NULL;
-        Vector *grepResultList = NULL;
         cJSON *valArray = NULL;
         char* jsonReport = NULL;
         char* customLogPath = NULL;
@@ -288,10 +287,9 @@ static void* CollectAndReportXconf(void* data)
             }
             if(profile->gMarkerList != NULL && Vector_Size(profile->gMarkerList) > 0)
             {
-                getGrepResults(&(profile->grepSeekProfile), profile->gMarkerList, &grepResultList, profile->bClearSeekMap, checkRotated, customLogPath); // Passing 5th argument as true to check rotated logs only in case of single profile
+                getGrepResults(&(profile->grepSeekProfile), profile->gMarkerList, profile->bClearSeekMap, checkRotated, customLogPath); // Passing 5th argument as true to check rotated logs only in case of single profile
                 T2Info("Grep complete for %lu markers \n", (unsigned long)Vector_Size(profile->gMarkerList));
                 encodeGrepResultInJSON(valArray, profile->gMarkerList);
-                Vector_Destroy(grepResultList, freeGResult);
             }
 
             dcaFlagReportCompleation();

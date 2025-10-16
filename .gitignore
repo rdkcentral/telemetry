@@ -1,0 +1,37 @@
+# Build artifacts
+Makefile.in
+aclocal.m4
+autom4te.cache/
+compile
+config.guess
+config.log
+config.sub
+configure
+depcomp
+install-sh
+ltmain.sh
+missing
+*.o
+*.a
+*.so
+*.so.*
+.libs/
+.deps/
+config.status
+config.h
+stamp-h1
+libtool
+
+# Test artifacts
+*.log
+*.trs
+
+# Backup files
+*~
+*.bak
+*.orig
+
+# IDE files
+.vscode/
+*.swp
+*.swo

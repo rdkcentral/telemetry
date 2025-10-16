@@ -1003,9 +1003,12 @@ T2ERROR ProfileXConf_terminateReport()
 
     T2ERROR ret = T2ERROR_FAILURE;
 
+    pthread_mutex_lock(&plMutex);
+
     if(!singleProfile)
     {
         T2Error("Xconf profile is not set.\n");
+        pthread_mutex_unlock(&plMutex);
         return ret;
     }
 
@@ -1033,6 +1036,7 @@ T2ERROR ProfileXConf_terminateReport()
         T2Info("No report generation in progress. No further action required for abort.\n");
     }
 
+    pthread_mutex_unlock(&plMutex);
     return ret;
 
 }

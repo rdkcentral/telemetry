@@ -236,16 +236,18 @@ int getProcUsage(char *processName, TopMarker* marker, bool trim, char* regex, c
         {
             T2Debug("Process info - CPU: %s, Memory: %s \n", pInfo.cpuUse, pInfo.memUse);
 
-                if (marker->cpuValue) {
-                    free(marker->cpuValue);
-                }
-                marker->cpuValue = strdup(pInfo.cpuUse);
+            if (marker->cpuValue)
+            {
+                free(marker->cpuValue);
+            }
+            marker->cpuValue = strdup(pInfo.cpuUse);
 
-                if (marker->memValue) {
-                    free(marker->memValue);
-                }
-                marker->memValue = strdup(pInfo.memUse);
-            
+            if (marker->memValue)
+            {
+                free(marker->memValue);
+            }
+            marker->memValue = strdup(pInfo.memUse);
+
             ret = 1;
 
             if(pid)

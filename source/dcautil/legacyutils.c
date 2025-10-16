@@ -162,7 +162,7 @@ int getLoadAvg(TopMarker* marker, bool trim, char* regex)
         free(marker->loadAverage);
     }
     marker->loadAverage = strndup(str, LEN);
-    
+
     T2Debug("%s --out \n", __FUNCTION__);
     return 1;
 }

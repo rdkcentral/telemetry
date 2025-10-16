@@ -128,7 +128,7 @@ static void freeProfileSeekHashMap(void *data)
  * @return  Returns status of operation.
  * @retval  Return 1 on success.
  */
-int getLoadAvg(GrepMarker* marker, bool trim, char* regex)
+int getLoadAvg(TopMarker* marker, bool trim, char* regex)
 {
     T2Debug("%s ++in \n", __FUNCTION__);
     T2Debug("%s ++in %d %s\n", __FUNCTION__, trim, regex);
@@ -157,11 +157,11 @@ int getLoadAvg(GrepMarker* marker, bool trim, char* regex)
     str[LEN] = '\0';
 
 
-    if(marker->u.markerValue)
+    if(marker->loadAverage)
     {
-        free(marker->u.markerValue);
+        free(marker->loadAverage);
     }
-    marker->u.markerValue = strndup(str, LEN);
+    marker->loadAverage = strndup(str, LEN);
     
     T2Debug("%s --out \n", __FUNCTION__);
     return 1;

@@ -339,7 +339,6 @@ static void* CollectAndReport(void* data)
         int count = profile->grepSeekProfile->execCounter;
 
         Vector *profileParamVals = NULL;
-        Vector *grepResultList = NULL;
         cJSON *valArray = NULL;
         char* jsonReport = NULL;
         cJSON *triggercondition = NULL;
@@ -466,9 +465,8 @@ static void* CollectAndReport(void* data)
                 }
                 if(profile->gMarkerList != NULL && Vector_Size(profile->gMarkerList) > 0)
                 {
-                    getGrepResults(&(profile->grepSeekProfile), profile->gMarkerList, &grepResultList, profile->bClearSeekMap, false, customLogPath); // Passing 5th argument as false so that it doesn't check rotated logs for the first reporting after bootup for multiprofiles.
+                    getGrepResults(&(profile->grepSeekProfile), profile->gMarkerList, profile->bClearSeekMap, false, customLogPath); // Passing 5th argument as false so that it doesn't check rotated logs for the first reporting after bootup for multiprofiles.
                     encodeGrepResultInJSON(valArray, profile->gMarkerList);
-                    Vector_Destroy(grepResultList, freeGResult);
                 }
                 if(profile->eMarkerList != NULL && Vector_Size(profile->eMarkerList) > 0)
                 {

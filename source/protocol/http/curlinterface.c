@@ -272,11 +272,9 @@ void curlCertSelectorFree()
 static void curlCertSelectorInit()
 {
     bool state_red_enable = false;
-    
 #if defined(ENABLE_RED_RECOVERY_SUPPORT)
     state_red_enable = isStateRedEnabled();
 #endif
-    
     if (state_red_enable && curlRcvryCertSelector == NULL )
     {
         curlRcvryCertSelector = rdkcertselector_new( NULL, NULL, "RCVRY" );

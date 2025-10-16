@@ -436,7 +436,7 @@ static int getCountPatternMatch(FileDescriptor* fileDescriptor, GrepMarker* mark
         }
 
     }
-    
+
     // Using the union instead of the previous out list.
     marker->u.count = count;
     T2Debug("%s --out\n", __FUNCTION__);
@@ -511,7 +511,7 @@ static int getAbsolutePatternMatch(FileDescriptor* fileDescriptor, GrepMarker* m
         marker->u.markerValue = NULL;
         return 0;
     }
-    
+
     // Move pointer just after the pattern
     const char *start = last_found + patlen;
     size_t chars_left = buflen - (start - buffer);
@@ -528,7 +528,7 @@ static int getAbsolutePatternMatch(FileDescriptor* fileDescriptor, GrepMarker* m
     }
     memcpy(result, start, length);
     result[length] = '\0';
-    
+
     marker->u.markerValue = result;
     T2Debug("%s --out\n", __FUNCTION__);
     return 0;
@@ -547,7 +547,7 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
     const char* buffer;
     size_t buflen = 0;
     size_t patlen = strlen(pattern);
-    
+
     // Using the existing accumulatedValues Vector from marker's union
     Vector* accumulatedValues = marker->u.accumulatedValues;
     if (!accumulatedValues)
@@ -591,7 +591,7 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
             // Check MAX_ACCUMULATE limit before processing this match
             int arraySize = Vector_Size(accumulatedValues);
             T2Debug("Current array size : %d \n", arraySize);
-            
+
             if (arraySize >= MAX_ACCUMULATE)
             {
                 if (arraySize == MAX_ACCUMULATE)
@@ -599,7 +599,7 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
                     T2Warning("Max size of the array has been reached appending warning message : %s\n", MAX_ACCUMULATE_MSG);
                     Vector_PushBack(accumulatedValues, strdup(MAX_ACCUMULATE_MSG));
                     T2Debug("Successfully added warning message into vector New Size : %d\n", arraySize + 1);
-                    
+
                     // Also add corresponding timestamp if timestamp reporting is enabled
                     if (marker->accumulatedTimestamp)
                     {
@@ -629,30 +629,30 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
             T2Info("line_start = %s\n", line_start);
             char timestamp_str[20] = {0};
             time_t unix_timestamp = 0;
-            
+
             //Expected timestamp format : YYYYMMDD HH:MM:SS.mmm
-            if (line_start + 19 <= buffer + buflen && 
-                isdigit(line_start[0]) && isdigit(line_start[1]) && isdigit(line_start[2]) && isdigit(line_start[3]) && // YYYY
-                isdigit(line_start[4]) && isdigit(line_start[5]) && // MM
-                isdigit(line_start[6]) && isdigit(line_start[7]) && // DD
-                line_start[8] == ' ' &&
-                isdigit(line_start[9]) && isdigit(line_start[10]) && // HH
-                line_start[11] == ':' &&
-                isdigit(line_start[12]) && isdigit(line_start[13]) && // MM
-                line_start[14] == ':' &&
-                isdigit(line_start[15]) && isdigit(line_start[16]) && // SS
-                line_start[17] == '.' &&
-                isdigit(line_start[18]) && isdigit(line_start[19]) && isdigit(line_start[20])) // mmm
+            if (line_start + 19 <= buffer + buflen &&
+                    isdigit(line_start[0]) && isdigit(line_start[1]) && isdigit(line_start[2]) && isdigit(line_start[3]) && // YYYY
+                    isdigit(line_start[4]) && isdigit(line_start[5]) && // MM
+                    isdigit(line_start[6]) && isdigit(line_start[7]) && // DD
+                    line_start[8] == ' ' &&
+                    isdigit(line_start[9]) && isdigit(line_start[10]) && // HH
+                    line_start[11] == ':' &&
+                    isdigit(line_start[12]) && isdigit(line_start[13]) && // MM
+                    line_start[14] == ':' &&
+                    isdigit(line_start[15]) && isdigit(line_start[16]) && // SS
+                    line_start[17] == '.' &&
+                    isdigit(line_start[18]) && isdigit(line_start[19]) && isdigit(line_start[20])) // mmm
             {
                 strncpy(timestamp_str, line_start, 19);
                 timestamp_str[19] = '\0';
-                
+
                 T2Info("timestamp_str = %s\n", timestamp_str);
                 struct tm raw_time = {0};
                 int year, month, day, hour, min, sec, msec;
-                
-                if (sscanf(timestamp_str, "%4d%2d%2d %2d:%2d:%2d.%3d", 
-                          &year, &month, &day, &hour, &min, &sec, &msec) == 7)
+
+                if (sscanf(timestamp_str, "%4d%2d%2d %2d:%2d:%2d.%3d",
+                           &year, &month, &day, &hour, &min, &sec, &msec) == 7)
                 {
                     raw_time.tm_year = year - 1900;
                     raw_time.tm_mon = month - 1;
@@ -661,7 +661,7 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
                     raw_time.tm_min = min;
                     raw_time.tm_sec = sec; //millisecond is not included right now
                     raw_time.tm_isdst = -1;
-                    
+
                     unix_timestamp = mktime(&raw_time);
                     if (unix_timestamp != -1)
                     {
@@ -687,7 +687,7 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
                 T2Info("%s %d : result = %s\n", __FUNCTION__, __LINE__, result);
                 Vector_PushBack(accumulatedValues, result);
                 T2Debug("Successfully added value into vector New Size : %ld\n", Vector_Size(accumulatedValues));
-                
+
                 if (unix_timestamp > 0 && marker->accumulatedTimestamp)
                 {
                     char *timestamp_str_epoch = (char*)malloc(32);

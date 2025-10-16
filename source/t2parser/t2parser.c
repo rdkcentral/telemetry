@@ -374,62 +374,62 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
         }
         else
         {
-        GrepMarker *gMarker = (GrepMarker *) malloc(sizeof(GrepMarker));
-        if(gMarker == NULL)
-        {
-            T2Error("Unable to allocate memory for GrepMarker \n");
-            return T2ERROR_FAILURE;
-        }
-        gMarker->markerName = strdup(name);
-        gMarker->searchString = strdup(ref);
-        if(fileName)
-        {
-            gMarker->logFile = strdup(fileName);
-        }
-        else
-        {
-            gMarker->logFile = NULL;
-        }
-        gMarker->paramType = strdup(ptype);
-        gMarker->reportEmptyParam = ReportEmpty;
-        gMarker->trimParam = trim;
-        gMarker->markerName_CT = NULL;
-        gMarker->regexParam = NULL;
-        if(regex != NULL)
-        {
-            gMarker->regexParam = strdup(regex);
-        }
-        gMarker->reportTimestampParam = reportTimestamp;
-        if((use == NULL) || (0 == strcmp(use, "absolute")))
-        {
-            gMarker->mType = MTYPE_ABSOLUTE;
-            gMarker->u.markerValue = NULL;
-        }
-        else if (0 == strcmp(use, "count"))
-        {
-            gMarker->mType = MTYPE_COUNTER;
-            gMarker->u.count = 0;
-        }
-        else if (0 == strcmp(use, "accumulate"))
-        {
-            T2Info("marker type is Accumulate \n");
-            gMarker->mType = MTYPE_ACCUMULATE;
-            Vector_Create(&gMarker->u.accumulatedValues);
-            if(gMarker->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH)
+            GrepMarker *gMarker = (GrepMarker *) malloc(sizeof(GrepMarker));
+            if(gMarker == NULL)
             {
-                T2Info("Timstamp taken as UNIX-EPOCH\n");
-                Vector_Create(&gMarker->accumulatedTimestamp);
+                T2Error("Unable to allocate memory for GrepMarker \n");
+                return T2ERROR_FAILURE;
             }
-        }
-        else
-        {
-            T2Info("Unsupported marker type. Defaulting to absolute \n");
-            gMarker->mType = MTYPE_ABSOLUTE;
-            gMarker->u.markerValue = NULL;
-        }
-        gMarker->skipFreq = skipFreq;
-        gMarker->firstSeekFromEOF = firstSeekFromEOF;
-        Vector_PushBack(profile->gMarkerList, gMarker);
+            gMarker->markerName = strdup(name);
+            gMarker->searchString = strdup(ref);
+            if(fileName)
+            {
+                gMarker->logFile = strdup(fileName);
+            }
+            else
+            {
+                gMarker->logFile = NULL;
+            }
+            gMarker->paramType = strdup(ptype);
+            gMarker->reportEmptyParam = ReportEmpty;
+            gMarker->trimParam = trim;
+            gMarker->markerName_CT = NULL;
+            gMarker->regexParam = NULL;
+            if(regex != NULL)
+            {
+                gMarker->regexParam = strdup(regex);
+            }
+            gMarker->reportTimestampParam = reportTimestamp;
+            if((use == NULL) || (0 == strcmp(use, "absolute")))
+            {
+                gMarker->mType = MTYPE_ABSOLUTE;
+                gMarker->u.markerValue = NULL;
+            }
+            else if (0 == strcmp(use, "count"))
+            {
+                gMarker->mType = MTYPE_COUNTER;
+                gMarker->u.count = 0;
+            }
+            else if (0 == strcmp(use, "accumulate"))
+            {
+                T2Info("marker type is Accumulate \n");
+                gMarker->mType = MTYPE_ACCUMULATE;
+                Vector_Create(&gMarker->u.accumulatedValues);
+                if(gMarker->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH)
+                {
+                    T2Info("Timstamp taken as UNIX-EPOCH\n");
+                    Vector_Create(&gMarker->accumulatedTimestamp);
+                }
+            }
+            else
+            {
+                T2Info("Unsupported marker type. Defaulting to absolute \n");
+                gMarker->mType = MTYPE_ABSOLUTE;
+                gMarker->u.markerValue = NULL;
+            }
+            gMarker->skipFreq = skipFreq;
+            gMarker->firstSeekFromEOF = firstSeekFromEOF;
+            Vector_PushBack(profile->gMarkerList, gMarker);
         }
 
 #ifdef PERSIST_LOG_MON_REF

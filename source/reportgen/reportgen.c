@@ -557,7 +557,7 @@ T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepMarkerList)
                 cJSON_AddItemToObject(arrayItem, grepMarker->markerName, vectorToarray);
                 T2Info("%d ++in \n", __LINE__);
                 // Add timestamp support for MTYPE_ACCUMULATE
-                if(grepMarker->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH && grepMarker->accumulatedTimestamp != NULL)
+                if((grepMarker->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH) && (grepMarker->accumulatedTimestamp != NULL) && (Vector_Size(grepMarker->accumulatedTimestamp) > 0))
                 {
                     T2Info("%d ++in \n", __LINE__);
 

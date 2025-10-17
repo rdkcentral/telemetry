@@ -569,7 +569,7 @@ T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepMarkerList)
                         snprintf(buf, sizeof(buf), "%s_CT", grepMarker->markerName);
                         grepMarker->markerName_CT = strdup(buf);
                     }
-                    T2Info("Timestamp is taken for %s with size %ld\n", grepMarker->markerName_CT, Vector_Size(grepMarker->accumulatedTimestamp));
+                    //T2Info("Timestamp is taken for %s with size %ld\n", grepMarker->markerName_CT, Vector_Size(grepMarker->accumulatedTimestamp));
 
                     cJSON *TimevectorToarray = cJSON_CreateArray();
                     if(TimevectorToarray == NULL)

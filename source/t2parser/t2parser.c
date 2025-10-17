@@ -336,6 +336,10 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
             tMarker->trimParam = trim;
             tMarker->markerName_CT = NULL;
             tMarker->regexParam = NULL;
+            tMarker->memValue = NULL;
+            tMarker->cpuValue = NULL;
+            tMarker->loadAverage = NULL;
+
             if(regex != NULL)
             {
                 tMarker->regexParam = strdup(regex);

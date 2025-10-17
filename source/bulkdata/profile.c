@@ -456,7 +456,7 @@ static void* CollectAndReport(void* data)
                     if(reportSize != 0)
                     {
                         T2Info("Top markers report is completed report size %ld\n", (unsigned long)reportSize);
-                        encodeGrepResultInJSON(valArray, profile->topMarkerList);
+                        encodeTopResultInJSON(valArray, profile->topMarkerList);
                     }
                     else
                     {

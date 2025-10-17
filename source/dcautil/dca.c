@@ -582,51 +582,42 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
         while (bytes_left >= patlen)
         {
             T2Info("%s %d \n", __FUNCTION__, __LINE__);
+
+            // Check MAX_ACCUMULATE limit before processing this match
+            int arraySize = Vector_Size(accumulatedValues);
+            T2Info("Current array size : %d \n", arraySize);
+
+            if (arraySize >= MAX_ACCUMULATE)
+            {
+                T2Info("Time Array size = %ld\n", Vector_Size(marker->accumulatedTimestamp));
+
+                if (arraySize == MAX_ACCUMULATE)
+                {
+                    T2Warning("Max size of the array has been reached appending warning message : %s\n", MAX_ACCUMULATE_MSG);
+                    Vector_PushBack(accumulatedValues, strdup(MAX_ACCUMULATE_MSG));
+                    T2Debug("Successfully added warning message into vector New Size : %d\n", arraySize + 1);
+                }
+                else
+                {
+                    T2Warning("Max size of the array has been reached Ignore New Value\n");
+                }
+                T2Info("Time Array size = %ld\n", Vector_Size(marker->accumulatedTimestamp));
+
+                break;
+            }
+
             const char *found = strnstr(cur, pattern, bytes_left);
             if (!found)
             {
                 break;
             }
 
-            // Check MAX_ACCUMULATE limit before processing this match
-            int arraySize = Vector_Size(accumulatedValues);
-            T2Debug("Current array size : %d \n", arraySize);
-
-            if (arraySize >= MAX_ACCUMULATE)
-            {
-                if (arraySize == MAX_ACCUMULATE)
-                {
-                    T2Warning("Max size of the array has been reached appending warning message : %s\n", MAX_ACCUMULATE_MSG);
-                    Vector_PushBack(accumulatedValues, strdup(MAX_ACCUMULATE_MSG));
-                    T2Debug("Successfully added warning message into vector New Size : %d\n", arraySize + 1);
-
-                    // Also add corresponding timestamp if timestamp reporting is enabled
-                    if (marker->accumulatedTimestamp)
-                    {
-                        char *warning_timestamp = (char*)malloc(32);
-                        if (warning_timestamp)
-                        {
-                            snprintf(warning_timestamp, 32, "%ld", (long)time(NULL));
-                            Vector_PushBack(marker->accumulatedTimestamp, warning_timestamp);
-                        }
-                    }
-                }
-                else
-                {
-                    T2Warning("Max size of the array has been reached Ignore New Value\n");
-                }
-                break;
-            }
-
             // Find the beginning of the line containing the pattern
             const char *line_start = found;
-            T2Info("line_start = %s\n", line_start);
             while (line_start > buffer && *(line_start - 1) != '\n')
             {
-                T2Info("line_start = %s\n", line_start);
                 line_start--;
             }
-            T2Info("line_start = %s\n", line_start);
             char timestamp_str[20] = {0};
             time_t unix_timestamp = 0;
 
@@ -686,10 +677,11 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
                 result[length] = '\0';
                 T2Info("%s %d : result = %s\n", __FUNCTION__, __LINE__, result);
                 Vector_PushBack(accumulatedValues, result);
-                T2Debug("Successfully added value into vector New Size : %ld\n", Vector_Size(accumulatedValues));
+                T2Info("Successfully added value into vector New Size : %ld\n", Vector_Size(accumulatedValues));
 
                 if (unix_timestamp > 0 && marker->accumulatedTimestamp)
                 {
+                    T2Info("Time Array size = %ld\n", Vector_Size(marker->accumulatedTimestamp));
                     char *timestamp_str_epoch = (char*)malloc(32);
                     if (timestamp_str_epoch)
                     {
@@ -1240,6 +1232,7 @@ static int parseMarkerListOptimized(GrepSeekProfile *gsProfile, Vector * ip_vMar
 
             // Call the optimized function to process the pattern
             processPatternWithOptimizedFunction(grepMarkerObj, fileDescriptor);
+            T2Info("Outer Time Array size = %ld\n", Vector_Size(grepMarkerObj->accumulatedTimestamp));
         }
 
     }  // Loop of marker list ends here

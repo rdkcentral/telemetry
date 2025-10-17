@@ -560,6 +560,7 @@ T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepMarkerList)
                 if(grepMarker->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH && grepMarker->accumulatedTimestamp != NULL)
                 {
                     T2Info("%d ++in \n", __LINE__);
+
                     // Populate markerName_CT if not already set
                     if(grepMarker->markerName_CT == NULL)
                     {
@@ -568,7 +569,7 @@ T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepMarkerList)
                         snprintf(buf, sizeof(buf), "%s_CT", grepMarker->markerName);
                         grepMarker->markerName_CT = strdup(buf);
                     }
-                    T2Info("Timestamp is taken for %s\n", grepMarker->markerName_CT);
+                    T2Info("Timestamp is taken for %s with size %ld\n", grepMarker->markerName_CT, Vector_Size(grepMarker->accumulatedTimestamp));
 
                     cJSON *TimevectorToarray = cJSON_CreateArray();
                     if(TimevectorToarray == NULL)
@@ -660,6 +661,291 @@ T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepMarkerList)
                 free(grepMarker->u.markerValue);
                 grepMarker->u.markerValue = NULL;
             }
+        }
+    }
+    T2Debug("%s --Out \n", __FUNCTION__);
+    return T2ERROR_SUCCESS;
+}
+
+T2ERROR encodeTopResultInJSON(cJSON *valArray, Vector *topMarkerList)
+{
+    T2Info("%s ++in \n", __FUNCTION__);
+    if(valArray == NULL || topMarkerList == NULL)
+    {
+        T2Error("Invalid or NULL Arguments\n");
+        return T2ERROR_INVALID_ARGS;
+    }
+
+    size_t index = 0;
+    cJSON *arrayItem = NULL;
+    for(; index < Vector_Size(topMarkerList); index++)
+    {
+        TopMarker* topMarker = (TopMarker *)Vector_At(topMarkerList, index);
+        if (!topMarker)
+        {
+            continue;
+        }
+
+        // Handle Load Average case (single value)
+        if(topMarker->loadAverage != NULL)
+        {
+            arrayItem = cJSON_CreateObject();
+            if(arrayItem == NULL)
+            {
+                T2Error("cJSON_CreateObject failed.. arrayItem is NULL\n");
+                return T2ERROR_FAILURE;
+            }
+            
+            // Create a working copy for processing
+            char* workingValue = strdup(topMarker->loadAverage);
+            if(workingValue == NULL)
+            {
+                T2Error("Failed to duplicate load average value\n");
+                cJSON_Delete(arrayItem);
+                return T2ERROR_FAILURE;
+            }
+            
+            // Apply trimming if specified
+            if(topMarker->trimParam)
+            {
+                trimLeadingAndTrailingws(workingValue);
+            }
+            
+            // Apply regex processing if specified
+            if(topMarker->regexParam != NULL)
+            {
+                regex_t regpattern;
+                int rc = 0;
+                size_t nmatch = 1;
+                regmatch_t pmatch[2];
+                char string[256] = {'\0'};
+                rc = regcomp(&regpattern, topMarker->regexParam, REG_EXTENDED);
+                if(rc != 0)
+                {
+                    T2Warning("regcomp() failed for load average marker, returning nonzero (%d)\n", rc);
+                }
+                else
+                {
+                    T2Debug("regcomp() successful for load average marker, returning value (%d)\n", rc);
+                    rc = regexec(&regpattern, workingValue, nmatch, pmatch, 0);
+                    if(rc != 0)
+                    {
+                        T2Warning("regexec() failed for load average marker, Failed to match '%s' with '%s',returning %d.\n", 
+                                 workingValue, topMarker->regexParam, rc);
+                        free(workingValue);
+                        workingValue = strdup("");
+                    }
+                    else
+                    {
+                        T2Debug("regexec successful for load average marker, Match is found %.*s\n", 
+                               pmatch[0].rm_eo - pmatch[0].rm_so, &workingValue[pmatch[0].rm_so]);
+                        sprintf(string, "%.*s", pmatch[0].rm_eo - pmatch[0].rm_so, &workingValue[pmatch[0].rm_so]);
+                        free(workingValue);
+                        workingValue = strdup(string);
+                    }
+                    regfree(&regpattern);
+                }
+            }
+            
+            // Add the load average marker value to JSON with original marker name
+            if(cJSON_AddStringToObject(arrayItem, topMarker->markerName, workingValue) == NULL)
+            {
+                T2Error("cJSON_AddStringToObject failed for load average marker\n");
+                cJSON_Delete(arrayItem);
+                free(workingValue);
+                return T2ERROR_FAILURE;
+            }
+            
+            cJSON_AddItemToArray(valArray, arrayItem);
+            T2Debug("Load average marker value for : %s is %s\n", topMarker->markerName, workingValue);
+            
+            // Clean up the working copy
+            free(workingValue);
+        }
+        // Handle CPU & Memory package case (both values present)
+        else if(topMarker->cpuValue != NULL && topMarker->memValue != NULL)
+        {
+            // Process CPU Value
+            arrayItem = cJSON_CreateObject();
+            if(arrayItem == NULL)
+            {
+                T2Error("cJSON_CreateObject failed for CPU marker.. arrayItem is NULL\n");
+                return T2ERROR_FAILURE;
+            }
+            
+            // Create CPU marker name with prefix
+            size_t cpuNameLen = strlen("cpu_") + strlen(topMarker->markerName) + 1;
+            char* cpuMarkerName = malloc(cpuNameLen);
+            if(cpuMarkerName == NULL)
+            {
+                T2Error("Failed to allocate memory for CPU marker name\n");
+                cJSON_Delete(arrayItem);
+                return T2ERROR_FAILURE;
+            }
+            snprintf(cpuMarkerName, cpuNameLen, "cpu_%s", topMarker->markerName);
+            
+            // Create a working copy for CPU processing
+            char* cpuWorkingValue = strdup(topMarker->cpuValue);
+            if(cpuWorkingValue == NULL)
+            {
+                T2Error("Failed to duplicate CPU value\n");
+                cJSON_Delete(arrayItem);
+                free(cpuMarkerName);
+                return T2ERROR_FAILURE;
+            }
+            
+            // Apply trimming if specified
+            if(topMarker->trimParam)
+            {
+                trimLeadingAndTrailingws(cpuWorkingValue);
+            }
+            
+            // Apply regex processing if specified
+            if(topMarker->regexParam != NULL)
+            {
+                regex_t regpattern;
+                int rc = 0;
+                size_t nmatch = 1;
+                regmatch_t pmatch[2];
+                char string[256] = {'\0'};
+                rc = regcomp(&regpattern, topMarker->regexParam, REG_EXTENDED);
+                if(rc != 0)
+                {
+                    T2Warning("regcomp() failed for CPU marker, returning nonzero (%d)\n", rc);
+                }
+                else
+                {
+                    T2Debug("regcomp() successful for CPU marker, returning value (%d)\n", rc);
+                    rc = regexec(&regpattern, cpuWorkingValue, nmatch, pmatch, 0);
+                    if(rc != 0)
+                    {
+                        T2Warning("regexec() failed for CPU marker, Failed to match '%s' with '%s',returning %d.\n", 
+                                 cpuWorkingValue, topMarker->regexParam, rc);
+                        free(cpuWorkingValue);
+                        cpuWorkingValue = strdup("");
+                    }
+                    else
+                    {
+                        T2Debug("regexec successful for CPU marker, Match is found %.*s\n", 
+                               pmatch[0].rm_eo - pmatch[0].rm_so, &cpuWorkingValue[pmatch[0].rm_so]);
+                        sprintf(string, "%.*s", pmatch[0].rm_eo - pmatch[0].rm_so, &cpuWorkingValue[pmatch[0].rm_so]);
+                        free(cpuWorkingValue);
+                        cpuWorkingValue = strdup(string);
+                    }
+                    regfree(&regpattern);
+                }
+            }
+            
+            // Add the CPU marker value to JSON
+            if(cJSON_AddStringToObject(arrayItem, cpuMarkerName, cpuWorkingValue) == NULL)
+            {
+                T2Error("cJSON_AddStringToObject failed for CPU marker\n");
+                cJSON_Delete(arrayItem);
+                free(cpuMarkerName);
+                free(cpuWorkingValue);
+                return T2ERROR_FAILURE;
+            }
+            
+            cJSON_AddItemToArray(valArray, arrayItem);
+            T2Debug("CPU marker value for : %s is %s\n", cpuMarkerName, cpuWorkingValue);
+            
+            // Clean up CPU processing resources
+            free(cpuMarkerName);
+            free(cpuWorkingValue);
+            
+            // Process Memory Value
+            arrayItem = cJSON_CreateObject();
+            if(arrayItem == NULL)
+            {
+                T2Error("cJSON_CreateObject failed for Memory marker.. arrayItem is NULL\n");
+                return T2ERROR_FAILURE;
+            }
+            
+            // Create Memory marker name with prefix
+            size_t memNameLen = strlen("mem_") + strlen(topMarker->markerName) + 1;
+            char* memMarkerName = malloc(memNameLen);
+            if(memMarkerName == NULL)
+            {
+                T2Error("Failed to allocate memory for Memory marker name\n");
+                cJSON_Delete(arrayItem);
+                return T2ERROR_FAILURE;
+            }
+            snprintf(memMarkerName, memNameLen, "mem_%s", topMarker->markerName);
+            
+            // Create a working copy for Memory processing
+            char* memWorkingValue = strdup(topMarker->memValue);
+            if(memWorkingValue == NULL)
+            {
+                T2Error("Failed to duplicate Memory value\n");
+                cJSON_Delete(arrayItem);
+                free(memMarkerName);
+                return T2ERROR_FAILURE;
+            }
+            
+            // Apply trimming if specified
+            if(topMarker->trimParam)
+            {
+                trimLeadingAndTrailingws(memWorkingValue);
+            }
+            
+            // Apply regex processing if specified
+            if(topMarker->regexParam != NULL)
+            {
+                regex_t regpattern;
+                int rc = 0;
+                size_t nmatch = 1;
+                regmatch_t pmatch[2];
+                char string[256] = {'\0'};
+                rc = regcomp(&regpattern, topMarker->regexParam, REG_EXTENDED);
+                if(rc != 0)
+                {
+                    T2Warning("regcomp() failed for Memory marker, returning nonzero (%d)\n", rc);
+                }
+                else
+                {
+                    T2Debug("regcomp() successful for Memory marker, returning value (%d)\n", rc);
+                    rc = regexec(&regpattern, memWorkingValue, nmatch, pmatch, 0);
+                    if(rc != 0)
+                    {
+                        T2Warning("regexec() failed for Memory marker, Failed to match '%s' with '%s',returning %d.\n", 
+                                 memWorkingValue, topMarker->regexParam, rc);
+                        free(memWorkingValue);
+                        memWorkingValue = strdup("");
+                    }
+                    else
+                    {
+                        T2Debug("regexec successful for Memory marker, Match is found %.*s\n", 
+                               pmatch[0].rm_eo - pmatch[0].rm_so, &memWorkingValue[pmatch[0].rm_so]);
+                        sprintf(string, "%.*s", pmatch[0].rm_eo - pmatch[0].rm_so, &memWorkingValue[pmatch[0].rm_so]);
+                        free(memWorkingValue);
+                        memWorkingValue = strdup(string);
+                    }
+                    regfree(&regpattern);
+                }
+            }
+            
+            // Add the Memory marker value to JSON
+            if(cJSON_AddStringToObject(arrayItem, memMarkerName, memWorkingValue) == NULL)
+            {
+                T2Error("cJSON_AddStringToObject failed for Memory marker\n");
+                cJSON_Delete(arrayItem);
+                free(memMarkerName);
+                free(memWorkingValue);
+                return T2ERROR_FAILURE;
+            }
+            
+            cJSON_AddItemToArray(valArray, arrayItem);
+            T2Debug("Memory marker value for : %s is %s\n", memMarkerName, memWorkingValue);
+            
+            // Clean up Memory processing resources
+            free(memMarkerName);
+            free(memWorkingValue);
+        }
+        else
+        {
+            T2Debug("Top marker %s has no valid values to report (loadAverage=%p, cpuValue=%p, memValue=%p)\n", 
+                   topMarker->markerName ? topMarker->markerName : "unknown",
+                   topMarker->loadAverage, topMarker->cpuValue, topMarker->memValue);
         }
     }
     T2Debug("%s --Out \n", __FUNCTION__);

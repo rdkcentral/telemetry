@@ -136,6 +136,9 @@ static T2ERROR addParameter(ProfileXConf *profile, const char* name, const char*
             tMarker->logFile = strdup(fileName);
             tMarker->firstSeekFromEOF = 0;// memset will already set to 0 just a safeguard
             tMarker->regexParam = NULL;
+	    tMarker->memValue = NULL;
+            tMarker->cpuValue = NULL;
+            tMarker->loadAverage = NULL;
             splitSuffix = strstr(name, SPLITMARKER_SUFFIX);
             accumulateSuffix = strstr(name, ACCUMULATE_MARKER_SUFFIX);
             if(splitSuffix != NULL && strcmp(splitSuffix, SPLITMARKER_SUFFIX) == 0)

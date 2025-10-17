@@ -452,20 +452,11 @@ static void* CollectAndReport(void* data)
                 if(profile->topMarkerList != NULL && Vector_Size(profile->topMarkerList) > 0)
                 {
                     processTopPattern(profile->name, profile->topMarkerList, 0);
-                    long int reportSize = Vector_Size(profile->topMarkerList);
-                    if(reportSize != 0)
-                    {
-                        T2Info("Top markers report is completed report size %ld\n", (unsigned long)reportSize);
-                        encodeTopResultInJSON(valArray, profile->topMarkerList);
-                    }
-                    else
-                    {
-                        T2Debug("Top markers report generated but is empty possabliy the memory value is changed");
-                    }
+                    encodeTopResultInJSON(valArray, profile->topMarkerList);
                 }
                 if(profile->gMarkerList != NULL && Vector_Size(profile->gMarkerList) > 0)
                 {
-                    getGrepResults(&(profile->grepSeekProfile), profile->gMarkerList, profile->bClearSeekMap, false, customLogPath); // Passing 5th argument as false so that it doesn't check rotated logs for the first reporting after bootup for multiprofiles.
+                    getGrepResults(&(profile->grepSeekProfile), profile->gMarkerList, profile->bClearSeekMap, false, customLogPath); // Passing 4th argument as false so that it doesn't check rotated logs for the first reporting after bootup for multiprofiles.
                     encodeGrepResultInJSON(valArray, profile->gMarkerList);
                 }
                 if(profile->eMarkerList != NULL && Vector_Size(profile->eMarkerList) > 0)

@@ -589,8 +589,6 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
 
             if (arraySize >= MAX_ACCUMULATE)
             {
-                //T2Info("Time Array size = %ld\n", Vector_Size(marker->accumulatedTimestamp));
-
                 if (arraySize == MAX_ACCUMULATE)
                 {
                     T2Warning("Max size of the array has been reached appending warning message : %s\n", MAX_ACCUMULATE_MSG);
@@ -601,8 +599,6 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
                 {
                     T2Warning("Max size of the array has been reached Ignore New Value\n");
                 }
-                //T2Info("Time Array size = %ld\n", Vector_Size(marker->accumulatedTimestamp));
-
                 break;
             }
 
@@ -618,46 +614,46 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
             {
                 line_start--;
             }
-            char timestamp_str[20] = {0};
+
             time_t unix_timestamp = 0;
 
-            //Expected timestamp format : YYYYMMDD HH:MM:SS.mmm
-            if (line_start + 19 <= buffer + buflen &&
+            // Expected timestamp format: YYYY-MM-DDTHH:MM:SS.mmm (ISO 8601)
+            if (line_start + 23 <= buffer + buflen &&
                     isdigit(line_start[0]) && isdigit(line_start[1]) && isdigit(line_start[2]) && isdigit(line_start[3]) && // YYYY
-                    isdigit(line_start[4]) && isdigit(line_start[5]) && // MM
-                    isdigit(line_start[6]) && isdigit(line_start[7]) && // DD
-                    line_start[8] == ' ' &&
-                    isdigit(line_start[9]) && isdigit(line_start[10]) && // HH
-                    line_start[11] == ':' &&
-                    isdigit(line_start[12]) && isdigit(line_start[13]) && // MM
-                    line_start[14] == ':' &&
-                    isdigit(line_start[15]) && isdigit(line_start[16]) && // SS
-                    line_start[17] == '.' &&
-                    isdigit(line_start[18]) && isdigit(line_start[19]) && isdigit(line_start[20])) // mmm
+                    line_start[4] == '-' &&
+                    isdigit(line_start[5]) && isdigit(line_start[6]) && // MM
+                    line_start[7] == '-' &&
+                    isdigit(line_start[8]) && isdigit(line_start[9]) && // DD
+                    line_start[10] == 'T' &&
+                    isdigit(line_start[11]) && isdigit(line_start[12]) && // HH
+                    line_start[13] == ':' &&
+                    isdigit(line_start[14]) && isdigit(line_start[15]) && // MM
+                    line_start[16] == ':' &&
+                    isdigit(line_start[17]) && isdigit(line_start[18]) && // SS
+                    line_start[19] == '.' &&
+                    isdigit(line_start[20]) && isdigit(line_start[21]) && isdigit(line_start[22])) // mmm
             {
-                strncpy(timestamp_str, line_start, 19);
-                timestamp_str[19] = '\0';
+                char timestamp_str[24] = {0};
+                strncpy(timestamp_str, line_start, 23);
+                timestamp_str[23] = '\0';
 
                 T2Info("timestamp_str = %s\n", timestamp_str);
-                struct tm raw_time = {0};
-                int year, month, day, hour, min, sec, msec;
+                struct tm tm_time = {0};
 
-                if (sscanf(timestamp_str, "%4d%2d%2d %2d:%2d:%2d.%3d",
-                           &year, &month, &day, &hour, &min, &sec, &msec) == 7)
+                // Parse using strptime - format: "YYYY-MM-DDTHH:MM:SS"
+                char* result = strptime(timestamp_str, "%Y-%m-%dT%H:%M:%S", &tm_time);
+                if (result != NULL)
                 {
-                    raw_time.tm_year = year - 1900;
-                    raw_time.tm_mon = month - 1;
-                    raw_time.tm_mday = day;
-                    raw_time.tm_hour = hour;
-                    raw_time.tm_min = min;
-                    raw_time.tm_sec = sec; //millisecond is not included right now
-                    raw_time.tm_isdst = -1;
-
-                    unix_timestamp = mktime(&raw_time);
+                    tm_time.tm_isdst = -1;
+                    unix_timestamp = mktime(&tm_time);
                     if (unix_timestamp != -1)
                     {
                         T2Info("Extracted timestamp: %s -> Unix: %ld\n", timestamp_str, unix_timestamp);
                     }
+                }
+                else
+                {
+                    T2Warning("Failed to parse timestamp: %s\n", timestamp_str);
                 }
             }
 
@@ -677,11 +673,9 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
                 result[length] = '\0';
                 T2Info("%s %d : result = %s\n", __FUNCTION__, __LINE__, result);
                 Vector_PushBack(accumulatedValues, result);
-                //T2Info("Successfully added value into vector New Size : %ld\n", Vector_Size(accumulatedValues));
 
                 if (unix_timestamp > 0 && marker->accumulatedTimestamp)
                 {
-                    //T2Info("Time Array size = %ld\n", Vector_Size(marker->accumulatedTimestamp));
                     char *timestamp_str_epoch = (char*)malloc(32);
                     if (timestamp_str_epoch)
                     {

@@ -591,6 +591,7 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
 
             if (arraySize >= MAX_ACCUMULATE)
             {
+                T2Info("%s %d \n", __FUNCTION__, __LINE__);
                 if (arraySize == MAX_ACCUMULATE)
                 {
                     T2Warning("Max size of the array has been reached appending warning message : %s\n", MAX_ACCUMULATE_MSG);
@@ -603,17 +604,21 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
                 }
                 break;
             }
+            T2Info("%s %d \n", __FUNCTION__, __LINE__);
 
             const char *found = strnstr(cur, pattern, bytes_left);
             if (!found)
             {
+                T2Info("%s %d \n", __FUNCTION__, __LINE__);
                 break;
             }
+            T2Info("%s %d \n", __FUNCTION__, __LINE__);
 
             // Find the beginning of the line containing the pattern
             const char *line_start = found;
             while (line_start > buffer && *(line_start - 1) != '\n')
             {
+                T2Info("%s %d \n", __FUNCTION__, __LINE__);
                 line_start--;
             }
 
@@ -635,6 +640,8 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
                     line_start[19] == '.' &&
                     isdigit(line_start[20]) && isdigit(line_start[21]) && isdigit(line_start[22])) // mmm
             {
+                T2Info("%s %d \n", __FUNCTION__, __LINE__);
+
                 char timestamp_str[24] = {0};
                 strncpy(timestamp_str, line_start, 23);
                 timestamp_str[23] = '\0';
@@ -658,6 +665,7 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
                     T2Warning("Failed to parse timestamp: %s\n", timestamp_str);
                 }
             }
+            T2Info("%s %d \n", __FUNCTION__, __LINE__);
 
             // Move pointer just after the pattern
             const char *start = found + patlen;
@@ -666,11 +674,14 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
             // Find next newline or end of buffer
             const char *end = memchr(start, '\n', chars_left);
             size_t length = end ? (size_t)(end - start) : chars_left;
+            T2Info("%s %d \n", __FUNCTION__, __LINE__);
 
             // Create result string for this occurrence
             char *result = (char*)malloc(length + 1);
             if (result)
             {
+                T2Info("%s %d \n", __FUNCTION__, __LINE__);
+
                 memcpy(result, start, length);
                 result[length] = '\0';
                 T2Info("%s %d : result = %s\n", __FUNCTION__, __LINE__, result);
@@ -692,6 +703,7 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
             cur = found + patlen;
             if (bytes_left < advance)
             {
+                T2Info("%s %d \n", __FUNCTION__, __LINE__);
                 break;
             }
             bytes_left -= advance;

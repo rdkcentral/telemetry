@@ -589,7 +589,7 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
 
             if (arraySize >= MAX_ACCUMULATE)
             {
-                T2Info("Time Array size = %ld\n", Vector_Size(marker->accumulatedTimestamp));
+                //T2Info("Time Array size = %ld\n", Vector_Size(marker->accumulatedTimestamp));
 
                 if (arraySize == MAX_ACCUMULATE)
                 {
@@ -601,7 +601,7 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
                 {
                     T2Warning("Max size of the array has been reached Ignore New Value\n");
                 }
-                T2Info("Time Array size = %ld\n", Vector_Size(marker->accumulatedTimestamp));
+                //T2Info("Time Array size = %ld\n", Vector_Size(marker->accumulatedTimestamp));
 
                 break;
             }
@@ -677,11 +677,11 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
                 result[length] = '\0';
                 T2Info("%s %d : result = %s\n", __FUNCTION__, __LINE__, result);
                 Vector_PushBack(accumulatedValues, result);
-                T2Info("Successfully added value into vector New Size : %ld\n", Vector_Size(accumulatedValues));
+                //T2Info("Successfully added value into vector New Size : %ld\n", Vector_Size(accumulatedValues));
 
                 if (unix_timestamp > 0 && marker->accumulatedTimestamp)
                 {
-                    T2Info("Time Array size = %ld\n", Vector_Size(marker->accumulatedTimestamp));
+                    //T2Info("Time Array size = %ld\n", Vector_Size(marker->accumulatedTimestamp));
                     char *timestamp_str_epoch = (char*)malloc(32);
                     if (timestamp_str_epoch)
                     {
@@ -1232,7 +1232,7 @@ static int parseMarkerListOptimized(GrepSeekProfile *gsProfile, Vector * ip_vMar
 
             // Call the optimized function to process the pattern
             processPatternWithOptimizedFunction(grepMarkerObj, fileDescriptor);
-            T2Info("Outer Time Array size = %ld\n", Vector_Size(grepMarkerObj->accumulatedTimestamp));
+            //T2Info("Outer Time Array size = %ld\n", Vector_Size(grepMarkerObj->accumulatedTimestamp));
         }
 
     }  // Loop of marker list ends here

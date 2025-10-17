@@ -17,6 +17,7 @@
  * limitations under the License.
  */
 
+#define _GNU_SOURCE
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,6 +27,7 @@
 #include <pthread.h>
 #include <stdbool.h>
 #include <fcntl.h>
+#include <time.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/mman.h>

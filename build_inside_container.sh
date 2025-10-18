@@ -31,4 +31,4 @@ export CFLAGS=" ${DEBUG_CFLAGS} -I${INSTALL_DIR}/include/rtmessage -I${INSTALL_D
 
 export LDFLAGS="-L/usr/lib/x86_64-linux-gnu -lglib-2.0"
 
-./configure --prefix=${INSTALL_DIR} CFLAGS="-I/usr/local/include" && make && make install
+./configure --prefix=${INSTALL_DIR} --without-rdklogger CFLAGS="-I/usr/local/include" && make && make install

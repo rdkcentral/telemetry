@@ -282,8 +282,8 @@ static void* CollectAndReportXconf(void* data)
             if(profile->topMarkerList != NULL && Vector_Size(profile->topMarkerList) > 0)
             {
                 processTopPattern(profile->name, profile->topMarkerList, count);
-                T2Info("Top markers report is compleated report size %ld\n", (unsigned long)Vector_Size(profile->topMarkerList));
-                encodeGrepResultInJSON(valArray, profile->topMarkerList);
+                T2Info("Top markers report is completed report size %ld\n", (unsigned long)Vector_Size(profile->topMarkerList));
+                encodeTopResultInJSON(valArray, profile->topMarkerList);
             }
             if(profile->gMarkerList != NULL && Vector_Size(profile->gMarkerList) > 0)
             {

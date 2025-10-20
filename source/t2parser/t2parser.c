@@ -327,10 +327,6 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
             {
                 tMarker->logFile = strdup(fileName);
             }
-            else
-            {
-                tMarker->logFile = NULL;
-            }
             tMarker->paramType = strdup(ptype);
             tMarker->reportEmptyParam = ReportEmpty;
             tMarker->trimParam = trim;

@@ -747,8 +747,8 @@ T2ERROR encodeTopResultInJSON(cJSON *valArray, Vector *topMarkerList)
                 }
             }
 
-            // Add the load average marker value to JSON with original marker name
-            if(cJSON_AddStringToObject(arrayItem, topMarker->markerName, workingValue) == NULL)
+            // Add the load average marker value to JSON with searchString
+            if(cJSON_AddStringToObject(arrayItem, topMarker->searchString, workingValue) == NULL)
             {
                 T2Error("cJSON_AddStringToObject failed for load average marker\n");
                 cJSON_Delete(arrayItem);
@@ -757,7 +757,7 @@ T2ERROR encodeTopResultInJSON(cJSON *valArray, Vector *topMarkerList)
             }
 
             cJSON_AddItemToArray(valArray, arrayItem);
-            T2Debug("Load average marker value for : %s is %s\n", topMarker->markerName, workingValue);
+            T2Debug("Load average marker value for : %s is %s\n", topMarker->searchString, workingValue);
 
             // Clean up the working copy
             free(workingValue);
@@ -774,7 +774,7 @@ T2ERROR encodeTopResultInJSON(cJSON *valArray, Vector *topMarkerList)
             }
 
             // Create CPU marker name with prefix
-            size_t cpuNameLen = strlen("cpu_") + strlen(topMarker->markerName) + 1;
+            size_t cpuNameLen = strlen("cpu_") + strlen(topMarker->searchString) + 1;
             char* cpuMarkerName = malloc(cpuNameLen);
             if(cpuMarkerName == NULL)
             {
@@ -782,7 +782,7 @@ T2ERROR encodeTopResultInJSON(cJSON *valArray, Vector *topMarkerList)
                 cJSON_Delete(arrayItem);
                 return T2ERROR_FAILURE;
             }
-            snprintf(cpuMarkerName, cpuNameLen, "cpu_%s", topMarker->markerName);
+            snprintf(cpuMarkerName, cpuNameLen, "cpu_%s", topMarker->searchString);
 
             // Create a working copy for CPU processing
             char* cpuWorkingValue = strdup(topMarker->cpuValue);
@@ -862,7 +862,7 @@ T2ERROR encodeTopResultInJSON(cJSON *valArray, Vector *topMarkerList)
             }
 
             // Create Memory marker name with prefix
-            size_t memNameLen = strlen("mem_") + strlen(topMarker->markerName) + 1;
+            size_t memNameLen = strlen("mem_") + strlen(topMarker->searchString) + 1;
             char* memMarkerName = malloc(memNameLen);
             if(memMarkerName == NULL)
             {
@@ -870,7 +870,7 @@ T2ERROR encodeTopResultInJSON(cJSON *valArray, Vector *topMarkerList)
                 cJSON_Delete(arrayItem);
                 return T2ERROR_FAILURE;
             }
-            snprintf(memMarkerName, memNameLen, "mem_%s", topMarker->markerName);
+            snprintf(memMarkerName, memNameLen, "mem_%s", topMarker->searchString);
 
             // Create a working copy for Memory processing
             char* memWorkingValue = strdup(topMarker->memValue);
@@ -943,9 +943,9 @@ T2ERROR encodeTopResultInJSON(cJSON *valArray, Vector *topMarkerList)
         }
         else
         {
-            T2Debug("Top marker %s has no valid values to report (loadAverage=%p, cpuValue=%p, memValue=%p)\n",
-                    topMarker->markerName ? topMarker->markerName : "unknown",
-                    topMarker->loadAverage, topMarker->cpuValue, topMarker->memValue);
+            T2Debug("Top marker %s has no valid values to report (loadAverage=%p, cpuValue=%p, memValue=%p)\n", 
+                   topMarker->searchString ? topMarker->searchString : "unknown",
+                   topMarker->loadAverage, topMarker->cpuValue, topMarker->memValue);
         }
     }
     T2Debug("%s --Out \n", __FUNCTION__);

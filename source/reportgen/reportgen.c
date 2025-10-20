@@ -639,6 +639,13 @@ T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepMarkerList)
                             T2Warning("regexec() failed, Failed to match '%s' with '%s',returning %d.\n", grepMarker->u.markerValue, grepMarker->regexParam, rc);
                             free(grepMarker->u.markerValue);
                             grepMarker->u.markerValue = strdup("");
+                            if (grepMarker->u.markerValue == NULL)
+                            {
+                                T2Error("strdup failed for empty string after regexec failure\n");
+                                cJSON_Delete(arrayItem);
+                                regfree(&regpattern);
+                                return T2ERROR_FAILURE;
+                            }
                         }
                         else
                         {
@@ -646,6 +653,13 @@ T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepMarkerList)
                             sprintf(string, "%.*s", pmatch[0].rm_eo - pmatch[0].rm_so, &grepMarker->u.markerValue[pmatch[0].rm_so]);
                             free(grepMarker->u.markerValue);
                             grepMarker->u.markerValue = strdup(string);
+                            if (grepMarker->u.markerValue == NULL)
+                            {
+                                T2Error("strdup failed for matched string after regexec success\n");
+                                cJSON_Delete(arrayItem);
+                                regfree(&regpattern);
+                                return T2ERROR_FAILURE;
+                            }
                         }
                         regfree(&regpattern);
                     }
@@ -943,9 +957,9 @@ T2ERROR encodeTopResultInJSON(cJSON *valArray, Vector *topMarkerList)
         }
         else
         {
-            T2Debug("Top marker %s has no valid values to report (loadAverage=%p, cpuValue=%p, memValue=%p)\n", 
-                   topMarker->searchString ? topMarker->searchString : "unknown",
-                   topMarker->loadAverage, topMarker->cpuValue, topMarker->memValue);
+            T2Debug("Top marker %s has no valid values to report (loadAverage=%p, cpuValue=%p, memValue=%p)\n",
+                    topMarker->searchString ? topMarker->searchString : "unknown",
+                    topMarker->loadAverage, topMarker->cpuValue, topMarker->memValue);
         }
     }
     T2Debug("%s --Out \n", __FUNCTION__);

@@ -618,7 +618,6 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
             const char *line_start = found;
             while (line_start > buffer && *(line_start - 1) != '\n')
             {
-                T2Info("%s %d \n", __FUNCTION__, __LINE__);
                 line_start--;
             }
 
@@ -707,6 +706,7 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
                 break;
             }
             bytes_left -= advance;
+            T2Info("%s %d: bytes_left = %d, advance= %d\n", __FUNCTION__, __LINE__, (int)bytes_left, (int)advance);
         }
         T2Info("%s %d --out\n", __FUNCTION__, __LINE__);
     }

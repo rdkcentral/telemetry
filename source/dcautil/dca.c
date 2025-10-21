@@ -86,15 +86,19 @@ typedef struct
  */
 static const char *strnstr(const char *haystack, const char *needle, size_t len)
 {
+    T2Info("%s %d \n", __FUNCTION__, __LINE__);
     if (haystack  == NULL || needle == NULL)
     {
         return NULL;
     }
+    T2Info("%s %d \n", __FUNCTION__, __LINE__);
+
     size_t needle_len = strlen(needle);
     if (needle_len == 0)
     {
         return haystack;
     }
+    T2Info("%s %d \n", __FUNCTION__, __LINE__);
 
     // Check if search is possible and prevent overflow
     if (len < needle_len || len - needle_len > len)
@@ -116,15 +120,19 @@ static const char *strnstr(const char *haystack, const char *needle, size_t len)
         return NULL;
     }
 
+    T2Info("%s %d \n", __FUNCTION__, __LINE__);
     size_t skip[256];
     for (size_t i = 0; i < 256; ++i)
     {
         skip[i] = needle_len;
     }
+    T2Info("%s %d \n", __FUNCTION__, __LINE__);
+
     for (size_t i = 0; i < needle_len - 1; ++i)
     {
         skip[(unsigned char)needle[i]] = needle_len - i - 1;
     }
+    T2Info("%s %d \n", __FUNCTION__, __LINE__);
 
     size_t i = 0;
     while (i <= len - needle_len)
@@ -141,6 +149,8 @@ static const char *strnstr(const char *haystack, const char *needle, size_t len)
         size_t s = skip[(unsigned char)haystack[i + needle_len - 1]];
         i += (s > 0) ? s : 1;
     }
+    T2Info("%s %d \n", __FUNCTION__, __LINE__);
+
     return NULL;
 }
 

@@ -390,7 +390,10 @@ T2ERROR encodeStaticParamsInJSON(cJSON *valArray, Vector *staticParamList)
 }
 
 T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepMarkerList)
+T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepMarkerList)
 {
+    T2Info("%s ++in \n", __FUNCTION__);
+    if(valArray == NULL || grepMarkerList == NULL)
     T2Info("%s ++in \n", __FUNCTION__);
     if(valArray == NULL || grepMarkerList == NULL)
     {
@@ -398,10 +401,14 @@ T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepMarkerList)
         return T2ERROR_INVALID_ARGS;
     }
 
+
     size_t index = 0;
     cJSON *arrayItem = NULL;
     for(; index < Vector_Size(grepMarkerList); index++)
+    for(; index < Vector_Size(grepMarkerList); index++)
     {
+        GrepMarker* grepMarker = (GrepMarker *)Vector_At(grepMarkerList, index);
+        if (!grepMarker)
         GrepMarker* grepMarker = (GrepMarker *)Vector_At(grepMarkerList, index);
         if (!grepMarker)
         {
@@ -1377,3 +1384,61 @@ char *prepareHttpUrl(T2HTTP *http)
 
     return httpUrl;
 }
+
+void tagReportAsCached(char **jsonReport)
+{
+    if (!jsonReport)
+    {
+        T2Error("jsonReport is NULL\n");
+        return;
+    }
+
+    cJSON *jsonReportObj = cJSON_Parse(*jsonReport);
+    if (!jsonReportObj)
+    {
+        T2Error("Failed to parse JSON report\n");
+        return;
+    }
+
+    cJSON *reportTypeEntry = cJSON_CreateObject();
+    if (!reportTypeEntry)
+    {
+        T2Error("Failed to create REPORT_TYPE object\n");
+        destroyJSONReport(jsonReportObj);
+        return;
+    }
+    cJSON_AddStringToObject(reportTypeEntry, "REPORT_TYPE", "CACHED");
+    cJSON *searchResult = cJSON_GetObjectItemCaseSensitive(jsonReportObj, "searchResult");
+    if (searchResult && cJSON_IsArray(searchResult))
+    {
+        T2Info("Inserting REPORT_TYPE: CACHED at index 1 of searchResult array\n");
+        cJSON_InsertItemInArray(searchResult, 1, reportTypeEntry);
+    }
+    else
+    {
+        cJSON *reportArray = cJSON_GetObjectItemCaseSensitive(jsonReportObj, "Report");
+        if (reportArray && cJSON_IsArray(reportArray))
+        {
+            T2Info("Inserting REPORT_TYPE: CACHED at beginning of Report array\n");
+            cJSON_InsertItemInArray(reportArray, 0, reportTypeEntry);
+        }
+        else
+        {
+            T2Error("Neither 'searchResult' nor 'Report' arrays found in the JSON\n");
+            destroyJSONReport(reportTypeEntry);
+            destroyJSONReport(jsonReportObj);
+            return;
+        }
+    }
+
+    char *updatedJsonReport = cJSON_PrintUnformatted(jsonReportObj);
+    if (updatedJsonReport)
+    {
+        free(*jsonReport);  // Freeing the old report only after the new one is generated
+        *jsonReport = updatedJsonReport;
+    }
+
+    destroyJSONReport(jsonReportObj);
+}
+
+

@@ -672,6 +672,8 @@ static void* CollectAndReport(void* data)
                             Vector_RemoveItem(profile->cachedReportList, (void*) thirdCachedReport, NULL);
                             free(thirdCachedReport);
                         }
+                        // Before caching the report, add "REPORT_TYPE": "CACHED"
+                        tagReportAsCached(&jsonReport);
                         Vector_PushBack(profile->cachedReportList, jsonReport);
 
                         T2Info("Report Cached, No. of reportes cached = %lu\n", (unsigned long )Vector_Size(profile->cachedReportList));

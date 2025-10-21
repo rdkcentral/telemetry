@@ -81,4 +81,6 @@ T2ERROR prepareJSONReport(cJSON* jsonObj, char** reportBuff);
 
 char *prepareHttpUrl(T2HTTP *http);
 
+void tagReportAsCached(char **jsonReport);
+
 #endif /* _REPORTGEN_H_ */

@@ -354,6 +354,8 @@ static void* CollectAndReportXconf(void* data)
                     Vector_RemoveItem(profile->cachedReportList, (void*) thirdCachedReport, NULL);
                     free(thirdCachedReport);
                 }
+                // Before caching the report, add "REPORT_TYPE": "CACHED"
+                // tagReportAsCached(&jsonReport);
                 Vector_PushBack(profile->cachedReportList, strdup(jsonReport));
                 profile->reportInProgress = false;
                 /* CID 187010: Dereference before null check */
@@ -424,6 +426,8 @@ static void* CollectAndReportXconf(void* data)
                         Vector_RemoveItem(profile->cachedReportList, (void*) thirdCachedReport, NULL);
                         free(thirdCachedReport);
                     }
+                    // Before caching the report, add "REPORT_TYPE": "CACHED"
+                    tagReportAsCached(&jsonReport);
                     Vector_PushBack(profile->cachedReportList, strdup(jsonReport));
 
                     T2Info("Report Cached, No. of reportes cached = %lu\n", (unsigned long)Vector_Size(profile->cachedReportList));

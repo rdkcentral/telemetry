@@ -151,7 +151,62 @@ static char *PERSISTENTPATH = NULL;
 static long PAGESIZE;
 static pthread_mutex_t dcaMutex = PTHREAD_MUTEX_INITIALIZER;
 
+/**
+ * @brief Extract Unix timestamp from ISO 8601 format timestamp at the beginning of a line.
+ *
+ * @param line_start Pointer to the beginning of the line containing the timestamp
+ * @return Unix timestamp on success, 0 on failure or if no valid timestamp found
+ */
+static time_t extractUnixTimestamp(const char* line_start)
+{
+    if (!line_start)
+    {
+        T2Warning("extractUnixTimestamp: line_start is NULL\n");
+        return 0;
+    }
 
+    // Check if we have enough characters for ISO 8601 format: YYYY-MM-DDTHH:MM:SS.mmm (23 chars)
+    // We'll do a basic length check by looking for the expected format structure
+    if (strlen(line_start) < 23)
+    {
+        T2Debug("extractUnixTimestamp: Line too short for timestamp\n");
+        return 0;
+    }
+
+    // Extract the timestamp portion (first 23 characters)
+    char timestamp_str[24] = {0};
+    strncpy(timestamp_str, line_start, 23);
+    timestamp_str[23] = '\0';
+
+    T2Debug("extractUnixTimestamp: Attempting to parse timestamp: %s\n", timestamp_str);
+
+    struct tm tm_time = {0};
+
+    // Parse using strptime - format: "YYYY-MM-DDTHH:MM:SS"
+    // Note: strptime doesn't handle milliseconds, so we parse up to seconds
+    char* result = strptime(timestamp_str, "%Y-%m-%dT%H:%M:%S", &tm_time);
+    if (result != NULL)
+    {
+        tm_time.tm_isdst = -1; // Let system determine DST
+        time_t unix_timestamp = mktime(&tm_time);
+        if (unix_timestamp != -1)
+        {
+            T2Debug("extractUnixTimestamp: Successfully parsed timestamp: %s -> Unix: %ld\n",
+                    timestamp_str, unix_timestamp);
+            return unix_timestamp;
+        }
+        else
+        {
+            T2Warning("extractUnixTimestamp: mktime() failed for timestamp: %s\n", timestamp_str);
+        }
+    }
+    else
+    {
+        T2Debug("extractUnixTimestamp: strptime() failed to parse timestamp: %s\n", timestamp_str);
+    }
+
+    return 0;
+}
 
 
 /* @} */ // End of group DCA_TYPES
@@ -621,49 +676,8 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
                 line_start--;
             }
 
-            time_t unix_timestamp = 0;
+            time_t unix_timestamp = extractUnixTimestamp (line_start);
 
-            // Expected timestamp format: YYYY-MM-DDTHH:MM:SS.mmm (ISO 8601)
-            if (line_start + 23 <= buffer + buflen &&
-                    isdigit(line_start[0]) && isdigit(line_start[1]) && isdigit(line_start[2]) && isdigit(line_start[3]) && // YYYY
-                    line_start[4] == '-' &&
-                    isdigit(line_start[5]) && isdigit(line_start[6]) && // MM
-                    line_start[7] == '-' &&
-                    isdigit(line_start[8]) && isdigit(line_start[9]) && // DD
-                    line_start[10] == 'T' &&
-                    isdigit(line_start[11]) && isdigit(line_start[12]) && // HH
-                    line_start[13] == ':' &&
-                    isdigit(line_start[14]) && isdigit(line_start[15]) && // MM
-                    line_start[16] == ':' &&
-                    isdigit(line_start[17]) && isdigit(line_start[18]) && // SS
-                    line_start[19] == '.' &&
-                    isdigit(line_start[20]) && isdigit(line_start[21]) && isdigit(line_start[22])) // mmm
-            {
-                T2Info("%s %d \n", __FUNCTION__, __LINE__);
-
-                char timestamp_str[24] = {0};
-                strncpy(timestamp_str, line_start, 23);
-                timestamp_str[23] = '\0';
-
-                T2Info("timestamp_str = %s\n", timestamp_str);
-                struct tm tm_time = {0};
-
-                // Parse using strptime - format: "YYYY-MM-DDTHH:MM:SS"
-                char* result = strptime(timestamp_str, "%Y-%m-%dT%H:%M:%S", &tm_time);
-                if (result != NULL)
-                {
-                    tm_time.tm_isdst = -1;
-                    unix_timestamp = mktime(&tm_time);
-                    if (unix_timestamp != -1)
-                    {
-                        T2Info("Extracted timestamp: %s -> Unix: %ld\n", timestamp_str, unix_timestamp);
-                    }
-                }
-                else
-                {
-                    T2Warning("Failed to parse timestamp: %s\n", timestamp_str);
-                }
-            }
             T2Info("%s %d \n", __FUNCTION__, __LINE__);
 
             // Move pointer just after the pattern

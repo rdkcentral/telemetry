@@ -411,7 +411,6 @@ T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepMarkerList)
         switch(grepMarker->mType)
         {
         case MTYPE_COUNTER:
-            T2Info("%d ++in \n", __LINE__);
             if(grepMarker->u.count > 0)
             {
                 char stringValue[10] = {'\0'};
@@ -470,7 +469,6 @@ T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepMarkerList)
             break;
 
         case MTYPE_ACCUMULATE:
-            T2Info("%d ++in \n", __LINE__);
             if(grepMarker->u.accumulatedValues != NULL && Vector_Size(grepMarker->u.accumulatedValues))
             {
                 arrayItem = cJSON_CreateObject();

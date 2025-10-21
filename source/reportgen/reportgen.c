@@ -390,10 +390,7 @@ T2ERROR encodeStaticParamsInJSON(cJSON *valArray, Vector *staticParamList)
 }
 
 T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepMarkerList)
-T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepMarkerList)
 {
-    T2Info("%s ++in \n", __FUNCTION__);
-    if(valArray == NULL || grepMarkerList == NULL)
     T2Info("%s ++in \n", __FUNCTION__);
     if(valArray == NULL || grepMarkerList == NULL)
     {
@@ -401,14 +398,10 @@ T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepMarkerList)
         return T2ERROR_INVALID_ARGS;
     }
 
-
     size_t index = 0;
     cJSON *arrayItem = NULL;
     for(; index < Vector_Size(grepMarkerList); index++)
-    for(; index < Vector_Size(grepMarkerList); index++)
     {
-        GrepMarker* grepMarker = (GrepMarker *)Vector_At(grepMarkerList, index);
-        if (!grepMarker)
         GrepMarker* grepMarker = (GrepMarker *)Vector_At(grepMarkerList, index);
         if (!grepMarker)
         {

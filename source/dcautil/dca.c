@@ -31,6 +31,8 @@
 #include <sys/mman.h>
 #include <limits.h>
 #include <sys/sendfile.h>
+#include <sys/file.h>
+#include <errno.h>
 #include <cjson/cJSON.h>
 
 #include "dcautil.h"
@@ -62,7 +64,7 @@ static bool firstreport_after_bootup = false; // the rotated logs check should r
  * @{
  */
 
-// Define a struct to hold the file descriptor and size
+// Define a struct to hold the file descriptor and size with mapping metadata
 typedef struct
 {
     int fd;
@@ -74,6 +76,13 @@ typedef struct
     char* rfaddr;
     void* baseAddr;
     void* rotatedAddr;
+    // Mapping metadata for safer cleanup
+    size_t cf_mapped_size;  // Actual size used for mmap
+    size_t rf_mapped_size;  // Actual size used for mmap
+    off_t cf_original_size; // Original file size at mapping time
+    off_t rf_original_size; // Original rotated file size at mapping time
+    int lock_fd;            // File descriptor for locking
+    bool is_locked;         // Lock status
 } FileDescriptor;
 
 /**
@@ -149,8 +158,130 @@ static char *PERSISTENTPATH = NULL;
 static long PAGESIZE;
 static pthread_mutex_t dcaMutex = PTHREAD_MUTEX_INITIALIZER;
 
+/**
+ * Atomic file operations helper functions
+ */
 
+/**
+ * Acquire file lock for atomic operations
+ * @param fd File descriptor to lock
+ * @return 0 on success, -1 on failure
+ */
+static int acquireFileLock(int fd)
+{
+    if (fd < 0) return -1;
+    
+    struct flock lock;
+    lock.l_type = F_RDLCK;    // Read lock for shared access
+    lock.l_whence = SEEK_SET;
+    lock.l_start = 0;
+    lock.l_len = 0;           // Lock entire file
+    
+    int result = fcntl(fd, F_SETLK, &lock);
+    if (result == -1) {
+        T2Debug("Failed to acquire file lock: %s\n", strerror(errno));
+        return -1;
+    }
+    
+    T2Debug("File lock acquired successfully\n");
+    return 0;
+}
 
+/**
+ * Release file lock
+ * @param fd File descriptor to unlock
+ * @return 0 on success, -1 on failure
+ */
+static int releaseFileLock(int fd)
+{
+    if (fd < 0) return -1;
+    
+    struct flock lock;
+    lock.l_type = F_UNLCK;
+    lock.l_whence = SEEK_SET;
+    lock.l_start = 0;
+    lock.l_len = 0;
+    
+    int result = fcntl(fd, F_SETLK, &lock);
+    if (result == -1) {
+        T2Debug("Failed to release file lock: %s\n", strerror(errno));
+        return -1;
+    }
+    
+    T2Debug("File lock released successfully\n");
+    return 0;
+}
+
+/**
+ * Bounds checking helper function
+ * @param addr Base address of mapped memory
+ * @param offset Offset to check
+ * @param mapped_size Size of mapped memory
+ * @param access_size Size of data to access
+ * @return true if access is safe, false otherwise
+ */
+static bool isMemoryAccessSafe(const void* addr, size_t offset, size_t mapped_size, size_t access_size)
+{
+    if (!addr || mapped_size == 0) {
+        T2Error("Invalid memory parameters for bounds check\n");
+        return false;
+    }
+    
+    // Check for overflow
+    if (offset > mapped_size || access_size > mapped_size) {
+        T2Error("Memory access parameters exceed mapped size\n");
+        return false;
+    }
+    
+    // Check if offset + access_size would exceed mapped memory
+    if (offset + access_size > mapped_size) {
+        T2Error("Memory access would exceed mapped region: offset=%zu, access_size=%zu, mapped_size=%zu\n", 
+                offset, access_size, mapped_size);
+        return false;
+    }
+    
+    return true;
+}
+
+/**
+ * Safe memory access wrapper with bounds checking
+ * @param fileDescriptor File descriptor structure
+ * @param offset Offset from base address
+ * @param access_size Size of data to access
+ * @param is_rotated Whether accessing rotated file data
+ * @return Pointer to safe memory location or NULL if unsafe
+ */
+static const char* safeMemoryAccess(FileDescriptor* fileDescriptor, size_t offset, size_t access_size, bool is_rotated)
+{
+    if (!fileDescriptor) {
+        T2Error("Invalid file descriptor for memory access\n");
+        return NULL;
+    }
+    
+    if (is_rotated) {
+        if (!fileDescriptor->rfaddr || fileDescriptor->rf_mapped_size == 0) {
+            T2Error("No rotated file data available\n");
+            return NULL;
+        }
+        
+        if (!isMemoryAccessSafe(fileDescriptor->rfaddr, offset, fileDescriptor->rf_mapped_size, access_size)) {
+            return NULL;
+        }
+        
+        return fileDescriptor->rfaddr + offset;
+    } else {
+        if (!fileDescriptor->cfaddr || fileDescriptor->cf_mapped_size == 0) {
+            T2Error("No current file data available\n");
+            return NULL;
+        }
+        
+        if (!isMemoryAccessSafe(fileDescriptor->cfaddr, offset, fileDescriptor->cf_mapped_size, access_size)) {
+            return NULL;
+        }
+        
+        return fileDescriptor->cfaddr + offset;
+    }
+}
 
 /* @} */ // End of group DCA_TYPES
 /**
@@ -402,62 +533,65 @@ static inline void formatCount(char* buffer, size_t size, int count)
 static int getCountPatternMatch(FileDescriptor* fileDescriptor, const char* pattern)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
-    if (!fileDescriptor || !fileDescriptor->cfaddr || !pattern || !*pattern || fileDescriptor->cf_map_size <= 0)
+    if (!fileDescriptor || !pattern || !*pattern)
     {
-        T2Error("Invalid file descriptor arguments pattern match\n");
-        return -1; // Invalid arguments
+        T2Error("Invalid arguments for pattern match\n");
+        return -1;
     }
 
-    const char* buffer;
-    size_t buflen = 0;
     size_t patlen = strlen(pattern);
     int count = 0;
 
+    // Process both current and rotated files with bounds checking
     for(int i = 0; i < 2; i++)
     {
-        if (i == 0)
+        bool is_rotated = (i == 1);
+        const char* buffer = safeMemoryAccess(fileDescriptor, 0, patlen, is_rotated);
+        size_t buflen = is_rotated ? fileDescriptor->rf_mapped_size : fileDescriptor->cf_mapped_size;
+        
+        if (!buffer || buflen == 0)
         {
-            buffer = fileDescriptor->cfaddr;
-            buflen = (size_t)fileDescriptor->cf_map_size;
-        }
-        else
-        {
-            buffer = fileDescriptor->rfaddr;
-            buflen = (size_t)fileDescriptor->rf_map_size;
-        }
-        if(buffer == NULL)
-        {
-            T2Debug("Invalid file descriptor arguments pattern match\n");
+            T2Debug("No data available for %s file\n", is_rotated ? "rotated" : "current");
             continue;
         }
+        
         if (patlen == 0 || buflen < patlen)
         {
-            T2Info("File size is less than pattern length so ignoring the file\n");
+            T2Info("File size is less than pattern length, ignoring file\n");
             continue;
         }
 
-        const char *cur = buffer;
         size_t bytes_left = buflen;
+        size_t current_offset = 0;
 
         while (bytes_left >= patlen)
         {
-            const char *found = strnstr(cur, pattern, bytes_left);
+            // Ensure we have safe access for the remaining search
+            const char *safe_cur = safeMemoryAccess(fileDescriptor, current_offset, bytes_left, is_rotated);
+            if (!safe_cur) {
+                T2Error("Unsafe memory access detected, stopping search\n");
+                break;
+            }
+            
+            const char *found = strnstr(safe_cur, pattern, bytes_left);
             if (!found)
             {
                 break;
             }
+            
             count++;
-            size_t advance = (size_t)(found - cur) + patlen;
-            cur = found + patlen;
-            if (bytes_left < advance)
+            size_t advance = (size_t)(found - safe_cur) + patlen;
+            current_offset += advance;
+            
+            if (bytes_left < advance || current_offset >= buflen)
             {
                 break;
             }
             bytes_left -= advance;
         }
-
     }
-    T2Debug("count is %d\n", count);
+    
+    T2Debug("Pattern count: %d\n", count);
     T2Debug("%s --out\n", __FUNCTION__);
     return count;
 }
@@ -465,72 +599,100 @@ static int getCountPatternMatch(FileDescriptor* fileDescriptor, const char* patt
 static char* getAbsolutePatternMatch(FileDescriptor* fileDescriptor, const char* pattern)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
-    if (!fileDescriptor || !fileDescriptor->cfaddr || fileDescriptor->cf_map_size <= 0 || !pattern || !*pattern)
+    if (!fileDescriptor || !pattern || !*pattern)
     {
-        T2Error("Invalid file descriptor arguments absolute\n");
+        T2Error("Invalid arguments for absolute pattern match\n");
         return NULL;
     }
 
-    const char* buffer;
-    size_t buflen = 0;
     size_t patlen = strlen(pattern);
     const char *last_found = NULL;
+    const char *last_buffer = NULL;
+    size_t last_buflen = 0;
+    bool last_is_rotated = false;
 
-    for ( int i = 0; i < 2; i++ )
+    // Process both current and rotated files with bounds checking
+    for (int i = 0; i < 2; i++)
     {
-        if (i == 0)
+        bool is_rotated = (i == 1);
+        const char* buffer = safeMemoryAccess(fileDescriptor, 0, patlen, is_rotated);
+        size_t buflen = is_rotated ? fileDescriptor->rf_mapped_size : fileDescriptor->cf_mapped_size;
+        
+        if (!buffer || buflen == 0)
         {
-            buffer = fileDescriptor->cfaddr;
-            buflen = (size_t)fileDescriptor->cf_map_size;
-        }
-        else
-        {
-            buffer = fileDescriptor->rfaddr;
-            buflen = (size_t)fileDescriptor->rf_map_size;
-        }
-
-        if(buffer == NULL)
-        {
-            T2Debug("Invalid file descriptor arguments absolute match\n");
+            T2Debug("No data available for %s file\n", is_rotated ? "rotated" : "current");
             continue;
         }
-        const char *cur = buffer;
+        
+        if (patlen == 0 || buflen < patlen)
+        {
+            T2Info("File size is less than pattern length, ignoring file\n");
+            continue;
+        }
+
         size_t bytes_left = buflen;
+        size_t current_offset = 0;
 
         while (bytes_left >= patlen)
         {
-            const char *found = strnstr(cur, pattern, bytes_left);
+            // Ensure we have safe access for the remaining search
+            const char *safe_cur = safeMemoryAccess(fileDescriptor, current_offset, bytes_left, is_rotated);
+            if (!safe_cur) {
+                T2Error("Unsafe memory access detected, stopping search\n");
+                break;
+            }
+            
+            const char *found = strnstr(safe_cur, pattern, bytes_left);
             if (!found)
             {
                 break;
             }
+            
             last_found = found;
-            size_t advance = (size_t)(found - cur) + patlen;
-            cur = found + patlen;
-            if (bytes_left < advance)
+            last_buffer = buffer;
+            last_buflen = buflen;
+            last_is_rotated = is_rotated;
+            
+            size_t advance = (size_t)(found - safe_cur) + patlen;
+            current_offset += advance;
+            
+            if (bytes_left < advance || current_offset >= buflen)
             {
                 break;
             }
             bytes_left -= advance;
         }
 
-        if (!last_found)
-        {
-            continue;
-        }
-        if(last_found && i == 0)
+        // If we found a match in current file, don't check rotated file
+        if (last_found && i == 0)
         {
             break;
         }
     }
 
-    if(!last_found)
+    if (!last_found)
     {
         return NULL;
     }
-    // Move pointer just after the pattern
+    
+    // Move pointer just after the pattern with bounds checking
     const char *start = last_found + patlen;
-    size_t chars_left = buflen - (start - buffer);
+    size_t offset_from_base = start - last_buffer;
+    
+    if (offset_from_base >= last_buflen)
+    {
+        T2Error("Pattern match extends beyond buffer bounds\n");
+        return NULL;
+    }
+    
+    size_t chars_left = last_buflen - offset_from_base;
+    
+    // Verify safe access for the remaining data
+    if (!safeMemoryAccess(fileDescriptor, offset_from_base, chars_left, last_is_rotated))
+    {
+        T2Error("Unsafe access to remaining data after pattern\n");
+        return NULL;
+    }
 
     // Find next newline or end of buffer
     const char *end = memchr(start, '\n', chars_left);
@@ -539,8 +701,10 @@ static char* getAbsolutePatternMatch(FileDescriptor* fileDescriptor, const char*
     char *result = (char*)malloc(length + 1);
     if (!result)
     {
+        T2Error("Failed to allocate memory for result\n");
         return NULL;
     }
+    
     memcpy(result, start, length);
     result[length] = '\0';
     T2Debug("%s --out\n", __FUNCTION__);
@@ -549,15 +713,29 @@ static char* getAbsolutePatternMatch(FileDescriptor* fileDescriptor, const char*
 
 static int processPatternWithOptimizedFunction(const GrepMarker* marker, Vector* out_grepResultList, FileDescriptor* filedescriptor)
 {
-    // Sanitize the input
-    const char* memmmapped_data_cf = filedescriptor->cfaddr;
-    if (!marker || !out_grepResultList || !memmmapped_data_cf)
+    // Sanitize the input with bounds checking
+    if (!marker || !out_grepResultList || !filedescriptor)
     {
         T2Error("Invalid arguments for %s\n", __FUNCTION__);
         return -1;
     }
-    // Extract the pattern and other parameters from the marker
+    
+    // Verify we have valid mapped data with bounds checking
     const char* pattern = marker->searchString;
+    if (!pattern || !*pattern)
+    {
+        T2Error("Invalid pattern for processing\n");
+        return -1;
+    }
+    
+    size_t pattern_len = strlen(pattern);
+    const char* safe_data = safeMemoryAccess(filedescriptor, 0, pattern_len, false);
+    if (!safe_data)
+    {
+        T2Debug("No safe memory access available for pattern matching\n");
+        return 0; // Not an error, just no data to process
+    }
+    // Extract parameters from the marker
     bool trimParameter = marker->trimParam;
     char* regexParameter = marker->regexParam;
     char* header = marker->markerName;
@@ -721,29 +899,81 @@ static int getRotatedLogFileDescriptor(const char* logPath, const char* logFile)
 }
 
 // Caller should free the FileDescriptor struct after use
+// Uses safer cleanup with original mapping sizes to prevent corruption
 static void freeFileDescriptor(FileDescriptor* fileDescriptor)
 {
-    if (fileDescriptor)
+    if (!fileDescriptor)
     {
-        if(fileDescriptor->baseAddr)
-        {
-            munmap(fileDescriptor->baseAddr, fileDescriptor->cf_file_size);
-            fileDescriptor->baseAddr = NULL;
-        }
-        if(fileDescriptor->rotatedAddr)
-        {
-            munmap(fileDescriptor->rotatedAddr, fileDescriptor->rf_file_size);
-            fileDescriptor->rotatedAddr = NULL;
-        }
-        fileDescriptor->cfaddr = NULL;
-        fileDescriptor->rfaddr = NULL;
-        if(fileDescriptor->fd != -1)
-        {
-            close(fileDescriptor->fd);
-            fileDescriptor->fd = -1;
-        }
-        free(fileDescriptor);
+        return;
     }
+    
+    T2Debug("Starting safe cleanup of FileDescriptor\n");
+    
+    // Release file lock if held
+    if (fileDescriptor->is_locked && fileDescriptor->lock_fd >= 0)
+    {
+        if (releaseFileLock(fileDescriptor->lock_fd) == 0)
+        {
+            fileDescriptor->is_locked = false;
+            T2Debug("File lock released during cleanup\n");
+        }
+        else
+        {
+            T2Error("Failed to release file lock during cleanup\n");
+        }
+    }
+    
+    // Close lock file descriptor if different from main fd
+    if (fileDescriptor->lock_fd >= 0 && fileDescriptor->lock_fd != fileDescriptor->fd)
+    {
+        close(fileDescriptor->lock_fd);
+        fileDescriptor->lock_fd = -1;
+    }
+    
+    // Safely unmap current file using original mapped size
+    if (fileDescriptor->baseAddr && fileDescriptor->cf_mapped_size > 0)
+    {
+        if (munmap(fileDescriptor->baseAddr, fileDescriptor->cf_mapped_size) == -1)
+        {
+            T2Error("Failed to unmap current file: %s\n", strerror(errno));
+        }
+        else
+        {
+            T2Debug("Successfully unmapped current file (%zu bytes)\n", fileDescriptor->cf_mapped_size);
+        }
+        fileDescriptor->baseAddr = NULL;
+        fileDescriptor->cfaddr = NULL;
+    }
+    
+    // Safely unmap rotated file using original mapped size
+    if (fileDescriptor->rotatedAddr && fileDescriptor->rf_mapped_size > 0)
+    {
+        if (munmap(fileDescriptor->rotatedAddr, fileDescriptor->rf_mapped_size) == -1)
+        {
+            T2Error("Failed to unmap rotated file: %s\n", strerror(errno));
+        }
+        else
+        {
+            T2Debug("Successfully unmapped rotated file (%zu bytes)\n", fileDescriptor->rf_mapped_size);
+        }
+        fileDescriptor->rotatedAddr = NULL;
+        fileDescriptor->rfaddr = NULL;
+    }
+    
+    // Close main file descriptor
+    if (fileDescriptor->fd >= 0)
+    {
+        close(fileDescriptor->fd);
+        fileDescriptor->fd = -1;
+    }
+    
+    // Clear all fields for safety
+    memset(fileDescriptor, 0, sizeof(FileDescriptor));
+    fileDescriptor->fd = -1;
+    fileDescriptor->lock_fd = -1;
+    
+    free(fileDescriptor);
+    T2Debug("FileDescriptor cleanup completed\n");
 }
 
 static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t seek_value, const char* logPath, const char* logFile, bool check_rotated )
@@ -952,9 +1182,41 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
         }
         return NULL;
     }
+    
+    // Initialize all fields to safe defaults
     memset(fileDescriptor, 0, sizeof(FileDescriptor));
+    fileDescriptor->fd = -1;
+    fileDescriptor->lock_fd = -1;
+    fileDescriptor->is_locked = false;
+    
+    // Set up atomic file operations with locking
+    // Use a duplicate fd for locking to avoid conflicts
+    int lock_fd = dup(fd);
+    if (lock_fd >= 0)
+    {
+        if (acquireFileLock(lock_fd) == 0)
+        {
+            fileDescriptor->lock_fd = lock_fd;
+            fileDescriptor->is_locked = true;
+            T2Debug("File lock acquired for atomic operations\n");
+        }
+        else
+        {
+            T2Debug("Failed to acquire file lock, proceeding without lock\n");
+            close(lock_fd);
+            fileDescriptor->lock_fd = -1;
+        }
+    }
+    else
+    {
+        T2Debug("Failed to duplicate fd for locking\n");
+        fileDescriptor->lock_fd = -1;
+    }
+    
+    // Set up memory mapping pointers
     fileDescriptor->baseAddr = (void *)addrcf;
     addrcf += bytes_ignored_main;
+    
     if(addrrf != NULL)
     {
         fileDescriptor->rotatedAddr = (void *)addrrf;
@@ -966,20 +1228,34 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
         fileDescriptor->rotatedAddr = NULL;
         fileDescriptor->rfaddr = NULL;
     }
+    
     fileDescriptor->cfaddr = addrcf;
     fileDescriptor->fd = fd;
+    
+    // Set legacy size fields
     fileDescriptor->cf_map_size = main_fsize;
     fileDescriptor->cf_file_size = sb.st_size;
+    
+    // Set new mapping metadata for safer cleanup
+    fileDescriptor->cf_mapped_size = (size_t)sb.st_size;
+    fileDescriptor->cf_original_size = sb.st_size;
+    
     if(fileDescriptor->rfaddr != NULL)
     {
         fileDescriptor->rf_map_size = rotated_fsize;
         fileDescriptor->rf_file_size = rb.st_size;
+        fileDescriptor->rf_mapped_size = (size_t)rb.st_size;
+        fileDescriptor->rf_original_size = rb.st_size;
     }
     else
     {
         fileDescriptor->rf_map_size = 0;
         fileDescriptor->rf_file_size = 0;
+        fileDescriptor->rf_mapped_size = 0;
+        fileDescriptor->rf_original_size = 0;
     }
+    
+    T2Debug("FileDescriptor initialized with atomic operations and mapping metadata\n");
     return fileDescriptor;
 }
 

@@ -220,6 +220,11 @@ static void* CollectAndReportXconf(void* data)
     do
     {
         T2Info("%s while Loop -- START \n", __FUNCTION__);
+        if(singleProfile == NULL)
+        {
+            T2Error("%s is called with empty profile, profile reload might be in-progress, skip the request\n", __FUNCTION__);
+            goto reportXconfThreadEnd;
+        }
         profile = singleProfile;
         Vector *profileParamVals = NULL;
         cJSON *valArray = NULL;
@@ -485,7 +490,6 @@ static void* CollectAndReportXconf(void* data)
         //pthread_mutex_unlock(&plMutex);
 reportXconfThreadEnd :
         T2Info("%s while Loop -- END \n", __FUNCTION__);
-        T2Info("%s --out\n", __FUNCTION__);
         pthread_cond_wait(&reuseThread, &plMutex);
     }
     while(initialized);
@@ -583,7 +587,6 @@ T2ERROR ProfileXConf_uninit()
         pthread_cond_signal(&reuseThread);
         pthread_mutex_unlock(&plMutex);
         pthread_join(singleProfile->reportThread, NULL);
-        reportThreadExits = false;
         singleProfile->reportInProgress = false ;
         T2Info("Final report is completed, releasing profile memory\n");
     }
@@ -718,20 +721,12 @@ T2ERROR ProfileXConf_delete(ProfileXConf *profile)
 
     if(singleProfile->reportInProgress)
     {
-        T2Info("Waiting for CollectAndReport to be complete : %s\n", singleProfile->name);
-        pthread_mutex_lock(&plMutex);
-        initialized = false;
-        T2Info("Sending signal to reuse Thread in CollectAndReportXconf\n");
-        pthread_cond_signal(&reuseThread);
-        pthread_mutex_unlock(&plMutex);
-        pthread_join(singleProfile->reportThread, NULL);
-        T2Info("reportThread exits and initialising the profile list\n");
-        reportThreadExits = false;
-        initialized = true;
-        singleProfile->reportInProgress = false ;
+        T2Info("Waiting for CollectAndReportXconf to be complete : %s\n", singleProfile->name);
     }
 
     pthread_mutex_lock(&plMutex);
+
+    profile->reportThread = singleProfile->reportThread;
 
     size_t count = Vector_Size(singleProfile->cachedReportList);
     // Copy any cached message present in previous single profile to new profile
@@ -1000,9 +995,14 @@ T2ERROR ProfileXConf_terminateReport()
 
     T2ERROR ret = T2ERROR_FAILURE;
 
+    pthread_mutex_lock(&plMutex);
+
     if(!singleProfile)
     {
         T2Error("Xconf profile is not set.\n");
+
+        pthread_mutex_unlock(&plMutex);
+
         return ret;
     }
 
@@ -1029,6 +1029,8 @@ T2ERROR ProfileXConf_terminateReport()
     {
         T2Info("No report generation in progress. No further action required for abort.\n");
     }
+
+    pthread_mutex_unlock(&plMutex);
 
     return ret;
 

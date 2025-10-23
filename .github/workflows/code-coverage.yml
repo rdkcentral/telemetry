@@ -2,7 +2,7 @@ name: Code Coverage
 
 on:
   pull_request:
-    branches: [ main, develop]
+    branches: [ main]
 
 env:
   AUTOMATICS_UNAME: ${{ secrets.AUTOMATICS_UNAME }}
@@ -31,32 +31,18 @@ jobs:
         run: |
           docker run -d --name native-platform -v ${{ github.workspace }}:/mnt/L1_CONTAINER_SHARED_VOLUME ghcr.io/rdkcentral/docker-device-mgt-service-test/native-platform:latest
 
-      - name: Run unit tests with coverage flags enabled
-        run: docker exec -i native-platform /bin/bash -c "cd /mnt/L1_CONTAINER_SHARED_VOLUME/ && sh test/run_ut.sh --enable-cov"
+      - name: Run unit tests with coverage flags enabled and Caculate the code coverage summary
+        run: docker exec -i native-platform /bin/bash -c "cd /mnt/L1_CONTAINER_SHARED_VOLUME/ && sh test/run_ut.sh --enable-cov && lcov --list coverage.info | grep 'Lines\|Total' > /tmp/coverage_summary.txt"
 
-      - name: Caculate the code coverage summary
-        run: |
-          lcov --list coverage.info | grep "Lines\|Total" > /tmp/Gtest_Report/coverage_summary.txt
+      - name: Copy coverage summary to runner
+        run: docker cp native-platform:/tmp/coverage_summary.txt /tmp/
 
-      - name: Copy the code coverage to runner
-        run: |
-          docker cp native-platform:/tmp/Gtest_Report/ /tmp/Gtest_Report/
-
-  upload-test-results:
-    name: Upload L1 coverage reports
-    needs: execute-unit-code-coverage-report-on-release
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/rdkcentral/docker-rdk-ci:latest
-      volumes:
-        - /tmp/Gtest_Report:/tmp/Gtest_Report
-    steps:
       - name: Update the coverage report to Pull request using actions
         uses: actions/github-script@v4
         with:
           script: |
             const fs = require('fs');
-            const lcov_result = fs.readFileSync('/tmp/Gtest_Report/coverage_summary.txt', 'utf8'); 
+            const lcov_result = fs.readFileSync('/tmp/coverage_summary.txt', 'utf8');
           
             github.issues.createComment({
               issue_number: context.issue.number,
@@ -71,12 +57,13 @@ jobs:
             });
 
       - name: Generate the html report
-        run: |
-          genhtml coverage.info --output-directory /tmp/coverage_report
+        run: docker exec -i native-platform /bin/bash -c " cd /mnt/L1_CONTAINER_SHARED_VOLUME/ && genhtml coverage.info --output-directory /tmp/coverage_report"
+
+      - name: Copy html report to runner
+        run: docker cp native-platform:/tmp/coverage_report /tmp/
 
       - name: Upload the coverage report to Pull request using actions
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
           path: /tmp/coverage_report
-

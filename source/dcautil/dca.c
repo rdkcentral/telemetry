@@ -734,7 +734,7 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
                 break;
             }
             bytes_left -= advance;
-            T2Info("%s %d, current position: %d , buffer_end: %d \n", __FUNCTION__, __LINE__, cur, buffer_end);
+            T2Info("%s %d, current position: %p , buffer_end: %p \n", __FUNCTION__, __LINE__, cur, buffer_end);
             if (cur >= buffer_end)
             {
                 T2Info("Reached end of buffer\n");

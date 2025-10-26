@@ -161,7 +161,7 @@ static char *PERSISTENTPATH = NULL;
 static long PAGESIZE;
 static pthread_mutex_t dcaMutex = PTHREAD_MUTEX_INITIALIZER;
 
-#if 0
+#if 1
 /**
  * @brief Extract Unix timestamp from ISO 8601 format timestamp at the beginning of a line.
  *
@@ -652,7 +652,7 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
         size_t bytes_left = buflen;
         const char *buffer_end = buffer + buflen;
 
-        while (bytes_left >= patlen)
+        while (bytes_left >= patlen && cur < buffer_end)
         {
             T2Info("%s %d \n", __FUNCTION__, __LINE__);
 
@@ -677,6 +677,12 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
             }
             T2Info("%s %d \n", __FUNCTION__, __LINE__);
 
+            T2Info("%s %d, current position: %p , buffer_end: %p \n", __FUNCTION__, __LINE__, cur, buffer_end);
+            if (cur >= buffer_end)
+            {
+                T2Info("Reached end of buffer\n");
+                break;
+            }
             const char *found = strnstr(cur, pattern, bytes_left);
             if (!found)
             {
@@ -685,7 +691,7 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
             }
             T2Info("%s %d \n", __FUNCTION__, __LINE__);
 
-#if 0
+#if 1
             // Find the beginning of the line containing the pattern
             const char *line_start = found;
             while (line_start > buffer && *(line_start - 1) != '\n')
@@ -700,7 +706,7 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
 
             // Move pointer just after the pattern
             const char *start = found + patlen;
-            size_t chars_left = buflen - (start - buffer);
+            size_t chars_left = buffer_end - start;
 
             // Find next newline or end of buffer
             const char *end = memchr(start, '\n', chars_left);
@@ -739,10 +745,8 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
                 break;
             }
             bytes_left -= advance;
-            T2Info("%s %d, current position: %p , buffer_end: %p \n", __FUNCTION__, __LINE__, cur, buffer_end);
             if (cur >= buffer_end)
             {
-                T2Info("Reached end of buffer\n");
                 break;
             }
             T2Info("%s %d: bytes_left = %d, advance= %d\n", __FUNCTION__, __LINE__, (int)bytes_left, (int)advance);

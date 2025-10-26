@@ -691,9 +691,11 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
             }
 
             time_t unix_timestamp = extractUnixTimestamp (line_start);
+            T2Info("Stored timestamp: %ld\n", unix_timestamp);
 
             T2Info("%s %d \n", __FUNCTION__, __LINE__);
 
+#if 0
             // Move pointer just after the pattern
             const char *start = found + patlen;
             size_t chars_left = buflen - (start - buffer);
@@ -725,6 +727,7 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
                     }
                 }
             }
+#endif
 
             size_t advance = (size_t)(found - cur) + patlen;
             cur = found + patlen;

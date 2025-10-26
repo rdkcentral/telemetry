@@ -71,7 +71,9 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
 
 T2ERROR encodeStaticParamsInJSON(cJSON *valArray, Vector *staticParamList);
 
-T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepResult);
+T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepMarkerList);
+
+T2ERROR encodeTopResultInJSON(cJSON *valArray, Vector *topMarkerList);
 
 T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList);
 

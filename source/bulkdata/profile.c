@@ -339,7 +339,6 @@ static void* CollectAndReport(void* data)
         int count = profile->grepSeekProfile->execCounter;
 
         Vector *profileParamVals = NULL;
-        Vector *grepResultList = NULL;
         cJSON *valArray = NULL;
         char* jsonReport = NULL;
         cJSON *triggercondition = NULL;
@@ -452,26 +451,13 @@ static void* CollectAndReport(void* data)
                 }
                 if(profile->topMarkerList != NULL && Vector_Size(profile->topMarkerList) > 0)
                 {
-                    Vector *topMarkerResultList = NULL;
-                    Vector_Create(&topMarkerResultList);
-                    processTopPattern(profile->name, profile->topMarkerList, topMarkerResultList, 0);
-                    long int reportSize = Vector_Size(topMarkerResultList);
-                    if(reportSize != 0)
-                    {
-                        T2Info("Top markers report is compleated report size %ld\n", (unsigned long)reportSize);
-                        encodeGrepResultInJSON(valArray, topMarkerResultList);
-                    }
-                    else
-                    {
-                        T2Debug("Top markers report generated but is empty possabliy the memory value is changed");
-                    }
-                    Vector_Destroy(topMarkerResultList, freeGResult);
+                    processTopPattern(profile->name, profile->topMarkerList, 0);
+                    encodeTopResultInJSON(valArray, profile->topMarkerList);
                 }
                 if(profile->gMarkerList != NULL && Vector_Size(profile->gMarkerList) > 0)
                 {
-                    getGrepResults(&(profile->grepSeekProfile), profile->gMarkerList, &grepResultList, profile->bClearSeekMap, false, customLogPath); // Passing 5th argument as false so that it doesn't check rotated logs for the first reporting after bootup for multiprofiles.
-                    encodeGrepResultInJSON(valArray, grepResultList);
-                    Vector_Destroy(grepResultList, freeGResult);
+                    getGrepResults(&(profile->grepSeekProfile), profile->gMarkerList, profile->bClearSeekMap, false, customLogPath); // Passing 4th argument as false so that it doesn't check rotated logs for the first reporting after bootup for multiprofiles.
+                    encodeGrepResultInJSON(valArray, profile->gMarkerList);
                 }
                 if(profile->eMarkerList != NULL && Vector_Size(profile->eMarkerList) > 0)
                 {

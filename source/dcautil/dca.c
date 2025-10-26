@@ -874,6 +874,10 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
 
             // Find the beginning of the line containing the pattern
             const char *line_start = found;
+            last_buffer = buffer;
+            last_buflen = buflen;
+            last_is_rotated = is_rotated;
+
             while (line_start > buffer && *(line_start - 1) != '\n')
             {
                 line_start--;
@@ -929,10 +933,6 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
                     }
                 }
             }
-
-            last_buffer = buffer;
-            last_buflen = buflen;
-            last_is_rotated = is_rotated;
 
             size_t advance = (size_t)(found - safe_cur) + patlen;
             current_offset += advance;

@@ -86,19 +86,16 @@ typedef struct
  */
 static const char *strnstr(const char *haystack, const char *needle, size_t len)
 {
-    T2Info("%s %d \n", __FUNCTION__, __LINE__);
     if (haystack  == NULL || needle == NULL)
     {
         return NULL;
     }
-    T2Info("%s %d \n", __FUNCTION__, __LINE__);
 
     size_t needle_len = strlen(needle);
     if (needle_len == 0)
     {
         return haystack;
     }
-    T2Info("%s %d \n", __FUNCTION__, __LINE__);
 
     // Check if search is possible and prevent overflow
     if (len < needle_len || len - needle_len > len)
@@ -120,19 +117,16 @@ static const char *strnstr(const char *haystack, const char *needle, size_t len)
         return NULL;
     }
 
-    T2Info("%s %d \n", __FUNCTION__, __LINE__);
     size_t skip[256];
     for (size_t i = 0; i < 256; ++i)
     {
         skip[i] = needle_len;
     }
-    T2Info("%s %d \n", __FUNCTION__, __LINE__);
 
     for (size_t i = 0; i < needle_len - 1; ++i)
     {
         skip[(unsigned char)needle[i]] = needle_len - i - 1;
     }
-    T2Info("%s %d \n", __FUNCTION__, __LINE__);
 
     size_t i = 0;
     while (i <= len - needle_len)
@@ -149,8 +143,6 @@ static const char *strnstr(const char *haystack, const char *needle, size_t len)
         size_t s = skip[(unsigned char)haystack[i + needle_len - 1]];
         i += (s > 0) ? s : 1;
     }
-    T2Info("%s %d \n", __FUNCTION__, __LINE__);
-
     return NULL;
 }
 
@@ -161,10 +153,12 @@ static char *PERSISTENTPATH = NULL;
 static long PAGESIZE;
 static pthread_mutex_t dcaMutex = PTHREAD_MUTEX_INITIALIZER;
 
-#if 1
 /**
- * @brief Extract Unix timestamp from ISO 8601 format timestamp at the beginning of a line.
- *
+ * @brief Extract Unix timestamp from multiple timestamp formats at the beginning of a line.
+ * Supports:
+ * 1. ISO 8601 format: YYYY-MM-DDTHH:MM:SS.mmm (e.g., 2025-10-17T10:17:39.906)
+ * 2. YYMMDD format: YYMMDD-HH:MM:SS (e.g., 251027-07:31:25)
+ * 
  * @param line_start Pointer to the beginning of the line containing the timestamp
  * @return Unix timestamp on success, 0 on failure or if no valid timestamp found
  */
@@ -176,50 +170,96 @@ static time_t extractUnixTimestamp(const char* line_start)
         return 0;
     }
 
-    // Check if we have enough characters for ISO 8601 format: YYYY-MM-DDTHH:MM:SS.mmm (23 chars)
-    // We'll do a basic length check by looking for the expected format structure
-    if (strlen(line_start) < 23)
+    // Check minimum length requirement
+    if (strlen(line_start) < 15)  // Minimum for YYMMDD-HH:MM:SS format
     {
         T2Debug("extractUnixTimestamp: Line too short for timestamp\n");
         return 0;
     }
 
-    // Extract the timestamp portion (first 23 characters)
-    char timestamp_str[24] = {0};
-    strncpy(timestamp_str, line_start, 23);
-    timestamp_str[23] = '\0';
-
-    T2Debug("extractUnixTimestamp: Attempting to parse timestamp: %s\n", timestamp_str);
-
     struct tm tm_time = {0};
-
-    // Parse using strptime - format: "YYYY-MM-DDTHH:MM:SS"
-    // Note: strptime doesn't handle milliseconds, so we parse up to seconds
-    char* result = strptime(timestamp_str, "%Y-%m-%dT%H:%M:%S", &tm_time);
-    if (result != NULL)
+    time_t unix_timestamp = 0;
+    char* result = NULL;
+    
+    // Try ISO 8601 format first: YYYY-MM-DDTHH:MM:SS.mmm (23 chars)
+    if (strlen(line_start) >= 23)
     {
-        tm_time.tm_isdst = -1; // Let system determine DST
-        time_t unix_timestamp = mktime(&tm_time);
-        if (unix_timestamp != -1)
+        char timestamp_str[24] = {0};
+        strncpy(timestamp_str, line_start, 23);
+        timestamp_str[23] = '\0';
+
+        T2Debug("extractUnixTimestamp: Attempting ISO 8601 format: %s\n", timestamp_str);
+
+        // Parse using strptime - format: "YYYY-MM-DDTHH:MM:SS"
+        result = strptime(timestamp_str, "%Y-%m-%dT%H:%M:%S", &tm_time);
+        if (result != NULL)
         {
-            T2Debug("extractUnixTimestamp: Successfully parsed timestamp: %s -> Unix: %ld\n",
-                    timestamp_str, unix_timestamp);
-            return unix_timestamp;
+            tm_time.tm_isdst = -1; // Let system determine DST
+            unix_timestamp = mktime(&tm_time);
+            if (unix_timestamp != -1)
+            {
+                T2Debug("extractUnixTimestamp: Successfully parsed ISO 8601 timestamp: %s -> Unix: %ld\n",
+                        timestamp_str, unix_timestamp);
+                return unix_timestamp;
+            }
+            else
+            {
+                T2Warning("extractUnixTimestamp: mktime() failed for ISO 8601 timestamp: %s\n", timestamp_str);
+            }
         }
         else
         {
-            T2Warning("extractUnixTimestamp: mktime() failed for timestamp: %s\n", timestamp_str);
+            T2Debug("extractUnixTimestamp: ISO 8601 strptime() failed for: %s\n", timestamp_str);
         }
     }
-    else
+
+    // Try YYMMDD-HH:MM:SS format: 251027-07:31:25 (15 chars)
+    if (strlen(line_start) >= 15)
     {
-        T2Debug("extractUnixTimestamp: strptime() failed to parse timestamp: %s\n", timestamp_str);
+        char timestamp_str[16] = {0};
+        strncpy(timestamp_str, line_start, 15);
+        timestamp_str[15] = '\0';
+
+        T2Debug("extractUnixTimestamp: Attempting YYMMDD format: %s\n", timestamp_str);
+
+        // Reset tm_time structure
+        memset(&tm_time, 0, sizeof(struct tm));
+
+        // Parse using strptime - format: "YYMMDD-HH:MM:SS"
+        result = strptime(timestamp_str, "%y%m%d-%H:%M:%S", &tm_time);
+        if (result != NULL)
+        {
+            tm_time.tm_isdst = -1; // Let system determine DST
+            unix_timestamp = mktime(&tm_time);
+            if (unix_timestamp != -1)
+            {
+                T2Debug("extractUnixTimestamp: Successfully parsed YYMMDD timestamp: %s -> Unix: %ld\n",
+                        timestamp_str, unix_timestamp);
+                return unix_timestamp;
+            }
+            else
+            {
+                T2Warning("extractUnixTimestamp: mktime() failed for YYMMDD timestamp: %s\n", timestamp_str);
+            }
+        }
+        else
+        {
+            T2Debug("extractUnixTimestamp: YYMMDD strptime() failed for: %s\n", timestamp_str);
+        }
     }
 
-    return 0;
-}
+    // If neither format worked, log a warning with the first part of the line for debugging
+    char sample[50] = {0};
+    size_t sample_len = strlen(line_start) < 49 ? strlen(line_start) : 49;
+    strncpy(sample, line_start, sample_len);
+    sample[sample_len] = '\0';
+    
+    T2Warning("extractUnixTimestamp: Timestamp does not fall under either supported formats. "
+              "Expected: 'YYYY-MM-DDTHH:MM:SS.mmm' or 'YYMMDD-HH:MM:SS'. "
+              "Found at line start: '%.49s'\n", sample);
 
-#endif
+    return 0; // Return 0 to indicate failure
+}
 
 /* @} */ // End of group DCA_TYPES
 /**
@@ -398,8 +438,6 @@ static T2ERROR updateLogSeek(hash_map_t *logSeekMap, const char* logFileName, co
     return T2ERROR_SUCCESS;
 }
 
-
-
 /**
  * @brief This API updates the filename if it is different from the current one.
  * @param currentFile The current filename.
@@ -509,7 +547,6 @@ static int getCountPatternMatch(FileDescriptor* fileDescriptor, GrepMarker* mark
     marker->u.count = count;
     T2Debug("%s --out\n", __FUNCTION__);
     return 0;
-    return 0;
 }
 
 static int getAbsolutePatternMatch(FileDescriptor* fileDescriptor, GrepMarker* marker)
@@ -518,7 +555,6 @@ static int getAbsolutePatternMatch(FileDescriptor* fileDescriptor, GrepMarker* m
     if (!fileDescriptor || !fileDescriptor->cfaddr || fileDescriptor->cf_map_size <= 0 || !marker || !marker->searchString)
     {
         T2Error("Invalid file descriptor arguments absolute\n");
-        return -1;
         return -1;
     }
 
@@ -543,7 +579,7 @@ static int getAbsolutePatternMatch(FileDescriptor* fileDescriptor, GrepMarker* m
 
         if(buffer == NULL)
         {
-            T2Info("Invalid file descriptor arguments absolute match\n");
+            T2Debug("Invalid file descriptor arguments absolute match\n");
             continue;
         }
         const char *cur = buffer;
@@ -581,7 +617,6 @@ static int getAbsolutePatternMatch(FileDescriptor* fileDescriptor, GrepMarker* m
         marker->u.markerValue = NULL;
         return 0;
     }
-
 
     // Move pointer just after the pattern
     const char *start = last_found + patlen;
@@ -629,7 +664,6 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
 
     for (int i = 0; i < 2; i++)
     {
-        T2Info("%s %d \n", __FUNCTION__, __LINE__);
         if (i == 0)
         {
             buffer = fileDescriptor->cfaddr;

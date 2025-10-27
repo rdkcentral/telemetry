@@ -161,7 +161,7 @@ static char *PERSISTENTPATH = NULL;
 static long PAGESIZE;
 static pthread_mutex_t dcaMutex = PTHREAD_MUTEX_INITIALIZER;
 
-#if 1
+#if 0
 /**
  * @brief Extract Unix timestamp from ISO 8601 format timestamp at the beginning of a line.
  *
@@ -664,16 +664,28 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
             }
             T2Info("%s %d \n", __FUNCTION__, __LINE__);
 
-            // Find the beginning of the line containing the pattern
-            const char *line_start = found;
-            while (line_start > buffer && *(line_start - 1) != '\n')
+            // Move pointer just after the pattern
+            const char *start = found + patlen;
+            size_t chars_left = buffer_end - start;
+
+            // Find next newline or end of buffer
+            const char *end = memchr(start, '\n', chars_left);
+            size_t length = end ? (size_t)(end - start) : chars_left;
+            T2Info("%s %d \n", __FUNCTION__, __LINE__);
+
+            // Create result string for this occurrence
+            char *result = (char*)malloc(length + 1);
+            if (result)
             {
-                line_start--;
+                T2Info("%s %d \n", __FUNCTION__, __LINE__);
+
+                memcpy(result, start, length);
+                result[length] = '\0';
+                T2Info("%s %d : result = %s\n", __FUNCTION__, __LINE__, result);
+                Vector_PushBack(accumulatedValues, result);
+
             }
 
-            time_t unix_timestamp = extractUnixTimestamp (line_start);
-            T2Info("Stored timestamp: %ld\n", unix_timestamp);
-            
             size_t advance = (size_t)(found - cur) + patlen;
             cur = found + patlen;
             if (bytes_left < advance)

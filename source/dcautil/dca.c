@@ -161,7 +161,7 @@ static char *PERSISTENTPATH = NULL;
 static long PAGESIZE;
 static pthread_mutex_t dcaMutex = PTHREAD_MUTEX_INITIALIZER;
 
-#if 0
+#if 1
 /**
  * @brief Extract Unix timestamp from ISO 8601 format timestamp at the beginning of a line.
  *
@@ -614,7 +614,6 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
         return -1;
     }
 
-
     const char* pattern = marker->searchString;
     const char* buffer;
     size_t buflen = 0;
@@ -634,13 +633,18 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
         if (i == 0)
         {
             buffer = fileDescriptor->cfaddr;
-            buflen = (size_t)fileDescriptor->cf_file_size;
+            buflen = (size_t)fileDescriptor->cf_map_size;
         }
         else
         {
             buffer = fileDescriptor->rfaddr;
-            buflen = (size_t)fileDescriptor->rf_file_size;
+            buflen = (size_t)fileDescriptor->rf_map_size;
         }
+        T2Error("DEBUG: buffer=%p, cf_map_size=%ld, cf_file_size=%ld\n", 
+            buffer, fileDescriptor->cf_map_size, fileDescriptor->cf_file_size);
+        T2Error("DEBUG: buffer_end calculated as %p (should be %p)\n", 
+            buffer + fileDescriptor->cf_file_size,
+            buffer + fileDescriptor->cf_map_size);
 
         if (buffer == NULL)
         {
@@ -654,6 +658,7 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
 
         while (bytes_left >= patlen && cur < buffer_end)
         {
+            T2Info("%s %d \n", __FUNCTION__, __LINE__);
             // Check MAX_ACCUMULATE limit before processing this match
             int arraySize = Vector_Size(accumulatedValues);
             T2Info("Current array size : %d \n", arraySize);
@@ -675,12 +680,31 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
             }
             T2Info("%s %d \n", __FUNCTION__, __LINE__);
 
+            T2Info("%s %d, current position: %p , buffer_end: %p \n", __FUNCTION__, __LINE__, cur, buffer_end);
+            if (cur >= buffer_end)
+            {
+                T2Info("Reached end of buffer\n");
+                break;
+            }
+
             const char *found = strnstr(cur, pattern, bytes_left);
             if (!found)
             {
                 T2Info("%s %d \n", __FUNCTION__, __LINE__);
                 break;
             }
+            T2Info("%s %d \n", __FUNCTION__, __LINE__);
+
+            // Find the beginning of the line containing the pattern
+            const char *line_start = found;
+            while (line_start > buffer && *(line_start - 1) != '\n')
+            {
+                line_start--;
+            }
+
+            time_t unix_timestamp = extractUnixTimestamp (line_start);
+            T2Info("Stored timestamp: %ld\n", unix_timestamp);
+
             T2Info("%s %d \n", __FUNCTION__, __LINE__);
 
             // Move pointer just after the pattern
@@ -703,6 +727,16 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
                 T2Info("%s %d : result = %s\n", __FUNCTION__, __LINE__, result);
                 Vector_PushBack(accumulatedValues, result);
 
+                if (unix_timestamp > 0 && marker->accumulatedTimestamp)
+                {
+                    char *timestamp_str_epoch = (char*)malloc(32);
+                    if (timestamp_str_epoch)
+                    {
+                        snprintf(timestamp_str_epoch, 32, "%ld", unix_timestamp);
+                        Vector_PushBack(marker->accumulatedTimestamp, timestamp_str_epoch);
+                        T2Info("Stored timestamp: %s\n", timestamp_str_epoch);
+                    }
+                }
             }
 
             size_t advance = (size_t)(found - cur) + patlen;

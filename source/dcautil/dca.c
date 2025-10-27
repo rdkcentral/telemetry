@@ -161,7 +161,7 @@ static char *PERSISTENTPATH = NULL;
 static long PAGESIZE;
 static pthread_mutex_t dcaMutex = PTHREAD_MUTEX_INITIALIZER;
 
-#if 1
+#if 0
 /**
  * @brief Extract Unix timestamp from ISO 8601 format timestamp at the beginning of a line.
  *
@@ -656,33 +656,6 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
         {
             T2Info("%s %d \n", __FUNCTION__, __LINE__);
 
-            // Check MAX_ACCUMULATE limit before processing this match
-            int arraySize = Vector_Size(accumulatedValues);
-            T2Info("Current array size : %d \n", arraySize);
-
-            if (arraySize >= MAX_ACCUMULATE)
-            {
-                T2Info("%s %d \n", __FUNCTION__, __LINE__);
-                if (arraySize == MAX_ACCUMULATE)
-                {
-                    T2Warning("Max size of the array has been reached appending warning message : %s\n", MAX_ACCUMULATE_MSG);
-                    Vector_PushBack(accumulatedValues, strdup(MAX_ACCUMULATE_MSG));
-                    T2Debug("Successfully added warning message into vector New Size : %d\n", arraySize + 1);
-                }
-                else
-                {
-                    T2Warning("Max size of the array has been reached Ignore New Value\n");
-                }
-                break;
-            }
-            T2Info("%s %d \n", __FUNCTION__, __LINE__);
-
-            T2Info("%s %d, current position: %p , buffer_end: %p \n", __FUNCTION__, __LINE__, cur, buffer_end);
-            if (cur >= buffer_end)
-            {
-                T2Info("Reached end of buffer\n");
-                break;
-            }
             const char *found = strnstr(cur, pattern, bytes_left);
             if (!found)
             {
@@ -690,52 +663,6 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
                 break;
             }
             T2Info("%s %d \n", __FUNCTION__, __LINE__);
-
-#if 1
-            // Find the beginning of the line containing the pattern
-            const char *line_start = found;
-            while (line_start > buffer && *(line_start - 1) != '\n')
-            {
-                line_start--;
-            }
-
-            time_t unix_timestamp = extractUnixTimestamp (line_start);
-            T2Info("Stored timestamp: %ld\n", unix_timestamp);
-
-            T2Info("%s %d \n", __FUNCTION__, __LINE__);
-
-            // Move pointer just after the pattern
-            const char *start = found + patlen;
-            size_t chars_left = buffer_end - start;
-
-            // Find next newline or end of buffer
-            const char *end = memchr(start, '\n', chars_left);
-            size_t length = end ? (size_t)(end - start) : chars_left;
-            T2Info("%s %d \n", __FUNCTION__, __LINE__);
-
-            // Create result string for this occurrence
-            char *result = (char*)malloc(length + 1);
-            if (result)
-            {
-                T2Info("%s %d \n", __FUNCTION__, __LINE__);
-
-                memcpy(result, start, length);
-                result[length] = '\0';
-                T2Info("%s %d : result = %s\n", __FUNCTION__, __LINE__, result);
-                Vector_PushBack(accumulatedValues, result);
-
-                if (unix_timestamp > 0 && marker->accumulatedTimestamp)
-                {
-                    char *timestamp_str_epoch = (char*)malloc(32);
-                    if (timestamp_str_epoch)
-                    {
-                        snprintf(timestamp_str_epoch, 32, "%ld", unix_timestamp);
-                        Vector_PushBack(marker->accumulatedTimestamp, timestamp_str_epoch);
-                        T2Info("Stored timestamp: %s\n", timestamp_str_epoch);
-                    }
-                }
-            }
-#endif
 
             size_t advance = (size_t)(found - cur) + patlen;
             cur = found + patlen;
@@ -745,10 +672,7 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
                 break;
             }
             bytes_left -= advance;
-            if (cur >= buffer_end)
-            {
-                break;
-            }
+
             T2Info("%s %d: bytes_left = %d, advance= %d\n", __FUNCTION__, __LINE__, (int)bytes_left, (int)advance);
         }
         T2Info("%s %d --out\n", __FUNCTION__, __LINE__);

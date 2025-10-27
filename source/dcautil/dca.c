@@ -78,6 +78,15 @@ typedef struct
     void* rotatedAddr;
 } FileDescriptor;
 
+// Define timestamp formats with their required lengths and strptime patterns
+typedef struct
+{
+    const char* name;           // Format name for logging
+    const char* pattern;        // strptime pattern
+    size_t required_length;     // Minimum characters needed
+    size_t extract_length;      // Characters to extract for parsing
+} TimestampFormat;
+
 /**
  * Portable implementation of strnstr (BSD function).
  * Searches for the first occurrence of the substring 'needle' in the
@@ -158,7 +167,7 @@ static pthread_mutex_t dcaMutex = PTHREAD_MUTEX_INITIALIZER;
  * Supports:
  * 1. ISO 8601 format: YYYY-MM-DDTHH:MM:SS.mmm (e.g., 2025-10-17T10:17:39.906)
  * 2. YYMMDD format: YYMMDD-HH:MM:SS (e.g., 251027-07:31:25)
- * 
+ *
  * @param line_start Pointer to the beginning of the line containing the timestamp
  * @return Unix timestamp on success, 0 on failure or if no valid timestamp found
  */
@@ -166,99 +175,71 @@ static time_t extractUnixTimestamp(const char* line_start)
 {
     if (!line_start)
     {
-        T2Warning("extractUnixTimestamp: line_start is NULL\n");
+        T2Warning("%s: line_start is NULL\n", __FUNCTION__);
         return 0;
     }
+
+    static const TimestampFormat formats[] =
+    {
+        {"ISO 8601",   "%Y-%m-%dT%H:%M:%S", 23, 23},  // YYYY-MM-DDTHH:MM:SS.mmm
+        {"YYMMDD",     "%y%m%d-%H:%M:%S",   15, 15},  // YYMMDD-HH:MM:SS
+    };
 
     // Check minimum length requirement
-    if (strlen(line_start) < 15)  // Minimum for YYMMDD-HH:MM:SS format
+    size_t line_length = strlen(line_start);
+    if (line_length < 15)  // Minimum for shortest format (YYMMDD)
     {
-        T2Debug("extractUnixTimestamp: Line too short for timestamp\n");
+        T2Debug("%s: Line too short for any timestamp format\n", __FUNCTION__);
         return 0;
     }
 
-    struct tm tm_time = {0};
-    time_t unix_timestamp = 0;
-    char* result = NULL;
-    
-    // Try ISO 8601 format first: YYYY-MM-DDTHH:MM:SS.mmm (23 chars)
-    if (strlen(line_start) >= 23)
+    // Try each format in order until one succeeds
+    for (int i = 0; i < 2; i++)
     {
-        char timestamp_str[24] = {0};
-        strncpy(timestamp_str, line_start, 23);
-        timestamp_str[23] = '\0';
+        const TimestampFormat* fmt = &formats[i];
 
-        T2Debug("extractUnixTimestamp: Attempting ISO 8601 format: %s\n", timestamp_str);
+        // Check if line is long enough for a timestamp
+        if (line_length < fmt->required_length)
+        {
+            T2Debug("%s: Line too short for %s format (need %zu chars)\n",
+                    __FUNCTION__, fmt->name, fmt->required_length);
+            continue;
+        }
 
-        // Parse using strptime - format: "YYYY-MM-DDTHH:MM:SS"
-        result = strptime(timestamp_str, "%Y-%m-%dT%H:%M:%S", &tm_time);
+        // Extract timestamp string
+        char timestamp_str[32] = {0};
+        strncpy(timestamp_str, line_start, fmt->extract_length);
+        timestamp_str[fmt->extract_length] = '\0';
+
+        struct tm tm_time = {0};
+        char* result = strptime(timestamp_str, fmt->pattern, &tm_time);
         if (result != NULL)
         {
-            tm_time.tm_isdst = -1; // Let system determine DST
-            unix_timestamp = mktime(&tm_time);
+            tm_time.tm_isdst = -1;
+            time_t unix_timestamp = mktime(&tm_time);
             if (unix_timestamp != -1)
             {
-                T2Debug("extractUnixTimestamp: Successfully parsed ISO 8601 timestamp: %s -> Unix: %ld\n",
-                        timestamp_str, unix_timestamp);
+                T2Debug("%s: Successfully parsed %s timestamp: %s -> Unix: %ld\n",
+                        __FUNCTION__, fmt->name, timestamp_str, unix_timestamp);
                 return unix_timestamp;
             }
             else
             {
-                T2Warning("extractUnixTimestamp: mktime() failed for ISO 8601 timestamp: %s\n", timestamp_str);
+                T2Warning("%s: mktime() failed for %s timestamp: %s\n",
+                          __FUNCTION__, fmt->name, timestamp_str);
             }
         }
         else
         {
-            T2Debug("extractUnixTimestamp: ISO 8601 strptime() failed for: %s\n", timestamp_str);
+            T2Debug("%s: %s strptime() failed for: %s\n", __FUNCTION__, fmt->name, timestamp_str);
         }
     }
 
-    // Try YYMMDD-HH:MM:SS format: 251027-07:31:25 (15 chars)
-    if (strlen(line_start) >= 15)
-    {
-        char timestamp_str[16] = {0};
-        strncpy(timestamp_str, line_start, 15);
-        timestamp_str[15] = '\0';
+    T2Warning("%s: Timestamp does not match any supported formats. "
+              "Supported: 'YYYY-MM-DDTHH:MM:SS.mmm', 'YYMMDD-HH:MM:SS'. "
+              "Found at line start: '%.24s'\n", __FUNCTION__, line_start);
 
-        T2Debug("extractUnixTimestamp: Attempting YYMMDD format: %s\n", timestamp_str);
-
-        // Reset tm_time structure
-        memset(&tm_time, 0, sizeof(struct tm));
-
-        // Parse using strptime - format: "YYMMDD-HH:MM:SS"
-        result = strptime(timestamp_str, "%y%m%d-%H:%M:%S", &tm_time);
-        if (result != NULL)
-        {
-            tm_time.tm_isdst = -1; // Let system determine DST
-            unix_timestamp = mktime(&tm_time);
-            if (unix_timestamp != -1)
-            {
-                T2Debug("extractUnixTimestamp: Successfully parsed YYMMDD timestamp: %s -> Unix: %ld\n",
-                        timestamp_str, unix_timestamp);
-                return unix_timestamp;
-            }
-            else
-            {
-                T2Warning("extractUnixTimestamp: mktime() failed for YYMMDD timestamp: %s\n", timestamp_str);
-            }
-        }
-        else
-        {
-            T2Debug("extractUnixTimestamp: YYMMDD strptime() failed for: %s\n", timestamp_str);
-        }
-    }
-
-    // If neither format worked, log a warning with the first part of the line for debugging
-    char sample[50] = {0};
-    size_t sample_len = strlen(line_start) < 49 ? strlen(line_start) : 49;
-    strncpy(sample, line_start, sample_len);
-    sample[sample_len] = '\0';
-    
-    T2Warning("extractUnixTimestamp: Timestamp does not fall under either supported formats. "
-              "Expected: 'YYYY-MM-DDTHH:MM:SS.mmm' or 'YYMMDD-HH:MM:SS'. "
-              "Found at line start: '%.49s'\n", sample);
-
-    return 0; // Return 0 to indicate failure
+    return 0;
 }
 
 /* @} */ // End of group DCA_TYPES
@@ -674,15 +655,10 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
             buffer = fileDescriptor->rfaddr;
             buflen = (size_t)fileDescriptor->rf_map_size;
         }
-        T2Error("DEBUG: buffer=%p, cf_map_size=%ld, cf_file_size=%ld\n", 
-            buffer, fileDescriptor->cf_map_size, fileDescriptor->cf_file_size);
-        T2Error("DEBUG: buffer_end calculated as %p (should be %p)\n", 
-            buffer + fileDescriptor->cf_file_size,
-            buffer + fileDescriptor->cf_map_size);
 
         if (buffer == NULL)
         {
-            T2Info("Invalid file descriptor arguments accumulate match\n");
+            T2Debug("Invalid file descriptor arguments accumulate match\n");
             continue;
         }
 

@@ -421,40 +421,6 @@ T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepMarkerList)
                     T2Error("cJSON_CreateObject failed .. arrayItem is NULL\n");
                     return T2ERROR_FAILURE;
                 }
-                if(grepMarker->trimParam)
-                {
-                    trimLeadingAndTrailingws(stringValue);
-                }
-                if(grepMarker->regexParam != NULL)
-                {
-                    regex_t regpattern;
-                    int rc = 0;
-                    size_t nmatch = 1;
-                    regmatch_t pmatch[2];
-                    char string[10] = {'\0'};
-                    rc = regcomp(&regpattern, grepMarker->regexParam, REG_EXTENDED);
-                    if(rc != 0)
-                    {
-                        T2Warning("regcomp() failed, returning nonzero (%d)\n", rc);
-                    }
-                    else
-                    {
-                        T2Debug("regcomp() successful, returning value (%d)\n", rc);
-                        rc = regexec(&regpattern, stringValue, nmatch, pmatch, 0);
-                        if(rc != 0)
-                        {
-                            T2Warning("regexec() failed, Failed to match '%s' with '%s',returning %d.\n", stringValue, grepMarker->regexParam, rc);
-                            strncpy(stringValue, "", 1);
-                        }
-                        else
-                        {
-                            T2Debug("regexec successful, Match is found %.*s\n", pmatch[0].rm_eo - pmatch[0].rm_so, &stringValue[pmatch[0].rm_so]);
-                            sprintf(string, "%.*s", pmatch[0].rm_eo - pmatch[0].rm_so, &stringValue[pmatch[0].rm_so]);
-                            strncpy(stringValue, string, strlen(string) + 1);
-                        }
-                        regfree(&regpattern);
-                    }
-                }
 
                 if(cJSON_AddStringToObject(arrayItem, grepMarker->markerName, stringValue) == NULL)
                 {
@@ -484,18 +450,7 @@ T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepMarkerList)
                     cJSON_Delete(arrayItem);
                     return T2ERROR_FAILURE;
                 }
-                if(grepMarker->trimParam)
-                {
-                    size_t i;
-                    for(i = 0; i < Vector_Size(grepMarker->u.accumulatedValues); i++)
-                    {
-                        char* stringValue = (char*)Vector_At(grepMarker->u.accumulatedValues, i);
-                        if (stringValue)
-                        {
-                            trimLeadingAndTrailingws(stringValue);
-                        }
-                    }
-                }
+
                 Vector* regaccumulateValues = NULL;
                 if(grepMarker->regexParam != NULL)
                 {
@@ -519,6 +474,10 @@ T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepMarkerList)
                             char* stringValue = (char*)Vector_At(grepMarker->u.accumulatedValues, i);
                             if (stringValue)
                             {
+                                if(grepMarker->trimParam)
+                                {
+                                    trimLeadingAndTrailingws(stringValue);
+                                }
                                 rc = regexec(&regpattern, stringValue, nmatch, pmatch, 0);
                                 if(strcmp(stringValue, "maximum accumulation reached") == 0)
                                 {

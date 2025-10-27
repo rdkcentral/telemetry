@@ -654,6 +654,25 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
 
         while (bytes_left >= patlen && cur < buffer_end)
         {
+            // Check MAX_ACCUMULATE limit before processing this match
+            int arraySize = Vector_Size(accumulatedValues);
+            T2Info("Current array size : %d \n", arraySize);
+
+            if (arraySize >= MAX_ACCUMULATE)
+            {
+                T2Info("%s %d \n", __FUNCTION__, __LINE__);
+                if (arraySize == MAX_ACCUMULATE)
+                {
+                    T2Warning("Max size of the array has been reached appending warning message : %s\n", MAX_ACCUMULATE_MSG);
+                    Vector_PushBack(accumulatedValues, strdup(MAX_ACCUMULATE_MSG));
+                    T2Debug("Successfully added warning message into vector New Size : %d\n", arraySize + 1);
+                }
+                else
+                {
+                    T2Warning("Max size of the array has been reached Ignore New Value\n");
+                }
+                break;
+            }
             T2Info("%s %d \n", __FUNCTION__, __LINE__);
 
             const char *found = strnstr(cur, pattern, bytes_left);

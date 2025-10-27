@@ -161,7 +161,7 @@ static char *PERSISTENTPATH = NULL;
 static long PAGESIZE;
 static pthread_mutex_t dcaMutex = PTHREAD_MUTEX_INITIALIZER;
 
-#if 0
+#if 1
 /**
  * @brief Extract Unix timestamp from ISO 8601 format timestamp at the beginning of a line.
  *
@@ -664,6 +664,16 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
             }
             T2Info("%s %d \n", __FUNCTION__, __LINE__);
 
+            // Find the beginning of the line containing the pattern
+            const char *line_start = found;
+            while (line_start > buffer && *(line_start - 1) != '\n')
+            {
+                line_start--;
+            }
+
+            time_t unix_timestamp = extractUnixTimestamp (line_start);
+            T2Info("Stored timestamp: %ld\n", unix_timestamp);
+            
             size_t advance = (size_t)(found - cur) + patlen;
             cur = found + patlen;
             if (bytes_left < advance)

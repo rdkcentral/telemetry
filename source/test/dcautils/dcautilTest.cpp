@@ -321,7 +321,6 @@ TEST(PROCESSTOPPATTERN, VECTOR_NULL)
     Vector_Destroy(topMarkerlist, free);
     topMarkerlist = NULL;
 }
-#endif
 
 TEST(getDCAResultsInVector, markerlist_NULL)
 {
@@ -340,6 +339,7 @@ TEST(getDCAResultsInVector, markerlist_NULL)
     Vector_Destroy(markerlist, free);
 }
 
+#endif
 
 class dcaTestFixture : public ::testing::Test {
 protected:
@@ -968,7 +968,6 @@ TEST_F(dcaTestFixture, processTopPattern2)
     EXPECT_EQ(0, processTopPattern("RDK_Profile", topMarkerlist, 1));
     Vector_Destroy(topMarkerlist, freeGMarker);
 }
-#endif
 
 TEST_F(dcaTestFixture, getDCAResultsInVector_1)
 {
@@ -1239,6 +1238,7 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_3)
     Vector_Destroy(vecMarkerList, freeGMarker);
 }
 
+#endif
 
 TEST_F(dcaTestFixture, T2InitProperties)
 {

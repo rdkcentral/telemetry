@@ -172,7 +172,7 @@ static T2ERROR applyRegexToValue(char** inputValue, const char* regexPattern)
     size_t nmatch = 1;
     regmatch_t pmatch[2];
     char string[256] = {'\0'};
-    
+
     rc = regcomp(&regpattern, regexPattern, REG_EXTENDED);
     if(rc != 0)
     {
@@ -185,7 +185,7 @@ static T2ERROR applyRegexToValue(char** inputValue, const char* regexPattern)
         rc = regexec(&regpattern, *inputValue, nmatch, pmatch, 0);
         if(rc != 0)
         {
-            T2Warning("regexec() failed, Failed to match '%s' with '%s',returning %d.\n", 
+            T2Warning("regexec() failed, Failed to match '%s' with '%s',returning %d.\n",
                       *inputValue, regexPattern, rc);
             free(*inputValue);
             *inputValue = strdup("");
@@ -198,7 +198,7 @@ static T2ERROR applyRegexToValue(char** inputValue, const char* regexPattern)
         }
         else
         {
-            T2Debug("regexec successful, Match is found %.*s\n", 
+            T2Debug("regexec successful, Match is found %.*s\n",
                     pmatch[0].rm_eo - pmatch[0].rm_so, &(*inputValue)[pmatch[0].rm_so]);
             sprintf(string, "%.*s", pmatch[0].rm_eo - pmatch[0].rm_so, &(*inputValue)[pmatch[0].rm_so]);
             free(*inputValue);
@@ -212,7 +212,7 @@ static T2ERROR applyRegexToValue(char** inputValue, const char* regexPattern)
         }
         regfree(&regpattern);
     }
-    
+
     return T2ERROR_SUCCESS;
 }
 

@@ -581,7 +581,7 @@ TEST_F(profileXconfTestFixture, ProfileXConf_notifyTimeout)
         .Times(1)
         .WillOnce(Return(0));
 
-    EXPECT_CALL(*g_profileXConfMock,  getGrepResults(_,_,_,_,_,_))
+    EXPECT_CALL(*g_profileXConfMock,  getGrepResults(_,_,_,_,_))
         .Times(1)
         .WillOnce([](GrepSeekProfile **GSP, Vector *markerList, Vector **grepResultList, bool isClearSeekMap, bool check_rotated, char *customLogPath) {
             return T2ERROR_SUCCESS;

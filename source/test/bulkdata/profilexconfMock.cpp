@@ -74,22 +74,22 @@ extern "C" T2ERROR getParameterValue(const char* paramName, char **paramValue)
 //dcautil mock functions
 
 
-extern "C" int processTopPattern(char* profileName,  Vector* topMarkerList, Vector* out_grepResultList, int profileExecCounter)
+extern "C" int processTopPattern(char* profileName,  Vector* topMarkerList, int profileExecCounter)
 {
     if (!g_profileXConfMock)
     {
         return -1;
     }
-    return g_profileXConfMock->processTopPattern(profileName, topMarkerList, out_grepResultList, profileExecCounter);
+    return g_profileXConfMock->processTopPattern(profileName, topMarkerList, profileExecCounter);
 }
 
-extern "C" T2ERROR getGrepResults (GrepSeekProfile **GSP, Vector *markerList, Vector **grepResultList, bool isClearSeekMap, bool check_rotated, char *customLogPath)
+extern "C" T2ERROR getGrepResults (GrepSeekProfile **GSP, Vector *markerList, bool isClearSeekMap, bool check_rotated, char *customLogPath)
 {
     if (!g_profileXConfMock)
     {
         return T2ERROR_FAILURE;
     }
-    return g_profileXConfMock->getGrepResults(GSP, markerList, grepResultList, isClearSeekMap, check_rotated, customLogPath);
+    return g_profileXConfMock->getGrepResults(GSP, markerList, isClearSeekMap, check_rotated, customLogPath);
 }
 
 extern "C" void dcaFlagReportCompleation()

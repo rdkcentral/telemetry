@@ -312,58 +312,122 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
 
         // T2Debug("Adding Grep Marker :: Param/Marker Name : %s ref/pattern/Comp : %s fileName : %s skipFreq : %d\n", name, ref, fileName, skipFreq);
 
-        GrepMarker *gMarker = (GrepMarker *) malloc(sizeof(GrepMarker));
-        if(gMarker == NULL)
-        {
-            T2Error("Unable to allocate memory for GrepMarker \n");
-            return T2ERROR_FAILURE;
-        }
-        gMarker->markerName = strdup(name);
-        gMarker->searchString = strdup(ref);
-        if(fileName)
-        {
-            gMarker->logFile = strdup(fileName);
-        }
-        else
-        {
-            gMarker->logFile = NULL;
-        }
-        gMarker->paramType = strdup(ptype);
-        gMarker->reportEmptyParam = ReportEmpty;
-        gMarker->trimParam = trim;
-        gMarker->regexParam = NULL;
-        if(regex != NULL)
-        {
-            gMarker->regexParam = strdup(regex);
-        }
-        if((use == NULL) || (0 == strcmp(use, "absolute")))
-        {
-            gMarker->mType = MTYPE_ABSOLUTE;
-            gMarker->u.markerValue = NULL;
-        }
-        else if (0 == strcmp(use, "count"))
-        {
-            gMarker->mType = MTYPE_COUNTER;
-            gMarker->u.count = 0;
-        }
-        else
-        {
-            T2Info("Unsupported marker type. Defaulting to absolute \n");
-            gMarker->mType = MTYPE_ABSOLUTE;
-            gMarker->u.markerValue = NULL;
-        }
-        gMarker->skipFreq = skipFreq;
-        gMarker->firstSeekFromEOF = firstSeekFromEOF;
-
         if(fileName != NULL && strncmp("top_log.txt", fileName, sizeof("top_log.txt")) == 0)
         {
             T2Debug("This is a TopMarker name :%s  and value: %s add it to topmarker list \n", name, ref);
-            Vector_PushBack(profile->topMarkerList, gMarker);
+            TopMarker *tMarker = (TopMarker *) malloc(sizeof(TopMarker));
+            if(tMarker == NULL)
+            {
+                T2Error("Unable to allocate memory for TopMarker \n");
+                return T2ERROR_FAILURE;
+            }
+            tMarker->markerName = strdup(name);
+            tMarker->searchString = strdup(ref);
+            if(fileName)
+            {
+                tMarker->logFile = strdup(fileName);
+            }
+            tMarker->paramType = strdup(ptype);
+            tMarker->reportEmptyParam = ReportEmpty;
+            tMarker->trimParam = trim;
+            tMarker->markerName_CT = NULL;
+            tMarker->regexParam = NULL;
+            tMarker->memValue = NULL;
+            tMarker->cpuValue = NULL;
+            tMarker->loadAverage = NULL;
+
+            if(regex != NULL)
+            {
+                tMarker->regexParam = strdup(regex);
+            }
+            tMarker->reportTimestampParam = reportTimestamp;
+            if((use == NULL) || (0 == strcmp(use, "absolute")))
+            {
+                tMarker->mType = MTYPE_ABSOLUTE;
+                tMarker->u.markerValue = NULL;
+            }
+            else if (0 == strcmp(use, "count"))
+            {
+                tMarker->mType = MTYPE_COUNTER;
+                tMarker->u.count = 0;
+            }
+            else if (0 == strcmp(use, "accumulate"))
+            {
+                tMarker->mType = MTYPE_ACCUMULATE;
+                Vector_Create(&tMarker->u.accumulatedValues);
+                if(tMarker->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH)
+                {
+                    Vector_Create(&tMarker->accumulatedTimestamp);
+                }
+            }
+            else
+            {
+                T2Info("Unsupported marker type. Defaulting to absolute \n");
+                tMarker->mType = MTYPE_ABSOLUTE;
+                tMarker->u.markerValue = NULL;
+            }
+            tMarker->skipFreq = skipFreq;
+            tMarker->firstSeekFromEOF = firstSeekFromEOF;
+            Vector_PushBack(profile->topMarkerList, tMarker);
         }
         else
         {
+            GrepMarker *gMarker = (GrepMarker *) malloc(sizeof(GrepMarker));
+            if(gMarker == NULL)
+            {
+                T2Error("Unable to allocate memory for GrepMarker \n");
+                return T2ERROR_FAILURE;
+            }
+            gMarker->markerName = strdup(name);
+            gMarker->searchString = strdup(ref);
+            if(fileName)
+            {
+                gMarker->logFile = strdup(fileName);
+            }
+            else
+            {
+                gMarker->logFile = NULL;
+            }
+            gMarker->paramType = strdup(ptype);
+            gMarker->reportEmptyParam = ReportEmpty;
+            gMarker->trimParam = trim;
+            gMarker->markerName_CT = NULL;
+            gMarker->regexParam = NULL;
+            if(regex != NULL)
+            {
+                gMarker->regexParam = strdup(regex);
+            }
+            gMarker->reportTimestampParam = reportTimestamp;
+            if((use == NULL) || (0 == strcmp(use, "absolute")))
+            {
+                gMarker->mType = MTYPE_ABSOLUTE;
+                gMarker->u.markerValue = NULL;
+            }
+            else if (0 == strcmp(use, "count"))
+            {
+                gMarker->mType = MTYPE_COUNTER;
+                gMarker->u.count = 0;
+            }
+            else if (0 == strcmp(use, "accumulate"))
+            {
+                gMarker->mType = MTYPE_ACCUMULATE;
+                Vector_Create(&gMarker->u.accumulatedValues);
+                if(gMarker->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH)
+                {
+                    Vector_Create(&gMarker->accumulatedTimestamp);
+                }
+            }
+            else
+            {
+                T2Info("Unsupported marker type. Defaulting to absolute \n");
+                gMarker->mType = MTYPE_ABSOLUTE;
+                gMarker->u.markerValue = NULL;
+            }
+            gMarker->skipFreq = skipFreq;
+            gMarker->firstSeekFromEOF = firstSeekFromEOF;
             Vector_PushBack(profile->gMarkerList, gMarker);
         }
+
 #ifdef PERSIST_LOG_MON_REF
         profile->saveSeekConfig = true;
 #endif
@@ -953,6 +1017,14 @@ T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, i
                 if(jpSubitemLogFile)
                 {
                     logfile = jpSubitemLogFile->valuestring;
+                }
+                cJSON *jpSubitemreportTimestamp = cJSON_GetObjectItem(pSubitem, "reportTimestamp");
+                if(jpSubitemreportTimestamp)
+                {
+                    if(!(strcmp(jpSubitemreportTimestamp->valuestring, "Unix-Epoch")))
+                    {
+                        rtformat = REPORTTIMESTAMP_UNIXEPOCH;
+                    }
                 }
                 if(jpSubitemFirstSeekFromEOF)
                 {

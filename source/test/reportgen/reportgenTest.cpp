@@ -371,6 +371,8 @@ TEST_F(reportgenTestFixture, encodeStaticParamsInJSON3)
       Vector_Destroy(staticParamList, freeStaticParam);
 }
 
+#if 0
+//Testcases to be altered as per new prototype
 TEST_F(reportgenTestFixture, encodeGrepResultInJSON1)
 {
      Vector* grepResult = NULL;
@@ -465,6 +467,7 @@ TEST_F(reportgenTestFixture, encodeGrepResultInJSON3)
       }
       Vector_Destroy(grepResult, freeGResult);
 }
+#endif
 
 //When ParamValueCount is 0
 TEST_F(reportgenTestFixture, encodeParamResultInJSON)

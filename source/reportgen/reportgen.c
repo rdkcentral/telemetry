@@ -773,6 +773,7 @@ T2ERROR encodeTopResultInJSON(cJSON *valArray, Vector *topMarkerList)
                     T2Error("Failed to apply regex to top marker value\n");
                     cJSON_Delete(arrayItem);
                     free(cpuWorkingValue);
+                    free(cpuMarkerName);
                     return T2ERROR_FAILURE;
                 }
             }
@@ -837,6 +838,7 @@ T2ERROR encodeTopResultInJSON(cJSON *valArray, Vector *topMarkerList)
                     T2Error("Failed to apply regex to top marker value\n");
                     cJSON_Delete(arrayItem);
                     free(memWorkingValue);
+                    free(memMarkerName);
                     return T2ERROR_FAILURE;
                 }
             }

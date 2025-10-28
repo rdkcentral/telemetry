@@ -672,7 +672,6 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
 
             if (arraySize >= MAX_ACCUMULATE)
             {
-                T2Info("%s %d \n", __FUNCTION__, __LINE__);
                 if (arraySize == MAX_ACCUMULATE)
                 {
                     T2Warning("Max size of the accumulate array has been reached appending warning message : %s\n", MAX_ACCUMULATE_MSG);
@@ -707,8 +706,6 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
             }
 
             time_t unix_timestamp = extractUnixTimestamp (line_start);
-
-            T2Info("%s %d \n", __FUNCTION__, __LINE__);
 
             // Move pointer just after the pattern
             const char *start = found + patlen;

@@ -153,6 +153,69 @@ void trimLeadingAndTrailingws(char* string)
 
 }
 
+/**
+ * @brief Apply regex pattern to a string value and update it in place
+ * @param inputValue Pointer to the string value to process (will be modified)
+ * @param regexPattern Regex pattern to apply
+ * @return T2ERROR_SUCCESS on success, T2ERROR_FAILURE on error
+ */
+static T2ERROR applyRegexToValue(char** inputValue, const char* regexPattern)
+{
+    if (!inputValue || !*inputValue || !regexPattern)
+    {
+        T2Error("Invalid arguments for regex operation\n");
+        return T2ERROR_INVALID_ARGS;
+    }
+
+    regex_t regpattern;
+    int rc = 0;
+    size_t nmatch = 1;
+    regmatch_t pmatch[2];
+    char string[256] = {'\0'};
+    
+    rc = regcomp(&regpattern, regexPattern, REG_EXTENDED);
+    if(rc != 0)
+    {
+        T2Warning("regcomp() failed, returning nonzero (%d)\n", rc);
+        return T2ERROR_FAILURE;
+    }
+    else
+    {
+        T2Debug("regcomp() successful, returning value (%d)\n", rc);
+        rc = regexec(&regpattern, *inputValue, nmatch, pmatch, 0);
+        if(rc != 0)
+        {
+            T2Warning("regexec() failed, Failed to match '%s' with '%s',returning %d.\n", 
+                      *inputValue, regexPattern, rc);
+            free(*inputValue);
+            *inputValue = strdup("");
+            if (*inputValue == NULL)
+            {
+                T2Error("strdup failed for empty string after regexec failure\n");
+                regfree(&regpattern);
+                return T2ERROR_FAILURE;
+            }
+        }
+        else
+        {
+            T2Debug("regexec successful, Match is found %.*s\n", 
+                    pmatch[0].rm_eo - pmatch[0].rm_so, &(*inputValue)[pmatch[0].rm_so]);
+            sprintf(string, "%.*s", pmatch[0].rm_eo - pmatch[0].rm_so, &(*inputValue)[pmatch[0].rm_so]);
+            free(*inputValue);
+            *inputValue = strdup(string);
+            if (*inputValue == NULL)
+            {
+                T2Error("strdup failed for matched string after regexec success\n");
+                regfree(&regpattern);
+                return T2ERROR_FAILURE;
+            }
+        }
+        regfree(&regpattern);
+    }
+    
+    return T2ERROR_SUCCESS;
+}
+
 T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *paramValueList)
 {
     if(valArray == NULL || paramNameList == NULL || paramValueList == NULL)
@@ -569,48 +632,11 @@ T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepMarkerList)
                 }
                 if(grepMarker->regexParam != NULL)
                 {
-                    regex_t regpattern;
-                    int rc = 0;
-                    size_t nmatch = 1;
-                    regmatch_t pmatch[2];
-                    char string[256] = {'\0'};
-                    rc = regcomp(&regpattern, grepMarker->regexParam, REG_EXTENDED);
-                    if(rc != 0)
+                    if(applyRegexToValue(&grepMarker->u.markerValue, grepMarker->regexParam) != T2ERROR_SUCCESS)
                     {
-                        T2Warning("regcomp() failed, returning nonzero (%d)\n", rc);
-                    }
-                    else
-                    {
-                        T2Debug("regcomp() successful, returning value (%d)\n", rc);
-                        rc = regexec(&regpattern, grepMarker->u.markerValue, nmatch, pmatch, 0);
-                        if(rc != 0)
-                        {
-                            T2Warning("regexec() failed, Failed to match '%s' with '%s',returning %d.\n", grepMarker->u.markerValue, grepMarker->regexParam, rc);
-                            free(grepMarker->u.markerValue);
-                            grepMarker->u.markerValue = strdup("");
-                            if (grepMarker->u.markerValue == NULL)
-                            {
-                                T2Error("strdup failed for empty string after regexec failure\n");
-                                cJSON_Delete(arrayItem);
-                                regfree(&regpattern);
-                                return T2ERROR_FAILURE;
-                            }
-                        }
-                        else
-                        {
-                            T2Debug("regexec successful, Match is found %.*s\n", pmatch[0].rm_eo - pmatch[0].rm_so, &grepMarker->u.markerValue[pmatch[0].rm_so]);
-                            sprintf(string, "%.*s", pmatch[0].rm_eo - pmatch[0].rm_so, &grepMarker->u.markerValue[pmatch[0].rm_so]);
-                            free(grepMarker->u.markerValue);
-                            grepMarker->u.markerValue = strdup(string);
-                            if (grepMarker->u.markerValue == NULL)
-                            {
-                                T2Error("strdup failed for matched string after regexec success\n");
-                                cJSON_Delete(arrayItem);
-                                regfree(&regpattern);
-                                return T2ERROR_FAILURE;
-                            }
-                        }
-                        regfree(&regpattern);
+                        T2Error("Failed to apply regex to grep marker value\n");
+                        cJSON_Delete(arrayItem);
+                        return T2ERROR_FAILURE;
                     }
                 }
                 if(cJSON_AddStringToObject(arrayItem, grepMarker->markerName, grepMarker->u.markerValue) == NULL)
@@ -677,41 +703,17 @@ T2ERROR encodeTopResultInJSON(cJSON *valArray, Vector *topMarkerList)
             // Apply regex processing if specified
             if(topMarker->regexParam != NULL)
             {
-                regex_t regpattern;
-                int rc = 0;
-                size_t nmatch = 1;
-                regmatch_t pmatch[2];
-                char string[256] = {'\0'};
-                rc = regcomp(&regpattern, topMarker->regexParam, REG_EXTENDED);
-                if(rc != 0)
+                if(applyRegexToValue(&workingValue, topMarker->regexParam) != T2ERROR_SUCCESS)
                 {
-                    T2Warning("regcomp() failed for load average marker, returning nonzero (%d)\n", rc);
-                }
-                else
-                {
-                    T2Debug("regcomp() successful for load average marker, returning value (%d)\n", rc);
-                    rc = regexec(&regpattern, workingValue, nmatch, pmatch, 0);
-                    if(rc != 0)
-                    {
-                        T2Warning("regexec() failed for load average marker, Failed to match '%s' with '%s',returning %d.\n",
-                                  workingValue, topMarker->regexParam, rc);
-                        free(workingValue);
-                        workingValue = strdup("");
-                    }
-                    else
-                    {
-                        T2Debug("regexec successful for load average marker, Match is found %.*s\n",
-                                pmatch[0].rm_eo - pmatch[0].rm_so, &workingValue[pmatch[0].rm_so]);
-                        sprintf(string, "%.*s", pmatch[0].rm_eo - pmatch[0].rm_so, &workingValue[pmatch[0].rm_so]);
-                        free(workingValue);
-                        workingValue = strdup(string);
-                    }
-                    regfree(&regpattern);
+                    T2Error("Failed to apply regex to top marker value\n");
+                    cJSON_Delete(arrayItem);
+                    free(workingValue);
+                    return T2ERROR_FAILURE;
                 }
             }
 
-            // Add the load average marker value to JSON with searchString
-            if(cJSON_AddStringToObject(arrayItem, topMarker->searchString, workingValue) == NULL)
+            // Add the load average marker value to JSON with markerName
+            if(cJSON_AddStringToObject(arrayItem, topMarker->markerName, workingValue) == NULL)
             {
                 T2Error("cJSON_AddStringToObject failed for load average marker\n");
                 cJSON_Delete(arrayItem);
@@ -766,36 +768,12 @@ T2ERROR encodeTopResultInJSON(cJSON *valArray, Vector *topMarkerList)
             // Apply regex processing if specified
             if(topMarker->regexParam != NULL)
             {
-                regex_t regpattern;
-                int rc = 0;
-                size_t nmatch = 1;
-                regmatch_t pmatch[2];
-                char string[256] = {'\0'};
-                rc = regcomp(&regpattern, topMarker->regexParam, REG_EXTENDED);
-                if(rc != 0)
+                if(applyRegexToValue(&cpuWorkingValue, topMarker->regexParam) != T2ERROR_SUCCESS)
                 {
-                    T2Warning("regcomp() failed for CPU marker, returning nonzero (%d)\n", rc);
-                }
-                else
-                {
-                    T2Debug("regcomp() successful for CPU marker, returning value (%d)\n", rc);
-                    rc = regexec(&regpattern, cpuWorkingValue, nmatch, pmatch, 0);
-                    if(rc != 0)
-                    {
-                        T2Warning("regexec() failed for CPU marker, Failed to match '%s' with '%s',returning %d.\n",
-                                  cpuWorkingValue, topMarker->regexParam, rc);
-                        free(cpuWorkingValue);
-                        cpuWorkingValue = strdup("");
-                    }
-                    else
-                    {
-                        T2Debug("regexec successful for CPU marker, Match is found %.*s\n",
-                                pmatch[0].rm_eo - pmatch[0].rm_so, &cpuWorkingValue[pmatch[0].rm_so]);
-                        sprintf(string, "%.*s", pmatch[0].rm_eo - pmatch[0].rm_so, &cpuWorkingValue[pmatch[0].rm_so]);
-                        free(cpuWorkingValue);
-                        cpuWorkingValue = strdup(string);
-                    }
-                    regfree(&regpattern);
+                    T2Error("Failed to apply regex to top marker value\n");
+                    cJSON_Delete(arrayItem);
+                    free(cpuWorkingValue);
+                    return T2ERROR_FAILURE;
                 }
             }
 
@@ -854,36 +832,12 @@ T2ERROR encodeTopResultInJSON(cJSON *valArray, Vector *topMarkerList)
             // Apply regex processing if specified
             if(topMarker->regexParam != NULL)
             {
-                regex_t regpattern;
-                int rc = 0;
-                size_t nmatch = 1;
-                regmatch_t pmatch[2];
-                char string[256] = {'\0'};
-                rc = regcomp(&regpattern, topMarker->regexParam, REG_EXTENDED);
-                if(rc != 0)
+                if(applyRegexToValue(&memWorkingValue, topMarker->regexParam) != T2ERROR_SUCCESS)
                 {
-                    T2Warning("regcomp() failed for Memory marker, returning nonzero (%d)\n", rc);
-                }
-                else
-                {
-                    T2Debug("regcomp() successful for Memory marker, returning value (%d)\n", rc);
-                    rc = regexec(&regpattern, memWorkingValue, nmatch, pmatch, 0);
-                    if(rc != 0)
-                    {
-                        T2Warning("regexec() failed for Memory marker, Failed to match '%s' with '%s',returning %d.\n",
-                                  memWorkingValue, topMarker->regexParam, rc);
-                        free(memWorkingValue);
-                        memWorkingValue = strdup("");
-                    }
-                    else
-                    {
-                        T2Debug("regexec successful for Memory marker, Match is found %.*s\n",
-                                pmatch[0].rm_eo - pmatch[0].rm_so, &memWorkingValue[pmatch[0].rm_so]);
-                        sprintf(string, "%.*s", pmatch[0].rm_eo - pmatch[0].rm_so, &memWorkingValue[pmatch[0].rm_so]);
-                        free(memWorkingValue);
-                        memWorkingValue = strdup(string);
-                    }
-                    regfree(&regpattern);
+                    T2Error("Failed to apply regex to top marker value\n");
+                    cJSON_Delete(arrayItem);
+                    free(memWorkingValue);
+                    return T2ERROR_FAILURE;
                 }
             }
 

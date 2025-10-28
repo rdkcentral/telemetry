@@ -72,13 +72,9 @@
  * @retval  0 on sucess, appropiate errorcode otherwise.
  */
 
-int getProcUsage(char *processName, TopMarker* marker, bool trim, char* regex, char* filename)
+int getProcUsage(char *processName, TopMarker* marker, char* filename)
 {
-    //
-    // RE-VISIT
-    //
     T2Debug("%s ++in \n", __FUNCTION__);
-    T2Debug("%s ++in %d %s\n", __FUNCTION__, trim, regex);
     if(marker == NULL || processName == NULL)
     {
         T2Error("Invalid arguments for getProcUsage\n");
@@ -93,12 +89,10 @@ int getProcUsage(char *processName, TopMarker* marker, bool trim, char* regex, c
         char psCommand[CMD_LEN];
 #endif
         FILE *cmdPid;
-        //char *mem_key = NULL, *cpu_key = NULL;
         int ret = 0, pclose_ret = 0;
         int index = 0;
         pid_t *pid = NULL;
         pid_t *temp = NULL;
-        //int pname_prefix_len = strlen(processName) + PREFIX_SIZE + 1;
         memset(&pInfo, '\0', sizeof(procMemCpuInfo));
         memcpy(pInfo.processName, processName, strlen(processName) + 1);
 

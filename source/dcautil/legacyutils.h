@@ -80,7 +80,7 @@ extern cJSON *SEARCH_RESULT_JSON;
 extern cJSON *ROOT_JSON;
 
 /* utility functions */
-int getLoadAvg(TopMarker* marker, bool trim, char* regex);
+int getLoadAvg(TopMarker* marker);
 
 /**
  * Get log line from log file including the rotated log file if applicable
@@ -101,7 +101,7 @@ void addToSearchResult(char *key, char *value);
 
 void clearSearchResultJson(cJSON **root);
 
-int getProcUsage(char *processName, TopMarker* marker, bool trim, char* regex, char* filename);
+int getProcUsage(char *processName, TopMarker* marker, char* filename);
 
 void freeGrepSeekProfile(GrepSeekProfile *gsProfile);
 

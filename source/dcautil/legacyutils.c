@@ -128,10 +128,9 @@ static void freeProfileSeekHashMap(void *data)
  * @return  Returns status of operation.
  * @retval  Return 1 on success.
  */
-int getLoadAvg(TopMarker* marker, bool trim, char* regex)
+int getLoadAvg(TopMarker* marker)
 {
     T2Debug("%s ++in \n", __FUNCTION__);
-    T2Debug("%s ++in %d %s\n", __FUNCTION__, trim, regex);
     FILE *fp;
     char str[LEN + 1];
     if(marker == NULL)

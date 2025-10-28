@@ -391,7 +391,7 @@ T2ERROR encodeStaticParamsInJSON(cJSON *valArray, Vector *staticParamList)
 
 T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepMarkerList)
 {
-    T2Info("%s ++in \n", __FUNCTION__);
+    T2Debug("%s ++in \n", __FUNCTION__);
     if(valArray == NULL || grepMarkerList == NULL)
     {
         T2Error("Invalid or NULL Arguments\n");
@@ -499,34 +499,26 @@ T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepMarkerList)
                         regfree(&regpattern);
                     }
                 }
-                T2Info("%d ++in \n", __LINE__);
                 if(regaccumulateValues != NULL && Vector_Size(regaccumulateValues) > 0)
                 {
                     convertVectorToJson(vectorToarray, regaccumulateValues);
                 }
                 else
                 {
-                    T2Info("%d ++in \n", __LINE__);
                     convertVectorToJson(vectorToarray, grepMarker->u.accumulatedValues);
                 }
                 Vector_Clear(grepMarker->u.accumulatedValues, freeAccumulatedParam);
-                T2Info("%d ++in \n", __LINE__);
                 cJSON_AddItemToObject(arrayItem, grepMarker->markerName, vectorToarray);
-                T2Info("%d ++in \n", __LINE__);
                 // Add timestamp support for MTYPE_ACCUMULATE
                 if((grepMarker->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH) && (grepMarker->accumulatedTimestamp != NULL) && (Vector_Size(grepMarker->accumulatedTimestamp) > 0))
                 {
-                    T2Info("%d ++in \n", __LINE__);
-
                     // Populate markerName_CT if not already set
                     if(grepMarker->markerName_CT == NULL)
                     {
-                        T2Info("%d ++in \n", __LINE__);
                         char buf[512];
                         snprintf(buf, sizeof(buf), "%s_CT", grepMarker->markerName);
                         grepMarker->markerName_CT = strdup(buf);
                     }
-                    //T2Info("Timestamp is taken for %s with size %ld\n", grepMarker->markerName_CT, Vector_Size(grepMarker->accumulatedTimestamp));
 
                     cJSON *TimevectorToarray = cJSON_CreateArray();
                     if(TimevectorToarray == NULL)
@@ -541,7 +533,7 @@ T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepMarkerList)
                         return T2ERROR_FAILURE;
                     }
                     convertVectorToJson(TimevectorToarray, grepMarker->accumulatedTimestamp);
-                    T2Info("convertVectorToJson is successful for timestamps\n");
+                    T2Debug("convertVectorToJson is successful for timestamps\n");
                     Vector_Clear(grepMarker->accumulatedTimestamp, freeAccumulatedParam);
                     cJSON_AddItemToObject(arrayItem, grepMarker->markerName_CT, TimevectorToarray);
                 }
@@ -640,7 +632,7 @@ T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepMarkerList)
 
 T2ERROR encodeTopResultInJSON(cJSON *valArray, Vector *topMarkerList)
 {
-    T2Info("%s ++in \n", __FUNCTION__);
+    T2Debug("%s ++in \n", __FUNCTION__);
     if(valArray == NULL || topMarkerList == NULL)
     {
         T2Error("Invalid or NULL Arguments\n");

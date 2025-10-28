@@ -287,12 +287,12 @@ static void* CollectAndReportXconf(void* data)
             if(profile->topMarkerList != NULL && Vector_Size(profile->topMarkerList) > 0)
             {
                 processTopPattern(profile->name, profile->topMarkerList, count);
-                T2Info("Top markers report is completed report size %ld\n", (unsigned long)Vector_Size(profile->topMarkerList));
+                T2Info("Top markers report is completed\n");
                 encodeTopResultInJSON(valArray, profile->topMarkerList);
             }
             if(profile->gMarkerList != NULL && Vector_Size(profile->gMarkerList) > 0)
             {
-                getGrepResults(&(profile->grepSeekProfile), profile->gMarkerList, profile->bClearSeekMap, checkRotated, customLogPath); // Passing 5th argument as true to check rotated logs only in case of single profile
+                getGrepResults(&(profile->grepSeekProfile), profile->gMarkerList, profile->bClearSeekMap, checkRotated, customLogPath); // Passing 4th argument as true to check rotated logs only in case of single profile
                 T2Info("Grep complete for %lu markers \n", (unsigned long)Vector_Size(profile->gMarkerList));
                 encodeGrepResultInJSON(valArray, profile->gMarkerList);
             }

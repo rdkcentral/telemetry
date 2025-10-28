@@ -193,12 +193,11 @@ static time_t extractUnixTimestamp(const char* line_start)
         return 0;
     }
 
-    // Try each format in order until one succeeds
+    // One of the formats should match, otherwise a warning will be logged.
     for (int i = 0; i < 2; i++)
     {
         const TimestampFormat* fmt = &formats[i];
 
-        // Check if line is long enough for a timestamp
         if (line_length < fmt->required_length)
         {
             T2Debug("%s: Line too short for %s format (need %zu chars)\n",
@@ -330,14 +329,14 @@ int processTopPattern(char* profileName,  Vector* topMarkerList, int profileExec
 
         if (strcmp(topMarkerObj->markerName, "Load_Average") == 0)   // This block is for device level load average
         {
-            if (0 == getLoadAvg(topMarkerObj, topMarkerObj->trimParam, topMarkerObj->regexParam))
+            if (0 == getLoadAvg(topMarkerObj))
             {
                 T2Debug("getLoadAvg() Failed with error");
             }
         }
         else
         {
-            getProcUsage(topMarkerObj->searchString, topMarkerObj, topMarkerObj->trimParam, topMarkerObj->regexParam, filename);
+            getProcUsage(topMarkerObj->searchString, topMarkerObj, filename);
         }
 
     }
@@ -524,7 +523,7 @@ static int getCountPatternMatch(FileDescriptor* fileDescriptor, GrepMarker* mark
 
     }
 
-    // Using the union instead of the previous out list.
+    // Using the union for efficient memory handling
     marker->u.count = count;
     T2Debug("%s --out\n", __FUNCTION__);
     return 0;
@@ -623,7 +622,7 @@ static int getAbsolutePatternMatch(FileDescriptor* fileDescriptor, GrepMarker* m
 
 static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker* marker)
 {
-    T2Info("%s ++in", __FUNCTION__);
+    T2Debug("%s ++in", __FUNCTION__);
     if (!fileDescriptor || !fileDescriptor->cfaddr || fileDescriptor->cf_file_size <= 0 || !marker || !marker->searchString || !*marker->searchString )
     {
         T2Error("Invalid file descriptor arguments accumulate\n");
@@ -668,19 +667,17 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
 
         while (bytes_left >= patlen && cur < buffer_end)
         {
-            T2Info("%s %d \n", __FUNCTION__, __LINE__);
-            // Check MAX_ACCUMULATE limit before processing this match
+            // Check MAX_ACCUMULATE limit before checking for a match
             int arraySize = Vector_Size(accumulatedValues);
-            T2Info("Current array size : %d \n", arraySize);
 
             if (arraySize >= MAX_ACCUMULATE)
             {
                 T2Info("%s %d \n", __FUNCTION__, __LINE__);
                 if (arraySize == MAX_ACCUMULATE)
                 {
-                    T2Warning("Max size of the array has been reached appending warning message : %s\n", MAX_ACCUMULATE_MSG);
+                    T2Warning("Max size of the accumulate array has been reached appending warning message : %s\n", MAX_ACCUMULATE_MSG);
                     Vector_PushBack(accumulatedValues, strdup(MAX_ACCUMULATE_MSG));
-                    T2Debug("Successfully added warning message into vector New Size : %d\n", arraySize + 1);
+                    T2Debug("Successfully added warning message into vector. New Size : %d\n", arraySize + 1);
                 }
                 else
                 {
@@ -688,22 +685,19 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
                 }
                 break;
             }
-            T2Info("%s %d \n", __FUNCTION__, __LINE__);
 
-            T2Info("%s %d, current position: %p , buffer_end: %p \n", __FUNCTION__, __LINE__, cur, buffer_end);
+            T2Debug("%s %d, current position: %p , buffer_end: %p \n", __FUNCTION__, __LINE__, cur, buffer_end);
             if (cur >= buffer_end)
             {
-                T2Info("Reached end of buffer\n");
+                T2Debug("Reached end of buffer\n");
                 break;
             }
 
             const char *found = strnstr(cur, pattern, bytes_left);
             if (!found)
             {
-                T2Info("%s %d \n", __FUNCTION__, __LINE__);
                 break;
             }
-            T2Info("%s %d \n", __FUNCTION__, __LINE__);
 
             // Find the beginning of the line containing the pattern
             const char *line_start = found;
@@ -713,7 +707,6 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
             }
 
             time_t unix_timestamp = extractUnixTimestamp (line_start);
-            T2Info("Stored timestamp: %ld\n", unix_timestamp);
 
             T2Info("%s %d \n", __FUNCTION__, __LINE__);
 
@@ -724,17 +717,14 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
             // Find next newline or end of buffer
             const char *end = memchr(start, '\n', chars_left);
             size_t length = end ? (size_t)(end - start) : chars_left;
-            T2Info("%s %d \n", __FUNCTION__, __LINE__);
 
             // Create result string for this occurrence
             char *result = (char*)malloc(length + 1);
             if (result)
             {
-                T2Info("%s %d \n", __FUNCTION__, __LINE__);
-
                 memcpy(result, start, length);
                 result[length] = '\0';
-                T2Info("%s %d : result = %s\n", __FUNCTION__, __LINE__, result);
+                T2Debug("%s %d : result = %s\n", __FUNCTION__, __LINE__, result);
                 Vector_PushBack(accumulatedValues, result);
 
                 if (unix_timestamp > 0 && marker->accumulatedTimestamp)
@@ -744,7 +734,7 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
                     {
                         snprintf(timestamp_str_epoch, 32, "%ld", unix_timestamp);
                         Vector_PushBack(marker->accumulatedTimestamp, timestamp_str_epoch);
-                        T2Info("Stored timestamp: %s\n", timestamp_str_epoch);
+                        T2Debug("Stored timestamp: %s\n", timestamp_str_epoch);
                     }
                 }
             }
@@ -753,14 +743,10 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
             cur = found + patlen;
             if (bytes_left < advance)
             {
-                T2Info("%s %d \n", __FUNCTION__, __LINE__);
                 break;
             }
             bytes_left -= advance;
-
-            T2Info("%s %d: bytes_left = %d, advance= %d\n", __FUNCTION__, __LINE__, (int)bytes_left, (int)advance);
         }
-        T2Info("%s %d --out\n", __FUNCTION__, __LINE__);
     }
 
     T2Debug("%s --out\n", __FUNCTION__);
@@ -787,9 +773,7 @@ static int processPatternWithOptimizedFunction(GrepMarker* marker, FileDescripto
     else if (mType == MTYPE_ACCUMULATE)
     {
         //Get MAX_ACCUMULATE number of occurrences of the pattern in the memory-mapped data
-        T2Info("%s %d : Accumulate is called\n", __FUNCTION__, __LINE__);
         getAccumulatePatternMatch(filedescriptor, marker);
-        T2Info("%s %d : Accumulate is complete\n", __FUNCTION__, __LINE__);
     }
     else /* MTYPE_ABSOLUTE */
     {
@@ -846,7 +830,7 @@ static int getLogFileDescriptor(GrepSeekProfile* gsProfile, const char* logPath,
     // Check if the file size matches the seek value from the map
     if (sb.st_size == seek_value_from_map)
     {
-        T2Info("The logfile size matches the seek value (%ld) for %s\n", seek_value_from_map, logFile);
+        T2Debug("The logfile size matches the seek value (%ld) for %s\n", seek_value_from_map, logFile);
         close(fd);
         return -1; // Consistent error return value
     }
@@ -1288,10 +1272,8 @@ static int parseMarkerListOptimized(GrepSeekProfile *gsProfile, Vector * ip_vMar
         // If skip param is 0, then process the pattern with optimized function
         if (is_skip_param == 0 && fileDescriptor != NULL)
         {
-
             // Call the optimized function to process the pattern
             processPatternWithOptimizedFunction(grepMarkerObj, fileDescriptor);
-            //T2Info("Outer Time Array size = %ld\n", Vector_Size(grepMarkerObj->accumulatedTimestamp));
         }
 
     }  // Loop of marker list ends here

@@ -465,7 +465,7 @@ TEST_F(dcaTestFixture, getProcUsage)
 {
     Vector* topMarkerlist = NULL;
     Vector_Create(&topMarkerlist);
-    GrepMarker* topMarker = (GrepMarker*) malloc(sizeof(GrepMarker));
+    TopMarker* topMarker = (GrepMarker*) malloc(sizeof(GrepMarker));
     topMarker->markerName = strdup("cpu_telemetry2_0");
     topMarker->searchString = strdup("telemetry2_0");
     topMarker->trimParam = false;

@@ -128,14 +128,14 @@ static void freeProfileSeekHashMap(void *data)
  * @return  Returns status of operation.
  * @retval  Return 1 on success.
  */
-int getLoadAvg(Vector* grepResultList, bool trim, char* regex)
+int getLoadAvg(TopMarker* marker)
 {
     T2Debug("%s ++in \n", __FUNCTION__);
     FILE *fp;
     char str[LEN + 1];
-    if(grepResultList == NULL)
+    if(marker == NULL)
     {
-        T2Debug("grepResultList is NULL\n");
+        T2Debug("marker is NULL\n");
         return 0;
     }
 
@@ -155,18 +155,13 @@ int getLoadAvg(Vector* grepResultList, bool trim, char* regex)
 
     str[LEN] = '\0';
 
-    if(grepResultList != NULL)
+
+    if(marker->loadAverage)
     {
-        GrepResult* loadAvg = (GrepResult*) malloc(sizeof(GrepResult));
-        if(loadAvg)
-        {
-            loadAvg->markerName = strndup("Load_Average", (strlen("Load_Average") + 1));
-            loadAvg->markerValue = strndup(str, LEN);
-            loadAvg->trimParameter = trim;
-            loadAvg->regexParameter = regex;
-            Vector_PushBack(grepResultList, loadAvg);
-        }
+        free(marker->loadAverage);
     }
+    marker->loadAverage = strndup(str, LEN);
+
     T2Debug("%s --out \n", __FUNCTION__);
     return 1;
 }

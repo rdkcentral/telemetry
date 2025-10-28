@@ -35,8 +35,8 @@ public:
     MOCK_METHOD(T2ERROR, getParameterValue, (const char* paramName, char **paramValue), ());
     MOCK_METHOD(void, publishReportUploadStatus, (char* status), ());
     MOCK_METHOD(void, freeProfileValues, (void *data), ());
-    MOCK_METHOD(int, processTopPattern, (char* profileName,  Vector* topMarkerList, Vector* out_grepResultList, int profileExecCounter), ());
-    MOCK_METHOD(T2ERROR, getGrepResults, (GrepSeekProfile **GSP, Vector *markerList, Vector **grepResultList, bool isClearSeekMap, bool check_rotated, char *customLogPath), ());
+    MOCK_METHOD(int, processTopPattern, (char* profileName,  Vector* topMarkerList, int profileExecCounter), ());
+    MOCK_METHOD(T2ERROR, getGrepResults, (GrepSeekProfile **GSP, Vector *markerList, bool isClearSeekMap, bool check_rotated, char *customLogPath), ());
     MOCK_METHOD(void, dcaFlagReportCompleation, (), ());
     MOCK_METHOD(GrepSeekProfile *, createGrepSeekProfile, (int execCounter), ());
     MOCK_METHOD(T2ERROR, sendReportOverHTTP, (char *httpUrl, char *payload, pid_t* outForkedPid), ());

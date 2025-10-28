@@ -17,6 +17,7 @@
  * limitations under the License.
  */
 
+#define _GNU_SOURCE
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,6 +27,7 @@
 #include <pthread.h>
 #include <stdbool.h>
 #include <fcntl.h>
+#include <time.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
@@ -76,6 +78,15 @@ typedef struct
     void* rotatedAddr;
 } FileDescriptor;
 
+// Define timestamp formats with their required lengths and strptime patterns
+typedef struct
+{
+    const char* name;           // Format name for logging
+    const char* pattern;        // strptime pattern
+    size_t required_length;     // Minimum characters needed
+    size_t extract_length;      // Characters to extract for parsing
+} TimestampFormat;
+
 /**
  * Portable implementation of strnstr (BSD function).
  * Searches for the first occurrence of the substring 'needle' in the
@@ -88,6 +99,7 @@ static const char *strnstr(const char *haystack, const char *needle, size_t len)
     {
         return NULL;
     }
+
     size_t needle_len = strlen(needle);
     if (needle_len == 0)
     {
@@ -119,6 +131,7 @@ static const char *strnstr(const char *haystack, const char *needle, size_t len)
     {
         skip[i] = needle_len;
     }
+
     for (size_t i = 0; i < needle_len - 1; ++i)
     {
         skip[(unsigned char)needle[i]] = needle_len - i - 1;
@@ -149,8 +162,84 @@ static char *PERSISTENTPATH = NULL;
 static long PAGESIZE;
 static pthread_mutex_t dcaMutex = PTHREAD_MUTEX_INITIALIZER;
 
+/**
+ * @brief Extract Unix timestamp from multiple timestamp formats at the beginning of a line.
+ * Supports:
+ * 1. ISO 8601 format: YYYY-MM-DDTHH:MM:SS.mmm (e.g., 2025-10-17T10:17:39.906)
+ * 2. YYMMDD format: YYMMDD-HH:MM:SS (e.g., 251027-07:31:25)
+ *
+ * @param line_start Pointer to the beginning of the line containing the timestamp
+ * @return Unix timestamp on success, 0 on failure or if no valid timestamp found
+ */
+static time_t extractUnixTimestamp(const char* line_start)
+{
+    if (!line_start)
+    {
+        T2Warning("%s: line_start is NULL\n", __FUNCTION__);
+        return 0;
+    }
 
+    static const TimestampFormat formats[] =
+    {
+        {"ISO 8601",   "%Y-%m-%dT%H:%M:%S", 23, 23},  // YYYY-MM-DDTHH:MM:SS.mmm
+        {"YYMMDD",     "%y%m%d-%H:%M:%S",   15, 15},  // YYMMDD-HH:MM:SS
+    };
 
+    // Check minimum length requirement
+    size_t line_length = strlen(line_start);
+    if (line_length < 15)  // Minimum for shortest format (YYMMDD)
+    {
+        T2Debug("%s: Line too short for any timestamp format\n", __FUNCTION__);
+        return 0;
+    }
+
+    // One of the formats should match, otherwise a warning will be logged.
+    for (int i = 0; i < 2; i++)
+    {
+        const TimestampFormat* fmt = &formats[i];
+
+        if (line_length < fmt->required_length)
+        {
+            T2Debug("%s: Line too short for %s format (need %zu chars)\n",
+                    __FUNCTION__, fmt->name, fmt->required_length);
+            continue;
+        }
+
+        // Extract timestamp string
+        char timestamp_str[32] = {0};
+        strncpy(timestamp_str, line_start, fmt->extract_length);
+        timestamp_str[fmt->extract_length] = '\0';
+
+        struct tm tm_time = {0};
+        char* result = strptime(timestamp_str, fmt->pattern, &tm_time);
+        if (result != NULL)
+        {
+            tm_time.tm_isdst = -1;
+            time_t unix_timestamp = mktime(&tm_time);
+            if (unix_timestamp != -1)
+            {
+                T2Debug("%s: Successfully parsed %s timestamp: %s -> Unix: %ld\n",
+                        __FUNCTION__, fmt->name, timestamp_str, unix_timestamp);
+                return unix_timestamp;
+            }
+            else
+            {
+                T2Warning("%s: mktime() failed for %s timestamp: %s\n",
+                          __FUNCTION__, fmt->name, timestamp_str);
+            }
+        }
+        else
+        {
+            T2Debug("%s: %s strptime() failed for: %s\n", __FUNCTION__, fmt->name, timestamp_str);
+        }
+    }
+
+    T2Warning("%s: Timestamp does not match any supported formats. "
+              "Supported: 'YYYY-MM-DDTHH:MM:SS.mmm', 'YYMMDD-HH:MM:SS'. "
+              "Found at line start: '%.24s'\n", __FUNCTION__, line_start);
+
+    return 0;
+}
 
 /* @} */ // End of group DCA_TYPES
 /**
@@ -165,10 +254,10 @@ static pthread_mutex_t dcaMutex = PTHREAD_MUTEX_INITIALIZER;
  *  @return  Returns the status of the operation.
  *  @retval  Returns zero on success, appropriate errorcode otherwise.
  */
-int processTopPattern(char* profileName,  Vector* topMarkerList, Vector* out_grepResultList, int profileExecCounter)
+int processTopPattern(char* profileName,  Vector* topMarkerList, int profileExecCounter)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
-    if(profileName == NULL || topMarkerList == NULL || out_grepResultList == NULL)
+    if(profileName == NULL || topMarkerList == NULL)
     {
         T2Error("Invalid arguments for %s\n", __FUNCTION__);
         return -1;
@@ -181,13 +270,13 @@ int processTopPattern(char* profileName,  Vector* topMarkerList, Vector* out_gre
 
     for (var = 0; var < vCount; ++var)
     {
-        GrepMarker* grepMarkerObj = (GrepMarker*) Vector_At(topMarkerList, var);
-        if (!grepMarkerObj || !grepMarkerObj->logFile || !grepMarkerObj->searchString || !grepMarkerObj->markerName)
+        TopMarker* topMarkerObj = (TopMarker*) Vector_At(topMarkerList, var);
+        if (!topMarkerObj || !topMarkerObj->logFile || !topMarkerObj->searchString || !topMarkerObj->markerName)
         {
             continue;
         }
         int tmp_skip_interval, is_skip_param;
-        tmp_skip_interval = grepMarkerObj->skipFreq;
+        tmp_skip_interval = topMarkerObj->skipFreq;
         if(tmp_skip_interval <= 0)
         {
             tmp_skip_interval = 0;
@@ -195,8 +284,7 @@ int processTopPattern(char* profileName,  Vector* topMarkerList, Vector* out_gre
         is_skip_param = (profileExecCounter % (tmp_skip_interval + 1) == 0) ? 0 : 1;
         if (is_skip_param != 0)
         {
-
-            T2Debug("Skipping marker %s for profile %s as per skip frequency %d \n", grepMarkerObj->markerName, profileName, tmp_skip_interval);
+            T2Debug("Skipping marker %s for profile %s as per skip frequency %d \n", topMarkerObj->markerName, profileName, tmp_skip_interval);
             continue;
         }
         else
@@ -207,17 +295,17 @@ int processTopPattern(char* profileName,  Vector* topMarkerList, Vector* out_gre
 #endif
             break;
         }
-        T2Debug("topMarkerList[%lu] markerName = %s, logFile = %s, searchString = %s \n", (unsigned long)var, grepMarkerObj->markerName, grepMarkerObj->logFile, grepMarkerObj->searchString);
+        T2Debug("topMarkerList[%lu] markerName = %s, logFile = %s, searchString = %s \n", (unsigned long)var, topMarkerObj->markerName, topMarkerObj->logFile, topMarkerObj->searchString);
     }
 
     for (; var < vCount; ++var) // Loop of marker list starts here
     {
-        GrepMarker* grepMarkerObj = (GrepMarker*) Vector_At(topMarkerList, var);
-        if (!grepMarkerObj || !grepMarkerObj->logFile || !grepMarkerObj->searchString || !grepMarkerObj->markerName)
+        TopMarker* topMarkerObj = (TopMarker*) Vector_At(topMarkerList, var);
+        if (!topMarkerObj || !topMarkerObj->logFile || !topMarkerObj->searchString || !topMarkerObj->markerName)
         {
             continue;
         }
-        if (strcmp(grepMarkerObj->searchString, "") == 0 || strcmp(grepMarkerObj->logFile, "") == 0)
+        if (strcmp(topMarkerObj->searchString, "") == 0 || strcmp(topMarkerObj->logFile, "") == 0)
         {
             continue;
         }
@@ -225,7 +313,7 @@ int processTopPattern(char* profileName,  Vector* topMarkerList, Vector* out_gre
 
         // If the skip frequency is set, skip the marker processing for this interval
         int tmp_skip_interval, is_skip_param;
-        tmp_skip_interval = grepMarkerObj->skipFreq;
+        tmp_skip_interval = topMarkerObj->skipFreq;
         if(tmp_skip_interval <= 0)
         {
             tmp_skip_interval = 0;
@@ -234,21 +322,21 @@ int processTopPattern(char* profileName,  Vector* topMarkerList, Vector* out_gre
         if (is_skip_param != 0)
         {
 
-            T2Debug("Skipping marker %s for profile %s as per skip frequency %d \n", grepMarkerObj->markerName, profileName, tmp_skip_interval);
+            T2Debug("Skipping marker %s for profile %s as per skip frequency %d \n", topMarkerObj->markerName, profileName, tmp_skip_interval);
             continue;
         }
 
 
-        if (strcmp(grepMarkerObj->markerName, "Load_Average") == 0)   // This block is for device level load average
+        if (strcmp(topMarkerObj->markerName, "Load_Average") == 0)   // This block is for device level load average
         {
-            if (0 == getLoadAvg(out_grepResultList, grepMarkerObj->trimParam, grepMarkerObj->regexParam))
+            if (0 == getLoadAvg(topMarkerObj))
             {
                 T2Debug("getLoadAvg() Failed with error");
             }
         }
         else
         {
-            getProcUsage(grepMarkerObj->searchString, out_grepResultList, grepMarkerObj->trimParam, grepMarkerObj->regexParam, filename);
+            getProcUsage(topMarkerObj->searchString, topMarkerObj, filename);
         }
 
     }
@@ -330,8 +418,6 @@ static T2ERROR updateLogSeek(hash_map_t *logSeekMap, const char* logFileName, co
     return T2ERROR_SUCCESS;
 }
 
-
-
 /**
  * @brief This API updates the filename if it is different from the current one.
  * @param currentFile The current filename.
@@ -360,28 +446,6 @@ static char* updateFilename(char* previousFile, const char* newFile)
     return previousFile;
 }
 
-static GrepResult* createGrepResultObj(const char* markerName, const char* markerValue, bool trimParameter, char* regexParameter)
-{
-    GrepResult* grepResult = (GrepResult*) malloc(sizeof(GrepResult));
-    if (grepResult == NULL)
-    {
-        T2Error("Failed to allocate memory for GrepResult\n");
-        return NULL;
-    }
-    grepResult->markerName = strdup(markerName);
-    grepResult->markerValue = strdup(markerValue);
-    grepResult->trimParameter = trimParameter;
-    if (regexParameter != NULL)
-    {
-        grepResult->regexParameter = strdup(regexParameter);
-    }
-    else
-    {
-        grepResult->regexParameter = NULL;
-    }
-    return grepResult;
-}
-
 /**
  * @brief This function formats the count value to a string.
  *     Formatting is to handle the case where the count of error occurence in an interval exceeds 9999.
@@ -399,15 +463,16 @@ static inline void formatCount(char* buffer, size_t size, int count)
     snprintf(buffer, size, "%d", count);
 }
 
-static int getCountPatternMatch(FileDescriptor* fileDescriptor, const char* pattern)
+static int getCountPatternMatch(FileDescriptor* fileDescriptor, GrepMarker* marker)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
-    if (!fileDescriptor || !fileDescriptor->cfaddr || !pattern || !*pattern || fileDescriptor->cf_map_size <= 0)
+    if (!fileDescriptor || !fileDescriptor->cfaddr || !marker || !marker->searchString || fileDescriptor->cf_map_size <= 0)
     {
         T2Error("Invalid file descriptor arguments pattern match\n");
         return -1; // Invalid arguments
     }
 
+    const char* pattern = marker->searchString;
     const char* buffer;
     size_t buflen = 0;
     size_t patlen = strlen(pattern);
@@ -457,20 +522,23 @@ static int getCountPatternMatch(FileDescriptor* fileDescriptor, const char* patt
         }
 
     }
-    T2Debug("count is %d\n", count);
+
+    // Using the union for efficient memory handling
+    marker->u.count = count;
     T2Debug("%s --out\n", __FUNCTION__);
-    return count;
+    return 0;
 }
 
-static char* getAbsolutePatternMatch(FileDescriptor* fileDescriptor, const char* pattern)
+static int getAbsolutePatternMatch(FileDescriptor* fileDescriptor, GrepMarker* marker)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
-    if (!fileDescriptor || !fileDescriptor->cfaddr || fileDescriptor->cf_map_size <= 0 || !pattern || !*pattern)
+    if (!fileDescriptor || !fileDescriptor->cfaddr || fileDescriptor->cf_map_size <= 0 || !marker || !marker->searchString)
     {
         T2Error("Invalid file descriptor arguments absolute\n");
-        return NULL;
+        return -1;
     }
 
+    const char* pattern = marker->searchString;
     const char* buffer;
     size_t buflen = 0;
     size_t patlen = strlen(pattern);
@@ -526,8 +594,10 @@ static char* getAbsolutePatternMatch(FileDescriptor* fileDescriptor, const char*
 
     if(!last_found)
     {
-        return NULL;
+        marker->u.markerValue = NULL;
+        return 0;
     }
+
     // Move pointer just after the pattern
     const char *start = last_found + patlen;
     size_t chars_left = buflen - (start - buffer);
@@ -539,74 +609,176 @@ static char* getAbsolutePatternMatch(FileDescriptor* fileDescriptor, const char*
     char *result = (char*)malloc(length + 1);
     if (!result)
     {
-        return NULL;
+        marker->u.markerValue = NULL;
+        return -1;
     }
     memcpy(result, start, length);
     result[length] = '\0';
+
+    marker->u.markerValue = result;
     T2Debug("%s --out\n", __FUNCTION__);
-    return result;
+    return 0;
 }
 
-static int processPatternWithOptimizedFunction(const GrepMarker* marker, Vector* out_grepResultList, FileDescriptor* filedescriptor)
+static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker* marker)
+{
+    T2Debug("%s ++in", __FUNCTION__);
+    if (!fileDescriptor || !fileDescriptor->cfaddr || fileDescriptor->cf_file_size <= 0 || !marker || !marker->searchString || !*marker->searchString )
+    {
+        T2Error("Invalid file descriptor arguments accumulate\n");
+        return -1;
+    }
+
+    const char* pattern = marker->searchString;
+    const char* buffer;
+    size_t buflen = 0;
+    size_t patlen = strlen(pattern);
+
+    // Using the existing accumulatedValues Vector from marker's union
+    Vector* accumulatedValues = marker->u.accumulatedValues;
+    if (!accumulatedValues)
+    {
+        T2Error("accumulatedValues vector is NULL in marker\n");
+        return -1;
+    }
+
+    for (int i = 0; i < 2; i++)
+    {
+        if (i == 0)
+        {
+            buffer = fileDescriptor->cfaddr;
+            buflen = (size_t)fileDescriptor->cf_map_size;
+        }
+        else
+        {
+            buffer = fileDescriptor->rfaddr;
+            buflen = (size_t)fileDescriptor->rf_map_size;
+        }
+
+        if (buffer == NULL)
+        {
+            T2Debug("Invalid file descriptor arguments accumulate match\n");
+            continue;
+        }
+
+        const char *cur = buffer;
+        size_t bytes_left = buflen;
+        const char *buffer_end = buffer + buflen;
+
+        while (bytes_left >= patlen && cur < buffer_end)
+        {
+            // Check MAX_ACCUMULATE limit before checking for a match
+            int arraySize = Vector_Size(accumulatedValues);
+
+            if (arraySize >= MAX_ACCUMULATE)
+            {
+                if (arraySize == MAX_ACCUMULATE)
+                {
+                    T2Warning("Max size of the accumulate array has been reached appending warning message : %s\n", MAX_ACCUMULATE_MSG);
+                    Vector_PushBack(accumulatedValues, strdup(MAX_ACCUMULATE_MSG));
+                    T2Debug("Successfully added warning message into vector. New Size : %d\n", arraySize + 1);
+                }
+                else
+                {
+                    T2Warning("Max size of the array has been reached Ignore New Value\n");
+                }
+                break;
+            }
+
+            T2Debug("%s %d, current position: %p , buffer_end: %p \n", __FUNCTION__, __LINE__, cur, buffer_end);
+            if (cur >= buffer_end)
+            {
+                T2Debug("Reached end of buffer\n");
+                break;
+            }
+
+            const char *found = strnstr(cur, pattern, bytes_left);
+            if (!found)
+            {
+                break;
+            }
+
+            // Find the beginning of the line containing the pattern
+            const char *line_start = found;
+            while (line_start > buffer && *(line_start - 1) != '\n')
+            {
+                line_start--;
+            }
+
+            time_t unix_timestamp = extractUnixTimestamp (line_start);
+
+            // Move pointer just after the pattern
+            const char *start = found + patlen;
+            size_t chars_left = buffer_end - start;
+
+            // Find next newline or end of buffer
+            const char *end = memchr(start, '\n', chars_left);
+            size_t length = end ? (size_t)(end - start) : chars_left;
+
+            // Create result string for this occurrence
+            char *result = (char*)malloc(length + 1);
+            if (result)
+            {
+                memcpy(result, start, length);
+                result[length] = '\0';
+                T2Debug("%s %d : result = %s\n", __FUNCTION__, __LINE__, result);
+                Vector_PushBack(accumulatedValues, result);
+
+                if (unix_timestamp > 0 && marker->accumulatedTimestamp)
+                {
+                    char *timestamp_str_epoch = (char*)malloc(32);
+                    if (timestamp_str_epoch)
+                    {
+                        snprintf(timestamp_str_epoch, 32, "%ld", unix_timestamp);
+                        Vector_PushBack(marker->accumulatedTimestamp, timestamp_str_epoch);
+                        T2Debug("Stored timestamp: %s\n", timestamp_str_epoch);
+                    }
+                }
+            }
+
+            size_t advance = (size_t)(found - cur) + patlen;
+            cur = found + patlen;
+            if (bytes_left < advance)
+            {
+                break;
+            }
+            bytes_left -= advance;
+        }
+    }
+
+    T2Debug("%s --out\n", __FUNCTION__);
+    return 0;
+}
+
+static int processPatternWithOptimizedFunction(GrepMarker* marker, FileDescriptor* filedescriptor)
 {
     // Sanitize the input
     const char* memmmapped_data_cf = filedescriptor->cfaddr;
-    if (!marker || !out_grepResultList || !memmmapped_data_cf)
+    if (!marker || !memmmapped_data_cf)
     {
         T2Error("Invalid arguments for %s\n", __FUNCTION__);
         return -1;
     }
     // Extract the pattern and other parameters from the marker
-    const char* pattern = marker->searchString;
-    bool trimParameter = marker->trimParam;
-    char* regexParameter = marker->regexParam;
-    char* header = marker->markerName;
-    int count = 0;
-    char* last_found = NULL;
     MarkerType mType = marker->mType;
 
     if (mType == MTYPE_COUNTER)
     {
         // Count the number of occurrences of the pattern in the memory-mapped data
-        count = getCountPatternMatch(filedescriptor, pattern);
-        if (count > 0)
-        {
-            // If matches are found, process them accordingly
-            char tmp_str[5] = { 0 };
-            formatCount(tmp_str, sizeof(tmp_str), count);
-            GrepResult* result = createGrepResultObj(header, tmp_str, trimParameter, regexParameter);
-            if (result == NULL)
-            {
-                T2Error("Failed to create GrepResult\n");
-                return -1;
-            }
-            Vector_PushBack(out_grepResultList, result);
-        }
+        getCountPatternMatch(filedescriptor, marker);
     }
-    else
+    else if (mType == MTYPE_ACCUMULATE)
+    {
+        //Get MAX_ACCUMULATE number of occurrences of the pattern in the memory-mapped data
+        getAccumulatePatternMatch(filedescriptor, marker);
+    }
+    else /* MTYPE_ABSOLUTE */
     {
         // Get the last occurrence of the pattern in the memory-mapped data
-        last_found = getAbsolutePatternMatch(filedescriptor, pattern);
-        if (last_found)
-        {
-            // If a match is found, process it accordingly
-            GrepResult* result = createGrepResultObj(header, last_found, trimParameter, regexParameter);
-            if(last_found)
-            {
-                free(last_found);
-                last_found = NULL;
-            }
-            if (result == NULL)
-            {
-                T2Error("Failed to create GrepResult\n");
-                return -1;
-            }
-            Vector_PushBack(out_grepResultList, result);
-        }
+        getAbsolutePatternMatch(filedescriptor, marker);
     }
     return 0;
 }
-
 
 static int getLogFileDescriptor(GrepSeekProfile* gsProfile, const char* logPath, const char* logFile, int old_fd, off_t* out_seek_value)
 {
@@ -988,11 +1160,11 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
  *  @param filename
  *  @return -1 on failure, 0 on success
  */
-static int parseMarkerListOptimized(GrepSeekProfile *gsProfile, Vector * ip_vMarkerList, Vector * out_grepResultList, bool check_rotated, char* logPath)
+static int parseMarkerListOptimized(GrepSeekProfile *gsProfile, Vector * ip_vMarkerList, bool check_rotated, char* logPath)
 {
     T2Debug("%s ++in \n", __FUNCTION__);
 
-    if(NULL == gsProfile || NULL == ip_vMarkerList || NULL == out_grepResultList)
+    if(NULL == gsProfile || NULL == ip_vMarkerList )
     {
         T2Error("Invalid arguments for %s\n", __FUNCTION__);
         return -1;
@@ -1097,9 +1269,8 @@ static int parseMarkerListOptimized(GrepSeekProfile *gsProfile, Vector * ip_vMar
         // If skip param is 0, then process the pattern with optimized function
         if (is_skip_param == 0 && fileDescriptor != NULL)
         {
-
             // Call the optimized function to process the pattern
-            processPatternWithOptimizedFunction(grepMarkerObj, out_grepResultList, fileDescriptor);
+            processPatternWithOptimizedFunction(grepMarkerObj, fileDescriptor);
         }
 
     }  // Loop of marker list ends here
@@ -1133,12 +1304,11 @@ void T2InitProperties()
 
 
 // Call 1
-int getDCAResultsInVector(GrepSeekProfile *gSeekProfile, Vector * vecMarkerList, Vector** out_grepResultList, bool check_rotated, char* customLogPath)
+int getDCAResultsInVector(GrepSeekProfile *gSeekProfile, Vector * vecMarkerList, bool check_rotated, char* customLogPath)
 {
-
     T2Debug("%s ++in \n", __FUNCTION__);
     int rc = -1;
-    if(NULL == gSeekProfile || NULL == vecMarkerList || NULL == out_grepResultList)
+    if(NULL == gSeekProfile || NULL == vecMarkerList )
     {
         T2Error("Invalid arguments for %s\n", __FUNCTION__);
         return rc;
@@ -1148,10 +1318,8 @@ int getDCAResultsInVector(GrepSeekProfile *gSeekProfile, Vector * vecMarkerList,
     {
         char* logPath = customLogPath ? customLogPath : LOGPATH;
 
-        Vector_Create(out_grepResultList);
-
         // Go for looping through the marker list
-        if( (rc = parseMarkerListOptimized(gSeekProfile, vecMarkerList, *out_grepResultList, check_rotated, logPath)) == -1 )
+        if( (rc = parseMarkerListOptimized(gSeekProfile, vecMarkerList, check_rotated, logPath)) == -1 )
         {
             T2Debug("Error in fetching grep results\n");
         }

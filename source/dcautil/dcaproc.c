@@ -72,10 +72,10 @@
  * @retval  0 on sucess, appropiate errorcode otherwise.
  */
 
-int getProcUsage(char *processName, Vector* grepResultList, bool trim, char* regex, char* filename)
+int getProcUsage(char *processName, TopMarker* marker, char* filename)
 {
     T2Debug("%s ++in \n", __FUNCTION__);
-    if(grepResultList == NULL || processName == NULL)
+    if(marker == NULL || processName == NULL)
     {
         T2Error("Invalid arguments for getProcUsage\n");
         return -1;
@@ -89,12 +89,10 @@ int getProcUsage(char *processName, Vector* grepResultList, bool trim, char* reg
         char psCommand[CMD_LEN];
 #endif
         FILE *cmdPid;
-        char *mem_key = NULL, *cpu_key = NULL;
         int ret = 0, pclose_ret = 0;
         int index = 0;
         pid_t *pid = NULL;
         pid_t *temp = NULL;
-        int pname_prefix_len = strlen(processName) + PREFIX_SIZE + 1;
         memset(&pInfo, '\0', sizeof(procMemCpuInfo));
         memcpy(pInfo.processName, processName, strlen(processName) + 1);
 
@@ -230,46 +228,21 @@ int getProcUsage(char *processName, Vector* grepResultList, bool trim, char* reg
         pInfo.pid = pid;
         if(0 != getProcInfo(&pInfo, filename))
         {
-            mem_key = malloc(pname_prefix_len);
-            cpu_key = malloc(pname_prefix_len);
-            if(NULL != mem_key && NULL != cpu_key)
+            T2Debug("Process info - CPU: %s, Memory: %s \n", pInfo.cpuUse, pInfo.memUse);
+
+            if (marker->cpuValue)
             {
-                snprintf(cpu_key, pname_prefix_len, "cpu_%s", processName);
-                snprintf(mem_key, pname_prefix_len, "mem_%s", processName);
-
-                T2Debug("Add to search result %s , value = %s , %s \n", cpu_key,  pInfo.cpuUse, pInfo.memUse);
-                GrepResult* cpuInfo = (GrepResult*) malloc(sizeof(GrepResult));
-                if(cpuInfo)
-                {
-                    cpuInfo->markerName = strdup(cpu_key);
-                    cpuInfo->markerValue = strdup(pInfo.cpuUse);
-                    cpuInfo->trimParameter = trim;
-                    cpuInfo->regexParameter = regex;
-                    Vector_PushBack(grepResultList, cpuInfo);
-                }
-
-                GrepResult* memInfo = (GrepResult*) malloc(sizeof(GrepResult));
-                if(memInfo)
-                {
-                    memInfo->markerName = strdup(mem_key);
-                    memInfo->markerValue = strdup(pInfo.memUse);
-                    memInfo->trimParameter = trim;
-                    memInfo->regexParameter = regex;
-                    Vector_PushBack(grepResultList, memInfo);
-                }
-
-                ret = 1;
+                free(marker->cpuValue);
             }
+            marker->cpuValue = strdup(pInfo.cpuUse);
 
-            if(mem_key)
+            if (marker->memValue)
             {
-                free(mem_key);
+                free(marker->memValue);
             }
+            marker->memValue = strdup(pInfo.memUse);
 
-            if(cpu_key)
-            {
-                free(cpu_key);
-            }
+            ret = 1;
 
             if(pid)
             {

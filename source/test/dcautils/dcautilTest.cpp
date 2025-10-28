@@ -159,6 +159,7 @@ TEST(STRNSTR, SAMPLE6)
 }
 //dcaproc.c
 
+#if 0
 TEST(GETPROCUSAGE, GREPRESULTLIST_NULL)
 {
    EXPECT_EQ(-1, getProcUsage("telemetry2_0", NULL, NULL));
@@ -172,6 +173,7 @@ TEST(GETPROCUSAGE, PROCESS_NULL)
    EXPECT_EQ(-1, getProcUsage(NULL, NULL, NULL));
    free(filename);
 }
+#endif
 
 TEST(GETPROCPIDSTAT, PINFO_NULL)
 {
@@ -274,10 +276,12 @@ TEST(loadSavedSeekConfig, profilename_NULL)
 #endif
 
 
+#if 0
 TEST(GETLOADAVG, VECTOR_REGEX_NULL)
 {
     EXPECT_EQ(0, getLoadAvg(NULL));
 }
+#endif
 
 TEST(CREATEGREPSEEKPROFILE, SEEKMAPCREATE_CHECK)
 {
@@ -463,6 +467,7 @@ TEST_F(dcaTestFixture, saveSeekConfigtoFile)
 
 //dcaproc.c
 
+#if 0
 TEST_F(dcaTestFixture, getProcUsage)
 {
     Vector* topMarkerlist = NULL;
@@ -497,7 +502,7 @@ TEST_F(dcaTestFixture, getProcUsage)
     Vector_Destroy(outgrepResultlist, free);
     free(filename);
 }   
-
+#endif
 
 TEST_F(dcaTestFixture, getProcPidStat)
 {

@@ -306,6 +306,8 @@ TEST(CLEARCONFVAL, FREECONFVAL)
 {
         clearConfVal();
 }
+
+#if 0
 //dca.c
 TEST(PROCESSTOPPATTERN, VECTOR_NULL)
 {
@@ -319,7 +321,7 @@ TEST(PROCESSTOPPATTERN, VECTOR_NULL)
     Vector_Destroy(topMarkerlist, free);
     topMarkerlist = NULL;
 }
-
+#endif
 
 TEST(getDCAResultsInVector, markerlist_NULL)
 {

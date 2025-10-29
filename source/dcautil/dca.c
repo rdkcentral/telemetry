@@ -219,7 +219,7 @@ static time_t extractUnixTimestamp(const char* line_start)
             if (unix_timestamp != -1)
             {
                 T2Debug("%s: Successfully parsed %s timestamp: %s -> Unix: %ld\n",
-                        __FUNCTION__, fmt->name, timestamp_str, unix_timestamp);
+                        __FUNCTION__, fmt->name, timestamp_str, (long)unix_timestamp);
                 return unix_timestamp;
             }
             else
@@ -729,7 +729,7 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
                     char *timestamp_str_epoch = (char*)malloc(32);
                     if (timestamp_str_epoch)
                     {
-                        snprintf(timestamp_str_epoch, 32, "%ld", unix_timestamp);
+                        snprintf(timestamp_str_epoch, 32, "%ld", (long)unix_timestamp);
                         Vector_PushBack(marker->accumulatedTimestamp, timestamp_str_epoch);
                         T2Debug("Stored timestamp: %s\n", timestamp_str_epoch);
                     }

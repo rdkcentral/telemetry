@@ -872,7 +872,7 @@ void publishReportUploadStatus(char* status)
     rbusValue_t value;
     rbusError_t err;
 
-    T2Debug("++in %s \n", __FUNCTION__);
+    T2Info("++in %s \n", __FUNCTION__);
     if(!status)
     {
         T2Error("%s received NULL argument.\n", __FUNCTION__);

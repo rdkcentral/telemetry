@@ -883,7 +883,7 @@ char* ProfileXconf_getName()
 
 void ProfileXConf_notifyTimeout(bool isClearSeekMap, bool isOnDemand)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
 
     int reportThreadStatus = 0 ;
     pthread_mutex_lock(&plMutex);
@@ -893,6 +893,7 @@ void ProfileXConf_notifyTimeout(bool isClearSeekMap, bool isOnDemand)
         pthread_mutex_unlock(&plMutex);
         return ;
     }
+    T2Info("%s: isOnDemand = %s\n", __FUNCTION__, isOnDemand?"true":"false");
     isOnDemandReport = isOnDemand;
     if(!singleProfile->reportInProgress)
     {

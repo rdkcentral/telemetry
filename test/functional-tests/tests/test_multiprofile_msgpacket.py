@@ -494,3 +494,27 @@ def test_stress_test():
     pid2 = run_shell_command(command_to_get_pid)
     assert pid1==pid2 #  253 - Stress testing of interaction with rbus interface to check for any deadlocks or rbus timeouts.
 
+@pytest.mark.run(order=15)
+def test_grep_accumulate():
+    os.makedirs('/opt/logs', exist_ok=True)
+    run_shell_command("rm -rf /opt/logs/accum.log")
+    run_shell_command("cp test/functional-tests/tests/accum.log /opt/logs/")
+    sleep(1)
+
+    rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_grep_accumulate_timestamp))
+    sleep(15)
+    assert "SYS_INFO_Accum_Time" in grep_T2logs("cJSON Report ") # 
+    assert "SYS_INFO_Accum_Time_CT" in grep_T2logs("cJSON Report ") # 
+    assert "SYS_INFO_Accum" in grep_T2logs("cJSON Report ") # 
+    assert "SYS_INFO_Accum_CT" not in grep_T2logs("cJSON Report ") # 
+    file = open('/opt/logs/accum.log', 'a')
+    file.write(
+            "251007-09:29:39.441 INFO     identifier:thevalue23\n"
+            "251007-09:29:40.441 ERROR     identifier:thevalue24\n"
+            "filler updated line\n"
+            "251007-09:29:41.335 INFO     identifier:thevalue25\n"
+            "filler line\n"
+            )
+    file.close()
+    sleep(15)
+    assert "SYS_INFO_Accum_Time\":[\"thevalue23" in grep_T2logs("cJSON Report ") # 

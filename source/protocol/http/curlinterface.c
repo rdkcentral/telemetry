@@ -505,11 +505,6 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
                             fprintf(stderr, "curl failed: %s\n", curl_easy_strerror(curl_code));
                             childCurlResponse.lineNumber = __LINE__;
                         }
-                        else
-                        {
-                            T2Info("%s: Using xpki Certs connection certname: %s\n", __func__, pCertFile);
-                            childCurlResponse.lineNumber = __LINE__;
-                        }
                         childCurlResponse.curlResponse = curl_code;
                         childCurlResponse.http_code = http_code;
 

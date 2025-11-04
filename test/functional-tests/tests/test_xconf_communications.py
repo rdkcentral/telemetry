@@ -170,3 +170,16 @@ def test_xconf_retry_for_connection_errors():
     sleep(180)
     ERROR_MSG = "Waiting for 180 sec before trying fetchRemoteConfiguration, No.of tries"
     assert ERROR_MSG in grep_T2logs(ERROR_MSG)
+
+pytest.mark.run(order=14)
+def test_xconf_datamodel():
+    clear_T2logs()
+
+    rbus_set_data("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.ConfigURL", "string", "https://mockxconf:50050/loguploader2/getT2DCMSettings")
+    rbus_set_data("Device.DeviceInfo.X_RDKCENTRAL-COM.IUI.Version", "string", "1.0.1")
+    kill_telemetry(12)
+    sleep(10)
+    kill_telemetry(10)
+    sleep(10)
+    assert "Device.DeviceInfo.X_RDKCENTRAL-COM.IUI.Version" in grep_T2logs("cJSON Report")
+

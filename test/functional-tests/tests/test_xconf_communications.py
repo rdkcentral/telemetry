@@ -173,13 +173,18 @@ def test_xconf_retry_for_connection_errors():
 
 pytest.mark.run(order=14)
 def test_xconf_datamodel():
-    clear_T2logs()
-
+    kill_telemetry(9)
+    RUN_START_TIME = dt.now()
+    remove_T2bootup_flag()
+    clear_persistant_files()
     rbus_set_data("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.ConfigURL", "string", "https://mockxconf:50050/loguploader2/getT2DCMSettings")
+    clear_T2logs()
+    run_telemetry()
+    sleep(10)
     rbus_set_data("Device.DeviceInfo.X_RDKCENTRAL-COM.IUI.Version", "string", "1.0.1")
+    sleep(1)
     kill_telemetry(12)
-    sleep(10)
-    kill_telemetry(10)
-    sleep(10)
-    assert "Device.DeviceInfo.X_RDKCENTRAL-COM.IUI.Version" in grep_T2logs("cJSON Report")
-
+    sleep(5)
+    kill_telemetry(29)
+    sleep(5)
+    assert "IUI_accum" in grep_T2logs("cJSON Report")

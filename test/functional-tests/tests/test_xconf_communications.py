@@ -181,5 +181,5 @@ def test_xconf_datamodel():
     sleep(10)
     kill_telemetry(10)
     sleep(10)
-    assert "Device.DeviceInfo.X_RDKCENTRAL-COM.IUI.Version" in grep_T2logs("cJSON Report")
+    assert "IUI_accum" in grep_T2logs("cJSON Report")
 

@@ -57,6 +57,7 @@ typedef struct
     CURLcode curlSetopCode;
     long http_code;
     int lineNumber;
+    char certstatus[1024];
 
 } childResponse ;
 
@@ -312,6 +313,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
     CURLcode code = CURLE_OK;
     T2ERROR ret = T2ERROR_FAILURE;
     childResponse childCurlResponse = {0};
+    char certdetails[250] = {0};
     struct curl_slist *headerList = NULL;
     CURLcode curl_code = CURLE_OK;
 #ifdef LIBRDKCERTSEL_BUILD
@@ -500,14 +502,19 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
                         if(curl_code != CURLE_OK || http_code != 200)
                         {
 #ifdef LIBRDKCERTSEL_BUILD
-                            T2Error("%s: Failed to establish connection using xPKI certificate: %s, curl failed: %d\n", __func__, pCertFile, curl_code);
+                            //T2Error("%s: Failed to establish connection using xPKI certificate: %s, curl failed: %d\n", __func__, pCertFile, curl_code);                            
+                            snprintf(certdetails, sizeof(certdetails), "Failed to establish connection using %s, curl failed:%d\n", pCertFile, curl_code);
 #endif
                             fprintf(stderr, "curl failed: %s\n", curl_easy_strerror(curl_code));
+                            childCurlResponse.lineNumber = __LINE__;
+                        }else{
+                            //T2Info("%s: Using xpki Certs connection certname: %s\n", __func__, pCertFile);
+                            snprintf(certdetails, sizeof(certdetails), "Using xpki Certs connection certname %s\n", pCertFile);
                             childCurlResponse.lineNumber = __LINE__;
                         }
                         childCurlResponse.curlResponse = curl_code;
                         childCurlResponse.http_code = http_code;
-
+                        strcat(childCurlResponse.certstatus , certdetails);
                         fclose(fp);
                     }
                     pthread_mutex_unlock(&curlFileMutex);
@@ -596,6 +603,7 @@ child_cleanReturn :
 #endif
         }
 #endif
+        T2Info("%s", childCurlResponse.certstatus);
         T2Info("The return status from the child with pid %d is CurlStatus : %d\n", childPid, childCurlResponse.curlStatus);
         //if(childCurlResponse.curlStatus == CURLE_OK) commenting this as we are observing childCurlResponse.curlStatus as 1, from line with CID 143029 Unchecked return value from library
         T2Info("The return status from the child with pid %d SetopCode: %s; ResponseCode : %s; HTTP_CODE : %ld; Line Number : %d \n", childPid, curl_easy_strerror(childCurlResponse.curlSetopCode), curl_easy_strerror(childCurlResponse.curlResponse), childCurlResponse.http_code, childCurlResponse.lineNumber);

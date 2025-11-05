@@ -28,53 +28,13 @@
         "telemetryProfile": [
             {
                 "header":"IUI_accum",
-                "content":"Device.DeviceInfo.X_RDKCENTRAL-COM.IUI.Version",      
-                "type":"<message_bus>",
-                "pollingFrequency":"1"
-            },
-	    {
-    "urn:settings:GroupName": "Generic",
-    "urn:settings:CheckOnReboot": false,
-    "urn:settings:TimeZoneMode": "UTC",
-    "urn:settings:CheckSchedule:cron": "37 5 * * *",
-    "urn:settings:CheckSchedule:DurationMinutes": 300,
-    "urn:settings:LogUploadSettings:Message": null,
-    "urn:settings:LogUploadSettings:Name": "Generic",
-    "urn:settings:LogUploadSettings:NumberOfDays": 0,
-    "urn:settings:LogUploadSettings:UploadRepositoryName": "S3",
-    "urn:settings:LogUploadSettings:UploadRepository:URL": "https://secure.s3.bucket.test.url",
-    "urn:settings:LogUploadSettings:UploadRepository:uploadProtocol": "HTTP",
-    "urn:settings:LogUploadSettings:UploadOnReboot": false,
-    "urn:settings:LogUploadSettings:UploadImmediately": false,
-    "urn:settings:LogUploadSettings:upload": true,
-    "urn:settings:LogUploadSettings:UploadSchedule:cron": "36 6 * * *",
-    "urn:settings:LogUploadSettings:UploadSchedule:levelone:cron": null,
-    "urn:settings:LogUploadSettings:UploadSchedule:leveltwo:cron": null,
-    "urn:settings:LogUploadSettings:UploadSchedule:levelthree:cron": null,
-    "urn:settings:LogUploadSettings:UploadSchedule:TimeZoneMode": "UTC",
-    "urn:settings:LogUploadSettings:UploadSchedule:DurationMinutes": 240,
-    "urn:settings:VODSettings:Name": null,
-    "urn:settings:VODSettings:LocationsURL": null,
-    "urn:settings:VODSettings:SRMIPList": null,
-    "urn:settings:TelemetryProfile": {
-        "@type": "PermanentTelemetryProfile",
-        "id": "9e9fce57-8053-423e-a647-a537ca8b7899",
-        "telemetryProfile": [
-            {
-                "header":"IUI_accum",
                 "content":"Device.DeviceInfo.X_RDKCENTRAL-COM.IUI.Version",
                 "type":"<message_bus>",
                 "pollingFrequency":"0"
-            },
-	    {   
-		"header":"Wifi_2G_utilization_split",
-                "content":"Device.WiFi.Radio.1.Stats.X_COMCAST-COM_ChannelUtilization",
-                "type":"<message_bus>",
-                "pollingFrequency":"1"
-            },
-	    {   
-		"header":"Wifi_5G_utilization_split",
-                "content":"Device.WiFi.Radio.2.Stats.X_COMCAST-COM_ChannelUtilization",
+	    },
+	    {
+		"header":"Test_datamodel_1",
+                "content":"Device.X_RDK_WebConfig.webcfgSubdocForceReset",
                 "type":"<message_bus>",
                 "pollingFrequency":"3"
             },

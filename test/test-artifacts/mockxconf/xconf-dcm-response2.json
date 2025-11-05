@@ -31,9 +31,9 @@
                 "content":"Device.DeviceInfo.X_RDKCENTRAL-COM.IUI.Version",
                 "type":"<message_bus>",
                 "pollingFrequency":"0"
-	    },
-	    {
-		"header":"Test_datamodel_1",
+	        },
+	        {
+		        "header":"Test_datamodel_1",
                 "content":"Device.X_RDK_WebConfig.webcfgSubdocForceReset",
                 "type":"<message_bus>",
                 "pollingFrequency":"3"

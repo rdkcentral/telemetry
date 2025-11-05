@@ -3,12 +3,12 @@
 ## Document Information
 - **Version**: 1.0
 - **Date**: November 2024
-- **Author**: Senior Developer
+- **Author**: Shibu K V
 - **Status**: POC Design
 
 ## Executive Summary
 
-This document outlines the high-level design for expanding RDK Telemetry 2.0 reporting protocols to include QUIC support alongside the existing HTTP and RBUS_METHOD protocols. The implementation follows a POC approach using a Go binary system call mechanism for QUIC transport.
+This document outlines the high-level design for expanding RDK Telemetry 2.0 reporting protocols to include QUIC support alongside the existing HTTP and RBUS_METHOD protocols. The implementation follows a POC approach using a http post to local host for QUIC transport.
 
 ### QUIC Integration Overview
 
@@ -19,8 +19,8 @@ graph LR
     B --> D[RBUS_METHOD - Existing]
     B --> E[QUIC - New]
     
-    E --> F[Go Binary]
-    F --> G[QUIC Endpoint]
+    E --> F[Http post to local host proxy]
+    F --> G[Proxy sends to QUIC Endpoint]
     
     style E fill:#e8f5e8,stroke:#4caf50,stroke-width:3px
     style F fill:#e8f5e8,stroke:#4caf50,stroke-width:2px
@@ -264,13 +264,15 @@ The `t2_reportProfileSchema.schema.json` needs to be extended to support QUIC pr
 
 ### Phase 1: Core Infrastructure
 1. **QUIC Interface Module** (`source/protocol/quic/quicinterface.c`)
-   - Implement system call wrapper
+   - Implement a http post to local host proxy URL configured in the schema
    - Error handling and logging
    - Configuration parsing
 
-2. **Go Binary Development**
-   - QUIC client will be implemented in a separate Go binary
-   - The binary will be called using system call
+2. **Proxy service implementation**
+   - QUIC proxy service wil be implemented in a separate Go binary in a different project
+   - The JSON payload will be sent to the QUIC proxy service as HTTP POST request
+   - The proxy service will establish a QUIC connection to the remote endpoint and send the payload
+   
 
 ### Phase 2: Integration
 1. **Protocol Factory Updates**
@@ -284,7 +286,7 @@ The `t2_reportProfileSchema.schema.json` needs to be extended to support QUIC pr
 ### Phase 3: Testing & Validation
 1. **Unit Testing**
    - QUIC interface module tests
-   - Go binary functionality tests
+   - Go proxy service functionality tests
 
 2. **Integration Testing**
    - End-to-end protocol testing
@@ -311,17 +313,17 @@ telemetry/
 ## Security Considerations
 
 ### Transport Security
-- Security is handled by the QUIC Go binary
+- Security is handled by the QUIC Go proxy service
 
 ### System Security
-- **Binary Validation**: Relaxed for POC
+- **Proxy Service Validation**: Relaxed for POC
 - **Input Sanitization**: Validate all configuration parameters
 
 ### Network Security
 ```mermaid
 graph TD
     A[Telemetry Data] --> B[JSON Payload]
-    B -->  F[QUIC]
+    B -->  F[QUIC Proxy Service]
     F --> G[Remote Endpoint]
 ```
 
@@ -361,7 +363,7 @@ flowchart TD
     
     G --> H[Validate QUIC Config]
     H --> I[Prepare Payload]
-    I --> J[Execute Go Binary]
+    I --> J[HTTP POST to proxy service]
     J --> K[QUIC Connection]
     K --> L[Send Data]
     L --> M[Receive Response]

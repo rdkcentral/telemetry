@@ -31,6 +31,7 @@
 #include "busInterface.h"
 #include "curlinterface.h"
 #include "rbusmethodinterface.h"
+#include "quicinterface.h"
 #include "scheduler.h"
 #include "persistence.h"
 #include "vector.h"
@@ -164,6 +165,16 @@ static void freeProfile(void *data)
                 Vector_Destroy(profile->t2RBUSDest->rbusMethodParamList, free);
             }
             free(profile->t2RBUSDest);
+        }
+        if(profile->t2QUICDest)
+        {
+            if(profile->t2QUICDest->Endpoint)
+            {
+                memset(profile->t2QUICDest->Endpoint, 0, strlen(profile->t2QUICDest->Endpoint));
+                free(profile->t2QUICDest->Endpoint);
+                profile->t2QUICDest->Endpoint = NULL;
+            }
+            free(profile->t2QUICDest);
         }
         if(profile->eMarkerList)
         {
@@ -553,7 +564,7 @@ static void* CollectAndReport(void* data)
                     maxuploadinmilliSec = rand() % (profile->maxUploadLatency - 1);
                     maxuploadinSec =  (maxuploadinmilliSec + 1) / 1000;
                 }
-                if( strcmp(profile->protocol, "HTTP") == 0 || strcmp(profile->protocol, "RBUS_METHOD") == 0 )
+                if( strcmp(profile->protocol, "HTTP") == 0 || strcmp(profile->protocol, "RBUS_METHOD") == 0 || strcmp(profile->protocol, "QUIC") == 0 )
                 {
                     char *httpUrl = NULL ;
                     if ( strcmp(profile->protocol, "HTTP") == 0 )
@@ -608,7 +619,7 @@ static void* CollectAndReport(void* data)
                             ret = sendReportOverHTTP(httpUrl, jsonReport, NULL);
                         }
                     }
-                    else
+                    else if ( strcmp(profile->protocol, "RBUS_METHOD") == 0 )
                     {
                         if(profile->maxUploadLatency > 0 )
                         {
@@ -654,7 +665,52 @@ static void* CollectAndReport(void* data)
                             ret = sendReportsOverRBUSMethod(profile->t2RBUSDest->rbusMethodName, profile->t2RBUSDest->rbusMethodParamList, jsonReport);
                         }
                     }
-                    if((ret == T2ERROR_FAILURE && strcmp(profile->protocol, "HTTP") == 0) || ret == T2ERROR_NO_RBUS_METHOD_PROVIDER)
+                    else if ( strcmp(profile->protocol, "QUIC") == 0 )
+                    {
+                        if(profile->maxUploadLatency > 0)
+                        {
+                            pthread_mutex_lock(&profile->reportMutex);
+                            T2Info("waiting for %ld sec of macUploadLatency\n", (long) maxuploadinSec);
+                            profile->maxlatencyTime.tv_sec += maxuploadinSec;
+                            n = pthread_cond_timedwait(&profile->reportcond, &profile->reportMutex, &profile->maxlatencyTime);
+                            if(n == ETIMEDOUT)
+                            {
+                                T2Info("TIMEOUT for maxUploadLatency of profile %s\n", profile->name);
+                                ret = sendReportOverQUIC(profile->t2QUICDest->Endpoint, jsonReport, NULL);
+                            }
+                            else
+                            {
+                                T2Error("Profile : %s pthread_cond_timedwait ERROR!!!\n", profile->name);
+                                pthread_mutex_unlock(&profile->reportMutex);
+                                pthread_cond_destroy(&profile->reportcond);
+                                profile->reportInProgress = false;
+                                if(profile->triggerReportOnCondition)
+                                {
+                                    T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
+                                    profile->triggerReportOnCondition = false ;
+                                    pthread_mutex_unlock(&profile->triggerCondMutex);
+
+                                    if(profile->callBackOnReportGenerationComplete != NULL)
+                                    {
+                                        T2Debug("Calling callback function profile->callBackOnReportGenerationComplete \n");
+                                        profile->callBackOnReportGenerationComplete(profile->name);
+                                    }
+                                }
+                                else
+                                {
+                                    T2Debug(" profile->triggerReportOnCondition is not set \n");
+                                }
+                                goto reportThreadEnd;
+                            }
+                            pthread_mutex_unlock(&profile->reportMutex);
+                            pthread_cond_destroy(&profile->reportcond);
+                        }
+                        else
+                        {
+                            ret = sendReportOverQUIC(profile->t2QUICDest->Endpoint, jsonReport, NULL);
+                        }
+                    }
+                    if((ret == T2ERROR_FAILURE && strcmp(profile->protocol, "HTTP") == 0) || ret == T2ERROR_NO_RBUS_METHOD_PROVIDER || (ret == T2ERROR_FAILURE && strcmp(profile->protocol, "QUIC") == 0))
                     {
                         T2Debug("Vector list size = %lu\n",  (unsigned long) Vector_Size(profile->cachedReportList));
                         if(profile->cachedReportList != NULL && Vector_Size(profile->cachedReportList) >= MAX_CACHED_REPORTS)
@@ -721,6 +777,10 @@ static void* CollectAndReport(void* data)
                         if(strcmp(profile->protocol, "HTTP") == 0)
                         {
                             ret = sendCachedReportsOverHTTP(httpUrl, profile->cachedReportList);
+                        }
+                        else if(strcmp(profile->protocol, "QUIC") == 0)
+                        {
+                            ret = sendCachedReportsOverQUIC(profile->t2QUICDest->Endpoint, profile->cachedReportList);
                         }
                         else
                         {

@@ -30,6 +30,7 @@ AC_CONFIG_SRCDIR([source/commonlib])
 AC_CONFIG_SRCDIR([source/protocol])
 AC_CONFIG_SRCDIR([source/protocol/http])
 AC_CONFIG_SRCDIR([source/protocol/rbusMethod])
+AC_CONFIG_SRCDIR([source/protocol/quic])
 AC_CONFIG_SRCDIR([source/dcautil])
 AM_INIT_AUTOMAKE([foreign no-dist-gzip dist-bzip2 1.9])
 
@@ -219,7 +220,8 @@ AC_CONFIG_FILES([Makefile
                  source/protocol/Makefile
                  source/dcautil/Makefile
                  source/protocol/http/Makefile
-                 source/protocol/rbusMethod/Makefile])
+                 source/protocol/rbusMethod/Makefile
+                 source/protocol/quic/Makefile])
 
 AM_COND_IF([ENABLE_CCSP_SUPPORT], [AC_CONFIG_FILES([source/t2dm/Makefile])])
 AM_COND_IF([ENABLE_CCSP_SUPPORT], [AC_CONFIG_SRCDIR([source/t2dm])])

@@ -76,6 +76,7 @@ typedef struct _Profile
     Vector *staticParamList;
     T2HTTP *t2HTTPDest;
     T2RBUS *t2RBUSDest;
+    T2QUIC *t2QUICDest;
     Vector *eMarkerList;
     Vector *gMarkerList;
     Vector *topMarkerList;

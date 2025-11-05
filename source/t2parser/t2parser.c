@@ -1123,7 +1123,7 @@ T2ERROR encodingSet(Profile* profile, cJSON *jprofileEncodingType, cJSON *jprofi
     return T2ERROR_SUCCESS;
 }
 
-T2ERROR protocolSet (Profile *profile, cJSON *jprofileProtocol, cJSON *jprofileHTTPURL, cJSON *jprofileHTTPRequestURIParameter, int ThisprofileHTTPRequestURIParameter_count, cJSON *jprofileRBUSMethodName, cJSON *jprofileRBUSMethodParamArr, int rbusMethodParamArrCount)
+T2ERROR protocolSet (Profile *profile, cJSON *jprofileProtocol, cJSON *jprofileHTTPURL, cJSON *jprofileHTTPRequestURIParameter, int ThisprofileHTTPRequestURIParameter_count, cJSON *jprofileRBUSMethodName, cJSON *jprofileRBUSMethodParamArr, int rbusMethodParamArrCount, cJSON *json_root)
 {
     if(profile == NULL)
     {
@@ -1247,6 +1247,51 @@ T2ERROR protocolSet (Profile *profile, cJSON *jprofileProtocol, cJSON *jprofileH
             T2Info("Number of rbus method param added  = %d \n", rbusParamAdded);
         }
     }
+
+    // Handle QUIC protocol configuration
+    if((profile->t2QUICDest) && (strcmp(jprofileProtocol->valuestring, "QUIC") == 0))
+    {
+        cJSON *jprofileQUIC = cJSON_GetObjectItem(json_root, "QUIC");
+        if(jprofileQUIC)
+        {
+            cJSON *jprofileQUICEndpoint = cJSON_GetObjectItem(jprofileQUIC, "Endpoint");
+            cJSON *jprofileQUICTimeout = cJSON_GetObjectItem(jprofileQUIC, "Timeout");
+            cJSON *jprofileQUICRetryCount = cJSON_GetObjectItem(jprofileQUIC, "RetryCount");
+
+            if(jprofileQUICEndpoint && jprofileQUICEndpoint->valuestring)
+            {
+                profile->t2QUICDest->Endpoint = strdup(jprofileQUICEndpoint->valuestring);
+                T2Debug("[[profile->t2QUICDest->Endpoint:%s]]\n", profile->t2QUICDest->Endpoint);
+            }
+
+            // Set timeout (default: 30 seconds)
+            if(jprofileQUICTimeout && cJSON_IsNumber(jprofileQUICTimeout))
+            {
+                profile->t2QUICDest->Timeout = jprofileQUICTimeout->valueint;
+            }
+            else
+            {
+                profile->t2QUICDest->Timeout = 30; // Default timeout
+            }
+            T2Debug("[[profile->t2QUICDest->Timeout:%d]]\n", profile->t2QUICDest->Timeout);
+
+            // Set retry count (default: 3)
+            if(jprofileQUICRetryCount && cJSON_IsNumber(jprofileQUICRetryCount))
+            {
+                profile->t2QUICDest->RetryCount = jprofileQUICRetryCount->valueint;
+            }
+            else
+            {
+                profile->t2QUICDest->RetryCount = 3; // Default retry count
+            }
+            T2Debug("[[profile->t2QUICDest->RetryCount:%d]]\n", profile->t2QUICDest->RetryCount);
+
+            // Set compression (default: None)
+            profile->t2QUICDest->Compression = COMP_NONE;
+            T2Debug("[[profile->t2QUICDest->Compression:%d]]\n", profile->t2QUICDest->Compression);
+        }
+    }
+
     return T2ERROR_SUCCESS;
 
 }
@@ -1369,6 +1414,18 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
             {
                 rbusMethodParamArrCount = cJSON_GetArraySize(jprofileRBUSMethodParamArr);
             }
+        }
+        else if(strcmp(jprofileProtocol->valuestring, "QUIC") == 0)
+        {
+            cJSON *jprofileQUIC = cJSON_GetObjectItem(json_root, "QUIC");
+            cJSON *jprofileQUICEndpoint = cJSON_GetObjectItem(jprofileQUIC, "Endpoint");
+            if(jprofileQUICEndpoint == NULL || jprofileQUICEndpoint->valuestring == NULL || strcmp(jprofileQUICEndpoint->valuestring, "") == 0)
+            {
+                T2Error("QUIC Endpoint not configured. Ignoring profile %s\n", profileName);
+                cJSON_Delete(json_root);
+                return T2ERROR_FAILURE;
+            }
+            T2Info("QUIC protocol configured for profile %s with endpoint: %s\n", profileName, jprofileQUICEndpoint->valuestring);
         }
         else
         {
@@ -1503,8 +1560,12 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     {
         profile->t2RBUSDest = malloc(sizeof(T2RBUS));
     }
+    else if ((strcmp(jprofileProtocol->valuestring, "QUIC") == 0))
+    {
+        profile->t2QUICDest = malloc(sizeof(T2QUIC));
+    }
 
-    if ( (profile->t2HTTPDest == NULL) && (profile->t2RBUSDest  == NULL) )
+    if ( (profile->t2HTTPDest == NULL) && (profile->t2RBUSDest  == NULL) && (profile->t2QUICDest == NULL) )
     {
         T2Error("t2 protocol destination object malloc error\n");
         if(profile->jsonEncoding)
@@ -1577,7 +1638,7 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     }
 
     //Protocol Configuration
-    retvalue = protocolSet (profile, jprofileProtocol, jprofileHTTPURL, jprofileHTTPRequestURIParameter, ThisprofileHTTPRequestURIParameter_count, jprofileRBUSMethodName, jprofileRBUSMethodParamArr, rbusMethodParamArrCount);
+    retvalue = protocolSet (profile, jprofileProtocol, jprofileHTTPURL, jprofileHTTPRequestURIParameter, ThisprofileHTTPRequestURIParameter_count, jprofileRBUSMethodName, jprofileRBUSMethodParamArr, rbusMethodParamArrCount, json_root);
     if(retvalue != T2ERROR_SUCCESS)
     {
         T2Error("Protocol Configuration is invalid\n");

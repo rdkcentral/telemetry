@@ -63,6 +63,14 @@ typedef struct _T2RBUS
     Vector *rbusMethodParamList;
 } T2RBUS;
 
+typedef struct _T2QUIC
+{
+    char *Endpoint;
+    int Timeout;
+    HTTPComp Compression;
+    int RetryCount;
+} T2QUIC;
+
 void freeProfileValues(void* data);
 
 T2ERROR destroyJSONReport(cJSON *jsonObj);

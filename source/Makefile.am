@@ -52,6 +52,7 @@ telemetry2_0_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 
                                 -I${top_srcdir}/source/dcautil \
                                 -I${top_srcdir}/source/protocol/http \
 				-I${top_srcdir}/source/protocol/rbusMethod \
+				-I${top_srcdir}/source/protocol/quic \
                                 -I${top_srcdir}/source/reportgen \
                                 -I${top_srcdir}/source/scheduler \
                                 -I${top_srcdir}/source/t2parser \
@@ -82,6 +83,7 @@ telemetry2_0_LDADD = ${top_builddir}/source/utils/libt2utils.la ${top_builddir}/
                   ${top_builddir}/source/bulkdata/libbulkdata.la ${top_builddir}/source/ccspinterface/libccspinterface.la \
                   ${top_builddir}/source/reportgen/libreportgen.la ${top_builddir}/source/scheduler/libscheduler.la \
                   ${top_builddir}/source/protocol/http/libhttp.la \
+                  ${top_builddir}/source/protocol/quic/libquicinterface.la \
                   ${top_builddir}/source/t2parser/libt2parser.la \
                   ${top_builddir}/source/xconf-client/libxconfclient.la
 

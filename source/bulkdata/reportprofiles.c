@@ -665,6 +665,7 @@ T2ERROR initReportProfiles()
 
 void generateDcaReport(bool isDelayed, bool isOnDemand)
 {
+
     if(ProfileXConf_isSet())
     {
         /**

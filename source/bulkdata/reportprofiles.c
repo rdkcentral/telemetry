@@ -415,7 +415,7 @@ void T2totalmem_calculate()
 
 static void* reportOnDemand(void *input)
 {
-    T2Info("%s ++in\n", __FUNCTION__);
+    T2Debug("%s ++in\n", __FUNCTION__);
 
     char* action = (char*) input;
     if(!input)
@@ -665,8 +665,6 @@ T2ERROR initReportProfiles()
 
 void generateDcaReport(bool isDelayed, bool isOnDemand)
 {
-    T2Info("%s ++in\n", __FUNCTION__);
-    T2Info("%s: isOnDemand = %s\n", __FUNCTION__, isOnDemand?"true":"false");
     if(ProfileXConf_isSet())
     {
         /**

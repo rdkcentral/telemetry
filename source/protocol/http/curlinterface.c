@@ -517,7 +517,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
                         }
                         childCurlResponse.curlResponse = curl_code;
                         childCurlResponse.http_code = http_code;
-                        strcat(certstatus , certdetails);
+                        strcat(childCurlResponse.certstatus , certdetails);
 
                         fclose(fp);
                     }
@@ -607,7 +607,7 @@ child_cleanReturn :
 #endif
         }
 #endif
-        T2Info("%s\n", certstatus);
+        T2Info("%s\n", childCurlResponse.certstatus);
         T2Info("The return status from the child with pid %d is CurlStatus : %d\n", childPid, childCurlResponse.curlStatus);
         //if(childCurlResponse.curlStatus == CURLE_OK) commenting this as we are observing childCurlResponse.curlStatus as 1, from line with CID 143029 Unchecked return value from library
         T2Info("The return status from the child with pid %d SetopCode: %s; ResponseCode : %s; HTTP_CODE : %ld; Line Number : %d \n", childPid, curl_easy_strerror(childCurlResponse.curlSetopCode), curl_easy_strerror(childCurlResponse.curlResponse), childCurlResponse.http_code, childCurlResponse.lineNumber);

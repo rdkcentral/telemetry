@@ -698,14 +698,18 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
                 break;
             }
 
-            // Find the beginning of the line containing the pattern
-            const char *line_start = found;
-            while (line_start > buffer && *(line_start - 1) != '\n')
+            time_t unix_timestamp = 0;
+            if (marker->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH)
             {
-                line_start--;
-            }
+                // Find the beginning of the line containing the pattern
+                const char *line_start = found;
+                while (line_start > buffer && *(line_start - 1) != '\n')
+                {
+                    line_start--;
+                }
 
-            time_t unix_timestamp = extractUnixTimestamp (line_start);
+                unix_timestamp = extractUnixTimestamp (line_start);
+            }
 
             // Move pointer just after the pattern
             const char *start = found + patlen;
@@ -724,7 +728,7 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
                 T2Debug("%s %d : result = %s\n", __FUNCTION__, __LINE__, result);
                 Vector_PushBack(accumulatedValues, result);
 
-                if (unix_timestamp > 0 && marker->accumulatedTimestamp)
+                if ((unix_timestamp > 0) && marker->accumulatedTimestamp)
                 {
                     char *timestamp_str_epoch = (char*)malloc(32);
                     if (timestamp_str_epoch)

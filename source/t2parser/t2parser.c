@@ -378,7 +378,7 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
                 T2Error("Unable to allocate memory for GrepMarker \n");
                 return T2ERROR_FAILURE;
             }
-	    memset(gMarker, 0, sizeof(GrepMarker));
+            memset(gMarker, 0, sizeof(GrepMarker));
             gMarker->markerName = strdup(name);
             gMarker->searchString = strdup(ref);
             if(fileName)

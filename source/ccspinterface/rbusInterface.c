@@ -892,6 +892,7 @@ void publishReportUploadStatus(char* status)
     rbusValue_Init(&value);
     rbusValue_SetString(value, status);
     rbusObject_SetValue(outParams, "UPLOAD_STATUS", value);
+    rbusValue_Release(value);  // FIX: Release value immediately after SetValue to prevent double-free
 
     T2Info("Sending response as %s from %s \n", status,  __FUNCTION__ );
     err = rbusMethod_SendAsyncResponse(onDemandReportCallBackHandler, RBUS_ERROR_SUCCESS, outParams);
@@ -904,9 +905,8 @@ void publishReportUploadStatus(char* status)
         T2Info("%s rbusMethod_SendAsyncResponse sent successfully \n", __FUNCTION__);
     }
     onDemandReportCallBackHandler = NULL; // just a safety cleanup
-    pthread_mutex_unlock(&asyncMutex);
-    rbusValue_Release(value);
-    rbusObject_Release(outParams);
+    rbusObject_Release(outParams);  // FIX: Only release outParams, value is already released above
+    pthread_mutex_unlock(&asyncMutex);  // FIX: Unlock mutex after cleanup to prevent race conditions
 
     T2Debug("--OUT %s\n", __FUNCTION__);
 

@@ -456,19 +456,19 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
                 goto child_cleanReturn;
             }
             pEngine = rdkcertselector_getEngine(curlCertSelector);
-            if(pEngine!=NULL){
+            if(pEngine != NULL){
                 code = curl_easy_setopt(curl, CURLOPT_SSLENGINE, pEngine);
-                if(CURLE_OK != code)
+                if(code != CURLE_OK)
                 {
-                    T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+                    T2Error("%s : Curl set opts failed with error %d \n", __FUNCTION__, curl_easy_strerror(code));
                     childCurlResponse.lineNumber = __LINE__;
                     curl_easy_cleanup(curl);
                     goto child_cleanReturn;
                 } else {
                     code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
-                    if(CURLE_OK != code)
+                    if(code != CURLE_OK  )
                     {
-                        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
+                        T2Error("%s : Curl set opts failed with error %d \n", __FUNCTION__, curl_easy_strerror(code));
                         childCurlResponse.lineNumber = __LINE__;
                         curl_easy_cleanup(curl);
                         goto child_cleanReturn;

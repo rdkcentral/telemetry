@@ -248,7 +248,7 @@ static void* CollectAndReportXconf(void* data)
         }
 
 
-        clock_gettime(CLOCK_REALTIME, &startTime);
+        clock_gettime(CLOCK_MONOTONIC, &startTime);
         if(profile->encodingType != NULL && !strcmp(profile->encodingType, "JSON"))
         {
             if(T2ERROR_SUCCESS != initJSONReportXconf(&profile->jsonReportObj, &valArray))
@@ -304,13 +304,13 @@ static void* CollectAndReportXconf(void* data)
                 encodeEventMarkersInJSON(valArray, profile->eMarkerList);
             }
             profile->grepSeekProfile->execCounter += 1;
-            T2Info("Execution Count = %d\n", profile->grepSeekProfile->execCounter);
+            T2Info("Xconf Profile Execution Count = %d\n", profile->grepSeekProfile->execCounter);
 
             ret = prepareJSONReport(profile->jsonReportObj, &jsonReport);
             destroyJSONReport(profile->jsonReportObj);
             profile->jsonReportObj = NULL;
-            clock_gettime(CLOCK_REALTIME, &endTime);
-            T2Info("Processing time for profile %s is %ld seconds\n", profile->name, (long)(endTime.tv_sec - startTime.tv_sec));
+            clock_gettime(CLOCK_MONOTONIC, &endTime);
+            T2Info("%s Xconf Profile Processing Time in seconds : %ld\n", profile->name, (long)(endTime.tv_sec - startTime.tv_sec));
             if(ret != T2ERROR_SUCCESS)
             {
                 T2Error("Unable to generate report for : %s\n", profile->name);
@@ -451,7 +451,7 @@ static void* CollectAndReportXconf(void* data)
             T2Warning("Failed to save grep config to file for profile: %s\n", profile->name);
         }
 #endif
-        clock_gettime(CLOCK_REALTIME, &endTime);
+        clock_gettime(CLOCK_MONOTONIC, &endTime);
         getLapsedTime(&elapsedTime, &endTime, &startTime);
         T2Info("Elapsed Time for : %s = %lu.%lu (Sec.NanoSec)\n", profile->name, (unsigned long)elapsedTime.tv_sec, elapsedTime.tv_nsec);
         if(jsonReport)

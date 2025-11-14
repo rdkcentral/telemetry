@@ -465,7 +465,8 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
                     childCurlResponse.lineNumber = __LINE__;
                     curl_easy_cleanup(curl);
                     goto child_cleanReturn;
-                } else {
+                }
+             } else {
                     code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
                     if(code != CURLE_OK  )
                     {
@@ -474,8 +475,8 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
                         curl_easy_cleanup(curl);
                         goto child_cleanReturn;
                     }
-               }
             }
+            
 #ifdef LIBRDKCERTSEL_BUILD
             do
             {

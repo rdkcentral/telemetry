@@ -461,10 +461,14 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
                 T2Error("%s : Engine %s\n", __FUNCTION__, pEngine);
                 if(code != CURLE_OK)
                 {
-                    T2Error("%s : Curl set opts failed with error %d \n", __FUNCTION__, code);
-                    childCurlResponse.lineNumber = __LINE__;
-                    curl_easy_cleanup(curl);
-                    goto child_cleanReturn;
+                    T2Error("%s : Curl set CURLOPT_SSLENGINE opts failed with error %d \n", __FUNCTION__, code);
+                    code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
+                    if(code != CURLE_OK  ) {
+                        T2Error("%s : Curl set CURLOPT_SSLENGINE_DEFAULT opts failed with error %d \n", __FUNCTION__, code);
+                        childCurlResponse.lineNumber = __LINE__;
+                        curl_easy_cleanup(curl);
+                        goto child_cleanReturn;
+                    }
                 }
              } else {
                     code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);

@@ -186,7 +186,7 @@ static time_t extractUnixTimestamp(const char* line_start, size_t line_length)
         {"ISO 8601",   "%Y-%m-%dT%H:%M:%S", 23, 23},  // YYYY-MM-DDTHH:MM:SS.mmm
         {"YYMMDD",     "%y%m%d-%H:%M:%S",   15, 15},  // YYMMDD-HH:MM:SS
     };
-    
+
     for (int i = 0; i < 2; i++)
     {
         const TimestampFormat* fmt = &formats[i];
@@ -234,10 +234,10 @@ static time_t extractUnixTimestamp(const char* line_start, size_t line_length)
     char debug_str[25] = {0};
     memcpy(debug_str, line_start, print_len);
     debug_str[print_len] = '\0';
-    
+
     T2Debug("%s: Timestamp does not match any supported formats. "
-              "Supported: 'YYYY-MM-DDTHH:MM:SS.mmm', 'YYMMDD-HH:MM:SS'. "
-              "Found at line start: '%s'\n", __FUNCTION__, debug_str);
+            "Supported: 'YYYY-MM-DDTHH:MM:SS.mmm', 'YYMMDD-HH:MM:SS'. "
+            "Found at line start: '%s'\n", __FUNCTION__, debug_str);
 
     return 0;
 }
@@ -711,7 +711,7 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
 
                 // Calculate line length efficiently using already computed pointers
                 size_t line_length = (size_t)(found - line_start);
-                
+
                 // Only call extractUnixTimestamp if line is long enough (minimum 15 chars for YYMMDD format)
                 if (line_length >= 15)
                 {

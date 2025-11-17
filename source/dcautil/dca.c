@@ -58,7 +58,7 @@ static bool firstreport_after_bootup = false; // the rotated logs check should r
 
 #define BUFFER_SIZE 4096  // TODO fine tune this value based on the size of the data    
 #define LARGE_FILE_THRESHOLD 1000000 // 1MB
-
+#define MAX_TIMESTAMP_LENGTH 24
 /**
  * @addtogroup DCA_TYPES
  * @{
@@ -199,7 +199,7 @@ static time_t extractUnixTimestamp(const char* line_start, size_t line_length)
         }
 
         // Extract timestamp string safely with memcpy
-        char timestamp_str[32] = {0};
+        char timestamp_str[MAX_TIMESTAMP_LENGTH] = {0};
         size_t copy_len = (fmt->extract_length < line_length) ? fmt->extract_length : line_length;
 
         memcpy(timestamp_str, line_start, copy_len);
@@ -231,7 +231,7 @@ static time_t extractUnixTimestamp(const char* line_start, size_t line_length)
 
     // Safely print the problematic line start (limit to 24 chars or line length)
     size_t print_len = (line_length < 24) ? line_length : 24;
-    char debug_str[25] = {0};
+    char debug_str[MAX_TIMESTAMP_LENGTH] = {0};
     memcpy(debug_str, line_start, print_len);
     debug_str[print_len] = '\0';
 

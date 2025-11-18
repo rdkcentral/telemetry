@@ -58,7 +58,7 @@ static bool firstreport_after_bootup = false; // the rotated logs check should r
 
 #define BUFFER_SIZE 4096  // TODO fine tune this value based on the size of the data    
 #define LARGE_FILE_THRESHOLD 1000000 // 1MB
-
+#define MAX_TIMESTAMP_LENGTH 24
 /**
  * @addtogroup DCA_TYPES
  * @{
@@ -169,13 +169,15 @@ static pthread_mutex_t dcaMutex = PTHREAD_MUTEX_INITIALIZER;
  * 2. YYMMDD format: YYMMDD-HH:MM:SS (e.g., 251027-07:31:25)
  *
  * @param line_start Pointer to the beginning of the line containing the timestamp
+ * @param line_length Length of the line from line_start to the pattern location
  * @return Unix timestamp on success, 0 on failure or if no valid timestamp found
+ * @note Caller must ensure line_length is at least 15 characters
  */
-static time_t extractUnixTimestamp(const char* line_start)
+static time_t extractUnixTimestamp(const char* line_start, size_t line_length)
 {
-    if (!line_start)
+    if (!line_start || line_length == 0)
     {
-        T2Warning("%s: line_start is NULL\n", __FUNCTION__);
+        T2Warning("%s: Invalid parameters\n", __FUNCTION__);
         return 0;
     }
 
@@ -185,15 +187,6 @@ static time_t extractUnixTimestamp(const char* line_start)
         {"YYMMDD",     "%y%m%d-%H:%M:%S",   15, 15},  // YYMMDD-HH:MM:SS
     };
 
-    // Check minimum length requirement
-    size_t line_length = strlen(line_start);
-    if (line_length < 15)  // Minimum for shortest format (YYMMDD)
-    {
-        T2Debug("%s: Line too short for any timestamp format\n", __FUNCTION__);
-        return 0;
-    }
-
-    // One of the formats should match, otherwise a warning will be logged.
     for (int i = 0; i < 2; i++)
     {
         const TimestampFormat* fmt = &formats[i];
@@ -205,10 +198,12 @@ static time_t extractUnixTimestamp(const char* line_start)
             continue;
         }
 
-        // Extract timestamp string
-        char timestamp_str[32] = {0};
-        strncpy(timestamp_str, line_start, fmt->extract_length);
-        timestamp_str[fmt->extract_length] = '\0';
+        // Extract timestamp string safely with memcpy
+        char timestamp_str[MAX_TIMESTAMP_LENGTH] = {0};
+        size_t copy_len = fmt->extract_length;
+
+        memcpy(timestamp_str, line_start, copy_len);
+        timestamp_str[copy_len] = '\0';
 
         struct tm tm_time = {0};
         char* result = strptime(timestamp_str, fmt->pattern, &tm_time);
@@ -234,9 +229,14 @@ static time_t extractUnixTimestamp(const char* line_start)
         }
     }
 
-    T2Warning("%s: Timestamp does not match any supported formats. "
-              "Supported: 'YYYY-MM-DDTHH:MM:SS.mmm', 'YYMMDD-HH:MM:SS'. "
-              "Found at line start: '%.24s'\n", __FUNCTION__, line_start);
+    size_t print_len = (line_length < MAX_TIMESTAMP_LENGTH) ? line_length : MAX_TIMESTAMP_LENGTH;
+    char debug_str[MAX_TIMESTAMP_LENGTH] = {0};
+    memcpy(debug_str, line_start, print_len);
+    debug_str[print_len] = '\0';
+
+    T2Debug("%s: Timestamp does not match any supported formats. "
+            "Supported: 'YYYY-MM-DDTHH:MM:SS.mmm', 'YYMMDD-HH:MM:SS'. "
+            "Found at line start: '%s'\n", __FUNCTION__, debug_str);
 
     return 0;
 }
@@ -698,14 +698,33 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
                 break;
             }
 
-            // Find the beginning of the line containing the pattern
-            const char *line_start = found;
-            while (line_start > buffer && *(line_start - 1) != '\n')
+            time_t unix_timestamp = 0;
+            if (marker->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH)
             {
-                line_start--;
-            }
+                // Find the beginning of the line containing the pattern
+                const char *line_start = found;
+                while (line_start > buffer && *(line_start - 1) != '\n')
+                {
+                    line_start--;
+                }
 
-            time_t unix_timestamp = extractUnixTimestamp (line_start);
+                // Calculate line length efficiently using already computed pointers
+                size_t line_length = (size_t)(found - line_start);
+
+                // Only call extractUnixTimestamp if line is long enough (minimum 15 chars for YYMMDD format)
+                if (line_length >= 15)
+                {
+                    unix_timestamp = extractUnixTimestamp(line_start, line_length);
+                }
+                else
+                {
+                    T2Debug("Line too short (%zu chars) for timestamp extraction, skipping\n", line_length);
+                }
+            }
+            else
+            {
+                T2Info("Timestamp extraction not requested\n");
+            }
 
             // Move pointer just after the pattern
             const char *start = found + patlen;
@@ -724,7 +743,7 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
                 T2Debug("%s %d : result = %s\n", __FUNCTION__, __LINE__, result);
                 Vector_PushBack(accumulatedValues, result);
 
-                if (unix_timestamp > 0 && marker->accumulatedTimestamp)
+                if ((unix_timestamp > 0) && marker->accumulatedTimestamp)
                 {
                     char *timestamp_str_epoch = (char*)malloc(32);
                     if (timestamp_str_epoch)

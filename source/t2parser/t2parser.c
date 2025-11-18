@@ -2138,6 +2138,15 @@ T2ERROR addParameterMsgpack_marker_config(Profile* profile, msgpack_object* valu
                 MSGPACK_GET_NUMBER(Parameter_firstSeekFromEOF_int, firstSeekFromEOF);
             }
 
+            Parameter_reportTimestamp_str = msgpack_get_map_value(Parameter_array_map, "reportTimestamp");
+            if(Parameter_reportTimestamp_str != NULL)
+            {
+                msgpack_print(Parameter_reportTimestamp_str, msgpack_get_obj_name(Parameter_reportTimestamp_str));
+                if(0 == msgpack_strcmp(Parameter_reportTimestamp_str, "Unix-Epoch"))
+                {
+                    rtformat =  REPORTTIMESTAMP_UNIXEPOCH;
+                }
+            }
         }
         else
         {

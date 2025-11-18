@@ -722,6 +722,10 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
                     T2Debug("Line too short (%zu chars) for timestamp extraction, skipping\n", line_length);
                 }
             }
+            else
+            {
+                T2Info("Timestamp extraction not requested\n");
+            }
 
             // Move pointer just after the pattern
             const char *start = found + patlen;

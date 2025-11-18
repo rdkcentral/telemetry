@@ -200,7 +200,7 @@ static time_t extractUnixTimestamp(const char* line_start, size_t line_length)
 
         // Extract timestamp string safely with memcpy
         char timestamp_str[MAX_TIMESTAMP_LENGTH] = {0};
-        size_t copy_len = (fmt->extract_length < line_length) ? fmt->extract_length : line_length;
+        size_t copy_len = fmt->extract_length;
 
         memcpy(timestamp_str, line_start, copy_len);
         timestamp_str[copy_len] = '\0';
@@ -229,8 +229,7 @@ static time_t extractUnixTimestamp(const char* line_start, size_t line_length)
         }
     }
 
-    // Safely print the problematic line start (limit to 24 chars or line length)
-    size_t print_len = (line_length < 24) ? line_length : 24;
+    size_t print_len = (line_length < MAX_TIMESTAMP_LENGTH) ? line_length : MAX_TIMESTAMP_LENGTH;
     char debug_str[MAX_TIMESTAMP_LENGTH] = {0};
     memcpy(debug_str, line_start, print_len);
     debug_str[print_len] = '\0';

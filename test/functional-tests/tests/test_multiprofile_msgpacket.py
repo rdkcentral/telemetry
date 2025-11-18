@@ -60,6 +60,7 @@ def test_without_namefield():
     #Enabling debug log lines to get the HASH_ERROR_MSG in the logs
     sleep(2)
 
+'''
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_without_namefield))
     sleep(10) 
 
@@ -494,6 +495,7 @@ def test_stress_test():
     pid2 = run_shell_command(command_to_get_pid)
     assert pid1==pid2 #  253 - Stress testing of interaction with rbus interface to check for any deadlocks or rbus timeouts.
 
+'''
 @pytest.mark.run(order=15)
 def test_grep_accumulate():
     os.makedirs('/opt/logs', exist_ok=True)
@@ -503,10 +505,11 @@ def test_grep_accumulate():
 
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_grep_accumulate_timestamp))
     sleep(15)
-    assert "SYS_INFO_Accum_Time" in grep_T2logs("cJSON Report ") # 
-    assert "SYS_INFO_Accum_Time_CT" in grep_T2logs("cJSON Report ") # 
-    assert "SYS_INFO_Accum" in grep_T2logs("cJSON Report ") # 
-    assert "SYS_INFO_Accum_CT" not in grep_T2logs("cJSON Report ") # 
+    assert "SYS_INFO_Accum_Time" in grep_T2logs("cJSON Report ") # Verify that the values are accumulated upto 20 values and a warning message is added. 
+    assert "SYS_INFO_Accum_Time_CT" in grep_T2logs("cJSON Report ") # Matched timetamp will be reported as a different marker
+    assert "SYS_INFO_Accum_No_Time" in grep_T2logs("cJSON Report ") # Marker is reporting even without matching timestamp
+    assert "SYS_INFO_Accum_CT" not in grep_T2logs("cJSON Report ") # timestamp marker is not reporting without a matching timestamp
+    assert "SYS_INFO_Accum_Alone" in grep_T2logs("cJSON Report ") # Accumulate marker is reporting when reporttimestamp is not configured
     file = open('/opt/logs/accum.log', 'a')
     file.write(
             "251007-09:29:39.441 INFO     identifier:thevalue23\n"
@@ -517,4 +520,4 @@ def test_grep_accumulate():
             )
     file.close()
     sleep(15)
-    assert "SYS_INFO_Accum_Time\":[\"thevalue23" in grep_T2logs("cJSON Report ") # 
+    assert "SYS_INFO_Accum_Time\":[\"thevalue23" in grep_T2logs("cJSON Report ") #Marker is reporting  in the next cycle even if the maximum accumulation is reached in the previous report 

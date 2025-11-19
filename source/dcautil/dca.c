@@ -43,6 +43,7 @@
 #define TR181BUF_LENGTH 512
 #define OBJ_DELIMITER "{i}"
 #define DELIMITER_SIZE 3
+#define SPLITMARKER_SUFFIX  "_split"
 
 #include "t2log_wrapper.h"
 #include "t2common.h"
@@ -543,6 +544,7 @@ static int getAbsolutePatternMatch(FileDescriptor* fileDescriptor, GrepMarker* m
     size_t buflen = 0;
     size_t patlen = strlen(pattern);
     const char *last_found = NULL;
+    char *splitSuffix = NULL;
 
     for ( int i = 0; i < 2; i++ )
     {
@@ -614,8 +616,20 @@ static int getAbsolutePatternMatch(FileDescriptor* fileDescriptor, GrepMarker* m
     }
     memcpy(result, start, length);
     result[length] = '\0';
-
-    marker->u.markerValue = result;
+    //TODO Remove the logic to limit the markers with value as 0 RDKB-62477
+    splitSuffix = strstr(marker->markerName, SPLITMARKER_SUFFIX);
+    if(splitSuffix != NULL && strcmp(splitSuffix, SPLITMARKER_SUFFIX) == 0)
+    {
+        if(strcmp(result, "0") == 0) {
+            marker->u.markerValue = NULL;
+	    free(result);
+	    result = NULL;
+        }
+        else{
+            marker->u.markerValue = result;
+        }
+    }
+    
     T2Debug("%s --out\n", __FUNCTION__);
     return 0;
 }

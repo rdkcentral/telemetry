@@ -627,7 +627,9 @@ static int getAbsolutePatternMatch(FileDescriptor* fileDescriptor, GrepMarker* m
             marker->u.markerValue = result;
         }
     }
-
+    else{
+        marker->u.markerValue = result;
+    }
     T2Debug("%s --out\n", __FUNCTION__);
     return 0;
 }

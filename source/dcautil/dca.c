@@ -618,7 +618,7 @@ static int getAbsolutePatternMatch(FileDescriptor* fileDescriptor, GrepMarker* m
     //TODO Remove this logic to limit the markers with value as 0 after the dashboards are updated with the present framework RDKB-62477
     if(strcmp(result, "0") == 0 )
     {
-        T2Warning("Dropping the marker %s as the value is 0\n", marker->markerName);
+        T2Debug("Dropping the marker %s as the value is 0\n", marker->markerName);
         marker->u.markerValue = NULL;
         free(result);
         result = NULL;

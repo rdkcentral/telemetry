@@ -543,6 +543,20 @@ static char* getAbsolutePatternMatch(FileDescriptor* fileDescriptor, const char*
     }
     memcpy(result, start, length);
     result[length] = '\0';
+
+    //TODO Remove this logic to limit the markers with value as 0 after the dashboards are updated with the present framework RDKB-62477
+    if(strcmp(result, "0") == 0 )
+    {
+        T2Debug("Dropping the marker %s as the value is 0\n", marker->markerName);
+        marker->u.markerValue = NULL;
+        free(result);
+        result = NULL;
+    }
+    else
+    {
+        marker->u.markerValue = result;
+    }
+
     T2Debug("%s --out\n", __FUNCTION__);
     return result;
 }

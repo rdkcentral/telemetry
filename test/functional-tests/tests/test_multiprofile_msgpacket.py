@@ -71,6 +71,7 @@ def test_without_namefield():
     assert LOG_MSG not in grep_T2logs(LOG_MSG) #Empty string in namefield 
     assert HASH_ERROR_MSG in grep_T2logs(HASH_ERROR_MSG) #without hash field
 
+
 #negative case without hashvalue, without version field & without Protocol field
 @pytest.mark.run(order=2)
 def test_without_hashvalue():
@@ -166,7 +167,9 @@ def test_reporting_interval_working():
     rbus_set_data(T2_TEMP_REPORT_PROFILE_PARAM, "string", data_temp_with_reporting_interval)
     sleep(2)
     REPORTING_INTERVAL_LOG1 = grep_T2logs("reporting interval is taken - TR_AC732")
-
+    run_shell_command("echo WIFI_MAC_10_TOTAL_COUNT:2 >> /opt/logs/wifihealth.txt")
+    sleep(2)
+    run_shell_command("echo WIFI_MAC_17_TOTAL_COUNT:0 >> /opt/logs/wifihealth.txt")
     command1 = ["telemetry2_0_client TEST_EVENT_MARKER_1 300"]
     command2 = ["telemetry2_0_client TEST_EVENT_MARKER_2 occurrance1"]
     command3 = ["telemetry2_0_client TEST_EVENT_MARKER_2 occurrance2"]
@@ -185,6 +188,8 @@ def test_reporting_interval_working():
     assert "TEST_EVENT_MARKER_1\":\"2" in grep_T2logs("FR2_US_TC3") # 234 -Include data from data source T2 events as count
     assert "occurrance1\",\"occurrance2" in grep_T2logs("FR2_US_TC3") # 212 - Include data from data source as T2 events - 1
     assert "TEST_EVENT_MARKER_2_CT" in grep_T2logs("FR2_US_TC3") # 248 - Event accumulate with and without timestamp in report profiles for event markers.
+    assert "Total_6G_clients_split" in grep_T2logs("FR2_US_TC3")
+    assert "XWIFIS_CNT_2_split" in grep_T2logs("FR2_US_TC3")
                                                                     # 216 - Epoch time/UTC time support
     assert "Device.X_RDK_Xmidt.SendData" in grep_T2logs("T2 asyncMethodHandler called: ") # 228 - Report sending with protocol as RBUS_METHOD in report profiles.
     assert "send via rbusMethod is failure" in grep_T2logs("send via rbusMethod is failure") # 225 - Caching of upload failed reports - 1

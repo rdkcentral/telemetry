@@ -27,7 +27,6 @@ from datetime import datetime as dt
 
 from helper_functions import *
 
-
 @pytest.mark.run(order=1)
 def test_precondition():
     adminSupport_cache()
@@ -196,3 +195,24 @@ def test_xconf_datamodel():
     kill_telemetry(29)
     sleep(5)
     assert "Test_datamodel_1" in grep_T2logs("cJSON Report")
+
+pytest.mark.run(order=14)
+def test_xconf_datamodel():
+    kill_telemetry(9)
+    RUN_START_TIME = dt.now()
+    remove_T2bootup_flag()
+    clear_persistant_files()
+    rbus_set_data("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.ConfigURL", "string", "https://mockxconf:50050/loguploader/getT2DCMSettings")
+    clear_T2logs()
+    run_telemetry()
+    os.makedirs('/opt/logs', exist_ok=True)
+    command1 = ["echo 'WIFI_MAC_10_TOTAL_COUNT:0.1' > /opt/logs/wifihealth.txt"]
+    run_shell_command(command1)
+    sleep(5)
+    command2 = ["echo 'Total_MoCA_Clients=0' > /opt/logs/LM.txt.0"]
+    run_shell_command(command2)
+    sleep(10)
+    kill_telemetry(29)
+    sleep(10)
+    assert "XWIFIS_CNT_2_split" in grep_T2logs("cJSON Report")
+    assert "Total_MoCA_Clients_split" not in grep_T2logs("cJSON Report")

@@ -196,8 +196,8 @@ def test_xconf_datamodel():
     sleep(5)
     assert "Test_datamodel_1" in grep_T2logs("cJSON Report")
 
-pytest.mark.run(order=14)
-def test_xconf_datamodel():
+pytest.mark.run(order=15)
+def test_xconf_split_markers():
     kill_telemetry(9)
     RUN_START_TIME = dt.now()
     remove_T2bootup_flag()

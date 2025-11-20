@@ -188,7 +188,7 @@ def test_reporting_interval_working():
     assert "TEST_EVENT_MARKER_1\":\"2" in grep_T2logs("FR2_US_TC3") # 234 -Include data from data source T2 events as count
     assert "occurrance1\",\"occurrance2" in grep_T2logs("FR2_US_TC3") # 212 - Include data from data source as T2 events - 1
     assert "TEST_EVENT_MARKER_2_CT" in grep_T2logs("FR2_US_TC3") # 248 - Event accumulate with and without timestamp in report profiles for event markers.
-    assert "Total_6G_clients_split" in grep_T2logs("FR2_US_TC3")
+    assert "Total_6G_clients_split" not in grep_T2logs("FR2_US_TC3")
     assert "XWIFIS_CNT_2_split" in grep_T2logs("FR2_US_TC3")
                                                                     # 216 - Epoch time/UTC time support
     assert "Device.X_RDK_Xmidt.SendData" in grep_T2logs("T2 asyncMethodHandler called: ") # 228 - Report sending with protocol as RBUS_METHOD in report profiles.

@@ -543,20 +543,6 @@ static char* getAbsolutePatternMatch(FileDescriptor* fileDescriptor, const char*
     }
     memcpy(result, start, length);
     result[length] = '\0';
-
-    //TODO Remove this logic to limit the markers with value as 0 after the dashboards are updated with the present framework RDKB-62477
-    if(strcmp(result, "0") == 0 )
-    {
-        T2Debug("Dropping the marker %s as the value is 0\n", marker->markerName);
-        marker->u.markerValue = NULL;
-        free(result);
-        result = NULL;
-    }
-    else
-    {
-        marker->u.markerValue = result;
-    }
-
     T2Debug("%s --out\n", __FUNCTION__);
     return result;
 }
@@ -601,8 +587,16 @@ static int processPatternWithOptimizedFunction(const GrepMarker* marker, Vector*
     {
         // Get the last occurrence of the pattern in the memory-mapped data
         last_found = getAbsolutePatternMatch(filedescriptor, pattern);
+
         if (last_found)
         {
+            //TODO Remove this logic to limit the markers with value as 0 after the dashboards are updated with the present framework RDKB-62477
+            if(strcmp(last_found, "0") == 0 )
+            {
+                T2Debug("Dropping the marker %s as the value is 0\n", header);
+                free(last_found);
+                last_found = NULL;
+            }
             // If a match is found, process it accordingly
             GrepResult* result = createGrepResultObj(header, last_found, trimParameter, regexParameter);
             if(last_found)

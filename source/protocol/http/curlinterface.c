@@ -31,7 +31,6 @@
 #include <sys/wait.h>
 #include <curl/curl.h>
 #include <signal.h>
-#include <openssl/conf.h>
 #include <openssl/crypto.h>
 
 
@@ -445,12 +444,6 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
     if(childPid == 0)
     {
         OPENSSL_init_crypto(OPENSSL_INIT_NO_LOAD_CONFIG, NULL);
-        const CONF *conf = NCONF_default();
-        if (!conf) {
-            T2Error("%s Config is NOT loaded. OK.\n", __func__);
-        } else {
-            T2Error("%s Config loaded (unexpected).\n", __func__);
-        }
         curl = curl_easy_init();
         if(curl)
         {

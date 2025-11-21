@@ -587,6 +587,14 @@ static int processPatternWithOptimizedFunction(const GrepMarker* marker, Vector*
     {
         // Get the last occurrence of the pattern in the memory-mapped data
         last_found = getAbsolutePatternMatch(filedescriptor, pattern);
+        //TODO Remove this logic to limit the markers with value as 0 after the dashboards are updated with the present framework RDKB-62477
+        if(last_found != NULL && strcmp(last_found, "0") == 0 )
+        {
+            T2Debug("Dropping the marker %s as the value is 0\n", header);
+            free(last_found);
+            last_found = NULL;
+        }
+
         if (last_found)
         {
             // If a match is found, process it accordingly

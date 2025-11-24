@@ -247,8 +247,8 @@ static void* CollectAndReportXconf(void* data)
             T2Info("%s ++in profileName : %s\n", __FUNCTION__, profile->name);
         }
 
-
-        clock_gettime(CLOCK_MONOTONIC, &startTime);
+        int clockReturn = 0;
+        clockReturn = clock_gettime(CLOCK_MONOTONIC, &startTime);
         if(profile->encodingType != NULL && !strcmp(profile->encodingType, "JSON"))
         {
             if(T2ERROR_SUCCESS != initJSONReportXconf(&profile->jsonReportObj, &valArray))
@@ -309,8 +309,16 @@ static void* CollectAndReportXconf(void* data)
             ret = prepareJSONReport(profile->jsonReportObj, &jsonReport);
             destroyJSONReport(profile->jsonReportObj);
             profile->jsonReportObj = NULL;
-            clock_gettime(CLOCK_MONOTONIC, &endTime);
-            T2Info("%s Xconf Profile Processing Time in seconds : %ld\n", profile->name, (long)(endTime.tv_sec - startTime.tv_sec));
+            clockReturn |= clock_gettime(CLOCK_MONOTONIC, &endTime);
+            if(clockReturn)
+            {
+                T2Warning("Error in Fetching the time Elapsed");
+            }
+            else
+            {
+                T2Info("%s Xconf Profile Processing Time in seconds : %ld\n", profile->name, (long)(endTime.tv_sec - startTime.tv_sec));
+            }
+            
             if(ret != T2ERROR_SUCCESS)
             {
                 T2Error("Unable to generate report for : %s\n", profile->name);
@@ -451,9 +459,17 @@ static void* CollectAndReportXconf(void* data)
             T2Warning("Failed to save grep config to file for profile: %s\n", profile->name);
         }
 #endif
-        clock_gettime(CLOCK_MONOTONIC, &endTime);
-        getLapsedTime(&elapsedTime, &endTime, &startTime);
-        T2Info("Elapsed Time for : %s = %lu.%lu (Sec.NanoSec)\n", profile->name, (unsigned long)elapsedTime.tv_sec, elapsedTime.tv_nsec);
+        clockReturn |= clock_gettime(CLOCK_MONOTONIC, &endTime);
+        if (clockReturn)
+        {
+            T2Warning("Error in Fetching the time Elapsed");
+        }
+        else
+        {
+            getLapsedTime(&elapsedTime, &endTime, &startTime);
+            T2Info("Elapsed Time for : %s = %lu.%lu (Sec.NanoSec)\n", profile->name, (unsigned long)elapsedTime.tv_sec, elapsedTime.tv_nsec);
+        }
+        
         if(jsonReport)
         {
             free(jsonReport);

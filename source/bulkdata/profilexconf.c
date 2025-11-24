@@ -318,7 +318,7 @@ static void* CollectAndReportXconf(void* data)
             {
                 T2Info("%s Xconf Profile Processing Time in seconds : %ld\n", profile->name, (long)(endTime.tv_sec - startTime.tv_sec));
             }
-            
+
             if(ret != T2ERROR_SUCCESS)
             {
                 T2Error("Unable to generate report for : %s\n", profile->name);
@@ -469,7 +469,7 @@ static void* CollectAndReportXconf(void* data)
             getLapsedTime(&elapsedTime, &endTime, &startTime);
             T2Info("Elapsed Time for : %s = %lu.%lu (Sec.NanoSec)\n", profile->name, (unsigned long)elapsedTime.tv_sec, elapsedTime.tv_nsec);
         }
-        
+
         if(jsonReport)
         {
             free(jsonReport);

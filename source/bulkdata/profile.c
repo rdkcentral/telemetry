@@ -349,8 +349,7 @@ static void* CollectAndReport(void* data)
         struct timespec endTime;
         struct timespec elapsedTime;
         char* customLogPath = NULL;
-
-
+        int clockReturn = 0;
 
         T2ERROR ret = T2ERROR_FAILURE;
         if( profile->name == NULL || profile->encodingType == NULL || profile->protocol == NULL )
@@ -374,7 +373,7 @@ static void* CollectAndReport(void* data)
         T2Info("%s ++in profileName : %s\n", __FUNCTION__, profile->name);
 
 
-        clock_gettime(CLOCK_MONOTONIC, &startTime);
+        clockReturn = clock_gettime(CLOCK_MONOTONIC, &startTime);
         if( !strcmp(profile->encodingType, "JSON") || !strcmp(profile->encodingType, "MessagePack"))
         {
             JSONEncoding *jsonEncoding = profile->jsonEncoding;
@@ -749,9 +748,16 @@ static void* CollectAndReport(void* data)
         {
             T2Error("Unsupported encoding format : %s\n", profile->encodingType);
         }
-        clock_gettime(CLOCK_MONOTONIC, &endTime);
-        getLapsedTime(&elapsedTime, &endTime, &startTime);
-        T2Info("Elapsed Time for : %s = %lu.%lu (Sec.NanoSec)\n", profile->name, (unsigned long )elapsedTime.tv_sec, elapsedTime.tv_nsec);
+        clockReturn |= clock_gettime(CLOCK_MONOTONIC, &endTime);
+        if(clockReturn)
+        {
+            T2Warning("Error in Fetching the time Elapsed");
+        }
+        else
+        {
+            getLapsedTime(&elapsedTime, &endTime, &startTime);
+            T2Info("Elapsed Time for : %s = %lu.%lu (Sec.NanoSec)\n", profile->name, (unsigned long )elapsedTime.tv_sec, elapsedTime.tv_nsec);
+        }
         if(ret == T2ERROR_SUCCESS && jsonReport)
         {
             free(jsonReport);

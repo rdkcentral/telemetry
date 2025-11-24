@@ -159,8 +159,7 @@ TEST(STRNSTR, SAMPLE6)
 }
 //dcaproc.c
 
-#if 0
-TEST(GETPROCUSAGE, GREPRESULTLIST_NULL)
+TEST(GETPROCUSAGE, MARKER_NULL)
 {
    EXPECT_EQ(-1, getProcUsage("telemetry2_0", NULL, NULL));
 }
@@ -173,7 +172,6 @@ TEST(GETPROCUSAGE, PROCESS_NULL)
    EXPECT_EQ(-1, getProcUsage(NULL, NULL, NULL));
    free(filename);
 }
-#endif
 
 TEST(GETPROCPIDSTAT, PINFO_NULL)
 {
@@ -276,12 +274,17 @@ TEST(loadSavedSeekConfig, profilename_NULL)
 #endif
 
 
-#if 0
-TEST(GETLOADAVG, VECTOR_REGEX_NULL)
+TEST(GETLOADAVG, MARKER_NULL)
 {
     EXPECT_EQ(0, getLoadAvg(NULL));
 }
-#endif
+
+TEST(GETLOADAVG, VALID_MARKER)
+{
+    TopMarker* topMarker = (TopMarker*) malloc(sizeof(TopMarker));
+    memset(topMarker, 0, sizeof(TopMarker));
+    EXPECT_EQ(1, getLoadAvg(topMarker));
+}
 
 TEST(CREATEGREPSEEKPROFILE, SEEKMAPCREATE_CHECK)
 {

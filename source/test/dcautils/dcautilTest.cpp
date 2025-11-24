@@ -314,21 +314,29 @@ TEST(CLEARCONFVAL, FREECONFVAL)
         clearConfVal();
 }
 
-#if 0
 //dca.c
 TEST(PROCESSTOPPATTERN, VECTOR_NULL)
 {
     Vector* topMarkerlist = NULL;
     Vector_Create(&topMarkerlist);
-    Vector_PushBack(topMarkerlist, (void*) strdup("cpu_telemetry2_0"));
-    Vector_PushBack(topMarkerlist, (void*) strdup("mem_telemetry2_0"));
-    EXPECT_EQ(-1, processTopPattern("RDK_Profile", topMarkerlist, 1));
+    TopMarker* topMarker = (TopMarker*) malloc(sizeof(TopMarker));
+    memset(topMarker, 0, sizeof(TopMarker));
+    topMarker->markerName = strdup("cpu_telemetry2_0");
+    topMarker->searchString = strdup("telemetry2_0");
+    topMarker->trimParam = false;
+    topMarker->regexParam = NULL;
+    topMarker->logFile = strdup("top_log.txt");
+    topMarker->skipFreq = 0;
+    topMarker->paramType = strdup("grep");
+    Vector_PushBack(topMarkerlist, (void*) topMarker);
+    EXPECT_EQ(0, processTopPattern("RDK_Profile", topMarkerlist, 1));
     EXPECT_EQ(-1, processTopPattern(NULL, topMarkerlist, 1));
     EXPECT_EQ(-1, processTopPattern("RDK_Profile",NULL, 1));
     Vector_Destroy(topMarkerlist, free);
     topMarkerlist = NULL;
 }
 
+#if 0
 TEST(getDCAResultsInVector, markerlist_NULL)
 {
     

@@ -60,7 +60,6 @@ def test_without_namefield():
     #Enabling debug log lines to get the HASH_ERROR_MSG in the logs
     sleep(2)
 
-'''
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_without_namefield))
     sleep(10) 
 
@@ -495,7 +494,6 @@ def test_stress_test():
     pid2 = run_shell_command(command_to_get_pid)
     assert pid1==pid2 #  253 - Stress testing of interaction with rbus interface to check for any deadlocks or rbus timeouts.
 
-'''
 @pytest.mark.run(order=15)
 def test_grep_accumulate():
     os.makedirs('/opt/logs', exist_ok=True)

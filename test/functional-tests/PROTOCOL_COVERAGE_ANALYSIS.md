@@ -369,121 +369,6 @@ T2ERROR sendCachedReportsOverRBUSMethod(char *methodName, Vector* inputParams, V
 
 ---
 
-## Coverage Gaps Identified
-
-### What Was NOT Covered in Existing Feature Files:
-
-#### 1. **HTTP Curl Implementation** (0% coverage)
-- No scenarios for sendReportOverHTTP function
-- No scenarios for curl initialization and configuration
-- No scenarios for setHeader, setPayload, setMtlsHeaders
-- No scenarios for curl_easy_setopt error handling
-- No scenarios for HTTP header configuration
-- No scenarios for network interface selection
-
-#### 2. **mTLS Certificate Management** (Minimal coverage)
-- Existing: Basic mention of mTLS support
-- Missing: rdkcertselector initialization and usage
-- Missing: Certificate retrieval with rdkcertselector_getCert
-- Missing: Certificate retry loop with TRY_ANOTHER status
-- Missing: State red mode and recovery certificates
-- Missing: SSL engine configuration
-- Missing: Certificate selector cleanup
-- Missing: File URI parsing ("file://" prefix)
-
-#### 3. **Process Forking for HTTP** (0% coverage)
-- No scenarios for fork() usage
-- No scenarios for parent-child process architecture
-- No scenarios for IPC via pipes
-- No scenarios for signal handler blocking/unblocking
-- No scenarios for childResponse structure
-- No scenarios for waitpid and process synchronization
-- No scenarios for OpenSSL memory leak prevention rationale
-
-#### 4. **HTTP Output File Handling** (0% coverage)
-- No scenarios for CURL_OUTPUT_FILE (/tmp/output.txt)
-- No scenarios for writeToFile callback
-- No scenarios for curlFileMutex thread safety
-- No scenarios for pthread_once initialization
-- No scenarios for file open/close operations
-
-#### 5. **Cached Report Transmission** (0% coverage)
-- No scenarios for sendCachedReportsOverHTTP
-- No scenarios for sendCachedReportsOverRBUSMethod
-- No scenarios for Vector-based report list processing
-- No scenarios for sequential report sending
-- No scenarios for failure handling in cached transmission
-- No scenarios for memory cleanup after successful send
-
-#### 6. **RBUS Method Implementation** (0% coverage)
-- No scenarios for sendReportsOverRBUSMethod
-- No scenarios for rbusObject construction
-- No scenarios for rbusValue parameter handling
-- No scenarios for payloadlen and payload default parameters
-- No scenarios for rbusMethodCaller invocation
-- No scenarios for asyncMethodHandler callback
-- No scenarios for isRbusMethod flag
-
-#### 7. **RBUS Method Async Handling** (0% coverage)
-- No scenarios for async callback mechanism
-- No scenarios for pthread_mutex_trylock retry loop
-- No scenarios for MAX_RETRY_ATTEMPTS (5 retries)
-- No scenarios for 2-second sleep between retries
-- No scenarios for T2ERROR_NO_RBUS_METHOD_PROVIDER
-- No scenarios for rbusMethodMutex management
-
-#### 8. **Error Handling** (Minimal coverage)
-- Existing: Basic error mentions
-- Missing: NULL parameter validation
-- Missing: pipe() creation failure
-- Missing: fork() failure handling
-- Missing: curl_easy_init failure
-- Missing: write/read pipe failures
-- Missing: HTTP response code handling (non-200)
-- Missing: curl timeout handling (30 seconds)
-- Missing: childCurlResponse error tracking
-
-#### 9. **Security Features** (Minimal coverage)
-- Existing: Basic mTLS mention
-- Missing: rdkconfig_free for secure password cleanup
-- Missing: TLS 1.2 version enforcement
-- Missing: Peer certificate verification
-- Missing: P12 certificate format
-- Missing: State red mode security
-
-#### 10. **Performance and Resource Management** (0% coverage)
-- No scenarios for OpenSSL memory leak prevention
-- No scenarios for fork-based memory isolation
-- No scenarios for curl handle reuse within child
-- No scenarios for mutex contention minimization
-- No scenarios for resource cleanup in child/parent
-
-#### 11. **Logging and Debugging** (0% coverage)
-- No scenarios for HTTP transmission logging
-- No scenarios for RBUS method logging
-- No scenarios for certificate selector logging
-- No scenarios for curl_easy_strerror usage
-- No scenarios for line number tracking
-- No scenarios for childPid logging
-
-#### 12. **Protocol Selection** (Partial coverage)
-- Existing: Basic protocol mention
-- Missing: sendReportOverHTTP invocation from profile
-- Missing: sendReportsOverRBUSMethod invocation from profile
-- Missing: Protocol-specific parameter extraction
-- Missing: Unsupported protocol handling
-
-#### 13. **Integration with Profiles** (Minimal coverage)
-- Existing: Basic report sending mention
-- Missing: T2HTTP destination configuration
-- Missing: RBUS_METHOD configuration
-- Missing: Input parameter construction from profile
-- Missing: Transmission success/failure handling
-- Missing: Report caching on failure
-- Missing: Cached report retry logic
-
----
-
 ## New Feature File Structure
 
 ### `telemetry_protocol.feature` - 11 Major Categories:
@@ -596,10 +481,6 @@ Default parameters: "payloadlen" (Int32), "payload" (String)
 | Protocol selection | ⚠️ 20% | ✅ 80% | 100% |
 | Profile integration | ⚠️ 15% | ✅ 85% | 100% |
 
-### Coverage Improvement:
-- **Before**: ~10% of protocol layer functionality documented
-- **After**: ~100% of protocol layer functionality documented
-- **Improvement**: +90% coverage
 
 
 ---
@@ -646,7 +527,7 @@ This feature file should be used as:
 - **Protocol Specification** for developers implementing report transmission
 - **Implementation Guide** for developers maintaining protocol layer
 - **Test Plan** for QA engineers validating protocol functionality
-- **Documentation** for architects understanding transmission architecture
+- **Documentation** for understanding transmission architecture
 - **Reference** for validation engineers performing acceptance testing
 
 ### Key Achievements:

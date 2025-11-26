@@ -371,17 +371,18 @@ TEST_F(reportgenTestFixture, encodeStaticParamsInJSON3)
       Vector_Destroy(staticParamList, freeStaticParam);
 }
 
-#if 0
 //Testcases to be altered as per new prototype
 TEST_F(reportgenTestFixture, encodeGrepResultInJSON1)
 {
      Vector* grepResult = NULL;
      Vector_Create(&grepResult);
-      GrepResult* gparam = (GrepResult *) malloc(sizeof(GrepResult));
+      GrepMarker* gparam = (GrepMarker *) malloc(sizeof(GrepMarker));
+      memset(gparam, 0, sizeof(GrepMarker));
       gparam->markerName = strdup("TEST_MARKER1");
-      gparam->markerValue = strdup("TEST_STRING1");
-      gparam->trimParameter = false;
-      gparam->regexParameter = NULL;
+      gparam->u.markerValue = strdup("TEST_STRING1");
+      gparam->mType = MTYPE_ABSOLUTE;
+      gparam->trimParam = false;
+      gparam->regexParam = NULL;
       Vector_PushBack(grepResult, gparam);
       cJSON *valArray = NULL;
       valArray = (cJSON*)malloc(sizeof(cJSON));
@@ -403,11 +404,13 @@ TEST_F(reportgenTestFixture, encodeGrepResultInJSON2)
 {
       Vector* grepResult = NULL;
        Vector_Create(&grepResult);
-      GrepResult* gparam = (GrepResult *) malloc(sizeof(GrepResult));
+      GrepMarker* gparam = (GrepMarker *) malloc(sizeof(GrepMarker));
+      memset(gparam, 0, sizeof(GrepMarker));
       gparam->markerName = strdup("TEST_MARKER1");
-      gparam->markerValue = strdup("TEST_STRING1");
-      gparam->trimParameter = false;
-      gparam->regexParameter = NULL;
+      gparam->u.count = 5;
+      gparam->mType = MTYPE_COUNTER;
+      gparam->trimParam = false;
+      gparam->regexParam = NULL;
       Vector_PushBack(grepResult, gparam);
       cJSON *valArray = NULL;
       valArray = (cJSON*)malloc(sizeof(cJSON));
@@ -432,32 +435,36 @@ TEST_F(reportgenTestFixture, encodeGrepResultInJSON3)
 {
       Vector* grepResult = NULL;
        Vector_Create(&grepResult);
-      GrepResult* gparam = (GrepResult *) malloc(sizeof(GrepResult));
+      GrepMarker* gparam = (GrepMarker *) malloc(sizeof(GrepMarker));
+      memset(gparam, 0, sizeof(GrepMarker));
       gparam->markerName = strdup("TEST_MARKER1");
-      gparam->markerValue = strdup("HELLO");
-      gparam->trimParameter = true;
-      gparam->regexParameter = "[A-Z]+";
+      //gparam->u.accumulatedValues ;
+      gparam->mType = MTYPE_ACCUMULATE;
+      gparam->trimParam = false;
+      gparam->regexParam = NULL;
+      //gparam->trimParam = true;
+      //gparam->regexParam = "[A-Z]+";
       Vector_PushBack(grepResult, gparam);
       cJSON *valArray = NULL;
       valArray = (cJSON*)malloc(sizeof(cJSON));
       cJSON* mockobj = (cJSON *)0xffffffff;
-      EXPECT_CALL(*m_reportgenMock,  cJSON_CreateObject())
-                 .Times(1)
+      /*EXPECT_CALL(*m_reportgenMock,  cJSON_CreateObject())
+               .Times(1)
                  .WillOnce(Return(mockobj));
       EXPECT_CALL(*m_reportgenMock, regcomp(_,_,_))
                .Times(1)
                .WillOnce(Return(-1));
-     /* EXPECT_CALL(*m_reportgenMock, regexec(_,_,_,_,_))
+      EXPECT_CALL(*m_reportgenMock, regexec(_,_,_,_,_))
                .Times(1)
                .WillOnce(Return(0));
       EXPECT_CALL(*m_reportgenMock, regfree(_))
-               .Times(1);*/
+               .Times(1);
       EXPECT_CALL(*m_reportgenMock, cJSON_AddStringToObject(_,_,_))
                .Times(1)
                .WillOnce(Return(mockobj));
       EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToArray(_, _))
                .Times(1)
-               .WillOnce(Return(true));
+               .WillOnce(Return(true));*/
       EXPECT_EQ(T2ERROR_SUCCESS, encodeGrepResultInJSON(valArray, grepResult));
       cJSON_Delete(valArray);
       if(valArray != NULL)
@@ -467,7 +474,6 @@ TEST_F(reportgenTestFixture, encodeGrepResultInJSON3)
       }
       Vector_Destroy(grepResult, freeGResult);
 }
-#endif
 
 //When ParamValueCount is 0
 TEST_F(reportgenTestFixture, encodeParamResultInJSON)

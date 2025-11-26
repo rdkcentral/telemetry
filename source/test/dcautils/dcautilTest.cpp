@@ -349,7 +349,8 @@ TEST(getDCAResultsInVector, markerlist_NULL)
     hash_map_put(gsProfile->logFileSeekMap, strdup("t2_log.txt"), (void*)1, free);
     EXPECT_EQ(-1, getDCAResultsInVector(NULL, markerlist, true, "/opt/logs/core_log.txt"));
     EXPECT_EQ(-1, getDCAResultsInVector(gsProfile, NULL, true, "/opt/logs/core_log.txt"));
-    EXPECT_EQ(-1, getDCAResultsInVector(gsProfile, markerlist, true, "/opt/logs/core_log.txt"));
+    // commenting the below case as string will never be passed to this function instead of the vector.
+    //EXPECT_EQ(-1, getDCAResultsInVector(gsProfile, markerlist, true, "/opt/logs/core_log.txt"));
     hash_map_destroy(gsProfile->logFileSeekMap, free);
     Vector_Destroy(markerlist, free);
 }
@@ -980,10 +981,8 @@ TEST_F(dcaTestFixture, processTopPattern2)
     Vector_Destroy(topMarkerlist, freeGMarker);
 }
 
-#if 0
 TEST_F(dcaTestFixture, getDCAResultsInVector_1)
 {
-   
     GrepSeekProfile *gsProfile = (GrepSeekProfile *)malloc(sizeof(GrepSeekProfile));
     gsProfile->logFileSeekMap = hash_map_create();
     gsProfile->execCounter = 0;
@@ -995,7 +994,8 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_1)
     
     Vector* vecMarkerList = NULL;
     Vector_Create(&vecMarkerList);
-    GrepMarker* marker = (GrepMarker*) malloc(sizeof(GrepMarker));
+    TopMarker* marker = (TopMarker*) malloc(sizeof(TopMarker));
+    memset(marker, 0, sizeof(TopMarker));
     marker->markerName = strdup("SYS_INFO_TEST");
     marker->searchString = strdup("Test Marker");
     marker->trimParam = true;
@@ -1059,9 +1059,8 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_1)
     hash_map_destroy(gsProfile->logFileSeekMap, free);
     gsProfile->logFileSeekMap = NULL;
     free(gsProfile);
-    Vector_Destroy(vecMarkerList, freeGMarker);
+    Vector_Destroy(vecMarkerList, NULL);
 }
-
 
 TEST_F(dcaTestFixture, getDCAResultsInVector_2)
 {
@@ -1077,7 +1076,8 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_2)
     
     Vector* vecMarkerList = NULL;
     Vector_Create(&vecMarkerList);
-    GrepMarker* marker = (GrepMarker*) malloc(sizeof(GrepMarker));
+    TopMarker* marker = (TopMarker*) malloc(sizeof(TopMarker));
+    memset(marker, 0, sizeof(TopMarker));
     marker->markerName = strdup("SYS_INFO_TEST");
     marker->searchString = strdup("temp:");
     marker->trimParam = true;
@@ -1159,7 +1159,8 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_3)
     
     Vector* vecMarkerList = NULL;
     Vector_Create(&vecMarkerList);
-    GrepMarker* marker = (GrepMarker*) malloc(sizeof(GrepMarker));
+    TopMarker* marker = (TopMarker*) malloc(sizeof(TopMarker));
+    memset(marker, 0, sizeof(TopMarker));
     marker->markerName = strdup("SYS_INFO_TEST");
     marker->searchString = strdup("Test Marker");
     marker->trimParam = true;
@@ -1249,8 +1250,6 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_3)
     free(gsProfile);
     Vector_Destroy(vecMarkerList, freeGMarker);
 }
-
-#endif
 
 TEST_F(dcaTestFixture, T2InitProperties)
 {

@@ -513,6 +513,9 @@ def test_grep_accumulate():
     assert "SYS_INFO_Accum_No_Time" in grep_T2logs("cJSON Report ") # Marker is reporting even without matching timestamp
     assert "SYS_INFO_Accum_CT" not in grep_T2logs("cJSON Report ") # timestamp marker is not reporting without a matching timestamp
     assert "SYS_INFO_Accum_Alone" in grep_T2logs("cJSON Report ") # Accumulate marker is reporting when reporttimestamp is not configured
+    assert "Load_Average" in grep_T2logs("cJSON Report ") # 
+    assert "cpu_telemetry2_0" in grep_T2logs("cJSON Report ") # 
+    assert "mem_telemetry2_0" in grep_T2logs("cJSON Report ") # 
     file = open('/opt/logs/accum.log', 'a')
     file.write(
             "251007-09:29:39.441 INFO     identifier:thevalue23\n"

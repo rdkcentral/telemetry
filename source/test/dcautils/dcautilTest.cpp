@@ -330,16 +330,16 @@ TEST(PROCESSTOPPATTERN, VECTOR_NULL)
     topMarker->paramType = strdup("grep");
     Vector_PushBack(topMarkerlist, (void*) topMarker);
     EXPECT_EQ(0, processTopPattern("RDK_Profile", topMarkerlist, 1));
+
     EXPECT_EQ(-1, processTopPattern(NULL, topMarkerlist, 1));
     EXPECT_EQ(-1, processTopPattern("RDK_Profile",NULL, 1));
+
     Vector_Destroy(topMarkerlist, free);
     topMarkerlist = NULL;
 }
 
-#if 0
 TEST(getDCAResultsInVector, markerlist_NULL)
 {
-    
     Vector* markerlist = NULL;
     Vector_Create(&markerlist);
     Vector_PushBack(markerlist, (void*) strdup("SYS_INFO_BOOTUP"));
@@ -353,8 +353,6 @@ TEST(getDCAResultsInVector, markerlist_NULL)
     hash_map_destroy(gsProfile->logFileSeekMap, free);
     Vector_Destroy(markerlist, free);
 }
-
-#endif
 
 class dcaTestFixture : public ::testing::Test {
 protected:
@@ -478,7 +476,6 @@ TEST_F(dcaTestFixture, saveSeekConfigtoFile)
 
 //dcaproc.c
 
-#if 0
 TEST_F(dcaTestFixture, getProcUsage)
 {
     Vector* topMarkerlist = NULL;
@@ -494,8 +491,6 @@ TEST_F(dcaTestFixture, getProcUsage)
     topMarker->reportEmptyParam = true;
     Vector_PushBack(topMarkerlist, (void*) topMarker);
 
-    Vector* outgrepResultlist = NULL;
-    Vector_Create(&outgrepResultlist);
     char* filename = strdup("/tmp/t2toplog/RDK_Profile");
 
     FILE* fp = (FILE*)NULL;
@@ -509,11 +504,9 @@ TEST_F(dcaTestFixture, getProcUsage)
             .WillOnce(Return(fp));
     #endif
     EXPECT_EQ(0, getProcUsage(topMarker->searchString, topMarker, filename));
-    Vector_Destroy(topMarkerlist, freeGMarker);
-    Vector_Destroy(outgrepResultlist, free);
+    Vector_Destroy(topMarkerlist, NULL);
     free(filename);
 }   
-#endif
 
 TEST_F(dcaTestFixture, getProcPidStat)
 {
@@ -666,10 +659,10 @@ TEST_F(dcaTestFixture, getTotalCpuTimes1)
 
 //legacyutils.c
 
-/*
 TEST_F(dcaTestFixture, getLoadAvg)
 {
     TopMarker* topMarker = (TopMarker*) malloc(sizeof(TopMarker));
+    memset(topMarker, 0, sizeof(TopMarker));
     topMarker->markerName = strdup("cpu_telemetry2_0");
     topMarker->searchString = strdup("telemetry2_0");
     topMarker->trimParam = false;
@@ -678,22 +671,15 @@ TEST_F(dcaTestFixture, getLoadAvg)
     topMarker->skipFreq = 0;
     topMarker->paramType = strdup("grep");
     topMarker->reportEmptyParam = true;
-    Vector* grepResultList;
-    Vector_Create(&grepResultList);
-    Vector_PushBack(grepResultList, (void*) strdup("SYS_INFO_BOOTUP"));
-    Vector_PushBack(grepResultList, (void*) strdup("SYS_INFO_MEM"));
     FILE* fp = (FILE*)NULL;
     EXPECT_CALL(*g_fileIOMock, fopen(_,_))
             .Times(1)
             .WillOnce(Return(fp));
     EXPECT_EQ(0, getLoadAvg(topMarker));
-    Vector_Destroy(grepResultList, free);
 }
 
-TEST_F(dcaTestFixture, getLoadAvg1)
+/*TEST_F(dcaTestFixture, getLoadAvg1)
 {
-    Vector* grepResultList;
-    Vector_Create(&grepResultList);
     GrepResult* loadAvg = (GrepResult*) malloc(sizeof(GrepResult));
     loadAvg->markerName = strdup("Load_Average");
     loadAvg->markerValue = strdup("2.15");
@@ -713,16 +699,19 @@ TEST_F(dcaTestFixture, getLoadAvg1)
     EXPECT_EQ(0, getLoadAvg(grepResultList, false, NULL));
     Vector_Destroy(grepResultList, freeGResult);
 }
+*/
 TEST_F(dcaTestFixture, getLoadAvg2)
 {
-    Vector* grepResultList;
-    Vector_Create(&grepResultList);
-    GrepResult* loadAvg = (GrepResult*) malloc(sizeof(GrepResult));
-    loadAvg->markerName = strdup("Load_Average");
-    loadAvg->markerValue = strdup("2.15");
-    loadAvg->trimParameter = true;
-    loadAvg->regexParameter = "[0-9]+";
-    Vector_PushBack(grepResultList, loadAvg);
+    TopMarker* topMarker = (TopMarker*) malloc(sizeof(TopMarker));
+    memset(topMarker, 0, sizeof(TopMarker));
+    topMarker->markerName = strdup("cpu_telemetry2_0");
+    topMarker->searchString = strdup("telemetry2_0");
+    topMarker->trimParam = true;
+    topMarker->regexParam = "[0-9]+";
+    topMarker->logFile = strdup("top_log.txt");
+    topMarker->skipFreq = 0;
+    topMarker->paramType = strdup("grep");
+    topMarker->reportEmptyParam = true;
     FILE* fp = (FILE*)0xffffffff;
     EXPECT_CALL(*g_fileIOMock, fopen(_,_))
             .Times(1)
@@ -733,10 +722,8 @@ TEST_F(dcaTestFixture, getLoadAvg2)
     EXPECT_CALL(*g_fileIOMock, fclose(_))
             .Times(1)
             .WillOnce(Return(0));
-    EXPECT_EQ(1, getLoadAvg(grepResultList, true, "[0-9]+"));
-    Vector_Destroy(grepResultList, freeGResult);
+    EXPECT_EQ(1, getLoadAvg(topMarker));
 }
-*/
 
 TEST_F(dcaTestFixture, initProperties)
 {
@@ -767,13 +754,15 @@ TEST_F(dcaTestFixture, initProperties)
     initProperties(&logpath, &perspath, &pagesize);
 }
 
-#if 0
 //dca.c
+#if 0
+//This testcase is not required as we don't pass trim and regex as separate arguments anymore
 TEST_F(dcaTestFixture, processTopPattern)
 {
     Vector* topMarkerlist = NULL;
     Vector_Create(&topMarkerlist);
     TopMarker* topMarker = (TopMarker*) malloc(sizeof(TopMarker));
+    memset(topMarker, 0, sizeof(TopMarker));
     topMarker->markerName = strdup("cpu_telemetry2_0");
     topMarker->searchString = strdup("telemetry2_0");
     topMarker->trimParam = false;
@@ -784,6 +773,7 @@ TEST_F(dcaTestFixture, processTopPattern)
     topMarker->reportEmptyParam = true;
   
     TopMarker* topMarker1 = (TopMarker*) malloc(sizeof(TopMarker));
+    memset(topMarker, 0, sizeof(TopMarker));
     topMarker1->markerName = strdup("cpu_telemetry2_0");
     topMarker1->searchString = strdup("telemetry2_0");
     topMarker1->trimParam = false;
@@ -821,21 +811,24 @@ TEST_F(dcaTestFixture, processTopPattern)
             .WillOnce(Return(fp));
     #endif
     EXPECT_EQ(0, processTopPattern("RDK_Profile", topMarkerlist, 1));
-    Vector_Destroy(topMarkerlist, freeGMarker);
+    Vector_Destroy(topMarkerlist, NULL);
 }
+#endif
 
 TEST_F(dcaTestFixture, processTopPattern1)
 {
     Vector* topMarkerlist = NULL;
     Vector_Create(&topMarkerlist);
-    GrepMarker* topMarker = (GrepMarker*) malloc(sizeof(GrepMarker));
+    TopMarker* topMarker = (TopMarker*) malloc(sizeof(TopMarker));
+    memset(topMarker, 0, sizeof(TopMarker));
     topMarker->markerName = strdup("cpu_telemetry2_0");
     topMarker->searchString = strdup("telemetry2_0");
     topMarker->trimParam = true;
     topMarker->regexParam = strdup("[0-9]+");
     topMarker->logFile = strdup("top_log.txt");
     topMarker->skipFreq = 0;
-    GrepMarker* topMarker1 = (GrepMarker*) malloc(sizeof(GrepMarker));
+    TopMarker* topMarker1 = (TopMarker*) malloc(sizeof(TopMarker));
+    memset(topMarker1, 0, sizeof(TopMarker));
     topMarker1->markerName = strdup("Load_Average");
     topMarker1->searchString = strdup("telemetry2_0");
     topMarker1->trimParam = true;
@@ -889,7 +882,8 @@ TEST_F(dcaTestFixture, processTopPattern2)
 {
     Vector* topMarkerlist = NULL;
     Vector_Create(&topMarkerlist);
-    GrepMarker* topMarker = (GrepMarker*) malloc(sizeof(GrepMarker));
+    TopMarker* topMarker = (TopMarker*) malloc(sizeof(TopMarker));
+    memset(topMarker, 0, sizeof(TopMarker));
     topMarker->markerName = strdup("cpu_telemetry2_0");
     topMarker->searchString = strdup("telemetry2_0");
     topMarker->trimParam = true;
@@ -898,7 +892,8 @@ TEST_F(dcaTestFixture, processTopPattern2)
     topMarker->skipFreq = 1;
     Vector_PushBack(topMarkerlist, (void*) topMarker);
 
-    GrepMarker* topMarker2 = (GrepMarker*) malloc(sizeof(GrepMarker));
+    TopMarker* topMarker2 = (TopMarker*) malloc(sizeof(TopMarker));
+    memset(topMarker2, 0, sizeof(TopMarker));
     topMarker2->markerName = strdup("mem_telemetry2_0");
     topMarker2->searchString = strdup("telemetry2_0");
     topMarker2->trimParam = true;
@@ -985,6 +980,7 @@ TEST_F(dcaTestFixture, processTopPattern2)
     Vector_Destroy(topMarkerlist, freeGMarker);
 }
 
+#if 0
 TEST_F(dcaTestFixture, getDCAResultsInVector_1)
 {
    

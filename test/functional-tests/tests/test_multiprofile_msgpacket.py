@@ -507,7 +507,7 @@ def test_grep_accumulate():
     sleep(1)
 
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_grep_accumulate_timestamp))
-    sleep(15)
+    sleep(20)
     assert "SYS_INFO_Accum_Time" in grep_T2logs("cJSON Report ") # Verify that the values are accumulated upto 20 values and a warning message is added. 
     assert "SYS_INFO_Accum_Time_CT" in grep_T2logs("cJSON Report ") # Matched timetamp will be reported as a different marker
     assert "SYS_INFO_Accum_No_Time" in grep_T2logs("cJSON Report ") # Marker is reporting even without matching timestamp

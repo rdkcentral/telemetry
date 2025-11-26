@@ -735,7 +735,7 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
             }
             else
             {
-                T2Info("Timestamp extraction not requested\n");
+                T2Debug("Timestamp extraction not requested\n");
             }
 
             // Move pointer just after the pattern

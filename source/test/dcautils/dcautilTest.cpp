@@ -55,6 +55,17 @@ FileMock *g_fileIOMock = NULL;
 SystemMock * g_systemMock = NULL;
 rdklogMock *m_rdklogMock = NULL;
 
+// Define timestamp formats with their required lengths and strptime patterns
+typedef struct
+{
+    const char* name;           // Format name for logging
+    const char* pattern;        // strptime pattern
+    size_t required_length;     // Minimum characters needed
+    size_t extract_length;      // Characters to extract for parsing
+} TimestampFormat;
+
+#define MAX_TIMESTAMP_LENGTH 24
+
 //testing the strnstr function
 static const char *strnstr(const char *haystack, const char *needle, size_t len)
 {
@@ -157,6 +168,174 @@ TEST(STRNSTR, SAMPLE6)
    char *needle = "abcd";
    EXPECT_STREQ(strnstr(haystack, needle, 15), "abcdabcabcabcabc");
 }
+
+static time_t extractUnixTimestamp(const char* line_start, size_t line_length)
+{
+    if (!line_start || line_length == 0)
+    {
+        T2Warning("%s: Invalid parameters\n", __FUNCTION__);
+        return 0;
+    }
+
+    static const TimestampFormat formats[] =
+    {
+        {"ISO 8601",   "%Y-%m-%dT%H:%M:%S", 23, 23},  // YYYY-MM-DDTHH:MM:SS.mmm
+        {"YYMMDD",     "%y%m%d-%H:%M:%S",   15, 15},  // YYMMDD-HH:MM:SS
+    };
+
+    for (int i = 0; i < 2; i++)
+    {
+        const TimestampFormat* fmt = &formats[i];
+
+        if (line_length < fmt->required_length)
+        {
+            T2Debug("%s: Line too short for %s format (need %zu chars)\n",
+                    __FUNCTION__, fmt->name, fmt->required_length);
+            continue;
+        }
+
+        // Extract timestamp string safely with memcpy
+        char timestamp_str[MAX_TIMESTAMP_LENGTH] = {0};
+        size_t copy_len = fmt->extract_length;
+
+        memcpy(timestamp_str, line_start, copy_len);
+        timestamp_str[copy_len] = '\0';
+
+        struct tm tm_time = {0};
+        char* result = strptime(timestamp_str, fmt->pattern, &tm_time);
+        if (result != NULL)
+        {
+            tm_time.tm_isdst = -1;
+            time_t unix_timestamp = mktime(&tm_time);
+            if (unix_timestamp != -1)
+            {
+                T2Debug("%s: Successfully parsed %s timestamp: %s -> Unix: %ld\n",
+                        __FUNCTION__, fmt->name, timestamp_str, (long)unix_timestamp);
+                return unix_timestamp;
+            }
+            else
+            {
+                T2Warning("%s: mktime() failed for %s timestamp: %s\n",
+                          __FUNCTION__, fmt->name, timestamp_str);
+            }
+        }
+        else
+        {
+            T2Debug("%s: %s strptime() failed for: %s\n", __FUNCTION__, fmt->name, timestamp_str);
+        }
+    }
+
+    size_t print_len = (line_length < MAX_TIMESTAMP_LENGTH) ? line_length : MAX_TIMESTAMP_LENGTH;
+    char debug_str[MAX_TIMESTAMP_LENGTH] = {0};
+    memcpy(debug_str, line_start, print_len);
+    debug_str[print_len] = '\0';
+
+    T2Debug("%s: Timestamp does not match any supported formats. "
+            "Supported: 'YYYY-MM-DDTHH:MM:SS.mmm', 'YYMMDD-HH:MM:SS'. "
+            "Found at line start: '%s'\n", __FUNCTION__, debug_str);
+
+    return 0;
+}
+
+// Testing the extractUnixTimestamp function
+TEST(extractUnixTimestamp, VALID_ISO8601_TIMESTAMP)
+{
+    // Test ISO 8601 format: YYYY-MM-DDTHH:MM:SS.mmm
+    const char* timestamp_str = "2025-11-26T14:30:45.123";
+    time_t result = extractUnixTimestamp(timestamp_str, strlen(timestamp_str));
+    EXPECT_NE(result, (time_t)0);
+    
+    // Verify the parsed timestamp
+    struct tm *tm_info = localtime(&result);
+    EXPECT_EQ(tm_info->tm_year + 1900, 2025);
+    EXPECT_EQ(tm_info->tm_mon + 1, 11);
+    EXPECT_EQ(tm_info->tm_mday, 26);
+    EXPECT_EQ(tm_info->tm_hour, 14);
+    EXPECT_EQ(tm_info->tm_min, 30);
+    EXPECT_EQ(tm_info->tm_sec, 45);
+}
+
+TEST(extractUnixTimestamp, VALID_YYMMDD_TIMESTAMP)
+{
+    // Test YYMMDD format: YYMMDD-HH:MM:SS
+    const char* timestamp_str = "251126-14:30:45";
+    time_t result = extractUnixTimestamp(timestamp_str, strlen(timestamp_str));
+    EXPECT_NE(result, (time_t)0);
+    
+    // Verify the parsed timestamp
+    struct tm *tm_info = localtime(&result);
+    EXPECT_EQ(tm_info->tm_year + 1900, 2025);
+    EXPECT_EQ(tm_info->tm_mon + 1, 11);
+    EXPECT_EQ(tm_info->tm_mday, 26);
+    EXPECT_EQ(tm_info->tm_hour, 14);
+    EXPECT_EQ(tm_info->tm_min, 30);
+    EXPECT_EQ(tm_info->tm_sec, 45);
+}
+
+TEST(extractUnixTimestamp, INVALID_TIMESTAMP_FORMAT)
+{
+    // Test with invalid timestamp format
+    const char* timestamp_str = "invalid-timestamp-format";
+    time_t result = extractUnixTimestamp(timestamp_str, strlen(timestamp_str));
+    EXPECT_EQ(result, (time_t)0);
+}
+
+TEST(extractUnixTimestamp, NULL_PARAMETERS)
+{
+    // Test with NULL line_start
+    time_t result = extractUnixTimestamp(NULL, 20);
+    EXPECT_EQ(result, (time_t)0);
+    
+    // Test with zero length
+    const char* timestamp_str = "2025-11-26T14:30:45.123";
+    result = extractUnixTimestamp(timestamp_str, 0);
+    EXPECT_EQ(result, (time_t)0);
+}
+
+TEST(extractUnixTimestamp, SHORT_LINE_LENGTH)
+{
+    // Test with line too short for any valid timestamp
+    const char* timestamp_str = "2025-11-26T14:30:45.123";
+    time_t result = extractUnixTimestamp(timestamp_str, 10); // Too short
+    EXPECT_EQ(result, (time_t)0);
+}
+
+TEST(extractUnixTimestamp, EDGE_CASE_MINIMUM_LENGTH)
+{
+    // Test with minimum length for YYMMDD format (15 characters)
+    const char* timestamp_str = "251126-14:30:45extra_data";
+    time_t result = extractUnixTimestamp(timestamp_str, 15);
+    EXPECT_NE(result, (time_t)0);
+}
+
+TEST(extractUnixTimestamp, PARTIAL_MATCH)
+{
+    // Test with partial timestamp that looks valid but isn't complete
+    const char* timestamp_str = "2025-11-26T"; // Incomplete ISO format
+    time_t result = extractUnixTimestamp(timestamp_str, strlen(timestamp_str));
+    EXPECT_EQ(result, (time_t)0);
+}
+
+TEST(extractUnixTimestamp, MALFORMED_DATE)
+{
+    // Test with malformed date values
+    const char* timestamp_str = "2025-13-32T25:70:70.123"; // Invalid month/day/hour/min/sec
+    time_t result = extractUnixTimestamp(timestamp_str, strlen(timestamp_str));
+    EXPECT_EQ(result, (time_t)0);
+}
+
+TEST(extractUnixTimestamp, BOUNDARY_YEAR_VALUES)
+{
+    // Test with boundary year values for YYMMDD format
+    const char* timestamp_str1 = "001126-14:30:45"; // Year 2000
+    time_t result1 = extractUnixTimestamp(timestamp_str1, strlen(timestamp_str1));
+    EXPECT_NE(result1, (time_t)0);
+    
+    const char* timestamp_str2 = "991126-14:30:45"; // Year 2099
+    time_t result2 = extractUnixTimestamp(timestamp_str2, strlen(timestamp_str2));
+    EXPECT_NE(result2, (time_t)0);
+}
+
 //dcaproc.c
 
 TEST(GETPROCUSAGE, MARKER_NULL)

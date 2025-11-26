@@ -71,6 +71,7 @@ def test_without_namefield():
     assert LOG_MSG not in grep_T2logs(LOG_MSG) #Empty string in namefield 
     assert HASH_ERROR_MSG in grep_T2logs(HASH_ERROR_MSG) #without hash field
 
+
 #negative case without hashvalue, without version field & without Protocol field
 @pytest.mark.run(order=2)
 def test_without_hashvalue():
@@ -166,7 +167,9 @@ def test_reporting_interval_working():
     rbus_set_data(T2_TEMP_REPORT_PROFILE_PARAM, "string", data_temp_with_reporting_interval)
     sleep(2)
     REPORTING_INTERVAL_LOG1 = grep_T2logs("reporting interval is taken - TR_AC732")
-
+    run_shell_command("echo WIFI_MAC_10_TOTAL_COUNT:2 >> /opt/logs/wifihealth.txt")
+    sleep(2)
+    run_shell_command("echo WIFI_MAC_17_TOTAL_COUNT:0 >> /opt/logs/wifihealth.txt")
     command1 = ["telemetry2_0_client TEST_EVENT_MARKER_1 300"]
     command2 = ["telemetry2_0_client TEST_EVENT_MARKER_2 occurrance1"]
     command3 = ["telemetry2_0_client TEST_EVENT_MARKER_2 occurrance2"]
@@ -185,6 +188,8 @@ def test_reporting_interval_working():
     assert "TEST_EVENT_MARKER_1\":\"2" in grep_T2logs("FR2_US_TC3") # 234 -Include data from data source T2 events as count
     assert "occurrance1\",\"occurrance2" in grep_T2logs("FR2_US_TC3") # 212 - Include data from data source as T2 events - 1
     assert "TEST_EVENT_MARKER_2_CT" in grep_T2logs("FR2_US_TC3") # 248 - Event accumulate with and without timestamp in report profiles for event markers.
+    assert "Total_6G_clients_split" not in grep_T2logs("FR2_US_TC3")
+    assert "XWIFIS_CNT_2_split" in grep_T2logs("FR2_US_TC3")
                                                                     # 216 - Epoch time/UTC time support
     assert "Device.X_RDK_Xmidt.SendData" in grep_T2logs("T2 asyncMethodHandler called: ") # 228 - Report sending with protocol as RBUS_METHOD in report profiles.
     assert "send via rbusMethod is failure" in grep_T2logs("send via rbusMethod is failure") # 225 - Caching of upload failed reports - 1
@@ -494,3 +499,31 @@ def test_stress_test():
     pid2 = run_shell_command(command_to_get_pid)
     assert pid1==pid2 #  253 - Stress testing of interaction with rbus interface to check for any deadlocks or rbus timeouts.
 
+@pytest.mark.run(order=15)
+def test_grep_accumulate():
+    os.makedirs('/opt/logs', exist_ok=True)
+    run_shell_command("rm -rf /opt/logs/accum.log")
+    run_shell_command("cp test/functional-tests/tests/accum.log /opt/logs/")
+    sleep(1)
+
+    rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_grep_accumulate_timestamp))
+    sleep(20)
+    assert "SYS_INFO_Accum_Time" in grep_T2logs("cJSON Report ") # Verify that the values are accumulated upto 20 values and a warning message is added. 
+    assert "SYS_INFO_Accum_Time_CT" in grep_T2logs("cJSON Report ") # Matched timetamp will be reported as a different marker
+    assert "SYS_INFO_Accum_No_Time" in grep_T2logs("cJSON Report ") # Marker is reporting even without matching timestamp
+    assert "SYS_INFO_Accum_CT" not in grep_T2logs("cJSON Report ") # timestamp marker is not reporting without a matching timestamp
+    assert "SYS_INFO_Accum_Alone" in grep_T2logs("cJSON Report ") # Accumulate marker is reporting when reporttimestamp is not configured
+    assert "Load_Average" in grep_T2logs("cJSON Report ") # 
+    assert "cpu_telemetry2_0" in grep_T2logs("cJSON Report ") # 
+    assert "mem_telemetry2_0" in grep_T2logs("cJSON Report ") # 
+    file = open('/opt/logs/accum.log', 'a')
+    file.write(
+            "251007-09:29:39.441 INFO     identifier:thevalue23\n"
+            "251007-09:29:40.441 ERROR     identifier:thevalue24\n"
+            "filler updated line\n"
+            "251007-09:29:41.335 INFO     identifier:thevalue25\n"
+            "filler line\n"
+            )
+    file.close()
+    sleep(15)
+    assert "SYS_INFO_Accum_Time\":[\"thevalue23" in grep_T2logs("cJSON Report ") #Marker is reporting  in the next cycle even if the maximum accumulation is reached in the previous report 

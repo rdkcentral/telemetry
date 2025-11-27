@@ -839,6 +839,162 @@ void time_param_Reporting_Adjustments_valid_set(Profile *profile, cJSON *jprofil
     }
 }
 
+static int buildFullPath(char* fullPath, const char* basePath, const char* reference)
+{
+    T2Debug("%s ++in\n", __FUNCTION__);
+    if (!basePath || !reference || !fullPath)
+    {
+        T2Error("Invalid input: basePath, reference, or fullPath is NULL\n");
+        return -1; // Indicate failure
+    }
+
+    // Check if reference is already part of basePath
+    if (strcmp(basePath, reference) == 0)
+    {
+        snprintf(fullPath, MAX_PATH_LENGTH, "%s", basePath);
+        T2Debug("Reference already part of basePath. Full path: %s\n", fullPath);
+        return 0; // Success
+    }
+
+    // Construct the full path
+    int result = snprintf(fullPath, MAX_PATH_LENGTH, "%s%s%s",
+                          basePath,
+                          (basePath[strlen(basePath) - 1] == '.') ? "" : ".",
+                          reference);
+
+    if (result < 0 || (size_t)result >= MAX_PATH_LENGTH)
+    {
+        T2Error("Full path exceeded buffer size\n");
+        return -1; // Indicate failure
+    }
+
+    T2Debug("Built full path: %s\n", fullPath);
+    T2Debug("%s ++out\n", __FUNCTION__);
+    return 0; // Success
+}
+
+static T2ERROR parseDataModelTableParams(Profile* profile, cJSON* tableItem, const char* parentPath, DataModelTable* parentTable)
+{
+    T2Debug("%s ++in\n", __FUNCTION__);
+    if (!tableItem || !parentPath || !profile)
+    {
+        T2Error("Invalid input parameters\n");
+        return T2ERROR_FAILURE;
+    }
+
+    T2Debug("Processing table with parent path: %s\n", parentPath);
+
+    cJSON* jpReference = cJSON_GetObjectItem(tableItem, "reference");
+    cJSON* jpIndex = cJSON_GetObjectItem(tableItem, "index");
+    cJSON* jpParameters = cJSON_GetObjectItem(tableItem, "Parameter");
+
+    if (!jpReference || !jpParameters)
+    {
+        T2Error("Incomplete dataModelTable configuration\n");
+        return T2ERROR_FAILURE;
+    }
+
+    DataModelTable* currentTable = NULL;
+    // Create table only if this is the first call (no parent table passed)
+    if (!parentTable)
+    {
+        currentTable = (DataModelTable*)malloc(sizeof(DataModelTable));
+        if (!currentTable)
+        {
+            T2Error("Failed to allocate memory for DataModelTable\n");
+            return T2ERROR_FAILURE;
+        }
+
+        // Initialize root table
+        currentTable->reference = strdup(jpReference->valuestring);
+        currentTable->index = jpIndex ? strdup(jpIndex->valuestring) : NULL;
+        Vector_Create(&currentTable->paramList);
+
+        if (!profile->dataModelTableList)
+        {
+            Vector_Create(&profile->dataModelTableList);
+        }
+        Vector_PushBack(profile->dataModelTableList, currentTable);
+    }
+    else
+    {
+        // Use parent table for nested parameters
+        currentTable = parentTable;
+    }
+
+    // Build the current path including wildcard
+    char currentPath[MAX_PATH_LENGTH];
+    if (buildFullPath(currentPath, parentPath, jpReference->valuestring) != 0)
+    {
+        T2Error("Failed to build current path\n");
+        return T2ERROR_FAILURE;
+    }
+
+    char pathWithWildcard[MAX_PATH_LENGTH];
+    if ((size_t)snprintf(pathWithWildcard, sizeof(pathWithWildcard), "%s*.", currentPath) >= sizeof(pathWithWildcard))
+    {
+        T2Error("Path with wildcard exceeded buffer size\n");
+        return T2ERROR_FAILURE;
+    }
+
+    // Process parameters
+    int paramCount = cJSON_GetArraySize(jpParameters);
+    for (int i = 0; i < paramCount; i++)
+    {
+        cJSON* paramItem = cJSON_GetArrayItem(jpParameters, i);
+        if (!paramItem)
+        {
+            continue;
+        }
+
+        cJSON* jpType = cJSON_GetObjectItem(paramItem, "type");
+        cJSON* jpParamRef = cJSON_GetObjectItem(paramItem, "reference");
+
+        if (!jpType || !jpParamRef)
+        {
+            continue;
+        }
+
+        if (strcmp(jpType->valuestring, "dataModelTable") == 0)
+        {
+            // Recursive call for nested tables
+            parseDataModelTableParams(profile, paramItem, pathWithWildcard, currentTable);
+        }
+        else if (strcmp(jpType->valuestring, "dataModel") == 0)
+        {
+            // Create DataModelParam
+            DataModelParam* param = (DataModelParam*)malloc(sizeof(DataModelParam));
+            if (!param)
+            {
+                continue;
+            }
+
+            param->reference = strdup(jpParamRef->valuestring);
+            //char* fullPath = buildFullPath(pathWithWildcard, jpParamRef->valuestring);
+            char fullPath[MAX_PATH_LENGTH];
+            if (buildFullPath(fullPath, pathWithWildcard, jpParamRef->valuestring) != 0)
+            {
+                T2Error("Failed to build full path for parameter\n");
+                if (param->reference)
+                {
+                    free(param->reference);
+                }
+                free(param);
+                continue;
+            }
+            param->name = strdup(fullPath);
+            param->reportEmpty = false;
+
+            // Add to table's parameter list
+            Vector_PushBack(currentTable->paramList, param);
+            T2Debug("Added parameter: %s\n", fullPath);
+        }
+    }
+
+    T2Debug("%s ++out\n", __FUNCTION__);
+    return T2ERROR_SUCCESS;
+}
+
 T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, int ThisProfileParameter_count)
 {
     if(profile == NULL || jprofileParameter == NULL)
@@ -852,6 +1008,7 @@ T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, i
     Vector_Create(&profile->gMarkerList);
     Vector_Create(&profile->topMarkerList);
     Vector_Create(&profile->cachedReportList);
+    Vector_Create(&profile->dataModelTableList);
 
     profile->grepSeekProfile = createGrepSeekProfile(0);
 
@@ -884,6 +1041,7 @@ T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, i
         reportEmpty = false;
         trim = false;
         rtformat = REPORTTIMESTAMP_NONE;
+        int index_flag = 0;
 
         cJSON* pSubitem = cJSON_GetArrayItem(jprofileParameter, ProfileParameterIndex);
         if(pSubitem != NULL)
@@ -971,6 +1129,124 @@ T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, i
                     }
                 }
             }
+            else if (!(strcmp(paramtype, "dataModelTable")))
+            {
+                T2Debug("Processing dataModelTable configuration\n");
+                char basePath[256] = "";
+                char index[64] = "";
+                cJSON *jpBaseRef = cJSON_GetObjectItem(pSubitem, "reference");
+                if (jpBaseRef)
+                {
+                    strncpy(basePath, jpBaseRef->valuestring, sizeof(basePath) - 1);
+                    basePath[sizeof(basePath) - 1] = '\0';
+                    T2Debug("Base path for data model table: %s\n", basePath);
+                    cJSON *jpIndex = cJSON_GetObjectItem(pSubitem, "index");
+                    if (jpIndex)
+                    {
+                        strncpy(index, jpIndex->valuestring, sizeof(index) - 1);
+                        index[sizeof(index) - 1] = '\0';
+                        int i = 0, j = 0;
+                        while (index[i])
+                        {
+                            // removing whitespaces from index
+                            if (!(index[i] == ' ' || index[i] == '\t' || index[i] == '\n' ||
+                                    index[i] == '\r' || index[i] == '\v' || index[i] == '\f'))
+                            {
+                                index[j++] = index[i];
+                            }
+                            i++;
+                        }
+                        index[j] = '\0';
+                        int duplicate[256] = {0};
+                        char *token = strtok(index, ",");
+                        while (token != NULL)
+                        {
+                            int start, end;
+                            if (sscanf(token, "%d-%d", &start, &end) == 2) // if the token consists - then loop through range
+                            {
+                                for (int i = start; i <= end; ++i)
+                                {
+                                    if (i < 0 || i >= 256)
+                                    {
+                                        continue;    // skip invalid indices
+                                    }
+                                    if (duplicate[i])
+                                    {
+                                        continue;    // skip duplicates
+                                    }
+                                    duplicate[i] = 1;
+                                    T2Debug("Processing index : %d\n", i);
+                                    char basePathWithIndex[256];
+                                    int written = snprintf(basePathWithIndex, sizeof(basePathWithIndex), "%s%d.", basePath, i);
+                                    if (written < 0 || (size_t)written >= sizeof(basePathWithIndex))
+                                    {
+                                        T2Error("%s: snprintf truncated or failed while building path: '%s'\n", __FUNCTION__, basePathWithIndex);
+                                    }
+                                    paramtype = "dataModel";
+                                    ret = addParameter(profile, basePathWithIndex, basePathWithIndex, logfile, skipFrequency, firstSeekFromEOF, paramtype, use, reportEmpty, rtformat, trim, regex); // add Multiple Report Profile Parameter
+                                    if (ret != T2ERROR_SUCCESS)
+                                    {
+                                        T2Error("%s Error in adding parameter to profile %s\n",
+                                                __FUNCTION__, basePathWithIndex);
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                int val = atoi(token); // single index
+                                if (val < 0 || val >= 256)
+                                {
+                                    token = strtok(NULL, ",");
+                                    continue;
+                                }
+                                if (duplicate[val])
+                                {
+                                    token = strtok(NULL, ",");
+                                    continue;
+                                }
+                                duplicate[val] = 1;
+                                T2Debug("Processing index  : %d\n", val);
+                                char basePathWithIndex[256];
+                                int written = snprintf(basePathWithIndex, sizeof(basePathWithIndex), "%s%d.", basePath, val);
+                                if (written < 0 || (size_t)written >= sizeof(basePathWithIndex))
+                                {
+                                    T2Error("%s: snprintf truncated or failed while building path: '%s'\n", __FUNCTION__, basePathWithIndex);
+                                }
+                                paramtype = "dataModel";
+                                ret = addParameter(profile, basePathWithIndex, basePathWithIndex, logfile, skipFrequency, firstSeekFromEOF, paramtype, use, reportEmpty, rtformat, trim, regex); // add Multiple Report Profile Parameter
+                                if (ret != T2ERROR_SUCCESS)
+                                {
+                                    T2Error("%s Error in adding parameter to profile %s\n", __FUNCTION__, basePathWithIndex);
+                                }
+                            }
+                            token = strtok(NULL, ","); // Get the next token
+                        }
+                        index_flag = 1; // Do not call the addParameter function again if the profile is configured with the index.
+                    }
+                    else
+                    {
+                        content = strdup(basePath);
+                        header = strdup(basePath);
+                        paramtype = "dataModel";
+                        if (!content || !header)
+                        {
+                            T2Error("Memory allocation failed for content/header\n");
+                            free(content);
+                            free(header);
+                            continue;
+                        }
+                    }
+                    T2ERROR ret = parseDataModelTableParams(profile, pSubitem, basePath, NULL);
+                    if (ret != T2ERROR_SUCCESS)
+                    {
+                        T2Error("Failed to parse data model table configuration\n");
+                    }
+                }
+                else
+                {
+                    T2Error("Missing reference in dataModelTable configuration\n");
+                }
+            }
             else if(!(strcmp(paramtype, "event")))
             {
 
@@ -1047,7 +1323,7 @@ T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, i
 
             T2Debug("%s : reportTimestamp = %d\n", __FUNCTION__, rtformat);
             //CID 337454: Explicit null dereferenced (FORWARD_NULL) ;CID 337448: Explicit null dereferenced (FORWARD_NULL)
-            if (content != NULL && header != NULL)
+            if (content != NULL && header != NULL && index_flag == 0)
             {
                 ret = addParameter(profile, header, content, logfile, skipFrequency, firstSeekFromEOF, paramtype, use, reportEmpty, rtformat, trim, regex); //add Multiple Report Profile Parameter
             }
@@ -1059,11 +1335,31 @@ T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, i
             if(ret != T2ERROR_SUCCESS)
             {
                 T2Error("%s Error in adding parameter to profile %s \n", __FUNCTION__, profile->name);
+                if (content)
+                {
+                    free(content);
+                    content = NULL;
+                }
+                if (header)
+                {
+                    free(header);
+                    header = NULL;
+                }
                 continue;
             }
             else
             {
                 T2Debug("[[Added parameter:%s]]\n", header);
+            }
+            if (content)
+            {
+                free(content);
+                content = NULL;
+            }
+            if (header)
+            {
+                free(header);
+                header = NULL;
             }
             profileParamCount++;
         }

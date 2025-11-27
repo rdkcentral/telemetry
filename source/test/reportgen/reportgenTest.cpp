@@ -93,9 +93,9 @@ TEST(ENCODEPARAMRESINJSON, NULL_CHECK)
     Vector_Create(&paramVlist);
     Vector_PushBack(paramNlist, (void*)strdup("param1"));
     Vector_PushBack(paramVlist, (void*)strdup("value1"));
-    EXPECT_EQ(T2ERROR_INVALID_ARGS, encodeParamResultInJSON(NULL, paramNlist, paramVlist));
-    EXPECT_EQ(T2ERROR_INVALID_ARGS,  encodeParamResultInJSON(valarray, NULL, paramVlist));
-    EXPECT_EQ(T2ERROR_INVALID_ARGS,  encodeParamResultInJSON(valarray, paramNlist, NULL));
+    EXPECT_EQ(T2ERROR_INVALID_ARGS, encodeParamResultInJSON(NULL, paramNlist, paramVlist, NULL));
+    EXPECT_EQ(T2ERROR_INVALID_ARGS,  encodeParamResultInJSON(valarray, NULL, paramVlist, NULL));
+    EXPECT_EQ(T2ERROR_INVALID_ARGS,  encodeParamResultInJSON(valarray, paramNlist, NULL, NULL));
     Vector_Destroy(paramNlist, free);
     Vector_Destroy(paramVlist, free);
     cJSON_Delete(valarray);
@@ -503,7 +503,7 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON)
     EXPECT_CALL(*m_reportgenMock, cJSON_CreateObject())
                  .Times(1)
                  .WillOnce(Return(mockobj));
-    EXPECT_EQ(T2ERROR_FAILURE, encodeParamResultInJSON(valArray,paramNameList,paramValueList));
+    EXPECT_EQ(T2ERROR_FAILURE, encodeParamResultInJSON(valArray,paramNameList,paramValueList,NULL));
     cJSON_Delete(valArray);
     if(valArray != NULL)
     {
@@ -542,7 +542,7 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON1)
     EXPECT_CALL(*m_reportgenMock, cJSON_CreateObject())
                  .Times(1)
                  .WillOnce(Return(mockobj));
-    EXPECT_EQ(T2ERROR_FAILURE, encodeParamResultInJSON(valArray,paramNameList,paramValueList));
+    EXPECT_EQ(T2ERROR_FAILURE, encodeParamResultInJSON(valArray,paramNameList,paramValueList,NULL));
     cJSON_Delete(valArray);
     if(valArray != NULL)
     {
@@ -590,7 +590,7 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON2)
     EXPECT_CALL(*m_reportgenMock, cJSON_CreateObject())
                  .Times(1)
 		 .WillOnce(::testing::ReturnNull());
-    EXPECT_EQ(T2ERROR_FAILURE, encodeParamResultInJSON(valArray,paramNameList,paramValueList));
+    EXPECT_EQ(T2ERROR_FAILURE, encodeParamResultInJSON(valArray,paramNameList,paramValueList,NULL));
     cJSON_Delete(valArray);
     if(valArray != NULL)
     {
@@ -643,7 +643,7 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON3)
     EXPECT_CALL(*m_reportgenMock, cJSON_CreateArray())
             .Times(1)
             .WillOnce(Return(mockobj));
-    EXPECT_EQ(T2ERROR_FAILURE, encodeParamResultInJSON(valArray,paramNameList,paramValueList));
+    EXPECT_EQ(T2ERROR_FAILURE, encodeParamResultInJSON(valArray,paramNameList,paramValueList,NULL));
     cJSON_Delete(valArray);
     if(valArray != NULL)
     {
@@ -685,7 +685,7 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON4)
                .Times(1)
                .WillOnce(::testing::ReturnNull());
 
-    EXPECT_EQ(T2ERROR_FAILURE, encodeParamResultInJSON(valArray,paramNameList,paramValueList));
+    EXPECT_EQ(T2ERROR_FAILURE, encodeParamResultInJSON(valArray,paramNameList,paramValueList,NULL));
     cJSON_Delete(valArray);
     if(valArray != NULL)
     {
@@ -726,7 +726,7 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON5)
 	EXPECT_CALL(*m_reportgenMock, cJSON_AddStringToObject(_,_,_))
                .Times(1)
                .WillOnce(::testing::ReturnNull());
-    EXPECT_EQ(T2ERROR_FAILURE, encodeParamResultInJSON(valArray,paramNameList,paramValueList));
+    EXPECT_EQ(T2ERROR_FAILURE, encodeParamResultInJSON(valArray,paramNameList,paramValueList,NULL));
     cJSON_Delete(valArray);
     if(valArray != NULL)
     {
@@ -784,7 +784,7 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON6)
     EXPECT_CALL(*m_reportgenMock, cJSON_AddStringToObject(_,_,_))
             .Times(1)
             .WillOnce(::testing::ReturnNull());
-    EXPECT_EQ(T2ERROR_FAILURE, encodeParamResultInJSON(valArray,paramNameList,paramValueList));
+    EXPECT_EQ(T2ERROR_FAILURE, encodeParamResultInJSON(valArray,paramNameList,paramValueList,NULL));
     cJSON_Delete(valArray);
     if(valArray != NULL)
     {
@@ -828,7 +828,7 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON7)
     EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToArray(_,_))
 	         .Times(1)
 		 .WillOnce(Return(true));
-    EXPECT_EQ(T2ERROR_SUCCESS, encodeParamResultInJSON(valArray,paramNameList,paramValueList));
+    EXPECT_EQ(T2ERROR_SUCCESS, encodeParamResultInJSON(valArray,paramNameList,paramValueList,NULL));
     cJSON_Delete(valArray);
     if(valArray != NULL)
     {
@@ -875,7 +875,7 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON8)
     EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToArray(_,_))
                  .Times(1)
                  .WillOnce(Return(true));
-    EXPECT_EQ(T2ERROR_SUCCESS, encodeParamResultInJSON(valArray,paramNameList,paramValueList));
+    EXPECT_EQ(T2ERROR_SUCCESS, encodeParamResultInJSON(valArray,paramNameList,paramValueList,NULL));
     cJSON_Delete(valArray);
     if(valArray != NULL)
     {
@@ -957,7 +957,7 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON10)
 		 .WillOnce(Return(true))
 		 .WillOnce(Return(true))
 		 .WillOnce(Return(true));
-    EXPECT_EQ(T2ERROR_SUCCESS, encodeParamResultInJSON(valArray,paramNameList,paramValueList));
+    EXPECT_EQ(T2ERROR_SUCCESS, encodeParamResultInJSON(valArray,paramNameList,paramValueList,NULL));
     cJSON_Delete(valArray);
     if(valArray != NULL)
     {

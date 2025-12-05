@@ -76,14 +76,14 @@ T2parserMock *m_t2parserMock = NULL;
 rdklogMock *m_rdklogMock = NULL;
 rbusMock *g_rbusMock = NULL;
 
-#if 0
 TEST(PROCESSCONFIGURATION, NULL_INPUT)
 {
-    Profile *profile = nullptr;
+    //Profile *profile = nullptr;
     // All NULL input
-    EXPECT_EQ(T2ERROR_FAILURE, processConfiguration(nullptr, nullptr, nullptr, nullptr));
+    EXPECT_EQ(T2ERROR_FAILURE, processConfiguration(NULL, NULL, NULL, nullptr));
 }
 
+#if 0
 TEST(PROCESSCONFIGURATION, MISSING_PROFILE_DATA)
 {
     Profile *profile = nullptr;

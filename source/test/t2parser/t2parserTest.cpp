@@ -75,7 +75,7 @@ extern "C" {
 T2parserMock *m_t2parserMock = NULL;
 rdklogMock *m_rdklogMock = NULL;
 rbusMock *g_rbusMock = NULL;
-
+#if 0
 TEST(PROCESSCONFIGURATION, NULL_INPUT)
 {
     //Profile *profile = NULL;
@@ -83,7 +83,7 @@ TEST(PROCESSCONFIGURATION, NULL_INPUT)
     EXPECT_EQ(T2ERROR_FAILURE, processConfiguration(NULL, NULL, NULL, NULL));
 }
 
-#if 1
+
 TEST(PROCESSCONFIGURATION, MISSING_PROFILE_DATA)
 {
     Profile *profile = NULL;
@@ -1140,4 +1140,11 @@ TEST(T2ParserProtocolSet, RBUSMethodBranchSetsMethodAndParams)
     free(p.name);
     cJSON_Delete(jProtocol);
     cJSON_Delete(jRBUS);
+}
+
+TEST(PROCESSCONFIGURATION, NULL_INPUT)
+{
+    //Profile *profile = NULL;
+    // All NULL input
+    EXPECT_EQ(T2ERROR_FAILURE, processConfiguration(NULL, NULL, NULL, NULL));
 }

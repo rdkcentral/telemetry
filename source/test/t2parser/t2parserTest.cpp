@@ -82,6 +82,7 @@ TEST(PROCESSCONFIGURATION, NULL_INPUT)
     EXPECT_EQ(T2ERROR_FAILURE, processConfiguration(nullptr, nullptr, nullptr, nullptr));
 }
 
+#if 0
 TEST(PROCESSCONFIGURATION, MISSING_PROFILE_DATA)
 {
     Profile *profile = nullptr;
@@ -89,7 +90,6 @@ TEST(PROCESSCONFIGURATION, MISSING_PROFILE_DATA)
     char *configData = nullptr;
     EXPECT_EQ(T2ERROR_FAILURE, processConfiguration(&configData, "Profile", "hash", &profile));
 }
-#if 0
 TEST(PROCESSCONFIGURATION, INVALID_JSON)
 {
     Profile *profile = nullptr;

@@ -85,13 +85,23 @@ static void EVENT_DEBUG(char* format, ...)
     logHandle = fopen(SENDER_LOG_FILE, "a+");
     if(logHandle)
     {
-        time_t rawtime;
-        struct tm* timeinfo;
+        struct timespec ts;
+        struct tm timeinfo;
 
-        time(&rawtime);
-        timeinfo = localtime(&rawtime);
-        static char timeBuffer[20] = { '\0' };
-        strftime(timeBuffer, sizeof(timeBuffer), "%Y-%m-%d %H:%M:%S", timeinfo);
+        if(clock_gettime(CLOCK_REALTIME, &ts) == -1)
+        {
+            fclose(logHandle);
+            pthread_mutex_unlock(&loggerMutex);
+            return;
+        }
+        
+        static char timeBuffer[24] = { '\0' };
+        long msecs;
+
+        localtime_r(&ts.tv_sec, &timeinfo);
+        msecs = ts.tv_nsec / 1000000;
+        strftime(timeBuffer, sizeof(timeBuffer), "%Y-%m-%d %H:%M:%S", &timeinfo);
+        snprintf(timeBuffer + strlen(timeBuffer), sizeof(timeBuffer) - strlen(timeBuffer), ".%03ld", msecs);
         fprintf(logHandle, "%s : ", timeBuffer);
         va_list argList;
         va_start(argList, format);

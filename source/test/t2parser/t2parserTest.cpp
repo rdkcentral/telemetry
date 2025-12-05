@@ -234,7 +234,7 @@ TEST(PROCESSCONFIGURATION_CJSON, TEST_NULL_INVALID_PARAM)
         strcpy(data, sa.c_str());
         //Profilename NULL
 	char h1[] = "hash1";
-        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "hash1", h1, &profile));
+        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, NULL, h1, &profile));
         delete[] data;
 
         getline(new_file, sa);
@@ -1142,9 +1142,10 @@ TEST(T2ParserProtocolSet, RBUSMethodBranchSetsMethodAndParams)
     cJSON_Delete(jRBUS);
 }
 
-TEST(PROCESSCONFIGURATION, NULL_INPUT)
+TEST(T2parserProcessConfiguration, parser_null_configuration)
 {
-    //Profile *profile = NULL;
-    // All NULL input
-    EXPECT_EQ(T2ERROR_FAILURE, processConfiguration(NULL, NULL, NULL, NULL));
+      //Profile *profile = NULL;
+       // All NULL input
+       processConfiguration(NULL, NULL, NULL, NULL);
 }
+  

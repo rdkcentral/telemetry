@@ -1142,10 +1142,15 @@ TEST(T2ParserProtocolSet, RBUSMethodBranchSetsMethodAndParams)
     cJSON_Delete(jRBUS);
 }
 
-TEST(T2parserProcessConfiguration, parser_null_configuration)
+TEST(PROCESSCONFIGURATION, VALID_PROFILE)
 {
-      //Profile *profile = NULL;
-       // All NULL input
-       processConfiguration(NULL, NULL, NULL, NULL);
+    Profile *profile = NULL;
+    // You may use a line from rpInputfile.txt - for illustration, here's an example:
+    const char *json = "{\"name\":\"Test_Profile\",\"hash\":\"TestHash\",\"value\":{\"Name\":\"Test_Profile\",\"Description\":\"Test_Profile\",\"Version\":\"0.1\",\"Protocol\":\"HTTP\",\"EncodingType\":\"JSON\",\"ReportingInterval\":60,\"ActivationTimeOut\":3600,\"GenerateNow\":false,\"RootName\":\"Root\",\"TimeReference\":\"2022-01-01T00:00:00Z\",\"Parameter\":[{\"Name\":\"Param1\",\"Type\":\"datamodel\",\"Reference\":\"Device.Param1\"}]}}";
+    char *configData = new char[strlen(json) + 1];
+    strcpy(configData, json);
+    EXPECT_EQ(T2ERROR_SUCCESS, processConfiguration(&configData, "Test_Profile", "TestHash", &profile));
+    // Optionally verify profile fields here
+    // e.g. EXPECT_STREQ(profile->name, "Test_Profile");
+    delete[] configData;
 }
-  

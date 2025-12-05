@@ -75,6 +75,86 @@ T2parserMock *m_t2parserMock = NULL;
 rdklogMock *m_rdklogMock = NULL;
 rbusMock *g_rbusMock = NULL;
 
+TEST(PROCESSCONFIGURATION, NULL_INPUT)
+{
+    Profile *profile = nullptr;
+    // All NULL input
+    EXPECT_EQ(T2ERROR_FAILURE, processConfiguration(nullptr, nullptr, nullptr, nullptr));
+}
+
+TEST(PROCESSCONFIGURATION, MISSING_PROFILE_DATA)
+{
+    Profile *profile = nullptr;
+    // configData pointer is not null but data is invalid (empty string)
+    char *configData = nullptr;
+    EXPECT_EQ(T2ERROR_FAILURE, processConfiguration(&configData, "Profile", "hash", &profile));
+}
+
+TEST(PROCESSCONFIGURATION, INVALID_JSON)
+{
+    Profile *profile = nullptr;
+    char invalidJson[] = "{this is not valid JSON!}";
+    char *configData = invalidJson;
+    EXPECT_EQ(T2ERROR_FAILURE, processConfiguration(&configData, "Profile", "hash", &profile));
+}
+
+TEST(PROCESSCONFIGURATION, VALID_PROFILE)
+{
+    Profile *profile = nullptr;
+    // You may use a line from rpInputfile.txt - for illustration, here's an example:
+    const char *json = "{\"name\":\"Test_Profile\",\"hash\":\"TestHash\",\"value\":{\"Name\":\"Test_Profile\",\"Description\":\"Test_Profile\",\"Version\":\"0.1\",\"Protocol\":\"HTTP\",\"EncodingType\":\"JSON\",\"ReportingInterval\":60,\"ActivationTimeOut\":3600,\"GenerateNow\":false,\"RootName\":\"Root\",\"TimeReference\":\"2022-01-01T00:00:00Z\",\"Parameter\":[{\"Name\":\"Param1\",\"Type\":\"datamodel\",\"Reference\":\"Device.Param1\"}]}}";
+    char *configData = new char[strlen(json) + 1];
+    strcpy(configData, json);
+    EXPECT_EQ(T2ERROR_SUCCESS, processConfiguration(&configData, "Test_Profile", "TestHash", &profile));
+    // Optionally verify profile fields here
+    // e.g. EXPECT_STREQ(profile->name, "Test_Profile");
+    delete[] configData;
+}
+
+TEST(PROCESSCONFIGURATION, PARAMETER_NULL)
+{
+    Profile *profile = nullptr;
+    // parameter list empty
+    const char *json = "{\"name\":\"Test_Profile\",\"hash\":\"TestHash\",\"value\":{\"Name\":\"Test_Profile\",\"Description\":\"Test_Profile\",\"Version\":\"0.1\",\"Protocol\":\"HTTP\",\"EncodingType\":\"JSON\",\"ReportingInterval\":60,\"ActivationTimeOut\":3600,\"GenerateNow\":false,\"RootName\":\"Root\",\"TimeReference\":\"2022-01-01T00:00:00Z\"}}";
+    char *configData = new char[strlen(json) + 1];
+    strcpy(configData, json);
+    EXPECT_EQ(T2ERROR_FAILURE, processConfiguration(&configData, "Test_Profile", "TestHash", &profile));
+    delete[] configData;
+}
+
+TEST(PROCESSCONFIGURATION, REPORTINGINTERVAL_NULL)
+{
+    Profile *profile = nullptr;
+    // ReportingInterval omitted
+    const char *json = "{\"name\":\"Test_Profile\",\"hash\":\"TestHash\",\"value\":{\"Name\":\"Test_Profile\",\"Description\":\"Test_Profile\",\"Version\":\"0.1\",\"Protocol\":\"HTTP\",\"EncodingType\":\"JSON\",\"ActivationTimeOut\":3600,\"GenerateNow\":false,\"RootName\":\"Root\",\"TimeReference\":\"2022-01-01T00:00:00Z\",\"Parameter\":[{\"Name\":\"Param1\",\"Type\":\"datamodel\",\"Reference\":\"Device.Param1\"}]}}";
+    char *configData = new char[strlen(json) + 1];
+    strcpy(configData, json);
+    EXPECT_EQ(T2ERROR_FAILURE, processConfiguration(&configData, "Test_Profile", "TestHash", &profile));
+    delete[] configData;
+}
+
+TEST(PROCESSCONFIGURATION, ACTIVATIONTIMEOUT_NULL)
+{
+    Profile *profile = nullptr;
+    // ActivationTimeOut omitted
+    const char *json = "{\"name\":\"Test_Profile\",\"hash\":\"TestHash\",\"value\":{\"Name\":\"Test_Profile\",\"Description\":\"Test_Profile\",\"Version\":\"0.1\",\"Protocol\":\"HTTP\",\"EncodingType\":\"JSON\",\"ReportingInterval\":60,\"GenerateNow\":false,\"RootName\":\"Root\",\"TimeReference\":\"2022-01-01T00:00:00Z\",\"Parameter\":[{\"Name\":\"Param1\",\"Type\":\"datamodel\",\"Reference\":\"Device.Param1\"}]}}";
+    char *configData = new char[strlen(json) + 1];
+    strcpy(configData, json);
+    EXPECT_EQ(T2ERROR_FAILURE, processConfiguration(&configData, "Test_Profile", "TestHash", &profile));
+    delete[] configData;
+}
+
+TEST(PROCESSCONFIGURATION, PROTOCOL_UNSUPPORTED)
+{
+    Profile *profile = nullptr;
+    // Protocol invalid
+    const char *json = "{\"name\":\"Test_Profile\",\"hash\":\"TestHash\",\"value\":{\"Name\":\"Test_Profile\",\"Description\":\"Test_Profile\",\"Version\":\"0.1\",\"Protocol\":\"UNSUPPORTED\",\"EncodingType\":\"JSON\",\"ReportingInterval\":60,\"ActivationTimeOut\":3600,\"GenerateNow\":false,\"RootName\":\"Root\",\"TimeReference\":\"2022-01-01T00:00:00Z\",\"Parameter\":[{\"Name\":\"Param1\",\"Type\":\"datamodel\",\"Reference\":\"Device.Param1\"}]}}";
+    char *configData = new char[strlen(json) + 1];
+    strcpy(configData, json);
+    EXPECT_EQ(T2ERROR_FAILURE, processConfiguration(&configData, "Test_Profile", "TestHash", &profile));
+    delete[] configData;
+}
+
 TEST(PROCESSXCONFCONFIGURATION, TEST_NULL_INVALID)
 {
      ProfileXConf *profile = 0;

@@ -819,7 +819,7 @@ static int getLogFileDescriptor(GrepSeekProfile* gsProfile, const char* logPath,
     {
         close(old_fd);
     }
-    T2Info(("%s: closing fd <%d>\n", __FUNCTION__, old_fd));
+    T2Info("%s: closing fd <%d>\n", __FUNCTION__, old_fd);
 
     char logFilePath[PATH_MAX];
     if(logFile[0] == '/')
@@ -846,7 +846,7 @@ static int getLogFileDescriptor(GrepSeekProfile* gsProfile, const char* logPath,
     {
         T2Debug("Error getting file size for %s\n", logFile);
         close(fd);
-        T2Info(("%s: closing fd <%d>\n", __FUNCTION__, fd));
+        T2Info("%s: closing fd <%d>\n", __FUNCTION__, fd);
         return -1;
     }
 
@@ -854,7 +854,7 @@ static int getLogFileDescriptor(GrepSeekProfile* gsProfile, const char* logPath,
     {
         T2Debug("The size of the logfile is 0 for %s\n", logFile);
         close(fd);
-        T2Info(("%s: closing fd <%d>\n", __FUNCTION__, fd));
+        T2Info("%s: closing fd <%d>\n", __FUNCTION__, fd);
         return -1; // Consistent error return value
     }
 
@@ -863,7 +863,7 @@ static int getLogFileDescriptor(GrepSeekProfile* gsProfile, const char* logPath,
     {
         T2Debug("The logfile size matches the seek value (%ld) for %s\n", seek_value_from_map, logFile);
         close(fd);
-        T2Info(("%s: closing fd <%d>\n", __FUNCTION__, fd));
+        T2Info("%s: closing fd <%d>\n", __FUNCTION__, fd);
         return -1; // Consistent error return value
     }
     updateLogSeek(gsProfile->logFileSeekMap, logFile, sb.st_size);
@@ -914,7 +914,7 @@ static int getRotatedLogFileDescriptor(const char* logPath, const char* logFile)
     {
         T2Debug("Error getting file size for %s\n", rotatedlogFilePath);
         close(rd);
-        T2Info(("%s: closing fd <%d>\n", __FUNCTION__, fd));
+        T2Info("%s: closing fd <%d>\n", __FUNCTION__, rd);
         return -1;
     }
 
@@ -923,7 +923,7 @@ static int getRotatedLogFileDescriptor(const char* logPath, const char* logFile)
     {
         T2Debug("The size of the logfile is 0 for %s\n", rotatedlogFilePath);
         close(rd);
-        T2Info(("%s: closing fd <%d>\n", __FUNCTION__, fd));
+        T2Info("%s: closing fd <%d>\n", __FUNCTION__, rd);
         return -1; // Consistent error return value
     }
     return rd;
@@ -949,7 +949,7 @@ static void freeFileDescriptor(FileDescriptor* fileDescriptor)
         if(fileDescriptor->fd != -1)
         {
             close(fileDescriptor->fd);
-            T2Info(("%s: closing fd <%d>\n", __FUNCTION__, fileDescriptor->fd));
+            T2Info("%s: closing fd <%d>\n", __FUNCTION__, fileDescriptor->fd);
             fileDescriptor->fd = -1;
         }
         free(fileDescriptor);
@@ -1008,7 +1008,7 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
     {
         T2Error("unlink failed\n");
         close(tmp_fd);
-        T2Info(("%s: closing fd <%d>\n", __FUNCTION__, tmp_fd));
+        T2Info("%s: closing fd <%d>\n", __FUNCTION__, tmp_fd);
         return NULL;
     }
     off_t offset = 0;
@@ -1017,7 +1017,7 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
     {
         T2Error("sendfile failed: %s\n", strerror(errno));
         close(tmp_fd);
-        T2Info(("%s: closing fd <%d>\n", __FUNCTION__, tmp_fd));
+        T2Info("%s: closing fd <%d>\n", __FUNCTION__, tmp_fd);
         return NULL;
     }
 
@@ -1032,11 +1032,11 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
             {
                 T2Error("Failed to create temp file: %s\n", strerror(errno));
                 close(tmp_fd);
-                T2Info(("%s: closing fd <%d>\n", __FUNCTION__, tmp_fd));
+                T2Info("%s: closing fd <%d>\n", __FUNCTION__, tmp_fd);
                 if(rd != -1)
                 {
                     close(rd);
-                    T2Info(("%s: closing fd <%d>\n", __FUNCTION__, rd));
+                    T2Info("%s: closing fd <%d>\n", __FUNCTION__, rd);
                     rd = -1;
                 }
                 return NULL;
@@ -1046,12 +1046,12 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
                 T2Error("unlink failed\n");
                 close(tmp_fd);
                 close(tmp_rd);
-                T2Info(("%s: closing fd <%d>\n", __FUNCTION__, tmp_fd));
-                T2Info(("%s: closing fd <%d>\n", __FUNCTION__, tmp_rd));
+                T2Info("%s: closing fd <%d>\n", __FUNCTION__, tmp_fd);
+                T2Info("%s: closing fd <%d>\n", __FUNCTION__, tmp_rd);
                 if(rd != -1)
                 {
                     close(rd);
-                    T2Info(("%s: closing fd <%d>\n", __FUNCTION__, rd));
+                    T2Info("%s: closing fd <%d>\n", __FUNCTION__, rd);
                     rd = -1;
                 }
                 return NULL;
@@ -1064,8 +1064,8 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
                 T2Error("sendfile failed: %s\n", strerror(errno));
                 close(tmp_rd);
                 close(tmp_fd);
-                T2Info(("%s: closing fd <%d>\n", __FUNCTION__, tmp_fd));
-                T2Info(("%s: closing fd <%d>\n", __FUNCTION__, tmp_rd));
+                T2Info("%s: closing fd <%d>\n", __FUNCTION__, tmp_fd);
+                T2Info("%s: closing fd <%d>\n", __FUNCTION__, tmp_rd);
                 if(rd != -1)
                 {
                     close(rd);
@@ -1092,8 +1092,8 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
             }
             close(tmp_rd);
             close(rd);
-            T2Info(("%s: closing fd <%d>\n", __FUNCTION__, tmp_rd));
-            T2Info(("%s: closing fd <%d>\n", __FUNCTION__, rd));
+            T2Info("%s: closing fd <%d>\n", __FUNCTION__, tmp_rd);
+            T2Info("%s: closing fd <%d>\n", __FUNCTION__, rd);
             rd = -1;
         }
         else
@@ -1112,12 +1112,12 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
                 T2Debug("Log file got rotated. Ignoring invalid mapping\n");
                 close(tmp_fd);
                 close(fd);
-                T2Info(("%s: closing fd <%d>\n", __FUNCTION__, tmp_fd));
-                T2Info(("%s: closing fd <%d>\n", __FUNCTION__, fd));
+                T2Info("%s: closing fd <%d>\n", __FUNCTION__, tmp_fd);
+                T2Info("%s: closing fd <%d>\n", __FUNCTION__, fd);
                 if(rd != -1)
                 {
                     close(rd);
-                    T2Info(("%s: closing fd <%d>\n", __FUNCTION__, rd));
+                    T2Info("%s: closing fd <%d>\n", __FUNCTION__, rd);
                     rd = -1;
                 }
                 return NULL;
@@ -1126,7 +1126,7 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
         if(rd != -1)
         {
             close(rd);
-            T2Info(("%s: closing fd <%d>\n", __FUNCTION__, rd));
+            T2Info("%s: closing fd <%d>\n", __FUNCTION__, rd);
             rd = -1;
         }
     }
@@ -1144,16 +1144,16 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
             T2Debug("Log file got rotated. Ignoring invalid mapping\n");
             close(tmp_fd);
             close(fd);
-            T2Info(("%s: closing fd <%d>\n", __FUNCTION__, tmp_fd));
-            T2Info(("%s: closing fd <%d>\n", __FUNCTION__, fd));
+            T2Info("%s: closing fd <%d>\n", __FUNCTION__, tmp_fd);
+            T2Info("%s: closing fd <%d>\n", __FUNCTION__, fd);
             return NULL;
         }
         addrrf = NULL;
     }
     close(tmp_fd);
     close(fd);
-    T2Info(("%s: closing fd <%d>\n", __FUNCTION__, tmp_fd));
-    T2Info(("%s: closing fd <%d>\n", __FUNCTION__, fd));
+    T2Info("%s: closing fd <%d>\n", __FUNCTION__, tmp_fd);
+    T2Info("%s: closing fd <%d>\n", __FUNCTION__, fd);
 
     if (addrcf == MAP_FAILED)
     {
@@ -1286,7 +1286,7 @@ static int parseMarkerListOptimized(GrepSeekProfile *gsProfile, Vector * ip_vMar
             if (fd != -1)
             {
                 close(fd);
-                T2Info(("%s: closing fd <%d>\n", __FUNCTION__, fd));
+                T2Info("%s: closing fd <%d>\n", __FUNCTION__, fd);
                 fd = -1;
             }
 
@@ -1313,7 +1313,7 @@ static int parseMarkerListOptimized(GrepSeekProfile *gsProfile, Vector * ip_vMar
                 if (fd != -1)
                 {
                     close(fd);
-                    T2Info(("%s: closing fd <%d>\n", __FUNCTION__, fd));
+                    T2Info("%s: closing fd <%d>\n", __FUNCTION__, fd);
                     fd = -1;
                 }
                 continue;
@@ -1343,7 +1343,7 @@ static int parseMarkerListOptimized(GrepSeekProfile *gsProfile, Vector * ip_vMar
     if (fd != -1)
     {
         close(fd);
-        T2Info(("%s: closing fd <%d>\n", __FUNCTION__, fd));
+        T2Info("%s: closing fd <%d>\n", __FUNCTION__, fd);
         fd = -1;
     }
 

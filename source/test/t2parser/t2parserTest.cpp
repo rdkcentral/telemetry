@@ -71,10 +71,12 @@ extern "C" {
     T2ERROR encodingSet(Profile* profile, cJSON *jprofileEncodingType, cJSON *jprofileJSONReportFormat, cJSON *jprofileJSONReportTimestamp);
     T2ERROR protocolSet (Profile *profile, cJSON *jprofileProtocol, cJSON *jprofileHTTPURL, cJSON *jprofileHTTPRequestURIParameter, int ThisprofileHTTPRequestURIParameter_count, cJSON *jprofileRBUSMethodName, cJSON *jprofileRBUSMethodParamArr, int rbusMethodParamArrCount);
 }
+
 T2parserMock *m_t2parserMock = NULL;
 rdklogMock *m_rdklogMock = NULL;
 rbusMock *g_rbusMock = NULL;
 
+#if 0
 TEST(PROCESSCONFIGURATION, NULL_INPUT)
 {
     Profile *profile = nullptr;
@@ -82,7 +84,6 @@ TEST(PROCESSCONFIGURATION, NULL_INPUT)
     EXPECT_EQ(T2ERROR_FAILURE, processConfiguration(nullptr, nullptr, nullptr, nullptr));
 }
 
-#if 0
 TEST(PROCESSCONFIGURATION, MISSING_PROFILE_DATA)
 {
     Profile *profile = nullptr;

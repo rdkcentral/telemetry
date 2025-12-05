@@ -78,22 +78,22 @@ rbusMock *g_rbusMock = NULL;
 
 TEST(PROCESSCONFIGURATION, NULL_INPUT)
 {
-    //Profile *profile = nullptr;
+    //Profile *profile = NULL;
     // All NULL input
-    EXPECT_EQ(T2ERROR_FAILURE, processConfiguration(NULL, NULL, NULL, nullptr));
+    EXPECT_EQ(T2ERROR_FAILURE, processConfiguration(NULL, NULL, NULL, NULL));
 }
 
-#if 0
+#if 1
 TEST(PROCESSCONFIGURATION, MISSING_PROFILE_DATA)
 {
-    Profile *profile = nullptr;
+    Profile *profile = NULL;
     // configData pointer is not null but data is invalid (empty string)
-    char *configData = nullptr;
+    char *configData = NULL;
     EXPECT_EQ(T2ERROR_FAILURE, processConfiguration(&configData, "Profile", "hash", &profile));
 }
 TEST(PROCESSCONFIGURATION, INVALID_JSON)
 {
-    Profile *profile = nullptr;
+    Profile *profile = NULL;
     char invalidJson[] = "{this is not valid JSON!}";
     char *configData = invalidJson;
     EXPECT_EQ(T2ERROR_FAILURE, processConfiguration(&configData, "Profile", "hash", &profile));
@@ -101,7 +101,7 @@ TEST(PROCESSCONFIGURATION, INVALID_JSON)
 
 TEST(PROCESSCONFIGURATION, VALID_PROFILE)
 {
-    Profile *profile = nullptr;
+    Profile *profile = NULL;
     // You may use a line from rpInputfile.txt - for illustration, here's an example:
     const char *json = "{\"name\":\"Test_Profile\",\"hash\":\"TestHash\",\"value\":{\"Name\":\"Test_Profile\",\"Description\":\"Test_Profile\",\"Version\":\"0.1\",\"Protocol\":\"HTTP\",\"EncodingType\":\"JSON\",\"ReportingInterval\":60,\"ActivationTimeOut\":3600,\"GenerateNow\":false,\"RootName\":\"Root\",\"TimeReference\":\"2022-01-01T00:00:00Z\",\"Parameter\":[{\"Name\":\"Param1\",\"Type\":\"datamodel\",\"Reference\":\"Device.Param1\"}]}}";
     char *configData = new char[strlen(json) + 1];
@@ -114,7 +114,7 @@ TEST(PROCESSCONFIGURATION, VALID_PROFILE)
 
 TEST(PROCESSCONFIGURATION, PARAMETER_NULL)
 {
-    Profile *profile = nullptr;
+    Profile *profile = NULL;
     // parameter list empty
     const char *json = "{\"name\":\"Test_Profile\",\"hash\":\"TestHash\",\"value\":{\"Name\":\"Test_Profile\",\"Description\":\"Test_Profile\",\"Version\":\"0.1\",\"Protocol\":\"HTTP\",\"EncodingType\":\"JSON\",\"ReportingInterval\":60,\"ActivationTimeOut\":3600,\"GenerateNow\":false,\"RootName\":\"Root\",\"TimeReference\":\"2022-01-01T00:00:00Z\"}}";
     char *configData = new char[strlen(json) + 1];
@@ -125,7 +125,7 @@ TEST(PROCESSCONFIGURATION, PARAMETER_NULL)
 
 TEST(PROCESSCONFIGURATION, REPORTINGINTERVAL_NULL)
 {
-    Profile *profile = nullptr;
+    Profile *profile = NULL;
     // ReportingInterval omitted
     const char *json = "{\"name\":\"Test_Profile\",\"hash\":\"TestHash\",\"value\":{\"Name\":\"Test_Profile\",\"Description\":\"Test_Profile\",\"Version\":\"0.1\",\"Protocol\":\"HTTP\",\"EncodingType\":\"JSON\",\"ActivationTimeOut\":3600,\"GenerateNow\":false,\"RootName\":\"Root\",\"TimeReference\":\"2022-01-01T00:00:00Z\",\"Parameter\":[{\"Name\":\"Param1\",\"Type\":\"datamodel\",\"Reference\":\"Device.Param1\"}]}}";
     char *configData = new char[strlen(json) + 1];
@@ -136,7 +136,7 @@ TEST(PROCESSCONFIGURATION, REPORTINGINTERVAL_NULL)
 
 TEST(PROCESSCONFIGURATION, ACTIVATIONTIMEOUT_NULL)
 {
-    Profile *profile = nullptr;
+    Profile *profile = NULL;
     // ActivationTimeOut omitted
     const char *json = "{\"name\":\"Test_Profile\",\"hash\":\"TestHash\",\"value\":{\"Name\":\"Test_Profile\",\"Description\":\"Test_Profile\",\"Version\":\"0.1\",\"Protocol\":\"HTTP\",\"EncodingType\":\"JSON\",\"ReportingInterval\":60,\"GenerateNow\":false,\"RootName\":\"Root\",\"TimeReference\":\"2022-01-01T00:00:00Z\",\"Parameter\":[{\"Name\":\"Param1\",\"Type\":\"datamodel\",\"Reference\":\"Device.Param1\"}]}}";
     char *configData = new char[strlen(json) + 1];
@@ -147,7 +147,7 @@ TEST(PROCESSCONFIGURATION, ACTIVATIONTIMEOUT_NULL)
 
 TEST(PROCESSCONFIGURATION, PROTOCOL_UNSUPPORTED)
 {
-    Profile *profile = nullptr;
+    Profile *profile = NULL;
     // Protocol invalid
     const char *json = "{\"name\":\"Test_Profile\",\"hash\":\"TestHash\",\"value\":{\"Name\":\"Test_Profile\",\"Description\":\"Test_Profile\",\"Version\":\"0.1\",\"Protocol\":\"UNSUPPORTED\",\"EncodingType\":\"JSON\",\"ReportingInterval\":60,\"ActivationTimeOut\":3600,\"GenerateNow\":false,\"RootName\":\"Root\",\"TimeReference\":\"2022-01-01T00:00:00Z\",\"Parameter\":[{\"Name\":\"Param1\",\"Type\":\"datamodel\",\"Reference\":\"Device.Param1\"}]}}";
     char *configData = new char[strlen(json) + 1];

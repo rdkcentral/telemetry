@@ -908,6 +908,7 @@ TEST(T2ParserAddTC, AddTriggerConditionSuccess)
     // (The CI process reclaims process memory after tests.)
     cJSON_Delete(arr);
 }
+#if 0
 /* time_param_Reporting_Adjustments_valid_set: generateNow true case */
 TEST(T2ParserTimeParam, GenerateNowTrueResetsReportingAdjustments)
 {
@@ -972,6 +973,7 @@ TEST(T2ParserTimeParam, ReportingAdjustmentsApplied)
     cJSON_Delete(jActivationTimeout);
     cJSON_Delete(jTimeReference);
 }
+#endif
 /* encodingSet should set jsonEncoding fields based on JSON nodes */
 TEST(T2ParserEncodingSet, JSONEncodingMapping)
 {

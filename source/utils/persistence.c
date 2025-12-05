@@ -126,6 +126,7 @@ T2ERROR fetchLocalConfigs(const char* path, Vector *configList)
                 T2Error("read size = %d filestat.st_size = %lu\n", read_size, (unsigned long)filestat.st_size);
             }
             close(fp);
+            T2Info("%s: closing fd <%d>\n", __FUNCTION__, fp);
             Vector_PushBack(configList, config);
 
             T2Debug("Config data size = %lu\n", (unsigned long)strlen(config->configData));
@@ -135,6 +136,7 @@ T2ERROR fetchLocalConfigs(const char* path, Vector *configList)
         {
             T2Error("Unable to stat, Invalid file : %s\n", entry->d_name);
             close(fp);
+            T2Info("%s: closing fd <%d>\n", __FUNCTION__, fp);
             continue;
         }
     }

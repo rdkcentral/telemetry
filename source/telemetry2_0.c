@@ -195,6 +195,7 @@ void sig_handler(int sig, siginfo_t* info, void* uc)
             else
             {
                 T2Debug("File is created\n");
+                T2Info(("%s: closing fd <%d>\n", __FUNCTION__, fd));
                 close(fd);
             }
 #ifndef DEVICE_EXTENDER
@@ -311,6 +312,7 @@ static int checkAnotherTelemetryInstance (void)
     if (flock(fd, LOCK_EX | LOCK_NB) != 0)
     {
         T2Error("Failed to acquire lock file\n");
+        T2Info(("%s: closing fd <%d>\n", __FUNCTION__, fd));
         close(fd);
         return 1;
     }

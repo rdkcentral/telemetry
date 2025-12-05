@@ -333,7 +333,7 @@ void *cacheEventToFile(void *arg)
         free(telemetry_data);
         return NULL;
     }
-
+EVENT_DEBUG("t2 opened fd <%d>\n", fd);
     if(fcntl(fd, F_SETLKW, &fl) == -1)  /* set the lock */
     {
         EVENT_ERROR("%s:%d, T2:fcntl failed\n", __func__, __LINE__);
@@ -382,6 +382,7 @@ unlock:
     {
         EVENT_ERROR("%s:%d, T2:close failed with error %d\n", __func__, __LINE__, ret);
     }
+EVENT_DEBUG("t2 %s: closing fd <%d>\n", __FUNCTION__, fd);
     pthread_mutex_unlock(&FileCacheMutex);
     free(telemetry_data);
     return NULL;

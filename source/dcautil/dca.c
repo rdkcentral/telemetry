@@ -767,6 +767,15 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
             {
                 memcpy(result, start, length);
                 result[length] = '\0';
+                
+                // Skip if the value is "0"
+                if(strcmp(result, "0") == 0 )
+                {
+                    T2Debug("Skipping marker %s as the value is 0 for accumulate\n", marker->markerName);
+                    free(result);
+                    goto advance_to_next_pattern;
+                }
+                
                 T2Debug("%s %d : result = %s\n", __FUNCTION__, __LINE__, result);
                 Vector_PushBack(accumulatedValues, result);
 

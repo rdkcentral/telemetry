@@ -1493,8 +1493,9 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_Accum)
     EXPECT_CALL(*g_systemMock, unlink(_))
             .WillRepeatedly(Return(0));
     EXPECT_CALL(*g_fileIOMock,sendfile(_,_,_,_))
-            .WillRepeatedly(Return(0));
-    /*
+            .Times(2)
+            .WillOnce(Return(1000));
+            //.WillOnce(Return(1235))
     EXPECT_CALL(*g_fileIOMock, mmap(_,_,_,_,_,_))
                 .WillOnce([](void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
                     const char* test_str = "This is a Test Marker with value 1234 in the log file.\nAnother line without the marker.\n";
@@ -1510,7 +1511,6 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_Accum)
                     strncpy(mapped_mem, test_str, length - 1);
                     return (void*)mapped_mem;
                 });
-*/
     
     EXPECT_EQ(0, getDCAResultsInVector(gsProfile, vecMarkerList, true, "/opt/logs"));
     hash_map_destroy(gsProfile->logFileSeekMap, free);

@@ -27,7 +27,6 @@ from datetime import datetime as dt
 
 from helper_functions import *
 
-'''
 @pytest.mark.run(order=1)
 def test_precondition():
     adminSupport_cache()
@@ -197,7 +196,6 @@ def test_xconf_datamodel():
     sleep(5)
     assert "Test_datamodel_1" in grep_T2logs("cJSON Report")
 
-'''
 pytest.mark.run(order=15)
 def test_xconf_split_markers():
     kill_telemetry(9)

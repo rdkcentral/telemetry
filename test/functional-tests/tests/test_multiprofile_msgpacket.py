@@ -60,7 +60,6 @@ def test_without_namefield():
     #Enabling debug log lines to get the HASH_ERROR_MSG in the logs
     sleep(2)
 
-'''
     rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_without_namefield))
     sleep(10) 
 
@@ -250,7 +249,7 @@ def test_for_invalid_activation_timeout():
     rbus_set_data("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.ConfigURL", "string", "https://mockxconf:50050/loguploader2/getT2DCMSettings")
     os.makedirs('/opt/logs/PreviousLogs', exist_ok=True)
     file = open('/opt/logs/session0.txt', 'w')
-    file.write("This log file is for previous logs\n")
+    file.write("This log file is for previous logs with value\n")
     file.write("Second line in the previous logs\n")
     file.close()
     clear_T2logs()
@@ -375,7 +374,6 @@ def test_for_triggerCondition_negative_case():
     assert "Null threshold verifyMsgPckTriggerCondition ++out" in grep_T2logs("Null threshold verifyMsgPckTriggerCondition ++out")
     assert "Unexpected reference verifyMsgPckTriggerCondition ++out" in grep_T2logs("Unexpected reference verifyMsgPckTriggerCondition ++out")
 
-'''
 @pytest.mark.run(order=12)
 def test_for_subscribe_tr181():
     clear_T2logs()
@@ -418,7 +416,6 @@ def test_for_subscribe_tr181():
     assert "T2_Container_0.0.3" in grep_T2logs("temp_Split_Marker") # 312 - Include data from data source Tr181 parameters as Accumulate
     assert "Report Sent Successfully over HTTP" in grep_T2logs ("Report Sent Successfully over HTTP") # 319 - Report sending over HTTP protocol
 
-'''
 @pytest.mark.run(order=11)
 def test_for_triggerCondition_working_case():
     clear_T2logs()
@@ -534,5 +531,3 @@ def test_grep_accumulate():
     assert "SYS_INFO_0_value" not in grep_T2logs("cJSON Report ") # 0 value should not be reported in absolute use
     assert "SYS_INFO_0_accum" not in grep_T2logs("cJSON Report ") # 0 value should not be reported in accumulate use
     assert "SYS_INFO_Accum_Time\":[\"thevalue23" in grep_T2logs("cJSON Report ") #Marker is reporting  in the next cycle even if the maximum accumulation is reached in the previous report 
-
-'''

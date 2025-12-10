@@ -1467,17 +1467,22 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_Accum)
     marker->reportEmptyParam = true;
     Vector_PushBack(vecMarkerList, (void*) marker);
 
-
     //freeFileDescriptor
     EXPECT_CALL(*g_fileIOMock, munmap(_, _))
             .WillRepeatedly(Return(0));
     EXPECT_CALL(*g_fileIOMock, close(_)) 
             .WillRepeatedly(Return(0));
 
-    //getLogFileDescriptor
+        //getLogFileDescriptor
     EXPECT_CALL(*g_fileIOMock, open(_,_))
             .WillRepeatedly(Return(0));
+
     EXPECT_CALL(*g_fileIOMock, fstat(_, _))
+        .Times(4)
+        .WillOnce([](int fd, struct stat* statbuf) {
+        statbuf->st_size = 1235;      // Set file size
+        return 0; // Success
+    })
         .WillOnce([](int fd, struct stat* statbuf) {
         statbuf->st_size = 1235;      // Set file size
         return 0; // Success
@@ -1485,8 +1490,11 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_Accum)
         .WillOnce([](int fd, struct stat* statbuf) {
         statbuf->st_size = 1000;      // Set file size
         return 0; // Success
+    })
+        .WillOnce([](int fd, struct stat* statbuf) {
+        statbuf->st_size = 1000;      // Set file size
+        return 0; // Success
     });
-
     //getDeltainmmapsearch 
     EXPECT_CALL(*g_fileIOMock, mkstemp(_))
             .WillRepeatedly(Return(0));
@@ -1494,18 +1502,18 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_Accum)
             .WillRepeatedly(Return(0));
     EXPECT_CALL(*g_fileIOMock,sendfile(_,_,_,_))
             .Times(2)
+            .WillOnce(Return(1235))
             .WillOnce(Return(1000));
-            //.WillOnce(Return(1235))
     EXPECT_CALL(*g_fileIOMock, mmap(_,_,_,_,_,_))
                 .WillOnce([](void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
-                    const char* test_str = "This is a Test Marker with value 1234 in the log file.\nAnother line without the marker.\n";
+                    const char* test_str = "This is a Test Marker with value 1234 in the log file.\nAnother line without the marker.\nLine with Test Marker";
                     char* mapped_mem = (char*)malloc(length);
                     memset(mapped_mem, 0, length);
                     strncpy(mapped_mem, test_str, length - 1);
                     return (void*)mapped_mem;
                 })
                 .WillOnce([](void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
-                    const char* test_str = "This is with value Test:1250 in the log file.\nAnother line without the marker.\nThe line with Test Markeris found\n";
+                    const char* test_str = "This is with value Test:1250 in the log file.\nAnother line without the marker.\nThe line with Test Markeris found\nLine with 0 vale for Test Marker0";
                     char* mapped_mem = (char*)malloc(length);
                     memset(mapped_mem, 0, length);
                     strncpy(mapped_mem, test_str, length - 1);
@@ -1513,6 +1521,7 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_Accum)
                 });
     
     EXPECT_EQ(0, getDCAResultsInVector(gsProfile, vecMarkerList, true, "/opt/logs"));
+
     hash_map_destroy(gsProfile->logFileSeekMap, free);
     gsProfile->logFileSeekMap = NULL;
     free(gsProfile);

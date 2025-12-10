@@ -1506,14 +1506,14 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_Accum)
             .WillOnce(Return(1000));
     EXPECT_CALL(*g_fileIOMock, mmap(_,_,_,_,_,_))
                 .WillOnce([](void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
-                    const char* test_str = "This is a Test Marker with value 1234 in the log file.\nAnother line without the marker.\nLine with Test Marker";
+                    const char* test_str = "2025-10-26T14:40:55.001Z This is a Test Marker with value 1234 in the log file.\n2025-10-26T14:40:55.001Z Another line without the marker.\n2025-10-26T14:40:55.001Z Line with Test Marker";
                     char* mapped_mem = (char*)malloc(length);
                     memset(mapped_mem, 0, length);
                     strncpy(mapped_mem, test_str, length - 1);
                     return (void*)mapped_mem;
                 })
                 .WillOnce([](void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
-                    const char* test_str = "This is with value Test:1250 in the log file.\nAnother line without the marker.\nThe line with Test Markeris found\nLine with 0 vale for Test Marker0";
+                    const char* test_str = "2025-10-26T14:40:55.001Z This is with value Test:1250 in the log file.\n2025-10-26T14:40:55.001Z Another line without the marker.\n2025-10-26T14:40:55.001Z The line with Test Markeris found\n2025-10-26T14:40:55.001Z Line with 0 vale for Test Marker0";
                     char* mapped_mem = (char*)malloc(length);
                     memset(mapped_mem, 0, length);
                     strncpy(mapped_mem, test_str, length - 1);

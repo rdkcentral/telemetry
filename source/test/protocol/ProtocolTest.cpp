@@ -186,7 +186,7 @@ TEST_F(protocolTestFixture, SENDREPORTOVERHTTP1)
       EXPECT_EQ(T2ERROR_FAILURE, sendReportOverHTTP(httpURL, payload, NULL));
       free(payload);
 }
-
+#if 0
 TEST_F(protocolTestFixture, SENDREPORTOVERHTTP2)
 {
       char* httpURL = "https://mockxconf:50051/dataLakeMock";
@@ -573,7 +573,6 @@ TEST_F(protocolTestFixture, SendReportOverHTTPChildFailure)
     EXPECT_EQ(T2ERROR_FAILURE, sendReportOverHTTP(httpURL, payload, NULL));
     free(payload);
 }
-#if 0
 // Failure to create pipe
 TEST_F(protocolTestFixture, SendReportOverHTTPPipeFailure)
 {

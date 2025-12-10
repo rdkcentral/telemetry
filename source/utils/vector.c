@@ -200,3 +200,20 @@ Vector_Sort(Vector* v, size_t size, Vecor_Comparator comparator)
 
     return T2ERROR_SUCCESS;
 }
+
+/* Test function to trigger Coverity scan - intentional issues for testing */
+void test_coverity_scan(void)
+{
+    char *buffer = NULL;
+    int *ptr = (int *)malloc(sizeof(int) * 10);
+    
+    /* Issue 1: Potential null pointer dereference */
+    strcpy(buffer, "test");
+    
+    /* Issue 2: Resource leak - malloc without free */
+    *ptr = 42;
+    
+    /* Issue 3: Buffer overflow */
+    char small_buf[5];
+    strcpy(small_buf, "This is a very long string that will overflow");
+}

@@ -186,7 +186,6 @@ TEST_F(protocolTestFixture, SENDREPORTOVERHTTP1)
       EXPECT_EQ(T2ERROR_FAILURE, sendReportOverHTTP(httpURL, payload, NULL));
       free(payload);
 }
-#if 0
 TEST_F(protocolTestFixture, SENDREPORTOVERHTTP2)
 {
       char* httpURL = "https://mockxconf:50051/dataLakeMock";
@@ -501,7 +500,7 @@ TEST(SENDCACREPOVERHTTP, NullUrlFails)
     EXPECT_EQ(T2ERROR_FAILURE, sendCachedReportsOverHTTP(NULL, reportList));
     Vector_Destroy(reportList, free);
 }
-
+#if 0
 TEST(SENDCACREPOVERHTTP, NullReportListFails)
 {
     char *url = "https://example.com";

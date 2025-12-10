@@ -480,3 +480,154 @@ TEST_F(protocolTestFixture, sendReportOverHTTP_6)
       EXPECT_EQ(T2ERROR_SUCCESS, sendReportOverHTTP(httpURL, payload,NULL));
       Vector_Destroy(reportlist, free);
 }
+
+TEST(SENDREPORTOVERHTTP, NullUrlFails)
+{
+    char *payload = "test payload";
+    EXPECT_EQ(T2ERROR_FAILURE, sendReportOverHTTP(NULL, payload, NULL));
+}
+
+TEST(SENDREPORTOVERHTTP, NullPayloadFails)
+{
+    char *url = "https://example.com";
+    EXPECT_EQ(T2ERROR_FAILURE, sendReportOverHTTP(url, NULL, NULL));
+}
+
+TEST(SENDCACREPOVERHTTP, NullUrlFails)
+{
+    Vector* reportList;
+    Vector_Create(&reportList);
+    Vector_PushBack(reportList, strdup("Payload1"));
+    EXPECT_EQ(T2ERROR_FAILURE, sendCachedReportsOverHTTP(NULL, reportList));
+    Vector_Destroy(reportList, free);
+}
+
+TEST(SENDCACREPOVERHTTP, NullReportListFails)
+{
+    char *url = "https://example.com";
+    EXPECT_EQ(T2ERROR_FAILURE, sendCachedReportsOverHTTP(url, NULL));
+}
+
+// Empty report list should return success (since nothing to send)
+TEST(SENDCACREPOVERHTTP, EmptyReportListSucceeds)
+{
+    char *url = "https://example.com";
+    Vector* reportList;
+    Vector_Create(&reportList);
+    EXPECT_EQ(T2ERROR_SUCCESS, sendCachedReportsOverHTTP(url, reportList));
+    Vector_Destroy(reportList, free);
+}
+
+// Payload in reportList is NULL (defensive case)
+TEST(SENDCACREPOVERHTTP, NullPayloadInReportList)
+{
+    char *url = "https://example.com";
+    Vector* reportList;
+    Vector_Create(&reportList);
+    Vector_PushBack(reportList, NULL); // Fault-injection: NULL payload
+    EXPECT_EQ(T2ERROR_FAILURE, sendCachedReportsOverHTTP(url, reportList));
+    Vector_Clear(reportList, NULL);
+    Vector_Destroy(reportList, NULL);
+}
+
+// sendReportOverHTTP returns success when childResponse.http_code == 200 (mocked)
+TEST_F(protocolTestFixture, SendReportOverHTTPChildSuccess)
+{
+    char* httpURL = "http://localhost:8080";
+    char* payload = strdup("payload");
+    EXPECT_CALL(*g_fileIOMock, pipe(_)).WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, fork()).WillOnce(Return(1));
+    EXPECT_CALL(*g_fileIOMock, close(_)).Times(2).WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_fileIOMock, read(_,_,_))
+        .WillOnce([](int fd, void* buf, size_t count) {
+            childResponse* resp = (childResponse*)buf;
+            resp->curlStatus = true;
+            resp->curlResponse = CURLE_OK;
+            resp->curlSetopCode = CURLE_OK;
+            resp->http_code = 200;
+            resp->lineNumber = 42;
+            return sizeof(childResponse);
+        });
+    EXPECT_EQ(T2ERROR_SUCCESS, sendReportOverHTTP(httpURL, payload, NULL));
+    free(payload);
+}
+
+// sendReportOverHTTP returns failure on non-200 response
+TEST_F(protocolTestFixture, SendReportOverHTTPChildFailure)
+{
+    char* httpURL = "http://localhost:8080";
+    char* payload = strdup("payload");
+    EXPECT_CALL(*g_fileIOMock, pipe(_)).WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, fork()).WillOnce(Return(1));
+    EXPECT_CALL(*g_fileIOMock, close(_)).Times(2).WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_fileIOMock, read(_,_,_))
+        .WillOnce([](int fd, void* buf, size_t count) {
+            childResponse* resp = (childResponse*)buf;
+            resp->curlStatus = true;
+            resp->curlResponse = CURLE_WRITE_ERROR;
+            resp->curlSetopCode = CURLE_OK;
+            resp->http_code = 404;
+            resp->lineNumber = 42;
+            return sizeof(childResponse);
+        });
+    EXPECT_EQ(T2ERROR_FAILURE, sendReportOverHTTP(httpURL, payload, NULL));
+    free(payload);
+}
+
+// Failure to create pipe
+TEST_F(protocolTestFixture, SendReportOverHTTPPipeFailure)
+{
+    char* httpURL = "http://localhost:8080";
+    char* payload = strdup("payload");
+    EXPECT_CALL(*g_fileIOMock, pipe(_)).WillOnce(Return(-1));
+    EXPECT_EQ(T2ERROR_FAILURE, sendReportOverHTTP(httpURL, payload, NULL));
+    free(payload);
+}
+
+// Failure to fork the process
+TEST_F(protocolTestFixture, SendReportOverHTTPForkFailure)
+{
+    char* httpURL = "http://localhost:8080";
+    char* payload = strdup("payload");
+    EXPECT_CALL(*g_fileIOMock, pipe(_)).WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, fork()).WillOnce(Return(-1));
+    EXPECT_EQ(T2ERROR_FAILURE, sendReportOverHTTP(httpURL, payload, NULL));
+    free(payload);
+}
+
+// sendCachedReportsOverHTTP returns failure if any payload sends fail
+TEST_F(protocolTestFixture, SendCachedReportsOverHTTPPartialFailure)
+{
+    char* httpURL = "http://localhost:8080";
+    Vector* reportList;
+    Vector_Create(&reportList);
+    Vector_PushBack(reportList, strdup("payload1"));
+    Vector_PushBack(reportList, strdup("payload2"));
+
+    // First send succeeds, second fails
+    static int call = 0;
+    EXPECT_CALL(*g_fileIOMock, pipe(_)).Times(2)
+        .WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_fileIOMock, fork()).Times(2)
+        .WillRepeatedly(Return(1));
+    EXPECT_CALL(*g_fileIOMock, close(_)).Times(4)
+        .WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_fileIOMock, read(_,_,_)).Times(2)
+        .WillRepeatedly([](int fd, void* buf, size_t count) {
+            childResponse* resp = (childResponse*)buf;
+            if (call++ == 0) {
+                resp->curlStatus = true;
+                resp->curlResponse = CURLE_OK;
+                resp->curlSetopCode = CURLE_OK;
+                resp->http_code = 200;
+            } else {
+                resp->curlStatus = true;
+                resp->curlResponse = CURLE_COULDNT_CONNECT;
+                resp->curlSetopCode = CURLE_OK;
+                resp->http_code = 0;
+            }
+            return sizeof(childResponse);
+        });
+    EXPECT_EQ(T2ERROR_FAILURE, sendCachedReportsOverHTTP(httpURL, reportList));
+    Vector_Destroy(reportList, free);
+}

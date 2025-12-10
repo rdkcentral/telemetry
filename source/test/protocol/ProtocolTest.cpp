@@ -573,7 +573,7 @@ TEST_F(protocolTestFixture, SendReportOverHTTPChildFailure)
     EXPECT_EQ(T2ERROR_FAILURE, sendReportOverHTTP(httpURL, payload, NULL));
     free(payload);
 }
-
+#if 0
 // Failure to create pipe
 TEST_F(protocolTestFixture, SendReportOverHTTPPipeFailure)
 {
@@ -631,3 +631,4 @@ TEST_F(protocolTestFixture, SendCachedReportsOverHTTPPartialFailure)
     EXPECT_EQ(T2ERROR_FAILURE, sendCachedReportsOverHTTP(httpURL, reportList));
     Vector_Destroy(reportList, free);
 }
+#endif

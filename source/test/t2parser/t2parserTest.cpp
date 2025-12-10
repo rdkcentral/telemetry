@@ -1141,7 +1141,7 @@ TEST(T2ParserProtocolSet, RBUSMethodBranchSetsMethodAndParams)
     cJSON_Delete(jProtocol);
     cJSON_Delete(jRBUS);
 }
-#if 0
+#if 1
 TEST(PROCESSCONFIGURATION, VALID_PROFILE)
 {
     Profile *profile = NULL;

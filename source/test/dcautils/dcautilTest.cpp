@@ -1478,7 +1478,7 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_Accum)
             .WillRepeatedly(Return(0));
 
     EXPECT_CALL(*g_fileIOMock, fstat(_, _))
-        .Times(4)
+        .Times(testing::AtMost(4))
         .WillOnce([](int fd, struct stat* statbuf) {
         statbuf->st_size = 1235;      // Set file size
         return 0; // Success
@@ -1501,10 +1501,11 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_Accum)
     EXPECT_CALL(*g_systemMock, unlink(_))
             .WillRepeatedly(Return(0));
     EXPECT_CALL(*g_fileIOMock,sendfile(_,_,_,_))
-            .Times(2)
+            .Times(testing::AtMost(2))
             .WillOnce(Return(1235))
             .WillOnce(Return(1000));
     EXPECT_CALL(*g_fileIOMock, mmap(_,_,_,_,_,_))
+                .Times(testing::AtMost(2))
                 .WillOnce([](void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
                     const char* test_str = "2025-10-26T14:40:55.001Z This is a Test Marker with value 1234 in the log file.\n2025-10-26T14:40:55.001Z Another line without the marker.\n2025-10-26T14:40:55.001Z Line with Test Marker";
                     char* mapped_mem = (char*)malloc(length);

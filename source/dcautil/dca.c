@@ -606,6 +606,14 @@ static int getAbsolutePatternMatch(FileDescriptor* fileDescriptor, GrepMarker* m
     const char *end = memchr(start, '\n', chars_left);
     size_t length = end ? (size_t)(end - start) : chars_left;
 
+    // Skip if the value is empty (i.e. length=0)
+    if (length == 0)
+    {
+        T2Debug("Skipping marker %s as the value is empty\n", marker->markerName);
+        marker->u.markerValue = NULL;
+        return 0;
+    }
+
     char *result = (char*)malloc(length + 1);
     if (!result)
     {
@@ -746,12 +754,28 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
             const char *end = memchr(start, '\n', chars_left);
             size_t length = end ? (size_t)(end - start) : chars_left;
 
+            //Skip if the value is empty (length= 0)
+            if (length == 0)
+            {
+                T2Debug("Skipping empty value for marker %s\n", marker->markerName);
+                goto advance_to_next_pattern;
+            }
+
             // Create result string for this occurrence
             char *result = (char*)malloc(length + 1);
             if (result)
             {
                 memcpy(result, start, length);
                 result[length] = '\0';
+
+                // Skip if the value is "0"
+                if(strcmp(result, "0") == 0 )
+                {
+                    T2Debug("Skipping marker %s as the value is 0 for accumulate\n", marker->markerName);
+                    free(result);
+                    goto advance_to_next_pattern;
+                }
+
                 T2Debug("%s %d : result = %s\n", __FUNCTION__, __LINE__, result);
                 Vector_PushBack(accumulatedValues, result);
 
@@ -767,6 +791,7 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
                 }
             }
 
+advance_to_next_pattern:
             size_t advance = (size_t)(found - cur) + patlen;
             cur = found + patlen;
             if (bytes_left < advance)

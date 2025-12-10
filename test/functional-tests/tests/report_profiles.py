@@ -1303,14 +1303,14 @@ data_temp_with_split_markers = '''{
             "marker": "SYS_INFO_WhoAmI",
             "search": "WhoAmI feature is",
             "logFile": "telemetry2_0.txt.0",
-            "use": "absolute"
+            "use": "accumulate"
           },
           {
             "type": "grep",
             "marker": "SYS_INFO_WhoAmI_Status",
             "search": "WhoAmI feature",
             "logFile": "telemetry2_0.txt.0",
-            "use": "absolute"
+            "use": "accumulate"
           },
           {
             "type": "grep",

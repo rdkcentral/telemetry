@@ -382,7 +382,7 @@ EVENT_DEBUG("t2 opened fd <%d> PID <%d>\n", fd, (int)getpid());
     {
         EVENT_DEBUG("Reached Max cache limit of 200, Caching is not done\n");
     }
-    EVENT_DEBUG("closing t2_caching_file fd <%d>"\n, fileno(fp));
+    EVENT_DEBUG("closing t2_caching_file fd <%d>\n", fileno(fp));
     fclose(fp);
 
 unlock:

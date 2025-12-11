@@ -363,11 +363,15 @@ EVENT_DEBUG("t2 opened fd <%d> PID <%d>\n", fd, (int)getpid());
         EVENT_ERROR("%s: File open error %s\n", __FUNCTION__, T2_CACHE_FILE);
         goto unlock;
     }
+    EVENT_DEBUG("opened t2_caching_file fd <%d>\n", fileno(fs));
+
     fs = popen ("cat /tmp/t2_caching_file | wc -l", "r");
     if(fs != NULL)
     {
+        EVENT_DEBUG("popen fd <%d>\n", fileno(fs));
         fgets(path, 100, fs);
         count = atoi ( path );
+        EVENT_DEBUG("closing popen fd <%d>\n", fileno(fs));
         pclose(fs);
     }
     if(count < MAX_EVENT_CACHE)
@@ -378,6 +382,7 @@ EVENT_DEBUG("t2 opened fd <%d> PID <%d>\n", fd, (int)getpid());
     {
         EVENT_DEBUG("Reached Max cache limit of 200, Caching is not done\n");
     }
+    EVENT_DEBUG("closing t2_caching_file fd <%d>"\n, fileno(fp));
     fclose(fp);
 
 unlock:

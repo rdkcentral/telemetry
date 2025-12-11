@@ -689,6 +689,7 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
         {
             // Check MAX_ACCUMULATE limit before checking for a match
             int arraySize = Vector_Size(accumulatedValues);
+	    size_t advance;
 
             if (arraySize >= MAX_ACCUMULATE)
             {
@@ -792,7 +793,7 @@ static int getAccumulatePatternMatch(FileDescriptor* fileDescriptor, GrepMarker*
             }
 
 advance_to_next_pattern:
-            size_t advance = (size_t)(found - cur) + patlen;
+            advance = (size_t)(found - cur) + patlen;
             cur = found + patlen;
             if (bytes_left < advance)
             {

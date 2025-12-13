@@ -31,6 +31,8 @@
 #include <sys/wait.h>
 #include <curl/curl.h>
 #include <signal.h>
+#include <openssl/crypto.h>
+
 
 #include "curlinterface.h"
 #include "reportprofiles.h"
@@ -318,6 +320,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
     rdkcertselector_h thisCertSel = NULL;
     rdkcertselectorStatus_t curlGetCertStatus;
     char *pCertURI = NULL;
+    char *pEngine = NULL;
     bool state_red_enable = false;
 #endif
     char *pCertFile = NULL;
@@ -440,6 +443,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
      */
     if(childPid == 0)
     {
+        OPENSSL_init_crypto(OPENSSL_INIT_NO_LOAD_CONFIG, NULL);
         curl = curl_easy_init();
         if(curl)
         {
@@ -453,6 +457,24 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
             {
                 curl_easy_cleanup(curl); // CID 189985: Resource leak
                 goto child_cleanReturn;
+            }
+            pEngine = rdkcertselector_getEngine(curlCertSelector);
+            if(pEngine != NULL) {
+                code = curl_easy_setopt(curl, CURLOPT_SSLENGINE, pEngine);
+                if(code != CURLE_OK)
+                {            
+                    childCurlResponse.lineNumber = __LINE__;
+                    curl_easy_cleanup(curl);
+                    goto child_cleanReturn;                
+                }
+             } else {
+                code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
+                if(code != CURLE_OK  )
+                {
+                    childCurlResponse.lineNumber = __LINE__;
+                    curl_easy_cleanup(curl);
+                    goto child_cleanReturn;
+                }
             }
 #ifdef LIBRDKCERTSEL_BUILD
             do

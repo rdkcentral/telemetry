@@ -325,7 +325,7 @@ void *cacheEventToFile(void *arg)
     fl.l_start = 0;
     fl.l_len = 0;
     fl.l_pid = 0;
-    FILE *fs = NULL;
+    //FILE *fs = NULL;
     char path[100];
     pthread_detach(pthread_self());
     EVENT_ERROR("%s:%d, Caching the event to File\n", __func__, __LINE__);
@@ -363,9 +363,9 @@ EVENT_DEBUG("t2 opened fd <%d> PID <%d>\n", fd, (int)getpid());
         EVENT_ERROR("%s: File open error %s\n", __FUNCTION__, T2_CACHE_FILE);
         goto unlock;
     }
-    EVENT_DEBUG("opened t2_caching_file fd <%d>\n", fileno(fs));
-
+    /*
     fs = popen ("cat /tmp/t2_caching_file | wc -l", "r");
+    EVENT_DEBUG("opened t2_caching_file fd <%d>\n", fileno(fs));    
     if(fs != NULL)
     {
         EVENT_DEBUG("popen fd <%d>\n", fileno(fs));
@@ -374,6 +374,7 @@ EVENT_DEBUG("t2 opened fd <%d> PID <%d>\n", fd, (int)getpid());
         EVENT_DEBUG("closing popen fd <%d>\n", fileno(fs));
         pclose(fs);
     }
+    */
     if(count < MAX_EVENT_CACHE)
     {
         fprintf(fp, "%s\n", telemetry_data);

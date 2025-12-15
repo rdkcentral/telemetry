@@ -959,6 +959,7 @@ TEST(T2ParserVerifyTC, EmptyReferenceShouldFail)
 /* verifyTriggerCondition success: valid tc */
 TEST(T2ParserVerifyTC, ValidShouldSucceed)
 {
+
     cJSON* arr = cJSON_CreateArray();
     cJSON* tc = create_tc_obj("dataModel", "any", "Device.Param", -1, -1);
     cJSON_AddItemToArray(arr, tc);

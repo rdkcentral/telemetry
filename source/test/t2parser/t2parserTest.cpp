@@ -1078,6 +1078,19 @@ TEST(T2ParserEncodingSet, JSONEncodingMapping)
     cJSON_Delete(jJSONReportTimestamp);
 }
 /* protocolSet tests: HTTP branch */
+TEST(T2ParserProtocolSet,Null_protocolTest)
+{
+    T2ERROR err = protocolSet(NULL, NULL, NULL, NULL, 0, NULL, NULL, 0);
+//    ASSERT_EQ(err, T2ERROR_INVALID_ARGS); 
+}
+
+TEST(T2ParserProtocolSet, Valid_profileTest)
+{
+    Profile profile;
+    memset(&profile, 0, sizeof(Profile));
+    protocolSet(&profile, NULL, NULL, NULL, 0, NULL, NULL, 0);
+}
+
 TEST(T2ParserProtocolSet, HTTPBranchSetsURLAndParams)
 {
     Profile p;

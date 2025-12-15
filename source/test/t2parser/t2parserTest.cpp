@@ -431,6 +431,7 @@ TEST(PROCESSCONFIGURATION_CJSON, TEST_NULL_INVALID_PARAM)
 
 //MessagePack Testing
 
+
 //When Protocol is not given in the profile
 TEST(PROCESSCONFIGURATION_MSGPACK, PROTOCOL_NULL)
 {
@@ -1057,6 +1058,10 @@ TEST(T2ParserTimeParam, ReportingAdjustmentsApplied)
 }
 #endif
 /* encodingSet should set jsonEncoding fields based on JSON nodes */
+TEST(T2ParserEncodingSet, NULL_profileTest)
+{
+     encodingSet(NULL,NULL,NULL,NULL);	
+}
 TEST(T2ParserEncodingSet, JSONEncodingMapping)
 {
     Profile p;

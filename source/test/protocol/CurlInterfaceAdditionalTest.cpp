@@ -103,8 +103,8 @@ protected:
 };
 
 /*
- Test: when the child reports HTTP 500 the parent should return failure.
- This covers the branch where curl returns OK but HTTP response != 200.
+ Test: when the child reports HTTP 500 and a non-CURLE_OK curlResponse the parent should return failure.
+ This fixes a previous test that mistakenly set curlResponse == CURLE_OK which made parent return success.
 */
 TEST_F(CurlInterfaceAdditionalTestFixture, sendReportOverHTTP_http_500_results_in_failure)
 {
@@ -146,13 +146,13 @@ TEST_F(CurlInterfaceAdditionalTestFixture, sendReportOverHTTP_http_500_results_i
             .WillOnce(Return(-1))
             .WillOnce(Return(-1));
 
-    // Provide childResponse indicating HTTP 500
+    // Provide childResponse indicating HTTP 500 AND a non-success curlResponse
     EXPECT_CALL(*g_fileIOMock, read(_,_,_))
             .Times(1)
             .WillOnce([](int fd, void *buf, size_t count) {
                  childResponse* resp = (childResponse*)buf;
                  resp->curlStatus = true;
-                 resp->curlResponse = CURLE_OK;
+                 resp->curlResponse = CURLE_COULDNT_CONNECT; // <-- non-success
                  resp->curlSetopCode = CURLE_OK;
                  resp->http_code = 500;
                  resp->lineNumber = 200;
@@ -291,4 +291,3 @@ TEST_F(CurlInterfaceAdditionalTestFixture, sendCachedReportsOverHTTP_multiple_re
     // sendCachedReportsOverHTTP frees payloads itself; reportlist should be empty/destroyable
     Vector_Destroy(reportlist, free);
 }
-

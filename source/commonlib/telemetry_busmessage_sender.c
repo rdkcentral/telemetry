@@ -326,6 +326,7 @@ void *cacheEventToFile(void *arg)
     fl.l_len = 0;
     fl.l_pid = 0;
     FILE *fs = NULL;
+    char ch;
     pthread_detach(pthread_self());
     EVENT_ERROR("%s:%d, Caching the event to File\n", __func__, __LINE__);
     if(telemetry_data == NULL)
@@ -371,9 +372,8 @@ void *cacheEventToFile(void *arg)
             }
         }
         
-        if (ch != '\n' && lines == 0 && ftell(fs) > 0) {
-            count++;
-        } else if (ch != '\n' && ftell(fs) > 0) {
+        //If the file is not empty and does not contain a newline, call it one line
+        if (count == 0 && ftell(fs) > 0) {
             count++;
         }
         fclose(fs);

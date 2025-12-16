@@ -555,8 +555,6 @@ child_cleanReturn :
             T2Error("unable to write \n");
         }
         close(sharedPipeFds[1]);
-        T2Info("%s: closing fd <%d>\n", __FUNCTION__, sharedPipeFds[0]);
-        T2Info("%s: closing fd <%d>\n", __FUNCTION__, sharedPipeFds[1]);
         exit(0);
 
     }

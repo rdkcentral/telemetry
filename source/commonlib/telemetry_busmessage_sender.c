@@ -325,8 +325,7 @@ void *cacheEventToFile(void *arg)
     fl.l_start = 0;
     fl.l_len = 0;
     fl.l_pid = 0;
-    //FILE *fs = NULL;
-    //char path[100];
+    FILE *fs = NULL;
     pthread_detach(pthread_self());
     EVENT_ERROR("%s:%d, Caching the event to File\n", __func__, __LINE__);
     if(telemetry_data == NULL)
@@ -343,7 +342,7 @@ void *cacheEventToFile(void *arg)
         free(telemetry_data);
         return NULL;
     }
-EVENT_DEBUG("t2 opened fd <%d> PID <%d>\n", fd, (int)getpid());
+
     if(fcntl(fd, F_SETLKW, &fl) == -1)  /* set the lock */
     {
         EVENT_ERROR("%s:%d, T2:fcntl failed\n", __func__, __LINE__);
@@ -363,18 +362,24 @@ EVENT_DEBUG("t2 opened fd <%d> PID <%d>\n", fd, (int)getpid());
         EVENT_ERROR("%s: File open error %s\n", __FUNCTION__, T2_CACHE_FILE);
         goto unlock;
     }
-    /*
-    fs = popen ("cat /tmp/t2_caching_file | wc -l", "r");
-    EVENT_DEBUG("opened t2_caching_file fd <%d>\n", fileno(fs));    
-    if(fs != NULL)
-    {
-        EVENT_DEBUG("popen fd <%d>\n", fileno(fs));
-        fgets(path, 100, fs);
-        count = atoi ( path );
-        EVENT_DEBUG("closing popen fd <%d>\n", fileno(fs));
-        pclose(fs);
+
+    fs = fopen(T2_CACHE_FILE, "r");
+    if (fs != NULL) {
+        while ((ch = fgetc(fs)) != EOF) {
+            if (ch == '\n') {
+                count++;
+            }
+        }
+        
+        if (ch != '\n' && lines == 0 && ftell(fs) > 0) {
+            count++;
+        } else if (ch != '\n' && ftell(fs) > 0) {
+            count++;
+        }
+        fclose(fs);
+        fs = NULL;
     }
-    */
+
     if(count < MAX_EVENT_CACHE)
     {
         fprintf(fp, "%s\n", telemetry_data);
@@ -383,7 +388,6 @@ EVENT_DEBUG("t2 opened fd <%d> PID <%d>\n", fd, (int)getpid());
     {
         EVENT_DEBUG("Reached Max cache limit of 200, Caching is not done\n");
     }
-    EVENT_DEBUG("closing t2_caching_file fd <%d>\n", fileno(fp));
     fclose(fp);
 
 unlock:
@@ -398,7 +402,6 @@ unlock:
     {
         EVENT_ERROR("%s:%d, T2:close failed with error %d\n", __func__, __LINE__, ret);
     }
-EVENT_DEBUG("t2 %s: closing fd <%d> PID <%d>\n", __FUNCTION__, fd, (int)getpid());
     pthread_mutex_unlock(&FileCacheMutex);
     free(telemetry_data);
     return NULL;

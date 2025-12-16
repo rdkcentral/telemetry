@@ -820,8 +820,6 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
                 close(sharedPipeFdDataLen[0]);
                 write(sharedPipeFdDataLen[1], &len, sizeof(size_t));
                 close(sharedPipeFdDataLen[1]);
-                T2Info("%s: closing fd <%d>\n", __FUNCTION__, sharedPipeFdDataLen[0]);
-                T2Info("%s: closing fd <%d>\n", __FUNCTION__, sharedPipeFdDataLen[1]);
 
                 FILE *httpOutput = fopen(HTTP_RESPONSE_FILE, "w+");
                 if(httpOutput)
@@ -909,8 +907,6 @@ status_return :
         close(sharedPipeFdStatus[0]);
         write(sharedPipeFdStatus[1], &ret, sizeof(T2ERROR));
         close(sharedPipeFdStatus[1]);
-        T2Info("%s: closing fd <%d>\n", __FUNCTION__, sharedPipeFdStatus[0]);
-        T2Info("%s: closing fd <%d>\n", __FUNCTION__, sharedPipeFdStatus[1]);
         exit(0);
 
     }
@@ -923,7 +919,6 @@ status_return :
         pthread_sigmask(SIG_UNBLOCK, &blocking_signal, NULL);
         // Get the return status via IPC from child process
         close(sharedPipeFdStatus[1]);
-        T2Info("%s: closing fd <%d>\n", __FUNCTION__, sharedPipeFdStatus[1]);
         ssize_t readBytes = read(sharedPipeFdStatus[0], &ret, sizeof(T2ERROR));
         if(readBytes == -1)
         {
@@ -931,14 +926,12 @@ status_return :
             return T2ERROR_FAILURE;
         }
         close(sharedPipeFdStatus[0]);
-        T2Info("%s: closing fd <%d>\n", __FUNCTION__, sharedPipeFdStatus[0]);
 
         // Get the datas via IPC from child process
         if(ret == T2ERROR_SUCCESS)
         {
             size_t len = 0;
             close(sharedPipeFdDataLen[1]);
-            T2Info("%s: closing fd <%d>\n", __FUNCTION__, sharedPipeFdDataLen[1]);
             readBytes = read(sharedPipeFdDataLen[0], &len, sizeof(size_t));
             if(readBytes == -1)
             {
@@ -946,7 +939,6 @@ status_return :
                 return T2ERROR_FAILURE;
             }
             close(sharedPipeFdDataLen[0]);
-            T2Info("%s: closing fd <%d>\n", __FUNCTION__, sharedPipeFdDataLen[0]);
             *data = NULL;
             if(len <= SIZE_MAX)
             {

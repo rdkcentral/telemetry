@@ -67,7 +67,6 @@ extern "C" {
     // tell C++ about the C function defined in t2parser.c
     T2ERROR verifyTriggerCondition(cJSON *jprofileTriggerCondition);
     T2ERROR addTriggerCondition(Profile *profile, cJSON *jprofileTriggerCondition);
-    //void time_param_Reporting_Adjustments_valid_set(Profile *profile, cJSON *jprofileReportingInterval, cJSON *jprofileActivationTimeout, cJSON *jprofileTimeReference, cJSON *jprofileReportOnUpdate, cJSON *jprofilefirstReportingInterval, cJSON *jprofilemaxUploadLatency, cJSON* jprofileReportingAdjustments);
     T2ERROR encodingSet(Profile* profile, cJSON *jprofileEncodingType, cJSON *jprofileJSONReportFormat, cJSON *jprofileJSONReportTimestamp);
     T2ERROR protocolSet (Profile *profile, cJSON *jprofileProtocol, cJSON *jprofileHTTPURL, cJSON *jprofileHTTPRequestURIParameter, int ThisprofileHTTPRequestURIParameter_count, cJSON *jprofileRBUSMethodName, cJSON *jprofileRBUSMethodParamArr, int rbusMethodParamArrCount);
 }
@@ -152,8 +151,7 @@ TEST(PROCESSCONFIGURATION_CJSON, TEST_NULL_INVALID_PARAM)
         data = new char[len + 1];
         strcpy(data, sa.c_str());
         //Profilename NULL
-	char h1[] = "hash1";
-        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, "hash1", h1, &profile));
+        EXPECT_EQ(T2ERROR_FAILURE,  processConfiguration(&data, NULL, "hash1", &profile));
         delete[] data;
 
         getline(new_file, sa);
@@ -908,72 +906,6 @@ TEST(T2ParserAddTC, AddTriggerConditionSuccess)
     // (The CI process reclaims process memory after tests.)
     cJSON_Delete(arr);
 }
-#if 0
-/* time_param_Reporting_Adjustments_valid_set: generateNow true case */
-TEST(T2ParserTimeParam, GenerateNowTrueResetsReportingAdjustments)
-{
-    Profile p;
-    memset(&p, 0, sizeof(p));
-    p.generateNow = true;
-    p.reportingInterval = 30;
-    p.reportOnUpdate = true;
-    p.firstReportingInterval = 100;
-    p.maxUploadLatency = 5000;
-
-    // pass NULL for JSON nodes, function should detect generateNow and ignore adjustments
-    time_param_Reporting_Adjustments_valid_set(&p, NULL, NULL, NULL, NULL, NULL, NULL);
-    EXPECT_EQ(0, p.reportingInterval);
-    EXPECT_EQ(false, p.reportOnUpdate);
-    EXPECT_EQ(0, p.firstReportingInterval);
-    EXPECT_EQ(0, p.maxUploadLatency);
-}
-
-/* time_param_Reporting_Adjustments_valid_set: set values when generateNow is false */
-TEST(T2ParserTimeParam, ReportingAdjustmentsApplied)
-{
-    Profile p;
-    memset(&p, 0, sizeof(p));
-    p.generateNow = false;
-    p.activationTimeoutPeriod = 1000;
-    p.reportingInterval = 60;
-
-    cJSON* jReportingInterval = cJSON_CreateNumber(120);
-    cJSON* jActivationTimeout = cJSON_CreateNumber(400);
-    cJSON* jTimeReference = cJSON_CreateString("2025-01-01T00:00:00Z");
-
-    cJSON* jReportingAdjustments = cJSON_CreateObject();
-    cJSON* jReportOnUpdate = cJSON_CreateTrue();
-    cJSON_AddItemToObject(jReportingAdjustments, "ReportOnUpdate", jReportOnUpdate);
-    cJSON* jFirstReportingInterval = cJSON_CreateNumber(10);
-    cJSON_AddItemToObject(jReportingAdjustments, "FirstReportingInterval", jFirstReportingInterval);
-    cJSON* jMaxUploadLatency = cJSON_CreateNumber(2000);
-    cJSON_AddItemToObject(jReportingAdjustments, "MaxUploadLatency", jMaxUploadLatency);
-
-    // call the function (note: signature expects separate args - pass firstReportingInterval/maxUploadLatency separately)
-    time_param_Reporting_Adjustments_valid_set(&p, jReportingInterval, jActivationTimeout, jTimeReference, jReportOnUpdate, jFirstReportingInterval, jMaxUploadLatency);
-
-    // reportingInterval should be set from jReportingInterval
-    EXPECT_EQ(120, p.reportingInterval);
-    // activationTimeoutPeriod should be set from jActivationTimeout by surrounding callers; here we check timeRef was set
-    if (p.timeRef) {
-        EXPECT_STREQ("2025-01-01T00:00:00Z", p.timeRef);
-        free(p.timeRef);
-        p.timeRef = NULL;
-    }
-    // ReportOnUpdate should be true
-    EXPECT_EQ(true, p.reportOnUpdate);
-    // First reporting interval set
-    EXPECT_EQ(10, p.firstReportingInterval);
-    // MaxUploadLatency set
-    EXPECT_EQ(2000, p.maxUploadLatency);
-
-    // cleanup
-    cJSON_Delete(jReportingAdjustments);
-    cJSON_Delete(jReportingInterval);
-    cJSON_Delete(jActivationTimeout);
-    cJSON_Delete(jTimeReference);
-}
-#endif
 /* encodingSet should set jsonEncoding fields based on JSON nodes */
 TEST(T2ParserEncodingSet, JSONEncodingMapping)
 {
@@ -990,7 +922,18 @@ TEST(T2ParserEncodingSet, JSONEncodingMapping)
     EXPECT_EQ(JSONRF_OBJHIERARCHY, p.jsonEncoding->reportFormat);
     EXPECT_EQ(TIMESTAMP_UNIXEPOCH, p.jsonEncoding->tsFormat);
 
-    free(p.jsonEncoding);
+    if (p.jsonEncoding)
+    {
+        free(p.jsonEncoding);
+        p.jsonEncoding = NULL;
+    }
+
+    if (p.name)
+    {
+        free(p.name);
+        p.name = NULL;
+    }
+
     cJSON_Delete(jEncodingType);
     cJSON_Delete(jJSONReportFormat);
     cJSON_Delete(jJSONReportTimestamp);
@@ -1023,9 +966,26 @@ TEST(T2ParserProtocolSet, HTTPBranchSetsURLAndParams)
     EXPECT_EQ(T2ERROR_SUCCESS, protocolSet(&p, jProtocol, cJSON_GetObjectItem(jHTTP, "URL"), cJSON_GetObjectItem(jHTTP, "RequestURIParameter"), 1, NULL, NULL, 0));
 
     EXPECT_STREQ("http://upload.test", p.t2HTTPDest->URL);
+        // Cleanup to avoid memory leaks
+    if (p.t2HTTPDest)
+    {
+        if (p.t2HTTPDest->URL)
+        {
+            free(p.t2HTTPDest->URL);
+            p.t2HTTPDest->URL = NULL;
+        }
+        // If protocolSet allocated other heap members inside T2HTTP, free them here as needed.
 
-    free(p.t2HTTPDest);
-    free(p.name);
+        free(p.t2HTTPDest);
+        p.t2HTTPDest = NULL;
+    }
+
+    if (p.name)
+    {
+        free(p.name);
+        p.name = NULL;
+    }
+
     cJSON_Delete(jProtocol);
     cJSON_Delete(jHTTP);
 }
@@ -1054,9 +1014,26 @@ TEST(T2ParserProtocolSet, RBUSMethodBranchSetsMethodAndParams)
     EXPECT_EQ(T2ERROR_SUCCESS, protocolSet(&p, jProtocol, NULL, NULL, 0, cJSON_GetObjectItem(jRBUS, "Method"), cJSON_GetObjectItem(jRBUS, "Parameters"), 1));
 
     EXPECT_STREQ("TestMethod", p.t2RBUSDest->rbusMethodName);
+        // Cleanup to avoid memory leaks
+    if (p.t2RBUSDest)
+    {
+        // free any strings allocated by protocolSet if present
+        if (p.t2RBUSDest->rbusMethodName)
+        {
+            free(p.t2RBUSDest->rbusMethodName);
+            p.t2RBUSDest->rbusMethodName = NULL;
+        }
+        // If protocolSet allocated other heap members inside T2RBUS, free them here as needed.
+        free(p.t2RBUSDest);
+        p.t2RBUSDest = NULL;
+    }
 
-    free(p.t2RBUSDest);
-    free(p.name);
+    if (p.name)
+    {
+        free(p.name);
+        p.name = NULL;
+    }
+
     cJSON_Delete(jProtocol);
     cJSON_Delete(jRBUS);
 }

@@ -95,7 +95,7 @@ static void EVENT_DEBUG(char* format, ...)
             return;
         }
         
-        static char timeBuffer[24] = { '\0' };
+        char timeBuffer[24] = { '\0' };
         long msecs;
 
         localtime_r(&ts.tv_sec, &timeinfo);

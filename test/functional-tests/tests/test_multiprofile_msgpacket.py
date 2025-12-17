@@ -249,7 +249,7 @@ def test_for_invalid_activation_timeout():
     rbus_set_data("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.ConfigURL", "string", "https://mockxconf:50050/loguploader2/getT2DCMSettings")
     os.makedirs('/opt/logs/PreviousLogs', exist_ok=True)
     file = open('/opt/logs/session0.txt', 'w')
-    file.write("This log file is for previous logs\n")
+    file.write("This log file is for previous logs with value\n")
     file.write("Second line in the previous logs\n")
     file.close()
     clear_T2logs()
@@ -383,7 +383,7 @@ def test_for_subscribe_tr181():
     clear_persistant_files()
     os.makedirs('/opt/logs/PreviousLogs', exist_ok=True)
     file = open('/opt/logs/PreviousLogs/session0.txt', 'w')
-    file.write("This log file is for previous logs\n")
+    file.write("This log file is for previous logs with value\n")
     file.write("Second line in the previous logs\n")
     file.close()
     run_telemetry()
@@ -523,7 +523,11 @@ def test_grep_accumulate():
             "filler updated line\n"
             "251007-09:29:41.335 INFO     identifier:thevalue25\n"
             "filler line\n"
+            "zero value=0\n"
+            "zero value=0\n"
             )
     file.close()
     sleep(15)
+    assert "SYS_INFO_0_value" not in grep_T2logs("cJSON Report ") # 0 value should not be reported in absolute use
+    assert "SYS_INFO_0_accum" not in grep_T2logs("cJSON Report ") # 0 value should not be reported in accumulate use
     assert "SYS_INFO_Accum_Time\":[\"thevalue23" in grep_T2logs("cJSON Report ") #Marker is reporting  in the next cycle even if the maximum accumulation is reached in the previous report 

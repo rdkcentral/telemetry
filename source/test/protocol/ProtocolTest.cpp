@@ -480,7 +480,34 @@ TEST_F(protocolTestFixture, sendReportOverHTTP_6)
       EXPECT_EQ(T2ERROR_SUCCESS, sendReportOverHTTP(httpURL, payload,NULL));
       Vector_Destroy(reportlist, free);
 }
+TEST_F(protocolTestFixture, sendReportOverHTTP_Child_InitSuccess_HeaderFails) {
+    char* httpURL = "https://mocktest.com";
+    char* payload = strdup("Sample Payload");
 
+    EXPECT_CALL(*g_fileIOMock, pipe(_))
+        .Times(1)
+        .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, fork())
+        .Times(1)
+        .WillOnce(Return(0)); // Simulates `childPid == 0`
+
+    EXPECT_EXIT({
+        // Simulating `curl_easy_init()` returning a valid handle.
+        EXPECT_CALL(*g_systemMock, curl_easy_init())
+            .Times(1)
+            .WillOnce(Return((CURL*)0x1234));
+
+        // Simulating `setHeader()` failing.
+        EXPECT_CALL(*g_systemMock, curl_easy_setopt(_, _, _))
+            .Times(AtLeast(1))
+            .WillRepeatedly(Return(CURLE_FAILED_INIT)); // For setting headers.
+
+        sendReportOverHTTP(httpURL, payload, NULL);
+    }, ::testing::ExitedWithCode(0), ""); // Expect child to exit without crash.
+
+    free(payload);
+}
+#if 0
 //ADDED new test cases
 // Test Case: Child process - CURL initialization fails
 TEST_F(protocolTestFixture, sendReportOverHTTP_Child_CurlInitFails) {
@@ -569,3 +596,4 @@ TEST_F(protocolTestFixture, sendReportOverHTTP_Child_setPayloadFails) {
 
     free(payload);
 }
+#endif

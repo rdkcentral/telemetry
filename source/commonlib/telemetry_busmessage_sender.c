@@ -326,8 +326,7 @@ void *cacheEventToFile(void *arg)
     fl.l_len = 0;
     fl.l_pid = 0;
     FILE *fs = NULL;
-    char ch;
-    pthread_detach(pthread_self());
+    int ch;
     EVENT_ERROR("%s:%d, Caching the event to File\n", __func__, __LINE__);
     if(telemetry_data == NULL)
     {

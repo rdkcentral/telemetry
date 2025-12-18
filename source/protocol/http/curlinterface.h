@@ -62,6 +62,7 @@ typedef T2ERROR (*SetHeaderFunc)(CURL *, const char *, struct curl_slist **, chi
 SetHeaderFunc getSetHeaderCallback(void);
 #ifdef __cplusplus
 #endif
+#endif
 
 #ifdef LIBRDKCERTSEL_BUILD
 void curlCertSelectorFree();

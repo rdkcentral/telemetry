@@ -51,22 +51,6 @@ typedef struct
     SetMtlsHeadersFunc getSetMtlsHeadersCallback(void);
     typedef T2ERROR (*SetPayloadFunc)(CURL *, const char *, childResponse *);
     SetPayloadFunc getSetPayloadCallback(void);
-
-    // Global variables to control the mock
-    namespace {
-    static int mock_setopt_call = 0, fail_on_call = 0;
-    static CURLcode fail_with_code = CURLE_OK;
-
-    extern "C" CURLcode curl_easy_setopt_mock(CURL *curl, int option, ...) {
-       mock_setopt_call++;
-       if (fail_on_call > 0 && mock_setopt_call == fail_on_call) {
-          return fail_with_code;
-       }
-       return CURLE_OK;
-    }
-    extern "C" struct curl_slist* curl_slist_append(struct curl_slist* list, const char* val) {
-       return (struct curl_slist*)0x1; // fake address
-    }
 }
 
 #include "gmock/gmock.h"

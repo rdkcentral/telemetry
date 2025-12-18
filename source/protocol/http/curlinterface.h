@@ -46,6 +46,21 @@ T2ERROR sendCachedReportsOverHTTP(char *httpUrl, Vector *reportList);
 #if 1//GTEST_ENABLE
 typedef size_t (*WriteToFileFunc)(void *, size_t, size_t, void *);
 WriteToFileFunc getWriteToFileCallback(void);
+#include <curl/curl.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
+typedef struct
+{
+    bool curlStatus;
+    CURLcode curlResponse;
+    CURLcode curlSetopCode;
+    long http_code;
+    int lineNumber;
+} childResponse;
+typedef T2ERROR (*SetHeaderFunc)(CURL *, const char *, struct curl_slist **, childResponse *);
+SetHeaderFunc getSetHeaderCallback(void);
+#ifdef __cplusplus
 #endif
 
 #ifdef LIBRDKCERTSEL_BUILD

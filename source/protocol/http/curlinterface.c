@@ -101,6 +101,12 @@ WriteToFileFunc getWriteToFileCallback()
 {
     return writeToFile;
 }
+
+typedef T2ERROR (*SetHeaderFunc)(CURL *, const char *, struct curl_slist **, childResponse *);
+SetHeaderFunc getSetHeaderCallback(void) 
+{
+    return setHeader;
+}
 #endif
 
 static T2ERROR setHeader(CURL *curl, const char* destURL, struct curl_slist **headerList, childResponse *childCurlResponse)

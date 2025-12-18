@@ -548,3 +548,16 @@ TEST_F(protocolTestFixture, sendCachedReportsOverHTTP_FailureCase)
      fclose(fp);
      remove(testFile);
  }
+
+TEST(CURLINTERFACE_STATIC, SetHeader)
+{
+    SetHeaderFunc setHeaderCb = getSetHeaderCallback();
+    ASSERT_NE(setHeaderCb, nullptr);
+    CURL *curl = nullptr; // purposely NULL
+    const char *destURL = "http://localhost";
+    struct curl_slist *headerList = nullptr;
+    childResponse resp;
+    T2ERROR result = setHeaderCb(curl, destURL, &headerList, &resp);
+    // According to implementation, curl==NULL returns T2ERROR_FAILURE
+    EXPECT_EQ(result, T2ERROR_FAILURE);
+}

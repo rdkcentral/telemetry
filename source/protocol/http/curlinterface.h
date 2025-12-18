@@ -43,7 +43,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char* payload, pid_t* outForkedPid);
 
 T2ERROR sendCachedReportsOverHTTP(char *httpUrl, Vector *reportList);
 
-#ifdef 1//GTEST_ENABLE
+#if 1//GTEST_ENABLE
 typedef size_t (*WriteToFileFunc)(void *, size_t, size_t, void *);
 WriteToFileFunc getWriteToFileCallback(void);
 #endif

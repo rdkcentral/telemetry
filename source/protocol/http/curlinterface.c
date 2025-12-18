@@ -93,21 +93,6 @@ static size_t writeToFile(void *ptr, size_t size, size_t nmemb, void *stream)
     return written;
 }
 
-#if 1 //GTEST_ENABLE
-// Defining Function pointers to access static functions
-typedef size_t (*WriteToFileFunc)(void *, size_t, size_t, void *);
-
-WriteToFileFunc getWriteToFileCallback()
-{
-    return writeToFile;
-}
-
-typedef T2ERROR (*SetHeaderFunc)(CURL *, const char *, struct curl_slist **, childResponse *);
-SetHeaderFunc getSetHeaderCallback(void) 
-{
-    return setHeader;
-}
-#endif
 
 static T2ERROR setHeader(CURL *curl, const char* destURL, struct curl_slist **headerList, childResponse *childCurlResponse)
 {
@@ -649,3 +634,19 @@ T2ERROR sendCachedReportsOverHTTP(char *httpUrl, Vector *reportList)
     }
     return T2ERROR_SUCCESS;
 }
+
+#if 1 //GTEST_ENABLE
+// Defining Function pointers to access static functions
+typedef size_t (*WriteToFileFunc)(void *, size_t, size_t, void *);
+
+WriteToFileFunc getWriteToFileCallback()
+{
+    return writeToFile;
+}
+
+typedef T2ERROR (*SetHeaderFunc)(CURL *, const char *, struct curl_slist **, childResponse *);
+SetHeaderFunc getSetHeaderCallback(void)
+{
+    return setHeader;
+}
+#endif

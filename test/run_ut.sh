@@ -23,6 +23,9 @@
 
 export top_srcdir=`pwd`
 
+export CFLAGS="$CFLAGS -DGTEST_ENABLE"
+export CPPFLAGS="$CPPFLAGS -DGTEST_ENABLE"
+
 ENABLE_COV=false
 fail=0
 

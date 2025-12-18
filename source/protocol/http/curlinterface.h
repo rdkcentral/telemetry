@@ -43,11 +43,9 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char* payload, pid_t* outForkedPid);
 
 T2ERROR sendCachedReportsOverHTTP(char *httpUrl, Vector *reportList);
 
-#if 1//GTEST_ENABLE
+#if 0//GTEST_ENABLE
 typedef size_t (*WriteToFileFunc)(void *, size_t, size_t, void *);
 WriteToFileFunc getWriteToFileCallback(void);
-typedef T2ERROR (*SetHeaderFunc)(CURL *, const char *, struct curl_slist **, childResponse *);
-SetHeaderFunc getSetHeaderCallback(void);
 #endif
 
 #ifdef LIBRDKCERTSEL_BUILD

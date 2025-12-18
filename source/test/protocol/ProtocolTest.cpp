@@ -100,6 +100,13 @@ protected:
 };
 
 
+typedef size_t (*WriteToFileFunc)(void *, size_t, size_t, void *);
+
+// Declaration of the getter function to retrieve the function pointer
+extern "C" {
+    WriteToFileFunc getWriteToFileCallback();
+}
+
 TEST(SENDREPORTOVERHTTP, 1_NULL_CHECK)
 {
     char *payload = "This is a payload string";
@@ -512,3 +519,32 @@ TEST_F(protocolTestFixture, sendCachedReportsOverHTTP_FailureCase)
     // Clean up
     Vector_Destroy(reportList, free);
 }
+
+ // Unit test for static writeToFile via its function pointer
+ TEST(CURLINTERFACE_STATIC, WriteToFile)
+ {
+     WriteToFileFunc writeToFileCb = getWriteToFileCallback();
+     ASSERT_NE(writeToFileCb, nullptr);
+
+     // Prepare a buffer and write to a file
+     const char msg[] = "test fwrite";
+     char testFile[] = "/tmp/unittest_writeToFileXXXXXX";
+     int fd = mkstemp(testFile);
+     ASSERT_NE(fd, -1);
+     FILE* fp = fdopen(fd, "wb ");
+     ASSERT_NE(fp, nullptr);
+
+     size_t n = writeToFileCb((void*)msg, sizeof(char), sizeof(msg), (void*)fp);
+     ASSERT_EQ(n, sizeof(msg));
+     fclose(fp);
+
+     // Now read back and validate
+     fp = fopen(testFile, "rb");
+     ASSERT_NE(fp, nullptr);
+     char buf[32];
+     size_t bytes = fread(buf, sizeof(char), sizeof(msg), fp);
+     ASSERT_EQ(bytes, sizeof(msg));
+     ASSERT_EQ(memcmp(buf, msg, sizeof(msg)), 0);
+     fclose(fp);
+     remove(testFile);
+ }

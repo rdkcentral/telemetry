@@ -93,6 +93,16 @@ static size_t writeToFile(void *ptr, size_t size, size_t nmemb, void *stream)
     return written;
 }
 
+#ifdef 1//GTEST_ENABLE
+// Defining Function pointers to access static functions
+typedef size_t (*WriteToFileFunc)(void *, size_t, size_t, void *);
+
+WriteToFileFunc getWriteToFileCallback()
+{
+    return writeToFile;
+}
+#endif
+
 static T2ERROR setHeader(CURL *curl, const char* destURL, struct curl_slist **headerList, childResponse *childCurlResponse)
 {
 

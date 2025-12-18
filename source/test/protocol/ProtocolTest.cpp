@@ -32,7 +32,6 @@ extern "C" {
 #include <ccspinterface/busInterface.h>
 #include <ccspinterface/rbusInterface.h>
 #include <reportgen/reportgen.h>
-
 typedef struct
 {
     bool curlStatus;
@@ -43,6 +42,14 @@ typedef struct
 
 } childResponse ;
 
+    typedef size_t (*WriteToFileFunc)(void *, size_t, size_t, void *);
+    WriteToFileFunc getWriteToFileCallback(void);
+    typedef T2ERROR (*SetHeaderFunc)(CURL *, const char *, struct curl_slist **, childResponse *);
+    SetHeaderFunc getSetHeaderCallback(void);
+    typedef T2ERROR (*SetMtlsHeadersFunc)(CURL *, const char *, const char *, childResponse *);
+    SetMtlsHeadersFunc getSetMtlsHeadersCallback(void);
+    typedef T2ERROR (*SetPayloadFunc)(CURL *, const char *, childResponse *);
+    SetPayloadFunc getSetPayloadCallback(void);
 }
 
 #include "gmock/gmock.h"
@@ -99,7 +106,17 @@ protected:
     }
 };
 
+#if 0
+//typedef size_t (*WriteToFileFunc)(void *, size_t, size_t, void *);
 
+// Declaration of the getter function to retrieve the function pointer
+extern "C" {
+    typedef size_t (*WriteToFileFunc)(void *, size_t, size_t, void *);
+    WriteToFileFunc getWriteToFileCallback(void);
+    typedef T2ERROR (*SetHeaderFunc)(CURL *, const char *, struct curl_slist **, childResponse *);
+    SetHeaderFunc getSetHeaderCallback(void);
+}
+#endif
 TEST(SENDREPORTOVERHTTP, 1_NULL_CHECK)
 {
     char *payload = "This is a payload string";
@@ -111,7 +128,6 @@ TEST(SENDREPORTOVERHTTP, 2_NULL_CHECK)
     char *url = "https://test.com";
     EXPECT_EQ(T2ERROR_FAILURE, sendReportOverHTTP(url, NULL, NULL));
 }
-
 TEST(SENDCACREPOVERHTTP, 1_NULL_CHECK)
 {
     Vector* reportlist;
@@ -480,3 +496,130 @@ TEST_F(protocolTestFixture, sendReportOverHTTP_6)
       EXPECT_EQ(T2ERROR_SUCCESS, sendReportOverHTTP(httpURL, payload,NULL));
       Vector_Destroy(reportlist, free);
 }
+
+// New test case to cover the failure handling in sendCachedReportsOverHTTP
+TEST_F(protocolTestFixture, sendCachedReportsOverHTTP_FailureCase)
+{
+    char *httpURL = "https://mockxconf:50051/dataLakeMock";
+    Vector* reportList = NULL;
+    Vector_Create(&reportList);
+
+    // Add two payloads to the report list
+    char* payload1 = strdup("This is payload 1");
+    char* payload2 = strdup("This is payload 2");
+    Vector_PushBack(reportList, payload1);
+    Vector_PushBack(reportList, payload2);
+
+    // Mock failure for sendReportOverHTTP on the first payload
+    EXPECT_CALL(*g_fileIOMock, pipe(_))
+        .Times(1)
+        .WillOnce(Return(0));
+
+    EXPECT_CALL(*m_xconfclientMock, isMtlsEnabled())
+        .Times(1)
+        .WillOnce(Return(false));
+
+    EXPECT_CALL(*g_fileIOMock, fork())
+        .Times(1)
+        .WillOnce(Return(-1));
+
+    // Ensure that the function returns a failure due to the mocked failure
+    EXPECT_EQ(T2ERROR_FAILURE, sendCachedReportsOverHTTP(httpURL, reportList));
+
+    // Clean up
+    Vector_Destroy(reportList, free);
+}
+
+ // Unit test for static writeToFile via its function pointer
+ TEST(CURLINTERFACE_STATIC, WriteToFile)
+ {
+     WriteToFileFunc writeToFileCb = getWriteToFileCallback();
+     ASSERT_NE(writeToFileCb, nullptr);
+
+     // Prepare a buffer and write to a file
+     const char msg[] = "test fwrite";
+     char testFile[] = "/tmp/unittest_writeToFileXXXXXX";
+     int fd = mkstemp(testFile);
+     ASSERT_NE(fd, -1);
+     FILE* fp = fdopen(fd, "wb ");
+     ASSERT_NE(fp, nullptr);
+
+     size_t n = writeToFileCb((void*)msg, sizeof(char), sizeof(msg), (void*)fp);
+     ASSERT_EQ(n, sizeof(msg));
+     fclose(fp);
+
+     // Now read back and validate
+     fp = fopen(testFile, "rb");
+     ASSERT_NE(fp, nullptr);
+     char buf[32];
+     size_t bytes = fread(buf, sizeof(char), sizeof(msg), fp);
+     ASSERT_EQ(bytes, sizeof(msg));
+     ASSERT_EQ(memcmp(buf, msg, sizeof(msg)), 0);
+     fclose(fp);
+     remove(testFile);
+ }
+
+TEST(CURLINTERFACE_STATIC, SetHeader)
+{
+    SetHeaderFunc setHeaderCb = getSetHeaderCallback();
+    ASSERT_NE(setHeaderCb, nullptr);
+    CURL *curl = nullptr; // purposely NULL
+    const char *destURL = "http://localhost";
+    struct curl_slist *headerList = nullptr;
+    childResponse resp;
+    T2ERROR result = setHeaderCb(curl, destURL, &headerList, &resp);
+    // According to implementation, curl==NULL returns T2ERROR_FAILURE
+    EXPECT_EQ(result, T2ERROR_FAILURE);
+}
+// Now simulate HTTPHEADER or WRITEFUNCTION failures (header is 6, writefunction is 7)
+TEST(CURLINTERFACE_STATIC, SetHeader_HTTPHEADER_setopt_fails) {
+    SetHeaderFunc setHeaderCb = getSetHeaderCallback();
+    ASSERT_NE(setHeaderCb, nullptr);
+    struct curl_slist *headerList = nullptr;
+    childResponse resp;
+    mock_setopt_call = 0; fail_on_call = 6; fail_with_code = CURLE_SSL_ISSUER_ERROR;
+    EXPECT_EQ(setHeaderCb((CURL*)0x6, "http://test", &headerList, &resp), T2ERROR_FAILURE);
+}
+TEST(CURLINTERFACE_STATIC, SetHeader_WRITEFUNCTION_setopt_fails) {
+    SetHeaderFunc setHeaderCb = getSetHeaderCallback();
+    ASSERT_NE(setHeaderCb, nullptr);
+    struct curl_slist *headerList = nullptr;
+    childResponse resp;
+    mock_setopt_call = 0; fail_on_call = 7; fail_with_code = CURLE_SSL_ENGINE_INITFAILED;
+    EXPECT_EQ(setHeaderCb((CURL*)0x7, "http://test", &headerList, &resp), T2ERROR_FAILURE);
+}
+
+// Finally, successful case - all succeed
+TEST(CURLINTERFACE_STATIC, SetHeader_all_success) {
+    SetHeaderFunc setHeaderCb = getSetHeaderCallback();
+    ASSERT_NE(setHeaderCb, nullptr);
+    struct curl_slist *headerList = nullptr;
+    childResponse resp;
+    mock_setopt_call = 0; fail_on_call = 0; fail_with_code = CURLE_OK;
+    EXPECT_EQ(setHeaderCb((CURL*)0x8, "http://test", &headerList, &resp), T2ERROR_SUCCESS);
+}
+#endif
+TEST(CURLINTERFACE_STATIC, SetMtlsHeaders_NULL)
+{
+    SetMtlsHeadersFunc cb = getSetMtlsHeadersCallback();
+    ASSERT_NE(cb, nullptr);
+    childResponse resp;
+    // NULL for CURL
+    EXPECT_EQ(cb(nullptr, "cert", "pwd", &resp), T2ERROR_FAILURE);
+    // NULL for certFile
+    EXPECT_EQ(cb((CURL*)0x1, nullptr, "pwd", &resp), T2ERROR_FAILURE);
+    // NULL for passwd
+    EXPECT_EQ(cb((CURL*)0x1, "cert", nullptr, &resp), T2ERROR_FAILURE);
+}
+
+TEST(CURLINTERFACE_STATIC, SetPayload_NULL)
+{
+    SetPayloadFunc cb = getSetPayloadCallback();
+    ASSERT_NE(cb, nullptr);
+    childResponse resp;
+    // NULL for CURL
+    EXPECT_EQ(cb(nullptr, "payload", &resp), T2ERROR_FAILURE);
+    // NULL for payload
+    EXPECT_EQ(cb((CURL*)0x1, nullptr, &resp), T2ERROR_FAILURE);
+}
+

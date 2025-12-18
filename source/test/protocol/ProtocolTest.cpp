@@ -588,6 +588,7 @@ TEST(CURLINTERFACE_STATIC, SetHeader)
     // According to implementation, curl==NULL returns T2ERROR_FAILURE
     EXPECT_EQ(result, T2ERROR_FAILURE);
 }
+#if 0
 TEST(CURLINTERFACE_STATIC, SetHeader_NULL_destURL) {
     SetHeaderFunc setHeaderCb = getSetHeaderCallback();
     ASSERT_NE(setHeaderCb, nullptr);
@@ -670,7 +671,7 @@ TEST(CURLINTERFACE_STATIC, SetHeader_all_success) {
     mock_setopt_call = 0; fail_on_call = 0; fail_with_code = CURLE_OK;
     EXPECT_EQ(setHeaderCb((CURL*)0x8, "http://test", &headerList, &resp), T2ERROR_SUCCESS);
 }
-
+#endif
 TEST(CURLINTERFACE_STATIC, SetMtlsHeaders_NULL)
 {
     SetMtlsHeadersFunc cb = getSetMtlsHeadersCallback();

@@ -43,6 +43,10 @@ typedef struct
 
 } childResponse ;
 
+    typedef size_t (*WriteToFileFunc)(void *, size_t, size_t, void *);
+    WriteToFileFunc getWriteToFileCallback(void);
+    typedef T2ERROR (*SetHeaderFunc)(CURL *, const char *, struct curl_slist **, childResponse *);
+    SetHeaderFunc getSetHeaderCallback(void);
 }
 
 #include "gmock/gmock.h"
@@ -99,25 +103,17 @@ protected:
     }
 };
 
-
-typedef size_t (*WriteToFileFunc)(void *, size_t, size_t, void *);
+#if 0
+//typedef size_t (*WriteToFileFunc)(void *, size_t, size_t, void *);
 
 // Declaration of the getter function to retrieve the function pointer
 extern "C" {
-    typedef struct
-    {
-      bool curlStatus;
-      CURLcode curlResponse;
-      CURLcode curlSetopCode;
-      long http_code;
-      int lineNumber;
-    } childResponse;
     typedef size_t (*WriteToFileFunc)(void *, size_t, size_t, void *);
     WriteToFileFunc getWriteToFileCallback(void);
     typedef T2ERROR (*SetHeaderFunc)(CURL *, const char *, struct curl_slist **, childResponse *);
     SetHeaderFunc getSetHeaderCallback(void);
 }
-
+#endif
 TEST(SENDREPORTOVERHTTP, 1_NULL_CHECK)
 {
     char *payload = "This is a payload string";

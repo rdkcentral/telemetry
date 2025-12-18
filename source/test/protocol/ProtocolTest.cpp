@@ -32,7 +32,6 @@ extern "C" {
 #include <ccspinterface/busInterface.h>
 #include <ccspinterface/rbusInterface.h>
 #include <reportgen/reportgen.h>
-
 typedef struct
 {
     bool curlStatus;
@@ -572,62 +571,6 @@ TEST(CURLINTERFACE_STATIC, SetHeader)
     // According to implementation, curl==NULL returns T2ERROR_FAILURE
     EXPECT_EQ(result, T2ERROR_FAILURE);
 }
-#if 0
-TEST(CURLINTERFACE_STATIC, SetHeader_NULL_destURL) {
-    SetHeaderFunc setHeaderCb = getSetHeaderCallback();
-    ASSERT_NE(setHeaderCb, nullptr);
-    struct curl_slist *headerList = nullptr;
-    childResponse resp;
-    EXPECT_EQ(setHeaderCb((CURL*)0xDEADBEEF, nullptr, &headerList, &resp), T2ERROR_FAILURE);
-}
-
-// Simulate a failure on every call to curl_easy_setopt
-TEST(CURLINTERFACE_STATIC, SetHeader_first_setopt_fails) {
-    SetHeaderFunc setHeaderCb = getSetHeaderCallback();
-    ASSERT_NE(setHeaderCb, nullptr);
-    struct curl_slist *headerList = nullptr;
-    childResponse resp;
-    mock_setopt_call = 0; fail_on_call = 1; fail_with_code = CURLE_INTERFACE_FAILED;
-    EXPECT_EQ(setHeaderCb((CURL*)0x1, "http://test", &headerList, &resp), T2ERROR_FAILURE);
-}
-TEST(CURLINTERFACE_STATIC, SetHeader_second_setopt_fails) {
-    SetHeaderFunc setHeaderCb = getSetHeaderCallback();
-    ASSERT_NE(setHeaderCb, nullptr);
-    struct curl_slist *headerList = nullptr;
-    childResponse resp;
-    mock_setopt_call = 0; fail_on_call = 2; fail_with_code = CURLE_SSL_CACERT_BADFILE;
-    EXPECT_EQ(setHeaderCb((CURL*)0x2, "http://test", &headerList, &resp), T2ERROR_FAILURE);
-}
-TEST(CURLINTERFACE_STATIC, SetHeader_third_setopt_fails) {
-    SetHeaderFunc setHeaderCb = getSetHeaderCallback();
-    ASSERT_NE(setHeaderCb, nullptr);
-    struct curl_slist *headerList = nullptr;
-    childResponse resp;
-    mock_setopt_call = 0; fail_on_call = 3; fail_with_code = CURLE_SSL_CERTPROBLEM;
-    EXPECT_EQ(setHeaderCb((CURL*)0x3, "http://test", &headerList, &resp), T2ERROR_FAILURE);
-}
-TEST(CURLINTERFACE_STATIC, SetHeader_fourth_setopt_fails) {
-    SetHeaderFunc setHeaderCb = getSetHeaderCallback();
-    ASSERT_NE(setHeaderCb, nullptr);
-    struct curl_slist *headerList = nullptr;
-    childResponse resp;
-    mock_setopt_call = 0; fail_on_call = 4; fail_with_code = CURLE_SSL_CIPHER;
-    EXPECT_EQ(setHeaderCb((CURL*)0x4, "http://test", &headerList, &resp), T2ERROR_FAILURE);
-}
-// For RDKB, WAN failover/config flags have more, else next step would be 5th setopt.
-
-#if !defined(ENABLE_RDKB_SUPPORT) || defined(RDKB_EXTENDER)
-// If not RDKB, next is interface setopt
-TEST(CURLINTERFACE_STATIC, SetHeader_fifth_setopt_fails) {
-    SetHeaderFunc setHeaderCb = getSetHeaderCallback();
-    ASSERT_NE(setHeaderCb, nullptr);
-    struct curl_slist *headerList = nullptr;
-    childResponse resp;
-    mock_setopt_call = 0; fail_on_call = 5; fail_with_code = CURLE_URL_MALFORMAT;
-    EXPECT_EQ(setHeaderCb((CURL*)0x5, "http://test", &headerList, &resp), T2ERROR_FAILURE);
-}
-#endif
-
 // Now simulate HTTPHEADER or WRITEFUNCTION failures (header is 6, writefunction is 7)
 TEST(CURLINTERFACE_STATIC, SetHeader_HTTPHEADER_setopt_fails) {
     SetHeaderFunc setHeaderCb = getSetHeaderCallback();
@@ -679,3 +622,4 @@ TEST(CURLINTERFACE_STATIC, SetPayload_NULL)
     // NULL for payload
     EXPECT_EQ(cb((CURL*)0x1, nullptr, &resp), T2ERROR_FAILURE);
 }
+

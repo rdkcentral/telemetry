@@ -638,20 +638,26 @@ T2ERROR sendCachedReportsOverHTTP(char *httpUrl, Vector *reportList)
 #if 1 //GTEST_ENABLE
 // Defining Function pointers to access static functions
 typedef size_t (*WriteToFileFunc)(void *, size_t, size_t, void *);
-
+typedef T2ERROR (*SetHeaderFunc)(CURL *, const char *, struct curl_slist **, childResponse *);
+typedef T2ERROR (*SetMtlsHeadersFunc)(CURL *, const char *, const char *, childResponse *);
+typedef T2ERROR (*SetPayloadFunc)(CURL *, const char *, childResponse *);
 WriteToFileFunc getWriteToFileCallback()
 {
     return writeToFile;
 }
 
-typedef T2ERROR (*SetHeaderFunc)(CURL *, const char *, struct curl_slist **, childResponse *);
+
 SetHeaderFunc getSetHeaderCallback(void)
 {
     return setHeader;
 }
 
-typedef T2ERROR (*SetMtlsHeadersFunc)(CURL *, const char *, const char *, childResponse *);
-SetMtlsHeadersFunc getSetMtlsHeadersCallback(void) { return setMtlsHeaders; }
-typedef T2ERROR (*SetPayloadFunc)(CURL *, const char *, childResponse *);
-SetPayloadFunc getSetPayloadCallback(void) { return setPayload; }
+SetMtlsHeadersFunc getSetMtlsHeadersCallback(void) 
+{ 
+    return setMtlsHeaders;
+}
+SetPayloadFunc getSetPayloadCallback(void) 
+{ 
+    return setPayload; 
+}
 #endif

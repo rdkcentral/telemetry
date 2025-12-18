@@ -649,4 +649,9 @@ SetHeaderFunc getSetHeaderCallback(void)
 {
     return setHeader;
 }
+
+typedef T2ERROR (*SetMtlsHeadersFunc)(CURL *, const char *, const char *, childResponse *);
+SetMtlsHeadersFunc getSetMtlsHeadersCallback(void) { return setMtlsHeaders; }
+typedef T2ERROR (*SetPayloadFunc)(CURL *, const char *, childResponse *);
+SetPayloadFunc getSetPayloadCallback(void) { return setPayload; }
 #endif

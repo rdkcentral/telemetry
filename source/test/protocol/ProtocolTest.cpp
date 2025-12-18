@@ -47,6 +47,10 @@ typedef struct
     WriteToFileFunc getWriteToFileCallback(void);
     typedef T2ERROR (*SetHeaderFunc)(CURL *, const char *, struct curl_slist **, childResponse *);
     SetHeaderFunc getSetHeaderCallback(void);
+    typedef T2ERROR (*SetMtlsHeadersFunc)(CURL *, const char *, const char *, childResponse *);
+    SetMtlsHeadersFunc getSetMtlsHeadersCallback(void);
+    typedef T2ERROR (*SetPayloadFunc)(CURL *, const char *, childResponse *);
+    SetPayloadFunc getSetPayloadCallback(void);
 }
 
 #include "gmock/gmock.h"
@@ -567,4 +571,28 @@ TEST(CURLINTERFACE_STATIC, SetHeader)
     T2ERROR result = setHeaderCb(curl, destURL, &headerList, &resp);
     // According to implementation, curl==NULL returns T2ERROR_FAILURE
     EXPECT_EQ(result, T2ERROR_FAILURE);
+}
+
+TEST(CURLINTERFACE_STATIC, SetMtlsHeaders_NULL)
+{
+    SetMtlsHeadersFunc cb = getSetMtlsHeadersCallback();
+    ASSERT_NE(cb, nullptr);
+    childResponse resp;
+    // NULL for CURL
+    EXPECT_EQ(cb(nullptr, "cert", "pwd", &resp), T2ERROR_FAILURE);
+    // NULL for certFile
+    EXPECT_EQ(cb((CURL*)0x1, nullptr, "pwd", &resp), T2ERROR_FAILURE);
+    // NULL for passwd
+    EXPECT_EQ(cb((CURL*)0x1, "cert", nullptr, &resp), T2ERROR_FAILURE);
+}
+
+TEST(CURLINTERFACE_STATIC, SetPayload_NULL)
+{
+    SetPayloadFunc cb = getSetPayloadCallback();
+    ASSERT_NE(cb, nullptr);
+    childResponse resp;
+    // NULL for CURL
+    EXPECT_EQ(cb(nullptr, "payload", &resp), T2ERROR_FAILURE);
+    // NULL for payload
+    EXPECT_EQ(cb((CURL*)0x1, nullptr, &resp), T2ERROR_FAILURE);
 }

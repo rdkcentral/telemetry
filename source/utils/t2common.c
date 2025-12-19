@@ -50,6 +50,44 @@ void freeParam(void *data)
     }
 }
 
+void freeDataModelParam(void *data)
+{
+    if (data)
+    {
+        DataModelParam *param = (DataModelParam *)data;
+        if (param->reference)
+        {
+            free(param->reference);
+        }
+        if (param->name)
+        {
+            free(param->name);
+        }
+        free(param);
+    }
+}
+
+void freeDataModelTable(void *data)
+{
+    if (data)
+    {
+        DataModelTable *table = (DataModelTable *)data;
+        if (table->reference)
+        {
+            free(table->reference);
+        }
+        if (table->index)
+        {
+            free(table->index);
+        }
+        if (table->paramList)
+        {
+            Vector_Destroy(table->paramList, freeDataModelParam);
+        }
+        free(table);
+    }
+}
+
 void freeStaticParam(void *data)
 {
     if(data != NULL)
@@ -300,4 +338,51 @@ void initWhoamiSupport(void)
 bool isWhoAmiEnabled(void)
 {
     return whoami_support;
+}
+
+// Function to check if configured parameter matches actual RBUS parameter
+bool matchesParameter(const char* pattern, const char* paramName)
+{
+    if (!pattern || !paramName)
+    {
+        return false;
+    }
+
+    const char* lastPatternSegment = strrchr(pattern, '.');
+    const char* lastParamSegment = strrchr(paramName, '.');
+
+    if (lastPatternSegment && lastParamSegment)
+    {
+        if (strncmp(lastPatternSegment + 1, lastParamSegment + 1, strlen(lastPatternSegment + 1)) != 0)
+        {
+            return false;
+        }
+    }
+
+    while (*pattern && *paramName)
+    {
+        if (*pattern == '*')
+        {
+            pattern++;
+            if (*pattern == '\0')
+            {
+                return true;
+            }
+            while (*paramName && *paramName != *pattern)
+            {
+                paramName++;
+            }
+        }
+        else
+        {
+            if (*pattern != *paramName)
+            {
+                return false;
+            }
+            pattern++;
+            paramName++;
+        }
+    }
+
+    return (*pattern == '\0' && *paramName == '\0');
 }

@@ -633,3 +633,10 @@ T2ERROR sendCachedReportsOverHTTP(char *httpUrl, Vector *reportList)
     }
     return T2ERROR_SUCCESS;
 }
+
+#ifdef GTEST_ENABLE
+WriteToFileFunc getWriteToFileCallback()
+{
+    return writeToFile;
+}
+#endif

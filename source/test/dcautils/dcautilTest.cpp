@@ -463,6 +463,7 @@ TEST(GETLOADAVG, VALID_MARKER)
     TopMarker* topMarker = (TopMarker*) malloc(sizeof(TopMarker));
     memset(topMarker, 0, sizeof(TopMarker));
     EXPECT_EQ(1, getLoadAvg(topMarker));
+    free(topMarker);
 }
 
 TEST(CREATEGREPSEEKPROFILE, SEEKMAPCREATE_CHECK)
@@ -1173,8 +1174,8 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_1)
     
     Vector* vecMarkerList = NULL;
     Vector_Create(&vecMarkerList);
-    TopMarker* marker = (TopMarker*) malloc(sizeof(TopMarker));
-    memset(marker, 0, sizeof(TopMarker));
+    GrepMarker* marker = (GrepMarker*) malloc(sizeof(GrepMarker));
+    memset(marker, 0, sizeof(GrepMarker));
     marker->markerName = strdup("SYS_INFO_TEST");
     marker->searchString = strdup("Test Marker");
     marker->trimParam = true;
@@ -1232,7 +1233,6 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_1)
                     strncpy(mapped_mem, test_str, length - 1);
                     return (void*)mapped_mem;
                 });
-
     
     EXPECT_EQ(0, getDCAResultsInVector(gsProfile, vecMarkerList, true, "/opt/logs"));
     hash_map_destroy(gsProfile->logFileSeekMap, free);
@@ -1255,8 +1255,8 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_2)
     
     Vector* vecMarkerList = NULL;
     Vector_Create(&vecMarkerList);
-    TopMarker* marker = (TopMarker*) malloc(sizeof(TopMarker));
-    memset(marker, 0, sizeof(TopMarker));
+    GrepMarker* marker = (GrepMarker*) malloc(sizeof(GrepMarker));
+    memset(marker, 0, sizeof(GrepMarker));
     marker->markerName = strdup("SYS_INFO_TEST");
     marker->searchString = strdup("temp:");
     marker->trimParam = true;
@@ -1338,12 +1338,13 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_3)
     
     Vector* vecMarkerList = NULL;
     Vector_Create(&vecMarkerList);
-    TopMarker* marker = (TopMarker*) malloc(sizeof(TopMarker));
-    memset(marker, 0, sizeof(TopMarker));
+    GrepMarker* marker = (GrepMarker*) malloc(sizeof(GrepMarker));
+    memset(marker, 0, sizeof(GrepMarker));
     marker->markerName = strdup("SYS_INFO_TEST");
     marker->searchString = strdup("Test Marker");
     marker->trimParam = true;
     marker->u.markerValue = NULL;
+    marker->u.accumulatedValues = NULL;
     marker->regexParam = strdup("[0-9]+");
     marker->logFile = strdup("Consolelog.txt.0");
     marker->skipFreq = 0;
@@ -1424,6 +1425,104 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_3)
 
     
     EXPECT_EQ(0, getDCAResultsInVector(gsProfile, vecMarkerList, true, "/opt/logs"));
+    hash_map_destroy(gsProfile->logFileSeekMap, free);
+    gsProfile->logFileSeekMap = NULL;
+    free(gsProfile);
+    Vector_Destroy(vecMarkerList, freeGMarker);
+}
+
+
+TEST_F(dcaTestFixture, getDCAResultsInVector_Accum)
+{
+   
+    GrepSeekProfile *gsProfile = (GrepSeekProfile *)malloc(sizeof(GrepSeekProfile));
+    gsProfile->logFileSeekMap = hash_map_create();
+    gsProfile->execCounter = 1;
+    long *tempnum;
+    double val = 1234;
+    tempnum = (long *)malloc(sizeof(long));
+    *tempnum = (long)val;
+    hash_map_put(gsProfile->logFileSeekMap, strdup("t2_log.txt"), (void*)tempnum, free);
+    
+    Vector* vecMarkerList = NULL;
+    Vector_Create(&vecMarkerList);
+    GrepMarker* marker = (GrepMarker*) malloc(sizeof(GrepMarker));
+    memset(marker, 0, sizeof(GrepMarker));
+    marker->markerName = strdup("SYS_INFO_TEST");
+    marker->searchString = strdup("Test Marker");
+    marker->trimParam = true;
+    marker->u.markerValue = NULL;
+    marker->u.count = 0;
+    marker->mType = MTYPE_ACCUMULATE;
+    marker->reportTimestampParam = REPORTTIMESTAMP_UNIXEPOCH;
+    Vector_Create(&marker->u.accumulatedValues);
+    if(marker->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH)
+    {
+        Vector_Create(&marker->accumulatedTimestamp);
+    }
+    marker->regexParam = strdup("[0-9]+");
+    marker->logFile = strdup("Consolelog.txt.0");
+    marker->skipFreq = 0;
+    marker->paramType = strdup("grep");
+    marker->reportEmptyParam = true;
+    Vector_PushBack(vecMarkerList, (void*) marker);
+
+    //freeFileDescriptor
+    EXPECT_CALL(*g_fileIOMock, munmap(_, _))
+            .WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_fileIOMock, close(_)) 
+            .WillRepeatedly(Return(0));
+
+        //getLogFileDescriptor
+    EXPECT_CALL(*g_fileIOMock, open(_,_))
+            .WillRepeatedly(Return(0));
+
+    EXPECT_CALL(*g_fileIOMock, fstat(_, _))
+        .Times(testing::AtMost(4))
+        .WillOnce([](int fd, struct stat* statbuf) {
+        statbuf->st_size = 1235;      // Set file size
+        return 0; // Success
+    })
+        .WillOnce([](int fd, struct stat* statbuf) {
+        statbuf->st_size = 1235;      // Set file size
+        return 0; // Success
+    })
+        .WillOnce([](int fd, struct stat* statbuf) {
+        statbuf->st_size = 1000;      // Set file size
+        return 0; // Success
+    })
+        .WillOnce([](int fd, struct stat* statbuf) {
+        statbuf->st_size = 1000;      // Set file size
+        return 0; // Success
+    });
+    //getDeltainmmapsearch 
+    EXPECT_CALL(*g_fileIOMock, mkstemp(_))
+            .WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_systemMock, unlink(_))
+            .WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_fileIOMock,sendfile(_,_,_,_))
+            .Times(testing::AtMost(2))
+            .WillOnce(Return(1235))
+            .WillOnce(Return(1000));
+    EXPECT_CALL(*g_fileIOMock, mmap(_,_,_,_,_,_))
+                .Times(testing::AtMost(2))
+                .WillOnce([](void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
+                    const char* test_str = "2025-10-26T14:40:55.001Z This is a Test Marker with value 1234 in the log file.\n2025-10-26T14:40:55.001Z Another line without the marker.\n2025-10-26T14:40:55.001Z Line with Test Marker";
+                    char* mapped_mem = (char*)malloc(length);
+                    memset(mapped_mem, 0, length);
+                    strncpy(mapped_mem, test_str, length - 1);
+                    return (void*)mapped_mem;
+                })
+                .WillOnce([](void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
+                    const char* test_str = "2025-10-26T14:40:55.001Z This is with value Test:1250 in the log file.\n2025-10-26T14:40:55.001Z Another line without the marker.\n2025-10-26T14:40:55.001Z The line with Test Markeris found\n2025-10-26T14:40:55.001Z Line with 0 vale for Test Marker0";
+                    char* mapped_mem = (char*)malloc(length);
+                    memset(mapped_mem, 0, length);
+                    strncpy(mapped_mem, test_str, length - 1);
+                    return (void*)mapped_mem;
+                });
+    
+    EXPECT_EQ(0, getDCAResultsInVector(gsProfile, vecMarkerList, true, "/opt/logs"));
+
     hash_map_destroy(gsProfile->logFileSeekMap, free);
     gsProfile->logFileSeekMap = NULL;
     free(gsProfile);

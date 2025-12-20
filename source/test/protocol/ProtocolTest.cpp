@@ -472,9 +472,9 @@ TEST_F(protocolTestFixture, COVER_SETHEADER_LINES_108_135)
     EXPECT_EQ(T2ERROR_SUCCESS, result);
     // headerList should have been set (we returned dummy pointer 0x1)
     EXPECT_NE(headerList, nullptr);
-#endif
 }
 
+#endif
 //sendReportOverHTTP
 TEST_F(protocolTestFixture, sendReportOverHTTP_6)
 {

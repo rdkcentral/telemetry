@@ -427,6 +427,76 @@ TEST_F(protocolTestFixture, sendCachedReportsOverRBUSMethod)
     Vector_Destroy(reportlist,free);
 }
 
+// New test to exercise setHeader() code paths (covers lines ~108-135 in curlinterface.c)
+TEST_F(protocolTestFixture, SENDREPORTOVERHTTP_setHeader_coverage)
+{
+      char* httpURL = "https://mockxconf:50051/dataLakeMock";
+      char* payload = strdup("This is a payload string");
+
+      // Ensure pipe creation succeeds
+      EXPECT_CALL(*g_fileIOMock, pipe(_))
+              .Times(1)
+              .WillOnce(Return(0));
+
+      // mTLS disabled to avoid invoking setMtlsHeaders in child
+      EXPECT_CALL(*m_xconfclientMock, isMtlsEnabled())
+              .Times(1)
+              .WillOnce(Return(false));
+
+      // Simulate child (fork == 0) so that setHeader runs in-process.
+      EXPECT_CALL(*g_fileIOMock, fork())
+              .Times(1)
+              .WillOnce(Return(0));
+
+      // curl init returns a valid handle
+      EXPECT_CALL(*g_fileIOMock, curl_easy_init())
+              .Times(1)
+              .WillOnce(Return((CURL*)0x1));
+
+      // Expect curl_easy_setopt_mock to be called for URL, SSLVERSION, CUSTOMREQUEST, TIMEOUT, HTTPHEADER, WRITEFUNCTION etc.
+      EXPECT_CALL(*g_fileIOMock, curl_easy_setopt_mock(_, _, _))
+              .Times(AtLeast(5))
+              .WillRepeatedly(Return(CURLE_OK));
+
+      // Header list append called twice in setHeader
+      EXPECT_CALL(*g_fileIOMock, curl_slist_append(_, _))
+              .Times(2)
+              .WillRepeatedly(Return((struct curl_slist*)0x1));
+
+      // Child will fopen output file
+      EXPECT_CALL(*g_fileIOMock, fopen(_, _))
+              .Times(1)
+              .WillOnce(Return((FILE*)0x1));
+
+      // curl perform returns OK
+      EXPECT_CALL(*g_fileIOMock, curl_easy_perform(_))
+              .Times(1)
+              .WillOnce(Return(CURLE_OK));
+
+      // curl_easy_getinfo should set HTTP response code to 200
+      EXPECT_CALL(*g_fileIOMock, curl_easy_getinfo_mock(_, _, _))
+              .Times(1)
+              .WillOnce(Invoke([](CURL* c, CURLINFO info, void* arg)->CURLcode {
+                  if(arg) *((long*)arg) = 200;
+                  return CURLE_OK;
+              }));
+
+      // cleanup calls
+      EXPECT_CALL(*g_fileIOMock, curl_slist_free_all(_))
+              .Times(1);
+      EXPECT_CALL(*g_fileIOMock, curl_easy_cleanup(_))
+              .Times(1);
+      EXPECT_CALL(*g_fileIOMock, fclose(_))
+              .Times(1)
+              .WillOnce(Return(0));
+
+      // The child will call exit(), which in our FileioMock throws a runtime_error.
+      // We expect that exception to be propagated when fork() == 0.
+      EXPECT_THROW(sendReportOverHTTP(httpURL, payload, NULL), std::runtime_error);
+
+      free(payload);
+}
+
 //sendReportOverHTTP
 TEST_F(protocolTestFixture, sendReportOverHTTP_6)
 {
@@ -523,7 +593,7 @@ TEST_F(protocolTestFixture, sendCachedReportsOverHTTP_FailureCase)
 
 #ifdef GTEST_ENABLE
  // Unit test for static writeToFile via its function pointer
- TEST(CURLINTERFACE_STATIC, WriteToFile)
+ TEST_F(CURLINTERFACE_STATIC, WriteToFile)
  {
      WriteToFileFunc writeToFileCb = getWriteToFileCallback();
      ASSERT_NE(writeToFileCb, nullptr);
@@ -550,7 +620,7 @@ TEST_F(protocolTestFixture, sendCachedReportsOverHTTP_FailureCase)
      fclose(fp);
      remove(testFile);
  }
-TEST(CURLINTERFACE_STATIC, SetHeader)
+TEST_F(CURLINTERFACE_STATIC, SetHeader)
 {
     SetHeaderFunc setHeaderCb = getSetHeaderCallback();
     ASSERT_NE(setHeaderCb, nullptr);
@@ -562,7 +632,7 @@ TEST(CURLINTERFACE_STATIC, SetHeader)
     // According to implementation, curl==NULL returns T2ERROR_FAILURE
     EXPECT_EQ(result, T2ERROR_FAILURE);
 }
-TEST(CURLINTERFACE_STATIC, SetMtlsHeaders_NULL)
+TEST_F(CURLINTERFACE_STATIC, SetMtlsHeaders_NULL)
 {
     SetMtlsHeadersFunc cb = getSetMtlsHeadersCallback();
     ASSERT_NE(cb, nullptr);
@@ -575,7 +645,7 @@ TEST(CURLINTERFACE_STATIC, SetMtlsHeaders_NULL)
     EXPECT_EQ(cb((CURL*)0x1, "cert", nullptr, &resp), T2ERROR_FAILURE);
 }
 
-TEST(CURLINTERFACE_STATIC, SetPayload_NULL)
+TEST_F(CURLINTERFACE_STATIC, SetPayload_NULL)
 {
     SetPayloadFunc cb = getSetPayloadCallback();
     ASSERT_NE(cb, nullptr);

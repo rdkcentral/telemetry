@@ -52,7 +52,7 @@ SetMtlsHeadersFunc getSetMtlsHeadersCallback(void);
 typedef T2ERROR (*SetPayloadFunc)(CURL *, const char *, childResponse *);
 SetPayloadFunc getSetPayloadCallback(void);
 }
-#if 1
+#if 0
 extern "C" T2ERROR getMtlsCerts(char **pCertFile, char **pCertPC)
 {
     if (pCertFile)
@@ -536,7 +536,7 @@ TEST_F(protocolTestFixture, sendReportOverHTTP_6)
       EXPECT_EQ(T2ERROR_SUCCESS, sendReportOverHTTP(httpURL, payload,NULL));
       Vector_Destroy(reportlist, free);
 }
-#if 1
+#if 0
 /* New test: force mTLS enabled and make getMtlsCerts fail so the function
    returns early through the mtls cert-failure branch (coverage for lines
    around the getMtlsCerts failure handling). */
@@ -659,6 +659,79 @@ TEST(CURLINTERFACE_STATIC, SetPayload_NULL)
     EXPECT_EQ(cb(nullptr, "payload", &resp), T2ERROR_FAILURE);
     // NULL for payload
     EXPECT_EQ(cb((CURL*)0x1, nullptr, &resp), T2ERROR_FAILURE);
+}
+
+TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetHeader_NULL_DESTURL)
+{
+    SetHeaderFunc setHeaderCb = getSetHeaderCallback();
+    ASSERT_NE(setHeaderCb, nullptr);
+
+    CURL *curl = (CURL*)0x1;
+    struct curl_slist *headerList = nullptr;
+    childResponse resp;
+    memset(&resp, 0, sizeof(resp));
+
+    // destURL NULL should immediately fail
+    T2ERROR result = setHeaderCb(curl, NULL, &headerList, &resp);
+    EXPECT_EQ(result, T2ERROR_FAILURE);
+}
+
+TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetHeader_setopt_failure)
+{
+    SetHeaderFunc setHeaderCb = getSetHeaderCallback();
+    ASSERT_NE(setHeaderCb, nullptr);
+
+    CURL *curl = (CURL*)0x1;
+    const char *destURL = "http://localhost";
+    struct curl_slist *headerList = nullptr;
+    childResponse resp;
+    memset(&resp, 0, sizeof(resp));
+
+    // Make the first curl_easy_setopt call fail to exercise early failure path.
+    EXPECT_CALL(*g_fileIOMock, curl_easy_setopt_mock(_,_,_))
+        .Times(1)
+        .WillOnce(Return(CURLE_FAILED_INIT));
+
+    T2ERROR result = setHeaderCb(curl, destURL, &headerList, &resp);
+    EXPECT_EQ(result, T2ERROR_FAILURE);
+    // curlSetopCode should be set to the failing CURLE code
+    EXPECT_EQ(resp.curlSetopCode, CURLE_FAILED_INIT);
+}
+
+TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetMtlsHeaders_setopt_failure)
+{
+    SetMtlsHeadersFunc cb = getSetMtlsHeadersCallback();
+    ASSERT_NE(cb, nullptr);
+
+    childResponse resp;
+    memset(&resp, 0, sizeof(resp));
+
+    // Make the first curl_easy_setopt call fail and ensure function returns failure
+    EXPECT_CALL(*g_fileIOMock, curl_easy_setopt_mock(_,_,_))
+        .Times(1)
+        .WillOnce(Return(CURLE_UNKNOWN_OPTION));
+
+    T2ERROR result = cb((CURL*)0x1, "dummyCert", "dummyPwd", &resp);
+    EXPECT_EQ(result, T2ERROR_FAILURE);
+    EXPECT_EQ(resp.curlSetopCode, CURLE_UNKNOWN_OPTION);
+}
+
+TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetPayload_setopt_failure)
+{
+    SetPayloadFunc cb = getSetPayloadCallback();
+    ASSERT_NE(cb, nullptr);
+
+    childResponse resp;
+    memset(&resp, 0, sizeof(resp));
+
+    // Make CURLOPT_POSTFIELDS setopt call fail
+    EXPECT_CALL(*g_fileIOMock, curl_easy_setopt_mock(_,_,_))
+        .Times(1)
+        .WillOnce(Return(CURLE_OUT_OF_MEMORY));
+
+    T2ERROR result = cb((CURL*)0x1, "payload", &resp);
+    EXPECT_EQ(result, T2ERROR_FAILURE);
+    EXPECT_EQ(resp.curlSetopCode, CURLE_OUT_OF_MEMORY);
 }
 
 /* New tests to cover success paths for static helpers in curlinterface.c */

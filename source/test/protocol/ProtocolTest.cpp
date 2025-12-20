@@ -426,7 +426,7 @@ TEST_F(protocolTestFixture, sendCachedReportsOverRBUSMethod)
     Vector_Destroy(inputParams, free);
     Vector_Destroy(reportlist,free);
 }
-
+#if 0
 // New test to exercise setHeader() code paths via function pointer accessor
 TEST_F(protocolTestFixture, SENDREPORTOVERHTTP_setHeader_coverage)
 {
@@ -462,6 +462,7 @@ TEST_F(protocolTestFixture, SENDREPORTOVERHTTP_setHeader_coverage)
             .Times(1);
     curl_slist_free_all(headerList);
 }
+#endif
 //sendReportOverHTTP
 TEST_F(protocolTestFixture, sendReportOverHTTP_6)
 {

@@ -462,43 +462,6 @@ TEST_F(protocolTestFixture, COVER_SETHEADER_LINES_108_135)
 #endif
 }
 
-#if 0
-// New test to exercise setHeader() code paths via function pointer accessor
-TEST_F(protocolTestFixture, SENDREPORTOVERHTTP_setHeader_coverage)
-{
-    char* httpURL = (char*)"https://mockxconf:50051/dataLakeMock";
-
-    // Expect curl_easy_setopt calls for URL, SSLVERSION, CUSTOMREQUEST, TIMEOUT,
-    // CURLOPT_HTTPHEADER and CURLOPT_WRITEFUNCTION (and possibly interface).
-    EXPECT_CALL(*g_fileIOMock, curl_easy_setopt_mock(_, _, _))
-            .Times(AtLeast(5))
-            .WillRepeatedly(Return(CURLE_OK));
-
-    // setHeader should call curl_slist_append twice (Accept and Content-type)
-    EXPECT_CALL(*g_fileIOMock, curl_slist_append(_, _))
-            .Times(2)
-            .WillRepeatedly(Return((struct curl_slist*)0x1));
-
-    struct curl_slist *headerList = NULL;
-    childResponse cr = {0};
-
-    // Obtain the function pointer (this comes from curlinterface.c)
-    SetHeaderFunc fh = getSetHeaderCallback();
-    ASSERT_NE((void*)NULL, (void*)fh);
-
-    // Call the setHeader implementation via function pointer
-    T2ERROR rc = fh((CURL*)0x1, httpURL, &headerList, &cr);
-    EXPECT_EQ(T2ERROR_SUCCESS, rc);
-
-    // headerList should have been set by the mocked curl_slist_append calls
-    EXPECT_NE((void*)NULL, headerList);
-
-    // Expect cleanup/free to be called (mocked)
-    EXPECT_CALL(*g_fileIOMock, curl_slist_free_all(_))
-            .Times(1);
-    curl_slist_free_all(headerList);
-}
-#endif
 //sendReportOverHTTP
 TEST_F(protocolTestFixture, sendReportOverHTTP_6)
 {

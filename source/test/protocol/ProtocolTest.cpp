@@ -593,7 +593,7 @@ TEST_F(protocolTestFixture, sendCachedReportsOverHTTP_FailureCase)
 
 #ifdef GTEST_ENABLE
  // Unit test for static writeToFile via its function pointer
- TEST_F(CURLINTERFACE_STATIC, WriteToFile)
+ TEST(CURLINTERFACE_STATIC, WriteToFile)
  {
      WriteToFileFunc writeToFileCb = getWriteToFileCallback();
      ASSERT_NE(writeToFileCb, nullptr);
@@ -620,7 +620,7 @@ TEST_F(protocolTestFixture, sendCachedReportsOverHTTP_FailureCase)
      fclose(fp);
      remove(testFile);
  }
-TEST_F(CURLINTERFACE_STATIC, SetHeader)
+TEST(CURLINTERFACE_STATIC, SetHeader)
 {
     SetHeaderFunc setHeaderCb = getSetHeaderCallback();
     ASSERT_NE(setHeaderCb, nullptr);
@@ -632,7 +632,7 @@ TEST_F(CURLINTERFACE_STATIC, SetHeader)
     // According to implementation, curl==NULL returns T2ERROR_FAILURE
     EXPECT_EQ(result, T2ERROR_FAILURE);
 }
-TEST_F(CURLINTERFACE_STATIC, SetMtlsHeaders_NULL)
+TEST(CURLINTERFACE_STATIC, SetMtlsHeaders_NULL)
 {
     SetMtlsHeadersFunc cb = getSetMtlsHeadersCallback();
     ASSERT_NE(cb, nullptr);
@@ -645,7 +645,7 @@ TEST_F(CURLINTERFACE_STATIC, SetMtlsHeaders_NULL)
     EXPECT_EQ(cb((CURL*)0x1, "cert", nullptr, &resp), T2ERROR_FAILURE);
 }
 
-TEST_F(CURLINTERFACE_STATIC, SetPayload_NULL)
+TEST(CURLINTERFACE_STATIC, SetPayload_NULL)
 {
     SetPayloadFunc cb = getSetPayloadCallback();
     ASSERT_NE(cb, nullptr);

@@ -440,41 +440,6 @@ TEST_F(protocolTestFixture, sendCachedReportsOverRBUSMethod)
     Vector_Destroy(reportlist,free);
 }
 
-#if 0
-TEST_F(protocolTestFixture, COVER_SETHEADER_LINES_108_135)
-{
-    // Prepare a dummy curl pointer and inputs
-    CURL *curl = (CURL*)0x1;
-    const char* url = "https://test-header.example";
-    struct curl_slist *headerList = NULL;
-    childResponse resp;
-    memset(&resp, 0, sizeof(resp));
-
-    // Expect curl_slist_append to be called twice for the two headers
-    EXPECT_CALL(*g_fileIOMock, curl_slist_append(_, _))
-        .Times(2)
-        .WillRepeatedly(Return((struct curl_slist*)0x1));
-    // Expect curl_easy_setopt_mock to be called for the options used in setHeader.
-    // We are permissive about exact count (AtLeast) to avoid fragile test when build flags change.
-    EXPECT_CALL(*g_fileIOMock, curl_easy_setopt_mock(_,_,_))
-        .Times(::testing::AtLeast(6))
-        .WillRepeatedly(Return(CURLE_OK));
-
-    // Expect curl_slist_free_all to be invoked when cleaning up in other code paths (safe to allow)
-    EXPECT_CALL(*g_fileIOMock, curl_slist_free_all(_))
-        .Times(0); // setHeader itself doesn't free; ensure no unexpected frees here
-
-    // Get the function pointer to the static setHeader and invoke it
-    SetHeaderFunc setHeaderFn = getSetHeaderCallback();
-    ASSERT_NE(setHeaderFn, nullptr);
-
-    T2ERROR result = setHeaderFn(curl, url, &headerList, &resp);
-    EXPECT_EQ(T2ERROR_SUCCESS, result);
-    // headerList should have been set (we returned dummy pointer 0x1)
-    EXPECT_NE(headerList, nullptr);
-}
-
-#endif
 //sendReportOverHTTP
 TEST_F(protocolTestFixture, sendReportOverHTTP_6)
 {
@@ -536,35 +501,6 @@ TEST_F(protocolTestFixture, sendReportOverHTTP_6)
       EXPECT_EQ(T2ERROR_SUCCESS, sendReportOverHTTP(httpURL, payload,NULL));
       Vector_Destroy(reportlist, free);
 }
-#if 0
-/* New test: force mTLS enabled and make getMtlsCerts fail so the function
-   returns early through the mtls cert-failure branch (coverage for lines
-   around the getMtlsCerts failure handling). */
-TEST_F(protocolTestFixture, SENDREPORTOVERHTTP_MTLS_GETCERTS_FAIL)
-{
-    char* httpURL = "https://mockxconf:50051/dataLakeMock";
-    char* payload = strdup("This is a payload string");
-
-    // pipe may be called near beginning; allow it to succeed so function proceeds
-    EXPECT_CALL(*g_fileIOMock, pipe(_))
-        .Times(1)
-        .WillOnce(Return(0));
-
-    // Indicate mTLS is enabled so sendReportOverHTTP invokes getMtlsCerts
-    EXPECT_CALL(*m_xconfclientMock, isMtlsEnabled())
-        .Times(1)
-        .WillOnce(Return(true));
-
-    // Provide a safe default for access if it's used; use ON_CALL to avoid strictness
-    ON_CALL(*g_systemMock, access(::testing::_, ::testing::_)).WillByDefault(Return(0));
-
-    // Our test-local getMtlsCerts returns T2ERROR_FAILURE (see top of file),
-    // so sendReportOverHTTP should detect this and return failure.
-    EXPECT_EQ(T2ERROR_FAILURE, sendReportOverHTTP(httpURL, payload, NULL));
-
-    free(payload);
-}
-#endif
 TEST_F(protocolTestFixture, sendCachedReportsOverHTTP_FailureCase)
 {
     char *httpURL = "https://mockxconf:50051/dataLakeMock";

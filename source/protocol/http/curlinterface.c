@@ -93,7 +93,7 @@ static size_t writeToFile(void *ptr, size_t size, size_t nmemb, void *stream)
     return written;
 }
 
-#if 1 //GTEST_ENABLE
+#ifdef GTEST_ENABLE
 // Defining Function pointers to access static functions
 typedef size_t (*WriteToFileFunc)(void *, size_t, size_t, void *);
 

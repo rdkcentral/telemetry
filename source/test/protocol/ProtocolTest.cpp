@@ -480,6 +480,39 @@ TEST_F(protocolTestFixture, sendReportOverHTTP_6)
       EXPECT_EQ(T2ERROR_SUCCESS, sendReportOverHTTP(httpURL, payload,NULL));
       Vector_Destroy(reportlist, free);
 }
+
+TEST_F(protocolTestFixture, sendCachedReportsOverHTTP_FailureCase)
+{
+    char *httpURL = "https://mockxconf:50051/dataLakeMock";
+    Vector* reportList = NULL;
+    Vector_Create(&reportList);
+
+    // Add two payloads to the report list
+    char* payload1 = strdup("This is payload 1");
+    char* payload2 = strdup("This is payload 2");
+    Vector_PushBack(reportList, payload1);
+    Vector_PushBack(reportList, payload2);
+
+    // Mock failure for sendReportOverHTTP on the first payload
+    EXPECT_CALL(*g_fileIOMock, pipe(_))
+        .Times(1)
+        .WillOnce(Return(0));
+
+    EXPECT_CALL(*m_xconfclientMock, isMtlsEnabled())
+        .Times(1)
+        .WillOnce(Return(false));
+
+    EXPECT_CALL(*g_fileIOMock, fork())
+        .Times(1)
+        .WillOnce(Return(-1));
+
+    // Ensure that the function returns a failure due to the mocked failure
+    EXPECT_EQ(T2ERROR_FAILURE, sendCachedReportsOverHTTP(httpURL, reportList));
+
+    // Clean up
+    Vector_Destroy(reportList, free);
+}
+
 #ifdef GTEST_ENABLE
  // Unit test for static writeToFile via its function pointer
  TEST(CURLINTERFACE_STATIC, WriteToFile)

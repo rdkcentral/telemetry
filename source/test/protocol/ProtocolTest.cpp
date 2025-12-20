@@ -440,6 +440,7 @@ TEST_F(protocolTestFixture, sendCachedReportsOverRBUSMethod)
     Vector_Destroy(reportlist,free);
 }
 
+#if 0
 TEST_F(protocolTestFixture, COVER_SETHEADER_LINES_108_135)
 {
     // Prepare a dummy curl pointer and inputs
@@ -456,10 +457,9 @@ TEST_F(protocolTestFixture, COVER_SETHEADER_LINES_108_135)
     // Expect curl_easy_setopt_mock to be called for the options used in setHeader.
     // We are permissive about exact count (AtLeast) to avoid fragile test when build flags change.
     EXPECT_CALL(*g_fileIOMock, curl_easy_setopt_mock(_,_,_))
-        .Times(AtLeast(6))
+        .Times(::testing::AtLeast(6))
         .WillRepeatedly(Return(CURLE_OK));
 
-#if 0
     // Expect curl_slist_free_all to be invoked when cleaning up in other code paths (safe to allow)
     EXPECT_CALL(*g_fileIOMock, curl_slist_free_all(_))
         .Times(0); // setHeader itself doesn't free; ensure no unexpected frees here

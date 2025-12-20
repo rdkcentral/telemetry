@@ -53,6 +53,19 @@ typedef T2ERROR (*SetPayloadFunc)(CURL *, const char *, childResponse *);
 SetPayloadFunc getSetPayloadCallback(void);
 }
 
+extern "C" T2ERROR getMtlsCerts(char **pCertFile, char **pCertPC)
+{
+    if (pCertFile)
+    {
+        *pCertFile = NULL;
+    }
+    if (pCertPC)
+    {
+        *pCertPC = NULL;
+    }
+    return T2ERROR_FAILURE;
+}
+
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include <rbus/rbus.h>
@@ -522,6 +535,34 @@ TEST_F(protocolTestFixture, sendReportOverHTTP_6)
       #endif
       EXPECT_EQ(T2ERROR_SUCCESS, sendReportOverHTTP(httpURL, payload,NULL));
       Vector_Destroy(reportlist, free);
+}
+
+/* New test: force mTLS enabled and make getMtlsCerts fail so the function
+   returns early through the mtls cert-failure branch (coverage for lines
+   around the getMtlsCerts failure handling). */
+TEST_F(protocolTestFixture, SENDREPORTOVERHTTP_MTLS_GETCERTS_FAIL)
+{
+    char* httpURL = "https://mockxconf:50051/dataLakeMock";
+    char* payload = strdup("This is a payload string");
+
+    // pipe may be called near beginning; allow it to succeed so function proceeds
+    EXPECT_CALL(*g_fileIOMock, pipe(_))
+        .Times(1)
+        .WillOnce(Return(0));
+
+    // Indicate mTLS is enabled so sendReportOverHTTP invokes getMtlsCerts
+    EXPECT_CALL(*m_xconfclientMock, isMtlsEnabled())
+        .Times(1)
+        .WillOnce(Return(true));
+
+    // Provide a safe default for access if it's used; use ON_CALL to avoid strictness
+    ON_CALL(*g_systemMock, access(::testing::_, ::testing::_)).WillByDefault(Return(0));
+
+    // Our test-local getMtlsCerts returns T2ERROR_FAILURE (see top of file),
+    // so sendReportOverHTTP should detect this and return failure.
+    EXPECT_EQ(T2ERROR_FAILURE, sendReportOverHTTP(httpURL, payload, NULL));
+
+    free(payload);
 }
 
 TEST_F(protocolTestFixture, sendCachedReportsOverHTTP_FailureCase)

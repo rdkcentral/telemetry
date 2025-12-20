@@ -52,7 +52,7 @@ SetMtlsHeadersFunc getSetMtlsHeadersCallback(void);
 typedef T2ERROR (*SetPayloadFunc)(CURL *, const char *, childResponse *);
 SetPayloadFunc getSetPayloadCallback(void);
 }
-#if 0
+#if 1
 extern "C" T2ERROR getMtlsCerts(char **pCertFile, char **pCertPC)
 {
     if (pCertFile)
@@ -536,7 +536,7 @@ TEST_F(protocolTestFixture, sendReportOverHTTP_6)
       EXPECT_EQ(T2ERROR_SUCCESS, sendReportOverHTTP(httpURL, payload,NULL));
       Vector_Destroy(reportlist, free);
 }
-#if 0
+#if 1
 /* New test: force mTLS enabled and make getMtlsCerts fail so the function
    returns early through the mtls cert-failure branch (coverage for lines
    around the getMtlsCerts failure handling). */

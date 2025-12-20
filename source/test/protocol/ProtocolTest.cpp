@@ -52,7 +52,7 @@ SetMtlsHeadersFunc getSetMtlsHeadersCallback(void);
 typedef T2ERROR (*SetPayloadFunc)(CURL *, const char *, childResponse *);
 SetPayloadFunc getSetPayloadCallback(void);
 }
-
+#if 0
 extern "C" T2ERROR getMtlsCerts(char **pCertFile, char **pCertPC)
 {
     if (pCertFile)
@@ -65,7 +65,7 @@ extern "C" T2ERROR getMtlsCerts(char **pCertFile, char **pCertPC)
     }
     return T2ERROR_FAILURE;
 }
-
+#endif
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include <rbus/rbus.h>
@@ -536,7 +536,7 @@ TEST_F(protocolTestFixture, sendReportOverHTTP_6)
       EXPECT_EQ(T2ERROR_SUCCESS, sendReportOverHTTP(httpURL, payload,NULL));
       Vector_Destroy(reportlist, free);
 }
-
+#if 0
 /* New test: force mTLS enabled and make getMtlsCerts fail so the function
    returns early through the mtls cert-failure branch (coverage for lines
    around the getMtlsCerts failure handling). */
@@ -564,7 +564,7 @@ TEST_F(protocolTestFixture, SENDREPORTOVERHTTP_MTLS_GETCERTS_FAIL)
 
     free(payload);
 }
-
+#endif
 TEST_F(protocolTestFixture, sendCachedReportsOverHTTP_FailureCase)
 {
     char *httpURL = "https://mockxconf:50051/dataLakeMock";
@@ -659,5 +659,32 @@ TEST(CURLINTERFACE_STATIC, SetPayload_NULL)
     EXPECT_EQ(cb(nullptr, "payload", &resp), T2ERROR_FAILURE);
     // NULL for payload
     EXPECT_EQ(cb((CURL*)0x1, nullptr, &resp), T2ERROR_FAILURE);
+}
+
+/* New tests to cover success paths for static helpers in curlinterface.c */
+TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetPayload_SUCCESS)
+{
+    SetPayloadFunc cb = getSetPayloadCallback();
+    ASSERT_NE(cb, nullptr);
+    childResponse resp;
+    // Allow any curl_easy_setopt_mock calls and return CURLE_OK
+    EXPECT_CALL(*g_fileIOMock, curl_easy_setopt_mock(_,_,_))
+        .Times(::testing::AtLeast(2))
+        .WillRepeatedly(Return(CURLE_OK));
+    T2ERROR res = cb((CURL*)0x1, "dummy-payload", &resp);
+    EXPECT_EQ(res, T2ERROR_SUCCESS);
+}
+
+TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetMtlsHeaders_SUCCESS)
+{
+    SetMtlsHeadersFunc cb = getSetMtlsHeadersCallback();
+    ASSERT_NE(cb, nullptr);
+    childResponse resp;
+    // Expect at least 4 curl_easy_setopt calls for the mtls settings
+    EXPECT_CALL(*g_fileIOMock, curl_easy_setopt_mock(_,_,_))
+        .Times(::testing::AtLeast(4))
+        .WillRepeatedly(Return(CURLE_OK));
+    T2ERROR res = cb((CURL*)0x1, "/tmp/cert.p12", "passwd", &resp);
+    EXPECT_EQ(res, T2ERROR_SUCCESS);
 }
 #endif

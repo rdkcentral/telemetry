@@ -501,6 +501,7 @@ TEST_F(protocolTestFixture, sendReportOverHTTP_6)
       EXPECT_EQ(T2ERROR_SUCCESS, sendReportOverHTTP(httpURL, payload,NULL));
       Vector_Destroy(reportlist, free);
 }
+
 TEST_F(protocolTestFixture, sendCachedReportsOverHTTP_FailureCase)
 {
     char *httpURL = "https://mockxconf:50051/dataLakeMock";
@@ -695,5 +696,33 @@ TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetMtlsHeaders_SUCCESS)
         .WillRepeatedly(Return(CURLE_OK));
     T2ERROR res = cb((CURL*)0x1, "/tmp/cert.p12", "passwd", &resp);
     EXPECT_EQ(res, T2ERROR_SUCCESS);
+}
+
+TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetHeader_SUCCESS)
+{
+    SetHeaderFunc setHeaderCb = getSetHeaderCallback();
+    ASSERT_NE(setHeaderCb, nullptr);
+
+    CURL *curl = (CURL*)0x1;
+    const char *destURL = "http://localhost";
+    struct curl_slist *headerList = nullptr;
+    childResponse resp;
+    memset(&resp, 0, sizeof(resp));
+
+    // Expect curl_slist_append to be called twice for the two headers and return a non-null list
+    EXPECT_CALL(*g_fileIOMock, curl_slist_append(_, _))
+        .Times(2)
+        .WillRepeatedly(Return((struct curl_slist*)0x1));
+
+    // Allow the curl_easy_setopt_mock calls that setHeader performs and return CURLE_OK.
+    // Use AtLeast to be resilient to small differences in option counts due to build flags.
+    EXPECT_CALL(*g_fileIOMock, curl_easy_setopt_mock(_,_,_))
+        .Times(::testing::AtLeast(6))
+        .WillRepeatedly(Return(CURLE_OK));
+
+    T2ERROR result = setHeaderCb(curl, destURL, &headerList, &resp);
+    EXPECT_EQ(result, T2ERROR_SUCCESS);
+    // headerList should have been set by curl_slist_append to a non-null pointer
+    EXPECT_NE(headerList, nullptr);
 }
 #endif

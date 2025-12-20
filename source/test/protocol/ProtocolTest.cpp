@@ -43,6 +43,9 @@ typedef struct
 
 } childResponse ;
 
+typedef size_t (*WriteToFileFunc)(void *, size_t, size_t, void *);
+WriteToFileFunc getWriteToFileCallback(void);
+
 }
 
 #include "gmock/gmock.h"

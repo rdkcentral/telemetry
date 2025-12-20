@@ -635,6 +635,8 @@ T2ERROR sendCachedReportsOverHTTP(char *httpUrl, Vector *reportList)
 }
 
 #ifdef GTEST_ENABLE
+typedef size_t (*WriteToFileFunc)(void *, size_t, size_t, void *);
+
 WriteToFileFunc getWriteToFileCallback()
 {
     return writeToFile;

@@ -427,76 +427,41 @@ TEST_F(protocolTestFixture, sendCachedReportsOverRBUSMethod)
     Vector_Destroy(reportlist,free);
 }
 
-// New test to exercise setHeader() code paths (covers lines ~108-135 in curlinterface.c)
+// New test to exercise setHeader() code paths via function pointer accessor
 TEST_F(protocolTestFixture, SENDREPORTOVERHTTP_setHeader_coverage)
 {
-      char* httpURL = "https://mockxconf:50051/dataLakeMock";
-      char* payload = strdup("This is a payload string");
+    char* httpURL = (char*)"https://mockxconf:50051/dataLakeMock";
 
-      // Ensure pipe creation succeeds
-      EXPECT_CALL(*g_fileIOMock, pipe(_))
-              .Times(1)
-              .WillOnce(Return(0));
+    // Expect curl_easy_setopt calls for URL, SSLVERSION, CUSTOMREQUEST, TIMEOUT,
+    // CURLOPT_HTTPHEADER and CURLOPT_WRITEFUNCTION (and possibly interface).
+    EXPECT_CALL(*g_fileIOMock, curl_easy_setopt_mock(_, _, _))
+            .Times(AtLeast(5))
+            .WillRepeatedly(Return(CURLE_OK));
 
-      // mTLS disabled to avoid invoking setMtlsHeaders in child
-      EXPECT_CALL(*m_xconfclientMock, isMtlsEnabled())
-              .Times(1)
-              .WillOnce(Return(false));
+    // setHeader should call curl_slist_append twice (Accept and Content-type)
+    EXPECT_CALL(*g_fileIOMock, curl_slist_append(_, _))
+            .Times(2)
+            .WillRepeatedly(Return((struct curl_slist*)0x1));
 
-      // Simulate child (fork == 0) so that setHeader runs in-process.
-      EXPECT_CALL(*g_fileIOMock, fork())
-              .Times(1)
-              .WillOnce(Return(0));
+    struct curl_slist *headerList = NULL;
+    childResponse cr = {0};
 
-      // curl init returns a valid handle
-      EXPECT_CALL(*g_fileIOMock, curl_easy_init())
-              .Times(1)
-              .WillOnce(Return((CURL*)0x1));
+    // Obtain the function pointer (this comes from curlinterface.c)
+    SetHeaderFunc fh = getSetHeaderCallback();
+    ASSERT_NE((void*)NULL, (void*)fh);
 
-      // Expect curl_easy_setopt_mock to be called for URL, SSLVERSION, CUSTOMREQUEST, TIMEOUT, HTTPHEADER, WRITEFUNCTION etc.
-      EXPECT_CALL(*g_fileIOMock, curl_easy_setopt_mock(_, _, _))
-              .Times(AtLeast(5))
-              .WillRepeatedly(Return(CURLE_OK));
+    // Call the setHeader implementation via function pointer
+    T2ERROR rc = fh((CURL*)0x1, httpURL, &headerList, &cr);
+    EXPECT_EQ(T2ERROR_SUCCESS, rc);
 
-      // Header list append called twice in setHeader
-      EXPECT_CALL(*g_fileIOMock, curl_slist_append(_, _))
-              .Times(2)
-              .WillRepeatedly(Return((struct curl_slist*)0x1));
+    // headerList should have been set by the mocked curl_slist_append calls
+    EXPECT_NE((void*)NULL, headerList);
 
-      // Child will fopen output file
-      EXPECT_CALL(*g_fileIOMock, fopen(_, _))
-              .Times(1)
-              .WillOnce(Return((FILE*)0x1));
-
-      // curl perform returns OK
-      EXPECT_CALL(*g_fileIOMock, curl_easy_perform(_))
-              .Times(1)
-              .WillOnce(Return(CURLE_OK));
-
-      // curl_easy_getinfo should set HTTP response code to 200
-      EXPECT_CALL(*g_fileIOMock, curl_easy_getinfo_mock(_, _, _))
-              .Times(1)
-              .WillOnce(Invoke([](CURL* c, CURLINFO info, void* arg)->CURLcode {
-                  if(arg) *((long*)arg) = 200;
-                  return CURLE_OK;
-              }));
-
-      // cleanup calls
-      EXPECT_CALL(*g_fileIOMock, curl_slist_free_all(_))
-              .Times(1);
-      EXPECT_CALL(*g_fileIOMock, curl_easy_cleanup(_))
-              .Times(1);
-      EXPECT_CALL(*g_fileIOMock, fclose(_))
-              .Times(1)
-              .WillOnce(Return(0));
-
-      // The child will call exit(), which in our FileioMock throws a runtime_error.
-      // We expect that exception to be propagated when fork() == 0.
-      EXPECT_THROW(sendReportOverHTTP(httpURL, payload, NULL), std::runtime_error);
-
-      free(payload);
+    // Expect cleanup/free to be called (mocked)
+    EXPECT_CALL(*g_fileIOMock, curl_slist_free_all(_))
+            .Times(1);
+    curl_slist_free_all(headerList);
 }
-
 //sendReportOverHTTP
 TEST_F(protocolTestFixture, sendReportOverHTTP_6)
 {

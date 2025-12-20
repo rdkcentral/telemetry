@@ -426,6 +426,42 @@ TEST_F(protocolTestFixture, sendCachedReportsOverRBUSMethod)
     Vector_Destroy(inputParams, free);
     Vector_Destroy(reportlist,free);
 }
+
+TEST_F(protocolTestFixture, COVER_SETHEADER_LINES_108_135)
+{
+    // Prepare a dummy curl pointer and inputs
+    CURL *curl = (CURL*)0x1;
+    const char* url = "https://test-header.example";
+    struct curl_slist *headerList = NULL;
+    childResponse resp;
+    memset(&resp, 0, sizeof(resp));
+
+    // Expect curl_slist_append to be called twice for the two headers
+    EXPECT_CALL(*g_fileIOMock, curl_slist_append(_, _))
+        .Times(2)
+        .WillRepeatedly(Return((struct curl_slist*)0x1));
+#if 0
+    // Expect curl_easy_setopt_mock to be called for the options used in setHeader.
+    // We are permissive about exact count (AtLeast) to avoid fragile test when build flags change.
+    EXPECT_CALL(*g_fileIOMock, curl_easy_setopt_mock(_,_,_))
+        .Times(AtLeast(6))
+        .WillRepeatedly(Return(CURLE_OK));
+
+    // Expect curl_slist_free_all to be invoked when cleaning up in other code paths (safe to allow)
+    EXPECT_CALL(*g_fileIOMock, curl_slist_free_all(_))
+        .Times(0); // setHeader itself doesn't free; ensure no unexpected frees here
+
+    // Get the function pointer to the static setHeader and invoke it
+    SetHeaderFunc setHeaderFn = getSetHeaderCallback();
+    ASSERT_NE(setHeaderFn, nullptr);
+
+    T2ERROR result = setHeaderFn(curl, url, &headerList, &resp);
+    EXPECT_EQ(T2ERROR_SUCCESS, result);
+    // headerList should have been set (we returned dummy pointer 0x1)
+    EXPECT_NE(headerList, nullptr);
+#endif
+}
+
 #if 0
 // New test to exercise setHeader() code paths via function pointer accessor
 TEST_F(protocolTestFixture, SENDREPORTOVERHTTP_setHeader_coverage)

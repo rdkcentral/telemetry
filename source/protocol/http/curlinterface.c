@@ -637,7 +637,8 @@ T2ERROR sendCachedReportsOverHTTP(char *httpUrl, Vector *reportList)
 #ifdef GTEST_ENABLE
 typedef size_t (*WriteToFileFunc)(void *, size_t, size_t, void *);
 typedef T2ERROR (*SetHeaderFunc)(CURL *, const char *, struct curl_slist **, childResponse *);
-
+typedef T2ERROR (*SetMtlsHeadersFunc)(CURL *, const char *, const char *, childResponse *);
+typedef T2ERROR (*SetPayloadFunc)(CURL *, const char *, childResponse *);
 WriteToFileFunc getWriteToFileCallback()
 {
     return writeToFile;
@@ -646,5 +647,14 @@ WriteToFileFunc getWriteToFileCallback()
 SetHeaderFunc getSetHeaderCallback(void)
 {
     return setHeader;
+}
+
+SetMtlsHeadersFunc getSetMtlsHeadersCallback(void)
+{
+    return setMtlsHeaders;
+}
+SetPayloadFunc getSetPayloadCallback(void)
+{
+    return setPayload;
 }
 #endif

@@ -774,7 +774,6 @@ TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetHeader_HTTPHEADER_failure)
     EXPECT_EQ(resp.curlSetopCode, CURLE_COULDNT_CONNECT);
 }
 
-/* New test: make the CURLOPT_WRITEFUNCTION setopt fail to cover that branch */
 TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetHeader_WRITEFUNCTION_failure)
 {
     SetHeaderFunc setHeaderCb = getSetHeaderCallback();
@@ -791,24 +790,18 @@ TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetHeader_WRITEFUNCTION_failure
         .Times(2)
         .WillRepeatedly(Return((struct curl_slist*)0x1));
 
-    // Sequence of curl_easy_setopt_mock returns:
-    // URL, SSLVERSION, CUSTOMREQUEST, TIMEOUT, (optional INTERFACE), HTTPHEADER -> OK, WRITEFUNCTION -> fail
-    // Use 7 returns: first 6 OK, 7th failing for WRITEFUNCTION.
-    EXPECT_CALL(*g_fileIOMock, curl_easy_setopt_mock(_,_,_))
-        .Times(7)
-        .WillOnce(Return(CURLE_OK))                 // CURLOPT_URL
-        .WillOnce(Return(CURLE_OK))                 // CURLOPT_SSLVERSION
-        .WillOnce(Return(CURLE_OK))                 // CURLOPT_CUSTOMREQUEST
-        .WillOnce(Return(CURLE_OK))                 // CURLOPT_TIMEOUT
-        .WillOnce(Return(CURLE_OK))                 // CURLOPT_INTERFACE or extra opt (if present)
-        .WillOnce(Return(CURLE_OK))                 // CURLOPT_HTTPHEADER
-        .WillOnce(Return(CURLE_SEND_ERROR));        // CURLOPT_WRITEFUNCTION fails
+    // Make CURLOPT_WRITEFUNCTION fail specifically (robust to optional extra setopt calls).
+    EXPECT_CALL(*g_fileIOMock, curl_easy_setopt_mock(_, CURLOPT_WRITEFUNCTION, _))
+        .WillOnce(Return(CURLE_SEND_ERROR));
+
+    // All other curl_easy_setopt_mock invocations should succeed.
+    EXPECT_CALL(*g_fileIOMock, curl_easy_setopt_mock(_, ::testing::Ne(CURLOPT_WRITEFUNCTION), _))
+        .WillRepeatedly(Return(CURLE_OK));
 
     T2ERROR result = setHeaderCb(curl, destURL, &headerList, &resp);
     EXPECT_EQ(result, T2ERROR_FAILURE);
     EXPECT_EQ(resp.curlSetopCode, CURLE_SEND_ERROR);
 }
-
 /* New tests to cover success paths for static helpers in curlinterface.c */
 TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetPayload_SUCCESS)
 {

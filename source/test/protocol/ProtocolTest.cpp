@@ -902,6 +902,31 @@ TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetMtlsHeaders_SSLVERIFYPEER_fa
     EXPECT_EQ(resp.curlSetopCode, CURLE_PEER_FAILED_VERIFICATION);
 }
 
+TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetPayload_POSTFIELDSIZE_failure)
+{
+    SetPayloadFunc cb = getSetPayloadCallback();
+    ASSERT_NE(cb, nullptr);
+
+    childResponse resp;
+    memset(&resp, 0, sizeof(resp));
+    CURL *curl = (CURL*)0x1;
+    const char *payload = "payload-for-testing";
+
+    {
+        ::testing::InSequence seq;
+        // First call(s) for setting postfields may succeed
+        EXPECT_CALL(*g_fileIOMock, curl_easy_setopt_mock(curl, CURLOPT_POSTFIELDS, ::testing::_))
+            .WillOnce(Return(CURLE_OK));
+        // We force failure on POSTFIELDSIZE
+        EXPECT_CALL(*g_fileIOMock, curl_easy_setopt_mock(curl, CURLOPT_POSTFIELDSIZE, ::testing::_))
+            .WillOnce(Return(CURLE_WRITE_ERROR));
+    }
+
+    T2ERROR result = cb(curl, payload, &resp);
+    EXPECT_EQ(result, T2ERROR_FAILURE);
+    EXPECT_EQ(resp.curlSetopCode, CURLE_WRITE_ERROR);
+}
+
 TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetMtlsHeaders_SUCCESS)
 {
     SetMtlsHeadersFunc cb = getSetMtlsHeadersCallback();

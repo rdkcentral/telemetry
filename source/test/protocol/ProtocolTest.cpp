@@ -693,6 +693,53 @@ TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetHeader_SSLVERSION_failure)
     EXPECT_EQ(resp.curlSetopCode, CURLE_SSL_CONNECT_ERROR);
 }
 
+TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetHeader_CUSTOMREQUEST_failure)
+{
+    SetHeaderFunc setHeaderCb = getSetHeaderCallback();
+    ASSERT_NE(setHeaderCb, nullptr);
+
+    CURL *curl = (CURL*)0x1;
+    const char *destURL = "http://localhost";
+    struct curl_slist *headerList = nullptr;
+    childResponse resp;
+    memset(&resp, 0, sizeof(resp));
+
+    // Sequence: CURLOPT_URL -> OK, CURLOPT_SSLVERSION -> OK, CURLOPT_CUSTOMREQUEST -> fail
+    EXPECT_CALL(*g_fileIOMock, curl_easy_setopt_mock(_,_,_))
+        .Times(3)
+        .WillOnce(Return(CURLE_OK))                 // CURLOPT_URL
+        .WillOnce(Return(CURLE_OK))                 // CURLOPT_SSLVERSION
+        .WillOnce(Return(CURLE_UNKNOWN_OPTION));    // CURLOPT_CUSTOMREQUEST fails
+
+    T2ERROR result = setHeaderCb(curl, destURL, &headerList, &resp);
+    EXPECT_EQ(result, T2ERROR_FAILURE);
+    EXPECT_EQ(resp.curlSetopCode, CURLE_UNKNOWN_OPTION);
+}
+
+TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetHeader_TIMEOUT_failure)
+{
+    SetHeaderFunc setHeaderCb = getSetHeaderCallback();
+    ASSERT_NE(setHeaderCb, nullptr);
+
+    CURL *curl = (CURL*)0x1;
+    const char *destURL = "http://localhost";
+    struct curl_slist *headerList = nullptr;
+    childResponse resp;
+    memset(&resp, 0, sizeof(resp));
+
+    // Sequence: CURLOPT_URL -> OK, CURLOPT_SSLVERSION -> OK, CURLOPT_CUSTOMREQUEST -> OK, CURLOPT_TIMEOUT -> fail
+    EXPECT_CALL(*g_fileIOMock, curl_easy_setopt_mock(_,_,_))
+        .Times(4)
+        .WillOnce(Return(CURLE_OK))                 // CURLOPT_URL
+        .WillOnce(Return(CURLE_OK))                 // CURLOPT_SSLVERSION
+        .WillOnce(Return(CURLE_OK))                 // CURLOPT_CUSTOMREQUEST
+        .WillOnce(Return(CURLE_OUT_OF_MEMORY));     // CURLOPT_TIMEOUT fails
+
+    T2ERROR result = setHeaderCb(curl, destURL, &headerList, &resp);
+    EXPECT_EQ(result, T2ERROR_FAILURE);
+    EXPECT_EQ(resp.curlSetopCode, CURLE_OUT_OF_MEMORY);
+}
+
 /* New tests to cover success paths for static helpers in curlinterface.c */
 TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetPayload_SUCCESS)
 {

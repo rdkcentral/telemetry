@@ -845,6 +845,63 @@ TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetMtlsHeaders_SSLCERT_failure)
     // Optionally: check that lineNumber is set to a value after the failing line
 }
 
+TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetMtlsHeaders_KEYPASSWD_failure)
+{
+    SetMtlsHeadersFunc cb = getSetMtlsHeadersCallback();
+    ASSERT_NE(cb, nullptr);
+
+    childResponse resp;
+    memset(&resp, 0, sizeof(resp));
+
+    CURL *curl = (CURL*)0x1;
+    const char* certFile = "/tmp/mycert.p12";
+    const char* passwd = "dummyPwd";
+
+    {
+        ::testing::InSequence seq;
+        EXPECT_CALL(*g_fileIOMock, curl_easy_setopt_mock(curl, CURLOPT_SSLCERTTYPE, ::testing::_))
+            .WillOnce(Return(CURLE_OK));
+        EXPECT_CALL(*g_fileIOMock, curl_easy_setopt_mock(curl, CURLOPT_SSLCERT, ::testing::_))
+            .WillOnce(Return(CURLE_OK));
+        EXPECT_CALL(*g_fileIOMock, curl_easy_setopt_mock(curl, CURLOPT_KEYPASSWD, ::testing::_))
+            .WillOnce(Return(CURLE_LOGIN_DENIED));
+        // No further setopt calls expected
+    }
+
+    T2ERROR result = cb(curl, certFile, passwd, &resp);
+    EXPECT_EQ(result, T2ERROR_FAILURE);
+    EXPECT_EQ(resp.curlSetopCode, CURLE_LOGIN_DENIED);
+}
+
+TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetMtlsHeaders_SSLVERIFYPEER_failure)
+{
+    SetMtlsHeadersFunc cb = getSetMtlsHeadersCallback();
+    ASSERT_NE(cb, nullptr);
+
+    childResponse resp;
+    memset(&resp, 0, sizeof(resp));
+
+    CURL *curl = (CURL*)0x1;
+    const char* certFile = "/tmp/mycert.p12";
+    const char* passwd = "dummyPwd";
+
+    {
+        ::testing::InSequence seq;
+        EXPECT_CALL(*g_fileIOMock, curl_easy_setopt_mock(curl, CURLOPT_SSLCERTTYPE, ::testing::_))
+            .WillOnce(Return(CURLE_OK));
+        EXPECT_CALL(*g_fileIOMock, curl_easy_setopt_mock(curl, CURLOPT_SSLCERT, ::testing::_))
+            .WillOnce(Return(CURLE_OK));
+        EXPECT_CALL(*g_fileIOMock, curl_easy_setopt_mock(curl, CURLOPT_KEYPASSWD, ::testing::_))
+            .WillOnce(Return(CURLE_OK));
+        EXPECT_CALL(*g_fileIOMock, curl_easy_setopt_mock(curl, CURLOPT_SSL_VERIFYPEER, ::testing::_))
+            .WillOnce(Return(CURLE_PEER_FAILED_VERIFICATION));
+    }
+
+    T2ERROR result = cb(curl, certFile, passwd, &resp);
+    EXPECT_EQ(result, T2ERROR_FAILURE);
+    EXPECT_EQ(resp.curlSetopCode, CURLE_PEER_FAILED_VERIFICATION);
+}
+
 TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetMtlsHeaders_SUCCESS)
 {
     SetMtlsHeadersFunc cb = getSetMtlsHeadersCallback();

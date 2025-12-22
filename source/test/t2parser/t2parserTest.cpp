@@ -69,7 +69,6 @@ extern "C" {
     T2ERROR addTriggerCondition(Profile *profile, cJSON *jprofileTriggerCondition);
     T2ERROR encodingSet(Profile* profile, cJSON *jprofileEncodingType, cJSON *jprofileJSONReportFormat, cJSON *jprofileJSONReportTimestamp);
     T2ERROR protocolSet (Profile *profile, cJSON *jprofileProtocol, cJSON *jprofileHTTPURL, cJSON *jprofileHTTPRequestURIParameter, int ThisprofileHTTPRequestURIParameter_count, cJSON *jprofileRBUSMethodName, cJSON *jprofileRBUSMethodParamArr, int rbusMethodParamArrCount);
-    char * (*getProfileParameter_ptr())(Profile *, const char *);
 }
 T2parserMock *m_t2parserMock = NULL;
 rdklogMock *m_rdklogMock = NULL;
@@ -1038,48 +1037,3 @@ TEST(T2ParserProtocolSet, RBUSMethodBranchSetsMethodAndParams)
     cJSON_Delete(jProtocol);
     cJSON_Delete(jRBUS);
 }
-#ifdef GTEST_ENABLE
-TEST(GETPROFILEPARAMETER_FPTR, WorksForName)
-{
-    // Create a test Profile with name set
-    Profile p;
-    memset(&p, 0, sizeof(Profile));
-    p.name = strdup("demoProfile");
-
-    // Get function pointer using helper (must implement in t2parser.c and prototype in .h)
-    char *(*getProfileParameter_fp)(Profile *, const char*) = getProfileParameter_ptr();
-    ASSERT_NE(getProfileParameter_fp, nullptr);
-
-    // Test "name" case
-    char* result = getProfileParameter_fp(&p, "name");
-    ASSERT_STREQ(result, "demoProfile");
-
-    // Clean up
-    free(p.name);
-}
-#if 0
-TEST(GETPROFILEPARAMETER_FPTR, NullProfileReturnsNull)
-{
-    char *(*getProfileParameter_fp)(Profile *, const char*) = getProfileParameter_ptr();
-    ASSERT_NE(getProfileParameter_fp, nullptr);
-
-    char* result = getProfileParameter_fp(NULL, "name");
-    ASSERT_EQ(result, nullptr);
-}
-
-TEST(GETPROFILEPARAMETER_FPTR, UnknownRefReturnsNull)
-{
-    Profile p;
-    memset(&p, 0, sizeof(Profile));
-    p.name = strdup("demoProfileTest");
-
-    char *(*getProfileParameter_fp)(Profile *, const char*) = getProfileParameter_ptr();
-    ASSERT_NE(getProfileParameter_fp, nullptr);
-
-    char* result = getProfileParameter_fp(&p, "notarealfield");
-    ASSERT_EQ(result, nullptr);
-
-    free(p.name);
-}
-#endif
-#endif

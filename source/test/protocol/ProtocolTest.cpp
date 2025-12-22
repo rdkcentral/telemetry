@@ -740,6 +740,75 @@ TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetHeader_TIMEOUT_failure)
     EXPECT_EQ(resp.curlSetopCode, CURLE_OUT_OF_MEMORY);
 }
 
+/* New test: make the CURLOPT_HTTPHEADER setopt fail to cover that branch */
+TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetHeader_HTTPHEADER_failure)
+{
+    SetHeaderFunc setHeaderCb = getSetHeaderCallback();
+    ASSERT_NE(setHeaderCb, nullptr);
+
+    CURL *curl = (CURL*)0x1;
+    const char *destURL = "http://localhost";
+    struct curl_slist *headerList = nullptr;
+    childResponse resp;
+    memset(&resp, 0, sizeof(resp));
+
+    // Ensure curl_slist_append calls return a valid non-null list pointer
+    EXPECT_CALL(*g_fileIOMock, curl_slist_append(_, _))
+        .Times(2)
+        .WillRepeatedly(Return((struct curl_slist*)0x1));
+
+    // Sequence of curl_easy_setopt_mock returns:
+    // URL, SSLVERSION, CUSTOMREQUEST, TIMEOUT, (optional INTERFACE), HTTPHEADER -> fail
+    // Use 6 returns: first 5 OK, 6th is the failing HTTPHEADER setopt.
+    EXPECT_CALL(*g_fileIOMock, curl_easy_setopt_mock(_,_,_))
+        .Times(6)
+        .WillOnce(Return(CURLE_OK))                 // CURLOPT_URL
+        .WillOnce(Return(CURLE_OK))                 // CURLOPT_SSLVERSION
+        .WillOnce(Return(CURLE_OK))                 // CURLOPT_CUSTOMREQUEST
+        .WillOnce(Return(CURLE_OK))                 // CURLOPT_TIMEOUT
+        .WillOnce(Return(CURLE_OK))                 // CURLOPT_INTERFACE or extra opt (if present)
+        .WillOnce(Return(CURLE_COULDNT_CONNECT));   // CURLOPT_HTTPHEADER fails
+
+    T2ERROR result = setHeaderCb(curl, destURL, &headerList, &resp);
+    EXPECT_EQ(result, T2ERROR_FAILURE);
+    EXPECT_EQ(resp.curlSetopCode, CURLE_COULDNT_CONNECT);
+}
+
+/* New test: make the CURLOPT_WRITEFUNCTION setopt fail to cover that branch */
+TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetHeader_WRITEFUNCTION_failure)
+{
+    SetHeaderFunc setHeaderCb = getSetHeaderCallback();
+    ASSERT_NE(setHeaderCb, nullptr);
+
+    CURL *curl = (CURL*)0x1;
+    const char *destURL = "http://localhost";
+    struct curl_slist *headerList = nullptr;
+    childResponse resp;
+    memset(&resp, 0, sizeof(resp));
+
+    // Ensure curl_slist_append calls return a valid non-null list pointer
+    EXPECT_CALL(*g_fileIOMock, curl_slist_append(_, _))
+        .Times(2)
+        .WillRepeatedly(Return((struct curl_slist*)0x1));
+
+    // Sequence of curl_easy_setopt_mock returns:
+    // URL, SSLVERSION, CUSTOMREQUEST, TIMEOUT, (optional INTERFACE), HTTPHEADER -> OK, WRITEFUNCTION -> fail
+    // Use 7 returns: first 6 OK, 7th failing for WRITEFUNCTION.
+    EXPECT_CALL(*g_fileIOMock, curl_easy_setopt_mock(_,_,_))
+        .Times(7)
+        .WillOnce(Return(CURLE_OK))                 // CURLOPT_URL
+        .WillOnce(Return(CURLE_OK))                 // CURLOPT_SSLVERSION
+        .WillOnce(Return(CURLE_OK))                 // CURLOPT_CUSTOMREQUEST
+        .WillOnce(Return(CURLE_OK))                 // CURLOPT_TIMEOUT
+        .WillOnce(Return(CURLE_OK))                 // CURLOPT_INTERFACE or extra opt (if present)
+        .WillOnce(Return(CURLE_OK))                 // CURLOPT_HTTPHEADER
+        .WillOnce(Return(CURLE_SEND_ERROR));        // CURLOPT_WRITEFUNCTION fails
+
+    T2ERROR result = setHeaderCb(curl, destURL, &headerList, &resp);
+    EXPECT_EQ(result, T2ERROR_FAILURE);
+    EXPECT_EQ(resp.curlSetopCode, CURLE_SEND_ERROR);
+}
+
 /* New tests to cover success paths for static helpers in curlinterface.c */
 TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetPayload_SUCCESS)
 {

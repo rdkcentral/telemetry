@@ -1039,21 +1039,3 @@ TEST(T2ParserProtocolSet, RBUSMethodBranchSetsMethodAndParams)
     cJSON_Delete(jRBUS);
 }
 
-#ifdef GTEST_ENABLE
-TEST(GetProfileParameter_StaticPointer_HappyPath, ReturnsProfileName) {
-    Profile p;
-    memset(&p, 0, sizeof(Profile));
-    p.name = strdup("MyProfile");
-
-    char *(*getProfileParameter_fp)(Profile *, const char*) = getProfileParameter_ptr();
-    ASSERT_NE(getProfileParameter_fp, nullptr);
-
-    // Ask for the profile name
-    char *result = getProfileParameter_fp(&p, "name");
-    ASSERT_NE(result, nullptr);
-    ASSERT_STREQ(result, "MyProfile");
-    free(result); // getProfileParameter returns a new allocation
-
-    free(p.name);
-}
-#endif

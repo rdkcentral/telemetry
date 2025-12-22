@@ -2808,6 +2808,3 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     return retval;
 }
 
-char *(*getProfileParameter_ptr())(Profile *, const char *) {
-    return getProfileParameter;
-}

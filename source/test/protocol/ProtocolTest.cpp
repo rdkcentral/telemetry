@@ -816,6 +816,35 @@ TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetPayload_SUCCESS)
     EXPECT_EQ(res, T2ERROR_SUCCESS);
 }
 
+TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetMtlsHeaders_SSLCERT_failure)
+{
+    SetMtlsHeadersFunc cb = getSetMtlsHeadersCallback();
+    ASSERT_NE(cb, nullptr);
+
+    childResponse resp;
+    memset(&resp, 0, sizeof(resp));
+
+    CURL *curl = (CURL*)0x1;
+    const char* certFile = "/tmp/mycert.p12";
+    const char* passwd = "dummyPwd";
+
+    // We need to return CURLE_OK for CURLOPT_SSLCERTTYPE,
+    // And return error for CURLOPT_SSLCERT only, then do not expect calls for subsequent steps
+    {
+        ::testing::InSequence seq;
+        EXPECT_CALL(*g_fileIOMock, curl_easy_setopt_mock(curl, CURLOPT_SSLCERTTYPE, ::testing::_))
+            .WillOnce(Return(CURLE_OK));
+        EXPECT_CALL(*g_fileIOMock, curl_easy_setopt_mock(curl, CURLOPT_SSLCERT, ::testing::_))
+            .WillOnce(Return(CURLE_SSL_CERTPROBLEM));
+        // No further setopt calls expected after error
+    }
+
+    T2ERROR result = cb(curl, certFile, passwd, &resp);
+    EXPECT_EQ(result, T2ERROR_FAILURE);
+    EXPECT_EQ(resp.curlSetopCode, CURLE_SSL_CERTPROBLEM);
+    // Optionally: check that lineNumber is set to a value after the failing line
+}
+
 TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetMtlsHeaders_SUCCESS)
 {
     SetMtlsHeadersFunc cb = getSetMtlsHeadersCallback();

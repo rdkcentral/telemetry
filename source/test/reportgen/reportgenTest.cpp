@@ -47,6 +47,11 @@ using ::testing::StrEq;
 
 rdklogMock *m_rdklogMock = NULL;
 
+extern "C"
+{
+  void convertVectorToJson(cJSON *output, Vector *input);
+}
+
 class rdklogTestFixture : public ::testing::Test {
     protected:
             rdklogMock rdklogmock_IO;
@@ -78,6 +83,20 @@ class rdklogTestFixture : public ::testing::Test {
                     printf("%s\n", __func__);
             }
 };
+void FreeString(void* item) { free(item); }
+
+TEST(ConvertVectorToJson, OutputNotNull_VectorEmpty)
+{
+    cJSON *output = cJSON_CreateArray();
+    Vector *input = nullptr;
+    ASSERT_EQ(Vector_Create(&input), T2ERROR_SUCCESS);
+
+    convertVectorToJson(output, input);
+    EXPECT_EQ(cJSON_GetArraySize(output), 0);
+
+    Vector_Destroy(input, FreeString);
+    cJSON_Delete(output);
+}
 
 TEST(DESTROY_JSONREPORT, CHECK_JSON)
 {

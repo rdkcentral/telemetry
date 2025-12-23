@@ -2807,3 +2807,23 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     T2Debug("%s --out\n", __FUNCTION__);
     return retval;
 }
+#ifdef GTEST_ENABLE
+typedef T2ERROR (*AddParameterFunc)(
+    Profile *profile,
+    const char *name,
+    const char *ref,
+    const char *fileName,
+    int skipFreq,
+    int firstSeekFromEOF,
+    const char *ptype,
+    const char *use,
+    bool ReportEmpty,
+    reportTimestampFormat reportTimestamp,
+    bool trim,
+    const char *regex
+);
+
+AddParameterFunc getAddParameterCallback(void) {
+    return addParameter;
+}
+#endif

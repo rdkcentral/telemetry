@@ -1,8 +1,10 @@
 name: Code Coverage
 
 on:
+  push:
+    branches: [develop,main,topic/*]
   pull_request:
-    branches: [ main]
+    branches: [ develop]
 
 env:
   AUTOMATICS_UNAME: ${{ secrets.AUTOMATICS_UNAME }}

@@ -88,4 +88,31 @@ TEST(T2ParserXConf, SlashScheduleAndTopLogHandling)
     // Ensure the profile name got set
     EXPECT_STREQ("SlashSched", profile->name ? profile->name : "");
 }
+TEST(T2ParserXConf, getParameter_alltestcases)
+{
+    const char *json =
+        "{"
+        "  \"urn:settings:TelemetryProfile\": {"
+        "    \"telemetryProfile:name\": \"testprofile\","
+        "    \"uploadRepository:URL\": \"http://localhost\","
+        "    \"schedule\": \"0/15 * * * *\","
+        "    \"telemetryProfile\": ["
+        "      { \"header\": \"ParamName\", \"content\": \"Profile.Name\", \"type\": \"<event>\", \"pollingFrequency\": \"1\" },"
+        "      { \"header\": \"ParamVersion\", \"content\": \"Profile.Version\", \"type\": \"<event>\", \"pollingFrequency\": \"1\" },"
+        "      { \"header\": \"ParamDescription\", \"content\": \"Profile.Description\", \"type\": \"<event>\", \"pollingFrequency\": \"1\" },"
+        "      { \"header\": \"ParamProtocol\", \"content\": \"Profile.Protocol\", \"type\": \"<event>\", \"pollingFrequency\": \"1\" },"
+        "      { \"header\": \"ParamRootName\", \"content\": \"Profile.RootName\", \"type\": \"<event>\", \"pollingFrequency\": \"1\" },"
+        "      { \"header\": \"ParamEncodingType\", \"content\": \"Profile.EncodingType\", \"type\": \"<event>\", \"pollingFrequency\": \"1\" },"
+        "      { \"header\": \"ParamReportingInterval\", \"content\": \"Profile.ReportingInterval\", \"type\": \"<event>\", \"pollingFrequency\": \"1\" },"
+        "      { \"header\": \"ParamTimeReference\", \"content\": \"Profile.TimeReference\", \"type\": \"<event>\", \"pollingFrequency\": \"1\" },"
+        "      { \"header\": \"ParamActivationTimeOut\", \"content\": \"Profile.ActivationTimeOut\", \"type\": \"<event>\", \"pollingFrequency\": \"1\" },"
+        "      { \"header\": \"ParamUnknown\", \"content\": \"Profile.Unknown\", \"type\": \"<event>\", \"pollingFrequency\": \"1\" }"
+        "    ]"
+        "  }"
+        "}";
 
+    ProfileXConf *profile = NULL;
+    int ret = processConfigurationXConf((char*)json, &profile);
+    assert(ret == 0);
+    assert(profile != NULL);
+}

@@ -1341,4 +1341,11 @@ void tagReportAsCached(char **jsonReport)
     destroyJSONReport(jsonReportObj);
 }
 
+#ifdef GTEST_ENABLE
+typedef bool (*checkForEmptyStringFunc)(char *);
 
+checkForEmptyStringFunc checkForEmptyStringCallback(void)
+{
+        return checkForEmptyString;
+}
+#endif

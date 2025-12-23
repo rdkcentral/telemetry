@@ -69,6 +69,7 @@ extern "C" {
     T2ERROR addTriggerCondition(Profile *profile, cJSON *jprofileTriggerCondition);
     T2ERROR encodingSet(Profile* profile, cJSON *jprofileEncodingType, cJSON *jprofileJSONReportFormat, cJSON *jprofileJSONReportTimestamp);
     T2ERROR protocolSet (Profile *profile, cJSON *jprofileProtocol, cJSON *jprofileHTTPURL, cJSON *jprofileHTTPRequestURIParameter, int ThisprofileHTTPRequestURIParameter_count, cJSON *jprofileRBUSMethodName, cJSON *jprofileRBUSMethodParamArr, int rbusMethodParamArrCount);
+    char *(*getProfileParameter_ptr())(Profile *, const char *);
 }
 T2parserMock *m_t2parserMock = NULL;
 rdklogMock *m_rdklogMock = NULL;
@@ -79,7 +80,7 @@ TEST(PROCESSXCONFCONFIGURATION, TEST_NULL_INVALID)
      ProfileXConf *profile = 0;
      fstream new_file;
      char* data = NULL;
-     new_file.open("xconfInputfile.txt", ios::in);
+     new_file.open("source/test/t2parser/xconfInputfile.txt", ios::in);
 
      if (new_file.is_open()) {
         string sa;
@@ -143,7 +144,7 @@ TEST(PROCESSCONFIGURATION_CJSON, TEST_NULL_INVALID_PARAM)
     fstream new_file;
     string sa;
     int len = 0;
-    new_file.open("rpInputfile.txt", ios::in);
+    new_file.open("source/test/t2parser/rpInputfile.txt", ios::in);
     char* data = NULL;
     if (new_file.is_open()) {
 	getline(new_file, sa);
@@ -1037,3 +1038,4 @@ TEST(T2ParserProtocolSet, RBUSMethodBranchSetsMethodAndParams)
     cJSON_Delete(jProtocol);
     cJSON_Delete(jRBUS);
 }
+

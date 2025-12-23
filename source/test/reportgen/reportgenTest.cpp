@@ -47,6 +47,11 @@ using ::testing::StrEq;
 
 rdklogMock *m_rdklogMock = NULL;
 
+extern "C"
+{
+  void convertVectorToJson(cJSON *output, Vector *input);
+}
+
 class rdklogTestFixture : public ::testing::Test {
     protected:
             rdklogMock rdklogmock_IO;
@@ -78,6 +83,20 @@ class rdklogTestFixture : public ::testing::Test {
                     printf("%s\n", __func__);
             }
 };
+void FreeString(void* item) { free(item); }
+
+TEST(ConvertVectorToJson, OutputNotNull_VectorEmpty)
+{
+    cJSON *output = cJSON_CreateArray();
+    Vector *input = nullptr;
+    ASSERT_EQ(Vector_Create(&input), T2ERROR_SUCCESS);
+
+    convertVectorToJson(output, input);
+    EXPECT_EQ(cJSON_GetArraySize(output), 0);
+
+    Vector_Destroy(input, FreeString);
+    cJSON_Delete(output);
+}
 
 TEST(DESTROY_JSONREPORT, CHECK_JSON)
 {
@@ -473,6 +492,25 @@ TEST_F(reportgenTestFixture, encodeGrepResultInJSON3)
           valArray = NULL;
       }
       Vector_Destroy(grepResult, freeGResult);
+}
+
+TEST_F(reportgenTestFixture, encodeGrepResultInJSON4)
+{
+    // Case 1: both NULL
+    EXPECT_EQ(T2ERROR_INVALID_ARGS, encodeGrepResultInJSON(NULL, NULL));
+
+    // Case 2: valArray is NULL, grepMarkerList non-NULL
+    Vector* grepMarkerList = nullptr;
+    ASSERT_EQ(Vector_Create(&grepMarkerList), T2ERROR_SUCCESS);
+    EXPECT_EQ(T2ERROR_INVALID_ARGS, encodeGrepResultInJSON(NULL, grepMarkerList));
+
+    // Case 3: valArray non-NULL, grepMarkerList is NULL
+    cJSON* valArray = cJSON_CreateArray();
+    EXPECT_EQ(T2ERROR_INVALID_ARGS, encodeGrepResultInJSON(valArray, NULL));
+
+    // cleanup
+    Vector_Destroy(grepMarkerList, free); // assuming it only contains malloc'd pointers
+    cJSON_Delete(valArray);
 }
 
 //When ParamValueCount is 0
@@ -1414,3 +1452,37 @@ TEST_F(reportgenTestFixture,  encodeEventMarkersInJSON10)
     Vector_Destroy(eventMarkerList, freeEMarker);
 }
 
+#ifdef GTEST_ENABLE
+extern "C" {
+typedef bool (*checkForEmptyStringFunc)(char *);
+checkForEmptyStringFunc checkForEmptyStringCallback(void);
+}
+
+TEST(CheckForEmptyString, AllBranchesAreCovered)
+{
+    checkForEmptyStringFunc cb = checkForEmptyStringCallback();
+
+    // 1. Null pointer: triggers else at line 48
+    EXPECT_TRUE(cb(NULL));
+
+    // 2. Empty string: triggers strlen < 1 at line 42
+    char empty[] = "";
+    EXPECT_TRUE(cb(empty));
+
+    // 3. Single space: triggers !strncmp(valueString, " ", 1) at line 42
+    char space[] = " ";
+    EXPECT_TRUE(cb(space));
+
+    // 4. "NULL" string: triggers !strncmp(valueString, "NULL", 4) at line 42
+    char nulllit[] = "NULL";
+    EXPECT_TRUE(cb(nulllit));
+
+    // 5. Non-empty, not space, not NULL: should return false
+    char nonempty[] = "VALUE";
+    EXPECT_FALSE(cb(nonempty));
+
+    // 6. "NUL" (should NOT match "NULL") - check that only "NULL" triggers true
+    char almostnull[] = "NUL";
+    EXPECT_FALSE(cb(almostnull));
+}
+#endif

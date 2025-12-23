@@ -52,20 +52,7 @@ SetMtlsHeadersFunc getSetMtlsHeadersCallback(void);
 typedef T2ERROR (*SetPayloadFunc)(CURL *, const char *, childResponse *);
 SetPayloadFunc getSetPayloadCallback(void);
 }
-#if 0
-extern "C" T2ERROR getMtlsCerts(char **pCertFile, char **pCertPC)
-{
-    if (pCertFile)
-    {
-        *pCertFile = NULL;
-    }
-    if (pCertPC)
-    {
-        *pCertPC = NULL;
-    }
-    return T2ERROR_FAILURE;
-}
-#endif
+
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include <rbus/rbus.h>
@@ -740,7 +727,6 @@ TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetHeader_TIMEOUT_failure)
     EXPECT_EQ(resp.curlSetopCode, CURLE_OUT_OF_MEMORY);
 }
 
-/* New test: make the CURLOPT_HTTPHEADER setopt fail to cover that branch */
 TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetHeader_HTTPHEADER_failure)
 {
     SetHeaderFunc setHeaderCb = getSetHeaderCallback();

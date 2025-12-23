@@ -1054,5 +1054,16 @@ TEST(T2ParserProtocolSet, RBUSMethodBranchSetsMethodAndParams)
     cJSON_Delete(jProtocol);
     cJSON_Delete(jRBUS);
 }
+
+void StaticParam_Destroy(void* param) {
+    StaticParam* sparam = (StaticParam*)param;
+    if (sparam) {
+        if (sparam->paramType) free(sparam->paramType);
+        if (sparam->name) free(sparam->name);
+        if (sparam->value) free(sparam->value);
+        free(sparam);
+    }
+}
+
 #ifdef GTEST_ENABLE
 #endif

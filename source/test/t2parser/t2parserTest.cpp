@@ -25,7 +25,6 @@
 #include <string>
 #include <cstring>
 
-
 using namespace std;
 
 extern "C" {
@@ -54,8 +53,6 @@ extern "C" {
 #include <glib.h>
 #include <glib/gi18n.h>
 #include <vector.h>
-#include <string.h>
-#include <cstring.h>
 
 sigset_t blocking_signal;
 

@@ -494,6 +494,25 @@ TEST_F(reportgenTestFixture, encodeGrepResultInJSON3)
       Vector_Destroy(grepResult, freeGResult);
 }
 
+TEST_F(reportgenTestFixture, encodeGrepResultInJSON4)
+{
+    // Case 1: both NULL
+    EXPECT_EQ(T2ERROR_INVALID_ARGS, encodeGrepResultInJSON(NULL, NULL));
+
+    // Case 2: valArray is NULL, grepMarkerList non-NULL
+    Vector* grepMarkerList = nullptr;
+    ASSERT_EQ(Vector_Create(&grepMarkerList), T2ERROR_SUCCESS);
+    EXPECT_EQ(T2ERROR_INVALID_ARGS, encodeGrepResultInJSON(NULL, grepMarkerList));
+
+    // Case 3: valArray non-NULL, grepMarkerList is NULL
+    cJSON* valArray = cJSON_CreateArray();
+    EXPECT_EQ(T2ERROR_INVALID_ARGS, encodeGrepResultInJSON(valArray, NULL));
+
+    // cleanup
+    Vector_Destroy(grepMarkerList, free); // assuming it only contains malloc'd pointers
+    cJSON_Delete(valArray);
+}
+
 //When ParamValueCount is 0
 TEST_F(reportgenTestFixture, encodeParamResultInJSON)
 {

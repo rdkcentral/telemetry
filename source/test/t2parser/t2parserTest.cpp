@@ -45,6 +45,7 @@ extern "C" {
 #include <bulkdata/profilexconf.h>
 #include <bulkdata/profile.h>
 #include <utils/t2common.h>
+#include <utils/vector.h>
 #include <xconf-client/xconfclient.h>
 #include <t2parser/t2parser.h>
 #include <t2parser/t2parserxconf.h>
@@ -1066,4 +1067,44 @@ void StaticParam_Destroy(void* param) {
 }
 
 #ifdef GTEST_ENABLE
+TEST(T2ParserAddParameter, ProfileDotPrefix_StaticParam_Added)
+{
+    // Arrange
+    Profile profile;
+    memset(&profile, 0, sizeof(profile));
+    profile.staticParamList = nullptr;
+    ASSERT_EQ(T2ERROR_SUCCESS, Vector_Create(&profile.staticParamList));
+
+    const char* name = "TestStaticParam";
+    const char* ref = "Profile.MyStaticKey";    // Should trigger the Profile. code path
+    const char* fileName = nullptr;
+    int skipFreq = 0;
+    int firstSeekFromEOF = 0;
+    const char* ptype = "staticType";
+    const char* use = nullptr;
+    bool ReportEmpty = false;
+    reportTimestampFormat reportTimestamp = REPORTTIMESTAMP_NONE;
+    bool trim = false;
+    const char* regex = nullptr;
+        AddParameterFunc addParameter_fp = getAddParameterCallback();
+
+    // Act: call addParameter via the function pointer
+    T2ERROR ret = addParameter_fp(
+        &profile, name, ref, fileName, skipFreq, firstSeekFromEOF, ptype,
+        use, ReportEmpty, reportTimestamp, trim, regex
+    );
+
+    // Assert
+    EXPECT_EQ(ret, T2ERROR_SUCCESS);
+    ASSERT_NE(profile.staticParamList, nullptr);
+    EXPECT_EQ(Vector_Size(profile.staticParamList), 1u);
+
+    StaticParam* sparam = (StaticParam*)Vector_At(profile.staticParamList, 0);
+    ASSERT_NE(sparam, nullptr);
+    EXPECT_STREQ(sparam->name, name);
+    EXPECT_STREQ(sparam->paramType, ptype);
+    EXPECT_STREQ(sparam->value, "STATIC_VALUE");
+
+    // Cleanup
+    Vector_Destroy(profile.staticParamList, StaticParam_Destroy);
 #endif

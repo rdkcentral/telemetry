@@ -515,7 +515,6 @@ TEST_F(reportgenTestFixture, encodeGrepResultInJSON4)
 
 TEST_F(reportgenTestFixture, encodeGrepResultInJSON_AccumulateBranchWithRegex)
 {
-    // Set up: GrepMarker with accumulatedValues vector and regexParam set
     Vector* grepList = nullptr;
     ASSERT_EQ(Vector_Create(&grepList), T2ERROR_SUCCESS);
 
@@ -524,69 +523,53 @@ TEST_F(reportgenTestFixture, encodeGrepResultInJSON_AccumulateBranchWithRegex)
     marker->markerName = strdup("MyGrep");
     marker->mType = MTYPE_ACCUMULATE;
     marker->trimParam = false;
-    marker->regexParam = strdup("[A-Z]+"); // regex
+    marker->regexParam = strdup("[A-Z]+");
 
-    // Add accumulatedValues
     Vector_Create(&marker->u.accumulatedValues);
-    // 1. Value matches regex
     Vector_PushBack(marker->u.accumulatedValues, strdup("FOOBAR"));
-    // 2. Value does not match regex
     Vector_PushBack(marker->u.accumulatedValues, strdup("1234"));
-    // 3. Special value
     Vector_PushBack(marker->u.accumulatedValues, strdup("maximum accumulation reached"));
 
     Vector_PushBack(grepList, marker);
 
-    // Prepare cJSON test node
-    cJSON* valArray = (cJSON*)malloc(sizeof(cJSON));
-    cJSON* mockArrayObj = (cJSON*)0x1234; // fake object
+    // Use a "fake" pointer for valArray, just like the mocked cJSON does
+    cJSON* valArray = (cJSON*)0xdeadbeef;
+    cJSON* mockArrayObj = (cJSON*)0x1234;
     cJSON* mockVectorArray = (cJSON*)0x4321;
 
-    EXPECT_CALL(*m_reportgenMock, cJSON_CreateObject())
-        .Times(1)
+    EXPECT_CALL(*m_reportgenMock, cJSON_CreateObject()).Times(1)
         .WillOnce(::testing::Return(mockArrayObj));
-    EXPECT_CALL(*m_reportgenMock, cJSON_CreateArray())
-        .Times(1)
+    EXPECT_CALL(*m_reportgenMock, cJSON_CreateArray()).Times(1)
         .WillOnce(::testing::Return(mockVectorArray));
-    EXPECT_CALL(*m_reportgenMock, cJSON_CreateString(_))
-        .Times(3)
+    EXPECT_CALL(*m_reportgenMock, cJSON_CreateString(_)).Times(3)
         .WillRepeatedly([](const char* str) { return (cJSON*)str; });
-    EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToArray(_, _))
-        .Times(3)
+    EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToArray(_, _)).Times(3)
         .WillRepeatedly(Return(true));
-    EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToObject(mockArrayObj, _, mockVectorArray))
-        .Times(1)
+    EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToObject(mockArrayObj, _, mockVectorArray)).Times(1)
         .WillOnce(Return(true));
-    EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToArray(valArray, mockArrayObj))
-        .Times(1)
+    EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToArray(valArray, mockArrayObj)).Times(1)
         .WillOnce(Return(true));
-
-    EXPECT_CALL(*m_reportgenMock, regcomp(_, _, _))
-        .Times(1)
+    EXPECT_CALL(*m_reportgenMock, regcomp(_, _, _)).Times(1)
         .WillOnce(Return(0));
-    EXPECT_CALL(*m_reportgenMock, regexec(_, _, _, _, _))
-        .Times(3)
-        .WillOnce(Return(0))   // "FOOBAR" matches
-        .WillOnce(Return(1))   // "1234" does not match
-        .WillOnce(Return(0));  // "maximum accumulation reached"
-    EXPECT_CALL(*m_reportgenMock, regfree(_))
-        .Times(1);
+    EXPECT_CALL(*m_reportgenMock, regexec(_, _, _, _, _)).Times(3)
+        .WillOnce(Return(0))
+        .WillOnce(Return(1))
+        .WillOnce(Return(0));
+    EXPECT_CALL(*m_reportgenMock, regfree(_)).Times(1);
 
     EXPECT_EQ(T2ERROR_SUCCESS, encodeGrepResultInJSON(valArray, grepList));
 
-    // Clean up
-    cJSON_Delete(valArray); // mocked, so safe.
-    if(valArray != NULL) { free(valArray); }
+    // No cJSON_Delete or free(valArray)
     for(size_t i = 0; i < Vector_Size(marker->u.accumulatedValues); ++i) {
         free(Vector_At(marker->u.accumulatedValues, i));
     }
+    void FreeString(void* p) { free(p); }
     Vector_Destroy(marker->u.accumulatedValues, nullptr);
     free(marker->markerName);
     free(marker->regexParam);
     free(marker);
     Vector_Destroy(grepList, nullptr);
 }
-
 //When ParamValueCount is 0
 TEST_F(reportgenTestFixture, encodeParamResultInJSON)
 {

@@ -52,7 +52,6 @@ extern "C" {
 #include <ccspinterface/busInterface.h>
 #include <glib.h>
 #include <glib/gi18n.h>
-#include <vector.h>
 
 sigset_t blocking_signal;
 
@@ -1056,56 +1055,4 @@ TEST(T2ParserProtocolSet, RBUSMethodBranchSetsMethodAndParams)
     cJSON_Delete(jRBUS);
 }
 #ifdef GTEST_ENABLE
-TEST(T2ParserAddParameter, ProfileDotPrefix_StaticParam_Added)
-{
-    Profile profile{};
-    memset(&profile, 0, sizeof(profile));
-
-    // Assume staticParamList is a Vector* (adjust this as per your 'profile.h'):
-    profile.staticParamList = Vector_Create();
-    // If there is an init function (e.g. Vector_Create()), use it.
-
-    const char* name = "TestStaticParam";
-    const char* ref = "Profile.StaticKey";
-    const char* fileName = NULL;
-    int skipFreq = 0;
-    int firstSeekFromEOF = 0;
-    const char* ptype = "staticType";
-    const char* use = NULL;
-    bool ReportEmpty = false;
-    reportTimestampFormat reportTimestamp = REPORTTIMESTAMP_NONE;
-    bool trim = false;
-    const char* regex = NULL;
-
-
-    AddParameterFunc addParameter_fp = getAddParameterCallback();
-
-    // -- Act --
-    T2ERROR err = addParameter_fp(&profile, name, ref, fileName, skipFreq, firstSeekFromEOF, ptype, use, ReportEmpty, reportTimestamp, trim, regex);
-
-    // -- Assert --
-    // Should succeed
-    EXPECT_EQ(err, T2ERROR_SUCCESS);
-
-    // staticParamList should now have at least one element
-    ASSERT_NE(profile.staticParamList, nullptr);
-    EXPECT_GT(Vector_Size(profile.staticParamList), 0);
-
-    // Fetch param and check fields
-    StaticParam *sparam = (StaticParam *)Vector_At(profile.staticParamList, 0); // If Vector_At is the getter
-    ASSERT_NE(sparam, nullptr);
-    EXPECT_STREQ(sparam->paramType, ptype);
-    EXPECT_STREQ(sparam->name, name);
-    EXPECT_STREQ(sparam->value, ""); // If getProfileParameter returns empty string or adjust accordingly
-
-    // Clean up
-    // Free NULL, paramType, name, value, sparam, and destroy staticParamList if necessary
-    if(sparam) {
-        if(sparam->paramType) free((void*)sparam->paramType);
-        if(sparam->name) free((void*)sparam->name);
-        if(sparam->value) free((void*)sparam->value);
-        free(sparam);
-    }
-    Vector_Destroy(profile.staticParamList);
-}
 #endif

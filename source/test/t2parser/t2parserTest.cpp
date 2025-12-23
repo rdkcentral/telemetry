@@ -53,6 +53,10 @@ extern "C" {
 #include <ccspinterface/busInterface.h>
 #include <glib.h>
 #include <glib/gi18n.h>
+#include <vector.h>
+#include <string.h>
+#include <cstring.h>
+
 sigset_t blocking_signal;
 
 }
@@ -69,6 +73,23 @@ extern "C" {
     T2ERROR addTriggerCondition(Profile *profile, cJSON *jprofileTriggerCondition);
     T2ERROR encodingSet(Profile* profile, cJSON *jprofileEncodingType, cJSON *jprofileJSONReportFormat, cJSON *jprofileJSONReportTimestamp);
     T2ERROR protocolSet (Profile *profile, cJSON *jprofileProtocol, cJSON *jprofileHTTPURL, cJSON *jprofileHTTPRequestURIParameter, int ThisprofileHTTPRequestURIParameter_count, cJSON *jprofileRBUSMethodName, cJSON *jprofileRBUSMethodParamArr, int rbusMethodParamArrCount);
+typedef T2ERROR (*AddParameterFunc)(
+    Profile *profile,
+    const char *name,
+    const char *ref,
+    const char *fileName,
+    int skipFreq,
+    int firstSeekFromEOF,
+    const char *ptype,
+    const char *use,
+    bool ReportEmpty,
+    reportTimestampFormat reportTimestamp,
+    bool trim,
+    const char *regex
+);
+
+AddParameterFunc getAddParameterCallback(void);
+
 }
 T2parserMock *m_t2parserMock = NULL;
 rdklogMock *m_rdklogMock = NULL;

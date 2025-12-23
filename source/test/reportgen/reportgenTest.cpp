@@ -1414,3 +1414,37 @@ TEST_F(reportgenTestFixture,  encodeEventMarkersInJSON10)
     Vector_Destroy(eventMarkerList, freeEMarker);
 }
 
+#ifdef GTEST_ENABLE
+extern "C" {
+typedef bool (*checkForEmptyStringFunc)(char *);
+checkForEmptyStringFunc checkForEmptyStringCallback(void);
+}
+
+TEST(CheckForEmptyString, AllBranchesAreCovered)
+{
+    checkForEmptyStringFunc cb = checkForEmptyStringCallback();
+
+    // 1. Null pointer: triggers else at line 48
+    EXPECT_TRUE(cb(NULL));
+
+    // 2. Empty string: triggers strlen < 1 at line 42
+    char empty[] = "";
+    EXPECT_TRUE(cb(empty));
+
+    // 3. Single space: triggers !strncmp(valueString, " ", 1) at line 42
+    char space[] = " ";
+    EXPECT_TRUE(cb(space));
+
+    // 4. "NULL" string: triggers !strncmp(valueString, "NULL", 4) at line 42
+    char nulllit[] = "NULL";
+    EXPECT_TRUE(cb(nulllit));
+
+    // 5. Non-empty, not space, not NULL: should return false
+    char nonempty[] = "VALUE";
+    EXPECT_FALSE(cb(nonempty));
+
+    // 6. "NUL" (should NOT match "NULL") - check that only "NULL" triggers true
+    char almostnull[] = "NUL";
+    EXPECT_FALSE(cb(almostnull));
+}
+#endif

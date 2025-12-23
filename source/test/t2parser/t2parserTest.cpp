@@ -1107,4 +1107,5 @@ TEST(T2ParserAddParameter, ProfileDotPrefix_StaticParam_Added)
 
     // Cleanup
     Vector_Destroy(profile.staticParamList, StaticParam_Destroy);
+}
 #endif

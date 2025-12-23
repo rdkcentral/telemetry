@@ -80,7 +80,7 @@ TEST(PROCESSXCONFCONFIGURATION, TEST_NULL_INVALID)
      ProfileXConf *profile = 0;
      fstream new_file;
      char* data = NULL;
-     new_file.open("xconfInputfile.txt", ios::in);
+     new_file.open("source/test/t2parser/xconfInputfile.txt", ios::in);
 
      if (new_file.is_open()) {
         string sa;
@@ -144,7 +144,7 @@ TEST(PROCESSCONFIGURATION_CJSON, TEST_NULL_INVALID_PARAM)
     fstream new_file;
     string sa;
     int len = 0;
-    new_file.open("rpInputfile.txt", ios::in);
+    new_file.open("source/test/t2parser/rpInputfile.txt", ios::in);
     char* data = NULL;
     if (new_file.is_open()) {
 	getline(new_file, sa);

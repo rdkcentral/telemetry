@@ -570,7 +570,6 @@ TEST_F(reportgenTestFixture, encodeGrepResultInJSON_CreateArrayFails)
     free(marker);
     Vector_Destroy(grepList, nullptr);
 }
-}
 TEST_F(reportgenTestFixture, encodeGrepResultInJSON_markerValueBranch_success)
 {
     // Setup grepMarker

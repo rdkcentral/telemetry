@@ -1688,6 +1688,97 @@ TEST_F(reportgenTestFixture, encodeTopResultInJSON_null_args)
     EXPECT_EQ(T2ERROR_INVALID_ARGS, encodeTopResultInJSON(valArray, NULL));
     free(valArray);
 }
+TEST_F(reportgenTestFixture, encodeTopResultInJSON_loadAverage_success)
+{
+    Vector* topMarkerList = nullptr;
+    ASSERT_EQ(Vector_Create(&topMarkerList), T2ERROR_SUCCESS);
+
+    TopMarker* marker = (TopMarker*)calloc(1, sizeof(TopMarker));
+    marker->markerName = strdup("load_marker");
+    marker->searchString = strdup("mysearch");
+    marker->loadAverage = strdup("   1.23   ");
+    marker->trimParam = true;
+    marker->regexParam = nullptr; // No regex branch
+
+    Vector_PushBack(topMarkerList, marker);
+
+    cJSON* valArray = (cJSON*)malloc(sizeof(cJSON));
+    cJSON* mockObj = (cJSON*)0x12345;
+
+    EXPECT_CALL(*m_reportgenMock, cJSON_CreateObject())
+        .Times(1).WillOnce(Return(mockObj));
+    EXPECT_CALL(*m_reportgenMock, cJSON_AddStringToObject(mockObj, StrEq("load_marker"), StrEq("1.23")))
+        .Times(1)
+        .WillOnce(Return((cJSON*) 0xDEADBEEF));
+    EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToArray(valArray, mockObj))
+        .Times(1).WillOnce(Return(true));
+
+    EXPECT_EQ(T2ERROR_SUCCESS, encodeTopResultInJSON(valArray, topMarkerList));
+    free(marker->markerName);
+    free(marker->searchString);
+    free(marker->loadAverage);
+    free(marker);
+    Vector_Destroy(topMarkerList, nullptr);
+    if(valArray) free(valArray);
+}
+TEST_F(reportgenTestFixture, encodeTopResultInJSON_loadAverage_cjsonCreateObjectFail)
+{
+    Vector* topMarkerList = nullptr;
+    ASSERT_EQ(Vector_Create(&topMarkerList), T2ERROR_SUCCESS);
+
+    TopMarker* marker = (TopMarker*)calloc(1, sizeof(TopMarker));
+    marker->markerName = strdup("load_marker");
+    marker->searchString = strdup("mysearch");
+    marker->loadAverage = strdup("test");
+    Vector_PushBack(topMarkerList, marker);
+
+    cJSON* valArray = (cJSON*)malloc(sizeof(cJSON));
+    EXPECT_CALL(*m_reportgenMock, cJSON_CreateObject()).Times(1).WillOnce(Return((cJSON*)NULL));
+    EXPECT_EQ(T2ERROR_FAILURE, encodeTopResultInJSON(valArray, topMarkerList));
+
+    free(marker->markerName);
+    free(marker->searchString);
+    free(marker->loadAverage);
+    free(marker);
+    Vector_Destroy(topMarkerList, nullptr);
+    if(valArray) free(valArray);
+}
+TEST_F(reportgenTestFixture, encodeTopResultInJSON_otherwise_no_values)
+{
+    Vector* topMarkerList = nullptr;
+    ASSERT_EQ(Vector_Create(&topMarkerList), T2ERROR_SUCCESS);
+
+    TopMarker* marker = (TopMarker*)calloc(1, sizeof(TopMarker));
+    marker->searchString = strdup("sys_slot");
+    // All values are NULL
+    Vector_PushBack(topMarkerList, marker);
+
+    cJSON* valArray = (cJSON*)malloc(sizeof(cJSON));
+    // Should just hit the debug, but do nothing, still succeed
+
+    EXPECT_EQ(T2ERROR_SUCCESS, encodeTopResultInJSON(valArray, topMarkerList));
+
+    free(marker->searchString);
+    free(marker);
+    Vector_Destroy(topMarkerList, nullptr);
+    if(valArray) free(valArray);
+}
+TEST_F(reportgenTestFixture, encodeTopResultInJSON_nullTopMarker_skip)
+{
+    Vector* topMarkerList = nullptr;
+    ASSERT_EQ(Vector_Create(&topMarkerList), T2ERROR_SUCCESS);
+
+    TopMarker* marker = nullptr;
+    Vector_PushBack(topMarkerList, marker); // actually NULL
+
+    cJSON* valArray = (cJSON*)malloc(sizeof(cJSON));
+    // Should skip and succeed
+
+    EXPECT_EQ(T2ERROR_SUCCESS, encodeTopResultInJSON(valArray, topMarkerList));
+
+    Vector_Destroy(topMarkerList, nullptr);
+    if(valArray) free(valArray);
+}
 #ifdef GTEST_ENABLE
 extern "C" {
 typedef bool (*checkForEmptyStringFunc)(char *);

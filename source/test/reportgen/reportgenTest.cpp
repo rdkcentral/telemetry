@@ -1670,7 +1670,24 @@ TEST_F(reportgenTestFixture,  encodeEventMarkersInJSON10)
     }
     Vector_Destroy(eventMarkerList, freeEMarker);
 }
+TEST_F(reportgenTestFixture, encodeTopResultInJSON_null_args)
+{
+    Vector *topResultList = NULL;
+    cJSON *valArray = NULL;
 
+    // Test: Both NULL
+    EXPECT_EQ(T2ERROR_INVALID_ARGS, encodeTopResultInJSON(NULL, NULL));
+
+    // Test: valArray NULL, topResultList non-NULL
+    Vector_Create(&topResultList);
+    EXPECT_EQ(T2ERROR_INVALID_ARGS, encodeTopResultInJSON(NULL, topResultList));
+    Vector_Destroy(topResultList, nullptr);
+
+    // Test: valArray non-NULL, topResultList NULL
+    valArray = (cJSON*)malloc(sizeof(cJSON));
+    EXPECT_EQ(T2ERROR_INVALID_ARGS, encodeTopResultInJSON(valArray, NULL));
+    free(valArray);
+}
 #ifdef GTEST_ENABLE
 extern "C" {
 typedef bool (*checkForEmptyStringFunc)(char *);

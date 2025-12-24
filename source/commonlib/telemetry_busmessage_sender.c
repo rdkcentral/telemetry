@@ -93,7 +93,7 @@ static void EVENT_DEBUG(char* format, ...)
             pthread_mutex_unlock(&loggerMutex);
             return;
         }
-        
+
         char timeBuffer[24] = { '\0' };
         long msecs;
 
@@ -365,15 +365,19 @@ void *cacheEventToFile(void *arg)
     }
 
     fs = fopen(T2_CACHE_FILE, "r");
-    if (fs != NULL) {
-        while ((ch = fgetc(fs)) != EOF) {
-            if (ch == '\n') {
+    if (fs != NULL)
+    {
+        while ((ch = fgetc(fs)) != EOF)
+        {
+            if (ch == '\n')
+            {
                 count++;
             }
         }
-        
+
         //If the file is not empty and does not contain a newline, call it one line
-        if (count == 0 && ftell(fs) > 0) {
+        if (count == 0 && ftell(fs) > 0)
+        {
             count++;
         }
         fclose(fs);

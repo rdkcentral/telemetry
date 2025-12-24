@@ -570,6 +570,59 @@ TEST_F(reportgenTestFixture, encodeGrepResultInJSON_CreateArrayFails)
     free(marker);
     Vector_Destroy(grepList, nullptr);
 }
+TEST_F(reportgenTestFixture, encodeGrepResultInJSON_markerValueBranch_success)
+{
+    // Setup grepMarker
+    Vector* grepList = nullptr;
+    ASSERT_EQ(Vector_Create(&grepList), T2ERROR_SUCCESS);
+
+    GrepMarker* marker = (GrepMarker*)malloc(sizeof(GrepMarker));
+    memset(marker, 0, sizeof(GrepMarker));
+    marker->markerName = strdup("TEST_GREP");
+    marker->mType = MTYPE_ABSOLUTE;
+    marker->trimParam = true;             // will hit trimLeadingAndTrailingws
+    marker->regexParam = strdup("[A-Z]+"); // will hit applyRegexToValue
+
+    marker->u.markerValue = strdup(" foo "); // leading/trailing ws
+
+    Vector_PushBack(grepList, marker);
+
+    cJSON* valArray = (cJSON*)malloc(sizeof(cJSON));
+    cJSON* mockArrayObj = (cJSON*)0x1234;
+
+    EXPECT_CALL(*m_reportgenMock, cJSON_CreateObject())
+        .Times(1)
+        .WillOnce(Return(mockArrayObj));
+
+    // trim ws will be called
+    // (Either just let it run, or you can mock/stub trimLeadingAndTrailingws globally.)
+
+    // applyRegexToValue called with value pointer
+    // Simulate success
+    EXPECT_CALL(*m_reportgenMock, applyRegexToValue(_, StrEq("[A-Z]+")))
+        .Times(1)
+        .WillOnce(Return(T2ERROR_SUCCESS));
+
+    // cJSON_AddStringToObject called and succeed
+    EXPECT_CALL(*m_reportgenMock, cJSON_AddStringToObject(mockArrayObj, StrEq("TEST_GREP"), _))
+        .Times(1)
+        .WillOnce(Return((cJSON*)0x5678));
+
+    // Add to array
+    EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToArray(valArray, mockArrayObj))
+        .Times(1)
+        .WillOnce(Return(true));
+
+    EXPECT_EQ(T2ERROR_SUCCESS, encodeGrepResultInJSON(valArray, grepList));
+
+    // Clean up
+    free(marker->markerName);
+    free(marker->regexParam);
+    free(marker);
+    Vector_Destroy(grepList, nullptr);
+    cJSON_Delete(valArray);
+    if(valArray) free(valArray);
+}
 #if 0
 TEST_F(reportgenTestFixture, encodeGrepResultInJSON_RegcompFails)
 {

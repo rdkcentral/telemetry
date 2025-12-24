@@ -513,6 +513,38 @@ TEST_F(reportgenTestFixture, encodeGrepResultInJSON4)
     cJSON_Delete(valArray);
 }
 
+TEST_F(reportgenTestFixture, encodeGrepResultInJSON_CreateArrayFails)
+{
+    Vector* grepList = nullptr;
+    ASSERT_EQ(Vector_Create(&grepList), T2ERROR_SUCCESS);
+
+    GrepMarker* marker = (GrepMarker*)malloc(sizeof(GrepMarker));
+    memset(marker, 0, sizeof(GrepMarker));
+    marker->mType = MTYPE_ACCUMULATE;
+    Vector_Create(&marker->u.accumulatedValues);
+    Vector_PushBack(marker->u.accumulatedValues, strdup("ANYVAL"));
+    Vector_PushBack(grepList, marker);
+
+    cJSON* valArray = (cJSON*)0xdeadbeef;
+    cJSON* mockArrayObj = (cJSON*)0x1234;
+
+    EXPECT_CALL(*m_reportgenMock, cJSON_CreateObject())
+        .Times(1)
+        .WillOnce(::testing::Return(mockArrayObj));
+    EXPECT_CALL(*m_reportgenMock, cJSON_CreateArray())
+        .Times(1)
+        .WillOnce(::testing::Return(nullptr));
+    EXPECT_CALL(*m_reportgenMock, cJSON_Delete(mockArrayObj))
+        .Times(1);
+
+    EXPECT_EQ(T2ERROR_FAILURE, encodeGrepResultInJSON(valArray, grepList));
+
+    free(Vector_At(marker->u.accumulatedValues, 0));
+    Vector_Destroy(marker->u.accumulatedValues, nullptr);
+    free(marker);
+    Vector_Destroy(grepList, nullptr);
+}
+
 //When ParamValueCount is 0
 TEST_F(reportgenTestFixture, encodeParamResultInJSON)
 {

@@ -1207,6 +1207,24 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON10)
     Vector_Destroy(paramValueList, freeProfileValues);
 }
 */
+TEST_F(reportgenTestFixture, encodeEventMarkersInJSON_null_args)
+{
+    Vector *eventMarkerList = NULL;
+    cJSON *valArray = NULL;
+
+    // Test: Both NULL
+    EXPECT_EQ(T2ERROR_INVALID_ARGS, encodeEventMarkersInJSON(NULL, NULL));
+
+    // Test: valArray NULL, eventMarkerList non-NULL
+    Vector_Create(&eventMarkerList);
+    EXPECT_EQ(T2ERROR_INVALID_ARGS, encodeEventMarkersInJSON(NULL, eventMarkerList));
+    Vector_Destroy(eventMarkerList, nullptr);
+
+    // Test: valArray non-NULL, eventMarkerList NULL
+    valArray = (cJSON*)malloc(sizeof(cJSON));
+    EXPECT_EQ(T2ERROR_INVALID_ARGS, encodeEventMarkersInJSON(valArray, NULL));
+    free(valArray);
+}
 TEST_F(reportgenTestFixture,  encodeEventMarkersInJSON)
 {
      cJSON* valArray = NULL;

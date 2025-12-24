@@ -55,6 +55,7 @@ public:
     virtual char* curl_easy_escape(CURL *c, const char *string, int len) = 0;
     virtual void curl_free(void *ptr) = 0;
     virtual void curl_easy_cleanup(CURL *curl) = 0;
+    virtual T2ERROR applyRegexToValue(char **value, const char *regex) = 0;
 };
 
 class ReportgenMock: public ReportgenInterface
@@ -84,6 +85,7 @@ public:
     MOCK_METHOD3(curl_easy_escape, char*(CURL *, const char *, int));
     MOCK_METHOD1(curl_free, void(void *));
     MOCK_METHOD1(curl_easy_cleanup, void(CURL *));
+    MOCK_METHOD2(applyRegexToValue, T2ERROR(char **, const char *));
 };
 
 #endif

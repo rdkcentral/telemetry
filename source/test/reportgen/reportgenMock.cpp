@@ -230,4 +230,11 @@ extern "C" T2ERROR getParameterValue(const char* paramName, char **paramValue)
                 return T2ERROR_FAILURE;
         }
         return m_reportgenMock->getParameterValue(paramName, paramValue);
+
+}
+extern "C" T2ERROR applyRegexToValue(char **value, const char *regex)
+{
+    if (!m_reportgenMock)
+        return T2ERROR_FAILURE;
+    return m_reportgenMock->applyRegexToValue(value, regex);
 }

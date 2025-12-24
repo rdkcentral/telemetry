@@ -1779,6 +1779,36 @@ TEST_F(reportgenTestFixture, encodeTopResultInJSON_nullTopMarker_skip)
     Vector_Destroy(topMarkerList, nullptr);
     if(valArray) free(valArray);
 }
+TEST_F(reportgenTestFixture, encodeTopResultInJSON_cpuMem_cjsonCreateObjectFail)
+{
+    Vector* topMarkerList = nullptr;
+    ASSERT_EQ(Vector_Create(&topMarkerList), T2ERROR_SUCCESS);
+
+    TopMarker* marker = (TopMarker*)calloc(1, sizeof(TopMarker));
+    marker->searchString = strdup("mysys");
+    // Enter CPU/MEM branch:
+    marker->cpuValue = strdup("81");
+    marker->memValue = strdup("7");
+    marker->loadAverage = nullptr; // Not loadAverage path
+
+    Vector_PushBack(topMarkerList, marker);
+
+    cJSON* valArray = (cJSON*)malloc(sizeof(cJSON));
+    // This CPU marker's cJSON_CreateObject returns NULL, triggers error/return
+    EXPECT_CALL(*m_reportgenMock, cJSON_CreateObject())
+        .Times(1)
+        .WillOnce(Return((cJSON*)NULL));
+
+    EXPECT_EQ(T2ERROR_FAILURE, encodeTopResultInJSON(valArray, topMarkerList));
+
+    // Cleanup
+    free(marker->searchString);
+    free(marker->cpuValue);
+    free(marker->memValue);
+    free(marker);
+    Vector_Destroy(topMarkerList, nullptr);
+    if(valArray) free(valArray);
+}
 #ifdef GTEST_ENABLE
 extern "C" {
 typedef bool (*checkForEmptyStringFunc)(char *);

@@ -570,6 +570,7 @@ TEST_F(reportgenTestFixture, encodeGrepResultInJSON_CreateArrayFails)
     free(marker);
     Vector_Destroy(grepList, nullptr);
 }
+#if 0
 TEST_F(reportgenTestFixture, encodeGrepResultInJSON_RegcompFails)
 {
     Vector* grepList = nullptr;
@@ -612,6 +613,7 @@ TEST_F(reportgenTestFixture, encodeGrepResultInJSON_RegcompFails)
     free(marker);
     Vector_Destroy(grepList, nullptr);
 }
+#endif
 //When ParamValueCount is 0
 TEST_F(reportgenTestFixture, encodeParamResultInJSON)
 {

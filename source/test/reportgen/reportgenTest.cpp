@@ -570,7 +570,48 @@ TEST_F(reportgenTestFixture, encodeGrepResultInJSON_CreateArrayFails)
     free(marker);
     Vector_Destroy(grepList, nullptr);
 }
+TEST_F(reportgenTestFixture, encodeGrepResultInJSON_RegcompFails)
+{
+    Vector* grepList = nullptr;
+    ASSERT_EQ(Vector_Create(&grepList), T2ERROR_SUCCESS);
 
+    GrepMarker* marker = (GrepMarker*)malloc(sizeof(GrepMarker));
+    memset(marker, 0, sizeof(GrepMarker));
+    marker->mType = MTYPE_ACCUMULATE;
+    marker->regexParam = strdup("invalid[");
+    Vector_Create(&marker->u.accumulatedValues);
+    Vector_PushBack(marker->u.accumulatedValues, strdup("value"));
+    Vector_PushBack(grepList, marker);
+
+    cJSON* valArray = (cJSON*)0xdeadbeef;
+    cJSON* mockArrayObj = (cJSON*)0x1234;
+    cJSON* mockVectorArray = (cJSON*)0x4321;
+
+    EXPECT_CALL(*m_reportgenMock, cJSON_CreateObject())
+        .Times(1)
+        .WillOnce(::testing::Return(mockArrayObj));
+    EXPECT_CALL(*m_reportgenMock, cJSON_CreateArray())
+        .Times(1)
+        .WillOnce(::testing::Return(mockVectorArray));
+    EXPECT_CALL(*m_reportgenMock, regcomp(_, _, _))
+        .Times(1)
+        .WillOnce(Return(1));
+    // Let any cJSON_AddItemToArray go, regardless of parameters
+    EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToArray(_, _))
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly(Return(true));
+    // Expect cJSON_AddItemToObject to add vectorArray to arrayObj
+    EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToObject(mockArrayObj, _, mockVectorArray))
+        .Times(1)
+        .WillOnce(Return(true));
+        EXPECT_EQ(T2ERROR_SUCCESS, encodeGrepResultInJSON(valArray, grepList));
+
+    free(Vector_At(marker->u.accumulatedValues, 0));
+    Vector_Destroy(marker->u.accumulatedValues, nullptr);
+    free(marker->regexParam);
+    free(marker);
+    Vector_Destroy(grepList, nullptr);
+}
 //When ParamValueCount is 0
 TEST_F(reportgenTestFixture, encodeParamResultInJSON)
 {

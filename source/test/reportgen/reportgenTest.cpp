@@ -512,6 +512,32 @@ TEST_F(reportgenTestFixture, encodeGrepResultInJSON4)
     Vector_Destroy(grepMarkerList, free); // assuming it only contains malloc'd pointers
     cJSON_Delete(valArray);
 }
+TEST_F(reportgenTestFixture, encodeGrepResultInJSON_CreateObjectFails)
+{
+    Vector* grepList = nullptr;
+    ASSERT_EQ(Vector_Create(&grepList), T2ERROR_SUCCESS);
+
+    GrepMarker* marker = (GrepMarker*)malloc(sizeof(GrepMarker));
+    memset(marker, 0, sizeof(GrepMarker));
+    marker->mType = MTYPE_ACCUMULATE;
+    Vector_Create(&marker->u.accumulatedValues);
+    Vector_PushBack(marker->u.accumulatedValues, strdup("ANYVAL"));
+    Vector_PushBack(grepList, marker);
+
+    cJSON* valArray = (cJSON*)0xdeadbeef; // any fake handle
+
+    // Failure: CreateObject returns NULL triggers return at 507
+    EXPECT_CALL(*m_reportgenMock, cJSON_CreateObject())
+        .Times(1)
+        .WillOnce(::testing::Return(nullptr));
+
+    EXPECT_EQ(T2ERROR_FAILURE, encodeGrepResultInJSON(valArray, grepList));
+
+    free(Vector_At(marker->u.accumulatedValues, 0));
+    Vector_Destroy(marker->u.accumulatedValues, nullptr);
+    free(marker);
+    Vector_Destroy(grepList, nullptr);
+}
 
 TEST_F(reportgenTestFixture, encodeGrepResultInJSON_CreateArrayFails)
 {

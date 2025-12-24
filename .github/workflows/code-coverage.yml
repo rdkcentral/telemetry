@@ -32,9 +32,6 @@ jobs:
       - name: Start test container
         run: |
           docker run -d --name native-platform -v ${{ github.workspace }}:/mnt/L1_CONTAINER_SHARED_VOLUME ghcr.io/rdkcentral/docker-device-mgt-service-test/native-platform:latest
-      - name: Set up test directories and permissions
-        run: |
-          docker exec -i native-platform /bin/bash -c " mkdir -p /tmp/t2reportprofiles /opt/.t2cachedmessages /opt/.t2privacymodes /opt/.t2seekmap /nvram &&  chmod -R 777 /tmp/t2reportprofiles /opt/.t2cachedmessages /opt/.t2privacymodes /opt/.t2seekmap /nvram"
       - name: Run unit tests with coverage flags enabled and Caculate the code coverage summary
         run: docker exec -i native-platform /bin/bash -c "cd /mnt/L1_CONTAINER_SHARED_VOLUME/ && sh test/run_ut.sh --enable-cov && lcov --list coverage.info | grep 'Lines\|Total' > /tmp/coverage_summary.txt"
 

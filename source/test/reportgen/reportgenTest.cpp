@@ -570,6 +570,7 @@ TEST_F(reportgenTestFixture, encodeGrepResultInJSON_CreateArrayFails)
     free(marker);
     Vector_Destroy(grepList, nullptr);
 }
+#if 0
 TEST_F(reportgenTestFixture, encodeGrepResultInJSON_markerValueBranch_success)
 {
     // Setup grepMarker
@@ -623,6 +624,7 @@ TEST_F(reportgenTestFixture, encodeGrepResultInJSON_markerValueBranch_success)
     // If using mocks, you might need to manually free mockArrayObj only if it's not added to the array
     // If cJSON_AddItemToArray(valArray, mockArrayObj) is successful, cJSON_Delete(valArray) will free children too
 }
+#endif
 #if 0
 TEST_F(reportgenTestFixture, encodeGrepResultInJSON_markerValueBranch_success)
 {

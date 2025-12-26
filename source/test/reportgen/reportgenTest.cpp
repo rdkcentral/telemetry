@@ -1851,6 +1851,37 @@ TEST(applyRegexValuTest, ApplyRegexToValue_viaCallback_ValidArguments) {
     free(inputValue);
 }
 
+TEST_F(reportgenTestFixture, ApplyRegexToValue_viaCallback_RegexecFails) {
+    applyRegexToValueFunc fp = applyRegexToValueCallback();
+    ASSERT_NE(fp, nullptr);
+
+    char *input = strdup("foobar");
+    ASSERT_NE(input, nullptr);
+    char **inputValue = &input;
+    const char *pattern = "^baz$"; // will not match "foobar"
+
+    // Setup mock for regcomp and regexec.
+    // regcomp returns 0 (success), regexec returns REG_NOMATCH (no match)
+    EXPECT_CALL(*m_reportgenMock, regcomp(_, StrEq(pattern), _))
+        .Times(1)
+        .WillOnce(Return(0));
+    EXPECT_CALL(*m_reportgenMock, regexec(_, StrEq("foobar"), _, _, _))
+        .Times(1)
+        .WillOnce(Return(REG_NOMATCH));
+    EXPECT_CALL(*m_reportgenMock, regfree(_))
+        .Times(1);
+
+    T2ERROR result = fp(inputValue, pattern);
+
+    // The implementation (per your code block) frees the input, assigns strdup("")
+    // So after call, *inputValue should be ""
+    ASSERT_NE(*inputValue, nullptr);
+    EXPECT_STREQ(*inputValue, "");
+
+    // Clean up
+    free(*inputValue);
+}
+
 TEST(CheckForEmptyString, AllBranchesAreCovered)
 {
     checkForEmptyStringFunc cb = checkForEmptyStringCallback();

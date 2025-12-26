@@ -1813,6 +1813,42 @@ TEST_F(reportgenTestFixture, encodeTopResultInJSON_cpuMem_cjsonCreateObjectFail)
 extern "C" {
 typedef bool (*checkForEmptyStringFunc)(char *);
 checkForEmptyStringFunc checkForEmptyStringCallback(void);
+
+typedef T2ERROR (*applyRegexToValueFunc)(char **,const char *);
+applyRegexToValueFunc applyRegexToValueCallback(void);
+
+}
+
+TEST(applyRegexValuTest, ApplyRegexToValue_viaCallback_InputValueIsNull) {
+    applyRegexToValueFunc fp = applyRegexToValueCallback();
+    ASSERT_NE(fp, nullptr);
+    EXPECT_EQ(T2ERROR_INVALID_ARGS, fp(nullptr, ".*"));
+}
+
+TEST(applyRegexValuTest, ApplyRegexToValue_viaCallback_DereferencedInputValueIsNull) {
+    applyRegexToValueFunc fp = applyRegexToValueCallback();
+    ASSERT_NE(fp, nullptr);
+    char *val = nullptr;
+    EXPECT_EQ(T2ERROR_INVALID_ARGS, fp(&val, ".*"));
+}
+
+TEST(applyRegexValuTest, ApplyRegexToValue_viaCallback_RegexPatternIsNull) {
+    applyRegexToValueFunc fp = applyRegexToValueCallback();
+    ASSERT_NE(fp, nullptr);
+    char val[] = "test";
+    char *pval = val;
+    EXPECT_EQ(T2ERROR_INVALID_ARGS, fp(&pval, nullptr));
+}
+
+TEST(applyRegexValuTest, ApplyRegexToValue_viaCallback_ValidArguments) {
+    applyRegexToValueFunc fp = applyRegexToValueCallback();
+    ASSERT_NE(fp, nullptr);
+    char *inputValue = strdup("TestString");
+    const char *pattern = "Test.*";
+    // Don't expect INVALID_ARGS, expect success or implementation-specific code
+    T2ERROR result = fp(&inputValue, pattern);
+    EXPECT_NE(result, T2ERROR_INVALID_ARGS);
+    free(inputValue);
 }
 
 TEST(CheckForEmptyString, AllBranchesAreCovered)

@@ -31,6 +31,9 @@
 #include <sys/wait.h>
 #include <curl/curl.h>
 #include <signal.h>
+#ifdef LIBRDKCERTSEL_BUILD
+#include <openssl/crypto.h>
+#endif
 
 #include "curlinterface.h"
 #include "reportprofiles.h"
@@ -318,6 +321,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
     rdkcertselector_h thisCertSel = NULL;
     rdkcertselectorStatus_t curlGetCertStatus;
     char *pCertURI = NULL;
+    char *pEngine = NULL;
     bool state_red_enable = false;
 #endif
     char *pCertFile = NULL;
@@ -440,6 +444,13 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
      */
     if(childPid == 0)
     {
+#ifdef LIBRDKCERTSEL_BUILD
+	pEngine = rdkcertselector_getEngine(curlCertSelector);
+	if(pEngine != NULL)
+	{
+	    OPENSSL_init_crypto(OPENSSL_INIT_NO_LOAD_CONFIG, NULL);
+	}
+#endif
         curl = curl_easy_init();
         if(curl)
         {
@@ -455,6 +466,25 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
                 goto child_cleanReturn;
             }
 #ifdef LIBRDKCERTSEL_BUILD
+	    if(pEngine != NULL)
+            {
+                code = curl_easy_setopt(curl, CURLOPT_SSLENGINE, pEngine);
+                if(code != CURLE_OK)
+                {
+                    childCurlResponse.lineNumber = __LINE__;
+                    curl_easy_cleanup(curl);
+                    goto child_cleanReturn;
+                } else {
+                    code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
+                    if(code != CURLE_OK  )
+                    {
+                        childCurlResponse.lineNumber = __LINE__;
+                        curl_easy_cleanup(curl);
+                        goto child_cleanReturn;
+                    }
+                }
+            }
+
             do
             {
                 pCertFile = NULL;

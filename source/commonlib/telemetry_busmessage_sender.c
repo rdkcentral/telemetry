@@ -26,6 +26,12 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <time.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <sys/un.h>
+#include <poll.h>
+#include <fcntl.h>
 
 #if defined(CCSP_SUPPORT_ENABLED)
 #include <ccsp/ccsp_memory.h>
@@ -47,6 +53,8 @@
 #define T2_COMPONENT_READY    "/tmp/.t2ReadyToReceiveEvents"
 #define T2_SCRIPT_EVENT_COMPONENT "telemetry_client"
 #define SENDER_LOG_FILE "/tmp/t2_sender_debug.log"
+#define T2_TCP_PORT 12345
+#define SERVER_IP "127.0.0.1"
 
 static const char* CCSP_FIXED_COMP_ID = "com.cisco.spvtg.ccsp.t2commonlib" ;
 
@@ -70,6 +78,37 @@ static pthread_mutex_t dMutex ;
 static pthread_mutex_t FileCacheMutex ;
 static pthread_mutex_t markerListMutex ;
 static pthread_mutex_t loggerMutex ;
+static int g_tcp_client_fd = -1;
+static bool g_tcp_client_connected = false;
+static pthread_mutex_t g_tcp_client_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+typedef enum {
+    T2_REQ_SUBSCRIBE = 1,
+    T2_REQ_PROFILE_DATA = 2,
+    T2_REQ_MARKER_LIST = 3,
+    T2_REQ_DAEMON_STATUS = 4,
+    T2_MSG_EVENT_DATA = 5
+} T2RequestType;
+
+typedef struct {
+    uint32_t request_type;
+    uint32_t data_length;
+    uint32_t client_id;
+    uint32_t last_known_version;
+} T2RequestHeader;
+
+// Response header for server responses
+typedef struct {
+    uint32_t response_status; // 0=success, 1=failure
+    uint32_t data_length;     // Length of response data
+    uint32_t sequence_id;     // Matches request sequence
+    uint32_t reserved;        // For future use
+} T2ResponseHeader;
+
+static hash_map_t *clientEventMarkerMap = NULL;
+static pthread_mutex_t clientMarkerMutex = PTHREAD_MUTEX_INITIALIZER;
+
+static void t2_parse_and_store_markers(const char* marker_data);
 
 static void EVENT_DEBUG(char* format, ...)
 {
@@ -142,6 +181,285 @@ static void uninitMutex()
         pthread_mutexattr_destroy(&mutexAttr);
     }
     pthread_mutex_unlock(&initMtx);
+}
+
+
+static T2ERROR t2_unix_client_connect()
+{
+    EVENT_ERROR("t2_unix_client_connect ++in\n");
+    printf("t2_unix_client_connect ++in\n");
+    
+    pthread_mutex_lock(&g_tcp_client_mutex);
+    
+    if (g_tcp_client_fd >= 0) {
+        pthread_mutex_unlock(&g_tcp_client_mutex);
+        return T2ERROR_SUCCESS;
+    }
+    
+    printf("Creating socket\n");
+    g_tcp_client_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (g_tcp_client_fd < 0) {
+        pthread_mutex_unlock(&g_tcp_client_mutex);
+        return T2ERROR_FAILURE;
+    }
+    
+    struct timeval timeout = {.tv_sec = 10, .tv_usec = 0};
+    setsockopt(g_tcp_client_fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+    setsockopt(g_tcp_client_fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+    
+    // Setup server address
+    struct sockaddr_in server_addr;
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(T2_TCP_PORT);
+    
+    // Convert IP address
+    if (inet_pton(AF_INET, SERVER_IP, &server_addr.sin_addr) <= 0) {
+        EVENT_ERROR("Invalid server IP address: %s\n", SERVER_IP);
+        close(g_tcp_client_fd);
+        g_tcp_client_fd = -1;
+        pthread_mutex_unlock(&g_tcp_client_mutex);
+        return T2ERROR_FAILURE;
+    }
+
+    printf("Connecting to %s:%d...\n", SERVER_IP, T2_TCP_PORT);
+    
+    if (connect(g_tcp_client_fd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+        EVENT_ERROR("Failed to connect to TCP server %s:%d: %s\n", 
+            SERVER_IP, T2_TCP_PORT, strerror(errno));
+        close(g_tcp_client_fd);
+        g_tcp_client_fd = -1;
+        pthread_mutex_unlock(&g_tcp_client_mutex);
+        return T2ERROR_FAILURE;
+    }
+    
+    EVENT_ERROR("TCP client connected to T2 daemon at %s:%d\n", SERVER_IP, T2_TCP_PORT);
+    printf("TCP client connected to T2 daemon at %s:%d\n", SERVER_IP, T2_TCP_PORT);
+    
+    const char* component_to_send = componentName ? componentName : "default";
+    
+    // Create subscription request header
+    T2RequestHeader sub_header = {
+        .request_type = T2_REQ_SUBSCRIBE,           // ← Proper request type
+        .data_length = strlen(component_to_send),    // Component name length
+        .client_id = (uint32_t)(getpid() ^ time(NULL)), // Unique client ID
+        .last_known_version = 0
+    };
+    
+    // Send header first
+    ssize_t sent = send(g_tcp_client_fd, &sub_header, sizeof(sub_header), MSG_NOSIGNAL);
+    if (sent != sizeof(sub_header)) {
+        EVENT_ERROR("Failed to send subscription header\n");
+        close(g_tcp_client_fd);
+        g_tcp_client_fd = -1;
+        pthread_mutex_unlock(&g_tcp_client_mutex);
+        return T2ERROR_FAILURE;
+    }
+    EVENT_ERROR("Succesfully sent component name length\n");
+    printf("Succesfully sent component name length\n");
+    
+    // Send component name
+    if (sub_header.data_length > 0) {
+        sent = send(g_tcp_client_fd, component_to_send, sub_header.data_length, MSG_NOSIGNAL);
+        if (sent != (ssize_t)sub_header.data_length) {
+            EVENT_ERROR("Failed to send component name\n");
+            close(g_tcp_client_fd);
+            g_tcp_client_fd = -1;
+            pthread_mutex_unlock(&g_tcp_client_mutex);
+            return T2ERROR_FAILURE;
+        }
+    }
+    EVENT_ERROR("Succesfully sent component name\n");
+    printf("Succesfully sent component name\n");
+
+    pthread_mutex_unlock(&g_tcp_client_mutex);
+    return T2ERROR_SUCCESS;
+}
+
+static T2ERROR t2_unix_client_init()
+{
+    if (g_tcp_client_connected) {
+        return T2ERROR_SUCCESS;
+    }
+    EVENT_ERROR("t2_unix_client_init ++in\n");
+    printf("t2_unix_client_init ++in\n");
+
+    // Try connection (failure is OK, will retry in background)
+    t2_unix_client_connect();
+    
+    g_tcp_client_connected = true;
+    
+    EVENT_DEBUG("T2 Unix client initialized\n");
+    return T2ERROR_SUCCESS;
+}
+
+static void t2_unix_client_uninit()
+{
+    if (g_tcp_client_connected) {
+        g_tcp_client_connected = false;
+        
+        pthread_mutex_lock(&g_tcp_client_mutex);
+        if (g_tcp_client_fd >= 0) {
+            close(g_tcp_client_fd);
+            g_tcp_client_fd = -1;
+        }
+        pthread_mutex_unlock(&g_tcp_client_mutex);
+    }
+}
+
+// Function to query event markers from daemon
+static T2ERROR t2_query_event_markers()
+{
+    EVENT_DEBUG("%s ++in\n", __FUNCTION__);
+    printf("%s ++in\n", __FUNCTION__);
+
+    
+    pthread_mutex_lock(&g_tcp_client_mutex);
+    
+    if (g_tcp_client_fd < 0) {
+        if (t2_unix_client_connect() != T2ERROR_SUCCESS) {
+            pthread_mutex_unlock(&g_tcp_client_mutex);
+            return T2ERROR_FAILURE;
+        }
+    }
+    
+    const char* component_to_query = componentName ? componentName : "default";
+    
+    // Create marker query request header
+    T2RequestHeader req_header = {
+        .request_type = T2_REQ_MARKER_LIST,
+        .data_length = strlen(component_to_query),
+        .client_id = (uint32_t)(getpid() ^ time(NULL)),
+        .last_known_version = 0
+    };
+    
+    printf("Send request header\n");
+    ssize_t sent = send(g_tcp_client_fd, &req_header, sizeof(req_header), MSG_NOSIGNAL);
+    if (sent != sizeof(req_header)) {
+        EVENT_ERROR("Failed to send marker query header\n");
+        close(g_tcp_client_fd);
+        g_tcp_client_fd = -1;
+        pthread_mutex_unlock(&g_tcp_client_mutex);
+        return T2ERROR_FAILURE;
+    }
+
+    printf("Send component name\n");
+    sent = send(g_tcp_client_fd, component_to_query, req_header.data_length, MSG_NOSIGNAL);
+    if (sent != (ssize_t)req_header.data_length) {
+        EVENT_ERROR("Failed to send component name for marker query\n");
+        close(g_tcp_client_fd);
+        g_tcp_client_fd = -1;
+        pthread_mutex_unlock(&g_tcp_client_mutex);
+        return T2ERROR_FAILURE;
+    }
+    
+    EVENT_ERROR("Sent marker query for component: %s\n", component_to_query);
+    printf("Sent marker query for component: %s\n", component_to_query);
+
+    
+    // Receive response header
+    T2ResponseHeader resp_header;
+    ssize_t received = recv(g_tcp_client_fd, &resp_header, sizeof(resp_header), MSG_WAITALL);
+    if (received != sizeof(resp_header)) {
+        EVENT_ERROR("Failed to receive marker query response header\n");
+        printf("Failed to receive marker query response header\n");
+
+        close(g_tcp_client_fd);
+        g_tcp_client_fd = -1;
+        pthread_mutex_unlock(&g_tcp_client_mutex);
+        return T2ERROR_FAILURE;
+    }
+    
+    if (resp_header.response_status != 0) {
+        EVENT_ERROR("Daemon returned error status: %u\n", resp_header.response_status);
+        printf("Daemon returned error status: %u\n", resp_header.response_status);
+        pthread_mutex_unlock(&g_tcp_client_mutex);
+        return T2ERROR_FAILURE;
+    }
+    
+    // Receive marker list data
+    char* marker_data = NULL;
+    if (resp_header.data_length > 0) {
+        marker_data = malloc(resp_header.data_length + 1);
+        if (!marker_data) {
+            EVENT_ERROR("Failed to allocate memory for marker data\n");
+            printf("Failed to allocate memory for marker data\n");
+            pthread_mutex_unlock(&g_tcp_client_mutex);
+            return T2ERROR_FAILURE;
+        }
+        
+        received = recv(g_tcp_client_fd, marker_data, resp_header.data_length, MSG_WAITALL);
+        if (received != (ssize_t)resp_header.data_length) {
+            EVENT_ERROR("Failed to receive complete marker data\n");
+            printf("Failed to receive complete marker data\n");
+
+            free(marker_data);
+            close(g_tcp_client_fd);
+            g_tcp_client_fd = -1;
+            pthread_mutex_unlock(&g_tcp_client_mutex);
+            return T2ERROR_FAILURE;
+        }
+
+        marker_data[resp_header.data_length] = '\0';
+        
+        EVENT_ERROR("Received marker data: %s\n", marker_data);
+        printf("Received marker data: %s\n", marker_data);
+        
+        // Parse and store markers in hash map
+        t2_parse_and_store_markers(marker_data);
+        
+        free(marker_data);
+    } else {
+        EVENT_ERROR("No markers found for component: %s\n", component_to_query);
+    }
+    
+    pthread_mutex_unlock(&g_tcp_client_mutex);
+    
+    EVENT_DEBUG("%s --out\n", __FUNCTION__);
+    return T2ERROR_SUCCESS;
+}
+
+// Function to parse marker data and store in hash map
+static void t2_parse_and_store_markers(const char* marker_data)
+{
+    EVENT_DEBUG("%s ++in\n", __FUNCTION__);
+    printf("%s ++in\n", __FUNCTION__);
+    
+    pthread_mutex_lock(&clientMarkerMutex);
+    
+    // Initialize hash map if not already done
+    if (!clientEventMarkerMap) {
+        clientEventMarkerMap = hash_map_create();
+    }
+    
+    // Parse comma-separated marker list
+    char* data_copy = strdup(marker_data);
+    char* token = strtok(data_copy, ",");
+    
+    while (token != NULL) {
+        // Remove leading/trailing whitespace
+        while (*token == ' ' || *token == '\t') token++;
+        char* end = token + strlen(token) - 1;
+        while (end > token && (*end == ' ' || *end == '\t' || *end == '\n')) {
+            *end = '\0';
+            end--;
+        }
+        
+        if (strlen(token) > 0) {
+            // Store marker in hash map (key = marker name, value = marker name)
+            hash_map_put(clientEventMarkerMap, strdup(token), strdup(token), free);
+            EVENT_DEBUG("Added marker to client map: %s\n", token);
+            printf("Added marker to client map: %s\n", token);
+
+        }
+        
+        token = strtok(NULL, ",");
+    }
+        
+    free(data_copy);
+    pthread_mutex_unlock(&clientMarkerMutex);
+    
+    EVENT_DEBUG("%s --out\n", __FUNCTION__);
 }
 
 #if defined(CCSP_SUPPORT_ENABLED)
@@ -408,6 +726,20 @@ static bool initRFC( )
     return status;
 }
 
+// Function to check if an event marker is valid for this component
+static bool is_valid_event_marker(const char* markerName)
+{
+    if (!markerName || !clientEventMarkerMap) {
+        return false;
+    }
+    
+    pthread_mutex_lock(&clientMarkerMutex);
+    char* found_marker = (char*)hash_map_get(clientEventMarkerMap, markerName);
+    pthread_mutex_unlock(&clientMarkerMutex);
+    
+    return (found_marker != NULL);
+}
+
 /**
  * In rbus mode, should be using rbus subscribed param
  * from telemetry 2.0 instead of direct api for event sending
@@ -417,6 +749,8 @@ int filtered_event_send(const char* data, const char *markerName)
     rbusError_t ret = RBUS_ERROR_SUCCESS;
     int status = 0 ;
     EVENT_DEBUG("%s ++in\n", __FUNCTION__);
+    printf("%s ++in\n", __FUNCTION__);
+
     if(!bus_handle)
     {
         EVENT_ERROR("bus_handle is null .. exiting !!! \n");
@@ -467,6 +801,7 @@ int filtered_event_send(const char* data, const char *markerName)
         rbusValue_SetProperty(value, objProperty);
 
         EVENT_DEBUG("rbus_set with param [%s] with %s and value [%s]\n", T2_EVENT_PARAM, markerName, data);
+        printf("rbus_set with param [%s] with %s and value [%s]\n", T2_EVENT_PARAM, markerName, data);
         ret = rbus_set(bus_handle, T2_EVENT_PARAM, value, &options);
         if(ret != RBUS_ERROR_SUCCESS)
         {
@@ -506,6 +841,64 @@ int filtered_event_send(const char* data, const char *markerName)
         }
     }
 #endif // CCSP_SUPPORT_ENABLED 
+
+printf("Send event via TCP if connected\n");
+if (g_tcp_client_fd >= 0) {
+    EVENT_DEBUG("Sending event via TCP: marker=%s, data=%s\n", markerName, data);
+    printf("Sending event via TCP: marker=%s, data=%s\n", markerName, data);
+
+    if(!is_valid_event_marker(markerName))
+    {
+        EVENT_DEBUG("%s markerName %s not found in event list for component %s . Unlock markerListMutex . \n", __FUNCTION__, markerName, componentName);
+        printf("%s markerName %s not found in event list for component %s . Unlock markerListMutex . \n", __FUNCTION__, markerName, componentName);
+        return status; // return existing RBUS status
+    }
+    // Create event message in format "markerName<#=#>eventValue"
+    int eventDataLen = strlen(markerName) + strlen(data) + strlen(MESSAGE_DELIMITER) + 1;
+    char* event_message = malloc(eventDataLen);
+    if (!event_message) {
+        EVENT_ERROR("Failed to allocate memory for event message\n");
+        return status; // Return existing RBUS status
+    }
+    
+    snprintf(event_message, eventDataLen, "%s%s%s", markerName, MESSAGE_DELIMITER, data);
+    
+    pthread_mutex_lock(&g_tcp_client_mutex);
+
+    // Create TCP request header
+    T2RequestHeader req_header = {
+        .request_type = T2_MSG_EVENT_DATA,
+        .data_length = strlen(event_message),
+        .client_id = (uint32_t)(getpid() ^ time(NULL)),
+        .last_known_version = 0
+    };
+    
+    // Send header
+    ssize_t sent = send(g_tcp_client_fd, &req_header, sizeof(req_header), MSG_NOSIGNAL);
+    if (sent == sizeof(req_header)) {
+        // Send event data
+        sent = send(g_tcp_client_fd, event_message, strlen(event_message), MSG_NOSIGNAL);
+        if (sent == (ssize_t)strlen(event_message)) {
+            EVENT_DEBUG("TCP event sent successfully: %s\n", event_message);
+            printf("TCP event sent successfully: %s\n", event_message);
+            status = 0; // Override with TCP success
+        } else {
+            EVENT_ERROR("Failed to send event data via TCP: %s\n", strerror(errno));
+            printf("Failed to send event data via TCP: %s\n", strerror(errno));
+            // Keep original RBUS status, don't override with TCP failure
+        }
+    } else {
+        EVENT_ERROR("Failed to send event header via TCP: %s\n", strerror(errno));
+        printf("Failed to send event data via TCP: %s\n", strerror(errno));
+        // Keep original RBUS status, don't override with TCP failure
+    }
+    
+    pthread_mutex_unlock(&g_tcp_client_mutex);
+    free(event_message);
+} else {
+    EVENT_DEBUG("TCP client not connected, using RBUS result only\n");
+    printf("TCP client not connected, using RBUS result only\n");
+}
     EVENT_DEBUG("%s --out with status %d \n", __FUNCTION__, status);
     return status;
 }
@@ -516,7 +909,6 @@ int filtered_event_send(const char* data, const char *markerName)
  */
 static T2ERROR doPopulateEventMarkerList( )
 {
-
     T2ERROR status = T2ERROR_SUCCESS;
     char deNameSpace[1][124] = {{ '\0' }};
     if(!isRbusEnabled)
@@ -700,9 +1092,17 @@ static int report_or_cache_data(char* telemetry_data, const char* markerName)
     int ret = 0;
     pthread_t tid;
     pthread_mutex_lock(&eventMutex);
+    // Query event markers from daemon
+    if (t2_query_event_markers() == T2ERROR_SUCCESS) {
+        EVENT_ERROR("Successfully retrieved event markers for %s\n", componentName);
+    } else {
+        EVENT_ERROR("Failed to retrieve event markers for %s\n", componentName);
+    }
+        
     if(isCachingRequired())
     {
         EVENT_DEBUG("Caching the event : %s \n", telemetry_data);
+        printf("Caching the event : %s \n", telemetry_data);
         int eventDataLen = strlen(markerName) + strlen(telemetry_data) + strlen(MESSAGE_DELIMITER) + 1;
         char* buffer = (char*) malloc(eventDataLen * sizeof(char));
         if(buffer)
@@ -719,6 +1119,7 @@ static int report_or_cache_data(char* telemetry_data, const char* markerName)
     if(isT2Ready)
     {
         // EVENT_DEBUG("T2: Sending event : %s\n", telemetry_data);
+        printf("T2: Sending event : %s\n", telemetry_data);
         ret = filtered_event_send(telemetry_data, markerName);
         if(0 != ret)
         {
@@ -734,10 +1135,22 @@ static int report_or_cache_data(char* telemetry_data, const char* markerName)
 void t2_init(char *component)
 {
     componentName = strdup(component);
+    EVENT_ERROR("Initializing Unix socket for %s\n", component);
+    printf("Initializing Unix socket for %s\n", component);
+
+    if (t2_unix_client_init() != T2ERROR_SUCCESS) {
+        EVENT_ERROR("Unix socket client init failed (daemon may not be running)\n");
+    }
+    EVENT_ERROR("Initialized Unix socket for %s\n", component);
+    printf("Initialized Unix socket for %s\n", component);
 }
 
 void t2_uninit(void)
 {
+    EVENT_ERROR("Un Initializing Unix socket\n");
+    t2_unix_client_uninit();
+    EVENT_ERROR("Un Initialized Unix socket\n");
+
     if(componentName)
     {
         free(componentName);
@@ -850,6 +1263,7 @@ T2ERROR t2_event_d(const char* marker, int value)
     int ret;
     T2ERROR retStatus = T2ERROR_FAILURE ;
     EVENT_DEBUG("%s ++in\n", __FUNCTION__);
+    printf("%s ++in\n", __FUNCTION__);
 
     if(componentName == NULL)
     {
@@ -868,6 +1282,7 @@ T2ERROR t2_event_d(const char* marker, int value)
     }
 
     EVENT_DEBUG("marker = %s : value = %d \n", marker, value);
+    printf("marker = %s : value = %d \n", marker, value);
 
     if (value == 0)    // Requirement from field triage to ignore reporting 0 values
     {

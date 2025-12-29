@@ -33,6 +33,20 @@
 #include "t2log_wrapper.h"
 #include "profile.h"
 
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <poll.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <time.h>
+
+#ifndef min
+#define min(a, b) ((a) < (b) ? (a) : (b))
+#endif
+
 #if defined(PRIVACYMODES_CONTROL)
 #include "rdkservices_privacyutils.h"
 #endif
@@ -44,6 +58,11 @@
 
 #define RBUS_METHOD_TIMEOUT 10
 #define MAX_REPORT_TIMEOUT 50
+
+#define T2_TCP_PORT 12345  // Port for telemetry daemon
+#define MAX_TCP_CLIENTS 50
+#define TCP_BACKLOG 10
+#define MESSAGE_DELIMITER "<#=#>" 
 
 static rbusHandle_t t2bus_handle;
 
@@ -80,7 +99,60 @@ typedef struct MethodData
     rbusMethodAsyncHandle_t asyncHandle;
 } MethodData;
 
+typedef enum {
+    T2_REQ_SUBSCRIBE = 1,
+    T2_REQ_PROFILE_DATA = 2,
+    T2_REQ_MARKER_LIST = 3,
+    T2_REQ_DAEMON_STATUS = 4,
+    T2_MSG_EVENT_DATA = 5
+} T2RequestType;
+
+typedef struct {
+    uint32_t request_type;    // T2RequestType
+    uint32_t data_length;     // Length of data following this header
+    uint32_t client_id;       // Unique client identifier
+    uint32_t last_known_version; // For versioning/sync purposes
+} T2RequestHeader;
+
+typedef struct {
+    uint32_t response_status; // 0=success, 1=failure, 2=invalid_request, 3=no_data
+    uint32_t data_length;     // Length of response data
+    uint32_t sequence_id;     // Matches request sequence
+    uint32_t reserved;        // For future use
+} T2ResponseHeader;
+
+// Response status codes
+typedef enum {
+    T2_RESP_SUCCESS = 0,
+    T2_RESP_FAILURE = 1,
+    T2_RESP_INVALID_REQUEST = 2,
+    T2_RESP_NO_DATA = 3
+} T2ResponseStatus;
+
+typedef struct {
+    int server_fd;
+    struct sockaddr_in server_addr;
+    bool server_running;
+    pthread_t server_thread;
+    pthread_mutex_t clients_mutex;
+    
+    struct {
+        int client_fd;
+        struct sockaddr_in client_addr;
+        bool active;
+        bool subscribed_to_profile_updates;
+        bool subscribed_to_marker_updates;
+        uint32_t client_id;
+        char component_name[256];
+        time_t connect_time;
+    } clients[MAX_TCP_CLIENTS];
+} T2TcpServer;
+
+static T2TcpServer g_tcp_server = {0};
+
 T2ERROR T2RbusConsumer(TriggerCondition *triggerCondition);
+static void t2_handle_marker_list_request(int client_index, T2RequestHeader* req_header);
+static void t2_handle_event_data(int client_index, T2RequestHeader* req_header);
 
 bool isRbusInitialized( )
 {
@@ -115,6 +187,450 @@ void logHandler(
         break;
     }
     return;
+}
+
+
+#if 1
+static void t2_unix_socket_server_uninit()
+{
+    if (g_tcp_server.server_running) {
+        T2Info("Stopping TCP server...\n");
+        g_tcp_server.server_running = false;
+        
+        // Wait for server thread to exit
+        pthread_join(g_tcp_server.server_thread, NULL);
+        
+        // Close all client connections
+        pthread_mutex_lock(&g_tcp_server.clients_mutex);
+        for (int i = 0; i < MAX_TCP_CLIENTS; i++) {
+            if (g_tcp_server.clients[i].active) {
+                            char client_ip[INET_ADDRSTRLEN];
+                inet_ntop(AF_INET, &g_tcp_server.clients[i].client_addr.sin_addr, 
+                          client_ip, INET_ADDRSTRLEN);
+                
+                T2Info("Closing client connection %d (%s:%d) for component %s\n", 
+                       i, client_ip, ntohs(g_tcp_server.clients[i].client_addr.sin_port), g_tcp_server.clients[i].component_name);
+                
+                close(g_tcp_server.clients[i].client_fd);
+                g_tcp_server.clients[i].active = false;
+            }
+        }
+        pthread_mutex_unlock(&g_tcp_server.clients_mutex);
+        
+        // Cleanup
+        close(g_tcp_server.server_fd);
+        pthread_mutex_destroy(&g_tcp_server.clients_mutex);
+        
+        T2Info("TCP server uninitialized successfully\n");
+    }
+    else
+    {
+        T2Info("TCP server was not running\n");
+    }
+}
+#endif
+
+// Initialize TCP server
+static T2ERROR t2_init_tcp_server()
+{
+    T2Info("%s ++in\n", __FUNCTION__);
+    
+    // Create TCP socket
+    g_tcp_server.server_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (g_tcp_server.server_fd < 0) {
+        T2Error("Failed to create TCP socket: %s\n", strerror(errno));
+        return T2ERROR_FAILURE;
+    }
+    
+    // Set socket options
+    int opt = 1;
+    if (setsockopt(g_tcp_server.server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+        T2Error("Failed to set SO_REUSEADDR: %s\n", strerror(errno));
+        close(g_tcp_server.server_fd);
+        return T2ERROR_FAILURE;
+    }
+    
+    // Setup server address
+    memset(&g_tcp_server.server_addr, 0, sizeof(g_tcp_server.server_addr));
+    g_tcp_server.server_addr.sin_family = AF_INET;
+    g_tcp_server.server_addr.sin_addr.s_addr = INADDR_ANY;  //0.0.0.0=>To communicate with any client includ ing container
+    g_tcp_server.server_addr.sin_port = htons(T2_TCP_PORT);
+    
+    // Bind socket
+    if (bind(g_tcp_server.server_fd, (struct sockaddr*)&g_tcp_server.server_addr, 
+             sizeof(g_tcp_server.server_addr)) < 0) {
+        T2Error("Failed to bind TCP socket to %s:%d: %s\n", 
+                "INADDR_ANY", T2_TCP_PORT, strerror(errno));
+        close(g_tcp_server.server_fd);
+        return T2ERROR_FAILURE;
+    }
+    
+    // Listen for connections
+    if (listen(g_tcp_server.server_fd, TCP_BACKLOG) < 0) {
+        T2Error("Failed to listen on TCP socket: %s\n", strerror(errno));
+        close(g_tcp_server.server_fd);
+        return T2ERROR_FAILURE;
+    }
+    
+    // Initialize mutex
+    if (pthread_mutex_init(&g_tcp_server.clients_mutex, NULL) != 0) {
+        T2Error("Failed to initialize TCP clients mutex\n");
+        close(g_tcp_server.server_fd);
+        return T2ERROR_FAILURE;
+    }
+    
+    T2Info("TCP server initialized on %s:%d\n", "INADDR_ANY", T2_TCP_PORT);
+    T2Info("%s --out\n", __FUNCTION__);
+    return T2ERROR_SUCCESS;
+}
+
+static void t2_cleanup_tcp_client(int client_index)
+{
+    T2Info("TODO: Handle Client disconnection for client %d", client_index);
+}
+
+// Handle new TCP connection
+static void t2_handle_new_tcp_connection(int client_fd, struct sockaddr_in* client_addr)
+{
+    // Set socket timeouts
+    struct timeval timeout = {.tv_sec = 30, .tv_usec = 0};
+    setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+    setsockopt(client_fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+    
+    // Read subscription request
+    T2RequestHeader sub_header;
+    ssize_t received = recv(client_fd, &sub_header, sizeof(sub_header), MSG_WAITALL);
+    
+    if (received != sizeof(sub_header)) {
+        T2Info("Failed to receive subscription header from TCP client\n");
+        close(client_fd);
+        return;
+    }
+    
+    if (sub_header.request_type != T2_REQ_SUBSCRIBE) {
+        T2Info("Invalid request type from TCP client: %u\n", sub_header.request_type);
+        close(client_fd);
+        return;
+    }
+    
+    // Read component name if present
+    char component_name[256] = "default";
+    if (sub_header.data_length > 0) {
+        ssize_t comp_received = recv(client_fd, component_name, 
+                                     min(sub_header.data_length, sizeof(component_name) - 1), 
+                                     MSG_WAITALL);
+        if (comp_received > 0) {
+            component_name[comp_received] = '\0';
+        }
+    }
+    
+    char client_ip[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &client_addr->sin_addr, client_ip, INET_ADDRSTRLEN);
+    
+    T2Info("TCP subscription from client_id: %u, component: %s, IP: %s\n", 
+           sub_header.client_id, component_name, client_ip);
+    
+    // Find slot for new subscriber
+    pthread_mutex_lock(&g_tcp_server.clients_mutex);
+    
+    bool slot_found = false;
+    for (int i = 0; i < MAX_TCP_CLIENTS; i++) {
+        if (!g_tcp_server.clients[i].active) {
+            g_tcp_server.clients[i].client_fd = client_fd;
+            g_tcp_server.clients[i].client_addr = *client_addr;
+            g_tcp_server.clients[i].active = true;
+            g_tcp_server.clients[i].client_id = sub_header.client_id;
+            g_tcp_server.clients[i].subscribed_to_profile_updates = true;
+            g_tcp_server.clients[i].subscribed_to_marker_updates = true;
+            g_tcp_server.clients[i].connect_time = time(NULL);
+            strncpy(g_tcp_server.clients[i].component_name, component_name, 
+                    sizeof(g_tcp_server.clients[i].component_name) - 1);
+            
+            T2Info("TCP client subscribed in slot %d from %s\n", i, client_ip);
+            slot_found = true;
+            break;
+        }
+    }
+    
+    if (!slot_found) {
+        T2Error("No available TCP subscription slots\n");
+        close(client_fd);
+    }
+    
+    pthread_mutex_unlock(&g_tcp_server.clients_mutex);
+}
+
+static void t2_handle_tcp_client_message(int client_index)
+{
+    T2Info("TODO: Handle client message for client %s", g_tcp_server.clients[client_index].component_name);
+
+    pthread_mutex_lock(&g_tcp_server.clients_mutex);
+    
+    if (!g_tcp_server.clients[client_index].active) {
+        pthread_mutex_unlock(&g_tcp_server.clients_mutex);
+        return;
+    }
+    
+    int client_fd = g_tcp_server.clients[client_index].client_fd;
+    char* component_name = g_tcp_server.clients[client_index].component_name;
+    
+    pthread_mutex_unlock(&g_tcp_server.clients_mutex);
+    
+    // Read request header
+    T2RequestHeader req_header;
+    ssize_t received = recv(client_fd, &req_header, sizeof(req_header), MSG_WAITALL);
+    
+    if (received != sizeof(req_header)) {
+        T2Error("Failed to receive request header from client %s\n", component_name);
+        t2_cleanup_tcp_client(client_index);
+        return;
+    }
+    
+    T2Info("Received request type: %u from client %d (%s)\n", 
+           req_header.request_type, client_index, component_name);
+    
+    switch (req_header.request_type) {
+        case T2_REQ_MARKER_LIST:
+            t2_handle_marker_list_request(client_index, &req_header);
+            break;
+            
+        case T2_MSG_EVENT_DATA:
+            t2_handle_event_data(client_index, &req_header);
+            break;
+
+        default:
+            T2Error("Unknown request type: %u from client %d\n", 
+                    req_header.request_type, client_index);
+            break;
+    }    
+}
+
+// New function to handle marker list requests
+static void t2_handle_marker_list_request(int client_index, T2RequestHeader* req_header)
+{
+    T2Debug("%s ++in for client %d\n", __FUNCTION__, client_index);
+    
+    pthread_mutex_lock(&g_tcp_server.clients_mutex);
+    
+    if (!g_tcp_server.clients[client_index].active) {
+        pthread_mutex_unlock(&g_tcp_server.clients_mutex);
+        return;
+    }
+    
+    int client_fd = g_tcp_server.clients[client_index].client_fd;
+    char* component_name = g_tcp_server.clients[client_index].component_name;
+    
+    pthread_mutex_unlock(&g_tcp_server.clients_mutex);
+    
+    // Read component name from request data (if any)
+    char query_component[256] = {0};
+    if (req_header->data_length > 0) {
+        ssize_t comp_received = recv(client_fd, query_component, 
+                                     min(req_header->data_length, sizeof(query_component) - 1), 
+                                     MSG_WAITALL);
+        if (comp_received > 0) {
+            query_component[comp_received] = '\0';
+        }
+    } else {
+        // Use registered component name
+        strncpy(query_component, component_name, sizeof(query_component) - 1);
+    }
+    
+    T2Info("Processing marker list request for component: %s\n", query_component);
+    
+    // Get marker list using existing callback
+    Vector* eventMarkerList = NULL;
+    getMarkerListCallBack(query_component, (void**)&eventMarkerList);
+    
+    // Prepare response data
+    char marker_response[2048] = {0}; // Adjust size as needed
+    int marker_count = 0;
+    
+    if (eventMarkerList && Vector_Size(eventMarkerList) > 0) {
+        marker_count = Vector_Size(eventMarkerList);
+        
+        for (int i = 0; i < marker_count; i++) {
+            char* marker_name = (char*)Vector_At(eventMarkerList, i);
+            if (marker_name) {
+                if (i > 0) {
+                    strcat(marker_response, ",");
+                }
+                strncat(marker_response, marker_name, sizeof(marker_response) - strlen(marker_response) - 1);
+            }
+        }
+        
+        Vector_Destroy(eventMarkerList, free);
+        
+        T2Info("Found %d markers for component %s: %s\n", 
+               marker_count, query_component, marker_response);
+            } else {
+                T2Info("No markers found for component: %s\n", query_component);
+                strcpy(marker_response, ""); // Empty response
+            }
+            
+            // Send response header
+            T2ResponseHeader resp_header = {
+                .response_status = 0, // Success
+                .data_length = strlen(marker_response),
+                .sequence_id = req_header->client_id,
+                .reserved = 0
+            };
+            ssize_t sent = send(client_fd, &resp_header, sizeof(resp_header), MSG_NOSIGNAL);
+            if (sent != sizeof(resp_header)) {
+                T2Error("Failed to send marker response header to client %d\n", client_index);
+                t2_cleanup_tcp_client(client_index);
+                return;
+            }
+            
+            // Send response data
+            if (resp_header.data_length > 0) {
+                sent = send(client_fd, marker_response, resp_header.data_length, MSG_NOSIGNAL);
+                if (sent != (ssize_t)resp_header.data_length) {
+                    T2Error("Failed to send marker response data to client %d\n", client_index);
+                    t2_cleanup_tcp_client(client_index);
+                    return;
+                }
+            }
+    T2Info("Successfully sent marker list response to client %d (%s)\n", 
+           client_index, component_name);
+    
+    T2Debug("%s --out\n", __FUNCTION__);
+}  
+
+// Function to handle incoming event data
+static void t2_handle_event_data(int client_index, T2RequestHeader* req_header)
+{
+    T2Debug("%s ++in for client %d\n", __FUNCTION__, client_index);
+    
+    pthread_mutex_lock(&g_tcp_server.clients_mutex);
+    
+    if (!g_tcp_server.clients[client_index].active) {
+        pthread_mutex_unlock(&g_tcp_server.clients_mutex);
+        return;
+    }
+    
+    int client_fd = g_tcp_server.clients[client_index].client_fd;
+    char* component_name = g_tcp_server.clients[client_index].component_name;
+    
+    pthread_mutex_unlock(&g_tcp_server.clients_mutex);
+    
+    // Read event data
+    if (req_header->data_length > 0) {
+        char* event_data = malloc(req_header->data_length + 1);
+        if (!event_data) {
+            T2Error("Failed to allocate memory for event data\n");
+            return;
+        }
+        
+        ssize_t received = recv(client_fd, event_data, req_header->data_length, MSG_WAITALL);
+        if (received == (ssize_t)req_header->data_length) {
+            event_data[req_header->data_length] = '\0';
+            
+            T2Info("Received event from %s: %s\n", component_name, event_data);
+            
+            // Parse and process event using existing callback
+            // Format: "markerName<delimiter>eventValue"
+            char* delimiter_pos = strstr(event_data, MESSAGE_DELIMITER);
+            if (delimiter_pos) {
+                *delimiter_pos = '\0';
+                char* marker_name = event_data;
+                char* event_value = delimiter_pos + strlen(MESSAGE_DELIMITER);
+                
+                T2Debug("Processing event: marker=%s, value=%s\n", marker_name, event_value);
+                
+                // Call existing event callback
+                if (eventCallBack) {
+                    eventCallBack(strdup(marker_name), strdup(event_value));
+                }
+            }
+        } else {
+            T2Error("Failed to receive complete event data from client %d\n", client_index);
+        }
+        
+        free(event_data);
+    }
+    
+    T2Debug("%s --out\n", __FUNCTION__);
+}
+
+// TCP server thread
+static void* t2_tcp_server_thread(void* arg)
+{
+    (void)arg;
+    
+    T2Info("TCP server thread started on %s:%d\n", "INADDR_ANY", T2_TCP_PORT);
+    
+    struct pollfd poll_fds[MAX_TCP_CLIENTS + 1];
+    int client_indices[MAX_TCP_CLIENTS + 1];
+    int poll_count = 0;
+
+    // Setup polling for server socket
+    poll_fds[0].fd = g_tcp_server.server_fd;
+    poll_fds[0].events = POLLIN;
+    client_indices[0] = -1;
+    poll_count = 1;
+
+    while (g_tcp_server.server_running) {
+        
+        // Add existing clients to poll list - Not required for every loop. TODO: fix that.
+        pthread_mutex_lock(&g_tcp_server.clients_mutex);
+        for (int i = 0; i < MAX_TCP_CLIENTS; i++) {
+            if (g_tcp_server.clients[i].active) {
+                poll_fds[poll_count].fd = g_tcp_server.clients[i].client_fd;
+                poll_fds[poll_count].events = POLLIN;
+                client_indices[poll_count] = i;
+                poll_count++;
+            }
+        }
+        pthread_mutex_unlock(&g_tcp_server.clients_mutex);
+        
+        // Poll for activity
+        int poll_result = poll(poll_fds, poll_count, 1000); // 1 second timeout
+        if (poll_result <= 0) {
+            continue;
+        }
+        
+        // Handle new connections
+        if (poll_fds[0].revents & POLLIN) {
+            T2Info("New TCP client connection:\n");
+            struct sockaddr_in client_addr;
+            socklen_t client_len = sizeof(client_addr);
+            
+            int client_fd = accept(g_tcp_server.server_fd, 
+                                   (struct sockaddr*)&client_addr, &client_len);
+            
+            if (client_fd >= 0) {
+                char client_ip[INET_ADDRSTRLEN];
+                inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, INET_ADDRSTRLEN);
+                
+                T2Info("New TCP client connection from %s:%d (fd: %d)\n", 
+                       client_ip, ntohs(client_addr.sin_port), client_fd);
+                
+                t2_handle_new_tcp_connection(client_fd, &client_addr);
+            }
+        }
+        
+        // Handle client messages
+        for (int i = 1; i < poll_count; i++) {
+            if (poll_fds[i].revents & POLLIN) {
+                int client_index = client_indices[i];
+                if (client_index >= 0) {
+                    t2_handle_tcp_client_message(client_index);
+                }
+            }
+            
+            // Handle disconnections
+            if (poll_fds[i].revents & (POLLHUP | POLLERR)) {
+                int client_index = client_indices[i];
+                if (client_index >= 0) {
+                    t2_cleanup_tcp_client(client_index);
+                }
+            }
+        }
+    }
+    
+    T2Info("TCP server thread exiting\n");
+    return NULL;
 }
 
 static T2ERROR rBusInterface_Init( )
@@ -1232,6 +1748,24 @@ T2ERROR registerRbusT2EventListener(TelemetryEventCallback eventCB)
     }
     eventCallBack = eventCB ;
 
+    T2Info("%s initialize Unix socket server\n", __FUNCTION__);
+    if (t2_init_tcp_server() != T2ERROR_SUCCESS) {
+        T2Info("Failed to initialize Unix socket server\n");
+    }
+    T2Info("%s initialized Unix socket server\n", __FUNCTION__);
+    T2Info("%s starting TCP server thread\n", __FUNCTION__);
+    g_tcp_server.server_running = true;
+    
+    if (pthread_create(&g_tcp_server.server_thread, NULL, t2_tcp_server_thread, NULL) != 0) {
+        T2Error("Failed to create TCP server thread: %s\n", strerror(errno));
+        g_tcp_server.server_running = false;
+        close(g_tcp_server.server_fd);
+        pthread_mutex_destroy(&g_tcp_server.clients_mutex);
+        return T2ERROR_FAILURE;
+    }
+    
+    T2Info("%s TCP server thread started successfully\n", __FUNCTION__);
+
     T2Debug("%s --out\n", __FUNCTION__);
     return status;
 }
@@ -1555,7 +2089,6 @@ T2ERROR publishEventsProfileUpdates()
     }
     T2Debug("%s --out\n", __FUNCTION__);
     return status;
-
 }
 
 void registerConditionalReportCallBack(triggerReportOnCondtionCallBack triggerConditionCallback)
@@ -1696,6 +2229,7 @@ T2ERROR rbusT2ConsumerUnReg(Vector *triggerConditionList)
     size_t j;
     //char user_data[32] = {0};
     T2Debug("%s ++in\n", __FUNCTION__);
+    t2_unix_socket_server_uninit();
 
     if(!t2bus_handle && T2ERROR_SUCCESS != rBusInterface_Init())
     {

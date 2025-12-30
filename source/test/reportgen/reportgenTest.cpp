@@ -278,6 +278,56 @@ TEST_F(reportgenTestFixture, prepareHttpUrl_CurlInitFails) {
     EXPECT_EQ(result, nullptr);
 }
 
+TEST_F(reportgenTestFixture, prepareHttpUrl_getParameterValueFailsAndEmptyValue) {
+    T2HTTP httpStruct = {0};
+    HTTPReqParam httpParam1 = {0};
+    HTTPReqParam httpParam2 = {0};
+    Vector* paramList = NULL;
+    Vector_Create(&paramList);
+
+    // Use mutable char arrays or cast string literals to char*
+    char paramRefFail[] = "Test.Fail";
+    char paramRefEmpty[] = "Test.Empty";
+    char paramName[] = "testParam";
+    char url[] = "http://rdk.central";
+    httpStruct.URL = url;
+    httpStruct.RequestURIparamList = paramList;
+
+    httpParam1.HttpName = paramName;
+    httpParam1.HttpValue = nullptr;
+    httpParam1.HttpRef = paramRefFail;
+    httpParam2.HttpName = paramName;
+    httpParam2.HttpValue = nullptr;
+    httpParam2.HttpRef = paramRefEmpty;
+
+    Vector_PushBack(paramList, &httpParam1);
+    Vector_PushBack(paramList, &httpParam2);
+
+    EXPECT_CALL(*m_reportgenMock, curl_easy_init())
+        .WillOnce(::testing::Return(reinterpret_cast<CURL*>(0x1)));
+         .WillOnce(::testing::Return(reinterpret_cast<CURL*>(0x1)));
+    EXPECT_CALL(*m_reportgenMock, getParameterValue(::testing::StrEq(paramRefFail), ::testing::_))
+        .WillOnce(::testing::DoAll(
+            ::testing::SetArgPointee<1>(nullptr),
+            ::testing::Return(T2ERROR_FAILURE)
+        ));
+    static char emptyValue[] = "";
+    EXPECT_CALL(*m_reportgenMock, getParameterValue(::testing::StrEq(paramRefEmpty), ::testing::_))
+        .WillOnce(::testing::DoAll(
+            ::testing::SetArgPointee<1>(emptyValue),
+            ::testing::Return(T2ERROR_SUCCESS)
+        ));
+    EXPECT_CALL(*m_reportgenMock, curl_easy_cleanup(reinterpret_cast<CURL*>(0x1))).Times(1);
+
+    char* result = prepareHttpUrl(&httpStruct);
+
+    ASSERT_NE(result, nullptr);
+    EXPECT_STREQ(result, url); // No new params on fail/empty
+    free(result);
+
+    Vector_Destroy(paramList,nullptr);
+}
+
 TEST_F(reportgenTestFixture, PrepareJSONReport1)
 {
       cJSON* jsonobj = (cJSON*)malloc(sizeof(cJSON));

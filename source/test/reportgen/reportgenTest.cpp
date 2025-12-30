@@ -1243,47 +1243,62 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON8)
     Vector_Destroy(paramValueList, freeProfileValues);
 }
 TEST_F(reportgenTestFixture, encodeParamResultInJSON_RegexMatchFailsValueIsEmptied) {
-    // Arrange parameter data structures
-    Param paramObj;
-    paramObj.name = (char*)"Param1";
-    paramObj.reportEmptyParam = true; // To ensure empty reported
-    paramObj.trimParam = false;
-    paramObj.regexParam = (char*)"^abc$"; // Some pattern
+    // Ensure all cJSON mocks return non-NULL and do not cause early/extraneous failures!
+    ON_CALL(*m_reportgenMock, cJSON_CreateArray())
+        .WillByDefault(::testing::Return(reinterpret_cast<cJSON*>(0x1111)));
+    ON_CALL(*m_reportgenMock, cJSON_CreateObject())
+        .WillByDefault(::testing::Return(reinterpret_cast<cJSON*>(0x2222)));
+    ON_CALL(*m_reportgenMock, cJSON_AddStringToObject(::testing::_, ::testing::_, ::testing::_))
+        .WillByDefault(::testing::Return(reinterpret_cast<cJSON*>(0x3333)));
+    ON_CALL(*m_reportgenMock, cJSON_AddItemToArray(::testing::_, ::testing::_))
+        .WillByDefault(::testing::Return());
+    ON_CALL(*m_reportgenMock, cJSON_Delete(::testing::_)).WillByDefault(::testing::Return());
 
-    // Name list vector
+    // Arrange parameter and value structures
+    Param paramObj = {};
+    paramObj.name = (char*)"Param1";
+    paramObj.reportEmptyParam = true;
+    paramObj.trimParam = false;
+    paramObj.regexParam = (char*)"^abc$"; // pattern to "fail"
+
+    // paramNameList
     Vector* paramNameList = NULL;
     Vector_Create(&paramNameList);
     Vector_PushBack(paramNameList, &paramObj);
 
-    // paramValues struct
+    // tr181ValStruct_t (value)
     tr181ValStruct_t* paramValueStruct = (tr181ValStruct_t*)malloc(sizeof(tr181ValStruct_t));
     paramValueStruct->parameterName = strdup("Param1");
-    paramValueStruct->parameterValue = strdup("originalValue"); // Will be subject to regex
+    paramValueStruct->parameterValue = strdup("originalValue");
     tr181ValStruct_t* paramValuesArr[1] = { paramValueStruct };
 
+    // profileValues
     profileValues* profVal = (profileValues*)malloc(sizeof(profileValues));
     profVal->paramValues = paramValuesArr;
     profVal->paramValueCount = 1;
 
+    // paramValueList
     Vector* paramValueList = NULL;
     Vector_Create(&paramValueList);
     Vector_PushBack(paramValueList, profVal);
 
-    // cJSON array to receive results
-     ON_CALL(*m_reportgenMock, cJSON_CreateArray()).WillByDefault(::testing::Return(reinterpret_cast<cJSON*>(0x1111)));
-     ON_CALL(*m_reportgenMock, cJSON_CreateObject()).WillByDefault(::testing::Return(reinterpret_cast<cJSON*>(0x2222)));
-     cJSON* valArray = reinterpret_cast<cJSON*>(0x1111);
-    // Mock regex calls
-    EXPECT_CALL(*m_reportgenMock, regcomp(::testing::_, ::testing::_, ::testing::_)).WillOnce(::testing::Return(0)); // Success
-    EXPECT_CALL(*m_reportgenMock, regexec(::testing::_, ::testing::StrEq("originalValue"), ::testing::_, ::testing::_, 0)).WillOnce(::testing::Return(REG_NOMATCH)); // Fail/mismatch
-    EXPECT_CALL(*m_reportgenMock, regfree(::testing::_)).Times(1);
+    // cJSON output (just needs to be non-NULL)
+    cJSON* valArray = reinterpret_cast<cJSON*>(0x1111);
+
+    // Mocks for regex workflow
+    EXPECT_CALL(*m_reportgenMock, regcomp(::testing::_, ::testing::_, ::testing::_))
+        .WillOnce(::testing::Return(0));
+    EXPECT_CALL(*m_reportgenMock, regexec(::testing::_, ::testing::StrEq("originalValue"), ::testing::_, ::testing::_, 0))
+        .WillOnce(::testing::Return(REG_NOMATCH));
+    EXPECT_CALL(*m_reportgenMock, regfree(::testing::_))
+        .Times(1);
 
     // Act
     T2ERROR ret = encodeParamResultInJSON(valArray, paramNameList, paramValueList);
 
-    // Assert: parameterValue should be emptied
+    // Assert parameter value was emptied
     EXPECT_EQ(ret, T2ERROR_SUCCESS);
-    EXPECT_STREQ(paramValueStruct->parameterValue, ""); // Empty string after regex mismatch
+    EXPECT_STREQ(paramValueStruct->parameterValue, ""); // Should now be empty string
 
     // Cleanup
     free(paramValueStruct->parameterName);

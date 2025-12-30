@@ -305,7 +305,6 @@ TEST_F(reportgenTestFixture, prepareHttpUrl_getParameterValueFailsAndEmptyValue)
 
     EXPECT_CALL(*m_reportgenMock, curl_easy_init())
         .WillOnce(::testing::Return(reinterpret_cast<CURL*>(0x1)));
-         .WillOnce(::testing::Return(reinterpret_cast<CURL*>(0x1)));
     EXPECT_CALL(*m_reportgenMock, getParameterValue(::testing::StrEq(paramRefFail), ::testing::_))
         .WillOnce(::testing::DoAll(
             ::testing::SetArgPointee<1>(nullptr),

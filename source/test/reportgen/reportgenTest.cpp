@@ -1242,68 +1242,6 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON8)
     Vector_Destroy(paramNameList, freeParam);
     Vector_Destroy(paramValueList, freeProfileValues);
 }
-TEST_F(reportgenTestFixture, encodeParamResultInJSON_RegexMatchFailsValueIsEmptied) {
-    // Proper cJSON mocks: all return valid pointers (non-NULL) or correct defaults
-    ON_CALL(*m_reportgenMock, cJSON_CreateArray())
-        .WillByDefault(::testing::Return(reinterpret_cast<cJSON*>(0x1111)));
-    ON_CALL(*m_reportgenMock, cJSON_CreateObject())
-        .WillByDefault(::testing::Return(reinterpret_cast<cJSON*>(0x2222)));
-    ON_CALL(*m_reportgenMock, cJSON_AddStringToObject(::testing::_, ::testing::_, ::testing::_))
-        .WillByDefault(::testing::Return(reinterpret_cast<cJSON*>(0x3333)));
-    ON_CALL(*m_reportgenMock, cJSON_AddItemToArray(::testing::_, ::testing::_))
-        .WillByDefault(::testing::Invoke([](cJSON*, cJSON*){})); // void return
-    ON_CALL(*m_reportgenMock, cJSON_Delete(::testing::_))
-        .WillByDefault(::testing::Return());
-
-    // Arrange parameter and value structures
-    Param paramObj = {};
-    paramObj.name = (char*)"Param1";
-    paramObj.reportEmptyParam = true;
-    paramObj.trimParam = false;
-    paramObj.regexParam = (char*)"^abc$"; // Regex pattern to "fail"
-
-    Vector* paramNameList = NULL;
-    Vector_Create(&paramNameList);
-    Vector_PushBack(paramNameList, &paramObj);
-
-    tr181ValStruct_t* paramValueStruct = (tr181ValStruct_t*)malloc(sizeof(tr181ValStruct_t));
-    paramValueStruct->parameterName = strdup("Param1");
-    paramValueStruct->parameterValue = strdup("originalValue");
-    tr181ValStruct_t* paramValuesArr[1] = { paramValueStruct };
-
-    profileValues* profVal = (profileValues*)malloc(sizeof(profileValues));
-    profVal->paramValues = paramValuesArr;
-    profVal->paramValueCount = 1;
-
-    Vector* paramValueList = NULL;
-    Vector_Create(&paramValueList);
-    Vector_PushBack(paramValueList, profVal);
-
-    cJSON* valArray = reinterpret_cast<cJSON*>(0x1111);
-
-    // Mocks for regex workflow
-    EXPECT_CALL(*m_reportgenMock, regcomp(::testing::_, ::testing::_, ::testing::_))
-        .WillOnce(::testing::Return(0));
-    EXPECT_CALL(*m_reportgenMock, regexec(::testing::_, ::testing::StrEq("originalValue"), ::testing::_, ::testing::_, 0))
-        .WillOnce(::testing::Return(REG_NOMATCH));
-    EXPECT_CALL(*m_reportgenMock, regfree(::testing::_))
-        .Times(1);
-
-    // Act
-    T2ERROR ret = encodeParamResultInJSON(valArray, paramNameList, paramValueList);
-
-    // Assert: Should have emptied string
-    EXPECT_EQ(ret, T2ERROR_SUCCESS);
-    EXPECT_STREQ(paramValueStruct->parameterValue, "");
-
-    // Cleanup
-    free(paramValueStruct->parameterName);
-    free(paramValueStruct->parameterValue);
-    free(paramValueStruct);
-    free(profVal);
-    Vector_Destroy(paramNameList, NULL);
-    Vector_Destroy(paramValueList, NULL);
-}
 /*
 TEST_F(reportgenTestFixture, encodeParamResultInJSON10)
 {

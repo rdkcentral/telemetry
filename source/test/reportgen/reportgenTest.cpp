@@ -1908,7 +1908,39 @@ TEST_F(reportgenTestFixture, tagReportAsCached_ReportAndSearchResultBranches) {
     EXPECT_STREQ("{\"searchResult\":null, \"Report\":[{\"REPORT_TYPE\": \"CACHED\"}]}", fakeJson);
     free(fakeJson);
 }
+TEST_F(reportgenTestFixture, tagReportAsCached_NoArrayErrorBranch) {
+    char* fakeJson = strdup("{\"foo\":42}");
 
+    cJSON* mockRoot = (cJSON*)0x1000;
+    cJSON* mockReportTypeObj = (cJSON*)0x3000;
+
+    // Parse
+    EXPECT_CALL(*m_reportgenMock, cJSON_Parse(_))
+        .WillOnce(::testing::Return(mockRoot));
+    EXPECT_CALL(*m_reportgenMock, cJSON_CreateObject())
+        .WillOnce(::testing::Return(mockReportTypeObj));
+    EXPECT_CALL(*m_reportgenMock, cJSON_AddStringToObject(
+        mockReportTypeObj,
+        ::testing::StrEq("REPORT_TYPE"),
+        ::testing::StrEq("CACHED"))
+    )
+        .WillOnce(::testing::Return(mockReportTypeObj));
+    // Try "searchResult" (not found)
+    EXPECT_CALL(*m_reportgenMock, cJSON_GetObjectItemCaseSensitive(mockRoot, ::testing::StrEq("searchResult")))
+        .WillOnce(::testing::Return(nullptr));
+    // Try "Report" (not found)
+    EXPECT_CALL(*m_reportgenMock, cJSON_GetObjectItemCaseSensitive(mockRoot, ::testing::StrEq("Report")))
+        .WillOnce(::testing::Return(nullptr));
+    // Clean up both objects on error
+    destroyJSONReport(mockReportTypeObj);
+    destroyJSONReport(mockRoot);
+    // Act
+    tagReportAsCached(&fakeJson);
+
+    // Assert: unchanged input
+    EXPECT_STREQ("{\"foo\":42}", fakeJson);
+    free(fakeJson);
+}
 #ifdef GTEST_ENABLE
 extern "C" {
 typedef bool (*checkForEmptyStringFunc)(char *);

@@ -56,6 +56,9 @@ public:
     virtual void curl_free(void *ptr) = 0;
     virtual void curl_easy_cleanup(CURL *curl) = 0;
     virtual T2ERROR applyRegexToValue(char **value, const char *regex) = 0;
+    virtual int cJSON_IsArray(const cJSON* arr) = 0;
+    virtual cJSON_bool cJSON_InsertItemInArray(cJSON* array, int which, cJSON* item) = 0;
+    virtual cJSON* cJSON_GetObjectItemCaseSensitive(const cJSON * const object, const char * const string) = 0;
 };
 
 class ReportgenMock: public ReportgenInterface
@@ -86,6 +89,9 @@ public:
     MOCK_METHOD1(curl_free, void(void *));
     MOCK_METHOD1(curl_easy_cleanup, void(CURL *));
     MOCK_METHOD2(applyRegexToValue, T2ERROR(char **, const char *));
+    MOCK_METHOD1(cJSON_IsArray, int(const cJSON*));
+    MOCK_METHOD3(cJSON_InsertItemInArray, cJSON_bool(cJSON*, int, cJSON*));
+    MOCK_METHOD2(cJSON_GetObjectItemCaseSensitive, cJSON* (const cJSON * const, const char * const));
 };
 
 #endif

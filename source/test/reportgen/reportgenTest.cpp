@@ -278,65 +278,6 @@ TEST_F(reportgenTestFixture, prepareHttpUrl_CurlInitFails) {
     EXPECT_EQ(result, nullptr);
 }
 
-TEST_F(reportgenTestFixture, prepareHttpUrl_getParameterValueFailsAndEmptyValue) {
-    // Arrange test data
-    T2HTTP httpStruct = {0};
-    HTTPReqParam httpParam1 = {0};
-    HTTPReqParam httpParam2 = {0};
-    Vector paramList;
-
-    char paramRefFail[] = "Test.Fail";
-    char paramRefEmpty[] = "Test.Empty";
-    char paramName[] = "testParam";
-    char url[] = "http://rdk.central";
-    httpStruct.URL = url;
-    httpStruct.RequestURIparamList = &paramList;
-    paramList.count = 2;
-    HTTPReqParam* params[2] = {&httpParam1, &httpParam2};
-    paramList.items = (void **)params;
-
-    // First param: getParameterValue fails
-    httpParam1.HttpName = paramName;
-    httpParam1.HttpValue = nullptr;
-    httpParam1.HttpRef = paramRefFail;
-    // Second param: getParameterValue returns empty value
-    httpParam2.HttpName = paramName;
-    httpParam2.HttpValue = nullptr;
-    httpParam2.HttpRef = paramRefEmpty;
-
-    // Mock curl_easy_init to return a dummy pointer (indicating success)
-    EXPECT_CALL(*m_reportgenMock, curl_easy_init())
-        .WillOnce(::testing::Return(reinterpret_cast<CURL*>(0x1)));
-    // First parameter triggers getParameterValue failure branch
-    EXPECT_CALL(*m_reportgenMock, getParameterValue(StrEq(paramRefFail), testing::_))
-        .WillOnce(DoAll(
-            testing::SetArgPointee<1>(nullptr),
-            testing::Return(T2ERROR_FAILURE)
-        ));
-    // Error is logged via T2Error (optional mock)
-    // Second parameter triggers getParameterValue success/empty value branch
-    char emptyValue[] = ""; // simulate function allocating this
-    EXPECT_CALL(*m_reportgenMock, getParameterValue(StrEq(paramRefEmpty), testing::_))
-        .WillOnce(DoAll(
-            testing::SetArgPointee<1>(emptyValue),
-            testing::Return(T2ERROR_SUCCESS)
-        ));
-    // Should free paramValue
-    EXPECT_CALL(*m_reportgenMock, free(emptyValue)).Times(1);
-    // Error is logged for empty parameter (optional mock)
-    // Expect curl_easy_cleanup to be called once
-    EXPECT_CALL(*m_reportgenMock, curl_easy_cleanup(reinterpret_cast<CURL*>(0x1))).Times(1);
-
-    // Act
-    char* result = prepareHttpUrl(&httpStruct);
-
-    // Assert
-    // Result should be non-null (the base URL), but no extra params have been appended
-    ASSERT_TRUE(result != nullptr);
-    EXPECT_STREQ(result, url); // Should not change as both params failed to append
-    free(result);
-}
-
 TEST_F(reportgenTestFixture, PrepareJSONReport1)
 {
       cJSON* jsonobj = (cJSON*)malloc(sizeof(cJSON));

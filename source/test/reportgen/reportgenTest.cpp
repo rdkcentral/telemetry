@@ -1941,6 +1941,27 @@ TEST_F(reportgenTestFixture, tagReportAsCached_NoArrayErrorBranch) {
     EXPECT_STREQ("{\"foo\":42}", fakeJson);
     free(fakeJson);
 }
+TEST_F(reportgenTestFixture, tagReportAsCached_CreateObjectFails)
+{
+    // Arrange: simulate cJSON_CreateObject failure
+    char* fakeJson = strdup("{\"searchResult\":[]}");
+    cJSON* mockRoot = (cJSON*)0x1000;
+
+    // cJSON_Parse returns a dummy root
+    EXPECT_CALL(*m_reportgenMock, cJSON_Parse(_)).WillOnce(::testing::Return(mockRoot));
+    // cJSON_CreateObject fails
+    EXPECT_CALL(*m_reportgenMock, cJSON_CreateObject()).WillOnce(::testing::Return(nullptr));
+    // Optionally: check logging. If T2Error is a macro and not mockable, you can't directly test it here.
+    // Use the REAL destroyJSONReport - no EXPECT_CALL, just ensure it is linked
+
+    // Act: call the function under test
+    tagReportAsCached(&fakeJson);
+
+    // (Optionally: Check that jsonReportObj's memory is freed, etc. if possible)
+    EXPECT_STREQ("{\"searchResult\":[]}", fakeJson); // Should be unchanged
+
+    free(fakeJson); // Clean up
+}
 #ifdef GTEST_ENABLE
 extern "C" {
 typedef bool (*checkForEmptyStringFunc)(char *);

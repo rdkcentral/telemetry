@@ -327,6 +327,58 @@ TEST_F(reportgenTestFixture, prepareHttpUrl_getParameterValueFailsAndEmptyValue)
     Vector_Destroy(paramList,nullptr);
 }
 
+// This tests the branch: getParameterValue returns success, paramValue[0] != '\0', curl_easy_escape is called, paramValue is freed
+
+TEST_F(reportgenTestFixture, prepareHttpUrl_ParamValueIsEscapedAndFreed) {
+    // Arrange
+    T2HTTP httpStruct = {0};
+    HTTPReqParam httpParam = {0};
+    Vector* paramList = NULL;
+    Vector_Create(&paramList);
+
+    char paramRef[] = "Test.Param";
+    char paramName[] = "testParam";
+    char url[] = "http://rdk.central";
+    httpStruct.URL = url;
+    httpStruct.RequestURIparamList = paramList;
+
+    httpParam.HttpName = paramName;
+    httpParam.HttpValue = nullptr;
+    httpParam.HttpRef = paramRef;
+    Vector_PushBack(paramList, &httpParam);
+
+    // Returned param value (will be freed by production code)
+    char* paramValue = strdup("value123");
+
+    // Escaped URI string (will be freed by curl_free)
+    char escapedValue[] = "escapedValue";
+
+    EXPECT_CALL(*m_reportgenMock, curl_easy_init())
+        .WillOnce(::testing::Return(reinterpret_cast<CURL*>(0x1)));
+    EXPECT_CALL(*m_reportgenMock, getParameterValue(::testing::StrEq(paramRef), ::testing::_))
+        .WillOnce(::testing::DoAll(
+            ::testing::SetArgPointee<1>(paramValue),
+            ::testing::Return(T2ERROR_SUCCESS)
+        ));
+    EXPECT_CALL(*m_reportgenMock, curl_easy_escape(reinterpret_cast<CURL*>(0x1), ::testing::StrEq("value123"), 0))
+        .WillOnce(::testing::Return(escapedValue));
+    // Code under test is expected to call free(paramValue)
+    // No need to explicitly mock free if not using a custom allocator
+    EXPECT_CALL(*m_reportgenMock, curl_free(escapedValue)).Times(1);
+    EXPECT_CALL(*m_reportgenMock, curl_easy_cleanup(reinterpret_cast<CURL*>(0x1))).Times(1);
+
+    // Act
+    char* result = prepareHttpUrl(&httpStruct);
+
+    // Assert: URL now includes parameter (escaped value)
+    ASSERT_NE(result, nullptr);
+    std::string expectedStart = std::string(url) + "?" + paramName + "=escapedValue";
+    EXPECT_EQ(0, strncmp(result, expectedStart.c_str(), expectedStart.size()));
+    free(result);
+
+    Vector_Destroy(paramList, NULL);
+}
+
 TEST_F(reportgenTestFixture, PrepareJSONReport1)
 {
       cJSON* jsonobj = (cJSON*)malloc(sizeof(cJSON));

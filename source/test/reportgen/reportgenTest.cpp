@@ -261,6 +261,23 @@ TEST_F(reportgenTestFixture, PrepareHttpUrl)
 	free(data);
 }
 
+TEST_F(reportgenTestFixture, prepareHttpUrl_CurlInitFails) {
+    T2HTTP httpStruct;
+    T2HTTP* http = &httpStruct;
+
+    // Simulate curl_easy_init() failing
+    EXPECT_CALL(*m_reportgenMock, curl_easy_init())
+        .WillOnce(::testing::Return(nullptr));
+
+    // Optionally: you could check for error logging if T2Error is mockable
+
+    // Call function under test
+    char* result = prepareHttpUrl(http);
+
+    // Expect NULL return
+    EXPECT_EQ(result, nullptr);
+}
+
 TEST_F(reportgenTestFixture, PrepareJSONReport1)
 {
       cJSON* jsonobj = (cJSON*)malloc(sizeof(cJSON));

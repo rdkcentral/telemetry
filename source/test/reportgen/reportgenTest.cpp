@@ -1242,6 +1242,57 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON8)
     Vector_Destroy(paramNameList, freeParam);
     Vector_Destroy(paramValueList, freeProfileValues);
 }
+TEST_F(reportgenTestFixture, encodeParamResultInJSON_RegexMatchFailsValueIsEmptied) {
+    // Arrange parameter data structures
+    Param paramObj;
+    paramObj.name = (char*)"Param1";
+    paramObj.reportEmptyParam = true; // To ensure empty reported
+    paramObj.trimParam = false;
+    paramObj.regexParam = (char*)"^abc$"; // Some pattern
+
+    // Name list vector
+    Vector* paramNameList = NULL;
+    Vector_Create(&paramNameList);
+    Vector_PushBack(paramNameList, &paramObj);
+
+    // paramValues struct
+    tr181ValStruct_t* paramValueStruct = (tr181ValStruct_t*)malloc(sizeof(tr181ValStruct_t));
+    paramValueStruct->parameterName = strdup("Param1");
+    paramValueStruct->parameterValue = strdup("originalValue"); // Will be subject to regex
+    tr181ValStruct_t* paramValuesArr[1] = { paramValueStruct };
+
+    profileValues* profVal = (profileValues*)malloc(sizeof(profileValues));
+    profVal->paramValues = paramValuesArr;
+    profVal->paramValueCount = 1;
+
+    Vector* paramValueList = NULL;
+    Vector_Create(&paramValueList);
+    Vector_PushBack(paramValueList, profVal);
+
+    // cJSON array to receive results
+    cJSON* valArray = cJSON_CreateArray();
+
+    // Mock regex calls
+    EXPECT_CALL(*m_reportgenMock, regcomp(::testing::_, ::testing::_, ::testing::_)).WillOnce(::testing::Return(0)); // Success
+    EXPECT_CALL(*m_reportgenMock, regexec(::testing::_, ::testing::StrEq("originalValue"), ::testing::_, ::testing::_, 0)).WillOnce(::testing::Return(REG_NOMATCH)); // Fail/mismatch
+    EXPECT_CALL(*m_reportgenMock, regfree(::testing::_)).Times(1);
+
+    // Act
+    T2ERROR ret = encodeParamResultInJSON(valArray, paramNameList, paramValueList);
+
+    // Assert: parameterValue should be emptied
+    EXPECT_EQ(ret, T2ERROR_SUCCESS);
+    EXPECT_STREQ(paramValueStruct->parameterValue, ""); // Empty string after regex mismatch
+
+    // Cleanup
+    cJSON_Delete(valArray);
+    free(paramValueStruct->parameterName);
+    free(paramValueStruct->parameterValue);
+    free(paramValueStruct);
+    free(profVal);
+    Vector_Destroy(paramNameList, NULL);
+    Vector_Destroy(paramValueList, NULL);
+}
 /*
 TEST_F(reportgenTestFixture, encodeParamResultInJSON10)
 {

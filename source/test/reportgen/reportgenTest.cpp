@@ -1243,7 +1243,7 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON8)
     Vector_Destroy(paramValueList, freeProfileValues);
 }
 TEST_F(reportgenTestFixture, encodeParamResultInJSON_RegexMatchFailsValueIsEmptied) {
-    // Ensure all cJSON mocks return non-NULL and do not cause early/extraneous failures!
+    // Proper cJSON mocks: all return valid pointers (non-NULL) or correct defaults
     ON_CALL(*m_reportgenMock, cJSON_CreateArray())
         .WillByDefault(::testing::Return(reinterpret_cast<cJSON*>(0x1111)));
     ON_CALL(*m_reportgenMock, cJSON_CreateObject())
@@ -1251,38 +1251,34 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON_RegexMatchFailsValueIsEmpti
     ON_CALL(*m_reportgenMock, cJSON_AddStringToObject(::testing::_, ::testing::_, ::testing::_))
         .WillByDefault(::testing::Return(reinterpret_cast<cJSON*>(0x3333)));
     ON_CALL(*m_reportgenMock, cJSON_AddItemToArray(::testing::_, ::testing::_))
+        .WillByDefault(::testing::Invoke([](cJSON*, cJSON*){})); // void return
+    ON_CALL(*m_reportgenMock, cJSON_Delete(::testing::_))
         .WillByDefault(::testing::Return());
-    ON_CALL(*m_reportgenMock, cJSON_Delete(::testing::_)).WillByDefault(::testing::Return());
 
     // Arrange parameter and value structures
     Param paramObj = {};
     paramObj.name = (char*)"Param1";
     paramObj.reportEmptyParam = true;
     paramObj.trimParam = false;
-    paramObj.regexParam = (char*)"^abc$"; // pattern to "fail"
+    paramObj.regexParam = (char*)"^abc$"; // Regex pattern to "fail"
 
-    // paramNameList
     Vector* paramNameList = NULL;
     Vector_Create(&paramNameList);
     Vector_PushBack(paramNameList, &paramObj);
 
-    // tr181ValStruct_t (value)
     tr181ValStruct_t* paramValueStruct = (tr181ValStruct_t*)malloc(sizeof(tr181ValStruct_t));
     paramValueStruct->parameterName = strdup("Param1");
     paramValueStruct->parameterValue = strdup("originalValue");
     tr181ValStruct_t* paramValuesArr[1] = { paramValueStruct };
 
-    // profileValues
     profileValues* profVal = (profileValues*)malloc(sizeof(profileValues));
     profVal->paramValues = paramValuesArr;
     profVal->paramValueCount = 1;
 
-    // paramValueList
     Vector* paramValueList = NULL;
     Vector_Create(&paramValueList);
     Vector_PushBack(paramValueList, profVal);
 
-    // cJSON output (just needs to be non-NULL)
     cJSON* valArray = reinterpret_cast<cJSON*>(0x1111);
 
     // Mocks for regex workflow
@@ -1296,9 +1292,9 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON_RegexMatchFailsValueIsEmpti
     // Act
     T2ERROR ret = encodeParamResultInJSON(valArray, paramNameList, paramValueList);
 
-    // Assert parameter value was emptied
+    // Assert: Should have emptied string
     EXPECT_EQ(ret, T2ERROR_SUCCESS);
-    EXPECT_STREQ(paramValueStruct->parameterValue, ""); // Should now be empty string
+    EXPECT_STREQ(paramValueStruct->parameterValue, "");
 
     // Cleanup
     free(paramValueStruct->parameterName);

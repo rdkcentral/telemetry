@@ -310,7 +310,7 @@ TEST_F(reportgenTestFixture, prepareHttpUrl_getParameterValueFailsAndEmptyValue)
             ::testing::SetArgPointee<1>(nullptr),
             ::testing::Return(T2ERROR_FAILURE)
         ));
-    static char emptyValue[] = "";
+    char* emptyValue = strdup("");  // allocate so code under test can free() it
     EXPECT_CALL(*m_reportgenMock, getParameterValue(::testing::StrEq(paramRefEmpty), ::testing::_))
         .WillOnce(::testing::DoAll(
             ::testing::SetArgPointee<1>(emptyValue),

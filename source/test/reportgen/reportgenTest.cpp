@@ -324,7 +324,7 @@ TEST_F(reportgenTestFixture, prepareHttpUrl_getParameterValueFailsAndEmptyValue)
     EXPECT_STREQ(result, url); // No new params on fail/empty
     free(result);
 
-    Vector_Destroy(paramList,nullptr);
+    Vector_Destroy(paramList);
 }
 
 TEST_F(reportgenTestFixture, PrepareJSONReport1)

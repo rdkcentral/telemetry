@@ -1270,9 +1270,9 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON_RegexMatchFailsValueIsEmpti
     Vector_PushBack(paramValueList, profVal);
 
     // cJSON array to receive results
-    ON_CALL(*m_reportgenMock, cJSON_CreateArray()).WillByDefault(::testing::Return(reinterpret_cast<cJSON*>(0x1111)));
-    ON_CALL(*m_reportgenMock, cJSON_CreateObject()).WillByDefault(::testing::Return(reinterpret_cast<cJSON*>(0x2222)));
-    cJSON* valArray = reinterpret_cast<cJSON*>(0x1111);
+     ON_CALL(*m_reportgenMock, cJSON_CreateArray()).WillByDefault(::testing::Return(reinterpret_cast<cJSON*>(0x1111)));
+     ON_CALL(*m_reportgenMock, cJSON_CreateObject()).WillByDefault(::testing::Return(reinterpret_cast<cJSON*>(0x2222)));
+     cJSON* valArray = reinterpret_cast<cJSON*>(0x1111);
     // Mock regex calls
     EXPECT_CALL(*m_reportgenMock, regcomp(::testing::_, ::testing::_, ::testing::_)).WillOnce(::testing::Return(0)); // Success
     EXPECT_CALL(*m_reportgenMock, regexec(::testing::_, ::testing::StrEq("originalValue"), ::testing::_, ::testing::_, 0)).WillOnce(::testing::Return(REG_NOMATCH)); // Fail/mismatch

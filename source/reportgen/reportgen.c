@@ -1341,4 +1341,18 @@ void tagReportAsCached(char **jsonReport)
     destroyJSONReport(jsonReportObj);
 }
 
+#ifdef GTEST_ENABLE
+typedef bool (*checkForEmptyStringFunc)(char *);
 
+checkForEmptyStringFunc checkForEmptyStringCallback(void)
+{
+        return checkForEmptyString;
+}
+
+typedef T2ERROR (*applyRegexToValueFunc)(char **,const char *);
+
+applyRegexToValueFunc applyRegexToValueCallback(void)
+{
+	return applyRegexToValue;
+}
+#endif

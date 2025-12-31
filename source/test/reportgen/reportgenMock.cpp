@@ -231,3 +231,29 @@ extern "C" T2ERROR getParameterValue(const char* paramName, char **paramValue)
         }
         return m_reportgenMock->getParameterValue(paramName, paramValue);
 }
+extern "C" T2ERROR applyRegexToValue(char **value, const char *regex)
+{
+    if (!m_reportgenMock)
+        return T2ERROR_FAILURE;
+    return m_reportgenMock->applyRegexToValue(value, regex);
+}
+extern "C" int cJSON_IsArray(const cJSON* arr)
+{
+    if (!m_reportgenMock)
+        return 0;
+    return m_reportgenMock->cJSON_IsArray(arr);
+}
+
+extern "C" cJSON_bool cJSON_InsertItemInArray(cJSON* array, int which, cJSON* item)
+{
+    if (!m_reportgenMock)
+        return 0;
+    return m_reportgenMock->cJSON_InsertItemInArray(array, which, item);
+}
+
+extern "C" cJSON* cJSON_GetObjectItemCaseSensitive(const cJSON * const object, const char * const string)
+{
+    if (!m_reportgenMock)
+        return nullptr;
+    return m_reportgenMock->cJSON_GetObjectItemCaseSensitive(object, string);
+}

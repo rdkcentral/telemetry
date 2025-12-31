@@ -1437,3 +1437,60 @@ TEST_F(ProfileTest, createComponentDataElements) {
     createComponentDataElements();
 }
 
+
+extern "C" {
+typedef void (*freeRequestURIparamFunc)(void *);
+freeRequestURIparamFunc freeRequestURIparamCallback(void);
+}
+
+typedef struct {
+    char *HttpName;
+    char *HttpRef;
+    char *HttpValue;
+} HTTPReqParam;
+
+// ---- Static function: freeRequestURIparam tests ----
+
+TEST(ProfileTest, FreeRequestURIparam_NULLInput) {
+    freeRequestURIparamFunc func = freeRequestURIparamCallback();
+    ASSERT_NE(func, nullptr);
+    func(nullptr); // Should not crash
+}
+
+TEST(ProfileTest, FreeRequestURIparam_AllFieldsPopulated) {
+    freeRequestURIparamFunc func = freeRequestURIparamCallback();
+    ASSERT_NE(func, nullptr);
+
+    HTTPReqParam *hparam = (HTTPReqParam*)malloc(sizeof(HTTPReqParam));
+    hparam->HttpName  = strdup("testName");
+    hparam->HttpRef   = strdup("testRef");
+    hparam->HttpValue = strdup("testValue");
+
+    func(hparam); // Should free everything, no crash or leaks
+}
+
+TEST(ProfileTest, FreeRequestURIparam_SomeFieldsNull) {
+    freeRequestURIparamFunc func = freeRequestURIparamCallback();
+    ASSERT_NE(func, nullptr);
+
+    HTTPReqParam *hparam = (HTTPReqParam*)malloc(sizeof(HTTPReqParam));
+    hparam->HttpName  = nullptr;
+    hparam->HttpRef   = strdup("testRef");
+    hparam->HttpValue = nullptr;
+
+    func(hparam); // Should free the struct and HttpRef safely
+}
+
+TEST(ProfileTest, FreeRequestURIparam_AllFieldsNull) {
+    freeRequestURIparamFunc func = freeRequestURIparamCallback();
+    ASSERT_NE(func, nullptr);
+
+    HTTPReqParam *hparam = (HTTPReqParam*)malloc(sizeof(HTTPReqParam));
+    hparam->HttpName  = nullptr;
+    hparam->HttpRef   = nullptr;
+    hparam->HttpValue = nullptr;
+
+    func(hparam); // Should free struct safely
+}
+
+

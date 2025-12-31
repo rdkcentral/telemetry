@@ -1858,4 +1858,10 @@ unsigned int getMinThresholdDuration(char *profileName)
     return minThresholdDuration;
 }
 
-
+#ifdef GTEST_ENABLE
+typedef void (*freeRequestURIparamFunc)(void *);
+freeRequestURIparamFunc freeRequestURIparamCallback(void)
+{
+    return freeRequestURIparam;
+}
+#endif

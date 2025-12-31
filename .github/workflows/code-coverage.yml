@@ -1,6 +1,8 @@
 name: Code Coverage
 
 on:
+  push:
+    branches: [develop,main,topic/*]
   pull_request:
     branches: [ develop]
 
@@ -36,25 +38,6 @@ jobs:
 
       - name: Copy coverage summary to runner
         run: docker cp native-platform:/tmp/coverage_summary.txt /tmp/
-
-      - name: Update the coverage report to Pull request using actions
-        uses: actions/github-script@v4
-        with:
-          script: |
-            const fs = require('fs');
-            const lcov_result = fs.readFileSync('/tmp/coverage_summary.txt', 'utf8');
-          
-            github.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: 
-                    '## Code Coverage Summary \n' +
-                    ' ' +
-                    '```' +
-                    lcov_result + 
-                    '```'
-            });
 
       - name: Generate the html report
         run: docker exec -i native-platform /bin/bash -c " cd /mnt/L1_CONTAINER_SHARED_VOLUME/ && genhtml coverage.info --output-directory /tmp/coverage_report"

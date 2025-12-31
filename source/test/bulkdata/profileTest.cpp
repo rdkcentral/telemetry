@@ -1444,8 +1444,7 @@ freeRequestURIparamFunc freeRequestURIparamCallback(void);
 }
 
 
-// ---- Static function: freeRequestURIparam tests ----
-
+#ifdef GTEST_ENABLE
 TEST(ProfileTest, FreeRequestURIparam_NULLInput) {
     freeRequestURIparamFunc func = freeRequestURIparamCallback();
     ASSERT_NE(func, nullptr);
@@ -1488,4 +1487,4 @@ TEST(ProfileTest, FreeRequestURIparam_AllFieldsNull) {
     func(hparam); // Should free struct safely
 }
 
-
+#endif

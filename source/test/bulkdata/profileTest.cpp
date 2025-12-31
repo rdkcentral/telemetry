@@ -1443,11 +1443,6 @@ typedef void (*freeRequestURIparamFunc)(void *);
 freeRequestURIparamFunc freeRequestURIparamCallback(void);
 }
 
-typedef struct {
-    char *HttpName;
-    char *HttpRef;
-    char *HttpValue;
-} HTTPReqParam;
 
 // ---- Static function: freeRequestURIparam tests ----
 

@@ -1645,6 +1645,7 @@ TEST_F(reportgenTestFixture,  encodeEventMarkersInJSON4)
 
 }
 
+
 TEST_F(reportgenTestFixture,  encodeEventMarkersInJSON5)
 {
      cJSON* valArray = NULL;

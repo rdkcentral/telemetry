@@ -78,14 +78,19 @@ protected:
 	g_schedulerMock = nullptr;
     }
 };
-#ifdef GTEST_ENABLE
+#if 1
 extern "C" {
 typedef void (*freeRequestURIparamFunc)(void *);
 freeRequestURIparamFunc freeRequestURIparamFuncCallback(void);
+
+typedef void (*freeReportProfileConfigFunc)(void *);
+freeReportProfileConfigFunc freeReportProfileConfigFuncCallback(void);
 }
 
-typedef void (*freeRequestURIparamFunc)(void *);
-freeRequestURIparamFunc freeRequestURIparamFuncCallback(void);
+struct Config {
+    char* name;
+    char* configData;
+};
 
 TEST_F(ProfileTest, FreeRequestURIparam_Null) {
     freeRequestURIparamFunc freeFunc = freeRequestURIparamFuncCallback();
@@ -130,6 +135,42 @@ TEST_F(ProfileTest, FreeRequestURIparam_Partials) {
     HTTPReqParam* param4 = (HTTPReqParam*)calloc(1, sizeof(HTTPReqParam));
     freeFunc(param4);
 }
+
+TEST_F(ProfileTest, FreeReportProfileConfig_Null) {
+    freeReportProfileConfigFunc freeFunc = freeReportProfileConfigFuncCallback();
+    ASSERT_NE(freeFunc, nullptr);
+    freeFunc(nullptr); // Should not crash
+}
+
+TEST_F(ProfileTest, FreeReportProfileConfig_Valid) {
+    freeReportProfileConfigFunc freeFunc = freeReportProfileConfigFuncCallback();
+    ASSERT_NE(freeFunc, nullptr);
+
+    Config *config = (Config*)malloc(sizeof(Config));
+    ASSERT_NE(config, nullptr);
+    config->name = strdup("TestProfile");
+    config->configData = strdup("SomeData");
+
+    freeFunc(config); // Should free all
+}
+
+TEST_F(ProfileTest, FreeReportProfileConfig_Partials) {
+    freeReportProfileConfigFunc freeFunc = freeReportProfileConfigFuncCallback();
+    ASSERT_NE(freeFunc, nullptr);
+
+    Config *config1 = (Config*)calloc(1, sizeof(Config));
+    config1->name = strdup("TestProfile");
+    freeFunc(config1);
+
+    Config *config2 = (Config*)calloc(1, sizeof(Config));
+    config2->configData = strdup("SomeData");
+    freeFunc(config2);
+
+    Config *config3 = (Config*)calloc(1, sizeof(Config));
+    // Both members null
+    freeFunc(config3);
+}
+
 #endif
 #if 1
 //comment

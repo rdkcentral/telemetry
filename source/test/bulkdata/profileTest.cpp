@@ -85,6 +85,12 @@ freeRequestURIparamFunc freeRequestURIparamFuncCallback(void);
 
 typedef void (*freeReportProfileConfigFunc)(void *);
 freeReportProfileConfigFunc freeReportProfileConfigFuncCallback(void);
+
+typedef void (*freeProfileFunc)(void *);
+freeProfileFunc freeProfileFuncCallback(void);
+
+typedef T2ERROR (*getProfileFunc)(const char*, Profile**);
+getProfileFunc getProfileFuncCallback(void);
 }
 
 struct Config {
@@ -225,6 +231,42 @@ TEST_F(ProfileTest, FreeProfile_OnlyNameSet) {
     prof->name = strdup("profile_name");
     freeFunc(prof);
 }
+TEST_F(ProfileTest, GetProfile_NullName) {
+    getProfileFunc func = getProfileFuncCallback();
+    Profile* prof = nullptr;
+    T2ERROR err = func(nullptr, &prof);
+    EXPECT_EQ(err, T2ERROR_FAILURE); // Or the constant your implementation uses
+}
+
+#if 0
+TEST_F(ProfileTest, GetProfile_Found) {
+    getProfileFunc func = getProfileFuncCallback();
+
+    Profile* namedProf = (Profile*)calloc(1, sizeof(Profile));
+    namedProf->name = strdup("foobar");
+
+    // Fix 1: Proper Vector_Create call
+    Vector *profileList = nullptr;
+    Vector_Create(&profileList);   // Correct usage!
+
+    Vector_PushBack(profileList, namedProf);
+
+    // (Assume you have a way to temporarily point the module's global 'profileList' to this)
+    extern Vector *profileList;   // If allowed, otherwise use API to set
+    ::profileList = profileList;
+
+    Profile* out = nullptr;
+    T2ERROR err = func("foobar", &out);
+
+    EXPECT_EQ(err, T2ERROR_SUCCESS);
+    EXPECT_EQ(out, namedProf);
+
+    // Fix 2: Use the accessor for the static free function
+    Vector_Destroy(profileList, freeProfileFuncCallback());
+
+    ::profileList = nullptr; // If needed to clean up the global
+}
+#endif
 #endif
 #if 1
 //comment

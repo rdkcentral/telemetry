@@ -1874,4 +1874,9 @@ typedef void (*freeProfileFunc)(void *);
 freeProfileFunc freeProfileFuncCallback(void) {
     return freeProfile;
 }
+
+typedef T2ERROR (*getProfileFunc)(const char*, Profile**);
+getProfileFunc getProfileFuncCallback(void) {
+    return getProfile;
+}
 #endif

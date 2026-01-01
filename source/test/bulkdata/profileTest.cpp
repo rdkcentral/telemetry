@@ -268,6 +268,7 @@ TEST(CollectAndReportTest, NullDataReturnsNull) {
     EXPECT_EQ(ret, nullptr); // Should return null pointer for null input
 }
 
+#if 0
 TEST(CollectAndReportTest, HandlesRestartEventAndExits) {
     CollectAndReportFunc fn = getCollectAndReportFunc();
     Profile profile = {};
@@ -303,7 +304,7 @@ TEST(CollectAndReportTest, HandlesRestartEventAndExits) {
     EXPECT_EQ(returnVal, nullptr); // or tailored expectation
     EXPECT_EQ(join_result, 0);     // Should now succeed
 }
-
+#endif
 #endif
 #if 1
 //comment

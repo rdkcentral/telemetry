@@ -1857,10 +1857,12 @@ unsigned int getMinThresholdDuration(char *profileName)
     T2Debug("%s --out\n", __FUNCTION__);
     return minThresholdDuration;
 }
+
 #ifdef GTEST_ENABLE
-typedef void (*freeRequestURIparamFunc)(void *);
-freeRequestURIparamFunc freeRequestURIparamCallback(void)
+typedef void (*freeRequestURIparamFunc) (void *);
+
+freeRequestURIparamFunc freeRequestURIparamFuncCallback(void)
 {
-    return freeRequestURIparam;
+   return freeRequestURIparam;
 }
 #endif

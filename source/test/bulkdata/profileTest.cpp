@@ -78,7 +78,59 @@ protected:
 	g_schedulerMock = nullptr;
     }
 };
+#ifdef GTEST_ENABLE
+extern "C" {
+typedef void (*freeRequestURIparamFunc)(void *);
+freeRequestURIparamFunc freeRequestURIparamFuncCallback(void);
+}
 
+typedef void (*freeRequestURIparamFunc)(void *);
+freeRequestURIparamFunc freeRequestURIparamFuncCallback(void);
+
+TEST_F(ProfileTest, FreeRequestURIparam_Null) {
+    freeRequestURIparamFunc freeFunc = freeRequestURIparamFuncCallback();
+    ASSERT_NE(freeFunc, nullptr);
+    freeFunc(nullptr); // Just check for crash
+}
+TEST_F(ProfileTest, FreeRequestURIparam_Valid) {
+    freeRequestURIparamFunc freeFunc = freeRequestURIparamFuncCallback();
+    ASSERT_NE(freeFunc, nullptr);
+
+    HTTPReqParam* param = (HTTPReqParam*)malloc(sizeof(HTTPReqParam));
+    ASSERT_NE(param, nullptr);
+
+    param->HttpName = strdup("TestName");
+    param->HttpRef = strdup("TestRef");
+    param->HttpValue = strdup("TestValue");
+
+    // This should free all internals, no crash, can valgrind for leaks
+    freeFunc(param);
+}
+// Additional branch coverage for some but not all fields non-null
+TEST_F(ProfileTest, FreeRequestURIparam_Partials) {
+    freeRequestURIparamFunc freeFunc = freeRequestURIparamFuncCallback();
+    ASSERT_NE(freeFunc, nullptr);
+
+    // Only HttpName
+    HTTPReqParam* param1 = (HTTPReqParam*)calloc(1, sizeof(HTTPReqParam));
+    param1->HttpName = strdup("TestName");
+    freeFunc(param1);
+
+    // Only HttpRef
+    HTTPReqParam* param2 = (HTTPReqParam*)calloc(1, sizeof(HTTPReqParam));
+    param2->HttpRef = strdup("TestRef");
+    freeFunc(param2);
+
+    // Only HttpValue
+    HTTPReqParam* param3 = (HTTPReqParam*)calloc(1, sizeof(HTTPReqParam));
+    param3->HttpValue = strdup("TestValue");
+    freeFunc(param3);
+
+    // All NULL
+    HTTPReqParam* param4 = (HTTPReqParam*)calloc(1, sizeof(HTTPReqParam));
+    freeFunc(param4);
+}
+#endif
 #if 1
 //comment
 //==================================== profile.c ===================

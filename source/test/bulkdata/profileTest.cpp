@@ -94,6 +94,9 @@ getProfileFunc getProfileFuncCallback(void);
 
 typedef T2ERROR (*initJSONReportProfileFunc)(cJSON **, cJSON **, char *);
 initJSONReportProfileFunc initJSONReportProfileFuncCallback(void);
+
+typedef void* (*CollectAndReportFunc)(void*);
+CollectAndReportFunc getCollectAndReportFunc(void);
 }
 
 struct Config {

@@ -91,6 +91,9 @@ freeProfileFunc freeProfileFuncCallback(void);
 
 typedef T2ERROR (*getProfileFunc)(const char*, Profile**);
 getProfileFunc getProfileFuncCallback(void);
+
+typedef T2ERROR (*initJSONReportProfileFunc)(cJSON **, cJSON **, char *);
+initJSONReportProfileFunc initJSONReportProfileFuncCallback(void);
 }
 
 struct Config {
@@ -238,35 +241,23 @@ TEST_F(ProfileTest, GetProfile_NullName) {
     EXPECT_EQ(err, T2ERROR_FAILURE); // Or the constant your implementation uses
 }
 
-#if 0
-TEST_F(ProfileTest, GetProfile_Found) {
-    getProfileFunc func = getProfileFuncCallback();
+TEST_F(ProfileTest, InitJSONReportProfile_Success) {
+    initJSONReportProfileFunc func = initJSONReportProfileFuncCallback();
+    cJSON *jsonObj = nullptr;
+    cJSON *valArray = nullptr;
+    const char *rootname = "root";
 
-    Profile* namedProf = (Profile*)calloc(1, sizeof(Profile));
-    namedProf->name = strdup("foobar");
+    T2ERROR result = func(&jsonObj, &valArray, (char*)rootname);
+    EXPECT_EQ(result, T2ERROR_SUCCESS);
+    ASSERT_NE(jsonObj, nullptr);
+    ASSERT_NE(valArray, nullptr);
 
-    // Fix 1: Proper Vector_Create call
-    Vector *profileList = nullptr;
-    Vector_Create(&profileList);   // Correct usage!
+    // Optionally, confirm the structure actually contains an array under root
+    cJSON *arr = cJSON_GetObjectItem(jsonObj, rootname);
+    ASSERT_TRUE(arr != nullptr && arr == valArray && cJSON_IsArray(arr));
 
-    Vector_PushBack(profileList, namedProf);
-
-    // (Assume you have a way to temporarily point the module's global 'profileList' to this)
-    extern Vector *profileList;   // If allowed, otherwise use API to set
-    ::profileList = profileList;
-
-    Profile* out = nullptr;
-    T2ERROR err = func("foobar", &out);
-
-    EXPECT_EQ(err, T2ERROR_SUCCESS);
-    EXPECT_EQ(out, namedProf);
-
-    // Fix 2: Use the accessor for the static free function
-    Vector_Destroy(profileList, freeProfileFuncCallback());
-
-    ::profileList = nullptr; // If needed to clean up the global
+    cJSON_Delete(jsonObj); // Clean up
 }
-#endif
 #endif
 #if 1
 //comment

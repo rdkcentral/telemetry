@@ -1879,4 +1879,9 @@ typedef T2ERROR (*getProfileFunc)(const char*, Profile**);
 getProfileFunc getProfileFuncCallback(void) {
     return getProfile;
 }
+
+typedef T2ERROR (*initJSONReportProfileFunc)(cJSON **, cJSON **, char *);
+initJSONReportProfileFunc initJSONReportProfileFuncCallback(void) {
+    return initJSONReportProfile;
+}
 #endif

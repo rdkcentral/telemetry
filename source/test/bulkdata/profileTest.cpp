@@ -171,6 +171,60 @@ TEST_F(ProfileTest, FreeReportProfileConfig_Partials) {
     freeFunc(config3);
 }
 
+TEST_F(ProfileTest, FreeProfile_Null) {
+    freeProfileFunc freeFunc = freeProfileFuncCallback();
+    ASSERT_NE(freeFunc, nullptr);
+    freeFunc(nullptr);
+}
+TEST_F(ProfileTest, FreeProfile_Valid) {
+    freeProfileFunc freeFunc = freeProfileFuncCallback();
+    ASSERT_NE(freeFunc, nullptr);
+
+    // Allocate a Profile and all heap members it expects
+    Profile* prof = (Profile*)calloc(1, sizeof(Profile));
+    prof->name = strdup("profile_name");
+    prof->hash = strdup("profile_hash");
+    prof->protocol = strdup("HTTP");
+    prof->encodingType = strdup("JSON");
+    prof->RootName = strdup("Root");
+    prof->Description = strdup("desc");
+    prof->version = strdup("1.0");
+    prof->timeRef = strdup("time");
+    prof->jsonEncoding = (JSONEncoding*)malloc(sizeof(JSONEncoding));
+
+        // HTTP destination, with its URL and RequestURIparamList
+    prof->t2HTTPDest = (T2HTTP*)calloc(1, sizeof(T2HTTP));
+    prof->t2HTTPDest->URL = strdup("https://test.url");
+    // Assume RequestURIparamList is a pointer to Vector; you need a minimal mock:
+    prof->t2HTTPDest->RequestURIparamList = NULL; // Or setup a minimal Vector if you want even more coverage
+
+    // RBUS destination, with its rbusMethodName and rbusMethodParamList
+    prof->t2RBUSDest = (T2RBUS*)calloc(1, sizeof(T2RBUS));
+    prof->t2RBUSDest->rbusMethodName = strdup("method");
+    prof->t2RBUSDest->rbusMethodParamList = NULL;
+
+    // Marker lists (set to NULL if you don't want to test all the Vector_Destroy branches)
+    prof->eMarkerList = NULL;
+    prof->gMarkerList = NULL;
+    prof->topMarkerList = NULL;
+    prof->paramList = NULL;
+    prof->staticParamList = NULL;
+    prof->triggerConditionList = NULL;
+    prof->cachedReportList = NULL;
+
+    // JSON object
+    prof->jsonReportObj = cJSON_CreateObject();
+
+    // Now free!
+    freeFunc(prof);
+}
+// Partial, only name set
+TEST_F(ProfileTest, FreeProfile_OnlyNameSet) {
+    freeProfileFunc freeFunc = freeProfileFuncCallback();
+    Profile* prof = (Profile*)calloc(1, sizeof(Profile));
+    prof->name = strdup("profile_name");
+    freeFunc(prof);
+}
 #endif
 #if 1
 //comment

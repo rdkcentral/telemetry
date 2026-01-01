@@ -1869,4 +1869,9 @@ typedef void (*freeReportProfileConfigFunc)(void *);
 freeReportProfileConfigFunc freeReportProfileConfigFuncCallback(void) {
     return freeReportProfileConfig;
 }
+
+typedef void (*freeProfileFunc)(void *);
+freeProfileFunc freeProfileFuncCallback(void) {
+    return freeProfile;
+}
 #endif

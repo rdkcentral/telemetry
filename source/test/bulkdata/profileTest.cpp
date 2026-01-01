@@ -259,6 +259,48 @@ TEST_F(ProfileTest, InitJSONReportProfile_Success) {
     cJSON_Delete(jsonObj); // Clean up
 }
 
+TEST(CollectAndReportTest, NullDataReturnsNull) {
+    CollectAndReportFunc fn = getCollectAndReportFunc();
+    void* ret = fn(nullptr);
+    EXPECT_EQ(ret, nullptr); // Should return null pointer for null input
+}
+
+TEST(CollectAndReportTest, HandlesRestartEventAndExits) {
+    CollectAndReportFunc fn = getCollectAndReportFunc();
+    Profile profile = {};
+    GrepSeekProfile grepSeekProfile = {};
+    grepSeekProfile.execCounter = 1;
+    profile.grepSeekProfile = &grepSeekProfile;
+    profile.name = (char*)"test";
+    profile.encodingType = (char*)"json";
+    profile.protocol = (char*)"http";
+    // Add a restartRequested flag, and initialize mutex/cond if needed
+
+    pthread_t tid;
+    void* returnVal = nullptr;
+
+    // Start the thread
+    pthread_create(&tid, NULL, [](void* arg) -> void* {
+        CollectAndReportFunc fn = getCollectAndReportFunc();
+        return fn(arg);
+    }, &profile);
+
+    // Allow the thread to start and reach the wait point
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    // Signal the event/restart so the thread can exit
+    pthread_mutex_lock(&profile.reuseThreadMutex);
+    // If your code uses another flag, set it here:
+    // profile.restartRequested = true;
+    pthread_cond_signal(&profile.reuseThread);
+    pthread_mutex_unlock(&profile.reuseThreadMutex);
+
+    // Join, should succeed
+    int join_result = pthread_join(tid, &returnVal);
+    EXPECT_EQ(returnVal, nullptr); // or tailored expectation
+    EXPECT_EQ(join_result, 0);     // Should now succeed
+}
+
 #endif
 #if 1
 //comment

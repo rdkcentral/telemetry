@@ -1884,4 +1884,9 @@ typedef T2ERROR (*initJSONReportProfileFunc)(cJSON **, cJSON **, char *);
 initJSONReportProfileFunc initJSONReportProfileFuncCallback(void) {
     return initJSONReportProfile;
 }
+
+typedef void* (*CollectAndReportFunc)(void*);
+CollectAndReportFunc getCollectAndReportFunc(void) {
+    return CollectAndReport;
+}
 #endif

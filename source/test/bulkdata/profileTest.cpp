@@ -268,7 +268,6 @@ TEST(CollectAndReportTest, NullDataReturnsNull) {
     EXPECT_EQ(ret, nullptr); // Should return null pointer for null input
 }
 
-#if 1
 TEST(CollectAndReportTest, HandlesRestartEventAndExits) {
     CollectAndReportFunc fn = getCollectAndReportFunc();
     Profile profile = {};
@@ -304,7 +303,44 @@ TEST(CollectAndReportTest, HandlesRestartEventAndExits) {
     EXPECT_EQ(returnVal, nullptr); // or tailored expectation
     EXPECT_EQ(join_result, 0);     // Should now succeed
 }
-#endif
+TEST(CollectAndReportTest, ProperParametersHappyPath) {
+    CollectAndReportFunc fn = getCollectAndReportFunc();
+    Profile profile = {};
+    GrepSeekProfile grepSeekProfile = {};
+    grepSeekProfile.execCounter = 42;
+
+    // Use const_cast for C-string assignments (to avoid C++ warning)
+    profile.name = const_cast<char *>("test");
+    profile.encodingType = const_cast<char *>("json");
+    profile.protocol = const_cast<char *>("http");
+    profile.grepSeekProfile = &grepSeekProfile;
+
+    // If there's an additional flag such as restartRequested, set it up here:
+    // profile.restartRequested = false;
+
+    // Start CollectAndReport in a new thread
+    pthread_t collectThread;
+    pthread_create(&collectThread, nullptr, [](void* arg) -> void* {
+        CollectAndReportFunc fn = getCollectAndReportFunc();
+        return fn(arg);
+    }, &profile);
+
+    // Let the function enter its wait state
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    // Now send the restart event (adapt as needed for your wait logic!)
+    pthread_mutex_lock(&profile.reuseThreadMutex);
+    // If your function needs a flag, set it:
+    // profile.restartRequested = true;
+    pthread_cond_signal(&profile.reuseThread);
+    pthread_mutex_unlock(&profile.reuseThreadMutex);
+        // Wait for the thread to exit
+    void* result = nullptr;
+    pthread_join(collectThread, &result);
+
+    // Check that the function returned (adapt this as needed)
+    // EXPECT_EQ(result, expected_val);
+}
 #endif
 #if 1
 //comment

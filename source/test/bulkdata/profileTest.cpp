@@ -258,6 +258,7 @@ TEST_F(ProfileTest, InitJSONReportProfile_Success) {
 
     cJSON_Delete(jsonObj); // Clean up
 }
+
 #endif
 #if 1
 //comment

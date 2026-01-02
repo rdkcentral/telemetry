@@ -1210,6 +1210,8 @@ char *prepareHttpUrl(T2HTTP *http)
         unsigned int index = 0;
         int params_len = 0;
         char *url_params = NULL;
+        char *temp_params = NULL;
+        char *temp_url = NULL;
 
         for(; index < http->RequestURIparamList->count; index++)
         {
@@ -1250,13 +1252,14 @@ char *prepareHttpUrl(T2HTTP *http)
             {
                 new_params_len += strlen(httpParamVal);
             }
-            url_params = realloc(url_params, new_params_len);
-            if(url_params == NULL)
+            temp_params = realloc(url_params, new_params_len);
+            if(temp_params == NULL)
             {
                 T2Error("Unable to allocate %d bytes of memory at Line %d on %s \n", new_params_len, __LINE__, __FILE__);
                 curl_free(httpParamVal);
                 continue;
             }
+            url_params = temp_params;
             params_len += snprintf(url_params + params_len, new_params_len - params_len, "%s=%s&", httpParam->HttpName, httpParamVal);
 
             curl_free(httpParamVal);
@@ -1269,7 +1272,16 @@ char *prepareHttpUrl(T2HTTP *http)
             int url_len = strlen(httpUrl);
             int modified_url_len = url_len + strlen("?") + strlen(url_params) + 1;
 
-            httpUrl = realloc(httpUrl, modified_url_len);
+            temp_url = realloc(httpUrl, modified_url_len);
+            if(temp_url == NULL)
+            {
+                T2Error("Unable to allocate %d bytes of memory for URL at Line %d on %s \n", modified_url_len, __LINE__, __FILE__);
+                free(httpUrl);
+                free(url_params);
+                curl_easy_cleanup(curl);
+                return NULL;
+            }
+            httpUrl = temp_url;
             snprintf(httpUrl + url_len, modified_url_len - url_len, "?%s", url_params);
 
         }

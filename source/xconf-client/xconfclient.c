@@ -222,7 +222,6 @@ static char *getTimezone ()
                 {
                     fclose(file);
                     free(jsonDoc);
-                    jsonDoc = NULL;
                     T2Debug("Failed to read Timezone value from %s file...\n", jsonpath);
                     continue;
                 }
@@ -252,7 +251,6 @@ static char *getTimezone ()
                 }
             }
             free(jsonDoc);
-            jsonDoc = NULL;
             cJSON_Delete(root);
         }
         count++;
@@ -281,7 +279,6 @@ static char *getTimezone ()
                 if(zoneValue)
                 {
                     free(zoneValue);
-                    zoneValue = NULL ;
                 }
                 zoneValue = strdup(zone);
             }
@@ -818,7 +815,10 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
 
                 // Share data with parent
                 close(sharedPipeFdDataLen[0]);
-                write(sharedPipeFdDataLen[1], &len, sizeof(size_t));
+                if (write(sharedPipeFdDataLen[1], &len, sizeof(size_t)) != sizeof(size_t))
+                {
+                    T2Error("Failed to write data length to pipe\n");
+                }
                 close(sharedPipeFdDataLen[1]);
 
                 FILE *httpOutput = fopen(HTTP_RESPONSE_FILE, "w+");
@@ -905,7 +905,10 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
 status_return :
 
         close(sharedPipeFdStatus[0]);
-        write(sharedPipeFdStatus[1], &ret, sizeof(T2ERROR));
+        if (write(sharedPipeFdStatus[1], &ret, sizeof(T2ERROR)) != sizeof(T2ERROR))
+        {
+            T2Error("Failed to write status to pipe\n");
+        }
         close(sharedPipeFdStatus[1]);
         exit(0);
 
@@ -1296,12 +1299,21 @@ static void* getUpdatedConfigurationThread(void *data)
 #endif
     pthread_mutex_lock(&xcThreadMutex);
     stopFetchRemoteConfiguration = false ;
+    pthread_mutex_unlock(&xcThreadMutex);
     do
     {
         T2Debug("%s while Loop -- START \n", __FUNCTION__);
 
-        while(!stopFetchRemoteConfiguration && (urlFetchStatus = getRemoteConfigURL(&configURL)) != T2ERROR_SUCCESS)
+        pthread_mutex_lock(&xcThreadMutex);
+        while(!stopFetchRemoteConfiguration)
         {
+            pthread_mutex_unlock(&xcThreadMutex);
+            urlFetchStatus = getRemoteConfigURL(&configURL);
+            pthread_mutex_lock(&xcThreadMutex);
+            if(urlFetchStatus == T2ERROR_SUCCESS)
+            {
+                break;
+            }
             if (urlFetchStatus == T2ERROR_INVALID_RESPONSE)
             {
                 T2Info("Config URL is not set to valid value. Xconfclient shall not proceed for T1.0 settings fetch attempts \n");
@@ -1315,7 +1327,11 @@ static void* getUpdatedConfigurationThread(void *data)
             _ts.tv_sec = _now.tv_sec + RFC_RETRY_TIMEOUT;
 
             T2Info("Waiting for %d sec before trying getRemoteConfigURL\n", RFC_RETRY_TIMEOUT);
-            n = pthread_cond_timedwait(&xcCond, &xcMutex, &_ts);
+            do
+            {
+                n = pthread_cond_timedwait(&xcCond, &xcMutex, &_ts);
+            }
+            while(n == EINTR);
             if(n == ETIMEDOUT)
             {
                 T2Info("TIMEDOUT -- trying fetchConfigURLs again\n");
@@ -1330,9 +1346,12 @@ static void* getUpdatedConfigurationThread(void *data)
             }
             pthread_mutex_unlock(&xcMutex);
         }
+        pthread_mutex_unlock(&xcThreadMutex);
 
+        pthread_mutex_lock(&xcThreadMutex);
         while(!stopFetchRemoteConfiguration)
         {
+            pthread_mutex_unlock(&xcThreadMutex);
             T2ERROR ret = T2ERROR_FAILURE ;
             if ( urlFetchStatus == T2ERROR_INVALID_RESPONSE )
             {
@@ -1392,6 +1411,7 @@ static void* getUpdatedConfigurationThread(void *data)
                     free(configData);
                     configData = NULL ;
                 }
+                pthread_mutex_lock(&xcThreadMutex);
                 break;
             }
             else if(ret == T2ERROR_PROFILE_NOT_SET)
@@ -1402,6 +1422,7 @@ static void* getUpdatedConfigurationThread(void *data)
                     free(configData);
                     configData = NULL ;
                 }
+                pthread_mutex_lock(&xcThreadMutex);
                 break;
             }
             else
@@ -1416,6 +1437,7 @@ static void* getUpdatedConfigurationThread(void *data)
                 {
                     T2Error("Reached max xconf retry counts : %d, Using saved profile if exists until next reboot\n", MAX_XCONF_RETRY_COUNT);
                     xConfRetryCount = 0;
+                    pthread_mutex_lock(&xcThreadMutex);
                     break;
                 }
                 T2Info("Waiting for %d sec before trying fetchRemoteConfiguration, No.of tries : %d\n", XCONF_RETRY_TIMEOUT, xConfRetryCount);
@@ -1427,7 +1449,11 @@ static void* getUpdatedConfigurationThread(void *data)
                 clock_gettime(CLOCK_REALTIME, &_now);
                 _ts.tv_sec = _now.tv_sec + XCONF_RETRY_TIMEOUT;
 
-                n = pthread_cond_timedwait(&xcCond, &xcMutex, &_ts);
+                do
+                {
+                    n = pthread_cond_timedwait(&xcCond, &xcMutex, &_ts);
+                }
+                while(n == EINTR);
                 if(n == ETIMEDOUT)
                 {
                     T2Info("TIMEDOUT -- trying fetchConfigurations again\n");
@@ -1442,7 +1468,9 @@ static void* getUpdatedConfigurationThread(void *data)
                 }
                 pthread_mutex_unlock(&xcMutex);
             }
+            pthread_mutex_lock(&xcThreadMutex);
         }  // End of config fetch while
+        pthread_mutex_unlock(&xcThreadMutex);
         if(configFetch == T2ERROR_FAILURE && !ProfileXConf_isSet())
         {
             T2Error("Failed to fetch updated configuration and no saved configurations on disk for XCONF, uninitializing  the process\n");
@@ -1467,13 +1495,17 @@ static void* getUpdatedConfigurationThread(void *data)
             }
         }
 #endif
+        pthread_mutex_lock(&xcThreadMutex);
         stopFetchRemoteConfiguration = true;
         T2Debug("%s while Loop -- END; wait for restart event\n", __FUNCTION__);
-        pthread_cond_wait(&xcThreadCond, &xcThreadMutex);
+        while(stopFetchRemoteConfiguration && isXconfInit)
+        {
+            pthread_cond_wait(&xcThreadCond, &xcThreadMutex);
+        }
+        pthread_mutex_unlock(&xcThreadMutex);
     }
     while(isXconfInit);  //End of do while loop
 
-    pthread_mutex_unlock(&xcThreadMutex);
     // pthread_detach(pthread_self()); commenting this line as thread will detached by stopXConfClient
     T2Debug("%s --out\n", __FUNCTION__);
     return NULL;
@@ -1482,9 +1514,11 @@ static void* getUpdatedConfigurationThread(void *data)
 void uninitXConfClient()
 {
     T2Debug("%s ++in\n", __FUNCTION__);
+    pthread_mutex_lock(&xcThreadMutex);
     if(!stopFetchRemoteConfiguration)
     {
         stopFetchRemoteConfiguration = true;
+        pthread_mutex_unlock(&xcThreadMutex);
         T2Info("fetchRemoteConfigurationThread signalled to stop\n");
         pthread_mutex_lock(&xcMutex);
         pthread_cond_signal(&xcCond);
@@ -1493,11 +1527,12 @@ void uninitXConfClient()
     }
     else
     {
+        pthread_mutex_unlock(&xcThreadMutex);
         T2Debug("XConfClientThread is stopped already\n");
     }
+    pthread_mutex_lock(&xcThreadMutex);
     if(isXconfInit)
     {
-        pthread_mutex_lock(&xcThreadMutex);
         isXconfInit = false;
         pthread_cond_signal(&xcThreadCond);
         pthread_mutex_unlock(&xcThreadMutex);
@@ -1513,6 +1548,10 @@ void uninitXConfClient()
 #ifdef LIBRDKCERTSEL_BUILD
         xcCertSelectorFree();
 #endif
+    }
+    else
+    {
+        pthread_mutex_unlock(&xcThreadMutex);
     }
     T2Debug("%s --out\n", __FUNCTION__);
     T2Info("Uninit XConf Client Successful\n");
@@ -1576,7 +1615,9 @@ T2ERROR initXConfClient()
     pthread_mutex_init(&xcThreadMutex, NULL);
     pthread_cond_init(&xcCond, NULL);
     pthread_cond_init(&xcThreadCond, NULL);
+    pthread_mutex_lock(&xcThreadMutex);
     isXconfInit = true ;
+    pthread_mutex_unlock(&xcThreadMutex);
 #ifdef LIBRDKCERTSEL_BUILD
     xcCertSelectorInit();
 #endif
@@ -1591,8 +1632,10 @@ T2ERROR stopXConfClient()
 {
     T2Debug("%s ++in\n", __FUNCTION__);
     //pthread_detach(xcrThread);
-    pthread_mutex_lock(&xcMutex);
+    pthread_mutex_lock(&xcThreadMutex);
     stopFetchRemoteConfiguration = true;
+    pthread_mutex_unlock(&xcThreadMutex);
+    pthread_mutex_lock(&xcMutex);
     pthread_cond_signal(&xcCond);
     pthread_mutex_unlock(&xcMutex);
     T2Debug("%s --out\n", __FUNCTION__);
@@ -1602,19 +1645,20 @@ T2ERROR stopXConfClient()
 T2ERROR startXConfClient()
 {
     T2Debug("%s ++in\n", __FUNCTION__);
+    pthread_mutex_lock(&xcThreadMutex);
     if (isXconfInit)
     {
+        stopFetchRemoteConfiguration = false;
+        pthread_cond_signal(&xcThreadCond);
+        pthread_mutex_unlock(&xcThreadMutex);
         //pthread_create(&xcrThread, NULL, getUpdatedConfigurationThread, NULL);
         pthread_mutex_lock(&xcMutex);
         pthread_cond_signal(&xcCond);
         pthread_mutex_unlock(&xcMutex);
-        pthread_mutex_lock(&xcThreadMutex);
-        stopFetchRemoteConfiguration = false;
-        pthread_cond_signal(&xcThreadCond);
-        pthread_mutex_unlock(&xcThreadMutex);
     }
     else
     {
+        pthread_mutex_unlock(&xcThreadMutex);
         T2Info("getUpdatedConfigurationThread is still active ... Ignore xconf reload \n");
     }
     T2Debug("%s --out\n", __FUNCTION__);

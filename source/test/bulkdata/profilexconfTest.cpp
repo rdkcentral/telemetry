@@ -681,7 +681,7 @@ TEST_F(profileXconfTestFixture, InitJSONReportXConf_CreateObjectFails) {
     EXPECT_EQ(jsonObj, nullptr);
 }
 
-TEST_F(ProfileXconfStaticTest, InitJSONReportXConf_Success) {
+TEST_F(profileXconfTestFixture, InitJSONReportXConf_Success) {
     // Dummy objects for mocking.
     cJSON dummyObj1, dummyArr, dummyItem1, dummyItem2, dummyItem3;
 

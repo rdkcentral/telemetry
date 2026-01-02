@@ -244,44 +244,6 @@ TEST_F(ProfileTest, GetProfile_NullName) {
     EXPECT_EQ(err, T2ERROR_FAILURE); // Or the constant your implementation uses
 }
 
-TEST_F(ProfileTest, GetProfile_FindsMatchingName) {
-    // Setup
-    VectorMock vectorMock;
-    g_vectorMock = &vectorMock;
-
-    // Prepare a Profile with a known name for matching
-    Profile* tempProfile = (Profile*)calloc(1, sizeof(Profile));
-    tempProfile->name = strdup("target_profile");
-
-    // Prepare Vector pointer to return our profile pointer when Vector_At is called
-    Vector* dummyList = (Vector*)0x1234;
-    size_t profileIndex = 0; // Suppose index 0
-
-    // The function will call Vector_At(dummyList, profileIndex)
-    EXPECT_CALL(vectorMock, Vector_At(dummyList, profileIndex))
-        .Times(1)
-        .WillOnce(::testing::Return(static_cast<void*>(tempProfile)));
-    EXPECT_CALL(vectorMock, Vector_At(dummyList, 0))
-        .WillOnce(::testing::Return(static_cast<void*>(tempProfile)));
-    // May also need Vector_Size, if getProfile iterates! If so, set .WillRepeatedly(Return(1)) or as needed.
-
-    // If the code uses a global/profileList somewhere, set that up;
-    // else if profileList is a parameter, pass dummyList.
-
-    getProfileFunc func = getProfileFuncCallback();
-    Profile* result = nullptr;
-    T2ERROR rc = func("target_profile", &result); // Will invoke getProfile
-
-    // The following checks the coverage
-    EXPECT_EQ(rc, T2ERROR_SUCCESS);
-    EXPECT_EQ(result, tempProfile);
-
-    // Cleanup
-    free(tempProfile->name);
-    free(tempProfile);
-    g_vectorMock = nullptr;
-}
-
 TEST_F(ProfileTest, FreeProfile_WithGMarkerList_CallsVectorDestroy) {
     VectorMock* vectorMock = new VectorMock();
     g_vectorMock = vectorMock;

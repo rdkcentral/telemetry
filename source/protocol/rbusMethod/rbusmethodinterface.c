@@ -50,6 +50,10 @@ static void asyncMethodHandler(rbusHandle_t handle, char const* methodName, rbus
     (void) params;
 
     T2Info("T2 asyncMethodHandler called: %s with return error code  = %s \n", methodName, rbusError_ToString(retStatus));
+    //Note: The mutex synchronization is handled by the caller (sendReportsOverRBUSMethod)
+    //which locks the mutex before calling rbusMethodCaller and uses pthread_mutex_trylock
+    //to wait for this async callback to complete. This callback updates isRbusMethod
+    //without additional locking as the caller manages the synchronization.
     if(retStatus == RBUS_ERROR_SUCCESS)
     {
         isRbusMethod = true ;

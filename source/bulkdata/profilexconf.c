@@ -150,6 +150,8 @@ static void freeProfileXConf()
         {
             freeGrepSeekProfile(singleProfile->grepSeekProfile);
         }
+        pthread_mutex_destroy(&singleProfile->reportInProgressMutex);
+        pthread_cond_destroy(&singleProfile->reportInProgressCond);
         free(singleProfile);
         singleProfile = NULL;
     }
@@ -254,7 +256,9 @@ static void* CollectAndReportXconf(void* data)
             if(T2ERROR_SUCCESS != initJSONReportXconf(&profile->jsonReportObj, &valArray))
             {
                 T2Error("Failed to initialize JSON Report\n");
+                pthread_mutex_lock(&profile->reportInProgressMutex);
                 profile->reportInProgress = false;
+                pthread_mutex_unlock(&profile->reportInProgressMutex);
                 //pthread_mutex_unlock(&plMutex);
                 //return NULL;
                 goto reportXconfThreadEnd;
@@ -314,7 +318,9 @@ static void* CollectAndReportXconf(void* data)
             if(ret != T2ERROR_SUCCESS)
             {
                 T2Error("Unable to generate report for : %s\n", profile->name);
+                pthread_mutex_lock(&profile->reportInProgressMutex);
                 profile->reportInProgress = false;
+                pthread_mutex_unlock(&profile->reportInProgressMutex);
                 //pthread_mutex_unlock(&plMutex);
                 //return NULL;
                 goto reportXconfThreadEnd;
@@ -344,7 +350,9 @@ static void* CollectAndReportXconf(void* data)
                 // Before caching the report, add "REPORT_TYPE": "CACHED"
                 // tagReportAsCached(&jsonReport);
                 Vector_PushBack(profile->cachedReportList, strdup(jsonReport));
+                pthread_mutex_lock(&profile->reportInProgressMutex);
                 profile->reportInProgress = false;
+                pthread_mutex_unlock(&profile->reportInProgressMutex);
                 /* CID 187010: Dereference before null check */
                 free(jsonReport);
                 jsonReport = NULL;
@@ -486,7 +494,9 @@ static void* CollectAndReportXconf(void* data)
             isAbortTriggered = false ;
         }
 
+        pthread_mutex_lock(&profile->reportInProgressMutex);
         profile->reportInProgress = false;
+        pthread_mutex_unlock(&profile->reportInProgressMutex);
         //pthread_mutex_unlock(&plMutex);
 reportXconfThreadEnd :
         T2Info("%s while Loop -- END \n", __FUNCTION__);
@@ -580,14 +590,19 @@ T2ERROR ProfileXConf_uninit()
     }
     initialized = false;
 
-    if(singleProfile->reportInProgress)
+    pthread_mutex_lock(&singleProfile->reportInProgressMutex);
+    bool reportInProgress = singleProfile->reportInProgress;
+    pthread_mutex_unlock(&singleProfile->reportInProgressMutex);
+    if(reportInProgress)
     {
         T2Debug("Waiting for final report before uninit\n");
         pthread_mutex_lock(&plMutex);
         pthread_cond_signal(&reuseThread);
         pthread_mutex_unlock(&plMutex);
         pthread_join(singleProfile->reportThread, NULL);
+        pthread_mutex_lock(&singleProfile->reportInProgressMutex);
         singleProfile->reportInProgress = false ;
+        pthread_mutex_unlock(&singleProfile->reportInProgressMutex);
         T2Info("Final report is completed, releasing profile memory\n");
     }
     pthread_mutex_lock(&plMutex);
@@ -610,7 +625,9 @@ T2ERROR ProfileXConf_set(ProfileXConf *profile)
     if(!singleProfile)
     {
         singleProfile = profile;
+        pthread_mutex_lock(&singleProfile->reportInProgressMutex);
         singleProfile->reportInProgress = false ;
+        pthread_mutex_unlock(&singleProfile->reportInProgressMutex);
         size_t emIndex = 0;
         EventMarker *eMarker = NULL;
         for(; emIndex < Vector_Size(singleProfile->eMarkerList); emIndex++)
@@ -719,7 +736,10 @@ T2ERROR ProfileXConf_delete(ProfileXConf *profile)
         }
     }
 
-    if(singleProfile->reportInProgress)
+    pthread_mutex_lock(&singleProfile->reportInProgressMutex);
+    bool reportInProgress = singleProfile->reportInProgress;
+    pthread_mutex_unlock(&singleProfile->reportInProgressMutex);
+    if(reportInProgress)
     {
         T2Info("Waiting for CollectAndReportXconf to be complete : %s\n", singleProfile->name);
     }
@@ -733,7 +753,9 @@ T2ERROR ProfileXConf_delete(ProfileXConf *profile)
     if(isNameEqual)
     {
         profile->bClearSeekMap = singleProfile->bClearSeekMap ;
+        pthread_mutex_lock(&profile->reportInProgressMutex);
         profile->reportInProgress = false ;
+        pthread_mutex_unlock(&profile->reportInProgressMutex);
         if(count > 0 && profile->cachedReportList != NULL)
         {
             T2Info("There are %zu cached reports in the profile \n", count);
@@ -881,10 +903,12 @@ void ProfileXConf_notifyTimeout(bool isClearSeekMap, bool isOnDemand)
         return ;
     }
     isOnDemandReport = isOnDemand;
+    pthread_mutex_lock(&singleProfile->reportInProgressMutex);
     if(!singleProfile->reportInProgress)
     {
         singleProfile->bClearSeekMap = isClearSeekMap;
         singleProfile->reportInProgress = true;
+        pthread_mutex_unlock(&singleProfile->reportInProgressMutex);
 
         if (reportThreadExits)
         {
@@ -901,6 +925,7 @@ void ProfileXConf_notifyTimeout(bool isClearSeekMap, bool isOnDemand)
     }
     else
     {
+        pthread_mutex_unlock(&singleProfile->reportInProgressMutex);
         T2Warning("Received profileTimeoutCb while previous callback is still in progress - ignoring the request\n");
     }
 
@@ -1007,7 +1032,10 @@ T2ERROR ProfileXConf_terminateReport()
     }
 
     // Check whether any XconfReport is in progress
-    if(singleProfile->reportInProgress)
+    pthread_mutex_lock(&singleProfile->reportInProgressMutex);
+    bool reportInProgress = singleProfile->reportInProgress;
+    pthread_mutex_unlock(&singleProfile->reportInProgressMutex);
+    if(reportInProgress)
     {
         isAbortTriggered = true;
         // Check if a child pid is still alive

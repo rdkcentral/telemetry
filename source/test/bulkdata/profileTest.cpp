@@ -261,7 +261,8 @@ TEST_F(ProfileTest, GetProfile_FindsMatchingName) {
     EXPECT_CALL(vectorMock, Vector_At(dummyList, profileIndex))
         .Times(1)
         .WillOnce(::testing::Return(static_cast<void*>(tempProfile)));
-
+    EXPECT_CALL(vectorMock, Vector_At(dummyList, 0))
+        .WillOnce(::testing::Return(static_cast<void*>(tempProfile)));
     // May also need Vector_Size, if getProfile iterates! If so, set .WillRepeatedly(Return(1)) or as needed.
 
     // If the code uses a global/profileList somewhere, set that up;

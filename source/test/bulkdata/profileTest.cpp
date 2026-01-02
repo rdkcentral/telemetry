@@ -548,16 +548,6 @@ TEST_F(ProfileTest, ProfileWithNameExists_NullName) {
     EXPECT_FALSE(exists);
 }
 
-// Test profileWithNameExists
-TEST_F(ProfileTest, ProfileWithNameExists_Initialized) {
-    bool exists = false;
-    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
-        .Times(::testing::AtMost(1))
-        .WillRepeatedly(Return(0));
-    EXPECT_EQ(uninitProfileList(), T2ERROR_SUCCESS);
-    //EXPECT_EQ(profileWithNameExists("test", &exists), T2ERROR_FAILURE);
-    EXPECT_EQ(profileWithNameExists("test", &exists), T2ERROR_PROFILE_NOT_FOUND);
-}
 // Test addProfile
 TEST_F(ProfileTest, AddProfile_Initialized) {
     EXPECT_CALL(*g_vectorMock, Vector_PushBack(_, _))

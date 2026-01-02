@@ -301,6 +301,92 @@ TEST_F(ProfileTest, FreeProfile_WithRBUSDest_rbusMethodParamList_CallsVectorDest
     delete vectorMock;
     g_vectorMock = nullptr;
 }
+
+// Helper for setting up test and mock
+void cover_VectorDestroy_field(void** field, Vector* ptr, VectorMock& vectorMock, Vector_Cleanup expected_cleanup) {
+    *field = ptr;
+    EXPECT_CALL(vectorMock, Vector_Destroy(ptr, expected_cleanup))
+        .Times(1)
+        .WillOnce(::testing::Return(T2ERROR_SUCCESS));
+}
+
+TEST_F(ProfileTest, FreeProfile_EMarkerList_CallsVectorDestroy) {
+    VectorMock vectorMock;
+    g_vectorMock = &vectorMock;
+    Profile* prof = (Profile*)calloc(1, sizeof(Profile));
+    cover_VectorDestroy_field((void**)&prof->eMarkerList, (Vector*)0xEACE, vectorMock, freeEMarker);
+    freeProfileFunc freeFunc = freeProfileFuncCallback();
+    freeFunc(prof);
+    g_vectorMock = nullptr;
+}
+
+TEST_F(ProfileTest, FreeProfile_GMarkerList_CallsVectorDestroy) {
+    VectorMock vectorMock;
+    g_vectorMock = &vectorMock;
+    Profile* prof = (Profile*)calloc(1, sizeof(Profile));
+    cover_VectorDestroy_field((void**)&prof->gMarkerList, (Vector*)0xBEEF, vectorMock, freeGMarker);
+    freeProfileFunc freeFunc = freeProfileFuncCallback();
+    freeFunc(prof);
+    g_vectorMock = nullptr;
+}
+
+TEST_F(ProfileTest, FreeProfile_TopMarkerList_CallsVectorDestroy) {
+    VectorMock vectorMock;
+    g_vectorMock = &vectorMock;
+    Profile* prof = (Profile*)calloc(1, sizeof(Profile));
+    cover_VectorDestroy_field((void**)&prof->topMarkerList, (Vector*)0xFAFA, vectorMock, freeGMarker);
+    freeProfileFunc freeFunc = freeProfileFuncCallback();
+    freeFunc(prof);
+    g_vectorMock = nullptr;
+}
+
+TEST_F(ProfileTest, FreeProfile_ParamList_CallsVectorDestroy) {
+    VectorMock vectorMock;
+    g_vectorMock = &vectorMock;
+    Profile* prof = (Profile*)calloc(1, sizeof(Profile));
+    cover_VectorDestroy_field((void**)&prof->paramList, (Vector*)0xCAFE, vectorMock, freeParam);
+    freeProfileFunc freeFunc = freeProfileFuncCallback();
+    freeFunc(prof);
+    g_vectorMock = nullptr;
+}
+
+TEST_F(ProfileTest, FreeProfile_StaticParamList_CallsVectorDestroy) {
+    VectorMock vectorMock;
+    g_vectorMock = &vectorMock;
+    Profile* prof = (Profile*)calloc(1, sizeof(Profile));
+    cover_VectorDestroy_field((void**)&prof->staticParamList, (Vector*)0xF00D, vectorMock, freeStaticParam);
+    freeProfileFunc freeFunc = freeProfileFuncCallback();
+    freeFunc(prof);
+    g_vectorMock = nullptr;
+}
+
+TEST_F(ProfileTest, FreeProfile_TriggerConditionList_CallsVectorDestroy) {
+    VectorMock vectorMock;
+    g_vectorMock = &vectorMock;
+    Profile* prof = (Profile*)calloc(1, sizeof(Profile));
+    cover_VectorDestroy_field((void**)&prof->triggerConditionList, (Vector*)0xDEAD, vectorMock, freeTriggerCondition);
+    freeProfileFunc freeFunc = freeProfileFuncCallback();
+    freeFunc(prof);
+    g_vectorMock = nullptr;
+}
+
+TEST_F(ProfileTest, FreeProfile_CachedReportList_CallsVectorDestroy_And_SetsNull) {
+    VectorMock vectorMock;
+    g_vectorMock = &vectorMock;
+    Profile* prof = (Profile*)calloc(1, sizeof(Profile));
+    Vector* dummyVec = (Vector*)0x123456;
+    prof->cachedReportList = dummyVec;
+    EXPECT_CALL(vectorMock, Vector_Destroy(dummyVec, free))
+        .Times(1)
+        .WillOnce(::testing::Return(T2ERROR_SUCCESS));
+
+    freeProfileFunc freeFunc = freeProfileFuncCallback();
+    freeFunc(prof);
+
+    EXPECT_EQ(prof->cachedReportList, nullptr); // after freeProfile, it must be set null
+    g_vectorMock = nullptr;
+}
+
 TEST_F(ProfileTest, InitJSONReportProfile_Success) {
     initJSONReportProfileFunc func = initJSONReportProfileFuncCallback();
     cJSON *jsonObj = nullptr;

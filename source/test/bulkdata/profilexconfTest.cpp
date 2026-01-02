@@ -650,6 +650,9 @@ TEST_F(profileXconfTestFixture, ProfileXConf_uninit)
 extern "C" {
 typedef char* (*getTimeStampFuncType)(void);
 getTimeStampFuncType getTimeStampFuncCallback(void);
+
+typedef T2ERROR (*initJSONReportXconfFuncType)(cJSON**, cJSON**);
+initJSONReportXconfFuncType initJSONReportXconfCallback(void);
 }
 TEST(ProfileXconfStatic, GetTimeStampAllocatesProperString)
 {
@@ -659,5 +662,14 @@ TEST(ProfileXconfStatic, GetTimeStampAllocatesProperString)
     ASSERT_NE(result, nullptr);
     // Optionally check format here with regex or string parsing
     free(result);
+}
+
+TEST(ProfileXconfStatic, InitJSONReportXConf_CreateObjectFails) {
+    cJSON* json = (cJSON*)0xABCD; // Dummy init to verify real write
+    cJSON* arr = (cJSON*)0xDEAD;
+    auto fn = initJSONReportXconfCallback();
+    T2ERROR res = fn(&json, &arr);
+    EXPECT_EQ(res, T2ERROR_FAILURE);
+    EXPECT_EQ(json, nullptr);
 }
 #endif

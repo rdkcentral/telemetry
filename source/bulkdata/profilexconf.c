@@ -1042,4 +1042,10 @@ getTimeStampFuncType getTimeStampFuncCallback(void)
 {
     return getTimeStamp;
 }
+
+typedef T2ERROR (*initJSONReportXconfFuncType)(cJSON**, cJSON**);
+
+initJSONReportXconfFuncType initJSONReportXconfCallback(void) {
+    return initJSONReportXconf;
+}
 #endif

@@ -207,25 +207,33 @@ static void freeProfile(void *data)
 
 static T2ERROR getProfile(const char *profileName, Profile **profile)
 {
+	printf("################## line %d\n",__LINE__);
     size_t profileIndex = 0;
     Profile *tempProfile = NULL;
     T2Debug("%s ++in\n", __FUNCTION__);
+	printf("################## line %d\n",__LINE__);
     if(profileName == NULL)
     {
+	printf("################## line %d\n",__LINE__);
         T2Error("profileName is null\n");
         return T2ERROR_FAILURE;
     }
     for(; profileIndex < Vector_Size(profileList); profileIndex++)
     {
+	printf("################## line %d\n",__LINE__);
         tempProfile = (Profile *)Vector_At(profileList, profileIndex);
 	printf("DEBUG: strcmp('%s', '%s') \n", tempProfile->name, profileName);
         if(strcmp(tempProfile->name, profileName) == 0)
         {
+	printf("################## line %d\n",__LINE__);
             *profile = tempProfile;
             T2Debug("%s --out\n", __FUNCTION__);
+	printf("################## line %d\n",__LINE__);
             return T2ERROR_SUCCESS;
         }
+	printf("################## line %d\n",__LINE__);
     }
+	printf("################## line %d\n",__LINE__);
     T2Error("Profile with Name : %s not found\n", profileName);
     return T2ERROR_PROFILE_NOT_FOUND;
 }

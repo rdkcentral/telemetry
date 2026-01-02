@@ -243,7 +243,18 @@ void* T2ER_EventDispatchThread(void *arg)
             return NULL;
         }
         T2Debug("Checking for events in event queue , event count = %d\n", t2_queue_count(eQueue));
-        if(t2_queue_count(eQueue) > 0)
+        while(t2_queue_count(eQueue) == 0 && !stopDispatchThread)
+	{
+	    T2Debug("Event Queue size is 0, Waiting events from T2ER_Push\n");
+	    int ret = pthread_cond_wait(&erCond, &erMutex);
+            if(ret != 0) // pthread cond wait failed return after unlock
+            {
+                T2Error("%s pthread_cond_wait failed with error code: %d\n", __FUNCTION__, ret);
+            }
+	    T2Debug("Received signal from T2ER_Push\n");
+	}
+
+	if(t2_queue_count(eQueue) > 0)
         {
             T2Event *event = (T2Event *)t2_queue_pop(eQueue);
             if(event == NULL)
@@ -280,18 +291,11 @@ void* T2ER_EventDispatchThread(void *arg)
         }
         else
         {
-            T2Debug("Event Queue size is 0, Waiting events from T2ER_Push\n");
-            int ret = pthread_cond_wait(&erCond, &erMutex);
-            if(ret != 0) // pthread cond wait failed return after unlock
-            {
-                T2Error("%s pthread_cond_wait failed with error code: %d\n", __FUNCTION__, ret);
-            }
             if(pthread_mutex_unlock(&erMutex) != 0)
             {
                 T2Error("%s pthread_mutex_unlock for erMutex failed\n", __FUNCTION__);
                 return NULL;
             }
-            T2Debug("Received signal from T2ER_Push\n");
         }
     }
     T2Debug("%s --out\n", __FUNCTION__);
@@ -345,7 +349,10 @@ T2ERROR T2ER_Init()
         registerForTelemetryEvents(T2ER_PushDataWithDelim);
     }
 
-    system("touch /tmp/.t2ReadyToReceiveEvents");
+    if (system("touch /tmp/.t2ReadyToReceiveEvents") != 0)
+    {
+	T2Error("Failed to create /tmp/.t2ReadyToReceiveEvents flag file \n");
+    }
     setT2EventReceiveState(T2_STATE_COMPONENT_READY);
     T2Info("T2 is now Ready to Recieve Events\n");
 

@@ -222,7 +222,6 @@ static char *getTimezone ()
                 {
                     fclose(file);
                     free(jsonDoc);
-                    jsonDoc = NULL;
                     T2Debug("Failed to read Timezone value from %s file...\n", jsonpath);
                     continue;
                 }
@@ -281,7 +280,6 @@ static char *getTimezone ()
                 if(zoneValue)
                 {
                     free(zoneValue);
-                    zoneValue = NULL ;
                 }
                 zoneValue = strdup(zone);
             }
@@ -818,7 +816,10 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
 
                 // Share data with parent
                 close(sharedPipeFdDataLen[0]);
-                write(sharedPipeFdDataLen[1], &len, sizeof(size_t));
+                if (write(sharedPipeFdDataLen[1], &len, sizeof(size_t)) != sizeof(size_t))
+		{
+		    T2Error("Failed to write data length to pipe\n");
+		}
                 close(sharedPipeFdDataLen[1]);
 
                 FILE *httpOutput = fopen(HTTP_RESPONSE_FILE, "w+");
@@ -905,7 +906,10 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
 status_return :
 
         close(sharedPipeFdStatus[0]);
-        write(sharedPipeFdStatus[1], &ret, sizeof(T2ERROR));
+        if (write(sharedPipeFdStatus[1], &ret, sizeof(T2ERROR)) != sizeof(T2ERROR))
+	{
+	    T2Error("Failed to write status to pipe\n");
+	}
         close(sharedPipeFdStatus[1]);
         exit(0);
 
@@ -1315,7 +1319,9 @@ static void* getUpdatedConfigurationThread(void *data)
             _ts.tv_sec = _now.tv_sec + RFC_RETRY_TIMEOUT;
 
             T2Info("Waiting for %d sec before trying getRemoteConfigURL\n", RFC_RETRY_TIMEOUT);
-            n = pthread_cond_timedwait(&xcCond, &xcMutex, &_ts);
+            do {
+	        n = pthread_cond_timedwait(&xcCond, &xcMutex, &_ts);
+	    } while(n != ETIMEDOUT && n != 0);
             if(n == ETIMEDOUT)
             {
                 T2Info("TIMEDOUT -- trying fetchConfigURLs again\n");
@@ -1427,7 +1433,9 @@ static void* getUpdatedConfigurationThread(void *data)
                 clock_gettime(CLOCK_REALTIME, &_now);
                 _ts.tv_sec = _now.tv_sec + XCONF_RETRY_TIMEOUT;
 
-                n = pthread_cond_timedwait(&xcCond, &xcMutex, &_ts);
+                do {
+		    n = pthread_cond_timedwait(&xcCond, &xcMutex, &_ts);
+		} while(n != ETIMEDOUT && n != 0);
                 if(n == ETIMEDOUT)
                 {
                     T2Info("TIMEDOUT -- trying fetchConfigurations again\n");

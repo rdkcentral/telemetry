@@ -57,7 +57,10 @@ static void *process_rp_thread(void *data)
     {
         pthread_mutex_lock(&rpMutex);
         T2Info("%s: Waiting for event from tr-181 \n", __FUNCTION__);
-        pthread_cond_wait(&rpCond, &rpMutex);
+        while(t2_queue_count(rpQueue) == 0 && !stopProcessing)
+	{
+	    pthread_cond_wait(&rpCond, &rpMutex);
+	}
 
         T2Debug("%s: Received wake up signal \n", __FUNCTION__);
         if(t2_queue_count(rpQueue) > 0)
@@ -87,7 +90,10 @@ static void *process_tmprp_thread(void *data)
     {
         pthread_mutex_lock(&tmpRpMutex);
         T2Info("%s: Waiting for event from tr-181 \n", __FUNCTION__);
-        pthread_cond_wait(&tmpRpCond, &tmpRpMutex);
+        while(t2_queue_count(tmpRpQueue) == 0 && !stopProcessing)
+	{
+	    pthread_cond_wait(&tmpRpCond, &tmpRpMutex);
+	}
 
         T2Debug("%s: Received wake up signal \n", __FUNCTION__);
         if(t2_queue_count(tmpRpQueue) > 0)
@@ -113,7 +119,10 @@ static void *process_msg_thread(void *data)
     while(!stopProcessing)
     {
         pthread_mutex_lock(&rpMsgMutex);
-        pthread_cond_wait(&msg_Cond, &rpMsgMutex);
+        while(t2_queue_count(rpMsgPkgQueue) == 0 && !stopProcessing)
+	{
+	    pthread_cond_wait(&msg_Cond, &rpMsgMutex);
+	}
         if(t2_queue_count(rpMsgPkgQueue) > 0)
         {
             msgpack = (struct __msgpack__ *)t2_queue_pop(rpMsgPkgQueue);

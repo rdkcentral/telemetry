@@ -28,6 +28,30 @@ extern "C" cJSON* cJSON_CreateObject(void)
     return g_profileXConfMock->cJSON_CreateObject();
 }
 
+extern "C" cJSON* cJSON_CreateArray(void)
+{
+    if(!g_profileXConfMock) return nullptr;
+    return g_profileXConfMock->cJSON_CreateArray();
+}
+
+extern "C" void cJSON_AddItemToObject(cJSON* object, const char* string, cJSON* item)
+{
+    if(!g_profileXConfMock) return;
+    g_profileXConfMock->cJSON_AddItemToObject(object, string, item);
+}
+
+extern "C" void cJSON_AddStringToObject(cJSON* object, const char* string, const char* value)
+{
+    if(!g_profileXConfMock) return;
+    g_profileXConfMock->cJSON_AddStringToObject(object, string, value);
+}
+
+extern "C" void cJSON_AddItemToArray(cJSON* array, cJSON* item)
+{
+    if(!g_profileXConfMock) return;
+    g_profileXConfMock->cJSON_AddItemToArray(array, item);
+}
+
 // Mock Method
 //t2parser mock functions
 extern "C" T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)

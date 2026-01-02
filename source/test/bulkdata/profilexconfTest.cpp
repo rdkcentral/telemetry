@@ -680,4 +680,56 @@ TEST_F(profileXconfTestFixture, InitJSONReportXConf_CreateObjectFails) {
     EXPECT_EQ(ret, T2ERROR_FAILURE);
     EXPECT_EQ(jsonObj, nullptr);
 }
+
+TEST_F(profileXconfTestFixture, InitJSONReportXConf_SuccessChain) {
+    // Arrange
+    cJSON dummyObj1, dummyObj2, dummyArr, dummyItem1, dummyItem2, dummyItem3;
+
+    // First cJSON_CreateObject() for *jsonObj
+    EXPECT_CALL(*g_profileXConfMock, cJSON_CreateObject())
+        .WillOnce(::testing::Return(&dummyObj1)) // *jsonObj = &dummyObj1
+        .WillOnce(::testing::Return(&dummyItem1)) // arrayItem = &dummyItem1
+        .WillOnce(::testing::Return(&dummyItem2)) // arrayItem = &dummyItem2
+        .WillOnce(::testing::Return(&dummyItem3)); // arrayItem = &dummyItem3
+
+    // Array for searchResult
+    EXPECT_CALL(*g_profileXConfMock, cJSON_CreateArray())
+        .WillOnce(::testing::Return(&dummyArr));
+
+    // AddItemToObject
+    EXPECT_CALL(*g_profileXConfMock, cJSON_AddItemToObject(&dummyObj1, ::testing::StrEq("searchResult"), &dummyArr));
+
+    // First arrayItem (T2)
+    EXPECT_CALL(*g_profileXConfMock, cJSON_AddStringToObject(&dummyItem1, ::testing::StrEq("T2"), ::testing::StrEq("1.0")));
+    EXPECT_CALL(*g_profileXConfMock, cJSON_AddItemToArray(&dummyArr, &dummyItem1));
+
+    // Second arrayItem (Profile, assume RDKV for #else case)
+    EXPECT_CALL(*g_profileXConfMock, cJSON_AddStringToObject(&dummyItem2, ::testing::StrEq("Profile"), ::testing::StrEq("RDKV")));
+    EXPECT_CALL(*g_profileXConfMock, cJSON_AddItemToArray(&dummyArr, &dummyItem2));
+
+    // Third arrayItem (Time)
+    EXPECT_CALL(*g_profileXConfMock, cJSON_AddStringToObject(&dummyItem3, ::testing::StrEq("Time"), ::testing::StrEq("1970-01-01 00:00:00")));
+    EXPECT_CALL(*g_profileXConfMock, cJSON_AddItemToArray(&dummyArr, &dummyItem3));
+
+    // Arrange getTimeStamp
+    extern "C" char* getTimeStamp(void);
+    testing::MockFunction<char*()> mockGetTimeStamp;
+    ON_CALL(mockGetTimeStamp, Call()).WillByDefault([]() {
+        // The code under test will free this, so heap alloc
+        char* t = (char*)malloc(20);
+        strcpy(t, "1970-01-01 00:00:00");
+        return t;
+    });
+
+    // Act
+    cJSON* jsonObj = nullptr;
+    cJSON* valArray = nullptr;
+    auto func = initJSONReportXconfCallback();
+    T2ERROR ret = func(&jsonObj, &valArray);
+
+    // Assert
+    EXPECT_EQ(ret, T2ERROR_SUCCESS);
+    EXPECT_EQ(jsonObj, &dummyObj1);
+    EXPECT_EQ(valArray, &dummyArr);
+}
 #endif

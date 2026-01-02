@@ -45,6 +45,11 @@ public:
     MOCK_METHOD(T2ERROR, loadSavedSeekConfig, (char *profileName, GrepSeekProfile *ProfileSeekMap), ());
     MOCK_METHOD(bool, firstBootStatus, (), ());
     MOCK_METHOD(cJSON*, cJSON_CreateObject, (), ());
+    // Add these in your profilexconfMock class:
+    MOCK_METHOD(cJSON*, cJSON_CreateArray, (), ());
+    MOCK_METHOD(void, cJSON_AddItemToObject, (cJSON* object, const char* string, cJSON* item), ());
+    MOCK_METHOD(void, cJSON_AddStringToObject, (cJSON* object, const char* string, const char* value), ());
+    MOCK_METHOD(void, cJSON_AddItemToArray, (cJSON* array, cJSON* item), ());
 };
 
 extern profilexconfMock *g_profileXConfMock;

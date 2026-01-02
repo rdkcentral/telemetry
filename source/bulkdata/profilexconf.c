@@ -1035,7 +1035,7 @@ T2ERROR ProfileXConf_terminateReport()
     return ret;
 
 }
-#ifdef GTEST_ENABLE
+#if 1
 typedef char* (*getTimeStampFuncType)(void);
 
 getTimeStampFuncType getTimeStampFuncCallback(void)

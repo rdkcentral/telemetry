@@ -646,7 +646,7 @@ TEST_F(profileXconfTestFixture, ProfileXConf_uninit)
     EXPECT_EQ(ProfileXConf_uninit(), T2ERROR_SUCCESS);
 }
 
-#ifdef GTEST_ENABLE
+#if 1
 extern "C" {
 typedef char* (*getTimeStampFuncType)(void);
 getTimeStampFuncType getTimeStampFuncCallback(void);

@@ -47,7 +47,6 @@ public:
     MOCK_METHOD(cJSON*, cJSON_CreateObject, (), ());
     // Add these in your profilexconfMock class:
         // cJSON function mocks for static coverage
-    MOCK_METHOD(cJSON*, cJSON_CreateObject, (), ());
     MOCK_METHOD(cJSON*, cJSON_CreateArray, (), ());
     MOCK_METHOD(cJSON_bool, cJSON_AddItemToObject, (cJSON* object, const char* string, cJSON* item), ());
     MOCK_METHOD(cJSON_bool, cJSON_AddItemToArray, (cJSON* array, cJSON* item), ());

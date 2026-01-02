@@ -20,7 +20,14 @@
 #include "vector.h"
 #include "test/bulkdata/profilexconfMock.h"
 
-
+@@
+extern "C" cJSON* cJSON_CreateObject(void)
+{
+    if(!g_profileXConfMock) {
+        return nullptr;
+    }
+    return g_profileXConfMock->cJSON_CreateObject();
+}
 
 // Mock Method
 //t2parser mock functions

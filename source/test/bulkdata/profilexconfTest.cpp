@@ -664,12 +664,20 @@ TEST(ProfileXconfStatic, GetTimeStampAllocatesProperString)
     free(result);
 }
 
-TEST(ProfileXconfStatic, InitJSONReportXConf_CreateObjectFails) {
-    cJSON* json = (cJSON*)0xABCD; // Dummy init to verify real write
-    cJSON* arr = (cJSON*)0xDEAD;
-    auto fn = initJSONReportXconfCallback();
-    T2ERROR res = fn(&json, &arr);
-    EXPECT_EQ(res, T2ERROR_FAILURE);
-    EXPECT_EQ(json, nullptr);
+TEST_F(profileXconfTestFixture, InitJSONReportXConf_CreateObjectFails) {
+    // Arrange: Set expectation for cJSON_CreateObject to simulate failure
+    EXPECT_CALL(*g_profileXConfMock, cJSON_CreateObject())
+        .WillOnce(::testing::Return(nullptr));
+
+    cJSON* jsonObj = reinterpret_cast<cJSON*>(0xDEADBEEF);
+    cJSON* valArray = reinterpret_cast<cJSON*>(0xDEADC0DE);
+
+    // Act: Call the static function via function pointer
+    auto initJSONReportXconfFP = initJSONReportXconfCallback();
+    T2ERROR ret = initJSONReportXconfFP(&jsonObj, &valArray);
+
+    // Assert: Should return failure and output pointer should be set to nullptr
+    EXPECT_EQ(ret, T2ERROR_FAILURE);
+    EXPECT_EQ(jsonObj, nullptr);
 }
 #endif

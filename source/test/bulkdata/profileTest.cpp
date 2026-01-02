@@ -244,6 +244,63 @@ TEST_F(ProfileTest, GetProfile_NullName) {
     EXPECT_EQ(err, T2ERROR_FAILURE); // Or the constant your implementation uses
 }
 
+TEST_F(ProfileTest, FreeProfile_WithGMarkerList_CallsVectorDestroy) {
+    VectorMock* vectorMock = new VectorMock();
+    g_vectorMock = vectorMock;
+
+    Profile* prof = (Profile*)calloc(1, sizeof(Profile));
+    Vector* test_vector = (Vector*)0x456;
+    prof->gMarkerList = test_vector;
+    EXPECT_CALL(*vectorMock, Vector_Destroy(test_vector, testing::_))
+        .Times(1)
+        .WillOnce(testing::Return(T2ERROR_SUCCESS));
+
+    freeProfileFunc freeFunc = freeProfileFuncCallback();
+    freeFunc(prof);
+
+    delete vectorMock;
+    g_vectorMock = nullptr;
+}
+
+TEST_F(ProfileTest, FreeProfile_WithHTTPDest_RequestURIparamList_CallsVectorDestroy) {
+    VectorMock* vectorMock = new VectorMock();
+    g_vectorMock = vectorMock;
+
+    Profile* prof = (Profile*)calloc(1, sizeof(Profile));
+    prof->t2HTTPDest = (T2HTTP*)calloc(1, sizeof(T2HTTP));
+    Vector* test_vector = (Vector*)0x789;
+    prof->t2HTTPDest->RequestURIparamList = test_vector;
+    prof->t2HTTPDest->URL = strdup("dummy");
+    EXPECT_CALL(*vectorMock, Vector_Destroy(test_vector, testing::_))
+        .Times(1)
+        .WillOnce(testing::Return(T2ERROR_SUCCESS));
+
+    freeProfileFunc freeFunc = freeProfileFuncCallback();
+    freeFunc(prof);
+
+    delete vectorMock;
+    g_vectorMock = nullptr;
+}
+
+TEST_F(ProfileTest, FreeProfile_WithRBUSDest_rbusMethodParamList_CallsVectorDestroy) {
+    VectorMock* vectorMock = new VectorMock();
+    g_vectorMock = vectorMock;
+
+    Profile* prof = (Profile*)calloc(1, sizeof(Profile));
+    prof->t2RBUSDest = (T2RBUS*)calloc(1, sizeof(T2RBUS));
+    Vector* test_vector = (Vector*)0xABC;
+    prof->t2RBUSDest->rbusMethodParamList = test_vector;
+    prof->t2RBUSDest->rbusMethodName = strdup("dummy");
+    EXPECT_CALL(*vectorMock, Vector_Destroy(test_vector, testing::_))
+        .Times(1)
+        .WillOnce(testing::Return(T2ERROR_SUCCESS));
+
+    freeProfileFunc freeFunc = freeProfileFuncCallback();
+    freeFunc(prof);
+
+    delete vectorMock;
+    g_vectorMock = nullptr;
+}
 TEST_F(ProfileTest, InitJSONReportProfile_Success) {
     initJSONReportProfileFunc func = initJSONReportProfileFuncCallback();
     cJSON *jsonObj = nullptr;

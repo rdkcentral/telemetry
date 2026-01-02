@@ -645,3 +645,19 @@ TEST_F(profileXconfTestFixture, ProfileXConf_uninit)
 {
     EXPECT_EQ(ProfileXConf_uninit(), T2ERROR_SUCCESS);
 }
+
+#ifdef GTEST_ENABLE
+extern "C" {
+typedef char* (*getTimeStampFuncType)(void);
+getTimeStampFuncType getTimeStampFuncCallback(void);
+}
+TEST(ProfileXconfStatic, GetTimeStampAllocatesProperString)
+{
+    getTimeStampFuncType cb = getTimeStampFuncCallback();
+    ASSERT_NE(cb, nullptr);
+    char *result = cb();
+    ASSERT_NE(result, nullptr);
+    // Optionally check format here with regex or string parsing
+    free(result);
+}
+#endif

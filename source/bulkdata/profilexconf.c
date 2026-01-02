@@ -1035,4 +1035,11 @@ T2ERROR ProfileXConf_terminateReport()
     return ret;
 
 }
+#ifdef GTEST_ENABLE
+typedef char* (*getTimeStampFuncType)(void);
 
+getTimeStampFuncType getTimeStampFuncCallback(void)
+{
+    return getTimeStamp;
+}
+#endif

@@ -681,40 +681,46 @@ TEST_F(profileXconfTestFixture, InitJSONReportXConf_CreateObjectFails) {
     EXPECT_EQ(jsonObj, nullptr);
 }
 
-TEST_F(profileXconfTestFixture, InitJSONReportXConf_Success) {
-    // Dummy objects for mocking.
+TEST_F(ProfileXconfStaticTest, InitJSONReportXConf_Success) {
+    // Dummy objects for mocking
     cJSON dummyObj1, dummyArr, dummyItem1, dummyItem2, dummyItem3;
 
-    // Mock: 1st CreateObject returns main JSON object (*jsonObj)
+    // cJSON mocks
     EXPECT_CALL(*g_profileXConfMock, cJSON_CreateObject())
         .WillOnce(::testing::Return(&dummyObj1))    // *jsonObj
         .WillOnce(::testing::Return(&dummyItem1))   // arrayItem 1 (T2)
         .WillOnce(::testing::Return(&dummyItem2))   // arrayItem 2 (Profile)
         .WillOnce(::testing::Return(&dummyItem3));  // arrayItem 3 (Time)
-    // Mock CreateArray
+
     EXPECT_CALL(*g_profileXConfMock, cJSON_CreateArray())
         .WillOnce(::testing::Return(&dummyArr));
-    EXPECT_CALL(*g_profileXConfMock, cJSON_AddItemToObject(&dummyObj1, ::testing::StrEq("searchResult"), &dummyArr));
-    // T2 item
-    EXPECT_CALL(*g_profileXConfMock, cJSON_AddStringToObject(&dummyItem1, ::testing::StrEq("T2"), ::testing::StrEq("1.0")));
-    EXPECT_CALL(*g_profileXConfMock, cJSON_AddItemToArray(&dummyArr, &dummyItem1));
-    // Profile item (assume #else branch: RDKV)
-    EXPECT_CALL(*g_profileXConfMock, cJSON_AddStringToObject(&dummyItem2, ::testing::StrEq("Profile"), ::testing::StrEq("RDKV")));
-    EXPECT_CALL(*g_profileXConfMock, cJSON_AddItemToArray(&dummyArr, &dummyItem2));
-    // Time item
-    // We'll allow any string as the formatted time, since format can vary by system locale/etc
-    EXPECT_CALL(*g_profileXConfMock, cJSON_AddStringToObject(&dummyItem3, ::testing::StrEq("Time"), ::testing::_));
-    EXPECT_CALL(*g_profileXConfMock, cJSON_AddItemToArray(&dummyArr, &dummyItem3));
 
-    // Setup test pointers
+    EXPECT_CALL(*g_profileXConfMock, cJSON_AddItemToObject(&dummyObj1, ::testing::StrEq("searchResult"), &dummyArr))
+        .WillOnce(::testing::Return(1)); // cJSON_True
+
+    // First array item (T2 entry)
+    EXPECT_CALL(*g_profileXConfMock, cJSON_AddStringToObject(&dummyItem1, ::testing::StrEq("T2"), ::testing::StrEq("1.0")))
+        .WillOnce(::testing::Return(&dummyItem1));
+    EXPECT_CALL(*g_profileXConfMock, cJSON_AddItemToArray(&dummyArr, &dummyItem1))
+        .WillOnce(::testing::Return(1));
+    // Second array item (Profile)
+    EXPECT_CALL(*g_profileXConfMock, cJSON_AddStringToObject(&dummyItem2, ::testing::StrEq("Profile"), ::testing::_))
+        .WillOnce(::testing::Return(&dummyItem2));
+    EXPECT_CALL(*g_profileXConfMock, cJSON_AddItemToArray(&dummyArr, &dummyItem2))
+        .WillOnce(::testing::Return(1));
+    // Third array item (Time)
+    EXPECT_CALL(*g_profileXConfMock, cJSON_AddStringToObject(&dummyItem3, ::testing::StrEq("Time"), ::testing::_))
+        .WillOnce(::testing::Return(&dummyItem3));
+    EXPECT_CALL(*g_profileXConfMock, cJSON_AddItemToArray(&dummyArr, &dummyItem3))
+        .WillOnce(::testing::Return(1));
+
+    // Now run the function
     cJSON* jsonObj = nullptr;
     cJSON* valArray = nullptr;
     auto func = initJSONReportXconfCallback();
-
-    // Act
     T2ERROR ret = func(&jsonObj, &valArray);
 
-    // Expect success result, and proper pointer assignments
+    // Check result and output pointers
     EXPECT_EQ(ret, T2ERROR_SUCCESS);
     EXPECT_EQ(jsonObj, &dummyObj1);
     EXPECT_EQ(valArray, &dummyArr);

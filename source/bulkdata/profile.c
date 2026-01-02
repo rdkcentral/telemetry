@@ -564,7 +564,9 @@ static void* CollectAndReport(void* data)
                             pthread_mutex_lock(&profile->reportMutex);
                             T2Info("waiting for %ld sec of macUploadLatency\n", (long) maxuploadinSec);
                             profile->maxlatencyTime.tv_sec += maxuploadinSec;
-                            n = pthread_cond_timedwait(&profile->reportcond, &profile->reportMutex, &profile->maxlatencyTime);
+                            do {
+			        n = pthread_cond_timedwait(&profile->reportcond, &profile->reportMutex, &profile->maxlatencyTime);
+			    } while(n != ETIMEDOUT && n != 0);
                             if(n == ETIMEDOUT)
                             {
                                 T2Info("TIMEOUT for maxUploadLatency of profile %s\n", profile->name);
@@ -615,7 +617,9 @@ static void* CollectAndReport(void* data)
                             pthread_mutex_lock(&profile->reportMutex);
                             T2Info("waiting for %ld sec of macUploadLatency\n", (long) maxuploadinSec);
                             profile->maxlatencyTime.tv_sec += maxuploadinSec;
-                            n = pthread_cond_timedwait(&profile->reportcond, &profile->reportMutex, &profile->maxlatencyTime);
+                            do {
+			        n = pthread_cond_timedwait(&profile->reportcond, &profile->reportMutex, &profile->maxlatencyTime);
+			    } while(n != ETIMEDOUT && n != 0);
                             if(n == ETIMEDOUT)
                             {
                                 T2Info("TIMEOUT for maxUploadLatency of profile %s\n", profile->name);

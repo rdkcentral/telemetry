@@ -1210,6 +1210,7 @@ char *prepareHttpUrl(T2HTTP *http)
         unsigned int index = 0;
         int params_len = 0;
         char *url_params = NULL;
+	char *temp_params = NULL;
 
         for(; index < http->RequestURIparamList->count; index++)
         {
@@ -1250,13 +1251,14 @@ char *prepareHttpUrl(T2HTTP *http)
             {
                 new_params_len += strlen(httpParamVal);
             }
-            url_params = realloc(url_params, new_params_len);
-            if(url_params == NULL)
+            temp_params = realloc(url_params, new_params_len);
+            if(temp_params == NULL)
             {
                 T2Error("Unable to allocate %d bytes of memory at Line %d on %s \n", new_params_len, __LINE__, __FILE__);
                 curl_free(httpParamVal);
                 continue;
             }
+	    url_params = temp_params;
             params_len += snprintf(url_params + params_len, new_params_len - params_len, "%s=%s&", httpParam->HttpName, httpParamVal);
 
             curl_free(httpParamVal);

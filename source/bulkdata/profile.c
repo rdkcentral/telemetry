@@ -218,7 +218,7 @@ static T2ERROR getProfile(const char *profileName, Profile **profile)
     for(; profileIndex < Vector_Size(profileList); profileIndex++)
     {
         tempProfile = (Profile *)Vector_At(profileList, profileIndex);
-	printf("DEBUG: strcmp('%s', '%s') = %d\n", tempProfile->name, profileName, cmp);
+	printf("DEBUG: strcmp('%s', '%s') \n", tempProfile->name, profileName);
         if(strcmp(tempProfile->name, profileName) == 0)
         {
             *profile = tempProfile;

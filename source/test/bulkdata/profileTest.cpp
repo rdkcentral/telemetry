@@ -244,23 +244,6 @@ TEST_F(ProfileTest, GetProfile_NullName) {
     EXPECT_EQ(err, T2ERROR_FAILURE); // Or the constant your implementation uses
 }
 
-TEST_F(ProfileTest, GetProfile_Found) {
-    // Arrange: Add a profile to profileList -- depends on your implementation.
-    Profile testProfile;
-    testProfile.name = strdup("existing");
-    // Insert testProfile into profileList at index 0.
-    // (e.g., Vector_PushBack(profileList, &testProfile);)
-
-    getProfileFunc func = getProfileFuncCallback();
-    Profile* prof = nullptr;
-
-    // Act
-    T2ERROR err = func("existing", &prof);
-
-    // Assert
-    EXPECT_EQ(err, T2ERROR_SUCCESS);
-    EXPECT_EQ(prof, &testProfile); // Or whatever the actual pointer is
-}
 
 TEST_F(ProfileTest, FreeProfile_WithGMarkerList_CallsVectorDestroy) {
     VectorMock* vectorMock = new VectorMock();

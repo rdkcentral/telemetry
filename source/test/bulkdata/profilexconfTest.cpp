@@ -736,4 +736,26 @@ TEST_F(profileXconfTestFixture, Cover_CollectAndReportXconf)
     void* result = fn(nullptr);
     // Optionally, check result
 }
+
+TEST_F(profileXconfTestFixture, Covers_CollectAndReportXconf_UsingMockAndAPI)
+{
+    // Arrange: When the config is processed, allocate a ProfileXConf
+    EXPECT_CALL(*g_profileXConfMock, processConfigurationXConf(_, _))
+        .WillOnce([](char* json, ProfileXConf** out) {
+            *out = new ProfileXConf();
+            memset(*out, 0, sizeof(ProfileXConf));
+            (*out)->name = strdup("TestProfile");
+            (*out)->grepSeekProfile = new GrepSeekProfile();
+            (*out)->grepSeekProfile->execCounter = 21; // arbitrary, will hit checked code
+            return T2ERROR_SUCCESS;
+        });
+
+    ASSERT_EQ(ProfileXConf_init(false), T2ERROR_SUCCESS);
+
+    CollectAndReportXconfFunc fn = get_CollectAndReportXconf_func();
+    ASSERT_NE(fn, nullptr);
+    fn(nullptr); // arguments typically unused for threads
+
+    ProfileXConf_uninit();
+}
 #endif

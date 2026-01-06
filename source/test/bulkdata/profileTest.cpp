@@ -1545,7 +1545,7 @@ TEST_F(ProfileTest, ProfileXConf_updateMarkerComponentMap)
     ProfileXConf_updateMarkerComponentMap();
     EXPECT_EQ(ProfileXConf_uninit(), T2ERROR_SUCCESS);
 }
-
+#if 0
 TEST_F(profileXconfTestFixture, Covers_CollectAndReportXconf_UsingMockAndAPI)
 {
     // Set up mocks if not already in SetUp/tearDown
@@ -1577,6 +1577,7 @@ TEST_F(profileXconfTestFixture, Covers_CollectAndReportXconf_UsingMockAndAPI)
     delete g_profileXConfMock;
     g_profileXConfMock = nullptr;
 }
+#endif
 #endif
 #if 1
 //comment

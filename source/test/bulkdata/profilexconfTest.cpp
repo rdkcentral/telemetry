@@ -195,7 +195,7 @@ TEST_F(profileXconfTestFixture, InitandUninit)
         "},"
         "{"
             "\"header\":\"SYS_EVENT_TEST_accum\","
-            "\"content\":\"generic\","
+           "\"content\":\"generic\","
             "\"type\":\"<event>\","
             "\"pollingFrequency\":\"0\""
         "}"
@@ -739,17 +739,22 @@ TEST_F(profileXconfTestFixture, Cover_CollectAndReportXconf)
 
 TEST_F(profileXconfTestFixture, Covers_CollectAndReportXconf_UsingMockAndAPI)
 {
-    // Remove this for now:
-    // EXPECT_CALL(*g_profileXConfMock, processConfigurationXConf(_, _))
-    //    .WillOnce(...);
+	ProfileXConf* profile = (ProfileXConf*)calloc(1, sizeof(ProfileXConf));
+profile->name = strdup("TestProfile");
+profile->reportingInterval = 60; // Or other reasonable value, not zero
+profile->grepSeekProfile = (GrepSeekProfile*)calloc(1, sizeof(GrepSeekProfile));
+profile->grepSeekProfile->execCounter = 21;
 
-    // Instead, create and set the Profile directly
-    ProfileXConf* profile = (ProfileXConf*)calloc(1, sizeof(ProfileXConf));
-    profile->name = strdup("TestProfile");
-    profile->grepSeekProfile = (GrepSeekProfile*)calloc(1, sizeof(GrepSeekProfile));
-    profile->grepSeekProfile->execCounter = 21;
+// Mock/allocate a marker list with at least one element
+Vector_Create(&profile->eMarkerList);
+EventMarker* eMarker = (EventMarker*)calloc(1, sizeof(EventMarker));
+eMarker->markerName = strdup("marker1");
+eMarker->compName = strdup("comp1");
+eMarker->skipFreq = 0;
+Vector_PushBack(profile->eMarkerList, eMarker);
 
-    // This should set the static singleProfile
-    ASSERT_EQ(ProfileXConf_set(profile), T2ERROR_SUCCESS);
+// (Optional: initialize other lists like gMarkerList, topMarkerList, paramList, as needed)
+
+ASSERT_EQ(ProfileXConf_set(profile), T2ERROR_SUCCESS);
 }
 #endif

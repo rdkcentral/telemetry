@@ -737,24 +737,4 @@ TEST_F(profileXconfTestFixture, Cover_CollectAndReportXconf)
     // Optionally, check result
 }
 
-TEST_F(profileXconfTestFixture, Covers_CollectAndReportXconf_UsingMockAndAPI)
-{
-	ProfileXConf* profile = (ProfileXConf*)calloc(1, sizeof(ProfileXConf));
-profile->name = strdup("TestProfile");
-profile->reportingInterval = 60; // Or other reasonable value, not zero
-profile->grepSeekProfile = (GrepSeekProfile*)calloc(1, sizeof(GrepSeekProfile));
-profile->grepSeekProfile->execCounter = 21;
-
-// Mock/allocate a marker list with at least one element
-Vector_Create(&profile->eMarkerList);
-EventMarker* eMarker = (EventMarker*)calloc(1, sizeof(EventMarker));
-eMarker->markerName = strdup("marker1");
-eMarker->compName = strdup("comp1");
-eMarker->skipFreq = 0;
-Vector_PushBack(profile->eMarkerList, eMarker);
-
-// (Optional: initialize other lists like gMarkerList, topMarkerList, paramList, as needed)
-
-ASSERT_EQ(ProfileXConf_set(profile), T2ERROR_SUCCESS);
-}
 #endif

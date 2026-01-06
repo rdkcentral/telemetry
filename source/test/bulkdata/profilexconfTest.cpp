@@ -96,7 +96,6 @@ TEST_F(profileXconfTestFixture, ProfileXConf_isSet_before_init)
     EXPECT_EQ(false, ProfileXConf_isSet());
 }
 
-#if 0
 //Test the marker component map update before init of single profiles, it should n't update the component map
 TEST_F(profileXconfTestFixture, ProfileXConf_updateMarkerComponentMap_success_before_init)
 {
@@ -737,4 +736,4 @@ TEST_F(profileXconfTestFixture, Cover_CollectAndReportXconf)
 }
 
 #endif
-#endif
+

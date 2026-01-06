@@ -1546,6 +1546,37 @@ TEST_F(ProfileTest, ProfileXConf_updateMarkerComponentMap)
     EXPECT_EQ(ProfileXConf_uninit(), T2ERROR_SUCCESS);
 }
 
+TEST_F(profileXconfTestFixture, Covers_CollectAndReportXconf_UsingMockAndAPI)
+{
+    // Set up mocks if not already in SetUp/tearDown
+    g_profileXConfMock = new profilexconfMock();
+
+    // Arrange: When the config is processed, allocate a ProfileXConf
+    EXPECT_CALL(*g_profileXConfMock, processConfigurationXConf(_, _))
+        .WillOnce([](char* json, ProfileXConf** out) {
+            *out = new ProfileXConf();
+            memset(*out, 0, sizeof(ProfileXConf));
+            (*out)->name = strdup("TestProfile");
+            (*out)->grepSeekProfile = new GrepSeekProfile();
+            (*out)->grepSeekProfile->execCounter = 21; // arbitrary, will hit checked code
+            return T2ERROR_SUCCESS;
+        });
+
+    // This will use processConfigurationXConf and set static singleProfile
+    ASSERT_EQ(ProfileXConf_init(false), T2ERROR_SUCCESS);
+
+    // Now call the function via function pointer - hits static inside source
+    CollectAndReportXconfFunc fn = get_CollectAndReportXconf_func();
+    ASSERT_NE(fn, nullptr);
+    fn(nullptr); // arguments typically unused for threads
+
+    // Optionally verify any observable side effects/calls
+
+    // Clean up
+    ProfileXConf_uninit();
+    delete g_profileXConfMock;
+    g_profileXConfMock = nullptr;
+}
 #endif
 #if 1
 //comment

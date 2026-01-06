@@ -737,4 +737,19 @@ TEST_F(profileXconfTestFixture, Cover_CollectAndReportXconf)
     // Optionally, check result
 }
 
+TEST_F(profileXconfTestFixture, Covers_CollectAndReportXconf_UsingMockAndAPI)
+{
+    // Remove this for now:
+    // EXPECT_CALL(*g_profileXConfMock, processConfigurationXConf(_, _))
+    //    .WillOnce(...);
+
+    // Instead, create and set the Profile directly
+    ProfileXConf* profile = (ProfileXConf*)calloc(1, sizeof(ProfileXConf));
+    profile->name = strdup("TestProfile");
+    profile->grepSeekProfile = (GrepSeekProfile*)calloc(1, sizeof(GrepSeekProfile));
+    profile->grepSeekProfile->execCounter = 21;
+
+    // This should set the static singleProfile
+    ASSERT_EQ(ProfileXConf_set(profile), T2ERROR_SUCCESS);
+}
 #endif

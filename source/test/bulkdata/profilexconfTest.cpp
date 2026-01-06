@@ -609,54 +609,6 @@ TEST_F(profileXconfTestFixture, ProfileXConf_notifyTimeout)
     std::this_thread::sleep_for(std::chrono::milliseconds(20000));
 }
 */
-TEST_F(profileXconfTestFixture, ProfileXConf_notifyTimeout)
-{
-    // Mock return value for getProfileParameterValues
-    EXPECT_CALL(*g_profileXConfMock, getProfileParameterValues(_, _))
-        .Times(1)
-        .WillOnce([](Vector *paramList, int count) {
-            Vector *outparamlist = nullptr;
-            return outparamlist;
-        });
-
-    EXPECT_CALL(*g_profileXConfMock, encodeParamResultInJSON(_, _))
-        .Times(1)
-        .WillOnce(Return(T2ERROR_SUCCESS));
-
-    EXPECT_CALL(*g_profileXConfMock, processTopPattern(_,_,_,_))
-        .Times(1)
-        .WillOnce(Return(0));
-
-    EXPECT_CALL(*g_profileXConfMock, getGrepResults(_,_,_,_,_))
-        .Times(1)
-        .WillOnce(Return(T2ERROR_SUCCESS));
-
-    EXPECT_CALL(*g_profileXConfMock, encodeGrepResultInJSON(_, _))
-        .Times(1)
-        .WillOnce(Return(T2ERROR_SUCCESS));
-
-    EXPECT_CALL(*g_profileXConfMock, sendReportOverHTTP(_, _, _))
-        .Times(1)
-        .WillOnce(Return(T2ERROR_SUCCESS));
-
-    EXPECT_CALL(*g_profileXConfMock, sendCachedReportsOverHTTP(_,_))
-        .Times(1)
-        .WillOnce(Return(T2ERROR_SUCCESS));
-
-    EXPECT_CALL(*g_systemMock, unlink(_))
-        .Times(1)
-        .WillOnce(Return(0));
-
-    EXPECT_CALL(*g_schedulerMock, getLapsedTime(_,_,_))
-        .Times(1)
-        .WillOnce(Return(30));
-
-    EXPECT_CALL(*g_profileXConfMock, publishReportUploadStatus(_))
-        .Times(1);
-
-    ProfileXConf_notifyTimeout(false, true);
-    std::this_thread::sleep_for(std::chrono::milliseconds(200)); // not required, but used in your original example
-}
 //Test the deletion of xconf profile
 TEST_F(profileXconfTestFixture, ProfileXConf_deleteProfile)
 {

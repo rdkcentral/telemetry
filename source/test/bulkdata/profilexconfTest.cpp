@@ -752,7 +752,7 @@ TEST_F(profileXconfTestFixture, Covers_CollectAndReportXconf_UsingMockAndAPI)
     // This should set the static singleProfile
     ASSERT_EQ(ProfileXConf_set(profile), T2ERROR_SUCCESS);
 
-    CollectAndReportXconfFunc fn = get_CollectAndReportXconf_func();
+    CollectAndReportXconfFuncType fn = CollectAndReportXconfCallback();
     ASSERT_NE(fn, nullptr);
     fn(nullptr); // Now the code you want in CollectAndReportXconf should execute with a non-null profile
 

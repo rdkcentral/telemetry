@@ -561,7 +561,7 @@ TEST_F(profileXconfTestFixture, ReportProfiles_storeMarkerEvent_success_2)
 }
 
 //ProfileXConf_notifyTimeout Test the timeout of the profile
-/*
+
 TEST_F(profileXconfTestFixture, ProfileXConf_notifyTimeout)
 {
     EXPECT_CALL(*g_profileXConfMock, getProfileParameterValues(_, _))
@@ -606,7 +606,7 @@ TEST_F(profileXconfTestFixture, ProfileXConf_notifyTimeout)
         .Times(1);
     ProfileXConf_notifyTimeout(false, true);
     std::this_thread::sleep_for(std::chrono::milliseconds(20000));
-}*/
+}
 
 //Test the deletion of xconf profile
 TEST_F(profileXconfTestFixture, ProfileXConf_deleteProfile)

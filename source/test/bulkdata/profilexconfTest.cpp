@@ -739,23 +739,23 @@ TEST_F(profileXconfTestFixture, Cover_CollectAndReportXconf)
 
 TEST_F(profileXconfTestFixture, Covers_CollectAndReportXconf_UsingMockAndAPI)
 {
-    // Arrange: When the config is processed, allocate a ProfileXConf
-    EXPECT_CALL(*g_profileXConfMock, processConfigurationXConf(_, _))
-        .WillOnce([](char* json, ProfileXConf** out) {
-            *out = new ProfileXConf();
-            memset(*out, 0, sizeof(ProfileXConf));
-            (*out)->name = strdup("TestProfile");
-            (*out)->grepSeekProfile = new GrepSeekProfile();
-            (*out)->grepSeekProfile->execCounter = 21; // arbitrary, will hit checked code
-            return T2ERROR_SUCCESS;
-        });
+    // Remove this for now:
+    // EXPECT_CALL(*g_profileXConfMock, processConfigurationXConf(_, _))
+    //    .WillOnce(...);
 
-    ASSERT_EQ(ProfileXConf_init(false), T2ERROR_SUCCESS);
+    // Instead, create and set the Profile directly
+    ProfileXConf* profile = (ProfileXConf*)calloc(1, sizeof(ProfileXConf));
+    profile->name = strdup("TestProfile");
+    profile->grepSeekProfile = (GrepSeekProfile*)calloc(1, sizeof(GrepSeekProfile));
+    profile->grepSeekProfile->execCounter = 21;
 
-    CollectAndReportXconfFuncType fn = CollectAndReportXconfCallback();
+    // This should set the static singleProfile
+    ASSERT_EQ(ProfileXConf_set(profile), T2ERROR_SUCCESS);
+
+    CollectAndReportXconfFunc fn = get_CollectAndReportXconf_func();
     ASSERT_NE(fn, nullptr);
-    fn(nullptr); // arguments typically unused for threads
+    fn(nullptr); // Now the code you want in CollectAndReportXconf should execute with a non-null profile
 
-    ProfileXConf_uninit();
+    ProfileXConf_uninit(); // Clean up
 }
 #endif

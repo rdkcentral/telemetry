@@ -653,6 +653,9 @@ getTimeStampFuncType getTimeStampFuncCallback(void);
 
 typedef T2ERROR (*initJSONReportXconfFuncType)(cJSON**, cJSON**);
 initJSONReportXconfFuncType initJSONReportXconfCallback(void);
+
+typedef void* (*CollectAndReportXconfFuncType)(void*);
+CollectAndReportXconfFuncType CollectAndReportXconfCallback(void);
 }
 TEST(ProfileXconfStatic, GetTimeStampAllocatesProperString)
 {
@@ -724,5 +727,13 @@ TEST_F(profileXconfTestFixture, InitJSONReportXConf_Success) {
     EXPECT_EQ(ret, T2ERROR_SUCCESS);
     EXPECT_EQ(jsonObj, &dummyObj1);
     EXPECT_EQ(valArray, &dummyArr);
+}
+
+TEST_F(profileXconfTestFixture, Cover_CollectAndReportXconf)
+{
+    CollectAndReportXconfFuncType fn = CollectAndReportXconfCallback();
+    ASSERT_NE(fn, nullptr);
+    void* result = fn(nullptr);
+    // Optionally, check result
 }
 #endif

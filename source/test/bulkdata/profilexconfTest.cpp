@@ -752,7 +752,7 @@ TEST_F(profileXconfTestFixture, Covers_CollectAndReportXconf_UsingMockAndAPI)
 
     ASSERT_EQ(ProfileXConf_init(false), T2ERROR_SUCCESS);
 
-    CollectAndReportXconfFunc fn = get_CollectAndReportXconf_func();
+    CollectAndReportXconfFuncType fn = CollectAndReportXconfCallback();
     ASSERT_NE(fn, nullptr);
     fn(nullptr); // arguments typically unused for threads
 

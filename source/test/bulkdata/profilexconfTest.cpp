@@ -639,6 +639,52 @@ TEST_F(profileXconfTestFixture, ProfileXConf_deleteProfile)
     EXPECT_EQ(ProfileXConf_delete(localProfile), T2ERROR_SUCCESS);
 }
 
+ProfileXConf* CreateProfile(const char* name, bool withCached, bool withEMarker, MarkerType mType, bool withGMarker, bool withReportInProgress) {
+    ProfileXConf* localProfile = (ProfileXConf*)calloc(1, sizeof(ProfileXConf));
+    localProfile->name = strdup(name);
+
+    if (withEMarker) {
+        EventMarker *eMarker = (EventMarker*)calloc(1, sizeof(EventMarker));
+        eMarker->markerName = strdup("sys_info_bootup");
+        eMarker->compName = strdup("sysint");
+        eMarker->skipFreq = 0;
+        eMarker->mType = mType;
+        Vector_Create(&localProfile->eMarkerList);
+        Vector_PushBack(localProfile->eMarkerList, eMarker);
+    }
+
+    if (withGMarker) {
+        Vector_Create(&localProfile->gMarkerList);
+        void* dummy = strdup("dummy");
+        Vector_PushBack(localProfile->gMarkerList, dummy);
+    }
+
+    if (withCached) {
+        Vector_Create(&localProfile->cachedReportList);
+        void* dummy = strdup("cached");
+        Vector_PushBack(localProfile->cachedReportList, dummy);
+    }
+
+    localProfile->reportInProgress = withReportInProgress;
+    localProfile->protocol = strdup("HTTP");
+    localProfile->encodingType = strdup("JSON");
+
+    return localProfile;
+}
+TEST_F(profileXconfTestFixture, DeleteProfile_NotInitialized) {
+    ProfileXConf* prof = CreateProfile("RDK_Profile_2", false, false, MTYPE_XCONF_COUNTER, false, false);
+    EXPECT_EQ(ProfileXConf_delete(prof), T2ERROR_FAILURE);
+    free(prof->name); free(prof->protocol); free(prof->encodingType); free(prof);
+}
+
+// Test: Profile not found path (singleProfile==nullptr)
+TEST_F(profileXconfTestFixture, DeleteProfile_ProfileNotFound) {
+    ProfileXConf* prof = CreateProfile("RDK_Profile_XYZ", false, false, MTYPE_XCONF_COUNTER, false, false);
+    pthread_mutex_init(&plMutex, nullptr);
+    EXPECT_EQ(ProfileXConf_delete(prof), T2ERROR_FAILURE);
+    pthread_mutex_destroy(&plMutex);
+    free(prof->name); free(prof->protocol); free(prof->encodingType); free(prof);
+}
 //Test the uninit of XConf profiles
 TEST_F(profileXconfTestFixture, ProfileXConf_uninit)
 {

@@ -686,6 +686,7 @@ bool ProfileXConf_isNameEqual(char* profileName)
 T2ERROR ProfileXConf_delete(ProfileXConf *profile)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
+    printf("############################# initialized %d\n",initialized);
     if(!initialized)
     {
         T2Error("profile list is not initialized yet, ignoring\n");

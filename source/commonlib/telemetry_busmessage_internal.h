@@ -22,8 +22,8 @@
 
 #define MAX_DATA_LEN 256
 
-const char destCompName[64] = "eRT.com.cisco.spvtg.ccsp.pam";
-const char destCompPath[64] = "/com/cisco/spvtg/ccsp/pam";
+extern const char destCompName[64];
+extern const char destCompPath[64];
 
 
 #define EVENT_ERROR(format, ...) \

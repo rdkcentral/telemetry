@@ -226,9 +226,13 @@ TEST_F(ProfileTest, FreeProfile_Valid) {
 
     // JSON object
     prof->jsonReportObj = cJSON_CreateObject();
-    
-    //add here
+   
+    addProfile(prof);
+
+    enableProfile("profile_name");
+
     getProfileFunc func = getProfileFuncCallback();
+    ASSERT_NE(freeFunc, nullptr);
     T2ERROR err = func("profile_name", &prof);
     EXPECT_EQ(err, T2ERROR_SUCCESS);
 

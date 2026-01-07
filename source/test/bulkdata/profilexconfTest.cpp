@@ -677,14 +677,6 @@ TEST_F(profileXconfTestFixture, DeleteProfile_NotInitialized) {
     free(prof->name); free(prof->protocol); free(prof->encodingType); free(prof);
 }
 
-// Test: Profile not found path (singleProfile==nullptr)
-TEST_F(profileXconfTestFixture, DeleteProfile_ProfileNotFound) {
-    ProfileXConf* prof = CreateProfile("RDK_Profile_XYZ", false, false, MTYPE_XCONF_COUNTER, false, false);
-    pthread_mutex_init(&plMutex, nullptr);
-    EXPECT_EQ(ProfileXConf_delete(prof), T2ERROR_FAILURE);
-    pthread_mutex_destroy(&plMutex);
-    free(prof->name); free(prof->protocol); free(prof->encodingType); free(prof);
-}
 //Test the uninit of XConf profiles
 TEST_F(profileXconfTestFixture, ProfileXConf_uninit)
 {

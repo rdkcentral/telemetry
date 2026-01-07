@@ -271,11 +271,11 @@ void getComponentMarkerList(const char* compName, void **markerList)
     {
         uint32_t index = 0;
 
-	T2Info("%s, %d\n", __func__, __LINE__);
+        T2Info("%s, %d\n", __func__, __LINE__);
         pthread_mutex_lock(&t2MarkersMutex);
         for (; index < hash_map_count(markerCompMap); index++)
         {
-	    T2Info("%s, %d\n", __func__, __LINE__);
+            T2Info("%s, %d\n", __func__, __LINE__);
             T2Marker *t2Marker = (T2Marker *)hash_map_lookup(markerCompMap, index);
             if(t2Marker != NULL && !strcmp(t2Marker->componentName, compName))
             {

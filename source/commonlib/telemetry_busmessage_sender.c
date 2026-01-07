@@ -76,7 +76,8 @@ static pthread_mutex_t FileCacheMutex ;
 static pthread_mutex_t markerListMutex ;
 static pthread_mutex_t loggerMutex ;
 
-typedef enum {
+typedef enum
+{
     T2_REQ_SUBSCRIBE = 1,
     T2_REQ_PROFILE_DATA = 2,
     T2_REQ_MARKER_LIST = 3,
@@ -84,7 +85,8 @@ typedef enum {
     T2_MSG_EVENT_DATA = 5
 } T2RequestType;
 
-typedef struct {
+typedef struct
+{
     uint32_t request_type;
     uint32_t data_length;
     uint32_t client_id;
@@ -92,7 +94,8 @@ typedef struct {
 } T2RequestHeader;
 
 // Response header for server responses
-typedef struct {
+typedef struct
+{
     uint32_t response_status; // 0=success, 1=failure
     uint32_t data_length;     // Length of response data
     uint32_t sequence_id;     // Matches request sequence
@@ -229,19 +232,22 @@ void t2_init(char *component)
 {
     componentName = strdup(component);
     initMutex();
-    
+
     // Set transport mode from environment if available
     t2_set_transport_mode_from_env();
-    
+
     const char* mode_name = t2_get_transport_mode_name();
     EVENT_DEBUG("Initializing T2 for component: %s (transport: %s)\n", component, mode_name);
     printf("Initializing T2 for component: %s (transport: %s)\n", component, mode_name);
 
     // Initialize transport layer using unified interface
-    if (t2_communication_init(componentName) != T2ERROR_SUCCESS) {
+    if (t2_communication_init(componentName) != T2ERROR_SUCCESS)
+    {
         EVENT_ERROR("Transport initialization failed for %s\n", component);
         printf("Transport initialization failed for %s\n", component);
-    } else {
+    }
+    else
+    {
         EVENT_DEBUG("Successfully initialized transport for %s\n", component);
         printf("Successfully initialized transport for %s\n", component);
     }
@@ -250,10 +256,10 @@ void t2_init(char *component)
 void t2_uninit(void)
 {
     EVENT_ERROR("Un Initializing T2 communication\n");
-    
+
     // Use the new unified communication cleanup
     t2_communication_cleanup();
-    
+
     EVENT_ERROR("Un Initialized T2 communication\n");
 
     if(componentName)
@@ -268,7 +274,8 @@ void t2_uninit(void)
     }
 
     // Clean up client event marker map if it exists
-    if (clientEventMarkerMap) {
+    if (clientEventMarkerMap)
+    {
         pthread_mutex_lock(&clientMarkerMutex);
         hash_map_destroy(clientEventMarkerMap, free);
         clientEventMarkerMap = NULL;

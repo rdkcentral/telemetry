@@ -29,7 +29,8 @@
 
 
 // Transport mode enumeration
-typedef enum {
+typedef enum
+{
     T2_TRANSPORT_MODE_RBUS = 0,
     T2_TRANSPORT_MODE_UNIX_SOCKET = 1,
     T2_TRANSPORT_MODE_MESSAGE_QUEUE = 2

@@ -66,7 +66,8 @@ static pthread_mutex_t g_tcp_client_mutex = PTHREAD_MUTEX_INITIALIZER;
 // Communication mode flag - true for RBUS (default), false for Unix socket
 static bool g_use_rbus_communication = true;
 
-typedef enum {
+typedef enum
+{
     T2_REQ_SUBSCRIBE = 1,
     T2_REQ_PROFILE_DATA = 2,
     T2_REQ_MARKER_LIST = 3,
@@ -74,7 +75,8 @@ typedef enum {
     T2_MSG_EVENT_DATA = 5
 } T2RequestType;
 
-typedef struct {
+typedef struct
+{
     uint32_t request_type;
     uint32_t data_length;
     uint32_t client_id;
@@ -82,7 +84,8 @@ typedef struct {
 } T2RequestHeader;
 
 // Response header for server responses
-typedef struct {
+typedef struct
+{
     uint32_t response_status; // 0=success, 1=failure
     uint32_t data_length;     // Length of response data
     uint32_t sequence_id;     // Matches request sequence
@@ -100,7 +103,8 @@ static pthread_mutex_t clientMarkerMutex = PTHREAD_MUTEX_INITIALIZER;
 #define T2_MQ_PERMISSIONS 0666
 
 // Simplified Message Types
-typedef enum {
+typedef enum
+{
     T2_MQ_MSG_MARKER_UPDATE = 1,    // Daemon broadcasts marker updates to all clients
     T2_MQ_MSG_EVENT_DATA = 2,       // Clients send events to daemon
     T2_MQ_MSG_SUBSCRIBE = 3,        // Client subscription (optional)
@@ -108,7 +112,8 @@ typedef enum {
 } T2MQMessageType;
 
 // Simplified Message Header
-typedef struct {
+typedef struct
+{
     T2MQMessageType msg_type;
     uint32_t data_length;
     char component_name[128];       // Component this update is for (or "ALL" for global)
@@ -117,14 +122,16 @@ typedef struct {
 } T2MQMessageHeader;
 
 // Global state for thread-free operation
-static struct {
+static struct
+{
     mqd_t daemon_mq;                // Queue to send events to daemon
     mqd_t broadcast_mq;             // Queue to receive marker updates from daemon
     char broadcast_queue_name[256]; // Store the queue name for cleanup
     bool initialized;
     uint32_t last_sequence_id;      // Track last processed marker update
     time_t last_check_time;         // Timestamp of last marker check
-} g_mq_state = {
+} g_mq_state =
+{
     .daemon_mq = -1,
     .broadcast_mq = -1,
     .initialized = false,
@@ -377,14 +384,15 @@ T2ERROR getParamValue(const char* paramName, char **paramValue)
 // Function to check if an event marker is valid for this component
 static bool is_valid_event_marker(const char* markerName)
 {
-    if (!markerName || !eventMarkerMap) {
+    if (!markerName || !eventMarkerMap)
+    {
         return false;
     }
-    
+
     pthread_mutex_lock(&clientMarkerMutex);
     char* found_marker = (char*)hash_map_get(eventMarkerMap, markerName);
     pthread_mutex_unlock(&clientMarkerMutex);
-    
+
     return (found_marker != NULL);
 }
 
@@ -447,11 +455,11 @@ void t2_set_transport_mode(T2TransportMode mode)
     pthread_mutex_lock(&g_transport_mode_mutex);
     g_transport_mode = mode;
     pthread_mutex_unlock(&g_transport_mode_mutex);
-    
+
     const char* mode_name = (mode == T2_TRANSPORT_MODE_RBUS) ? "RBUS" :
-                           (mode == T2_TRANSPORT_MODE_UNIX_SOCKET) ? "Unix Socket" :
-                           (mode == T2_TRANSPORT_MODE_MESSAGE_QUEUE) ? "Message Queue" : "Unknown";
-    
+                            (mode == T2_TRANSPORT_MODE_UNIX_SOCKET) ? "Unix Socket" :
+                            (mode == T2_TRANSPORT_MODE_MESSAGE_QUEUE) ? "Message Queue" : "Unknown";
+
     EVENT_DEBUG("Transport mode set to: %s\n", mode_name);
     printf("Transport mode set to: %s\n", mode_name);
 }
@@ -472,27 +480,35 @@ T2TransportMode t2_get_transport_mode(void)
  * Set transport mode from environment variable
  * Environment variable T2_TRANSPORT_MODE can be:
  * - "rbus" (default)
- * - "unix_socket" 
+ * - "unix_socket"
  * - "message_queue" or "mq"
  */
 void t2_set_transport_mode_from_env(void)
 {
     const char* transport_env = getenv("T2_TRANSPORT_MODE");
-    if (!transport_env) {
+    if (!transport_env)
+    {
         printf("%s: T2_TRANSPORT_MODE not set, defaulting to RBUS\n", __FUNCTION__);
         t2_set_transport_mode(T2_TRANSPORT_MODE_MESSAGE_QUEUE); // Default
         return;
     }
-    
-    if (strcasecmp(transport_env, "unix_socket") == 0 || 
-        strcasecmp(transport_env, "unix") == 0) {
+
+    if (strcasecmp(transport_env, "unix_socket") == 0 ||
+            strcasecmp(transport_env, "unix") == 0)
+    {
         t2_set_transport_mode(T2_TRANSPORT_MODE_UNIX_SOCKET);
-    } else if (strcasecmp(transport_env, "message_queue") == 0 || 
-               strcasecmp(transport_env, "mq") == 0) {
+    }
+    else if (strcasecmp(transport_env, "message_queue") == 0 ||
+             strcasecmp(transport_env, "mq") == 0)
+    {
         t2_set_transport_mode(T2_TRANSPORT_MODE_MESSAGE_QUEUE);
-    } else if (strcasecmp(transport_env, "rbus") == 0) {
+    }
+    else if (strcasecmp(transport_env, "rbus") == 0)
+    {
         t2_set_transport_mode(T2_TRANSPORT_MODE_RBUS);
-    } else {
+    }
+    else
+    {
         EVENT_ERROR("Unknown transport mode: %s, defaulting to RBUS\n", transport_env);
         t2_set_transport_mode(T2_TRANSPORT_MODE_RBUS);
     }
@@ -504,15 +520,16 @@ void t2_set_transport_mode_from_env(void)
 const char* t2_get_transport_mode_name(void)
 {
     T2TransportMode mode = t2_get_transport_mode();
-    switch (mode) {
-        case T2_TRANSPORT_MODE_RBUS:
-            return "RBUS";
-        case T2_TRANSPORT_MODE_UNIX_SOCKET:
-            return "Unix Socket";
-        case T2_TRANSPORT_MODE_MESSAGE_QUEUE:
-            return "Message Queue";
-        default:
-            return "Unknown";
+    switch (mode)
+    {
+    case T2_TRANSPORT_MODE_RBUS:
+        return "RBUS";
+    case T2_TRANSPORT_MODE_UNIX_SOCKET:
+        return "Unix Socket";
+    case T2_TRANSPORT_MODE_MESSAGE_QUEUE:
+        return "Message Queue";
+    default:
+        return "Unknown";
     }
 }
 
@@ -523,51 +540,58 @@ static T2ERROR t2_mq_client_init(void)
 {
     EVENT_DEBUG("%s ++in\n", __FUNCTION__);
     printf("%s ++in\n", __FUNCTION__);
-    
+
     pthread_mutex_lock(&g_mq_mutex);
-    
-    if (g_mq_state.initialized) {
+
+    if (g_mq_state.initialized)
+    {
         pthread_mutex_unlock(&g_mq_mutex);
         return T2ERROR_SUCCESS;
     }
     char component_broadcast_queue[256];
-        // Create component-specific broadcast queue name: "/t2_mq_wifi" or "/t2_mq_default"
-        snprintf(component_broadcast_queue, sizeof(component_broadcast_queue), 
-        "%s%s", T2_MQ_BROADCAST_NAME, componentName);
-    
+    // Create component-specific broadcast queue name: "/t2_mq_wifi" or "/t2_mq_default"
+    snprintf(component_broadcast_queue, sizeof(component_broadcast_queue),
+             "%s%s", T2_MQ_BROADCAST_NAME, componentName);
+
     // Open daemon queue for sending events (non-blocking)
     g_mq_state.daemon_mq = mq_open(T2_MQ_DAEMON_NAME, O_WRONLY | O_NONBLOCK);
-    if (g_mq_state.daemon_mq == -1) {
+    if (g_mq_state.daemon_mq == -1)
+    {
         EVENT_ERROR("Failed to open daemon message queue: %s\n", strerror(errno));
         printf("Failed to open daemon message queue: %s\n", strerror(errno));
         // Continue anyway, daemon might not be ready yet
-    } else {
+    }
+    else
+    {
         EVENT_DEBUG("Successfully connected to daemon message queue\n");
         printf("Successfully connected to daemon message queue\n");
     }
-    
+
     // Open broadcast queue for receiving marker updates (non-blocking, read-only)
     g_mq_state.broadcast_mq = mq_open(component_broadcast_queue, O_RDONLY | O_NONBLOCK);
-    if (g_mq_state.broadcast_mq == -1) {
+    if (g_mq_state.broadcast_mq == -1)
+    {
         EVENT_ERROR("Failed to open broadcast message queue: %s\n", strerror(errno));
         printf("Failed to open broadcast message queue: %s\n", strerror(errno));
         // Continue anyway, we can still send events without marker updates
-    } else {
+    }
+    else
+    {
         EVENT_DEBUG("Successfully connected to broadcast message queue %s\n", component_broadcast_queue);
         printf("Successfully connected to broadcast message queue %s\n", component_broadcast_queue);
     }
-    
+
     g_mq_state.initialized = true;
     g_mq_state.last_check_time = time(NULL);
-    strncpy(g_mq_state.broadcast_queue_name, component_broadcast_queue, 
-        sizeof(g_mq_state.broadcast_queue_name) - 1);
+    strncpy(g_mq_state.broadcast_queue_name, component_broadcast_queue,
+            sizeof(g_mq_state.broadcast_queue_name) - 1);
     g_mq_state.broadcast_queue_name[sizeof(g_mq_state.broadcast_queue_name) - 1] = '\0';
-    
+
     pthread_mutex_unlock(&g_mq_mutex);
-    
+
     EVENT_DEBUG("Message queue client initialized (thread-free mode)\n");
     printf("Message queue client initialized (thread-free mode)\n");
-    
+
     return T2ERROR_SUCCESS;
 }
 
@@ -583,54 +607,59 @@ T2ERROR t2_communication_init(char *component)
     T2TransportMode mode = t2_get_transport_mode();
     const char* mode_name = t2_get_transport_mode_name();
     componentName = strdup(component);
-    
+
     EVENT_DEBUG("%s ++in (mode: %s)\n", __FUNCTION__, mode_name);
     printf("%s ++in (mode: %s)\n", __FUNCTION__, mode_name);
-    
+
     T2ERROR status = T2ERROR_SUCCESS;
-    
-    switch (mode) {
-        case T2_TRANSPORT_MODE_RBUS:
-            // Initialize RBUS communication
-            if (!bus_handle) {
-                status = initMessageBus();
-                if (status != T2ERROR_SUCCESS) {
-                    EVENT_ERROR("Failed to initialize RBUS communication\n");
-                    return status;
-                }
-            }
-            EVENT_DEBUG("RBUS communication initialized successfully\n");
-            break;
-            
-        case T2_TRANSPORT_MODE_UNIX_SOCKET:
-            t2_set_communication_mode(false);
-            // Initialize Unix socket communication
-            status = t2_unix_client_init();
-            if (status != T2ERROR_SUCCESS) {
-                EVENT_ERROR("Failed to initialize Unix socket communication\n");
+
+    switch (mode)
+    {
+    case T2_TRANSPORT_MODE_RBUS:
+        // Initialize RBUS communication
+        if (!bus_handle)
+        {
+            status = initMessageBus();
+            if (status != T2ERROR_SUCCESS)
+            {
+                EVENT_ERROR("Failed to initialize RBUS communication\n");
                 return status;
             }
-            EVENT_DEBUG("Unix socket communication initialized successfully\n");
-            break;
-            
-        case T2_TRANSPORT_MODE_MESSAGE_QUEUE:
-            // Initialize Message Queue communication
-            status = t2_mq_client_init();
-            if (status != T2ERROR_SUCCESS) {
-                EVENT_ERROR("Failed to initialize Message Queue communication\n");
-                return status;
-            }
-            
-            // Request initial marker list from daemon for MQ mode
-            t2_mq_request_initial_markers();
-            EVENT_DEBUG("Message Queue communication initialized successfully\n");
-            break;
-            
-        default:
-            EVENT_ERROR("Unknown transport mode: %d\n", mode);
-            return T2ERROR_FAILURE;
+        }
+        EVENT_DEBUG("RBUS communication initialized successfully\n");
+        break;
+
+    case T2_TRANSPORT_MODE_UNIX_SOCKET:
+        t2_set_communication_mode(false);
+        // Initialize Unix socket communication
+        status = t2_unix_client_init();
+        if (status != T2ERROR_SUCCESS)
+        {
+            EVENT_ERROR("Failed to initialize Unix socket communication\n");
+            return status;
+        }
+        EVENT_DEBUG("Unix socket communication initialized successfully\n");
+        break;
+
+    case T2_TRANSPORT_MODE_MESSAGE_QUEUE:
+        // Initialize Message Queue communication
+        status = t2_mq_client_init();
+        if (status != T2ERROR_SUCCESS)
+        {
+            EVENT_ERROR("Failed to initialize Message Queue communication\n");
+            return status;
+        }
+
+        // Request initial marker list from daemon for MQ mode
+        t2_mq_request_initial_markers();
+        EVENT_DEBUG("Message Queue communication initialized successfully\n");
+        break;
+
+    default:
+        EVENT_ERROR("Unknown transport mode: %d\n", mode);
+        return T2ERROR_FAILURE;
     }
-    
+
     EVENT_DEBUG("%s --out with status %d\n", __FUNCTION__, status);
     return status;
 }
@@ -934,15 +963,15 @@ int report_or_cache_data(char* telemetry_data, const char* markerName)
     int ret = 0;
 
 
-        // EVENT_DEBUG("T2: Sending event : %s\n", telemetry_data);
-        printf("T2: Sending event : %s\n", telemetry_data);
-        
-        // Use the new unified communication function
-        ret = send_event_data(telemetry_data, markerName);
-        if(0 != ret)
-        {
-            EVENT_ERROR("%s:%d, T2:telemetry data send failed, status = %d \n", __func__, __LINE__, ret);
-        }
+    // EVENT_DEBUG("T2: Sending event : %s\n", telemetry_data);
+    printf("T2: Sending event : %s\n", telemetry_data);
+
+    // Use the new unified communication function
+    ret = send_event_data(telemetry_data, markerName);
+    if(0 != ret)
+    {
+        EVENT_ERROR("%s:%d, T2:telemetry data send failed, status = %d \n", __func__, __LINE__, ret);
+    }
 
     return ret;
 }
@@ -955,7 +984,7 @@ static int send_event_via_rbus(const char* data, const char *markerName)
 {
     rbusError_t ret = RBUS_ERROR_SUCCESS;
     int status = 0;
-    
+
     EVENT_DEBUG("%s ++in (RBUS mode)\n", __FUNCTION__);
     printf("%s ++in (RBUS mode)\n", __FUNCTION__);
 
@@ -1018,7 +1047,7 @@ static int send_event_via_rbus(const char* data, const char *markerName)
         {
             status = 0;
         }
-        
+
         // Release all rbus data structures
         rbusValue_Release(value);
         rbusProperty_Release(objProperty);
@@ -1057,13 +1086,15 @@ static int send_event_via_rbus(const char* data, const char *markerName)
 static int send_event_via_unix_socket(const char* data, const char *markerName)
 {
     int status = 0;
-    
+
     EVENT_DEBUG("%s ++in (Unix Socket mode)\n", __FUNCTION__);
     printf("%s ++in (Unix Socket mode)\n", __FUNCTION__);
 
-    if (g_tcp_client_fd < 0) {
+    if (g_tcp_client_fd < 0)
+    {
         EVENT_DEBUG("TCP client not connected, attempting to connect\n");
-        if (t2_unix_client_connect() != T2ERROR_SUCCESS) {
+        if (t2_unix_client_connect() != T2ERROR_SUCCESS)
+        {
             EVENT_ERROR("Failed to connect to TCP server\n");
             return -1;
         }
@@ -1076,47 +1107,55 @@ static int send_event_via_unix_socket(const char* data, const char *markerName)
         printf("%s markerName %s not found in event list for component %s\n", __FUNCTION__, markerName, componentName);
         return 0; // Not an error, just filtered out
     }
-    
+
     // Create event message in format "markerName<#=#>eventValue"
     int eventDataLen = strlen(markerName) + strlen(data) + strlen(MESSAGE_DELIMITER) + 1;
     char* event_message = malloc(eventDataLen);
-    if (!event_message) {
+    if (!event_message)
+    {
         EVENT_ERROR("Failed to allocate memory for event message\n");
         return -1;
     }
-    
+
     snprintf(event_message, eventDataLen, "%s%s%s", markerName, MESSAGE_DELIMITER, data);
-    
+
     pthread_mutex_lock(&g_tcp_client_mutex);
 
     // Create TCP request header
-    T2RequestHeader req_header = {
+    T2RequestHeader req_header =
+    {
         .request_type = T2_MSG_EVENT_DATA,
         .data_length = strlen(event_message),
         .client_id = (uint32_t)(getpid() ^ time(NULL)),
         .last_known_version = 0
     };
-    
+
     // Send header
     ssize_t sent = send(g_tcp_client_fd, &req_header, sizeof(req_header), MSG_NOSIGNAL);
-    if (sent == sizeof(req_header)) {
+    if (sent == sizeof(req_header))
+    {
         // Send event data
         sent = send(g_tcp_client_fd, event_message, strlen(event_message), MSG_NOSIGNAL);
-        if (sent == (ssize_t)strlen(event_message)) {
+        if (sent == (ssize_t)strlen(event_message))
+        {
             EVENT_DEBUG("TCP event sent successfully: %s\n", event_message);
             printf("TCP event sent successfully: %s\n", event_message);
             status = 0;
-        } else {
+        }
+        else
+        {
             EVENT_ERROR("Failed to send event data via TCP: %s\n", strerror(errno));
             printf("Failed to send event data via TCP: %s\n", strerror(errno));
             status = -1;
         }
-    } else {
+    }
+    else
+    {
         EVENT_ERROR("Failed to send event header via TCP: %s\n", strerror(errno));
         printf("Failed to send event header via TCP: %s\n", strerror(errno));
         status = -1;
     }
-    
+
     pthread_mutex_unlock(&g_tcp_client_mutex);
     free(event_message);
 
@@ -1131,18 +1170,19 @@ int send_event_data(const char* data, const char *markerName)
 {
     T2TransportMode mode = t2_get_transport_mode();
     const char* mode_name = t2_get_transport_mode_name();
-    
+
     EVENT_DEBUG("%s ++in (mode: %s)\n", __FUNCTION__, mode_name);
     printf("%s ++in (mode: %s)\n", __FUNCTION__, mode_name);
-    
+
     int status = 0;
-    
-    switch (mode) {
-        
-        case T2_TRANSPORT_MODE_RBUS:
+
+    switch (mode)
+    {
+
+    case T2_TRANSPORT_MODE_RBUS:
         pthread_t tid;
         //pthread_mutex_lock(&eventMutex);
-                    
+
         if(isCachingRequired())
         {
             EVENT_DEBUG("Caching the event : %s \n", data);
@@ -1159,29 +1199,32 @@ int send_event_data(const char* data, const char *markerName)
             return T2ERROR_SUCCESS ;
         }
         //pthread_mutex_unlock(&eventMutex);
-            status = send_event_via_rbus(data, markerName);
-            break;
-            
-        case T2_TRANSPORT_MODE_UNIX_SOCKET:
-            // For Unix socket mode, query event markers from daemon
-            if (t2_query_event_markers() == T2ERROR_SUCCESS) {
-                EVENT_ERROR("Successfully retrieved event markers for %s\n", componentName);
-            } else {
-                EVENT_ERROR("Failed to retrieve event markers for %s\n", componentName);
-            }
-            status = send_event_via_unix_socket(data, markerName);
-            break;
-            
-        case T2_TRANSPORT_MODE_MESSAGE_QUEUE:
-            status = send_event_via_message_queue(data, markerName);
-            break;
-            
-        default:
-            EVENT_ERROR("Unknown transport mode: %d\n", mode);
-            status = -1;
-            break;
+        status = send_event_via_rbus(data, markerName);
+        break;
+
+    case T2_TRANSPORT_MODE_UNIX_SOCKET:
+        // For Unix socket mode, query event markers from daemon
+        if (t2_query_event_markers() == T2ERROR_SUCCESS)
+        {
+            EVENT_ERROR("Successfully retrieved event markers for %s\n", componentName);
+        }
+        else
+        {
+            EVENT_ERROR("Failed to retrieve event markers for %s\n", componentName);
+        }
+        status = send_event_via_unix_socket(data, markerName);
+        break;
+
+    case T2_TRANSPORT_MODE_MESSAGE_QUEUE:
+        status = send_event_via_message_queue(data, markerName);
+        break;
+
+    default:
+        EVENT_ERROR("Unknown transport mode: %d\n", mode);
+        status = -1;
+        break;
     }
-    
+
     EVENT_DEBUG("%s --out with status %d (mode: %s)\n", __FUNCTION__, status, mode_name);
     return status;
 }
@@ -1193,30 +1236,31 @@ void t2_communication_cleanup(void)
 {
     T2TransportMode mode = t2_get_transport_mode();
     const char* mode_name = t2_get_transport_mode_name();
-    
+
     EVENT_DEBUG("%s ++in (mode: %s)\n", __FUNCTION__, mode_name);
-    
-    switch (mode) {
-        case T2_TRANSPORT_MODE_RBUS:
-            // RBUS cleanup is handled in existing t2_uninit function
-            EVENT_DEBUG("RBUS cleanup handled by t2_uninit\n");
-            break;
-            
-        case T2_TRANSPORT_MODE_UNIX_SOCKET:
-            t2_unix_client_uninit();
-            EVENT_DEBUG("Unix socket communication cleaned up\n");
-            break;
-            
-        case T2_TRANSPORT_MODE_MESSAGE_QUEUE:
-            t2_mq_client_uninit();
-            EVENT_DEBUG("Message Queue communication cleaned up\n");
-            break;
-            
-        default:
-            EVENT_ERROR("Unknown transport mode during cleanup: %d\n", mode);
-            break;
+
+    switch (mode)
+    {
+    case T2_TRANSPORT_MODE_RBUS:
+        // RBUS cleanup is handled in existing t2_uninit function
+        EVENT_DEBUG("RBUS cleanup handled by t2_uninit\n");
+        break;
+
+    case T2_TRANSPORT_MODE_UNIX_SOCKET:
+        t2_unix_client_uninit();
+        EVENT_DEBUG("Unix socket communication cleaned up\n");
+        break;
+
+    case T2_TRANSPORT_MODE_MESSAGE_QUEUE:
+        t2_mq_client_uninit();
+        EVENT_DEBUG("Message Queue communication cleaned up\n");
+        break;
+
+    default:
+        EVENT_ERROR("Unknown transport mode during cleanup: %d\n", mode);
+        break;
     }
-    
+
     EVENT_DEBUG("%s --out\n", __FUNCTION__);
 }
 
@@ -1226,30 +1270,33 @@ void t2_communication_cleanup(void)
 static void t2_mq_client_uninit(void)
 {
     EVENT_DEBUG("%s ++in\n", __FUNCTION__);
-    
+
     pthread_mutex_lock(&g_mq_mutex);
-    
-    if (!g_mq_state.initialized) {
+
+    if (!g_mq_state.initialized)
+    {
         pthread_mutex_unlock(&g_mq_mutex);
         return;
     }
-    
+
     // Close message queues
-    if (g_mq_state.daemon_mq != -1) {
+    if (g_mq_state.daemon_mq != -1)
+    {
         mq_close(g_mq_state.daemon_mq);
         g_mq_state.daemon_mq = -1;
     }
-    
-    if (g_mq_state.broadcast_mq != -1) {
+
+    if (g_mq_state.broadcast_mq != -1)
+    {
         mq_close(g_mq_state.broadcast_mq);
         g_mq_state.broadcast_mq = -1;
     }
-    
+
     g_mq_state.initialized = false;
     g_mq_state.last_sequence_id = 0;
-    
+
     pthread_mutex_unlock(&g_mq_mutex);
-    
+
     EVENT_DEBUG("Message queue client uninitialized\n");
 }
 
@@ -1259,74 +1306,86 @@ static void t2_mq_client_uninit(void)
  */
 static void t2_mq_check_marker_updates(void)
 {
-    if (!g_mq_state.initialized || g_mq_state.broadcast_mq == -1) {
+    if (!g_mq_state.initialized || g_mq_state.broadcast_mq == -1)
+    {
         return;
     }
     printf("\n%s ++in\n", __FUNCTION__);
-    
+
     // Rate limiting: Only check every few seconds to avoid excessive polling
     time_t current_time = time(NULL);
-    if (current_time - g_mq_state.last_check_time < 2) {  // Check every 2 seconds max
+    if (current_time - g_mq_state.last_check_time < 2)    // Check every 2 seconds max
+    {
         return;
     }
     g_mq_state.last_check_time = current_time;
-    
+
     char message[T2_MQ_MAX_MSG_SIZE];
     ssize_t msg_size;
     bool updates_processed = false;
-    
+
     EVENT_DEBUG("Checking for marker updates from broadcast queue\n");
     printf("Checking for marker updates from broadcast queue\n");
-    
+
     // Process ALL available marker updates (non-blocking)
-    while ((msg_size = mq_receive(g_mq_state.broadcast_mq, message, T2_MQ_MAX_MSG_SIZE, NULL)) > 0) {
+    while ((msg_size = mq_receive(g_mq_state.broadcast_mq, message, T2_MQ_MAX_MSG_SIZE, NULL)) > 0)
+    {
         T2MQMessageHeader* header = (T2MQMessageHeader*)message;
-        
+
         EVENT_DEBUG("Received message type: %d, sequence: %u\n", header->msg_type, header->sequence_id);
         printf("Received message type: %d, sequence: %u\n", header->msg_type, header->sequence_id);
-        
+
         // Only process marker updates with newer sequence IDs
-        if (header->msg_type == T2_MQ_MSG_MARKER_UPDATE && 
-            header->sequence_id > g_mq_state.last_sequence_id) {
-            
+        if (header->msg_type == T2_MQ_MSG_MARKER_UPDATE &&
+                header->sequence_id > g_mq_state.last_sequence_id)
+        {
+
             // Check if this update is for our component or global
             bool is_for_us = (strcmp(header->component_name, "ALL") == 0) ||
-                            (componentName && strcmp(header->component_name, componentName) == 0);
-            
-            if (is_for_us && header->data_length > 0) {
+                             (componentName && strcmp(header->component_name, componentName) == 0);
+
+            if (is_for_us && header->data_length > 0)
+            {
                 char* marker_data = message + sizeof(T2MQMessageHeader);
                 marker_data[header->data_length] = '\0';
-                
-                EVENT_DEBUG("Processing marker update for component %s: %s\n", 
-                           header->component_name, marker_data);
-                printf("Processing marker update for component %s: %s\n", 
+
+                EVENT_DEBUG("Processing marker update for component %s: %s\n",
+                            header->component_name, marker_data);
+                printf("Processing marker update for component %s: %s\n",
                        header->component_name, marker_data);
-                
+
                 // Update local event marker map
                 t2_parse_and_store_markers(marker_data);
-                
+
                 // Update sequence tracking
                 g_mq_state.last_sequence_id = header->sequence_id;
                 updates_processed = true;
-                
-                EVENT_DEBUG("Successfully updated marker map from broadcast (seq: %u)\n", 
-                           header->sequence_id);
-                printf("Successfully updated marker map from broadcast (seq: %u)\n", 
+
+                EVENT_DEBUG("Successfully updated marker map from broadcast (seq: %u)\n",
+                            header->sequence_id);
+                printf("Successfully updated marker map from broadcast (seq: %u)\n",
                        header->sequence_id);
-            } else {
-                EVENT_DEBUG("Marker update not for our component (%s), skipping\n", 
-                           header->component_name);
             }
-        } else if (header->sequence_id <= g_mq_state.last_sequence_id) {
-            EVENT_DEBUG("Ignoring old marker update (seq: %u <= %u)\n", 
-                       header->sequence_id, g_mq_state.last_sequence_id);
+            else
+            {
+                EVENT_DEBUG("Marker update not for our component (%s), skipping\n",
+                            header->component_name);
+            }
+        }
+        else if (header->sequence_id <= g_mq_state.last_sequence_id)
+        {
+            EVENT_DEBUG("Ignoring old marker update (seq: %u <= %u)\n",
+                        header->sequence_id, g_mq_state.last_sequence_id);
         }
     }
-    
+
     // msg_size == -1 here means no more messages (EAGAIN/EWOULDBLOCK) or error
-    if (errno != EAGAIN && errno != EWOULDBLOCK) {
+    if (errno != EAGAIN && errno != EWOULDBLOCK)
+    {
         EVENT_ERROR("Error receiving marker update: %s\n", strerror(errno));
-    } else if (updates_processed) {
+    }
+    else if (updates_processed)
+    {
         EVENT_DEBUG("Marker update check completed - map updated\n");
     }
 }
@@ -1338,66 +1397,78 @@ static T2ERROR t2_mq_send_to_daemon(T2MQMessageType msg_type, const char* data, 
 {
     EVENT_DEBUG("%s ++in (msg_type: %d)\n", __FUNCTION__, msg_type);
     printf("%s ++in (msg_type: %d)\n", __FUNCTION__, msg_type);
-    
-    if (!g_mq_state.initialized) {
+
+    if (!g_mq_state.initialized)
+    {
         EVENT_ERROR("Message queue not initialized\n");
         return T2ERROR_FAILURE;
     }
-    
+
     // Try to open daemon queue if not already open
-    if (g_mq_state.daemon_mq == -1) {
+    if (g_mq_state.daemon_mq == -1)
+    {
         g_mq_state.daemon_mq = mq_open(T2_MQ_DAEMON_NAME, O_WRONLY | O_NONBLOCK);
-        if (g_mq_state.daemon_mq == -1) {
+        if (g_mq_state.daemon_mq == -1)
+        {
             EVENT_ERROR("Daemon message queue not available: %s\n", strerror(errno));
             return T2ERROR_FAILURE;
         }
     }
-    
+
     // Prepare message
     char message[T2_MQ_MAX_MSG_SIZE];
     T2MQMessageHeader* header = (T2MQMessageHeader*)message;
-    
+
     header->msg_type = msg_type;
     header->data_length = data_len;
     header->timestamp = (uint64_t)time(NULL);
     header->sequence_id = 0;  // Not used for client-to-daemon messages
-    
-    if (componentName) {
+
+    if (componentName)
+    {
         strncpy(header->component_name, componentName, sizeof(header->component_name) - 1);
         header->component_name[sizeof(header->component_name) - 1] = '\0';
-    } else {
+    }
+    else
+    {
         strcpy(header->component_name, "default");
     }
-    
+
     // Copy data after header
-    if (data && data_len > 0) {
-        if (sizeof(T2MQMessageHeader) + data_len > T2_MQ_MAX_MSG_SIZE) {
+    if (data && data_len > 0)
+    {
+        if (sizeof(T2MQMessageHeader) + data_len > T2_MQ_MAX_MSG_SIZE)
+        {
             EVENT_ERROR("Message too large: %zu bytes\n", sizeof(T2MQMessageHeader) + data_len);
             return T2ERROR_FAILURE;
         }
         memcpy(message + sizeof(T2MQMessageHeader), data, data_len);
     }
-    
+
     // Send message to daemon
     uint32_t total_size = sizeof(T2MQMessageHeader) + data_len;
-    if (mq_send(g_mq_state.daemon_mq, message, total_size, 0) == -1) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+    if (mq_send(g_mq_state.daemon_mq, message, total_size, 0) == -1)
+    {
+        if (errno == EAGAIN || errno == EWOULDBLOCK)
+        {
             EVENT_ERROR("Daemon queue is full, message dropped\n");
             printf("Daemon queue is full, message dropped\n");
-        } else {
+        }
+        else
+        {
             EVENT_ERROR("Failed to send message to daemon: %s\n", strerror(errno));
             printf("Failed to send message to daemon: %s\n", strerror(errno));
-            
+
             // Try to reconnect to daemon queue
             mq_close(g_mq_state.daemon_mq);
             g_mq_state.daemon_mq = -1;
         }
         return T2ERROR_FAILURE;
     }
-    
+
     EVENT_DEBUG("Successfully sent message to daemon (type: %d, size: %u)\n", msg_type, total_size);
     printf("Successfully sent message to daemon (type: %d, size: %u)\n", msg_type, total_size);
-    
+
     return T2ERROR_SUCCESS;
 }
 
@@ -1408,43 +1479,49 @@ int send_event_via_message_queue(const char* data, const char *markerName)
 {
     EVENT_DEBUG("%s ++in (Message Queue mode)\n", __FUNCTION__);
     printf("%s ++in (Message Queue mode)\n", __FUNCTION__);
-    
-    if (!g_mq_state.initialized) {
+
+    if (!g_mq_state.initialized)
+    {
         EVENT_ERROR("Message queue not initialized\n");
         return -1;
     }
-    
-    // Check for marker updates BEFORE sending event 
+
+    // Check for marker updates BEFORE sending event
     t2_mq_check_marker_updates();
-    
-    // Validate marker against client event map 
-    if(!is_valid_event_marker(markerName)) {
-        EVENT_DEBUG("%s markerName %s not found in event list for component %s\n", 
-                   __FUNCTION__, markerName, componentName);
-        printf("%s markerName %s not found in event list for component %s\n", 
+
+    // Validate marker against client event map
+    if(!is_valid_event_marker(markerName))
+    {
+        EVENT_DEBUG("%s markerName %s not found in event list for component %s\n",
+                    __FUNCTION__, markerName, componentName);
+        printf("%s markerName %s not found in event list for component %s\n",
                __FUNCTION__, markerName, componentName);
         return 0; // Not an error, just filtered out
     }
-    
+
     // Create event message in format "markerName<#=#>eventValue"
     int eventDataLen = strlen(markerName) + strlen(data) + strlen(MESSAGE_DELIMITER) + 1;
     char* event_message = malloc(eventDataLen);
-    if (!event_message) {
+    if (!event_message)
+    {
         EVENT_ERROR("Failed to allocate memory for event message\n");
         return -1;
     }
-    
+
     snprintf(event_message, eventDataLen, "%s%s%s", markerName, MESSAGE_DELIMITER, data);
-    
+
     T2ERROR result = t2_mq_send_to_daemon(T2_MQ_MSG_EVENT_DATA, event_message, strlen(event_message));
-    
+
     free(event_message);
-    
-    if (result == T2ERROR_SUCCESS) {
+
+    if (result == T2ERROR_SUCCESS)
+    {
         EVENT_DEBUG("MQ event sent successfully: %s=%s\n", markerName, data);
         printf("MQ event sent successfully: %s=%s\n", markerName, data);
         return 0;
-    } else {
+    }
+    else
+    {
         EVENT_ERROR("Failed to send event via message queue\n");
         printf("Failed to send event via message queue\n");
         return -1;
@@ -1458,25 +1535,28 @@ static T2ERROR t2_mq_request_initial_markers(void)
 {
     EVENT_DEBUG("%s ++in\n", __FUNCTION__);
     printf("%s ++in\n", __FUNCTION__);
-    
+
     // Send subscription/marker request to daemon
     char request_data[256];
-    snprintf(request_data, sizeof(request_data), "%s", 
+    snprintf(request_data, sizeof(request_data), "%s",
              componentName ? componentName : "default");
-    
+
     T2ERROR result = t2_mq_send_to_daemon(T2_MQ_MSG_SUBSCRIBE, request_data, strlen(request_data));
-    
-    if (result == T2ERROR_SUCCESS) {
+
+    if (result == T2ERROR_SUCCESS)
+    {
         EVENT_DEBUG("Initial marker request sent\n");
         printf("Initial marker request sent\n");
-        
+
         // Give daemon a moment to respond, then check for updates
         sleep(1);
         t2_mq_check_marker_updates();
-    } else {
+    }
+    else
+    {
         EVENT_ERROR("Failed to send initial marker request\n");
     }
-    
+
     return result;
 }
 
@@ -1485,33 +1565,36 @@ static T2ERROR t2_unix_client_connect()
 {
     EVENT_ERROR("t2_unix_client_connect ++in\n");
     printf("t2_unix_client_connect ++in\n");
-    
+
     pthread_mutex_lock(&g_tcp_client_mutex);
-    
-    if (g_tcp_client_fd >= 0) {
+
+    if (g_tcp_client_fd >= 0)
+    {
         pthread_mutex_unlock(&g_tcp_client_mutex);
         return T2ERROR_SUCCESS;
     }
-    
+
     printf("Creating socket\n");
     g_tcp_client_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (g_tcp_client_fd < 0) {
+    if (g_tcp_client_fd < 0)
+    {
         pthread_mutex_unlock(&g_tcp_client_mutex);
         return T2ERROR_FAILURE;
     }
-    
+
     struct timeval timeout = {.tv_sec = 10, .tv_usec = 0};
     setsockopt(g_tcp_client_fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
     setsockopt(g_tcp_client_fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
-    
+
     // Setup server address
     struct sockaddr_in server_addr;
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(T2_TCP_PORT);
-    
+
     // Convert IP address
-    if (inet_pton(AF_INET, SERVER_IP, &server_addr.sin_addr) <= 0) {
+    if (inet_pton(AF_INET, SERVER_IP, &server_addr.sin_addr) <= 0)
+    {
         EVENT_ERROR("Invalid server IP address: %s\n", SERVER_IP);
         close(g_tcp_client_fd);
         g_tcp_client_fd = -1;
@@ -1520,32 +1603,35 @@ static T2ERROR t2_unix_client_connect()
     }
 
     printf("Connecting to %s:%d...\n", SERVER_IP, T2_TCP_PORT);
-    
-    if (connect(g_tcp_client_fd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
-        EVENT_ERROR("Failed to connect to TCP server %s:%d: %s\n", 
-            SERVER_IP, T2_TCP_PORT, strerror(errno));
+
+    if (connect(g_tcp_client_fd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0)
+    {
+        EVENT_ERROR("Failed to connect to TCP server %s:%d: %s\n",
+                    SERVER_IP, T2_TCP_PORT, strerror(errno));
         close(g_tcp_client_fd);
         g_tcp_client_fd = -1;
         pthread_mutex_unlock(&g_tcp_client_mutex);
         return T2ERROR_FAILURE;
     }
-    
+
     EVENT_ERROR("TCP client connected to T2 daemon at %s:%d\n", SERVER_IP, T2_TCP_PORT);
     printf("TCP client connected to T2 daemon at %s:%d\n", SERVER_IP, T2_TCP_PORT);
-    
+
     const char* component_to_send = componentName ? componentName : "default";
-    
+
     // Create subscription request header
-    T2RequestHeader sub_header = {
+    T2RequestHeader sub_header =
+    {
         .request_type = T2_REQ_SUBSCRIBE,           // ← Proper request type
         .data_length = strlen(component_to_send),    // Component name length
         .client_id = (uint32_t)(getpid() ^ time(NULL)), // Unique client ID
         .last_known_version = 0
     };
-    
+
     // Send header first
     ssize_t sent = send(g_tcp_client_fd, &sub_header, sizeof(sub_header), MSG_NOSIGNAL);
-    if (sent != sizeof(sub_header)) {
+    if (sent != sizeof(sub_header))
+    {
         EVENT_ERROR("Failed to send subscription header\n");
         close(g_tcp_client_fd);
         g_tcp_client_fd = -1;
@@ -1554,11 +1640,13 @@ static T2ERROR t2_unix_client_connect()
     }
     EVENT_ERROR("Succesfully sent component name length\n");
     printf("Succesfully sent component name length\n");
-    
+
     // Send component name
-    if (sub_header.data_length > 0) {
+    if (sub_header.data_length > 0)
+    {
         sent = send(g_tcp_client_fd, component_to_send, sub_header.data_length, MSG_NOSIGNAL);
-        if (sent != (ssize_t)sub_header.data_length) {
+        if (sent != (ssize_t)sub_header.data_length)
+        {
             EVENT_ERROR("Failed to send component name\n");
             close(g_tcp_client_fd);
             g_tcp_client_fd = -1;
@@ -1575,7 +1663,8 @@ static T2ERROR t2_unix_client_connect()
 
 static T2ERROR t2_unix_client_init()
 {
-    if (g_tcp_client_connected) {
+    if (g_tcp_client_connected)
+    {
         return T2ERROR_SUCCESS;
     }
     EVENT_ERROR("t2_unix_client_init ++in\n");
@@ -1583,20 +1672,22 @@ static T2ERROR t2_unix_client_init()
 
     // Try connection (failure is OK, will retry in background)
     t2_unix_client_connect();
-    
+
     g_tcp_client_connected = true;
-    
+
     EVENT_DEBUG("T2 Unix client initialized\n");
     return T2ERROR_SUCCESS;
 }
 
 static void t2_unix_client_uninit()
 {
-    if (g_tcp_client_connected) {
+    if (g_tcp_client_connected)
+    {
         g_tcp_client_connected = false;
-        
+
         pthread_mutex_lock(&g_tcp_client_mutex);
-        if (g_tcp_client_fd >= 0) {
+        if (g_tcp_client_fd >= 0)
+        {
             close(g_tcp_client_fd);
             g_tcp_client_fd = -1;
         }
@@ -1610,29 +1701,33 @@ T2ERROR t2_query_event_markers()
     EVENT_DEBUG("%s ++in\n", __FUNCTION__);
     printf("%s ++in\n", __FUNCTION__);
 
-    
+
     pthread_mutex_lock(&g_tcp_client_mutex);
-    
-    if (g_tcp_client_fd < 0) {
-        if (t2_unix_client_connect() != T2ERROR_SUCCESS) {
+
+    if (g_tcp_client_fd < 0)
+    {
+        if (t2_unix_client_connect() != T2ERROR_SUCCESS)
+        {
             pthread_mutex_unlock(&g_tcp_client_mutex);
             return T2ERROR_FAILURE;
         }
     }
-    
+
     const char* component_to_query = componentName ? componentName : "default";
-    
+
     // Create marker query request header
-    T2RequestHeader req_header = {
+    T2RequestHeader req_header =
+    {
         .request_type = T2_REQ_MARKER_LIST,
         .data_length = strlen(component_to_query),
         .client_id = (uint32_t)(getpid() ^ time(NULL)),
         .last_known_version = 0
     };
-    
+
     printf("Send request header\n");
     ssize_t sent = send(g_tcp_client_fd, &req_header, sizeof(req_header), MSG_NOSIGNAL);
-    if (sent != sizeof(req_header)) {
+    if (sent != sizeof(req_header))
+    {
         EVENT_ERROR("Failed to send marker query header\n");
         close(g_tcp_client_fd);
         g_tcp_client_fd = -1;
@@ -1642,22 +1737,24 @@ T2ERROR t2_query_event_markers()
 
     printf("Send component name\n");
     sent = send(g_tcp_client_fd, component_to_query, req_header.data_length, MSG_NOSIGNAL);
-    if (sent != (ssize_t)req_header.data_length) {
+    if (sent != (ssize_t)req_header.data_length)
+    {
         EVENT_ERROR("Failed to send component name for marker query\n");
         close(g_tcp_client_fd);
         g_tcp_client_fd = -1;
         pthread_mutex_unlock(&g_tcp_client_mutex);
         return T2ERROR_FAILURE;
     }
-    
+
     EVENT_ERROR("Sent marker query for component: %s\n", component_to_query);
     printf("Sent marker query for component: %s\n", component_to_query);
 
-    
+
     // Receive response header
     T2ResponseHeader resp_header;
     ssize_t received = recv(g_tcp_client_fd, &resp_header, sizeof(resp_header), MSG_WAITALL);
-    if (received != sizeof(resp_header)) {
+    if (received != sizeof(resp_header))
+    {
         EVENT_ERROR("Failed to receive marker query response header\n");
         printf("Failed to receive marker query response header\n");
 
@@ -1666,27 +1763,31 @@ T2ERROR t2_query_event_markers()
         pthread_mutex_unlock(&g_tcp_client_mutex);
         return T2ERROR_FAILURE;
     }
-    
-    if (resp_header.response_status != 0) {
+
+    if (resp_header.response_status != 0)
+    {
         EVENT_ERROR("Daemon returned error status: %u\n", resp_header.response_status);
         printf("Daemon returned error status: %u\n", resp_header.response_status);
         pthread_mutex_unlock(&g_tcp_client_mutex);
         return T2ERROR_FAILURE;
     }
-    
+
     // Receive marker list data
     char* marker_data = NULL;
-    if (resp_header.data_length > 0) {
+    if (resp_header.data_length > 0)
+    {
         marker_data = malloc(resp_header.data_length + 1);
-        if (!marker_data) {
+        if (!marker_data)
+        {
             EVENT_ERROR("Failed to allocate memory for marker data\n");
             printf("Failed to allocate memory for marker data\n");
             pthread_mutex_unlock(&g_tcp_client_mutex);
             return T2ERROR_FAILURE;
         }
-        
+
         received = recv(g_tcp_client_fd, marker_data, resp_header.data_length, MSG_WAITALL);
-        if (received != (ssize_t)resp_header.data_length) {
+        if (received != (ssize_t)resp_header.data_length)
+        {
             EVENT_ERROR("Failed to receive complete marker data\n");
             printf("Failed to receive complete marker data\n");
 
@@ -1698,20 +1799,22 @@ T2ERROR t2_query_event_markers()
         }
 
         marker_data[resp_header.data_length] = '\0';
-        
+
         EVENT_ERROR("Received marker data: %s\n", marker_data);
         printf("Received marker data: %s\n", marker_data);
-        
+
         // Parse and store markers in hash map
         t2_parse_and_store_markers(marker_data);
-        
+
         free(marker_data);
-    } else {
+    }
+    else
+    {
         EVENT_ERROR("No markers found for component: %s\n", component_to_query);
     }
-    
+
     pthread_mutex_unlock(&g_tcp_client_mutex);
-    
+
     EVENT_DEBUG("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
@@ -1721,40 +1824,47 @@ void t2_parse_and_store_markers(const char* marker_data)
 {
     EVENT_DEBUG("%s ++in\n", __FUNCTION__);
     printf("%s ++in\n", __FUNCTION__);
-    
+
     pthread_mutex_lock(&clientMarkerMutex);
-    
+
     // Initialize hash map if not already done
-    if (!eventMarkerMap) {
+    if (!eventMarkerMap)
+    {
         eventMarkerMap = hash_map_create();
     }
-    
+
     // Parse comma-separated marker list
     char* data_copy = strdup(marker_data);
     char* token = strtok(data_copy, ",");
-    
-    while (token != NULL) {
+
+    while (token != NULL)
+    {
         // Remove leading/trailing whitespace
-        while (*token == ' ' || *token == '\t') token++;
+        while (*token == ' ' || *token == '\t')
+        {
+            token++;
+        }
         char* end = token + strlen(token) - 1;
-        while (end > token && (*end == ' ' || *end == '\t' || *end == '\n')) {
+        while (end > token && (*end == ' ' || *end == '\t' || *end == '\n'))
+        {
             *end = '\0';
             end--;
         }
-        
-        if (strlen(token) > 0) {
+
+        if (strlen(token) > 0)
+        {
             // Store marker in hash map (key = marker name, value = marker name)
             hash_map_put(eventMarkerMap, strdup(token), strdup(token), free);
             EVENT_DEBUG("Added marker to client map: %s\n", token);
             printf("Added marker to client map: %s\n", token);
 
         }
-        
+
         token = strtok(NULL, ",");
     }
-        
+
     free(data_copy);
     pthread_mutex_unlock(&clientMarkerMutex);
-    
+
     EVENT_DEBUG("%s --out\n", __FUNCTION__);
 }

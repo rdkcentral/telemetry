@@ -312,12 +312,33 @@ TEST_F(t2markersTestFixture, T2ER_Uninit_after_stop_dispatch_thread)
 }
 
 #if 1
+extern "C" {
 typedef void (*freeT2ComponentListFunc) (void *data);
 freeT2ComponentListFunc freeT2ComponentListFuncCallback(void);
 
-TEST_F(t2markersTest, freeT2ComponentNull) {
+typedef void (*updateComponentListFunc) (const char* componentName);
+updateComponentListFunc updateComponentListFuncCallback(void);
+
+
+typedef void (*freeT2MarkerFunc) (void *data);
+freeT2MarkerFunc freeT2MarkerFuncCallback(void);
+}
+TEST(t2markersTest, freeT2ComponentNull) {
     freeT2ComponentListFunc freeFunc = freeT2ComponentListFuncCallback();
     ASSERT_NE(freeFunc, nullptr);
     freeFunc(nullptr);
+}
+
+TEST(t2markerTest, updateComponentListNull)
+{
+	updateComponentListFunc updateFunc = updateComponentListFuncCallback();
+	ASSERT_NE(updateFunc, nullptr);
+        updateFunc(nullptr);
+}
+
+TEST(t2markerTest , freeT2ComponentListNull)
+{
+     freeT2MarkerFunc  freeT2Func = freeT2MarkerFuncCallback();
+     ASSERT_NE(freeT2Func, nullptr);
 }
 #endif

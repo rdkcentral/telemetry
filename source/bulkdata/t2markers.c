@@ -336,3 +336,24 @@ void createComponentDataElements()
     pthread_mutex_unlock(&t2CompListMutex);
     T2Debug("%s --out\n", __FUNCTION__);
 }
+
+#if 1
+typedef void (*freeT2ComponentListFunc) (void *data);
+freeT2ComponentListFunc freeT2ComponentListFuncCallback(void)
+{
+        return freeT2ComponentList;
+}
+
+typedef void (*updateComponentListFunc) (const char* componentName);
+updateComponentListFunc updateComponentListFuncCallback(void)
+{
+        return updateComponentList;
+}
+
+typedef void (*freeT2MarkerFunc) (void *data);
+freeT2MarkerFunc freeT2MarkerFuncCallback(void)
+{
+	return freeT2Marker;
+}	
+
+#endif

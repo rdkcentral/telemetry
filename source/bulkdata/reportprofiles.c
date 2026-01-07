@@ -1520,11 +1520,4 @@ bool isMtlsEnabled(void)
 #endif
 #endif
 }
-#if 1
-typedef void (*freeT2ComponentListFunc) (void *data);
-freeT2ComponentListFunc freeT2ComponentListFuncCallback(void) 
-{
-	return freeT2ComponentList;
-}
-#endif
 

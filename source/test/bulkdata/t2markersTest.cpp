@@ -343,6 +343,7 @@ TEST(t2markerTest , freeT2ComponentListNull)
      freeT2Func(nullptr);
 }
 
+#if 0
 // Helper to create a dummy T2Marker and hash_element_t
 static hash_element_t* allocMarkerElement(const char* markerName, const char* compName, std::vector<const char*> profiles, bool freeKey, bool withMarker, bool withCompName, bool withMarkerName, bool withProfileList) {
     hash_element_t* elem = (hash_element_t*)malloc(sizeof(hash_element_t));
@@ -383,7 +384,6 @@ TEST_F(t2markersTestFixture, freeT2Marker_all_members_non_null) {
     // If using memory tools, check for leaks.
 }
 
-#if 0
 TEST_F(t2markersTestFixture, freeT2Marker_key_only) {
     // key non-null, rest null
     hash_element_t* elem = allocMarkerElement(nullptr, nullptr, {}, true, false, false, false, false);

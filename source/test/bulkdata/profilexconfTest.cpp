@@ -462,6 +462,127 @@ TEST_F(profileXconfTestFixture, InitandUninit)
     
 }
 
+// New: test ProfileXConf_init covers "multiple configs" branch (Vector_Size(configList) > 1)
+TEST_F(profileXconfTestFixture, ProfileXConf_init_multiple_configs)
+{
+    // Simulate two config files in the directory
+    EXPECT_CALL(*g_fileIOMock, opendir(_)).WillOnce(Return((DIR*)0x1234));
+    EXPECT_CALL(*g_fileIOMock, readdir(_))
+        .WillOnce([](DIR* dirp) {
+            struct dirent* entry1 = (struct dirent*)malloc(sizeof(struct dirent));
+            strcpy(entry1->d_name, "profile1.json");
+            return entry1;
+        })
+        .WillOnce([](DIR* dirp) {
+            struct dirent* entry2 = (struct dirent*)malloc(sizeof(struct dirent));
+            strcpy(entry2->d_name, "profile2.json");
+            return entry2;
+        })
+        .WillOnce(Return(nullptr));
+    EXPECT_CALL(*g_fileIOMock, closedir(_)).WillOnce(Return(0));
+    // File open/read for both profiles (simulate)
+    EXPECT_CALL(*g_fileIOMock, open(_, _)).WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_fileIOMock, read(_, _, _)).WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_fileIOMock, close(_)).WillRepeatedly(Return(0));
+    // clearPersistenceFolder should be called
+    EXPECT_CALL(*g_profileXConfMock, processConfigurationXConf(_, _)).Times(0);
+    EXPECT_CALL(*g_systemMock, remove(_)).Times(::testing::AnyNumber());
+    EXPECT_CALL(*g_schedulerMock, registerProfileWithScheduler(_, _, _, _, _, _, _, _)).Times(0);
+    EXPECT_EQ(ProfileXConf_init(false), T2ERROR_SUCCESS);
+}
+
+// New: test ProfileXConf_init covers "zero configs" branch (Vector_Size(configList) == 0)
+TEST_F(profileXconfTestFixture, ProfileXConf_init_zero_configs)
+{
+    EXPECT_CALL(*g_fileIOMock, opendir(_)).WillOnce(Return((DIR*)0x1235));
+    EXPECT_CALL(*g_fileIOMock, readdir(_)).WillOnce(Return(nullptr));
+    EXPECT_CALL(*g_fileIOMock, closedir(_)).WillOnce(Return(0));
+    EXPECT_CALL(*g_profileXConfMock, processConfigurationXConf(_, _)).Times(0);
+    EXPECT_CALL(*g_schedulerMock, registerProfileWithScheduler(_, _, _, _, _, _, _, _)).Times(0);
+    EXPECT_CALL(*g_systemMock, remove(_)).Times(0);
+    EXPECT_EQ(ProfileXConf_init(false), T2ERROR_SUCCESS);
+}
+
+// New: test processConfigurationXConf fails branch
+TEST_F(profileXconfTestFixture, ProfileXConf_init_processing_config_fails)
+{
+    EXPECT_CALL(*g_fileIOMock, opendir(_)).WillOnce(Return((DIR*)0xABCD));
+    EXPECT_CALL(*g_fileIOMock, readdir(_))
+        .WillOnce([](DIR* dirp) {
+            struct dirent* entry = (struct dirent*)malloc(sizeof(struct dirent));
+            strcpy(entry->d_name, "profile1.json");
+            return entry;
+        })
+        .WillOnce(Return(nullptr));
+    EXPECT_CALL(*g_fileIOMock, open(_, _)).WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, read(_, _, _))
+        .WillOnce([](int fd, void* buf, size_t count) {
+            const char* content = "{\"dummyconf\":true}";
+            memcpy(buf, content, strlen(content)1);
+            return strlen(content);
+        });
+    EXPECT_CALL(*g_fileIOMock, close(_)).WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, closedir(_)).WillOnce(Return(0));
+    EXPECT_CALL(*g_profileXConfMock, processConfigurationXConf(_, _)).WillOnce(Return(T2ERROR_FAILURE));
+    EXPECT_CALL(*g_schedulerMock, registerProfileWithScheduler(_, _, _, _, _, _, _, _)).Times(0);
+    EXPECT_CALL(*g_systemMock, remove(_)).Times(0);
+    EXPECT_EQ(ProfileXConf_init(false), T2ERROR_SUCCESS);
+}
+
+// New: test ProfileXConf_set fails branch in ProfileXConf_init
+TEST_F(profileXconfTestFixture, ProfileXConf_init_set_profile_fails)
+{
+    EXPECT_CALL(*g_fileIOMock, opendir(_)).WillOnce(Return((DIR*)0xCF76));
+    EXPECT_CALL(*g_fileIOMock, readdir(_))
+        .WillOnce([](DIR* dirp) {
+            struct dirent* entry = (struct dirent*)malloc(sizeof(struct dirent));
+            strcpy(entry->d_name, "profileone.json");
+            return entry;
+        })
+        .WillOnce(Return(nullptr));
+    EXPECT_CALL(*g_fileIOMock, open(_, _)).WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, read(_, _, _)).WillOnce([](int fd, void* buf, size_t count) {
+        const char* content = "{\"dummyconf\":true}";
+        memcpy(buf, content, strlen(content)1);
+        return strlen(content);
+    });
+    EXPECT_CALL(*g_fileIOMock, close(_)).WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, closedir(_)).WillOnce(Return(0));
+    EXPECT_CALL(*g_profileXConfMock, processConfigurationXConf(_, _))
+        .WillOnce([](const char* jsonStr, ProfileXConf** profile) {
+            *profile = (ProfileXConf*)malloc(sizeof(ProfileXConf));
+            memset(*profile, 0, sizeof(ProfileXConf));
+            (*profile)->name = strdup("fail_set_profile");
+            Vector_Create(&(*profile)->eMarkerList);
+            return T2ERROR_SUCCESS;
+        });
+    // regDEforCompEventList will return failure via scheduler
+    EXPECT_CALL(*g_profileXConfMock, regDEforCompEventList(_, _)).Times(::testing::AnyNumber());
+    EXPECT_CALL(*g_schedulerMock, registerProfileWithScheduler(_, _, _, _, _, _, _, _)).WillOnce(Return(T2ERROR_FAILURE));
+    EXPECT_EQ(ProfileXConf_init(false), T2ERROR_SUCCESS);
+}
+
+// New: test pthread_mutex_init fails
+#include <pthread.h>
+extern "C" int __real_pthread_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr);
+extern "C" int __wrap_pthread_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr)
+{
+    static bool should_fail = true;
+    if (should_fail) {
+        should_fail = false;
+        return -1;
+    }
+    return __real_pthread_mutex_init(mutex, attr);
+}
+
+TEST_F(profileXconfTestFixture, ProfileXConf_init_mutex_init_fails)
+{
+    // This requires linking with -Wl,--wrap=pthread_mutex_init and correct CMake/test activation
+    // The wrapper above returns -1 on the first call (simulate failure)
+    ProfileXConf_uninit(); // ensure state reset
+    EXPECT_EQ(ProfileXConf_init(false), T2ERROR_FAILURE);
+}
+
 //Test the marker component map update after init of single profiles, it should update the component map
 TEST_F(profileXconfTestFixture, ProfileXConf_updateMarkerComponentMap_success_after_init)
 {

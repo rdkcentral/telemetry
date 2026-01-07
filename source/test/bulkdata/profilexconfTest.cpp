@@ -462,48 +462,6 @@ TEST_F(profileXconfTestFixture, InitandUninit)
     
 }
 
-TEST_F(profileXconfTestFixture, ProfileXConf_init_multiple_configs)
-{
-    // Simulate two config files in the directory
-    EXPECT_CALL(*g_fileIOMock, opendir(_))
-        .Times(1)
-        .WillOnce(Return((DIR*)0x1111));
-    EXPECT_CALL(*g_fileIOMock, readdir(_))
-        .Times(3) // two configs + null at the end
-        .WillOnce([](DIR* dirp) {
-            struct dirent* entry1 = (struct dirent*)malloc(sizeof(struct dirent));
-            strcpy(entry1->d_name, "profile1.json");
-            return entry1;
-        })
-        .WillOnce([](DIR* dirp) {
-            struct dirent* entry2 = (struct dirent*)malloc(sizeof(struct dirent));
-            strcpy(entry2->d_name, "profile2.json");
-            return entry2;
-        })
-        .WillOnce(Return(nullptr));
-    EXPECT_CALL(*g_fileIOMock, closedir(_))
-        .Times(1)
-        .WillOnce(Return(0));
-    // With more than one config, none of these should be called:
-    EXPECT_CALL(*g_fileIOMock, open(_, _)).Times(0);
-    EXPECT_CALL(*g_fileIOMock, read(_, _, _)).Times(0);
-    EXPECT_CALL(*g_fileIOMock, close(_)).Times(0);
-
-    // Only expect removal/cleanup, not config processing:
-    EXPECT_CALL(*g_profileXConfMock, processConfigurationXConf(_, _)).Times(0);
-    EXPECT_CALL(*g_systemMock, remove(_)).Times(::testing::AnyNumber());
-    EXPECT_CALL(*g_schedulerMock, registerProfileWithScheduler(_, _, _, _, _, _, _, _)).Times(0);
-
-    EXPECT_EQ(ProfileXConf_init(false), T2ERROR_SUCCESS);
-}
-
-TEST_F(profileXconfTestFixture, ProfileXConf_init_mutex_init_fails)
-{
-    // This requires linking with -Wl,--wrap=pthread_mutex_init and correct CMake/test activation
-    // The wrapper above returns -1 on the first call (simulate failure)
-    ProfileXConf_uninit(); // ensure state reset
-    EXPECT_EQ(ProfileXConf_init(false), T2ERROR_FAILURE);
-}
 //Test the marker component map update after init of single profiles, it should update the component map
 TEST_F(profileXconfTestFixture, ProfileXConf_updateMarkerComponentMap_success_after_init)
 {

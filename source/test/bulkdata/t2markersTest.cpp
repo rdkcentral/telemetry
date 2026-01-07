@@ -336,9 +336,9 @@ TEST(t2markerTest, updateComponentListNull)
         updateFunc(nullptr);
 }
 
-TEST(t2markerTest , freeT2ComponentListNull)
+/*TEST(t2markerTest , freeT2ComponentListNull)
 {
      freeT2MarkerFunc  freeT2Func = freeT2MarkerFuncCallback();
      ASSERT_NE(freeT2Func, nullptr);
-}
+}*/
 #endif

@@ -500,6 +500,7 @@ TEST(CollectAndReportTest, ProperParametersHappyPath) {
 //==================================== profile.c ===================
 
 // Test initProfileList
+#if 0
 TEST_F(ProfileTest, InitProfileList_Success) {
     const char* path = "/tmp/t2reportprofiles/";
     DIR *dir = (DIR*)0xffffffff ;
@@ -540,7 +541,76 @@ TEST_F(ProfileTest, InitProfileList_Success) {
     EXPECT_EQ(initProfileList(false), T2ERROR_SUCCESS);
     Vector_Destroy(configlist, free);
 }
+#endif
+TEST_F(ProfileTest, InitProfileList_Success) {
+    const char* path = "/tmp/t2reportprofiles/";
+    DIR *dir = (DIR*)0xffffffff ;
+    Vector* configlist = NULL;
 
+    // --------------- VECTOR MOCKS (setup for normal + loop trigger) -----------------
+    EXPECT_CALL(*g_vectorMock, Vector_Create(_))
+        .Times(::testing::AtMost(3))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_vectorMock, Vector_PushBack(_, _))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _))
+        .Times(::testing::AtMost(2))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+
+    // ------ Mocks for entering and executing the FOR loop -----------------
+    // We'll return size 1 for configList to ensure the loop executes once
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .WillRepeatedly(Return(1)); // Loop will hit index 0
+   
+    Vector_Create(&configlist);
+    Vector_PushBack(configlist, (void *)strdup("marker1")); 
+
+    EXPECT_CALL(*g_vectorMock, Vector_At(_, 0))
+        .WillRepeatedly(Return(configlist));
+
+    Profile* fakeProfile = (Profile*)malloc(sizeof(Profile));
+    memset(fakeProfile, 0, sizeof(Profile));
+    fakeProfile->name = strdup("FakeProfile");
+
+    // processConfiguration is expected to set the profile pointer
+    EXPECT_CALL(*g_systemMock, processConfiguration(_, _, _, _))
+        .WillOnce(DoAll(SetArgPointee<3>(fakeProfile), Return(T2ERROR_SUCCESS)));
+
+    // addProfile returns success
+    EXPECT_CALL(*g_systemMock, addProfile(_))
+        .WillOnce(Return(T2ERROR_SUCCESS));
+
+    // enableProfile returns success
+    EXPECT_CALL(*g_systemMock, enableProfile(_))
+        .WillOnce(Return(T2ERROR_SUCCESS));
+    
+    // populateCachedReportList expected call
+    EXPECT_CALL(*g_systemMock, populateCachedReportList(_, _))
+        .WillOnce(Return(T2ERROR_SUCCESS));
+
+    // --------------- FILESYSTEM/OS MOCKS (no filesystem touch) ---------------
+    EXPECT_CALL(*g_fileIOMock, opendir(_))
+           .Times(::testing::AtMost(2))
+           .WillRepeatedly(Return(dir));
+    EXPECT_CALL(*g_systemMock, system(_))
+           .Times(::testing::AtMost(2))
+           .WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_fileIOMock, readdir(_))
+           .Times(::testing::AtMost(2))
+           .WillRepeatedly(Return((struct dirent *)NULL));
+    EXPECT_CALL(*g_fileIOMock, closedir(_))
+           .Times(::testing::AtMost(1))
+           .WillRepeatedly(Return(0));
+
+
+    EXPECT_EQ(initProfileList(false), T2ERROR_SUCCESS);
+
+    // --------------- CLEANUP ---------------
+    Vector_Destroy(configlist, free);
+    free(fakeProfile->name);
+    free(fakeProfile);
+}
 // Test profileWithNameExists
 TEST_F(ProfileTest, ProfileWithNameExists_NotInitialized) {
     bool exists = false;

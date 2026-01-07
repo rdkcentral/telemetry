@@ -518,7 +518,7 @@ TEST_F(profileXconfTestFixture, ProfileXConf_init_processing_config_fails)
     EXPECT_CALL(*g_fileIOMock, read(_, _, _))
         .WillOnce([](int fd, void* buf, size_t count) {
             const char* content = "{\"dummyconf\":true}";
-            memcpy(buf, content, strlen(content)1);
+            memcpy(buf, content, strlen(content)+1);
             return strlen(content);
         });
     EXPECT_CALL(*g_fileIOMock, close(_)).WillOnce(Return(0));
@@ -543,7 +543,7 @@ TEST_F(profileXconfTestFixture, ProfileXConf_init_set_profile_fails)
     EXPECT_CALL(*g_fileIOMock, open(_, _)).WillOnce(Return(0));
     EXPECT_CALL(*g_fileIOMock, read(_, _, _)).WillOnce([](int fd, void* buf, size_t count) {
         const char* content = "{\"dummyconf\":true}";
-        memcpy(buf, content, strlen(content)1);
+        memcpy(buf, content, strlen(content)+1);
         return strlen(content);
     });
     EXPECT_CALL(*g_fileIOMock, close(_)).WillOnce(Return(0));

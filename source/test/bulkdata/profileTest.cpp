@@ -226,6 +226,11 @@ TEST_F(ProfileTest, FreeProfile_Valid) {
 
     // JSON object
     prof->jsonReportObj = cJSON_CreateObject();
+    
+    //add here
+    getProfileFunc func = getProfileFuncCallback();
+    T2ERROR err = func("profile_name", &prof);
+    EXPECT_EQ(err, T2ERROR_SUCCESS);
 
     // Now free!
     freeFunc(prof);
@@ -1355,9 +1360,6 @@ TEST_F(ProfileTest, SetAndIsSet) {
     EXPECT_EQ(ProfileXConf_set(profile), T2ERROR_SUCCESS);
     EXPECT_TRUE(ProfileXConf_isSet());
 
-    getProfileFunc func = getProfileFuncCallback();
-    T2ERROR err = func("TestProfile", &profile);
-    EXPECT_EQ(err, T2ERROR_SUCCESS);
     // Get name
     char* name = ProfileXconf_getName();
     ASSERT_NE(name, nullptr);

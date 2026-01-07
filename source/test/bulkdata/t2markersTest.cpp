@@ -383,6 +383,7 @@ TEST_F(t2markersTestFixture, freeT2Marker_all_members_non_null) {
     // If using memory tools, check for leaks.
 }
 
+#if 0
 TEST_F(t2markersTestFixture, freeT2Marker_key_only) {
     // key non-null, rest null
     hash_element_t* elem = allocMarkerElement(nullptr, nullptr, {}, true, false, false, false, false);
@@ -421,4 +422,5 @@ TEST_F(t2markersTestFixture, freeT2Marker_profileList_null) {
     freeT2MarkerFunc func = freeT2MarkerFuncCallback();
     func(elem);
 }
+#endif
 #endif

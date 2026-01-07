@@ -1355,11 +1355,15 @@ TEST_F(ProfileTest, SetAndIsSet) {
     EXPECT_EQ(ProfileXConf_set(profile), T2ERROR_SUCCESS);
     EXPECT_TRUE(ProfileXConf_isSet());
 
+    getProfileFunc func = getProfileFuncCallback();
+    T2ERROR err = func("TestProfile", &profile);
+    EXPECT_EQ(err, T2ERROR_SUCCESS);
     // Get name
     char* name = ProfileXconf_getName();
     ASSERT_NE(name, nullptr);
     EXPECT_STREQ(name, "TestProfile");
     free(name);
+   
 
     // Clean up - ProfileXConf_uninit calls unregisterProfileFromScheduler
     EXPECT_CALL(*g_schedulerMock, unregisterProfileFromScheduler(_))

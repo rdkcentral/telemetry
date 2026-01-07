@@ -520,7 +520,7 @@ static void t2_handle_marker_list_request(int client_index, T2RequestHeader* req
 
     // Get marker list using existing callback
     Vector* eventMarkerList = NULL;
-    getMarkerListCallBack(query_component, (void**)&eventMarkerList);
+    getComponentMarkerList(query_component, (void**)&eventMarkerList);
 
     // Prepare response data
     char marker_response[2048] = {0}; // Adjust size as needed
@@ -1889,7 +1889,7 @@ static char* get_component_markers(const char* query_component)
 
     // Get marker list using existing callback
     Vector* eventMarkerList = NULL;
-    getMarkerListCallBack(query_component, (void**)&eventMarkerList);
+    getComponentMarkerList(query_component, (void**)&eventMarkerList);
 
     T2Info("%s, %d\n", __func__, __LINE__);
     // Prepare response data
@@ -2201,7 +2201,7 @@ T2ERROR t2_daemon_create_component_queues(void)
     T2Info("Successfully created %d/%d component-specific queues\n",
            successful_creations, component_count);
 
-    //t2_daemon_mq_broadcast_markers_to_component("ALL");
+    t2_daemon_mq_broadcast_markers_to_component("ALL");
 
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;

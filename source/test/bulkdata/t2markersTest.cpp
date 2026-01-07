@@ -311,3 +311,13 @@ TEST_F(t2markersTestFixture, T2ER_Uninit_after_stop_dispatch_thread)
     T2ER_Uninit();
 }
 
+#if 1
+typedef void (*freeT2ComponentListFunc) (void *data);
+freeT2ComponentListFunc freeT2ComponentListFuncCallback(void);
+
+TEST_F(t2markersTest, freeT2ComponentNull) {
+    freeT2ComponentListFunc freeFunc = freeT2ComponentListFuncCallback();
+    ASSERT_NE(freeFunc, nullptr);
+    freeFunc(nullptr);
+}
+#endif

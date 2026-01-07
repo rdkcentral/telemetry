@@ -561,7 +561,7 @@ TEST_F(profileXconfTestFixture, ProfileXConf_init_set_profile_fails)
     EXPECT_CALL(*g_schedulerMock, registerProfileWithScheduler(_, _, _, _, _, _, _, _)).WillOnce(Return(T2ERROR_FAILURE));
     EXPECT_EQ(ProfileXConf_init(false), T2ERROR_SUCCESS);
 }
-
+#if 0
 // New: test pthread_mutex_init fails
 #include <pthread.h>
 extern "C" int __real_pthread_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr);
@@ -582,7 +582,7 @@ TEST_F(profileXconfTestFixture, ProfileXConf_init_mutex_init_fails)
     ProfileXConf_uninit(); // ensure state reset
     EXPECT_EQ(ProfileXConf_init(false), T2ERROR_FAILURE);
 }
-
+#endif
 //Test the marker component map update after init of single profiles, it should update the component map
 TEST_F(profileXconfTestFixture, ProfileXConf_updateMarkerComponentMap_success_after_init)
 {

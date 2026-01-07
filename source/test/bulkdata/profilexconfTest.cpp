@@ -682,6 +682,86 @@ TEST_F(profileXconfTestFixture, DeleteProfile_ProfileNotFound) {
     EXPECT_EQ(ProfileXConf_delete(prof), T2ERROR_FAILURE);
     free(prof->name); free(prof->protocol); free(prof->encodingType); free(prof);
 }
+
+TEST_F(profileXconfTestFixture, DeleteProfile_NameEqualWithCaches) {
+    ResetGlobals();
+    initialized = true;
+    ProfileXConf* prof = CreateProfile("RDK_Profile_2", true, true, MTYPE_XCONF_COUNTER, false, false);
+    singleProfile = CreateProfile("RDK_Profile_2", true, true, MTYPE_XCONF_COUNTER, false, false);
+
+    // isNameEqual==true
+    EXPECT_CALL(*g_systemMock, ProfileXConf_isNameEqual(_)).WillOnce(Return(true));
+    // side-paths
+    pthread_mutex_init(&plMutex, nullptr);
+    // Vector mocks for copy cached
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_)).WillRepeatedly(Return(1));
+    EXPECT_CALL(*g_vectorMock, Vector_At(_, 0)).WillRepeatedly(Return(strdup("cached")));
+    EXPECT_CALL(*g_vectorMock, Vector_PushBack(_, _)).WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_vectorMock, Vector_RemoveItem(_, _, _)).WillRepeatedly(Return(T2ERROR_SUCCESS));
+    // eMarkerList size for event copy logic
+    EXPECT_CALL(*g_vectorMock, Vector_Size(testing::_)).WillRepeatedly(Return(0));
+    // gMarkerList
+    EXPECT_CALL(*g_vectorMock, Vector_Size(testing::_)).WillRepeatedly(Return(0));
+    // clean/free called
+    EXPECT_CALL(*g_systemMock, freeProfileXConf()).Times(1);
+
+    EXPECT_EQ(ProfileXConf_delete(prof), T2ERROR_SUCCESS);
+    pthread_mutex_destroy(&plMutex);
+    free(prof->name); free(prof->protocol); free(prof->encodingType); free(prof);
+    // free additional memory if needed
+}
+
+// Test: isNameEqual==false, unregisterProfileFromScheduler fails
+TEST_F(profileXconfTestFixture, DeleteProfile_NameNotEqual_UnregisterFails) {
+    ProfileXConf* prof = CreateProfile("AnotherProfile", true, false, (MarkerType) MTYPE_XCONF_COUNTER, false, false);
+    singleProfile = CreateProfile("RDK_Profile_2", true, false,(MarkerType) MTYPE_XCONF_COUNTER, false, false);
+
+    // isNameEqual==false path
+    EXPECT_CALL(*g_systemMock, ProfileXConf_isNameEqual(_)).WillOnce(Return(false));
+    // unregisterProfileFromScheduler returns failure (should log error but continue)
+    EXPECT_CALL(*g_schedulerMock, unregisterProfileFromScheduler(_)).WillOnce(Return(T2ERROR_FAILURE));
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_)).WillRepeatedly(Return(1));
+    // destroy singleProfile cachedReportList
+    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).Times(1);
+    // eMarkerList and gMarkerList sizes
+    EXPECT_CALL(*g_vectorMock, Vector_Size(testing::_)).WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_systemMock, freeProfileXConf()).Times(1);
+
+    EXPECT_EQ(ProfileXConf_delete(prof), T2ERROR_SUCCESS);
+    free(prof->name); free(prof->protocol); free(prof->encodingType); free(prof);
+}
+
+// Test: reportInProgress == true triggering extra log line
+TEST_F(profileXconfTestFixture, DeleteProfile_ReportInProgress) {
+    ProfileXConf* prof = CreateProfile("RDK_Profile_2", false, false, (MarkerType) MTYPE_XCONF_COUNTER, false, true);
+    singleProfile = CreateProfile("RDK_Profile_2", false, false, (MarkerType) MTYPE_XCONF_COUNTER, false, true);
+
+    EXPECT_CALL(*g_systemMock, ProfileXConf_isNameEqual(_)).WillOnce(Return(true));
+    pthread_mutex_init(&plMutex, nullptr);
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_)).WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_systemMock, freeProfileXConf()).Times(1);
+
+    EXPECT_EQ(ProfileXConf_delete(prof), T2ERROR_SUCCESS);
+    free(prof->name); free(prof->protocol); free(prof->encodingType); free(prof);
+}
+
+// Test: gMarkerList size > 0, isNameEqual true, triggers grepSeek copy/free
+TEST_F(profileXconfTestFixture, DeleteProfile_GMarker_NameEqual) {
+    ProfileXConf* prof = CreateProfile("ProfileGSeek", false, false, (MarkerType) MTYPE_XCONF_COUNTER, true, false);
+    prof->grepSeekProfile = (void*)calloc(1, 8); // Dummy pointer
+    singleProfile = CreateProfile("ProfileGSeek", false, false, (MarkerType) MTYPE_XCONF_COUNTER, true, false);
+    singleProfile->grepSeekProfile = (void*)calloc(1, 8); // Dummy pointer
+
+    EXPECT_CALL(*g_systemMock, ProfileXConf_isNameEqual(_)).WillOnce(Return(true));
+    pthread_mutex_init(&plMutex, nullptr);
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_)).WillRepeatedly(Return(1));
+    EXPECT_CALL(*g_systemMock, freeGrepSeekProfile(testing::_)).Times(1);
+    EXPECT_CALL(*g_systemMock, freeProfileXConf()).Times(1);
+
+    EXPECT_EQ(ProfileXConf_delete(prof), T2ERROR_SUCCESS);
+    free(prof->name); free(prof->protocol); free(prof->encodingType); free(prof);
+    free(prof->grepSeekProfile); free(singleProfile->grepSeekProfile);
+}
 //Test the uninit of XConf profiles
 TEST_F(profileXconfTestFixture, ProfileXConf_uninit)
 {

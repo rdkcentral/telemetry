@@ -678,10 +678,7 @@ TEST_F(profileXconfTestFixture, DeleteProfile_NotInitialized) {
 }
 // Test: Profile not found path (singleProfile==nullptr)
 TEST_F(profileXconfTestFixture, DeleteProfile_ProfileNotFound) {
-    initialized = true;
-    singleProfile = nullptr;
     ProfileXConf* prof = CreateProfile("RDK_Profile_XYZ", false, false, (MarkerType) MTYPE_XCONF_COUNTER, false, false);
-    pthread_mutex_init(&plMutex, nullptr);
     EXPECT_EQ(ProfileXConf_delete(prof), T2ERROR_FAILURE);
     free(prof->name); free(prof->protocol); free(prof->encodingType); free(prof);
 }

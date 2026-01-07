@@ -504,7 +504,6 @@ TEST_F(profileXconfTestFixture, ProfileXConf_init_mutex_init_fails)
     ProfileXConf_uninit(); // ensure state reset
     EXPECT_EQ(ProfileXConf_init(false), T2ERROR_FAILURE);
 }
-#endif
 //Test the marker component map update after init of single profiles, it should update the component map
 TEST_F(profileXconfTestFixture, ProfileXConf_updateMarkerComponentMap_success_after_init)
 {

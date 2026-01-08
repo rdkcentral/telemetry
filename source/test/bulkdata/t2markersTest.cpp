@@ -374,6 +374,7 @@ static hash_element_t* allocMarkerElement(const char* markerName, const char* co
 // Test suite for freeT2Marker
 TEST_F(t2markersTestFixture, freeT2Marker_all_members_non_null) {
     // covers all branches: key, componentName, markerName, profileList
+     std::vector<const char*> profiles = {"prof1", "prof2"};
     hash_element_t* elem = allocMarkerElement("mymarker", "mycomp", profiles, true, true, true, true, true);
 
     // Call via function pointer

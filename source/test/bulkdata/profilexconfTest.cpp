@@ -677,6 +677,7 @@ TEST_F(profileXconfTestFixture, DeleteProfile_NotInitialized) {
     free(prof->name); free(prof->protocol); free(prof->encodingType); free(prof);
 }
 
+
 TEST_F(profileXconfTestFixture , notifyTimeoutTest)
 {
     ProfileXConf* prof = CreateProfile("RDK_Profile_2", false, false, (MarkerType)MTYPE_XCONF_COUNTER, false, true);
@@ -684,6 +685,16 @@ TEST_F(profileXconfTestFixture , notifyTimeoutTest)
     free(prof->name); free(prof->protocol); free(prof->encodingType);  free(prof);
 }
 
+extern "C" void _test_set_singleProfile(ProfileXConf *ptr);
+
+TEST_F(profileXconfTestFixture , notifyTimeoutTest1)
+{
+
+    ProfileXConf* prof = CreateProfile("RDK_Profile_2", false, false, (MarkerType)MTYPE_XCONF_COUNTER, false, true);
+     _test_set_singleProfile(nullptr);
+    ProfileXConf_notifyTimeout(true,true);
+    free(prof->name); free(prof->protocol); free(prof->encodingType);  free(prof);
+}
 //Test the uninit of XConf profiles
 TEST_F(profileXconfTestFixture, ProfileXConf_uninit)
 {

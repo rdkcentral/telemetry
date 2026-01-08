@@ -459,6 +459,7 @@ TEST_F(profileXconfTestFixture, InitandUninit)
         .Times(::testing::AtMost(1))
         .WillRepeatedly(Return(T2ERROR_SUCCESS));
     EXPECT_EQ(ProfileXConf_init(false), T2ERROR_SUCCESS);
+    EXPECT_EQ(ProfileXConf_init(true), T2ERROR_SUCCESS);
     
 }
 

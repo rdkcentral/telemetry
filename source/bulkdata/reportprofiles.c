@@ -1521,3 +1521,19 @@ bool isMtlsEnabled(void)
 #endif
 }
 
+typedef void* (*reportOnDemandFunc)(void*);
+reportOnDemandFunc reportOnDemandFuncCallback(void)
+{
+	return reportOnDemand;
+}
+typedef void (*freeProfilesHashMapFunc)(void *);
+freeProfilesHashMapFunc freeProfilesHashMapFuncCallback(void)
+{
+	return freeProfilesHashMap;
+}
+typedef void (*freeReportProfileHashMapFunc)(void *)
+freeReportProfileHashMapFunc freeReportProfileHashMapFuncCallback(void)	
+{
+       return freeReportProfileHashMap;
+}
+

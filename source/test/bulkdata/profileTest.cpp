@@ -930,6 +930,24 @@ TEST_F(ProfileTest, ClearMarkerComponentMapShouldRemoveEntries) {
 
 //================================ reportProfiles.c ====================================
 
+extern "C" {	
+typedef void* (*reportOnDemandFunc)(void*);
+reportOnDemandFunc reportOnDemandFuncCallback(void);
+typedef void (*freeProfilesHashMapFunc)(void *);
+freeProfilesHashMapFunc freeProfilesHashMapFuncCallback(void);
+typedef void (*freeReportProfileHashMapFunc)(void *);
+freeReportProfileHashMapFunc freeReportProfileHashMapFuncCallback(void);
+}
+TEST_F(ProfileTest, reportOnDemandTest)
+{
+	reportOnDemandFunc func = reportOnDemandFuncCallback();
+	ASSERT_NE(func,nullptr);
+	func("UPLOAD");
+	func("ABORT");
+	func("FOO");
+	func(nullptr);
+}
+
 TEST_F(ProfileTest, initReportProfiles) {
     char status[8] = "true";
     DIR *dir = (DIR*)0xffffffff ;
@@ -1281,6 +1299,7 @@ TEST_F(ProfileTest, ReportProfiles_uninit) {
     EXPECT_EQ(ReportProfiles_uninit(), T2ERROR_SUCCESS);
 }
 #endif
+
 #endif
 
 #if 1

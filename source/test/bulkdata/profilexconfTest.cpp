@@ -681,7 +681,7 @@ TEST_F(profileXconfTestFixture , notifyTimeoutTest)
 {
     ProfileXConf* prof = CreateProfile("RDK_Profile_2", false, false, (MarkerType)MTYPE_XCONF_COUNTER, false, true);
     ProfileXConf_notifyTimeout(true,true);
-    free(prof->name); free(prof->protocol); free(prof->encodingType); free(prof->reportInProgress); free(prof);
+    free(prof->name); free(prof->protocol); free(prof->encodingType);  free(prof);
 }
 
 //Test the uninit of XConf profiles

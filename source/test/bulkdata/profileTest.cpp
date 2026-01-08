@@ -1311,7 +1311,7 @@ TEST_F(ProfileTest, reportOnDemandTest)
         reportOnDemandFunc func = reportOnDemandFuncCallback();
         ASSERT_NE(func,nullptr);
         //func((void*)"UPLOAD");
-        //func((void*)"ABORT");
+        func((void*)"ABORT");
         func((void*)"FOO");
         func(nullptr);
 }

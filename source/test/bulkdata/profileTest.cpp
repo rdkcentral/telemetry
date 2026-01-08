@@ -933,10 +933,12 @@ TEST_F(ProfileTest, ClearMarkerComponentMapShouldRemoveEntries) {
 extern "C" {	
 typedef void* (*reportOnDemandFunc)(void*);
 reportOnDemandFunc reportOnDemandFuncCallback(void);
+#if 0
 typedef void (*freeProfilesHashMapFunc)(void *);
 freeProfilesHashMapFunc freeProfilesHashMapFuncCallback(void);
 typedef void (*freeReportProfileHashMapFunc)(void *);
 freeReportProfileHashMapFunc freeReportProfileHashMapFuncCallback(void);
+#endif
 }
 TEST_F(ProfileTest, reportOnDemandTest)
 {

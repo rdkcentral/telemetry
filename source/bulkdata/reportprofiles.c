@@ -1526,6 +1526,7 @@ reportOnDemandFunc reportOnDemandFuncCallback(void)
 {
 	return reportOnDemand;
 }
+#if 0
 typedef void (*freeProfilesHashMapFunc)(void *);
 freeProfilesHashMapFunc freeProfilesHashMapFuncCallback(void)
 {
@@ -1536,4 +1537,4 @@ freeReportProfileHashMapFunc freeReportProfileHashMapFuncCallback(void)
 {
        return freeReportProfileHashMap;
 }
-
+#endif

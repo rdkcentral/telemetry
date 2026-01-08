@@ -672,7 +672,7 @@ ProfileXConf* CreateProfile(const char* name, bool withCached, bool withEMarker,
     return localProfile;
 }
 TEST_F(profileXconfTestFixture, DeleteProfile_NotInitialized) {
-    ProfileXConf* prof = CreateProfile("RDK_Profile_2", false, false, (MarkerType)MTYPE_XCONF_COUNTER, false, false);
+    ProfileXConf* prof = CreateProfile("RDK_Profile", false, false, (MarkerType)MTYPE_XCONF_COUNTER, false, false);
     EXPECT_EQ(ProfileXConf_delete(prof), T2ERROR_FAILURE);
     free(prof->name); free(prof->protocol); free(prof->encodingType); free(prof);
 }

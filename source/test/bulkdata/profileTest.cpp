@@ -938,15 +938,6 @@ freeProfilesHashMapFunc freeProfilesHashMapFuncCallback(void);
 typedef void (*freeReportProfileHashMapFunc)(void *);
 freeReportProfileHashMapFunc freeReportProfileHashMapFuncCallback(void);
 }
-TEST_F(ProfileTest, reportOnDemandTest)
-{
-	reportOnDemandFunc func = reportOnDemandFuncCallback();
-	ASSERT_NE(func,nullptr);
-        func((void*)"UPLOAD");
-	func((void*)"ABORT");
-	func((void*)"FOO");
-	func(nullptr);
-}
 
 TEST(ReportProfilesCallbacks, FreeProfilesHashMap) {
     auto cb = freeProfilesHashMapFuncCallback();
@@ -1314,6 +1305,16 @@ TEST_F(ProfileTest, ReportProfiles_uninit) {
     EXPECT_EQ(ReportProfiles_uninit(), T2ERROR_SUCCESS);
 }
 #endif
+
+TEST_F(ProfileTest, reportOnDemandTest)
+{
+        reportOnDemandFunc func = reportOnDemandFuncCallback();
+        ASSERT_NE(func,nullptr);
+        func((void*)"UPLOAD");
+        func((void*)"ABORT");
+        func((void*)"FOO");
+        func(nullptr);
+}
 
 #endif
 

@@ -933,12 +933,10 @@ TEST_F(ProfileTest, ClearMarkerComponentMapShouldRemoveEntries) {
 extern "C" {	
 typedef void* (*reportOnDemandFunc)(void*);
 reportOnDemandFunc reportOnDemandFuncCallback(void);
-#if 0
 typedef void (*freeProfilesHashMapFunc)(void *);
 freeProfilesHashMapFunc freeProfilesHashMapFuncCallback(void);
 typedef void (*freeReportProfileHashMapFunc)(void *);
 freeReportProfileHashMapFunc freeReportProfileHashMapFuncCallback(void);
-#endif
 }
 TEST_F(ProfileTest, reportOnDemandTest)
 {
@@ -948,6 +946,21 @@ TEST_F(ProfileTest, reportOnDemandTest)
 	func((void*)"ABORT");
 	func((void*)"FOO");
 	func(nullptr);
+}
+
+TEST(ReportProfilesCallbacks, FreeProfilesHashMap) {
+    auto cb = freeProfilesHashMapFuncCallback();
+    ASSERT_NE(cb, nullptr);
+
+    // Test with an actual element
+    hash_element_t* item = (hash_element_t*) std::malloc(sizeof(hash_element_t));
+    item->key = (char*) std::malloc(12);
+    std::strcpy(item->key, "testkey");
+    item->data = std::malloc(8);
+    cb(item);
+
+    // Test with nullptr
+    cb(nullptr);
 }
 
 TEST_F(ProfileTest, initReportProfiles) {

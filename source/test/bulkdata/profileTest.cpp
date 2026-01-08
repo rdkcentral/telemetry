@@ -1244,7 +1244,7 @@ TEST_F(ProfileTest, RemovePreRPfromDisk) {
     EXPECT_EQ(RemovePreRPfromDisk("/tmp", &dummy), T2ERROR_SUCCESS);
 }
 
-#if 0
+#if 1
 TEST_F(ProfileTest, deleteAllReportProfiles) {
     EXPECT_CALL(*g_vectorMock, Vector_Size(_))
         .Times(::testing::AtMost(1))

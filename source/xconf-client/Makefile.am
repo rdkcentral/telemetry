@@ -21,7 +21,7 @@ AM_CFLAGS =
 lib_LTLIBRARIES = libxconfclient.la
 
 libxconfclient_la_SOURCES = xconfclient.c
-libxconfclient_la_LDFLAGS = -shared -fPIC -lcjson -lcurl
+libxconfclient_la_LDFLAGS = -shared -fPIC -lcjson -lcurl -lrdk_otlp
 if IS_LIBRDKCERTSEL_ENABLED
 libxconfclient_la_CFLAGS = $(LIBRDKCERTSEL_FLAG)
 libxconfclient_la_LDFLAGS += -lRdkCertSelector

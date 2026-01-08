@@ -93,6 +93,7 @@ static rdkcertselector_h xcCertSelector = NULL;
 #if defined(ENABLE_REMOTE_PROFILE_DOWNLOAD)
 static int retryCount = 0;
 #endif
+#include "rdk_otlp_instrumentation.h"
 
 /* commenting this to code, we have limitations in using curl_url_strerror API.
 We have enough information from the error code to debug.
@@ -584,7 +585,6 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
 {
 
     T2Debug("%s ++in\n", __FUNCTION__);
-
     T2Info("%s with url %s \n", __FUNCTION__, httpsUrl);
     CURL *curl;
     CURLcode code = CURLE_OK;
@@ -1282,6 +1282,10 @@ T2ERROR getRemoteConfigURL(char **configURL)
 
 static void* getUpdatedConfigurationThread(void *data)
 {
+    rdk_otlp_init("telemetry", "2.0.1");
+    rdk_otlp_metrics_init();
+    rdk_otlp_start_distributed_trace("doHttpGet", "get");
+    rdk_otlp_start_child_span("doHttpGet", "get");
     (void) data;
     T2ERROR configFetch = T2ERROR_FAILURE;
     T2ERROR urlFetchStatus;
@@ -1476,6 +1480,8 @@ static void* getUpdatedConfigurationThread(void *data)
     pthread_mutex_unlock(&xcThreadMutex);
     // pthread_detach(pthread_self()); commenting this line as thread will detached by stopXConfClient
     T2Debug("%s --out\n", __FUNCTION__);
+    rdk_otlp_finish_distributed_trace();
+    rdk_otlp_finish_child_span();
     return NULL;
 }
 

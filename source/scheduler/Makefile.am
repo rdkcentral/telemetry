@@ -21,7 +21,7 @@ AM_CFLAGS =
 lib_LTLIBRARIES = libscheduler.la
 
 libscheduler_la_SOURCES = scheduler.c
-libscheduler_la_LDFLAGS = -shared -fPIC
+libscheduler_la_LDFLAGS = -shared -fPIC -lrdk_otlp
 if ENABLE_CCSP_SUPPORT
 libscheduler_la_LDFLAGS += -lccsp_common
 endif

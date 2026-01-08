@@ -32,6 +32,7 @@
 #include "scheduler.h"
 #include "vector.h"
 #include "profile.h"
+#include "rdk_otlp_instrumentation.h"
 #ifndef _XOPEN_SOURCE
 #define _XOPEN_SOURCE
 #endif
@@ -126,6 +127,7 @@ int getLapsedTime (struct timespec *output, struct timespec *time1, struct times
 // This function is used to calculate the difference between the currentUTC time and UTC time configured in the TimeReference.It takes hr:min:sec for the time calculation. When the timeRef value is missed the report will be generated at the same time ref after 24 hrs.
 static unsigned int getSchdInSec(char* timeRef)
 {
+    rdk_otlp_start_child_span("schedule", "get");
     struct tm timeptr, currtimeptr;
     time_t timeref = 0, timenow = 0, curtime;
     char * currtime = NULL;
@@ -140,6 +142,7 @@ static unsigned int getSchdInSec(char* timeRef)
     strptime(currtime, "%a %b %d %H:%M:%S %Y", &currtimeptr);
     timenow = (currtimeptr.tm_hour * 3600) + (currtimeptr.tm_min * 60) + currtimeptr.tm_sec;
     T2Debug("timestamp_now = %ld\n", (long) timenow);
+    rdk_otlp_finish_child_span();
     if(timeref > timenow)
     {
         return (timeref - timenow);

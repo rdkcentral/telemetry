@@ -1094,7 +1094,7 @@ TEST(CollectAndReportTest, Covers_jsonReportObj_nonNull_forPrepareAndDestroy) {
     profile.protocol = (char*)"http";
     profile.grepSeekProfile = &grepSeekProfile;
     profile.jsonEncoding = (JSONEncoding*)malloc(sizeof(JSONEncoding));
-    profile.jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
+    profile.jsonEncoding->reportFormat = JSONRF_OBJHIERARCHY;
     profile.triggerReportOnCondition = false;
     // Add some non-null JSON object
     profile.jsonReportObj = cJSON_CreateObject();

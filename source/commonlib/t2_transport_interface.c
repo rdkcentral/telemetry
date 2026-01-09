@@ -489,7 +489,7 @@ void t2_set_transport_mode_from_env(void)
     if (!transport_env)
     {
         printf("%s: T2_TRANSPORT_MODE not set, defaulting to RBUS\n", __FUNCTION__);
-        t2_set_transport_mode(T2_TRANSPORT_MODE_MESSAGE_QUEUE); // Default
+        t2_set_transport_mode(T2_TRANSPORT_MODE_RBUS); // Default
         return;
     }
 

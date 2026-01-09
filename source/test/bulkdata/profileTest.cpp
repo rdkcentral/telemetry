@@ -562,6 +562,226 @@ TEST(CollectAndReportTest, Null_Profilename) {
     // Check that the function returned (adapt this as needed)
     // EXPECT_EQ(result, expected_val);
 }
+TEST(CollectAndReportTest, Null_Parameter2) {
+    CollectAndReportFunc fn = getCollectAndReportFunc();
+    Profile profile = {};
+    GrepSeekProfile grepSeekProfile = {};
+    grepSeekProfile.execCounter = 42;
+
+    // Use const_cast for C-string assignments (to avoid C++ warning)
+    profile.name = (char*)"test";
+    profile.encodingType = (char*)"json1";
+    profile.protocol = (char*)"http";
+    profile.grepSeekProfile = &grepSeekProfile;
+    profile.triggerReportOnCondition = true;
+    // If there's an additional flag such as restartRequested, set it up here:
+    // profile.restartRequested = false;
+
+    // Start CollectAndReport in a new thread
+    pthread_t collectThread;
+    pthread_create(&collectThread, nullptr, [](void* arg) -> void* {
+        CollectAndReportFunc fn = getCollectAndReportFunc();
+        return fn(arg);
+    }, &profile);
+       // Let the function enter its wait state
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    // Now send the restart event (adapt as needed for your wait logic!)
+    pthread_mutex_lock(&profile.reuseThreadMutex);
+    // If your function needs a flag, set it:
+    // profile.restartRequested = true;
+    pthread_cond_signal(&profile.reuseThread);
+    pthread_mutex_unlock(&profile.reuseThreadMutex);
+        // Wait for the thread to exit
+    void* result = nullptr;
+    pthread_join(collectThread, &result);
+
+    // Check that the function returned (adapt this as needed)
+    // EXPECT_EQ(result, expected_val);
+}
+TEST(CollectAndReportTest, JSONEncodingWrongFormatBranch) {
+    CollectAndReportFunc fn = getCollectAndReportFunc();
+    Profile profile = {};
+    GrepSeekProfile grepSeekProfile = {};
+    grepSeekProfile.execCounter = 42;
+
+    // Setup fields for this branch
+    profile.name = (char*)"test";
+    profile.encodingType = (char*)"JSON";
+    profile.protocol = (char*)"http";
+    profile.grepSeekProfile = &grepSeekProfile;
+    profile.triggerReportOnCondition = true;
+
+    // Allocate/initialize JSONEncoding and set BAD format!
+    profile.jsonEncoding = (JSONEncoding*)malloc(sizeof(JSONEncoding));
+    profile.jsonEncoding->reportFormat = (JSONRF_OBJHIERARCHY); // Anything except JSONRF_KEYVALUEPAIR
+
+    // You must also initialize the triggerCondMutex,
+    // because the code path will call pthread_mutex_unlock on it!
+    pthread_mutex_init(&profile.triggerCondMutex, nullptr);
+    pthread_cond_init(&profile.reuseThread, nullptr);
+    pthread_mutex_init(&profile.reuseThreadMutex, nullptr);
+
+    pthread_t t;
+    pthread_create(&t, nullptr, [](void* arg) -> void* {
+        CollectAndReportFunc fn = getCollectAndReportFunc();
+        return fn(arg);
+    }, &profile);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    // Unblock thread from reportThreadEnd: send condvar signal
+    pthread_mutex_lock(&profile.reuseThreadMutex);
+    pthread_cond_signal(&profile.reuseThread);
+    pthread_mutex_unlock(&profile.reuseThreadMutex);
+
+    void* res = nullptr;
+    pthread_join(t, &res);
+
+    // Clean up
+    pthread_mutex_destroy(&profile.triggerCondMutex);
+    pthread_cond_destroy(&profile.reuseThread);
+    pthread_mutex_destroy(&profile.reuseThreadMutex);
+    free(profile.jsonEncoding);
+    // No assertion is strictly required for coverage, but ensure no crash etc.
+}
+
+TEST(CollectAndReportTest, JSONEncodingWrongFormatBranch1) {
+    CollectAndReportFunc fn = getCollectAndReportFunc();
+    Profile profile = {};
+    GrepSeekProfile grepSeekProfile = {};
+    grepSeekProfile.execCounter = 42;
+
+    // Setup fields for this branch
+    profile.name = (char*)"test";
+    profile.encodingType = (char*)"JSON";
+    profile.protocol = (char*)"http";
+    profile.grepSeekProfile = &grepSeekProfile;
+    profile.triggerReportOnCondition = false;
+
+    // Allocate/initialize JSONEncoding and set BAD format!
+    profile.jsonEncoding = (JSONEncoding*)malloc(sizeof(JSONEncoding));
+    profile.jsonEncoding->reportFormat = JSONRF_OBJHIERARCHY; // Anything except JSONRF_KEYVALUEPAIR
+
+    // You must also initialize the triggerCondMutex,
+    // because the code path will call pthread_mutex_unlock on it!
+    pthread_mutex_init(&profile.triggerCondMutex, nullptr);
+    pthread_cond_init(&profile.reuseThread, nullptr);
+    pthread_mutex_init(&profile.reuseThreadMutex, nullptr);
+
+    pthread_t t;
+    pthread_create(&t, nullptr, [](void* arg) -> void* {
+        CollectAndReportFunc fn = getCollectAndReportFunc();
+        return fn(arg);
+    }, &profile);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    // Unblock thread from reportThreadEnd: send condvar signal
+    pthread_mutex_lock(&profile.reuseThreadMutex);
+    pthread_cond_signal(&profile.reuseThread);
+    pthread_mutex_unlock(&profile.reuseThreadMutex);
+
+    void* res = nullptr;
+    pthread_join(t, &res);
+
+    // Clean up
+    pthread_mutex_destroy(&profile.triggerCondMutex);
+    pthread_cond_destroy(&profile.reuseThread);
+    pthread_mutex_destroy(&profile.reuseThreadMutex);
+    free(profile.jsonEncoding);
+    // No assertion is strictly required for coverage, but ensure no crash etc.
+}
+
+TEST(CollectAndReportTest, TriggerReportOnConditionWithJsonReportObj) {
+    CollectAndReportFunc fn = getCollectAndReportFunc();
+    Profile profile = {};
+    GrepSeekProfile grepSeekProfile = {};
+    grepSeekProfile.execCounter = 11;
+
+    profile.name = (char*)"test";
+    profile.encodingType = (char*)"JSON";
+    profile.protocol = (char*)"http";
+    profile.grepSeekProfile = &grepSeekProfile;
+
+    // Required for branch:
+    profile.triggerReportOnCondition = true;
+    profile.jsonReportObj = cJSON_CreateObject(); // Non-null object
+
+    // JSONEncoding: must set up so it does not fail the reportFormat check!
+    profile.jsonEncoding = (JSONEncoding*)malloc(sizeof(JSONEncoding));
+    profile.jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
+
+    pthread_mutex_init(&profile.triggerCondMutex, nullptr);
+    pthread_cond_init(&profile.reuseThread, nullptr);
+    pthread_mutex_init(&profile.reuseThreadMutex, nullptr);
+
+    pthread_t t;
+    pthread_create(&t, nullptr, [](void* arg) -> void* {
+        CollectAndReportFunc fn = getCollectAndReportFunc();
+        return fn(arg);
+    }, &profile);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    // Unblock thread from reportThreadEnd: send condvar signal
+    pthread_mutex_lock(&profile.reuseThreadMutex);
+    pthread_cond_signal(&profile.reuseThread);
+    pthread_mutex_unlock(&profile.reuseThreadMutex);
+
+    void* res = nullptr;
+    pthread_join(t, &res);
+
+    // Clean up
+    pthread_mutex_destroy(&profile.triggerCondMutex);
+    pthread_cond_destroy(&profile.reuseThread);
+    pthread_mutex_destroy(&profile.reuseThreadMutex);
+
+    // jsonEncoding and jsonReportObj will be freed inside CollectAndReport/freeProfile
+    // so you do not free them here; just avoid double free.
+}
+
+TEST(CollectAndReportTest, HandlesCheckPreviousSeekBranch) {
+    CollectAndReportFunc fn = getCollectAndReportFunc();
+    Profile profile = {};
+    GrepSeekProfile grepSeekProfile = {};
+    grepSeekProfile.execCounter = 3;
+
+    profile.name = (char*)"test";
+    profile.encodingType = (char*)"JSON";
+    profile.protocol = (char*)"http";
+    profile.grepSeekProfile = &grepSeekProfile;
+
+    profile.checkPreviousSeek = true;  // <-- triggers the branch!
+    profile.jsonEncoding = (JSONEncoding*)malloc(sizeof(JSONEncoding));
+    profile.jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
+
+    pthread_mutex_init(&profile.triggerCondMutex, nullptr);
+    pthread_cond_init(&profile.reuseThread, nullptr);
+    pthread_mutex_init(&profile.reuseThreadMutex, nullptr);
+
+    pthread_t t;
+    pthread_create(&t, nullptr, [](void* arg) -> void* {
+        CollectAndReportFunc fn = getCollectAndReportFunc();
+        return fn(arg);
+    }, &profile);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    // Unblock thread from reportThreadEnd: send condvar signal
+    pthread_mutex_lock(&profile.reuseThreadMutex);
+    pthread_cond_signal(&profile.reuseThread);
+    pthread_mutex_unlock(&profile.reuseThreadMutex);
+
+    void* res = nullptr;
+    pthread_join(t, &res);
+
+    pthread_mutex_destroy(&profile.triggerCondMutex);
+    pthread_cond_destroy(&profile.reuseThread);
+    pthread_mutex_destroy(&profile.reuseThreadMutex);
+
+    free(profile.jsonEncoding);
+}
 #endif
 #if 1
 //comment

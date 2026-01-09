@@ -888,13 +888,7 @@ TEST(CollectAndReportTest, Covers_ParamList_WithRealParamStruct) {
     free(profile.jsonEncoding);
 
     // Cleanup: free all allocated memory for paramlist
-    Vector_Destroy(paramlist, [](void* v){
-        Param* p = (Param*)v;
-        free(p->name);
-        free(p->alias);
-        free(p->paramType);
-        free(p);
-    });
+    Vector_Destroy(paramlist, freeParam);
 }
 #if 0
 TEST(CollectAndReportTest, Covers_ParamList_WithRealVector) {

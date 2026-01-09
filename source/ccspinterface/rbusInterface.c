@@ -122,6 +122,7 @@ typedef struct
     uint32_t sequence_id;           // Incremental sequence for tracking updates
 } T2MQMessageHeader;
 
+#if 0
 // Daemon state
 static struct
 {
@@ -143,6 +144,7 @@ static struct
 };
 
 static pthread_mutex_t g_daemon_mq_mutex = PTHREAD_MUTEX_INITIALIZER;
+#endif
 
 typedef struct MethodData
 {
@@ -1832,6 +1834,7 @@ T2ERROR publishEventsDCMProcConf()
 }
 #endif
 
+#if 0
 /**
  * Cleanup daemon message queues
  */
@@ -2460,6 +2463,7 @@ T2ERROR t2_daemon_mq_start(void)
     T2Info("Daemon message queue processing started\n");
     return T2ERROR_SUCCESS;
 }
+#endif
 
 T2ERROR registerRbusT2EventListener(TelemetryEventCallback eventCB)
 {
@@ -2511,6 +2515,7 @@ T2ERROR registerRbusT2EventListener(TelemetryEventCallback eventCB)
     T2Info("%s TCP server thread started successfully\n", __FUNCTION__);
 #endif
 
+#if 0
     // Initialize message queue support
     if (t2_daemon_mq_init() == T2ERROR_SUCCESS)
     {
@@ -2523,6 +2528,7 @@ T2ERROR registerRbusT2EventListener(TelemetryEventCallback eventCB)
         }
     }
     T2Info("Message queue transport called\n");
+#endif
 
     T2Debug("%s --out\n", __FUNCTION__);
     return status;

@@ -31,7 +31,7 @@
 #include <sys/wait.h>
 #include <curl/curl.h>
 #include <signal.h>
-
+#include <openssl/sha.h>
 #include "curlinterface.h"
 #include "reportprofiles.h"
 #include "t2MtlsUtils.h"
@@ -283,6 +283,24 @@ static void curlCertSelectorInit()
     }
 }
 #endif
+void telemetry_print_sha256(const char *label, const unsigned char *buffer, size_t len)
+{
+    unsigned char hash[SHA256_DIGEST_LENGTH];
+
+    if (!buffer || len == 0) {
+        T2Info("[certdbg] %s: invalid buffer\n", label ? label : "SHA256");
+        return;
+    }
+
+    SHA256(buffer, len, hash);
+    T2Info("[certdbg] %s SHA256: ",label ? label : "Buffer");
+
+    for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
+        T2Info("%02x", hash[i]);
+    }
+    T2Info("\n");
+}
+
 T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
 {
     CURL *curl = NULL;
@@ -449,6 +467,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
                 else
                 {
                     // skip past file scheme in URI
+                    telemetry_print_sha256("Telmetry hash", (unsigned char *)pCertPC,strlen(pCertPC));
                     pCertFile = pCertURI;
                     if ( strncmp( pCertFile, FILESCHEME, sizeof(FILESCHEME) - 1 ) == 0 )
                     {

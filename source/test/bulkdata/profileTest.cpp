@@ -1081,6 +1081,51 @@ TEST(CollectAndReportTest, Covers_EMarkerList_WithRealEventMarkerStruct) {
     // Clean up (eventMarkerList's elements will be freed with freeEMarker)
     Vector_Destroy(eventMarkerList, freeEMarker);
 }
+TEST(CollectAndReportTest, Covers_jsonReportObj_nonNull_forPrepareAndDestroy) {
+    g_vectorMock = nullptr; // Use real vectors
+
+    CollectAndReportFunc fn = getCollectAndReportFunc();
+
+    Profile profile = {};
+    GrepSeekProfile grepSeekProfile = {};
+    grepSeekProfile.execCounter = 99;
+    profile.name = (char*)"testjsonReportObj";
+    profile.encodingType = (char*)"JSON";
+    profile.protocol = (char*)"http";
+    profile.grepSeekProfile = &grepSeekProfile;
+    profile.jsonEncoding = (JSONEncoding*)malloc(sizeof(JSONEncoding));
+    profile.jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
+    profile.triggerReportOnCondtion = true;
+    // Add some non-null JSON object
+    profile.jsonReportObj = cJSON_CreateObject();
+    // Optionally add test data
+    cJSON_AddStringToObject(profile.jsonReportObj, "key", "value");
+
+    pthread_mutex_init(&profile.triggerCondMutex, nullptr);
+    pthread_cond_init(&profile.reuseThread, nullptr);
+    pthread_mutex_init(&profile.reuseThreadMutex, nullptr);
+
+    pthread_t t;
+    pthread_create(&t, nullptr, [](void* arg) -> void* {
+        CollectAndReportFunc fn = getCollectAndReportFunc();
+        return fn(arg);
+    }, &profile);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    pthread_mutex_lock(&profile.reuseThreadMutex);
+    pthread_cond_signal(&profile.reuseThread);
+    pthread_mutex_unlock(&profile.reuseThreadMutex);
+
+    void* res = nullptr;
+    pthread_join(t, &res);
+
+    pthread_mutex_destroy(&profile.triggerCondMutex);
+    pthread_cond_destroy(&profile.reuseThread);
+    pthread_mutex_destroy(&profile.reuseThreadMutex);
+
+    free(profile.jsonEncoding);
+    // Don't free profile.jsonReportObj here (it is cleaned up by the function)
+}
 #endif
 #if 1
 //comment

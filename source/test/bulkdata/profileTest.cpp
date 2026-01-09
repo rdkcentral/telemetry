@@ -1013,30 +1013,46 @@ TEST(CollectAndReportTest, Covers_GMarkerList_WithRealGrepMarkerStruct) {
     free(profile.jsonEncoding);
 
     // Clean up: destroy grepResult, using the production destructor for GrepMarker
-    Vector_Destroy(grepResult, freeGResult);
+    Vector_Destroy(grepResult, freeGMarker);
 }
-#if 0
-TEST(CollectAndReportTest, Covers_ParamList_WithRealVector) {
+TEST(CollectAndReportTest, Covers_EMarkerList_WithRealEventMarkerStruct) {
+    g_vectorMock = nullptr; // Use real vector implementations
+
     CollectAndReportFunc fn = getCollectAndReportFunc();
 
     Profile profile = {};
     GrepSeekProfile grepSeekProfile = {};
-    grepSeekProfile.execCounter = 42;
-    profile.name = (char*)"branchtest_paramlist";
+    grepSeekProfile.execCounter = 99;
+    profile.name = (char*)"branchtest_eventmarker";
     profile.encodingType = (char*)"JSON";
     profile.protocol = (char*)"http";
     profile.grepSeekProfile = &grepSeekProfile;
     profile.jsonEncoding = (JSONEncoding*)malloc(sizeof(JSONEncoding));
     profile.jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
 
-    // Use real Vector for paramList
-    Vector *paramlist = NULL;
-    Vector_Create(&paramlist);
-    Vector_PushBack(paramlist, (void*)strdup("paramTR181"));
-    profile.paramList = paramlist;
+    // Set up eMarkerList with an EventMarker
+    Vector *eventMarkerList = NULL;
+    Vector_Create(&eventMarkerList);
 
-    // The other lists can be NULL, unless you want to cover their branches
+    EventMarker *eMarker = (EventMarker *) malloc(sizeof(EventMarker));
+    eMarker->markerName = strdup("Event1");
+    eMarker->compName = strdup("sysint");
+    eMarker->alias = strdup("EventMarker1");
+    eMarker->paramType = strdup("event");
+    eMarker->markerName_CT = strdup("Event1_CT");
+    eMarker->timestamp = strdup("162716381732");
+    eMarker->mType = MTYPE_COUNTER;
+    eMarker->reportTimestampParam = REPORTTIMESTAMP_UNIXEPOCH;
+    eMarker->u.count = 1;
+    eMarker->trimParam = true;
+    eMarker->regexParam = strdup("[A-Z]+");
 
+    Vector_PushBack(eventMarkerList, eMarker);
+
+    profile.eMarkerList = eventMarkerList;
+
+    // Initialize eventMutex as CollectAndReport may lock/unlock it
+    pthread_mutex_init(&profile.eventMutex, nullptr);
     pthread_mutex_init(&profile.triggerCondMutex, nullptr);
     pthread_cond_init(&profile.reuseThread, nullptr);
     pthread_mutex_init(&profile.reuseThreadMutex, nullptr);
@@ -1048,7 +1064,6 @@ TEST(CollectAndReportTest, Covers_ParamList_WithRealVector) {
     }, &profile);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
     pthread_mutex_lock(&profile.reuseThreadMutex);
     pthread_cond_signal(&profile.reuseThread);
     pthread_mutex_unlock(&profile.reuseThreadMutex);
@@ -1056,107 +1071,16 @@ TEST(CollectAndReportTest, Covers_ParamList_WithRealVector) {
     void* res = nullptr;
     pthread_join(t, &res);
 
+    pthread_mutex_destroy(&profile.eventMutex);
     pthread_mutex_destroy(&profile.triggerCondMutex);
     pthread_cond_destroy(&profile.reuseThread);
     pthread_mutex_destroy(&profile.reuseThreadMutex);
 
     free(profile.jsonEncoding);
-    Vector_Destroy(paramlist, free); // clean up!
+
+    // Clean up (eventMarkerList's elements will be freed with freeEMarker)
+    Vector_Destroy(eventMarkerList, freeEMarker);
 }
-
-TEST(CollectAndReportTest, Covers_topmarkerlist_WithRealVector) {
-    CollectAndReportFunc fn = getCollectAndReportFunc();
-
-    Profile profile = {};
-    GrepSeekProfile grepSeekProfile = {};
-    grepSeekProfile.execCounter = 42;
-    profile.name = (char*)"branchtest_paramlist";
-    profile.encodingType = (char*)"JSON";
-    profile.protocol = (char*)"http";
-    profile.grepSeekProfile = &grepSeekProfile;
-    profile.jsonEncoding = (JSONEncoding*)malloc(sizeof(JSONEncoding));
-    profile.jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
-
-    Vector *topmarkerlist = NULL;
-    Vector_Create(&topmarkerlist);
-    Vector_PushBack(topmarkerlist, (void*)strdup("top1"));
-    profile.topMarkerList = topmarkerlist;
-
-    // The other lists can be NULL, unless you want to cover their branches
-
-    pthread_mutex_init(&profile.triggerCondMutex, nullptr);
-    pthread_cond_init(&profile.reuseThread, nullptr);
-    pthread_mutex_init(&profile.reuseThreadMutex, nullptr);
-
-    pthread_t t;
-    pthread_create(&t, nullptr, [](void* arg) -> void* {
-        CollectAndReportFunc fn = getCollectAndReportFunc();
-        return fn(arg);
-    }, &profile);
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-    pthread_mutex_lock(&profile.reuseThreadMutex);
-    pthread_cond_signal(&profile.reuseThread);
-    pthread_mutex_unlock(&profile.reuseThreadMutex);
-
-    void* res = nullptr;
-    pthread_join(t, &res);
-
-    pthread_mutex_destroy(&profile.triggerCondMutex);
-    pthread_cond_destroy(&profile.reuseThread);
-    pthread_mutex_destroy(&profile.reuseThreadMutex);
-
-    free(profile.jsonEncoding);
-    Vector_Destroy(topmarkerlist , free); // clean up!
-}
-
-TEST(CollectAndReportTest, Covers_Gmarkerlist_WithRealVector) {
-    CollectAndReportFunc fn = getCollectAndReportFunc();
-
-    Profile profile = {};
-    GrepSeekProfile grepSeekProfile = {};
-    grepSeekProfile.execCounter = 42;
-    profile.name = (char*)"branchtest_paramlist";
-    profile.encodingType = (char*)"JSON";
-    profile.protocol = (char*)"http";
-    profile.grepSeekProfile = &grepSeekProfile;
-    profile.jsonEncoding = (JSONEncoding*)malloc(sizeof(JSONEncoding));
-    profile.jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
-
-    Vector *gmarkerlist = NULL;
-    Vector_Create(&gmarkerlist);
-    Vector_PushBack(gmarkerlist, (void*)strdup("grep1"));
-    profile.gMarkerList = gmarkerlist;
-    // The other lists can be NULL, unless you want to cover their branches
-
-    pthread_mutex_init(&profile.triggerCondMutex, nullptr);
-    pthread_cond_init(&profile.reuseThread, nullptr);
-    pthread_mutex_init(&profile.reuseThreadMutex, nullptr);
-
-    pthread_t t;
-    pthread_create(&t, nullptr, [](void* arg) -> void* {
-        CollectAndReportFunc fn = getCollectAndReportFunc();
-        return fn(arg);
-    }, &profile);
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-    pthread_mutex_lock(&profile.reuseThreadMutex);
-    pthread_cond_signal(&profile.reuseThread);
-    pthread_mutex_unlock(&profile.reuseThreadMutex);
-
-    void* res = nullptr;
-    pthread_join(t, &res);
-
-    pthread_mutex_destroy(&profile.triggerCondMutex);
-    pthread_cond_destroy(&profile.reuseThread);
-    pthread_mutex_destroy(&profile.reuseThreadMutex);
-
-    free(profile.jsonEncoding);
-    Vector_Destroy(gmarkerlist, free); // clean up!
-}
-#endif
 #endif
 #if 1
 //comment

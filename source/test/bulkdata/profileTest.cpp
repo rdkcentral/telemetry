@@ -829,6 +829,54 @@ TEST(CollectAndReportTest, Covers_StaticParamList_WithRealVector) {
     free(profile.jsonEncoding);
     Vector_Destroy(staticparamlist, free); // clean up!
 }
+
+TEST(CollectAndReportTest, Covers_ParamList_WithRealVector) {
+    CollectAndReportFunc fn = getCollectAndReportFunc();
+
+    Profile profile = {};
+    GrepSeekProfile grepSeekProfile = {};
+    grepSeekProfile.execCounter = 42;
+    profile.name = (char*)"branchtest_paramlist";
+    profile.encodingType = (char*)"JSON";
+    profile.protocol = (char*)"http";
+    profile.grepSeekProfile = &grepSeekProfile;
+    profile.jsonEncoding = (JSONEncoding*)malloc(sizeof(JSONEncoding));
+    profile.jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
+
+    // Use real Vector for paramList
+    Vector *paramlist = NULL;
+    Vector_Create(&paramlist);
+    Vector_PushBack(paramlist, (void*)strdup("paramTR181"));
+    profile.paramList = paramlist;
+
+    // The other lists can be NULL, unless you want to cover their branches
+
+    pthread_mutex_init(&profile.triggerCondMutex, nullptr);
+    pthread_cond_init(&profile.reuseThread, nullptr);
+    pthread_mutex_init(&profile.reuseThreadMutex, nullptr);
+
+    pthread_t t;
+    pthread_create(&t, nullptr, [](void* arg) -> void* {
+        CollectAndReportFunc fn = getCollectAndReportFunc();
+        return fn(arg);
+    }, &profile);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    pthread_mutex_lock(&profile.reuseThreadMutex);
+    pthread_cond_signal(&profile.reuseThread);
+    pthread_mutex_unlock(&profile.reuseThreadMutex);
+
+    void* res = nullptr;
+    pthread_join(t, &res);
+
+    pthread_mutex_destroy(&profile.triggerCondMutex);
+    pthread_cond_destroy(&profile.reuseThread);
+    pthread_mutex_destroy(&profile.reuseThreadMutex);
+
+    free(profile.jsonEncoding);
+    Vector_Destroy(paramlist, free); // clean up!
+}
 #endif
 #if 1
 //comment

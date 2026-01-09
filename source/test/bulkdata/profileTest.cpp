@@ -486,6 +486,45 @@ TEST(CollectAndReportTest, ProperParametersHappyPath) {
     // Check that the function returned (adapt this as needed)
     // EXPECT_EQ(result, expected_val);
 }
+
+}
+TEST(CollectAndReportTest, Null_Profilename) {
+    CollectAndReportFunc fn = getCollectAndReportFunc();
+    Profile profile = {};
+    GrepSeekProfile grepSeekProfile = {};
+    grepSeekProfile.execCounter = 42;
+
+    // Use const_cast for C-string assignments (to avoid C++ warning)
+    profile.name = nullptr;
+    profile.encodingType = nullptr;
+    profile.protocol = nullptr;
+    profile.grepSeekProfile = &grepSeekProfile;
+    profile.triggerReportOnCondition = true;
+    // If there's an additional flag such as restartRequested, set it up here:
+    // profile.restartRequested = false;
+
+    // Start CollectAndReport in a new thread
+    pthread_t collectThread;
+    pthread_create(&collectThread, nullptr, [](void* arg) -> void* {
+        CollectAndReportFunc fn = getCollectAndReportFunc();
+        return fn(arg);
+    }, &profile);
+       // Let the function enter its wait state
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    // Now send the restart event (adapt as needed for your wait logic!)
+    pthread_mutex_lock(&profile.reuseThreadMutex);
+    // If your function needs a flag, set it:
+    // profile.restartRequested = true;
+    pthread_cond_signal(&profile.reuseThread);
+    pthread_mutex_unlock(&profile.reuseThreadMutex);
+        // Wait for the thread to exit
+    void* result = nullptr;
+    pthread_join(collectThread, &result);
+
+    // Check that the function returned (adapt this as needed)
+    // EXPECT_EQ(result, expected_val);
+}
 #endif
 #if 1
 //comment

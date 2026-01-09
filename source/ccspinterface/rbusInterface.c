@@ -204,11 +204,15 @@ typedef struct
     } clients[MAX_TCP_CLIENTS];
 } T2TcpServer;
 
+#if 0
 static T2TcpServer g_tcp_server = {0};
+#endif
 
 T2ERROR T2RbusConsumer(TriggerCondition *triggerCondition);
+#if 0
 static void t2_handle_marker_list_request(int client_index, T2RequestHeader* req_header);
 static void t2_handle_event_data(int client_index, T2RequestHeader* req_header);
+#endif
 
 bool isRbusInitialized( )
 {
@@ -246,7 +250,7 @@ void logHandler(
 }
 
 
-#if 1
+#if 0
 static void t2_unix_socket_server_uninit()
 {
     if (g_tcp_server.server_running)
@@ -287,7 +291,6 @@ static void t2_unix_socket_server_uninit()
         T2Info("TCP server was not running\n");
     }
 }
-#endif
 
 // Initialize TCP server
 static T2ERROR t2_init_tcp_server()
@@ -741,6 +744,7 @@ static void* t2_tcp_server_thread(void* arg)
     T2Info("TCP server thread exiting\n");
     return NULL;
 }
+#endif
 
 static T2ERROR rBusInterface_Init( )
 {
@@ -2485,6 +2489,7 @@ T2ERROR registerRbusT2EventListener(TelemetryEventCallback eventCB)
     }
     eventCallBack = eventCB ;
 
+#if 0
     T2Info("%s initialize Unix socket server\n", __FUNCTION__);
     if (t2_init_tcp_server() != T2ERROR_SUCCESS)
     {
@@ -2504,6 +2509,7 @@ T2ERROR registerRbusT2EventListener(TelemetryEventCallback eventCB)
     }
 
     T2Info("%s TCP server thread started successfully\n", __FUNCTION__);
+#endif
 
     // Initialize message queue support
     if (t2_daemon_mq_init() == T2ERROR_SUCCESS)
@@ -2981,7 +2987,9 @@ T2ERROR rbusT2ConsumerUnReg(Vector *triggerConditionList)
     size_t j;
     //char user_data[32] = {0};
     T2Debug("%s ++in\n", __FUNCTION__);
+#if 0
     t2_unix_socket_server_uninit();
+#endif
 
     if(!t2bus_handle && T2ERROR_SUCCESS != rBusInterface_Init())
     {

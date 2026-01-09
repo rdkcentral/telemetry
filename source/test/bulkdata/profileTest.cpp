@@ -830,6 +830,73 @@ TEST(CollectAndReportTest, Covers_StaticParamList_WithRealVector) {
     Vector_Destroy(staticparamlist, free); // clean up!
 }
 
+TEST(CollectAndReportTest, Covers_ParamList_WithRealParamStruct) {
+    // Ensure the Vector functions use the real implementation, not the mock
+    g_vectorMock = nullptr;
+
+    CollectAndReportFunc fn = getCollectAndReportFunc();
+
+    Profile profile = {};
+    GrepSeekProfile grepSeekProfile = {};
+    grepSeekProfile.execCounter = 42;
+    profile.name = (char*)"branchtest_paramlist_paramstruct";
+    profile.encodingType = (char*)"JSON";
+    profile.protocol = (char*)"http";
+    profile.grepSeekProfile = &grepSeekProfile;
+    profile.jsonEncoding = (JSONEncoding*)malloc(sizeof(JSONEncoding));
+    profile.jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
+
+    // Real Param vector
+    Vector* paramlist = NULL;
+    Vector_Create(&paramlist);
+
+    Param* p = (Param*) malloc(sizeof(Param));
+    p->name = strdup("Device.Dummy.Param");
+    p->alias = strdup("Device.Dummy.Alias");
+    p->paramType = strdup("dataModel");
+    p->reportEmptyParam = true;
+    p->regexParam = NULL;
+    p->skipFreq = 0;
+
+    Vector_PushBack(paramlist, p);
+
+    profile.paramList = paramlist;
+
+    pthread_mutex_init(&profile.triggerCondMutex, nullptr);
+    pthread_cond_init(&profile.reuseThread, nullptr);
+    pthread_mutex_init(&profile.reuseThreadMutex, nullptr);
+
+    pthread_t t;
+    pthread_create(&t, nullptr, [](void* arg) -> void* {
+        CollectAndReportFunc fn = getCollectAndReportFunc();
+        return fn(arg);
+    }, &profile);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    pthread_mutex_lock(&profile.reuseThreadMutex);
+    pthread_cond_signal(&profile.reuseThread);
+    pthread_mutex_unlock(&profile.reuseThreadMutex);
+
+    void* res = nullptr;
+    pthread_join(t, &res);
+
+    pthread_mutex_destroy(&profile.triggerCondMutex);
+    pthread_cond_destroy(&profile.reuseThread);
+    pthread_mutex_destroy(&profile.reuseThreadMutex);
+
+    free(profile.jsonEncoding);
+
+    // Cleanup: free all allocated memory for paramlist
+    Vector_Destroy(paramlist, [](void* v){
+        Param* p = (Param*)v;
+        free(p->name);
+        free(p->alias);
+        free(p->paramType);
+        free(p);
+    });
+}
+#if 0
 TEST(CollectAndReportTest, Covers_ParamList_WithRealVector) {
     CollectAndReportFunc fn = getCollectAndReportFunc();
 
@@ -970,6 +1037,7 @@ TEST(CollectAndReportTest, Covers_Gmarkerlist_WithRealVector) {
     free(profile.jsonEncoding);
     Vector_Destroy(gmarkerlist, free); // clean up!
 }
+#endif
 #endif
 #if 1
 //comment

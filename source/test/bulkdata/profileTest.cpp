@@ -890,6 +890,72 @@ TEST(CollectAndReportTest, Covers_ParamList_WithRealParamStruct) {
     // Cleanup: free all allocated memory for paramlist
     Vector_Destroy(paramlist, freeParam);
 }
+
+TEST(CollectAndReportTest, Covers_TopMarkerList_WithRealTopMarkerStruct) {
+    g_vectorMock = nullptr; // Ensure real vector functions are used
+
+    CollectAndReportFunc fn = getCollectAndReportFunc();
+
+    Profile profile = {};
+    GrepSeekProfile grepSeekProfile = {};
+    grepSeekProfile.execCounter = 21;
+    profile.name = (char*)"branchtest_topmarker";
+    profile.encodingType = (char*)"JSON";
+    profile.protocol = (char*)"http";
+    profile.grepSeekProfile = &grepSeekProfile;
+    profile.jsonEncoding = (JSONEncoding*)malloc(sizeof(JSONEncoding));
+    profile.jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
+
+    // Set up topMarkerList with a sample TopMarker
+    Vector* topMarkerList = nullptr;
+    ASSERT_EQ(Vector_Create(&topMarkerList), T2ERROR_SUCCESS);
+
+    TopMarker* marker = (TopMarker*)calloc(1, sizeof(TopMarker));
+    marker->markerName = strdup("load_marker");
+    marker->searchString = strdup("mysearch");
+    marker->loadAverage = strdup("   1.23   ");
+    marker->trimParam = true;
+    marker->regexParam = nullptr; // No regex branch
+
+    Vector_PushBack(topMarkerList, marker);
+
+    profile.topMarkerList = topMarkerList;
+
+    // Initialize needed mutexes/condvars for thread safety
+    pthread_mutex_init(&profile.triggerCondMutex, nullptr);
+    pthread_cond_init(&profile.reuseThread, nullptr);
+    pthread_mutex_init(&profile.reuseThreadMutex, nullptr);
+
+    pthread_t t;
+    pthread_create(&t, nullptr, [](void* arg) -> void* {
+        CollectAndReportFunc fn = getCollectAndReportFunc();
+        return fn(arg);
+    }, &profile);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    pthread_mutex_lock(&profile.reuseThreadMutex);
+    pthread_cond_signal(&profile.reuseThread);
+    pthread_mutex_unlock(&profile.reuseThreadMutex);
+
+    void* res = nullptr;
+    pthread_join(t, &res);
+
+    pthread_mutex_destroy(&profile.triggerCondMutex);
+    pthread_cond_destroy(&profile.reuseThread);
+    pthread_mutex_destroy(&profile.reuseThreadMutex);
+
+    free(profile.jsonEncoding);
+
+    // Clean up TopMarker vector and contained structs
+       // Manual cleanup since Vector_Destroy cleanup parameter is nullptr
+    free(marker->markerName);
+    free(marker->searchString);
+    free(marker->loadAverage);
+    free(marker);
+
+    Vector_Destroy(topMarkerList, nullptr);
+}
 #if 0
 TEST(CollectAndReportTest, Covers_ParamList_WithRealVector) {
     CollectAndReportFunc fn = getCollectAndReportFunc();

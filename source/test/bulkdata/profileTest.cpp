@@ -1095,7 +1095,7 @@ TEST(CollectAndReportTest, Covers_jsonReportObj_nonNull_forPrepareAndDestroy) {
     profile.grepSeekProfile = &grepSeekProfile;
     profile.jsonEncoding = (JSONEncoding*)malloc(sizeof(JSONEncoding));
     profile.jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
-    profile.triggerReportOnCondtion = true;
+    profile.triggerReportOnCondition = false;
     // Add some non-null JSON object
     profile.jsonReportObj = cJSON_CreateObject();
     // Optionally add test data

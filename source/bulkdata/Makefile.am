@@ -21,12 +21,15 @@ AM_CFLAGS =
 lib_LTLIBRARIES = libbulkdata.la
 
 libbulkdata_la_SOURCES = reportprofiles.c profile.c profilexconf.c t2eventreceiver.c t2markers.c datamodel.c
-libbulkdata_la_LDFLAGS = -shared -fPIC -lcjson -lmsgpackc
+libbulkdata_la_LDFLAGS = -shared -fPIC -lcjson -lmsgpackc -L/mnt/L2_CONTAINER_SHARED_VOLUME/dtracing/rdk_otel_instrumentation/.libs -Wl,-rpath,/mnt/L2_CONTAINER_SHARED_VOLUME/dtracing/rdk_otel_instrumentation/.libs -lrdk_otlp
 libbulkdata_la_LIBADD = ${top_builddir}/source/utils/libt2utils.la ${top_builddir}/source/dcautil/libdcautil.la ${top_builddir}/source/protocol/http/libhttp.la ${top_builddir}/source/protocol/rbusMethod/librbusmethod.la ${top_builddir}/source/ccspinterface/libccspinterface.la ${top_builddir}/source/reportgen/libreportgen.la ${top_builddir}/source/scheduler/libscheduler.la ${top_builddir}/source/xconf-client/libxconfclient.la
 libbulkdata_la_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \
                                 -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/dbus-1.0/include \
 				-I${PKG_CONFIG_SYSROOT_DIR}$(includedir) \
 				-I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/rbus \
+                                -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/rdk_otel_instrumentation \
+                                -I/mnt/L2_CONTAINER_SHARED_VOLUME/dtracing/rdk_otel_instrumentation/include \
+                                -I${top_srcdir}/../../rdk_otel_instrumentation/include \
                                 -I${top_srcdir}/source/utils \
                                 -I${top_srcdir}/source/dcautil \
                                 -I${top_srcdir}/source/reportgen \

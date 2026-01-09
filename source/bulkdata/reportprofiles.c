@@ -60,6 +60,7 @@
 #endif
 
 #include "dcautil.h"
+#include "rdk_otlp_instrumentation.h"
 
 
 //Including Webconfig Framework For Telemetry 2.0 As part of RDKB-28897
@@ -657,6 +658,10 @@ T2ERROR initReportProfiles()
         T2Error("Failed to create T2 bootflag %s \n", BOOTFLAG);
     }
 
+    // Initialize OTLP tracing after everything else is set up
+    rdk_otlp_init("telemetry-reportprofiles", "2.0.1");
+    T2Info("OTLP instrumentation initialized\n");
+
     T2Debug("%s --out\n", __FUNCTION__);
     T2Info("Init ReportProfiles Successful\n");
     return T2ERROR_SUCCESS;
@@ -694,6 +699,10 @@ void generateDcaReport(bool isDelayed, bool isOnDemand)
 T2ERROR ReportProfiles_uninit( )
 {
     T2Debug("%s ++in\n", __FUNCTION__);
+    
+    // Shutdown OTLP tracing before cleanup
+    rdk_otlp_shutdown();
+    
     if(!rpInitialized)
     {
         T2Error("%s ReportProfiles is not initialized yet - ignoring\n", __FUNCTION__);

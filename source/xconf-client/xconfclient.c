@@ -1282,11 +1282,18 @@ T2ERROR getRemoteConfigURL(char **configURL)
 
 static void* getUpdatedConfigurationThread(void *data)
 {
-    rdk_otlp_init("telemetry", "2.0.1");
-    rdk_otlp_metrics_init();
-    rdk_otlp_start_distributed_trace("doHttpGet", "get");
-    rdk_otlp_start_child_span("doHttpGet", "get");
     (void) data;
+    
+    // Initialize tracing only once per thread
+    static __thread bool tracing_initialized = false;
+    if (!tracing_initialized) {
+        rdk_otlp_init("telemetry-xconf", "2.0.1");
+        rdk_otlp_metrics_init();
+        tracing_initialized = true;
+    }
+    
+    // Start trace for this HTTP request
+    rdk_otlp_start_distributed_trace("xconf.config.fetch", "http_get");
     T2ERROR configFetch = T2ERROR_FAILURE;
     T2ERROR urlFetchStatus;
     T2Debug("%s ++in\n", __FUNCTION__);
@@ -1298,6 +1305,7 @@ static void* getUpdatedConfigurationThread(void *data)
 #if defined(ENABLE_REMOTE_PROFILE_DOWNLOAD)
     char *t2Version = NULL;
 #endif
+    rdk_otlp_finish_distributed_trace();
     pthread_mutex_lock(&xcThreadMutex);
     stopFetchRemoteConfiguration = false ;
     do
@@ -1479,9 +1487,8 @@ static void* getUpdatedConfigurationThread(void *data)
 
     pthread_mutex_unlock(&xcThreadMutex);
     // pthread_detach(pthread_self()); commenting this line as thread will detached by stopXConfClient
+    
     T2Debug("%s --out\n", __FUNCTION__);
-    rdk_otlp_finish_distributed_trace();
-    rdk_otlp_finish_child_span();
     return NULL;
 }
 

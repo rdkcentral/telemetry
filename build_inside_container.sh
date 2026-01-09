@@ -22,7 +22,7 @@ export INSTALL_DIR='/usr/local'
 export top_srcdir=`pwd`
 export top_builddir=`pwd`
 
-autoreconf --install
+autoreconf -fi
 
 # FLags to print compiler warnings
 DEBUG_CFLAGS="-Wall -Werror -Wextra"

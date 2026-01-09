@@ -58,7 +58,7 @@ telemetry2_0_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 
                                 -I${top_srcdir}/source/utils \
                                 -I${top_srcdir}/source/xconf-client
                                 
-telemetry2_0_LDFLAGS = -lcjson
+telemetry2_0_LDFLAGS = -lcjson -L/mnt/L2_CONTAINER_SHARED_VOLUME/dtracing/rdk_otel_instrumentation/.libs -Wl,-rpath,/mnt/L2_CONTAINER_SHARED_VOLUME/dtracing/rdk_otel_instrumentation/.libs -lrdk_otlp
 
 if RDKLOGGER_ENABLE
 telemetry2_0_LDFLAGS += -lrdkloggers

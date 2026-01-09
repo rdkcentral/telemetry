@@ -956,6 +956,65 @@ TEST(CollectAndReportTest, Covers_TopMarkerList_WithRealTopMarkerStruct) {
 
     Vector_Destroy(topMarkerList, nullptr);
 }
+
+TEST(CollectAndReportTest, Covers_GMarkerList_WithRealGrepMarkerStruct) {
+    g_vectorMock = nullptr; // Use real vector implementations
+
+    CollectAndReportFunc fn = getCollectAndReportFunc();
+
+    Profile profile = {};
+    GrepSeekProfile grepSeekProfile = {};
+    grepSeekProfile.execCounter = 55;
+    profile.name = (char*)"branchtest_gmarker";
+    profile.encodingType = (char*)"JSON";
+    profile.protocol = (char*)"http";
+    profile.grepSeekProfile = &grepSeekProfile;
+    profile.jsonEncoding = (JSONEncoding*)malloc(sizeof(JSONEncoding));
+    profile.jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
+
+    // Set up gMarkerList with a GrepMarker
+    Vector* grepResult = NULL;
+    Vector_Create(&grepResult);
+
+    GrepMarker* gparam = (GrepMarker *) malloc(sizeof(GrepMarker));
+    memset(gparam, 0, sizeof(GrepMarker));
+    gparam->markerName = strdup("TEST_MARKER1");
+    gparam->u.markerValue = strdup("TEST_STRING1");
+    gparam->mType = MTYPE_ABSOLUTE;
+    gparam->trimParam = false;
+    gparam->regexParam = NULL;
+
+    Vector_PushBack(grepResult, gparam);
+    profile.gMarkerList = grepResult;
+
+    // Initialize required mutex/cond
+    pthread_mutex_init(&profile.triggerCondMutex, nullptr);
+    pthread_cond_init(&profile.reuseThread, nullptr);
+    pthread_mutex_init(&profile.reuseThreadMutex, nullptr);
+
+    pthread_t t;
+    pthread_create(&t, nullptr, [](void* arg) -> void* {
+        CollectAndReportFunc fn = getCollectAndReportFunc();
+        return fn(arg);
+    }, &profile);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    pthread_mutex_lock(&profile.reuseThreadMutex);
+    pthread_cond_signal(&profile.reuseThread); // Unblock thread
+    pthread_mutex_unlock(&profile.reuseThreadMutex);
+
+    void* res = nullptr;
+    pthread_join(t, &res);
+
+    pthread_mutex_destroy(&profile.triggerCondMutex);
+    pthread_cond_destroy(&profile.reuseThread);
+    pthread_mutex_destroy(&profile.reuseThreadMutex);
+
+    free(profile.jsonEncoding);
+
+    // Clean up: destroy grepResult, using the production destructor for GrepMarker
+    Vector_Destroy(grepResult, freeGResult);
+}
 #if 0
 TEST(CollectAndReportTest, Covers_ParamList_WithRealVector) {
     CollectAndReportFunc fn = getCollectAndReportFunc();

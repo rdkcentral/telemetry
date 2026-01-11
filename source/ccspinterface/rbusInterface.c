@@ -45,6 +45,10 @@
 #include <ctype.h>
 #include <time.h>
 #include <mqueue.h>
+#include <signal.h>
+
+// Forward declaration of signal handler for message queue
+static void mq_signal_handler(int sig, siginfo_t *si, void *uc);
 
 #ifndef min
 #define min(a, b) ((a) < (b) ? (a) : (b))
@@ -123,22 +127,18 @@ typedef struct
 } T2MQMessageHeader;
 
 #if 1
-// Daemon state
+// 🔥 SIMPLIFIED: Remove daemon thread and add direct signal-based processing
 static struct
 {
     mqd_t daemon_mq;               // Queue to receive events from clients
-    mqd_t broadcast_mq;            // Queue to broadcast marker updates to clients
     bool initialized;
-    bool running;
-    pthread_t daemon_thread;
     uint32_t broadcast_sequence;   // Incremental sequence for broadcasts
     hash_map_t *subscriber_map;    // Map of subscribed components
+    // 🔥 REMOVED: pthread_t daemon_thread and bool running - no thread needed
 } g_daemon_mq_state =
 {
     .daemon_mq = -1,
-    .broadcast_mq = -1,
     .initialized = false,
-    .running = false,
     .broadcast_sequence = 0,
     .subscriber_map = NULL
 };
@@ -1836,7 +1836,7 @@ T2ERROR publishEventsDCMProcConf()
 
 #if 1
 /**
- * Cleanup daemon message queues
+ * 🔥 SIMPLIFIED: Cleanup daemon message queues (no thread to stop)
  */
 void t2_daemon_mq_cleanup(void)
 {
@@ -1850,13 +1850,7 @@ void t2_daemon_mq_cleanup(void)
         return;
     }
 
-    // Stop daemon thread
-    if (g_daemon_mq_state.running)
-    {
-        g_daemon_mq_state.running = false;
-        pthread_cancel(g_daemon_mq_state.daemon_thread);
-        pthread_join(g_daemon_mq_state.daemon_thread, NULL);
-    }
+    // 🔥 REMOVED: No thread to stop in simplified approach
 
     // Clean up subscriber map
     if (g_daemon_mq_state.subscriber_map)
@@ -1871,13 +1865,6 @@ void t2_daemon_mq_cleanup(void)
         mq_close(g_daemon_mq_state.daemon_mq);
         mq_unlink(T2_MQ_DAEMON_NAME);
         g_daemon_mq_state.daemon_mq = -1;
-    }
-
-    if (g_daemon_mq_state.broadcast_mq != -1)
-    {
-        mq_close(g_daemon_mq_state.broadcast_mq);
-        mq_unlink(T2_MQ_BROADCAST_NAME);
-        g_daemon_mq_state.broadcast_mq = -1;
     }
 
     g_daemon_mq_state.initialized = false;
@@ -2328,13 +2315,24 @@ T2ERROR t2_daemon_mq_init(void)
     {
         T2Error("Failed to create subscriber map\n");
         mq_close(g_daemon_mq_state.daemon_mq);
-        mq_close(g_daemon_mq_state.broadcast_mq);
         mq_unlink(T2_MQ_DAEMON_NAME);
         pthread_mutex_unlock(&g_daemon_mq_mutex);
         return T2ERROR_FAILURE;
     }
 
     g_daemon_mq_state.initialized = true;
+
+    // Register signal handler for message queue
+    struct sigaction sa;
+    sa.sa_flags = SA_SIGINFO;
+    sa.sa_sigaction = mq_signal_handler;
+    sigemptyset(&sa.sa_mask);
+    if (sigaction(SIGUSR1, &sa, NULL) == -1)
+    {
+        T2Error("Failed to register signal handler for message queue: %s\n", strerror(errno));
+        pthread_mutex_unlock(&g_daemon_mq_mutex);
+        return T2ERROR_FAILURE;
+    }
 
     pthread_mutex_unlock(&g_daemon_mq_mutex);
 
@@ -2344,46 +2342,33 @@ T2ERROR t2_daemon_mq_init(void)
 
 
 /**
- * Main daemon message queue processing thread
+ * 🔥 SIMPLIFIED: Signal-based message processing handler
+ * Called directly when messages arrive, no thread needed
  */
-static void* daemon_mq_thread(void* arg)
+void t2_daemon_mq_process_message(void)
 {
-    (void)arg; // Unused parameter
-
-    T2Info("Daemon MQ thread started\n");
-
     char message[T2_MQ_MAX_MSG_SIZE];
+    ssize_t msg_size;
 
-    while (g_daemon_mq_state.running)
+    if (!g_daemon_mq_state.initialized || g_daemon_mq_state.daemon_mq == -1)
     {
-        struct timespec timeout;
-        clock_gettime(CLOCK_REALTIME, &timeout);
-        timeout.tv_sec += 1; // 1 second timeout for responsive shutdown
+        T2Debug("Daemon MQ not ready for message processing\n");
+        return;
+    }
 
-        ssize_t msg_size = mq_timedreceive(g_daemon_mq_state.daemon_mq, message,
-                                           T2_MQ_MAX_MSG_SIZE, NULL, &timeout);
-
-        if (msg_size == -1)
-        {
-            if (errno != ETIMEDOUT)
-            {
-                T2Debug("Failed to receive message in daemon thread: %s\n", strerror(errno));
-            }
-            continue; // Continue listening
-        }
-
-        // Parse received message
+    // Non-blocking read of all pending messages
+    while ((msg_size = mq_receive(g_daemon_mq_state.daemon_mq, message,
+                                  T2_MQ_MAX_MSG_SIZE, NULL)) > 0)
+    {
         T2MQMessageHeader* header = (T2MQMessageHeader*)message;
 
-        T2Info("Daemon received message type: %d from %s\n",
+        T2Info("Processing message type: %d from %s\n",
                header->msg_type, header->component_name);
 
         switch (header->msg_type)
         {
         case T2_MQ_MSG_SUBSCRIBE:
         {
-            // Handle client subscription
-            T2Info("T2_MQ_MSG_SUBSCRIBE\n");
             if (header->data_length > 0)
             {
                 char* component_name = message + sizeof(T2MQMessageHeader);
@@ -2395,8 +2380,6 @@ static void* daemon_mq_thread(void* arg)
 
         case T2_MQ_MSG_EVENT_DATA:
         {
-            T2Info("T2_MQ_MSG_EVENT_DATA\n");
-            // Handle event data from client
             if (header->data_length > 0)
             {
                 char* event_data = message + sizeof(T2MQMessageHeader);
@@ -2412,12 +2395,29 @@ static void* daemon_mq_thread(void* arg)
         }
     }
 
-    T2Info("Daemon MQ thread exiting\n");
-    return NULL;
+    // Check for errors (msg_size == -1)
+    if (msg_size == -1 && errno != EAGAIN && errno != EWOULDBLOCK)
+    {
+        T2Debug("Message receive error: %s\n", strerror(errno));
+    }
 }
 
 /**
- * Start daemon message queue processing
+ * Signal handler for message queue
+ */
+static void mq_signal_handler(int sig, siginfo_t *si, void *uc)
+{
+    (void)sig;
+    (void)si;
+    (void)uc;
+
+    T2Debug("Signal received for message queue, processing messages\n");
+    t2_daemon_mq_process_message();
+}
+
+
+/**
+ * 🔥 NEW: Start message queue daemon (signal-based, no thread)
  */
 T2ERROR t2_daemon_mq_start(void)
 {
@@ -2429,24 +2429,31 @@ T2ERROR t2_daemon_mq_start(void)
         return T2ERROR_FAILURE;
     }
 
-    if (g_daemon_mq_state.running)
-    {
-        T2Debug("Daemon MQ already running\n");
-        return T2ERROR_SUCCESS;
-    }
+    // Set up signal notification for message queue
+    struct sigevent sev;
+    sev.sigev_notify = SIGEV_SIGNAL;
+    sev.sigev_signo = SIGUSR1;
+    sev.sigev_value.sival_ptr = &g_daemon_mq_state;
 
-    g_daemon_mq_state.running = true;
-
-    if (pthread_create(&g_daemon_mq_state.daemon_thread, NULL, daemon_mq_thread, NULL) != 0)
+    if (mq_notify(g_daemon_mq_state.daemon_mq, &sev) == -1)
     {
-        T2Error("Failed to create daemon MQ thread: %s\n", strerror(errno));
-        g_daemon_mq_state.running = false;
+        T2Error("Failed to register signal notification for message queue: %s\n", strerror(errno));
         return T2ERROR_FAILURE;
     }
 
-    T2Info("Daemon message queue processing started\n");
+    T2Info("Signal-based message queue daemon started successfully\n");
+
+    // Create component-specific queues for all components
+    if (t2_daemon_create_component_queues() != T2ERROR_SUCCESS)
+    {
+        T2Warning("Failed to create component-specific queues, but daemon will continue\n");
+    }
+
+    T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
+
+
 #endif
 
 T2ERROR registerRbusT2EventListener(TelemetryEventCallback eventCB)

@@ -89,7 +89,7 @@ void freeSchedulerProfile(void *data)
  */
 int getLapsedTime (struct timespec *output, struct timespec *time1, struct timespec *time2)
 {
-
+    rdk_otlp_start_child_span("scheduler", "get");
     /* handle the underflow condition, if time2 nsec has higher value */
     int com = time1->tv_nsec < time2->tv_nsec;
     if (com)
@@ -113,7 +113,7 @@ int getLapsedTime (struct timespec *output, struct timespec *time1, struct times
     output->tv_sec = time1->tv_sec - time2->tv_sec;
 
     output->tv_nsec = time1->tv_nsec - time2->tv_nsec;
-
+    rdk_otlp_finish_child_span();
     if(time1->tv_sec < time2->tv_sec)
     {
         return 1;

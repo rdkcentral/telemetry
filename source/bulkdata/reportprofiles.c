@@ -700,9 +700,6 @@ T2ERROR ReportProfiles_uninit( )
 {
     T2Debug("%s ++in\n", __FUNCTION__);
     
-    // Shutdown OTLP tracing before cleanup
-    rdk_otlp_shutdown();
-    
     if(!rpInitialized)
     {
         T2Error("%s ReportProfiles is not initialized yet - ignoring\n", __FUNCTION__);

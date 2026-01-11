@@ -1284,13 +1284,6 @@ static void* getUpdatedConfigurationThread(void *data)
 {
     (void) data;
     
-    // Initialize tracing only once per thread
-    static __thread bool tracing_initialized = false;
-    if (!tracing_initialized) {
-        rdk_otlp_init("telemetry-xconf", "2.0.1");
-        rdk_otlp_metrics_init();
-        tracing_initialized = true;
-    }
     
     // Start trace for this HTTP request
     rdk_otlp_start_distributed_trace("xconf.config.fetch", "http_get");

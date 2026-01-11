@@ -2322,21 +2322,6 @@ T2ERROR t2_daemon_mq_init(void)
     }
     T2Info("Successfully created daemon queue: %s (fd=%d)\n", T2_MQ_DAEMON_NAME, g_daemon_mq_state.daemon_mq);
 
-    // Create broadcast queue
-    g_daemon_mq_state.broadcast_mq = mq_open(T2_MQ_BROADCAST_NAME,
-                                     O_CREAT | O_RDWR | O_NONBLOCK,
-                                     T2_MQ_PERMISSIONS, &attr);
-
-    if (g_daemon_mq_state.broadcast_mq == -1)
-    {
-        T2Error("Failed to create broadcast message queue: %s\n", strerror(errno));
-        mq_close(g_daemon_mq_state.daemon_mq);
-        mq_unlink(T2_MQ_DAEMON_NAME);
-        pthread_mutex_unlock(&g_daemon_mq_mutex);
-        return T2ERROR_FAILURE;
-    }
-    T2Info("Successfully created broadcast queue: %s (fd=%d)\n", T2_MQ_BROADCAST_NAME, g_daemon_mq_state.broadcast_mq);
-
     // Initialize subscriber map
     g_daemon_mq_state.subscriber_map = hash_map_create();
     if (!g_daemon_mq_state.subscriber_map)
@@ -2345,7 +2330,6 @@ T2ERROR t2_daemon_mq_init(void)
         mq_close(g_daemon_mq_state.daemon_mq);
         mq_close(g_daemon_mq_state.broadcast_mq);
         mq_unlink(T2_MQ_DAEMON_NAME);
-        mq_unlink(T2_MQ_BROADCAST_NAME);
         pthread_mutex_unlock(&g_daemon_mq_mutex);
         return T2ERROR_FAILURE;
     }

@@ -131,16 +131,21 @@ static struct
     bool initialized;
     uint32_t last_sequence_id;      // Track last processed marker update
     time_t last_check_time;         // Timestamp of last marker check
+    
+    // 🔥 NEW: Signal-based notification with existing message handling
     bool notification_registered;
     volatile sig_atomic_t marker_update_pending;
+    bool first_check_after_registration;  // 🔥 NEW: Track first check for existing messages
 } g_mq_state =
 {
     .daemon_mq = -1,
+    .broadcast_mq = -1,
     .initialized = false,
     .last_sequence_id = 0,
     .last_check_time = 0,
     .notification_registered = false,
-    .marker_update_pending = 0
+    .marker_update_pending = 0,
+    .first_check_after_registration = false  // 🔥 NEW
 };
 
 // Message queue mutex for thread safety
@@ -545,7 +550,7 @@ static void marker_update_signal_handler(int sig)
     }
 }
 
-// 🔥 NEW: Register for queue notifications
+// 🔥 ENHANCED: Register for queue notifications with first check flag
 static T2ERROR t2_mq_register_notification(void)
 {
     if (g_mq_state.broadcast_mq == -1 || g_mq_state.notification_registered) {
@@ -579,6 +584,8 @@ static T2ERROR t2_mq_register_notification(void)
     }
     
     g_mq_state.notification_registered = true;
+    g_mq_state.first_check_after_registration = true;  // 🔥 NEW: Set flag for first check
+    
     EVENT_DEBUG("Successfully registered for marker update notifications\n");
     printf("Successfully registered for marker update notifications\n");
     
@@ -1358,28 +1365,37 @@ static void t2_mq_client_uninit(void)
  * Check for marker updates from broadcast queue (NON-BLOCKING, NO THREADS)
  * This is called before every event send operation
  */
-// 🔥 REPLACE the expensive t2_mq_check_marker_updates() with this:
+// 🔥 ENHANCED: Process pending updates with existing message check
 static void t2_mq_process_pending_updates(void)
 {
-    // Only process if we have pending updates (signal-driven)
-    if (!g_mq_state.marker_update_pending) {
-        return;  // 🔥 FAST EXIT - no system calls!
+    // Check for pending updates OR first check after registration
+    if (!g_mq_state.marker_update_pending && !g_mq_state.first_check_after_registration) {
+        return;  // 🔥 FAST EXIT - but only if NOT first check
     }
     
+    // Reset flags
     g_mq_state.marker_update_pending = 0;
+    bool is_first_check = g_mq_state.first_check_after_registration;
+    g_mq_state.first_check_after_registration = false;
     
     if (!g_mq_state.initialized || g_mq_state.broadcast_mq == -1) {
         return;
     }
     
-    EVENT_DEBUG("Processing pending marker updates\n");
-    printf("Processing pending marker updates\n");
+    if (is_first_check) {
+        EVENT_DEBUG("Processing existing messages in queue (first check after registration)\n");
+        printf("Processing existing messages in queue (first check after registration)\n");
+    } else {
+        EVENT_DEBUG("Processing pending marker updates (signal-driven)\n");
+        printf("Processing pending marker updates (signal-driven)\n");
+    }
     
     char message[T2_MQ_MAX_MSG_SIZE];
     ssize_t msg_size;
     bool updates_processed = false;
+    bool need_reregister = false;
     
-    // Process ALL available messages (they're already there)
+    // Process ALL available messages (both existing and new)
     while ((msg_size = mq_receive(g_mq_state.broadcast_mq, message, T2_MQ_MAX_MSG_SIZE, NULL)) > 0)
     {
         T2MQMessageHeader* header = (T2MQMessageHeader*)message;
@@ -1405,12 +1421,14 @@ static void t2_mq_process_pending_updates(void)
                 t2_parse_and_store_markers(marker_data);
                 g_mq_state.last_sequence_id = header->sequence_id;
                 updates_processed = true;
+                need_reregister = true;  // Need to re-register after processing
             }
         }
     }
     
-    // Re-register for next notification (mq_notify is one-shot)
-    if (updates_processed && g_mq_state.broadcast_mq != -1) {
+    // Re-register for next notification if we processed any messages
+    // (mq_notify is one-shot and gets consumed when queue becomes non-empty)
+    if (need_reregister && g_mq_state.broadcast_mq != -1) {
         struct sigevent sev;
         sev.sigev_notify = SIGEV_SIGNAL;
         sev.sigev_signo = SIGUSR1;
@@ -1419,6 +1437,9 @@ static void t2_mq_process_pending_updates(void)
         if (mq_notify(g_mq_state.broadcast_mq, &sev) == -1) {
             EVENT_ERROR("Failed to re-register mq_notify: %s\n", strerror(errno));
             printf("Failed to re-register mq_notify: %s\n", strerror(errno));
+        } else {
+            EVENT_DEBUG("Re-registered mq_notify for future messages\n");
+            printf("Re-registered mq_notify for future messages\n");
         }
     }
     
@@ -1428,6 +1449,9 @@ static void t2_mq_process_pending_updates(void)
     } else if (updates_processed) {
         EVENT_DEBUG("Successfully processed marker updates\n");
         printf("Successfully processed marker updates\n");
+    } else if (is_first_check) {
+        EVENT_DEBUG("No existing messages found in queue\n");
+        printf("No existing messages found in queue\n");
     }
 }
 

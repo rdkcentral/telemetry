@@ -23,7 +23,7 @@ ACLOCAL_AMFLAGS = -I m4
 
 lib_LTLIBRARIES = libtelemetry_msgsender.la
 
-libtelemetry_msgsender_la_SOURCES = telemetry_busmessage_sender.c
+libtelemetry_msgsender_la_SOURCES = t2_transport_interface.c telemetry_busmessage_sender.c
 libtelemetry_msgsender_la_LDFLAGS = -shared
 libtelemetry_msgsender_la_LIBADD = -lrbus ${top_builddir}/source/utils/libt2utils.la
 if ENABLE_CCSP_SUPPORT
@@ -38,7 +38,7 @@ libtelemetry_msgsender_la_DEPENDENCIES = ${top_builddir}/source/utils/libt2utils
 
 bin_PROGRAMS = telemetry2_0_client
 
-telemetry2_0_client_SOURCES = telemetry_client.c telemetry_busmessage_sender.c
+telemetry2_0_client_SOURCES = telemetry_client.c t2_transport_interface.c telemetry_busmessage_sender.c
 telemetry2_0_client_LDADD = -lrbus ${top_builddir}/source/utils/libt2utils.la -lpthread
 if ENABLE_CCSP_SUPPORT
 telemetry2_0_client_LDADD += -lccsp_common

@@ -61,4 +61,7 @@ bool rbusCheckMethodExists(const char* rbusMethodName) ;
 
 T2ERROR T2RbusReportEventConsumer(char* reference, bool subscription);
 
+T2ERROR t2_daemon_create_component_queues(void);
+
 #endif
+

@@ -1060,6 +1060,20 @@ T2ERROR enableProfile(const char *profileName)
             eMarker = (EventMarker *)Vector_At(profile->eMarkerList, emIndex);
             addT2EventMarker(eMarker->markerName, eMarker->compName, profile->name, eMarker->skipFreq);
         }
+#if 1
+        T2Info("Creating component-specific message queues after marker map update\n");
+        if (t2_daemon_create_component_queues() == T2ERROR_SUCCESS)
+        {
+            T2Info("Component-specific message queues created successfully\n");
+
+            // Broadcast initial marker lists to all component queues
+            // t2_daemon_mq_broadcast_markers_to_component("ALL");
+        }
+        else
+        {
+            T2Error("Failed to create component-specific message queues\n");
+        }
+#endif
         if(registerProfileWithScheduler(profile->name, profile->reportingInterval, profile->activationTimeoutPeriod, profile->deleteonTimeout, true, profile->reportOnUpdate, profile->firstReportingInterval, profile->timeRef) != T2ERROR_SUCCESS)
         {
             profile->enable = false;
@@ -1101,6 +1115,20 @@ void updateMarkerComponentMap()
         }
     }
     pthread_mutex_unlock(&plMutex);
+#if 1
+    T2Info("Creating component-specific message queues after marker map update\n");
+    if (t2_daemon_create_component_queues() == T2ERROR_SUCCESS)
+    {
+        T2Info("Component-specific message queues created successfully\n");
+
+        // Broadcast initial marker lists to all component queues
+        // t2_daemon_mq_broadcast_markers_to_component("ALL");
+    }
+    else
+    {
+        T2Error("Failed to create component-specific message queues\n");
+    }
+#endif
     T2Debug("%s --out\n", __FUNCTION__);
 }
 

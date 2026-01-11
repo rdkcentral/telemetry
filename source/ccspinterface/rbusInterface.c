@@ -32,6 +32,27 @@
 #include "telemetry2_0.h"
 #include "t2log_wrapper.h"
 #include "profile.h"
+#include "t2markers.h"
+
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <poll.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <ctype.h>
+#include <time.h>
+#include <mqueue.h>
+#include <signal.h>
+
+// Forward declaration of signal handler for message queue
+static void mq_signal_handler(int sig, siginfo_t *si, void *uc);
+
+#ifndef min
+#define min(a, b) ((a) < (b) ? (a) : (b))
+#endif
 
 #if defined(PRIVACYMODES_CONTROL)
 #include "rdkservices_privacyutils.h"
@@ -44,6 +65,11 @@
 
 #define RBUS_METHOD_TIMEOUT 10
 #define MAX_REPORT_TIMEOUT 50
+
+#define T2_TCP_PORT 12345  // Port for telemetry daemon
+#define MAX_TCP_CLIENTS 50
+#define TCP_BACKLOG 10
+#define MESSAGE_DELIMITER "<#=#>"
 
 static rbusHandle_t t2bus_handle;
 
@@ -75,12 +101,120 @@ static pthread_mutex_t asyncMutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t compParamMap = PTHREAD_MUTEX_INITIALIZER;
 static rbusMethodAsyncHandle_t onDemandReportCallBackHandler = NULL ;
 
+// Message Queue Configuration (same as client)
+#define T2_MQ_DAEMON_NAME "/t2_daemon_mq"           // For receiving events from clients
+#define T2_MQ_BROADCAST_NAME "/t2_mq_"     // For broadcasting marker updates to clients
+#define T2_MQ_MAX_MESSAGES 10
+#define T2_MQ_MAX_MSG_SIZE 4096
+#define T2_MQ_PERMISSIONS 0666
+
+// Message Types (same as client)
+typedef enum
+{
+    T2_MQ_MSG_MARKER_UPDATE = 1,    // Daemon broadcasts marker updates to all clients
+    T2_MQ_MSG_EVENT_DATA = 2,       // Clients send events to daemon
+    T2_MQ_MSG_SUBSCRIBE = 3         // Client subscription
+} T2MQMessageType;
+
+// Message Header (same as client)
+typedef struct
+{
+    T2MQMessageType msg_type;
+    uint32_t data_length;
+    char component_name[128];       // Component this update is for (or "ALL" for global)
+    uint64_t timestamp;
+    uint32_t sequence_id;           // Incremental sequence for tracking updates
+} T2MQMessageHeader;
+
+#if 1
+// 🔥 SIMPLIFIED: Remove daemon thread and add direct signal-based processing
+static struct
+{
+    mqd_t daemon_mq;               // Queue to receive events from clients
+    bool initialized;
+    uint32_t broadcast_sequence;   // Incremental sequence for broadcasts
+    hash_map_t *subscriber_map;    // Map of subscribed components
+    // 🔥 REMOVED: pthread_t daemon_thread and bool running - no thread needed
+} g_daemon_mq_state =
+{
+    .daemon_mq = -1,
+    .initialized = false,
+    .broadcast_sequence = 0,
+    .subscriber_map = NULL
+};
+
+static pthread_mutex_t g_daemon_mq_mutex = PTHREAD_MUTEX_INITIALIZER;
+#endif
+
 typedef struct MethodData
 {
     rbusMethodAsyncHandle_t asyncHandle;
 } MethodData;
 
+typedef enum
+{
+    T2_REQ_SUBSCRIBE = 1,
+    T2_REQ_PROFILE_DATA = 2,
+    T2_REQ_MARKER_LIST = 3,
+    T2_REQ_DAEMON_STATUS = 4,
+    T2_MSG_EVENT_DATA = 5
+} T2RequestType;
+
+typedef struct
+{
+    uint32_t request_type;    // T2RequestType
+    uint32_t data_length;     // Length of data following this header
+    uint32_t client_id;       // Unique client identifier
+    uint32_t last_known_version; // For versioning/sync purposes
+} T2RequestHeader;
+
+typedef struct
+{
+    uint32_t response_status; // 0=success, 1=failure, 2=invalid_request, 3=no_data
+    uint32_t data_length;     // Length of response data
+    uint32_t sequence_id;     // Matches request sequence
+    uint32_t reserved;        // For future use
+} T2ResponseHeader;
+
+// Response status codes
+typedef enum
+{
+    T2_RESP_SUCCESS = 0,
+    T2_RESP_FAILURE = 1,
+    T2_RESP_INVALID_REQUEST = 2,
+    T2_RESP_NO_DATA = 3
+} T2ResponseStatus;
+
+typedef struct
+{
+    int server_fd;
+    struct sockaddr_in server_addr;
+    bool server_running;
+    pthread_t server_thread;
+    pthread_mutex_t clients_mutex;
+
+    struct
+    {
+        int client_fd;
+        struct sockaddr_in client_addr;
+        bool active;
+        bool subscribed_to_profile_updates;
+        bool subscribed_to_marker_updates;
+        uint32_t client_id;
+        char component_name[256];
+        time_t connect_time;
+    } clients[MAX_TCP_CLIENTS];
+} T2TcpServer;
+
+#if 0
+static T2TcpServer g_tcp_server = {0};
+#endif
+
 T2ERROR T2RbusConsumer(TriggerCondition *triggerCondition);
+#if 0
+static void t2_handle_marker_list_request(int client_index, T2RequestHeader* req_header);
+static void t2_handle_event_data(int client_index, T2RequestHeader* req_header);
+#endif
 
 bool isRbusInitialized( )
 {
@@ -116,6 +250,503 @@ void logHandler(
     }
     return;
 }
+
+
+#if 0
+static void t2_unix_socket_server_uninit()
+{
+    if (g_tcp_server.server_running)
+    {
+        T2Info("Stopping TCP server...\n");
+        g_tcp_server.server_running = false;
+
+        // Wait for server thread to exit
+        pthread_join(g_tcp_server.server_thread, NULL);
+
+        // Close all client connections
+        pthread_mutex_lock(&g_tcp_server.clients_mutex);
+        for (int i = 0; i < MAX_TCP_CLIENTS; i++)
+        {
+            if (g_tcp_server.clients[i].active)
+            {
+                char client_ip[INET_ADDRSTRLEN];
+                inet_ntop(AF_INET, &g_tcp_server.clients[i].client_addr.sin_addr,
+                          client_ip, INET_ADDRSTRLEN);
+
+                T2Info("Closing client connection %d (%s:%d) for component %s\n",
+                       i, client_ip, ntohs(g_tcp_server.clients[i].client_addr.sin_port), g_tcp_server.clients[i].component_name);
+
+                close(g_tcp_server.clients[i].client_fd);
+                g_tcp_server.clients[i].active = false;
+            }
+        }
+        pthread_mutex_unlock(&g_tcp_server.clients_mutex);
+
+        // Cleanup
+        close(g_tcp_server.server_fd);
+        pthread_mutex_destroy(&g_tcp_server.clients_mutex);
+
+        T2Info("TCP server uninitialized successfully\n");
+    }
+    else
+    {
+        T2Info("TCP server was not running\n");
+    }
+}
+
+// Initialize TCP server
+static T2ERROR t2_init_tcp_server()
+{
+    T2Info("%s ++in\n", __FUNCTION__);
+
+    // Create TCP socket
+    g_tcp_server.server_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (g_tcp_server.server_fd < 0)
+    {
+        T2Error("Failed to create TCP socket: %s\n", strerror(errno));
+        return T2ERROR_FAILURE;
+    }
+
+    // Set socket options
+    int opt = 1;
+    if (setsockopt(g_tcp_server.server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
+    {
+        T2Error("Failed to set SO_REUSEADDR: %s\n", strerror(errno));
+        close(g_tcp_server.server_fd);
+        return T2ERROR_FAILURE;
+    }
+
+    // Setup server address
+    memset(&g_tcp_server.server_addr, 0, sizeof(g_tcp_server.server_addr));
+    g_tcp_server.server_addr.sin_family = AF_INET;
+    g_tcp_server.server_addr.sin_addr.s_addr = INADDR_ANY;  //0.0.0.0=>To communicate with any client includ ing container
+    g_tcp_server.server_addr.sin_port = htons(T2_TCP_PORT);
+
+    // Bind socket
+    if (bind(g_tcp_server.server_fd, (struct sockaddr*)&g_tcp_server.server_addr,
+             sizeof(g_tcp_server.server_addr)) < 0)
+    {
+        T2Error("Failed to bind TCP socket to %s:%d: %s\n",
+                "INADDR_ANY", T2_TCP_PORT, strerror(errno));
+        close(g_tcp_server.server_fd);
+        return T2ERROR_FAILURE;
+    }
+
+    // Listen for connections
+    if (listen(g_tcp_server.server_fd, TCP_BACKLOG) < 0)
+    {
+        T2Error("Failed to listen on TCP socket: %s\n", strerror(errno));
+        close(g_tcp_server.server_fd);
+        return T2ERROR_FAILURE;
+    }
+
+    // Initialize mutex
+    if (pthread_mutex_init(&g_tcp_server.clients_mutex, NULL) != 0)
+    {
+        T2Error("Failed to initialize TCP clients mutex\n");
+        close(g_tcp_server.server_fd);
+        return T2ERROR_FAILURE;
+    }
+
+    T2Info("TCP server initialized on %s:%d\n", "INADDR_ANY", T2_TCP_PORT);
+    T2Info("%s --out\n", __FUNCTION__);
+    return T2ERROR_SUCCESS;
+}
+
+static void t2_cleanup_tcp_client(int client_index)
+{
+    T2Info("TODO: Handle Client disconnection for client %d", client_index);
+}
+
+// Handle new TCP connection
+static void t2_handle_new_tcp_connection(int client_fd, struct sockaddr_in* client_addr)
+{
+    // Set socket timeouts
+    struct timeval timeout = {.tv_sec = 30, .tv_usec = 0};
+    setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+    setsockopt(client_fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+
+    // Read subscription request
+    T2RequestHeader sub_header;
+    ssize_t received = recv(client_fd, &sub_header, sizeof(sub_header), MSG_WAITALL);
+
+    if (received != sizeof(sub_header))
+    {
+        T2Info("Failed to receive subscription header from TCP client\n");
+        close(client_fd);
+        return;
+    }
+
+    if (sub_header.request_type != T2_REQ_SUBSCRIBE)
+    {
+        T2Info("Invalid request type from TCP client: %u\n", sub_header.request_type);
+        close(client_fd);
+        return;
+    }
+
+    // Read component name if present
+    char component_name[256] = "default";
+    if (sub_header.data_length > 0)
+    {
+        ssize_t comp_received = recv(client_fd, component_name,
+                                     min(sub_header.data_length, sizeof(component_name) - 1),
+                                     MSG_WAITALL);
+        if (comp_received > 0)
+        {
+            component_name[comp_received] = '\0';
+        }
+    }
+
+    char client_ip[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &client_addr->sin_addr, client_ip, INET_ADDRSTRLEN);
+
+    T2Info("TCP subscription from client_id: %u, component: %s, IP: %s\n",
+           sub_header.client_id, component_name, client_ip);
+
+    // Find slot for new subscriber
+    pthread_mutex_lock(&g_tcp_server.clients_mutex);
+
+    bool slot_found = false;
+    for (int i = 0; i < MAX_TCP_CLIENTS; i++)
+    {
+        if (!g_tcp_server.clients[i].active)
+        {
+            g_tcp_server.clients[i].client_fd = client_fd;
+            g_tcp_server.clients[i].client_addr = *client_addr;
+            g_tcp_server.clients[i].active = true;
+            g_tcp_server.clients[i].client_id = sub_header.client_id;
+            g_tcp_server.clients[i].subscribed_to_profile_updates = true;
+            g_tcp_server.clients[i].subscribed_to_marker_updates = true;
+            g_tcp_server.clients[i].connect_time = time(NULL);
+            strncpy(g_tcp_server.clients[i].component_name, component_name,
+                    sizeof(g_tcp_server.clients[i].component_name) - 1);
+
+            T2Info("TCP client subscribed in slot %d from %s\n", i, client_ip);
+            slot_found = true;
+            break;
+        }
+    }
+
+    if (!slot_found)
+    {
+        T2Error("No available TCP subscription slots\n");
+        close(client_fd);
+    }
+
+    pthread_mutex_unlock(&g_tcp_server.clients_mutex);
+}
+
+static void t2_handle_tcp_client_message(int client_index)
+{
+    T2Info("TODO: Handle client message for client %s", g_tcp_server.clients[client_index].component_name);
+
+    pthread_mutex_lock(&g_tcp_server.clients_mutex);
+
+    if (!g_tcp_server.clients[client_index].active)
+    {
+        pthread_mutex_unlock(&g_tcp_server.clients_mutex);
+        return;
+    }
+
+    int client_fd = g_tcp_server.clients[client_index].client_fd;
+    char* component_name = g_tcp_server.clients[client_index].component_name;
+
+    pthread_mutex_unlock(&g_tcp_server.clients_mutex);
+
+    // Read request header
+    T2RequestHeader req_header;
+    ssize_t received = recv(client_fd, &req_header, sizeof(req_header), MSG_WAITALL);
+
+    if (received != sizeof(req_header))
+    {
+        T2Error("Failed to receive request header from client %s\n", component_name);
+        t2_cleanup_tcp_client(client_index);
+        return;
+    }
+
+    T2Info("Received request type: %u from client %d (%s)\n",
+           req_header.request_type, client_index, component_name);
+
+    switch (req_header.request_type)
+    {
+    case T2_REQ_MARKER_LIST:
+        t2_handle_marker_list_request(client_index, &req_header);
+        break;
+
+    case T2_MSG_EVENT_DATA:
+        t2_handle_event_data(client_index, &req_header);
+        break;
+
+    default:
+        T2Error("Unknown request type: %u from client %d\n",
+                req_header.request_type, client_index);
+        break;
+    }
+}
+
+
+// New function to handle marker list requests
+static void t2_handle_marker_list_request(int client_index, T2RequestHeader* req_header)
+{
+    T2Debug("%s ++in for client %d\n", __FUNCTION__, client_index);
+
+    pthread_mutex_lock(&g_tcp_server.clients_mutex);
+
+    if (!g_tcp_server.clients[client_index].active)
+    {
+        pthread_mutex_unlock(&g_tcp_server.clients_mutex);
+        return;
+    }
+
+    int client_fd = g_tcp_server.clients[client_index].client_fd;
+    char* component_name = g_tcp_server.clients[client_index].component_name;
+
+    pthread_mutex_unlock(&g_tcp_server.clients_mutex);
+
+    // Read component name from request data (if any)
+    char query_component[256] = {0};
+    if (req_header->data_length > 0)
+    {
+        ssize_t comp_received = recv(client_fd, query_component,
+                                     min(req_header->data_length, sizeof(query_component) - 1),
+                                     MSG_WAITALL);
+        if (comp_received > 0)
+        {
+            query_component[comp_received] = '\0';
+        }
+    }
+    else
+    {
+        // Use registered component name
+        strncpy(query_component, component_name, sizeof(query_component) - 1);
+    }
+
+    T2Info("Processing marker list request for component: %s\n", query_component);
+
+    // Get marker list using existing callback
+    Vector* eventMarkerList = NULL;
+    getComponentMarkerList(query_component, (void**)&eventMarkerList);
+
+    // Prepare response data
+    char marker_response[2048] = {0}; // Adjust size as needed
+    int marker_count = 0;
+
+    if (eventMarkerList && Vector_Size(eventMarkerList) > 0)
+    {
+        marker_count = Vector_Size(eventMarkerList);
+
+        for (int i = 0; i < marker_count; i++)
+        {
+            char* marker_name = (char*)Vector_At(eventMarkerList, i);
+            if (marker_name)
+            {
+                if (i > 0)
+                {
+                    strcat(marker_response, ",");
+                }
+                strncat(marker_response, marker_name, sizeof(marker_response) - strlen(marker_response) - 1);
+            }
+        }
+
+        Vector_Destroy(eventMarkerList, free);
+
+        T2Info("Found %d markers for component %s: %s\n",
+               marker_count, query_component, marker_response);
+    }
+    else
+    {
+        T2Info("No markers found for component: %s\n", query_component);
+        strcpy(marker_response, ""); // Empty response
+    }
+
+    // Send response header
+    T2ResponseHeader resp_header =
+    {
+        .response_status = 0, // Success
+        .data_length = strlen(marker_response),
+        .sequence_id = req_header->client_id,
+        .reserved = 0
+    };
+    ssize_t sent = send(client_fd, &resp_header, sizeof(resp_header), MSG_NOSIGNAL);
+    if (sent != sizeof(resp_header))
+    {
+        T2Error("Failed to send marker response header to client %d\n", client_index);
+        t2_cleanup_tcp_client(client_index);
+        return;
+    }
+
+    // Send response data
+    if (resp_header.data_length > 0)
+    {
+        sent = send(client_fd, marker_response, resp_header.data_length, MSG_NOSIGNAL);
+        if (sent != (ssize_t)resp_header.data_length)
+        {
+            T2Error("Failed to send marker response data to client %d\n", client_index);
+            t2_cleanup_tcp_client(client_index);
+            return;
+        }
+    }
+    T2Info("Successfully sent marker list response to client %d (%s)\n",
+           client_index, component_name);
+
+    T2Debug("%s --out\n", __FUNCTION__);
+}
+
+// Function to handle incoming event data
+static void t2_handle_event_data(int client_index, T2RequestHeader* req_header)
+{
+    T2Debug("%s ++in for client %d\n", __FUNCTION__, client_index);
+
+    pthread_mutex_lock(&g_tcp_server.clients_mutex);
+
+    if (!g_tcp_server.clients[client_index].active)
+    {
+        pthread_mutex_unlock(&g_tcp_server.clients_mutex);
+        return;
+    }
+
+    int client_fd = g_tcp_server.clients[client_index].client_fd;
+    char* component_name = g_tcp_server.clients[client_index].component_name;
+
+    pthread_mutex_unlock(&g_tcp_server.clients_mutex);
+
+    // Read event data
+    if (req_header->data_length > 0)
+    {
+        char* event_data = malloc(req_header->data_length + 1);
+        if (!event_data)
+        {
+            T2Error("Failed to allocate memory for event data\n");
+            return;
+        }
+
+        ssize_t received = recv(client_fd, event_data, req_header->data_length, MSG_WAITALL);
+        if (received == (ssize_t)req_header->data_length)
+        {
+            event_data[req_header->data_length] = '\0';
+
+            T2Info("Received event from %s: %s\n", component_name, event_data);
+
+            // Parse and process event using existing callback
+            // Format: "markerName<delimiter>eventValue"
+            char* delimiter_pos = strstr(event_data, MESSAGE_DELIMITER);
+            if (delimiter_pos)
+            {
+                *delimiter_pos = '\0';
+                char* marker_name = event_data;
+                char* event_value = delimiter_pos + strlen(MESSAGE_DELIMITER);
+
+                T2Debug("Processing event: marker=%s, value=%s\n", marker_name, event_value);
+
+                // Call existing event callback
+                if (eventCallBack)
+                {
+                    eventCallBack(strdup(marker_name), strdup(event_value));
+                }
+            }
+        }
+        else
+        {
+            T2Error("Failed to receive complete event data from client %d\n", client_index);
+        }
+
+        free(event_data);
+    }
+
+    T2Debug("%s --out\n", __FUNCTION__);
+}
+
+// TCP server thread
+static void* t2_tcp_server_thread(void* arg)
+{
+    (void)arg;
+
+    T2Info("TCP server thread started on %s:%d\n", "INADDR_ANY", T2_TCP_PORT);
+
+    struct pollfd poll_fds[MAX_TCP_CLIENTS + 1];
+    int client_indices[MAX_TCP_CLIENTS + 1];
+    int poll_count = 0;
+
+    // Setup polling for server socket
+    poll_fds[0].fd = g_tcp_server.server_fd;
+    poll_fds[0].events = POLLIN;
+    client_indices[0] = -1;
+    poll_count = 1;
+
+    while (g_tcp_server.server_running)
+    {
+
+        // Add existing clients to poll list - Not required for every loop. TODO: fix that.
+        pthread_mutex_lock(&g_tcp_server.clients_mutex);
+        for (int i = 0; i < MAX_TCP_CLIENTS; i++)
+        {
+            if (g_tcp_server.clients[i].active)
+            {
+                poll_fds[poll_count].fd = g_tcp_server.clients[i].client_fd;
+                poll_fds[poll_count].events = POLLIN;
+                client_indices[poll_count] = i;
+                poll_count++;
+            }
+        }
+        pthread_mutex_unlock(&g_tcp_server.clients_mutex);
+
+        // Poll for activity
+        int poll_result = poll(poll_fds, poll_count, 1000); // 1 second timeout
+        if (poll_result <= 0)
+        {
+            continue;
+        }
+
+        // Handle new connections
+        if (poll_fds[0].revents & POLLIN)
+        {
+            T2Info("New TCP client connection:\n");
+            struct sockaddr_in client_addr;
+            socklen_t client_len = sizeof(client_addr);
+
+            int client_fd = accept(g_tcp_server.server_fd,
+                                   (struct sockaddr*)&client_addr, &client_len);
+
+            if (client_fd >= 0)
+            {
+                char client_ip[INET_ADDRSTRLEN];
+                inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, INET_ADDRSTRLEN);
+
+                T2Info("New TCP client connection from %s:%d (fd: %d)\n",
+                       client_ip, ntohs(client_addr.sin_port), client_fd);
+
+                t2_handle_new_tcp_connection(client_fd, &client_addr);
+            }
+        }
+
+        // Handle client messages
+        for (int i = 1; i < poll_count; i++)
+        {
+            if (poll_fds[i].revents & POLLIN)
+            {
+                int client_index = client_indices[i];
+                if (client_index >= 0)
+                {
+                    t2_handle_tcp_client_message(client_index);
+                }
+            }
+
+            // Handle disconnections
+            if (poll_fds[i].revents & (POLLHUP | POLLERR))
+            {
+                int client_index = client_indices[i];
+                if (client_index >= 0)
+                {
+                    t2_cleanup_tcp_client(client_index);
+                }
+            }
+        }
+    }
+
+    T2Info("TCP server thread exiting\n");
+    return NULL;
+}
+#endif
 
 static T2ERROR rBusInterface_Init( )
 {
@@ -1203,6 +1834,627 @@ T2ERROR publishEventsDCMProcConf()
 }
 #endif
 
+#if 1
+/**
+ * 🔥 SIMPLIFIED: Cleanup daemon message queues (no thread to stop)
+ */
+void t2_daemon_mq_cleanup(void)
+{
+    T2Debug("%s ++in\n", __FUNCTION__);
+
+    pthread_mutex_lock(&g_daemon_mq_mutex);
+
+    if (!g_daemon_mq_state.initialized)
+    {
+        pthread_mutex_unlock(&g_daemon_mq_mutex);
+        return;
+    }
+
+    // 🔥 REMOVED: No thread to stop in simplified approach
+
+    // Clean up subscriber map
+    if (g_daemon_mq_state.subscriber_map)
+    {
+        hash_map_destroy(g_daemon_mq_state.subscriber_map, free);
+        g_daemon_mq_state.subscriber_map = NULL;
+    }
+
+    // Close and remove message queues
+    if (g_daemon_mq_state.daemon_mq != -1)
+    {
+        mq_close(g_daemon_mq_state.daemon_mq);
+        mq_unlink(T2_MQ_DAEMON_NAME);
+        g_daemon_mq_state.daemon_mq = -1;
+    }
+
+    g_daemon_mq_state.initialized = false;
+
+    pthread_mutex_unlock(&g_daemon_mq_mutex);
+
+    T2Info("Daemon message queues cleaned up\n");
+}
+
+/**
+ * Get markers for a specific component (placeholder - integrate with your system)
+ */
+static char* get_component_markers(const char* query_component)
+{
+    T2Info("Getting markers for component: %s\n", query_component);
+
+    // Get marker list using existing callback
+    Vector* eventMarkerList = NULL;
+    getComponentMarkerList(query_component, (void**)&eventMarkerList);
+
+    T2Info("%s, %d\n", __func__, __LINE__);
+    // Prepare response data
+    char marker_response[2048] = {0}; // Adjust size as needed
+    int marker_count = 0;
+
+    if (eventMarkerList && Vector_Size(eventMarkerList) > 0)
+    {
+        marker_count = Vector_Size(eventMarkerList);
+
+        for (int i = 0; i < marker_count; i++)
+        {
+            char* marker_name = (char*)Vector_At(eventMarkerList, i);
+            if (marker_name)
+            {
+                if (i > 0)
+                {
+                    strcat(marker_response, ",");
+                }
+                strncat(marker_response, marker_name, sizeof(marker_response) - strlen(marker_response) - 1);
+            }
+        }
+
+        Vector_Destroy(eventMarkerList, free);
+
+        T2Info("Found %d markers for component %s: %s\n",
+               marker_count, query_component, marker_response);
+    }
+    else
+    {
+        T2Info("No markers found for component: %s\n", query_component);
+        strcpy(marker_response, ""); // Empty response
+    }
+    return strdup(marker_response);
+}
+
+/**
+ * FIXED: Enhanced broadcast function for component-specific queues
+ */
+T2ERROR t2_daemon_mq_broadcast_markers_to_component(const char* target_component)
+{
+    T2Info("%s ++in (target: %s)\n", __FUNCTION__, target_component ? target_component : "ALL");
+
+    if (!g_daemon_mq_state.initialized)
+    {
+        T2Error("Daemon MQ not initialized\n");
+        return T2ERROR_FAILURE;
+    }
+
+    pthread_mutex_lock(&g_daemon_mq_mutex);
+
+    // Increment broadcast sequence
+    g_daemon_mq_state.broadcast_sequence++;
+
+    if (target_component && strcmp(target_component, "ALL") != 0)
+    {
+        char* marker_list = get_component_markers(target_component);
+        if (!marker_list)
+        {
+            T2Warning("No markers found for component: %s\n", target_component);
+            pthread_mutex_unlock(&g_daemon_mq_mutex);
+            return T2ERROR_SUCCESS;
+        }
+
+        // Prepare broadcast message
+        char message[T2_MQ_MAX_MSG_SIZE];
+        T2MQMessageHeader* header = (T2MQMessageHeader*)message;
+
+        header->msg_type = T2_MQ_MSG_MARKER_UPDATE;
+        header->data_length = strlen(marker_list);
+        header->timestamp = (uint64_t)time(NULL);
+        header->sequence_id = g_daemon_mq_state.broadcast_sequence;
+
+        strncpy(header->component_name, target_component, sizeof(header->component_name) - 1);
+        header->component_name[sizeof(header->component_name) - 1] = '\0';
+
+        // Copy marker data
+        memcpy(message + sizeof(T2MQMessageHeader), marker_list, strlen(marker_list));
+        uint32_t total_size = sizeof(T2MQMessageHeader) + strlen(marker_list);
+
+        // Send to specific component's queue
+        char* queue_name = (char*)hash_map_get(g_daemon_mq_state.subscriber_map, target_component);
+        if (queue_name)
+        {
+            // Clear the component's queue first
+            mqd_t comp_mq = mq_open(queue_name, O_WRONLY | O_NONBLOCK);
+            if (comp_mq != -1)
+            {
+                // Clear existing messages
+                char temp_message[T2_MQ_MAX_MSG_SIZE];
+                while (mq_receive(comp_mq, temp_message, T2_MQ_MAX_MSG_SIZE, NULL) > 0);
+
+                // Send fresh message
+                if (mq_send(comp_mq, message, total_size, 0) == 0)
+                {
+                    T2Info("Sent markers to component %s queue %s (seq: %u): %s\n",
+                           target_component, queue_name, header->sequence_id, marker_list);
+                }
+                else
+                {
+                    T2Error("Failed to send to component %s queue %s: %s\n",
+                            target_component, queue_name, strerror(errno));
+                }
+
+                mq_close(comp_mq);
+            }
+        }
+        else
+        {
+            T2Warning("No queue found for component: %s\n", target_component);
+        }
+
+        free(marker_list);
+    }
+    else
+    {
+        Vector* eventComponentList = NULL;
+        getComponentsWithEventMarkers(&eventComponentList);
+
+        if (!eventComponentList || Vector_Size(eventComponentList) == 0)
+        {
+            T2Info("No components with event markers found for broadcast\n");
+            pthread_mutex_unlock(&g_daemon_mq_mutex);
+            return T2ERROR_SUCCESS;
+        }
+
+        int component_count = Vector_Size(eventComponentList);
+        int successful_broadcasts = 0;
+
+        T2Info("Broadcasting to ALL %d components\n", component_count);
+
+        for (int i = 0; i < component_count; i++)
+        {
+            T2Info("%s, %d\n", __func__, __LINE__);
+            char* comp_name = (char*)Vector_At(eventComponentList, i);
+            if (!comp_name)
+            {
+                T2Info("%s, %d\n", __func__, __LINE__);
+                continue;
+            }
+            T2Info("%s, %d\n", __func__, __LINE__);
+            // Get markers specific to this component
+            char* marker_list = get_component_markers(comp_name);
+            if (!marker_list)
+            {
+                T2Debug("No markers for component %s, skipping\n", comp_name);
+                continue;
+            }
+
+            T2Info("Prepare message for this component %s\n", comp_name);
+            char message[T2_MQ_MAX_MSG_SIZE];
+            T2MQMessageHeader* header = (T2MQMessageHeader*)message;
+
+            header->msg_type = T2_MQ_MSG_MARKER_UPDATE;
+            header->data_length = strlen(marker_list);
+            header->timestamp = (uint64_t)time(NULL);
+            header->sequence_id = g_daemon_mq_state.broadcast_sequence;
+
+            strncpy(header->component_name, comp_name, sizeof(header->component_name) - 1);
+            header->component_name[sizeof(header->component_name) - 1] = '\0';
+
+            // Copy marker data
+            memcpy(message + sizeof(T2MQMessageHeader), marker_list, strlen(marker_list));
+            uint32_t total_size = sizeof(T2MQMessageHeader) + strlen(marker_list);
+
+            // Send to this component's queue
+            char* queue_name = (char*)hash_map_get(g_daemon_mq_state.subscriber_map, comp_name);
+            if (queue_name)
+            {
+                mqd_t comp_mq = mq_open(queue_name, O_WRONLY | O_NONBLOCK);
+                if (comp_mq != -1)
+                {
+                    // Send fresh message
+                    if (mq_send(comp_mq, message, total_size, 0) == 0)
+                    {
+                        T2Info("Broadcast: Sent markers to component %s: %s\n", comp_name, marker_list);
+                        successful_broadcasts++;
+                    }
+                    else
+                    {
+                        T2Error("Broadcast: Failed to send to component %s: %s\n", comp_name, strerror(errno));
+                    }
+
+                    mq_close(comp_mq);
+                }
+                else
+                {
+                    T2Warning("Broadcast: Failed to open queue %s for component %s\n", queue_name, comp_name);
+                }
+            }
+            else
+            {
+                T2Warning("Broadcast: No queue found for component %s\n", comp_name);
+            }
+
+            free(marker_list);
+        }
+
+        T2Info("Successfully broadcasted to %d/%d components (seq: %u)\n",
+               successful_broadcasts, component_count, g_daemon_mq_state.broadcast_sequence);
+    }
+
+    pthread_mutex_unlock(&g_daemon_mq_mutex);
+
+    return T2ERROR_SUCCESS;
+}
+
+/**
+ * Create component-specific message queues for all components with event markers
+ */
+T2ERROR t2_daemon_create_component_queues(void)
+{
+    T2Debug("%s ++in\n", __FUNCTION__);
+
+    if (!g_daemon_mq_state.initialized)
+    {
+        T2Error("Daemon MQ not initialized, cannot create component queues\n");
+        return T2ERROR_FAILURE;
+    }
+
+    Vector* eventComponentList = NULL;
+
+    // Get list of components with event markers from t2markers.c
+    getComponentsWithEventMarkers(&eventComponentList);
+
+    if (!eventComponentList || Vector_Size(eventComponentList) == 0)
+    {
+        T2Info("No components with event markers found\n");
+        return T2ERROR_SUCCESS;
+    }
+
+    int component_count = Vector_Size(eventComponentList);
+    T2Info("Creating component-specific queues for %d components\n", component_count);
+
+    struct mq_attr attr =
+    {
+        .mq_flags = 0,
+        .mq_maxmsg = T2_MQ_MAX_MESSAGES,
+        .mq_msgsize = T2_MQ_MAX_MSG_SIZE,
+        .mq_curmsgs = 0
+    };
+
+    pthread_mutex_lock(&g_daemon_mq_mutex);
+
+    int successful_creations = 0;
+
+    for (int i = 0; i < component_count; i++)
+    {
+        char* component_name = (char*)Vector_At(eventComponentList, i);
+        if (!component_name)
+        {
+            T2Warning("NULL component name at index %d, skipping\n", i);
+            continue;
+        }
+
+        // Sanitize component name for queue naming
+        char sanitized_comp[128];
+        strncpy(sanitized_comp, component_name, sizeof(sanitized_comp) - 1);
+        sanitized_comp[sizeof(sanitized_comp) - 1] = '\0';
+
+        for (int j = 0; sanitized_comp[j]; j++)
+        {
+            if (!isalnum(sanitized_comp[j]) && sanitized_comp[j] != '_')
+            {
+                sanitized_comp[j] = '_';
+            }
+        }
+
+        // Create component-specific broadcast queue name
+        char broadcast_queue_name[256];
+        snprintf(broadcast_queue_name, sizeof(broadcast_queue_name),
+                 "%s%s", T2_MQ_BROADCAST_NAME, sanitized_comp);
+
+        T2Info("Creating component queue: %s for component: %s\n",
+               broadcast_queue_name, component_name);
+
+        // Remove existing queue if any
+        mq_unlink(broadcast_queue_name);
+
+        // Create component-specific broadcast queue
+        mqd_t component_mq = mq_open(broadcast_queue_name,
+                                     O_CREAT | O_RDWR | O_NONBLOCK,
+                                     T2_MQ_PERMISSIONS, &attr);
+
+        if (component_mq == -1)
+        {
+            T2Error("Failed to create component queue %s: %s\n",
+                    broadcast_queue_name, strerror(errno));
+            continue;
+        }
+
+        T2Info("Successfully created component queue: %s (fd=%d)\n",
+               broadcast_queue_name, component_mq);
+
+        // Add component to subscriber map
+        hash_map_put(g_daemon_mq_state.subscriber_map,
+                     strdup(component_name),
+                     strdup(broadcast_queue_name),
+                     free);
+
+        // Close the queue descriptor - clients will open their own
+        mq_close(component_mq);
+
+        successful_creations++;
+    }
+
+    pthread_mutex_unlock(&g_daemon_mq_mutex);
+
+    T2Info("Successfully created %d/%d component-specific queues\n",
+           successful_creations, component_count);
+
+    t2_daemon_mq_broadcast_markers_to_component("ALL");
+
+    T2Debug("%s --out\n", __FUNCTION__);
+    return T2ERROR_SUCCESS;
+}
+
+/**
+ * Handle client subscription
+ */
+static void handle_client_subscription(const char* component_name)
+{
+    T2Debug("Client subscription: %s\n", component_name);
+
+    if (!component_name || strlen(component_name) == 0)
+    {
+        T2Error("Invalid component name in subscription\n");
+        return;
+    }
+
+    pthread_mutex_lock(&g_daemon_mq_mutex);
+
+    // Add subscriber to map (or update existing)
+    char* existing = (char*)hash_map_get(g_daemon_mq_state.subscriber_map, component_name);
+    if (!existing)
+    {
+        hash_map_put(g_daemon_mq_state.subscriber_map,
+                     strdup(component_name),
+                     strdup(component_name),
+                     free);
+        T2Info("New client subscribed: %s\n", component_name);
+    }
+    else
+    {
+        T2Debug("Client %s already subscribed\n", component_name);
+    }
+
+    pthread_mutex_unlock(&g_daemon_mq_mutex);
+
+    // Send initial marker list to the newly subscribed component
+    t2_daemon_mq_broadcast_markers_to_component(component_name);
+}
+
+/**
+ * Process received event data from clients
+ */
+static void handle_event_data(const T2MQMessageHeader* header, const char* event_data)
+{
+    T2Info("Processing event from %s: %s\n", header->component_name, event_data);
+
+    // Example: Parse marker name and value
+    char* delimiter_pos = strstr(event_data, "<#=#>");
+    if (delimiter_pos)
+    {
+        size_t marker_len = delimiter_pos - event_data;
+        char* marker_name = malloc(marker_len + 1);
+        strncpy(marker_name, event_data, marker_len);
+        marker_name[marker_len] = '\0';
+
+        char* event_value = delimiter_pos + 5; // Skip "<#=#>"
+
+        T2Info("Event: Marker=%s, Value=%s, Component=%s\n",
+               marker_name, event_value, header->component_name);
+
+        if (eventCallBack)
+        {
+            eventCallBack(strdup(marker_name), strdup(event_value));
+        }
+
+        free(marker_name);
+    }
+}
+
+/**
+ * Initialize daemon message queues
+ */
+T2ERROR t2_daemon_mq_init(void)
+{
+    T2Debug("%s ++in\n", __FUNCTION__);
+
+    pthread_mutex_lock(&g_daemon_mq_mutex);
+
+    if (g_daemon_mq_state.initialized)
+    {
+        pthread_mutex_unlock(&g_daemon_mq_mutex);
+        return T2ERROR_SUCCESS;
+    }
+
+    struct mq_attr attr;
+    memset(&attr, 0, sizeof(attr));  // Initialize all fields to 0
+    attr.mq_flags = 0;              // Blocking mode for daemon
+    attr.mq_maxmsg = T2_MQ_MAX_MESSAGES;      // 50 messages
+    attr.mq_msgsize = T2_MQ_MAX_MSG_SIZE;     // 4096 bytes
+    attr.mq_curmsgs = 0;            // Current messages (read-only, but set to 0)
+
+    T2Info("Creating message queues with attr: maxmsg=%ld, msgsize=%ld\n",
+           attr.mq_maxmsg, attr.mq_msgsize);
+
+    // Remove any existing queues
+    mq_unlink(T2_MQ_DAEMON_NAME);
+    mq_unlink(T2_MQ_BROADCAST_NAME);
+
+    // Create daemon receive queue
+    g_daemon_mq_state.daemon_mq = mq_open(T2_MQ_DAEMON_NAME,
+                                          O_CREAT | O_RDWR | O_NONBLOCK,
+                                          T2_MQ_PERMISSIONS, &attr);
+
+    if (g_daemon_mq_state.daemon_mq == -1)
+    {
+        T2Error("Failed to create daemon message queue: %s\n", strerror(errno));
+        pthread_mutex_unlock(&g_daemon_mq_mutex);
+        return T2ERROR_FAILURE;
+    }
+    T2Info("Successfully created daemon queue: %s (fd=%d)\n", T2_MQ_DAEMON_NAME, g_daemon_mq_state.daemon_mq);
+
+    // Initialize subscriber map
+    g_daemon_mq_state.subscriber_map = hash_map_create();
+    if (!g_daemon_mq_state.subscriber_map)
+    {
+        T2Error("Failed to create subscriber map\n");
+        mq_close(g_daemon_mq_state.daemon_mq);
+        mq_unlink(T2_MQ_DAEMON_NAME);
+        pthread_mutex_unlock(&g_daemon_mq_mutex);
+        return T2ERROR_FAILURE;
+    }
+
+    g_daemon_mq_state.initialized = true;
+
+    // Register signal handler for message queue
+    struct sigaction sa;
+    sa.sa_flags = SA_SIGINFO;
+    sa.sa_sigaction = mq_signal_handler;
+    sigemptyset(&sa.sa_mask);
+    if (sigaction(SIGUSR1, &sa, NULL) == -1)
+    {
+        T2Error("Failed to register signal handler for message queue: %s\n", strerror(errno));
+        pthread_mutex_unlock(&g_daemon_mq_mutex);
+        return T2ERROR_FAILURE;
+    }
+
+    pthread_mutex_unlock(&g_daemon_mq_mutex);
+
+    T2Info("Daemon message queues initialized successfully\n");
+    return T2ERROR_SUCCESS;
+}
+
+
+/**
+ * 🔥 SIMPLIFIED: Signal-based message processing handler
+ * Called directly when messages arrive, no thread needed
+ */
+void t2_daemon_mq_process_message(void)
+{
+    char message[T2_MQ_MAX_MSG_SIZE];
+    ssize_t msg_size;
+
+    if (!g_daemon_mq_state.initialized || g_daemon_mq_state.daemon_mq == -1)
+    {
+        T2Debug("Daemon MQ not ready for message processing\n");
+        return;
+    }
+
+    // Non-blocking read of all pending messages
+    while ((msg_size = mq_receive(g_daemon_mq_state.daemon_mq, message,
+                                  T2_MQ_MAX_MSG_SIZE, NULL)) > 0)
+    {
+        T2MQMessageHeader* header = (T2MQMessageHeader*)message;
+
+        T2Info("Processing message type: %d from %s\n",
+               header->msg_type, header->component_name);
+
+        switch (header->msg_type)
+        {
+        case T2_MQ_MSG_SUBSCRIBE:
+        {
+            if (header->data_length > 0)
+            {
+                char* component_name = message + sizeof(T2MQMessageHeader);
+                component_name[header->data_length] = '\0';
+                handle_client_subscription(component_name);
+            }
+        }
+        break;
+
+        case T2_MQ_MSG_EVENT_DATA:
+        {
+            if (header->data_length > 0)
+            {
+                char* event_data = message + sizeof(T2MQMessageHeader);
+                event_data[header->data_length] = '\0';
+                handle_event_data(header, event_data);
+            }
+        }
+        break;
+
+        default:
+            T2Warning("Unknown message type received: %d\n", header->msg_type);
+            break;
+        }
+    }
+
+    // Check for errors (msg_size == -1)
+    if (msg_size == -1 && errno != EAGAIN && errno != EWOULDBLOCK)
+    {
+        T2Debug("Message receive error: %s\n", strerror(errno));
+    }
+}
+
+/**
+ * Signal handler for message queue
+ */
+static void mq_signal_handler(int sig, siginfo_t *si, void *uc)
+{
+    (void)sig;
+    (void)si;
+    (void)uc;
+
+    T2Debug("Signal received for message queue, processing messages\n");
+    t2_daemon_mq_process_message();
+}
+
+
+/**
+ * 🔥 NEW: Start message queue daemon (signal-based, no thread)
+ */
+T2ERROR t2_daemon_mq_start(void)
+{
+    T2Debug("%s ++in\n", __FUNCTION__);
+
+    if (!g_daemon_mq_state.initialized)
+    {
+        T2Error("Daemon MQ not initialized\n");
+        return T2ERROR_FAILURE;
+    }
+
+    // Set up signal notification for message queue
+    struct sigevent sev;
+    sev.sigev_notify = SIGEV_SIGNAL;
+    sev.sigev_signo = SIGUSR1;
+    sev.sigev_value.sival_ptr = &g_daemon_mq_state;
+
+    if (mq_notify(g_daemon_mq_state.daemon_mq, &sev) == -1)
+    {
+        T2Error("Failed to register signal notification for message queue: %s\n", strerror(errno));
+        return T2ERROR_FAILURE;
+    }
+
+    T2Info("Signal-based message queue daemon started successfully\n");
+
+    // Create component-specific queues for all components
+    if (t2_daemon_create_component_queues() != T2ERROR_SUCCESS)
+    {
+        T2Warning("Failed to create component-specific queues, but daemon will continue\n");
+    }
+
+    T2Debug("%s --out\n", __FUNCTION__);
+    return T2ERROR_SUCCESS;
+}
+
+
+#endif
 
 T2ERROR registerRbusT2EventListener(TelemetryEventCallback eventCB)
 {
@@ -1231,6 +2483,43 @@ T2ERROR registerRbusT2EventListener(TelemetryEventCallback eventCB)
         status = T2ERROR_FAILURE ;
     }
     eventCallBack = eventCB ;
+
+#if 0
+    T2Info("%s initialize Unix socket server\n", __FUNCTION__);
+    if (t2_init_tcp_server() != T2ERROR_SUCCESS)
+    {
+        T2Info("Failed to initialize Unix socket server\n");
+    }
+    T2Info("%s initialized Unix socket server\n", __FUNCTION__);
+    T2Info("%s starting TCP server thread\n", __FUNCTION__);
+    g_tcp_server.server_running = true;
+
+    if (pthread_create(&g_tcp_server.server_thread, NULL, t2_tcp_server_thread, NULL) != 0)
+    {
+        T2Error("Failed to create TCP server thread: %s\n", strerror(errno));
+        g_tcp_server.server_running = false;
+        close(g_tcp_server.server_fd);
+        pthread_mutex_destroy(&g_tcp_server.clients_mutex);
+        return T2ERROR_FAILURE;
+    }
+
+    T2Info("%s TCP server thread started successfully\n", __FUNCTION__);
+#endif
+
+#if 1
+    // Initialize message queue support
+    if (t2_daemon_mq_init() == T2ERROR_SUCCESS)
+    {
+        T2Info("Message queue transport initialized\n");
+
+        // Start message queue processing
+        if (t2_daemon_mq_start() == T2ERROR_SUCCESS)
+        {
+            T2Info("Message queue daemon started\n");
+        }
+    }
+    T2Info("Message queue transport called\n");
+#endif
 
     T2Debug("%s --out\n", __FUNCTION__);
     return status;
@@ -1555,7 +2844,6 @@ T2ERROR publishEventsProfileUpdates()
     }
     T2Debug("%s --out\n", __FUNCTION__);
     return status;
-
 }
 
 void registerConditionalReportCallBack(triggerReportOnCondtionCallBack triggerConditionCallback)
@@ -1696,6 +2984,9 @@ T2ERROR rbusT2ConsumerUnReg(Vector *triggerConditionList)
     size_t j;
     //char user_data[32] = {0};
     T2Debug("%s ++in\n", __FUNCTION__);
+#if 0
+    t2_unix_socket_server_uninit();
+#endif
 
     if(!t2bus_handle && T2ERROR_SUCCESS != rBusInterface_Init())
     {

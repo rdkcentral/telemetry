@@ -265,14 +265,17 @@ void getComponentsWithEventMarkers(Vector **eventComponentList)
  */
 void getComponentMarkerList(const char* compName, void **markerList)
 {
+    T2Info("%s, %d\n", __func__, __LINE__);
     Vector *compMarkers = NULL;
     if(T2ERROR_SUCCESS == Vector_Create(&compMarkers))
     {
         uint32_t index = 0;
 
+        T2Info("%s, %d\n", __func__, __LINE__);
         pthread_mutex_lock(&t2MarkersMutex);
         for (; index < hash_map_count(markerCompMap); index++)
         {
+            T2Info("%s, %d\n", __func__, __LINE__);
             T2Marker *t2Marker = (T2Marker *)hash_map_lookup(markerCompMap, index);
             if(t2Marker != NULL && !strcmp(t2Marker->componentName, compName))
             {
@@ -287,6 +290,7 @@ void getComponentMarkerList(const char* compName, void **markerList)
         T2Error("Unable to create Vector for Component Markers :: Malloc failure\n");
         return ;
     }
+    T2Info("%s, %d\n", __func__, __LINE__);
     return;
 }
 

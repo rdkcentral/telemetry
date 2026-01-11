@@ -1060,7 +1060,7 @@ T2ERROR enableProfile(const char *profileName)
             eMarker = (EventMarker *)Vector_At(profile->eMarkerList, emIndex);
             addT2EventMarker(eMarker->markerName, eMarker->compName, profile->name, eMarker->skipFreq);
         }
-#if 0
+#if 1
         T2Info("Creating component-specific message queues after marker map update\n");
         if (t2_daemon_create_component_queues() == T2ERROR_SUCCESS)
         {
@@ -1115,7 +1115,7 @@ void updateMarkerComponentMap()
         }
     }
     pthread_mutex_unlock(&plMutex);
-#if 0
+#if 1
     T2Info("Creating component-specific message queues after marker map update\n");
     if (t2_daemon_create_component_queues() == T2ERROR_SUCCESS)
     {

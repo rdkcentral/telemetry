@@ -122,7 +122,7 @@ typedef struct
     uint32_t sequence_id;           // Incremental sequence for tracking updates
 } T2MQMessageHeader;
 
-#if 0
+#if 1
 // Daemon state
 static struct
 {
@@ -1834,7 +1834,7 @@ T2ERROR publishEventsDCMProcConf()
 }
 #endif
 
-#if 0
+#if 1
 /**
  * Cleanup daemon message queues
  */
@@ -2515,7 +2515,7 @@ T2ERROR registerRbusT2EventListener(TelemetryEventCallback eventCB)
     T2Info("%s TCP server thread started successfully\n", __FUNCTION__);
 #endif
 
-#if 0
+#if 1
     // Initialize message queue support
     if (t2_daemon_mq_init() == T2ERROR_SUCCESS)
     {

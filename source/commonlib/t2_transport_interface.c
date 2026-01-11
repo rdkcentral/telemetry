@@ -2,6 +2,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <signal.h>
 
 #include <stdbool.h>
 #include <unistd.h>
@@ -130,13 +131,16 @@ static struct
     bool initialized;
     uint32_t last_sequence_id;      // Track last processed marker update
     time_t last_check_time;         // Timestamp of last marker check
+    bool notification_registered;
+    volatile sig_atomic_t marker_update_pending;
 } g_mq_state =
 {
     .daemon_mq = -1,
-    .broadcast_mq = -1,
     .initialized = false,
     .last_sequence_id = 0,
-    .last_check_time = 0
+    .last_check_time = 0,
+    .notification_registered = false,
+    .marker_update_pending = 0
 };
 
 // Message queue mutex for thread safety
@@ -533,6 +537,54 @@ const char* t2_get_transport_mode_name(void)
     }
 }
 
+// 🔥 NEW: Signal handler for marker update notifications
+static void marker_update_signal_handler(int sig)
+{
+    if (sig == SIGUSR1) {
+        g_mq_state.marker_update_pending = 1;
+    }
+}
+
+// 🔥 NEW: Register for queue notifications
+static T2ERROR t2_mq_register_notification(void)
+{
+    if (g_mq_state.broadcast_mq == -1 || g_mq_state.notification_registered) {
+        return T2ERROR_SUCCESS;
+    }
+    
+    EVENT_DEBUG("%s ++in\n", __FUNCTION__);
+    printf("%s ++in\n", __FUNCTION__);
+    
+    // Install signal handler
+    struct sigaction sa;
+    sa.sa_handler = marker_update_signal_handler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_RESTART;
+    
+    if (sigaction(SIGUSR1, &sa, NULL) == -1) {
+        EVENT_ERROR("Failed to install signal handler: %s\n", strerror(errno));
+        return T2ERROR_FAILURE;
+    }
+    
+    // Register for notification when message arrives
+    struct sigevent sev;
+    sev.sigev_notify = SIGEV_SIGNAL;
+    sev.sigev_signo = SIGUSR1;
+    sev.sigev_value.sival_ptr = NULL;
+    
+    if (mq_notify(g_mq_state.broadcast_mq, &sev) == -1) {
+        EVENT_ERROR("Failed to register mq_notify: %s\n", strerror(errno));
+        printf("Failed to register mq_notify: %s\n", strerror(errno));
+        return T2ERROR_FAILURE;
+    }
+    
+    g_mq_state.notification_registered = true;
+    EVENT_DEBUG("Successfully registered for marker update notifications\n");
+    printf("Successfully registered for marker update notifications\n");
+    
+    return T2ERROR_SUCCESS;
+}
+
 /**
  * Initialize POSIX message queue communication (THREAD-FREE)
  */
@@ -548,10 +600,11 @@ static T2ERROR t2_mq_client_init(void)
         pthread_mutex_unlock(&g_mq_mutex);
         return T2ERROR_SUCCESS;
     }
+    
     char component_broadcast_queue[256];
     // Create component-specific broadcast queue name: "/t2_mq_wifi" or "/t2_mq_default"
     snprintf(component_broadcast_queue, sizeof(component_broadcast_queue),
-             "%s%s", T2_MQ_BROADCAST_NAME, componentName);
+             "%s%s", T2_MQ_BROADCAST_NAME, componentName ? componentName : "default");
 
     // Open daemon queue for sending events (non-blocking)
     g_mq_state.daemon_mq = mq_open(T2_MQ_DAEMON_NAME, O_WRONLY | O_NONBLOCK);
@@ -559,7 +612,6 @@ static T2ERROR t2_mq_client_init(void)
     {
         EVENT_ERROR("Failed to open daemon message queue: %s\n", strerror(errno));
         printf("Failed to open daemon message queue: %s\n", strerror(errno));
-        // Continue anyway, daemon might not be ready yet
     }
     else
     {
@@ -573,28 +625,30 @@ static T2ERROR t2_mq_client_init(void)
     {
         EVENT_ERROR("Failed to open broadcast message queue: %s\n", strerror(errno));
         printf("Failed to open broadcast message queue: %s\n", strerror(errno));
-        // Continue anyway, we can still send events without marker updates
     }
     else
     {
-        EVENT_DEBUG("Successfully connected to broadcast message queue %s\n", component_broadcast_queue);
-        printf("Successfully connected to broadcast message queue %s\n", component_broadcast_queue);
+        EVENT_DEBUG("Successfully opened component broadcast queue: %s\n", component_broadcast_queue);
+        printf("Successfully opened component broadcast queue: %s\n", component_broadcast_queue);
+        
+        // 🔥 NEW: Register for notifications instead of polling
+        t2_mq_register_notification();
     }
 
     g_mq_state.initialized = true;
     g_mq_state.last_check_time = time(NULL);
+    g_mq_state.marker_update_pending = 0;
     strncpy(g_mq_state.broadcast_queue_name, component_broadcast_queue,
             sizeof(g_mq_state.broadcast_queue_name) - 1);
     g_mq_state.broadcast_queue_name[sizeof(g_mq_state.broadcast_queue_name) - 1] = '\0';
 
     pthread_mutex_unlock(&g_mq_mutex);
 
-    EVENT_DEBUG("Message queue client initialized (thread-free mode)\n");
-    printf("Message queue client initialized (thread-free mode)\n");
+    EVENT_DEBUG("Message queue client initialized with notifications\n");
+    printf("Message queue client initialized with notifications\n");
 
     return T2ERROR_SUCCESS;
 }
-
 
 /**
  * Initialize communication subsystem based on selected mode
@@ -1304,89 +1358,76 @@ static void t2_mq_client_uninit(void)
  * Check for marker updates from broadcast queue (NON-BLOCKING, NO THREADS)
  * This is called before every event send operation
  */
-static void t2_mq_check_marker_updates(void)
+// 🔥 REPLACE the expensive t2_mq_check_marker_updates() with this:
+static void t2_mq_process_pending_updates(void)
 {
-    if (!g_mq_state.initialized || g_mq_state.broadcast_mq == -1)
-    {
+    // Only process if we have pending updates (signal-driven)
+    if (!g_mq_state.marker_update_pending) {
+        return;  // 🔥 FAST EXIT - no system calls!
+    }
+    
+    g_mq_state.marker_update_pending = 0;
+    
+    if (!g_mq_state.initialized || g_mq_state.broadcast_mq == -1) {
         return;
     }
-    printf("\n%s ++in\n", __FUNCTION__);
-
-    // Rate limiting: Only check every few seconds to avoid excessive polling
-    time_t current_time = time(NULL);
-    if (current_time - g_mq_state.last_check_time < 2)    // Check every 2 seconds max
-    {
-        return;
-    }
-    g_mq_state.last_check_time = current_time;
-
+    
+    EVENT_DEBUG("Processing pending marker updates\n");
+    printf("Processing pending marker updates\n");
+    
     char message[T2_MQ_MAX_MSG_SIZE];
     ssize_t msg_size;
     bool updates_processed = false;
-
-    EVENT_DEBUG("Checking for marker updates from broadcast queue\n");
-    printf("Checking for marker updates from broadcast queue\n");
-
-    // Process ALL available marker updates (non-blocking)
+    
+    // Process ALL available messages (they're already there)
     while ((msg_size = mq_receive(g_mq_state.broadcast_mq, message, T2_MQ_MAX_MSG_SIZE, NULL)) > 0)
     {
         T2MQMessageHeader* header = (T2MQMessageHeader*)message;
-
-        EVENT_DEBUG("Received message type: %d, sequence: %u\n", header->msg_type, header->sequence_id);
-        printf("Received message type: %d, sequence: %u\n", header->msg_type, header->sequence_id);
-
-        // Only process marker updates with newer sequence IDs
+        
+        EVENT_DEBUG("Received message type: %d from daemon\n", header->msg_type);
+        printf("Received message type: %d from daemon\n", header->msg_type);
+        
         if (header->msg_type == T2_MQ_MSG_MARKER_UPDATE &&
-                header->sequence_id > g_mq_state.last_sequence_id)
+            header->sequence_id > g_mq_state.last_sequence_id)
         {
-
-            // Check if this update is for our component or global
             bool is_for_us = (strcmp(header->component_name, "ALL") == 0) ||
-                             (componentName && strcmp(header->component_name, componentName) == 0);
-
+                           (componentName && strcmp(header->component_name, componentName) == 0);
+            
             if (is_for_us && header->data_length > 0)
             {
                 char* marker_data = message + sizeof(T2MQMessageHeader);
                 marker_data[header->data_length] = '\0';
-
-                EVENT_DEBUG("Processing marker update for component %s: %s\n",
-                            header->component_name, marker_data);
-                printf("Processing marker update for component %s: %s\n",
-                       header->component_name, marker_data);
-
+                
+                EVENT_DEBUG("Processing marker update: %s (seq: %u)\n", marker_data, header->sequence_id);
+                printf("Processing marker update: %s (seq: %u)\n", marker_data, header->sequence_id);
+                
                 // Update local event marker map
                 t2_parse_and_store_markers(marker_data);
-
-                // Update sequence tracking
                 g_mq_state.last_sequence_id = header->sequence_id;
                 updates_processed = true;
-
-                EVENT_DEBUG("Successfully updated marker map from broadcast (seq: %u)\n",
-                            header->sequence_id);
-                printf("Successfully updated marker map from broadcast (seq: %u)\n",
-                       header->sequence_id);
             }
-            else
-            {
-                EVENT_DEBUG("Marker update not for our component (%s), skipping\n",
-                            header->component_name);
-            }
-        }
-        else if (header->sequence_id <= g_mq_state.last_sequence_id)
-        {
-            EVENT_DEBUG("Ignoring old marker update (seq: %u <= %u)\n",
-                        header->sequence_id, g_mq_state.last_sequence_id);
         }
     }
-
-    // msg_size == -1 here means no more messages (EAGAIN/EWOULDBLOCK) or error
-    if (errno != EAGAIN && errno != EWOULDBLOCK)
-    {
+    
+    // Re-register for next notification (mq_notify is one-shot)
+    if (updates_processed && g_mq_state.broadcast_mq != -1) {
+        struct sigevent sev;
+        sev.sigev_notify = SIGEV_SIGNAL;
+        sev.sigev_signo = SIGUSR1;
+        sev.sigev_value.sival_ptr = NULL;
+        
+        if (mq_notify(g_mq_state.broadcast_mq, &sev) == -1) {
+            EVENT_ERROR("Failed to re-register mq_notify: %s\n", strerror(errno));
+            printf("Failed to re-register mq_notify: %s\n", strerror(errno));
+        }
+    }
+    
+    if (errno != EAGAIN && errno != EWOULDBLOCK && msg_size == -1) {
         EVENT_ERROR("Error receiving marker update: %s\n", strerror(errno));
-    }
-    else if (updates_processed)
-    {
-        EVENT_DEBUG("Marker update check completed - map updated\n");
+        printf("Error receiving marker update: %s\n", strerror(errno));
+    } else if (updates_processed) {
+        EVENT_DEBUG("Successfully processed marker updates\n");
+        printf("Successfully processed marker updates\n");
     }
 }
 
@@ -1486,14 +1527,14 @@ int send_event_via_message_queue(const char* data, const char *markerName)
         return -1;
     }
 
-    // Check for marker updates BEFORE sending event
-    t2_mq_check_marker_updates();
+    // 🔥 REPLACE expensive polling with lightweight check
+    t2_mq_process_pending_updates();  // Only processes if signal received
 
     // Validate marker against client event map
     if(!is_valid_event_marker(markerName))
     {
         EVENT_DEBUG("%s markerName %s not found in event list for component %s\n",
-                    __FUNCTION__, markerName, componentName);
+                   __FUNCTION__, markerName, componentName);
         printf("%s markerName %s not found in event list for component %s\n",
                __FUNCTION__, markerName, componentName);
         return 0; // Not an error, just filtered out
@@ -1550,7 +1591,7 @@ static T2ERROR t2_mq_request_initial_markers(void)
 
         // Give daemon a moment to respond, then check for updates
         sleep(1);
-        t2_mq_check_marker_updates();
+        t2_mq_process_pending_updates();
     }
     else
     {

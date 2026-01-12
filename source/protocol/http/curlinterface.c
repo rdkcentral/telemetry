@@ -469,8 +469,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
                 {
                     // skip past file scheme in URI
                     telemetry_print_sha256("Telmetry hash", (unsigned char *)pCertPC,strlen(pCertPC));
-                    pCertFile = pCertURI;
-                    T2Info("%s:  Certs path: %s len : %d\n", __func__, pCertFile , strlen(pCertPC));
+                    pCertFile = pCertURI;                    
                     if ( strncmp( pCertFile, FILESCHEME, sizeof(FILESCHEME) - 1 ) == 0 )
                     {
                         pCertFile += (sizeof(FILESCHEME) - 1);

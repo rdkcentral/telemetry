@@ -480,7 +480,10 @@ T2ERROR initReportProfiles()
         initMtls();
     }
 #endif
-
+    // Initialize OTLP tracing after everything else is set up
+    rdk_otlp_init("telemetry-reportprofiles", "2.0.1");
+    T2Info("OTLP instrumentation initialized\n");
+    rdk_otlp_start_distributed_trace("Reportprofiles.Dtracing", "initprofiles");
 // Drop root before we are creating any folders/flags to avoid access issues
 #if defined(DROP_ROOT_PRIV)
     // Drop root privileges for Telemetry 2.0, If NonRootSupport RFC is true
@@ -658,10 +661,7 @@ T2ERROR initReportProfiles()
         T2Error("Failed to create T2 bootflag %s \n", BOOTFLAG);
     }
 
-    // Initialize OTLP tracing after everything else is set up
-    rdk_otlp_init("telemetry-reportprofiles", "2.0.1");
-    T2Info("OTLP instrumentation initialized\n");
-
+    rdk_otlp_finish_distributed_trace();
     T2Debug("%s --out\n", __FUNCTION__);
     T2Info("Init ReportProfiles Successful\n");
     return T2ERROR_SUCCESS;

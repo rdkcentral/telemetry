@@ -89,7 +89,6 @@ void freeSchedulerProfile(void *data)
  */
 int getLapsedTime (struct timespec *output, struct timespec *time1, struct timespec *time2)
 {
-    rdk_otlp_start_child_span("scheduler", "get");
     /* handle the underflow condition, if time2 nsec has higher value */
     int com = time1->tv_nsec < time2->tv_nsec;
     if (com)
@@ -113,7 +112,6 @@ int getLapsedTime (struct timespec *output, struct timespec *time1, struct times
     output->tv_sec = time1->tv_sec - time2->tv_sec;
 
     output->tv_nsec = time1->tv_nsec - time2->tv_nsec;
-    rdk_otlp_finish_child_span();
     if(time1->tv_sec < time2->tv_sec)
     {
         return 1;
@@ -440,6 +438,7 @@ T2ERROR initScheduler(TimeoutNotificationCB notificationCb, ActivationTimeoutCB 
         T2Info("Scheduler is already initialized \n");
         return T2ERROR_SUCCESS;
     }
+    rdk_otlp_start_child_span("Reportprofiles.Dtracing", "initscheduler");
     timeoutNotificationCb = notificationCb;
     activationTimeoutCb = activationCB;
     notifySchedulerstartcb = notifyschedulerCB;
@@ -450,7 +449,7 @@ T2ERROR initScheduler(TimeoutNotificationCB notificationCb, ActivationTimeoutCB 
         T2Error("%s Mutex init has failed\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
-
+    rdk_otlp_finish_child_span();
     T2Debug("%s --out\n", __FUNCTION__);
     return Vector_Create(&profileList);
 }

@@ -88,6 +88,46 @@ sequenceDiagram
 
 ## Testing
 
+### Container-Based Development Environment
+
+Two pre-built containers are available for faster development and testing:
+
+#### Available Containers
+- **Native Platform Container** (`ghcr.io/rdkcentral/docker-device-mgt-service-test/native-platform`) - Complete RDK environment with telemetry dependencies
+- **Mock XConf Container** (`ghcr.io/rdkcentral/docker-device-mgt-service-test/mockxconf`) - Mock XConf services for testing
+
+#### Quick Container Setup
+
+**Option 1: Use Pre-built Containers**
+```bash
+# Pull and start pre-built containers
+docker-compose up
+```
+
+**Option 2: Build Containers Locally**
+```bash
+# Clone the container source repository
+git clone https://github.com/rdkcentral/docker-device-mgt-service-test.git
+
+# Build containers locally from source
+cd containers
+./build.sh
+
+# Start development environment with locally built containers
+docker-compose up
+
+# Access native platform container
+docker exec -it native-platform /bin/bash
+
+# Access mock XConf container  
+docker exec -it mockxconf /bin/bash
+```
+
+#### Mock Services Available
+- **XConf DCA Settings**: `https://mockxconf:50050/loguploader/getT2DCMSettings`
+- **Data Lake Upload**: `https://mockxconf:50051/dataLakeMock`
+- **Report Profile Setup**: Use `rbuscli setvalues Device.X_RDKCENTRAL-COM_T2.ReportProfiles string ''`
+
 ### L1 Tests (Unit Tests)
 Located in `source/test/` directory with individual component tests.
 
@@ -97,6 +137,11 @@ Located in `source/test/` directory with individual component tests.
 
 # Run with coverage
 ./test/run_ut.sh --enable-cov
+
+# In container environment
+docker exec -it native-platform /bin/bash
+cd /mnt/L2_CONTAINER_SHARED_VOLUME
+./test/run_ut.sh
 ```
 
 **Test Coverage:**
@@ -113,6 +158,11 @@ Located in `test/functional-tests/` directory with end-to-end scenarios.
 
 ```bash
 # Run integration tests
+./test/run_l2.sh
+
+# In container environment with mock services
+docker exec -it native-platform /bin/bash
+cd /mnt/L2_CONTAINER_SHARED_VOLUME
 ./test/run_l2.sh
 ```
 

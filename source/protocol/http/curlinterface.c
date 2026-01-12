@@ -288,15 +288,15 @@ void telemetry_print_sha256(const char *label, const unsigned char *buffer, size
     unsigned char hash[SHA256_DIGEST_LENGTH];
 
     if (!buffer || len == 0) {
-        fprintf(stderr, "[certdbg] %s: invalid buffer\n", label ? label : "SHA256");        
+        printf("[certdbg] %s: invalid buffer\n", label ? label : "SHA256");        
         return;
     }
 
     SHA256(buffer, len, hash);
-    fprintf(stderr, "[certdbg] %s: SHA256:\n", label ? label : "Buffer");    
+    printf("[certdbg] %s: SHA256:\n", label ? label : "Buffer");    
 
     for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
-        fprintf(stderr, "%02x\n", hash[i]);         
+        printf("%02x\n", hash[i]);         
     }
 }
 

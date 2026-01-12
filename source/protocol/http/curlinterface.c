@@ -288,17 +288,16 @@ void telemetry_print_sha256(const char *label, const unsigned char *buffer, size
     unsigned char hash[SHA256_DIGEST_LENGTH];
 
     if (!buffer || len == 0) {
-        T2Info("[certdbg] %s: invalid buffer\n", label ? label : "SHA256");
+        fprintf(stderr, "[certdbg] %s: invalid buffer\n", label ? label : "SHA256");        
         return;
     }
 
     SHA256(buffer, len, hash);
-    T2Info("[certdbg] %s SHA256: ",label ? label : "Buffer");
+    fprintf(stderr, "[certdbg] %s: SHA256:\n", label ? label : "Buffer");    
 
     for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
-        T2Info("%02x", hash[i]);
+        fprintf(stderr, "%02x\n", hash[i]);         
     }
-    T2Info("\n");
 }
 
 T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
@@ -336,9 +335,6 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
         T2Debug("%s --out\n", __FUNCTION__);
         return ret;
     }
-#ifdef LIBRDKCERTSEL_BUILD
-    curlCertSelectorInit();
-#endif
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
 
 #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
@@ -422,6 +418,9 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
      */
     if(childPid == 0)
     {
+#ifdef LIBRDKCERTSEL_BUILD
+        curlCertSelectorInit();
+#endif
         curl_global_cleanup();
         curl_global_init(CURL_GLOBAL_DEFAULT);
         curl = curl_easy_init();
@@ -504,6 +503,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
                             T2Info("%s: Using xpki Certs connection certname: %s\n", __func__, pCertFile);
 #endif
                             fprintf(stderr, "curl failed: %s\n", curl_easy_strerror(curl_code));
+                            fprintf(stderr, "Certs path: %s len : %d\n", pCertFile , strlen(pCertPC));
                             childCurlResponse.lineNumber = __LINE__;
                         }
                         else

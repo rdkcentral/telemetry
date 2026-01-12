@@ -422,6 +422,8 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
      */
     if(childPid == 0)
     {
+        curl_global_cleanup();
+        curl_global_init(CURL_GLOBAL_DEFAULT);
         curl = curl_easy_init();
         if(curl)
         {
@@ -492,6 +494,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
                             // This might not be working we need to review this
                             childCurlResponse.curlSetopCode = code;
                         }
+                        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
                         curl_code = curl_easy_perform(curl);
                         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
                         if(curl_code != CURLE_OK || http_code != 200)
@@ -526,6 +529,12 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
         }
 
 child_cleanReturn :
+       if (headerList){
+           curl_slist_free_all(headerList); 
+       }
+       if (curl){
+           curl_easy_cleanup(curl);
+       }
 #ifndef LIBRDKCERTSEL_BUILD
         if(NULL != pCertFile)
         {

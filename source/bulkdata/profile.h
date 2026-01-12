@@ -141,4 +141,16 @@ T2ERROR appendTriggerCondition (Profile *tempProfile, const char *referenceName,
 
 T2ERROR ReportProfiles_addReportProfile(Profile *profile);
 T2ERROR RemovePreRPfromDisk(const char* path, hash_map_t *map);
+
+/* Internal functions exposed for unit testing - DO NOT USE in production code */
+#ifdef GTEST_ENABLE
+void profile_internal_freeRequestURIparam(void *data);
+void profile_internal_freeReportProfileConfig(void *data);
+void profile_internal_freeProfile(void *data);
+T2ERROR profile_internal_getProfile(const char *profileName, Profile **profile);
+T2ERROR profile_internal_initJSONReportProfile(cJSON** jsonObj, cJSON **valArray, char *rootname);
+void* profile_internal_CollectAndReport(void* data);
+void profile_internal_loadReportProfilesFromDisk(bool checkPreviousSeek);
+#endif
+
 #endif /* _PROFILE_H_ */

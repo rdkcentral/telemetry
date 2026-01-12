@@ -59,7 +59,7 @@ typedef struct __triggerConditionObj__
     char referenceValue[MAX_LEN];
 } triggerConditionObj ;
 
-static void freeRequestURIparam(void *data)
+void profile_internal_freeRequestURIparam(void *data)
 {
     if(data != NULL)
     {
@@ -80,7 +80,7 @@ static void freeRequestURIparam(void *data)
     }
 }
 
-static void freeReportProfileConfig(void *data)
+void profile_internal_freeReportProfileConfig(void *data)
 {
     if(data != NULL)
     {
@@ -99,7 +99,7 @@ static void freeReportProfileConfig(void *data)
     }
 }
 
-static void freeProfile(void *data)
+void profile_internal_freeProfile(void *data)
 {
     T2Debug("%s ++in \n", __FUNCTION__);
     if(data != NULL)
@@ -146,7 +146,7 @@ static void freeProfile(void *data)
             free(profile->t2HTTPDest->URL);
             if(profile->t2HTTPDest->RequestURIparamList)
             {
-                Vector_Destroy(profile->t2HTTPDest->RequestURIparamList, freeRequestURIparam);
+                Vector_Destroy(profile->t2HTTPDest->RequestURIparamList, profile_internal_freeRequestURIparam);
             }
             free(profile->t2HTTPDest);
         }
@@ -205,7 +205,7 @@ static void freeProfile(void *data)
     T2Debug("%s ++out \n", __FUNCTION__);
 }
 
-static T2ERROR getProfile(const char *profileName, Profile **profile)
+T2ERROR profile_internal_getProfile(const char *profileName, Profile **profile)
 {
     size_t profileIndex = 0;
     Profile *tempProfile = NULL;
@@ -229,7 +229,7 @@ static T2ERROR getProfile(const char *profileName, Profile **profile)
     return T2ERROR_PROFILE_NOT_FOUND;
 }
 
-static T2ERROR initJSONReportProfile(cJSON** jsonObj, cJSON **valArray, char *rootname)
+T2ERROR profile_internal_initJSONReportProfile(cJSON** jsonObj, cJSON **valArray, char *rootname)
 {
     *jsonObj = cJSON_CreateObject();
     if(*jsonObj == NULL)
@@ -314,7 +314,7 @@ void getMarkerCompRbusSub(bool subscription)
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
-static void* CollectAndReport(void* data)
+void* profile_internal_CollectAndReport(void* data)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
     if(data == NULL)
@@ -402,7 +402,7 @@ static void* CollectAndReport(void* data)
                 triggercondition = profile->jsonReportObj;
                 profile->jsonReportObj = NULL;
             }
-            if(T2ERROR_SUCCESS != initJSONReportProfile(&profile->jsonReportObj, &valArray, profile->RootName))
+            if(T2ERROR_SUCCESS != profile_internal_initJSONReportProfile(&profile->jsonReportObj, &valArray, profile->RootName))
             {
                 T2Error("Failed to initialize JSON Report\n");
                 profile->reportInProgress = false;
@@ -798,7 +798,7 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
     pthread_mutex_lock(&plMutex);
 
     Profile *profile = NULL;
-    if(T2ERROR_SUCCESS != getProfile(profileName, &profile))
+    if(T2ERROR_SUCCESS != profile_internal_getProfile(profileName, &profile))
     {
         T2Error("Profile : %s not found\n", profileName);
         pthread_mutex_unlock(&plMutex);
@@ -822,7 +822,7 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
         }
         else
         {
-            pthread_create(&profile->reportThread, NULL, CollectAndReport, (void*)profile);
+            pthread_create(&profile->reportThread, NULL, profile_internal_CollectAndReport, (void*)profile);
         }
     }
     else
@@ -840,7 +840,7 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
 
     pthread_mutex_lock(&plMutex);
     Profile *profile = NULL;
-    if(T2ERROR_SUCCESS != getProfile(profileName, &profile))
+    if(T2ERROR_SUCCESS != profile_internal_getProfile(profileName, &profile))
     {
         T2Error("Profile : %s not found\n", profileName);
         pthread_mutex_unlock(&plMutex);
@@ -1019,7 +1019,7 @@ T2ERROR enableProfile(const char *profileName)
     }
     pthread_mutex_lock(&plMutex);
     Profile *profile = NULL;
-    if(T2ERROR_SUCCESS != getProfile(profileName, &profile))
+    if(T2ERROR_SUCCESS != profile_internal_getProfile(profileName, &profile))
     {
         T2Error("Profile : %s not found\n", profileName);
         pthread_mutex_unlock(&plMutex);
@@ -1116,7 +1116,7 @@ T2ERROR disableProfile(const char *profileName, bool *isDeleteRequired)
 
     pthread_mutex_lock(&plMutex);
     Profile *profile = NULL;
-    if(T2ERROR_SUCCESS != getProfile(profileName, &profile))
+    if(T2ERROR_SUCCESS != profile_internal_getProfile(profileName, &profile))
     {
         T2Error("Profile : %s not found\n", profileName);
         pthread_mutex_unlock(&plMutex);
@@ -1202,7 +1202,7 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
 
     pthread_mutex_lock(&plMutex);
     T2Debug("Deleting all profiles from the profileList\n");
-    Vector_Destroy(profileList, freeProfile);
+    Vector_Destroy(profileList, profile_internal_freeProfile);
     profileList = NULL;
     Vector_Create(&profileList);
     pthread_mutex_unlock(&plMutex);
@@ -1242,7 +1242,7 @@ T2ERROR deleteProfile(const char *profileName)
 
     Profile *profile = NULL;
     pthread_mutex_lock(&plMutex);
-    if(T2ERROR_SUCCESS != getProfile(profileName, &profile))
+    if(T2ERROR_SUCCESS != profile_internal_getProfile(profileName, &profile))
     {
         T2Error("Profile : %s not found\n", profileName);
         pthread_mutex_unlock(&plMutex);
@@ -1299,7 +1299,7 @@ T2ERROR deleteProfile(const char *profileName)
 #ifdef PERSIST_LOG_MON_REF
     removeProfileFromDisk(SEEKFOLDER, profile->name);
 #endif
-    Vector_RemoveItem(profileList, profile, freeProfile);
+    Vector_RemoveItem(profileList, profile, profile_internal_freeProfile);
 
     pthread_mutex_unlock(&plMutex);
     T2Debug("%s --out\n", __FUNCTION__);
@@ -1325,7 +1325,7 @@ void sendLogUploadInterruptToScheduler()
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
-static void loadReportProfilesFromDisk(bool checkPreviousSeek)
+void profile_internal_loadReportProfilesFromDisk(bool checkPreviousSeek)
 {
     (void)checkPreviousSeek;
     fetchLocalConfigs(SHORTLIVED_PROFILES_PATH, NULL);   //API used for creating /tmp/t2reportprofiles dir
@@ -1442,7 +1442,7 @@ static void loadReportProfilesFromDisk(bool checkPreviousSeek)
                 T2Error("Unable to create and add new profile for name : %s\n", config->name);
                 if (profile != NULL)
                 {
-                    freeProfile(profile);
+                    profile_internal_freeProfile(profile);
                     profile = NULL;
                 }
             }
@@ -1450,7 +1450,7 @@ static void loadReportProfilesFromDisk(bool checkPreviousSeek)
     }
     T2Info("Completed processing %lu profiles on the disk,trying to fetch new/updated profiles\n", (unsigned long)Vector_Size(configList));
     T2totalmem_calculate();
-    Vector_Destroy(configList, freeReportProfileConfig);
+    Vector_Destroy(configList, profile_internal_freeReportProfileConfig);
     clearPersistenceFolder(CACHED_MESSAGE_PATH);
 
     T2Debug("%s --out\n", __FUNCTION__);
@@ -1482,7 +1482,7 @@ T2ERROR initProfileList(bool checkPreviousSeek)
 
     registerConditionalReportCallBack(&triggerReportOnCondtion);
 
-    loadReportProfilesFromDisk(checkPreviousSeek);
+    profile_internal_loadReportProfilesFromDisk(checkPreviousSeek);
 
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;

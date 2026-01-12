@@ -197,19 +197,6 @@ make
 docker-compose -f containers/compose.yaml up
 ```
 
-## Configuration
-
-- **Main Config**: `config/T2Agent.cfg` - CCSP component configuration
-- **Default Profile**: `config/Default_T2_ReportProfile.json` - Sample report profile
-- **TR-181 Schema**: `config/TR181-T2-USGv2.XML` - Data model definition
-
-## Data Formats
-
-- **JSON** - Modern API format
-- **MessagePack** - Binary serialization for efficiency  
-- **XML/XDR** - Legacy format support
-- **CSV** - Simple export format
-
 ## License
 
 Licensed under Apache License 2.0. See `LICENSE` file for details.

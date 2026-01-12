@@ -1437,3 +1437,28 @@ TEST_F(ProfileTest, createComponentDataElements) {
     createComponentDataElements();
 }
 
+//==================================== Phase 1: Helper Functions Tests ===================
+
+// Test 1.4: getProfileHashMap - Simple test without full initialization
+TEST_F(ProfileTest, GetProfileHashMap_Simple) {
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(0));
+    
+    hash_map_t *hashMap = getProfileHashMap();
+    EXPECT_NE(hashMap, nullptr);
+    if(hashMap) {
+        hash_map_destroy(hashMap, free);
+    }
+}
+
+// Test 1.5: NotifySchedulerstart - Simple tests
+TEST_F(ProfileTest, NotifySchedulerstart_Simple) {
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(::testing::AtLeast(1))
+        .WillRepeatedly(Return(0));
+    
+    NotifySchedulerstart("TestProfile", true);
+    NotifySchedulerstart("TestProfile", false);
+}
+

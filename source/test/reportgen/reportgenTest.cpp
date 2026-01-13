@@ -571,7 +571,7 @@ TEST_F(reportgenTestFixture, encodeGrepResultInJSON2)
 TEST_F(reportgenTestFixture, encodeGrepResultInJSON3)
 {
       Vector* grepResult = NULL;
-       Vector_Create(&grepResult);
+      Vector_Create(&grepResult);
       GrepMarker* gparam = (GrepMarker *) malloc(sizeof(GrepMarker));
       memset(gparam, 0, sizeof(GrepMarker));
       gparam->markerName = strdup("TEST_MARKER1");
@@ -688,96 +688,6 @@ TEST_F(reportgenTestFixture, encodeGrepResultInJSON_CreateArrayFails)
     free(marker);
     Vector_Destroy(grepList, nullptr);
 }
-#if 0
-TEST_F(reportgenTestFixture, encodeGrepResultInJSON_RegcompFails)
-{
-    Vector* grepList = nullptr;
-    ASSERT_EQ(Vector_Create(&grepList), T2ERROR_SUCCESS);
-
-    GrepMarker* marker = (GrepMarker*)malloc(sizeof(GrepMarker));
-    memset(marker, 0, sizeof(GrepMarker));
-    marker->mType = MTYPE_ACCUMULATE;
-    marker->regexParam = strdup("invalid[");
-    Vector_Create(&marker->u.accumulatedValues);
-    Vector_PushBack(marker->u.accumulatedValues, strdup("value"));
-    Vector_PushBack(grepList, marker);
-
-    cJSON* valArray = (cJSON*)0xdeadbeef;
-    cJSON* mockArrayObj = (cJSON*)0x1234;
-    cJSON* mockVectorArray = (cJSON*)0x4321;
-
-    EXPECT_CALL(*m_reportgenMock, cJSON_CreateObject())
-        .Times(1)
-        .WillOnce(::testing::Return(mockArrayObj));
-    EXPECT_CALL(*m_reportgenMock, cJSON_CreateArray())
-        .Times(1)
-        .WillOnce(::testing::Return(mockVectorArray));
-    EXPECT_CALL(*m_reportgenMock, regcomp(_, _, _))
-        .Times(1)
-        .WillOnce(Return(1));
-    // Let any cJSON_AddItemToArray go, regardless of parameters
-    EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToArray(_, _))
-	         .Times(::testing::AnyNumber())
-        .WillRepeatedly(Return(true));
-    // Expect cJSON_AddItemToObject to add vectorArray to arrayObj
-    EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToObject(mockArrayObj, _, mockVectorArray))
-        .Times(1)
-        .WillOnce(Return(true));
-
-    EXPECT_EQ(T2ERROR_SUCCESS, encodeGrepResultInJSON(valArray, grepList));
-
-    free(Vector_At(marker->u.accumulatedValues, 0));
-    Vector_Destroy(marker->u.accumulatedValues, nullptr);
-    free(marker->regexParam);
-    free(marker);
-    Vector_Destroy(grepList, nullptr);
-}
-TEST_F(reportgenTestFixture, encodeGrepResultInJSON_markerValueBranch_success)
-{
-    // Setup grepMarker
-    Vector* grepList = nullptr;
-    ASSERT_EQ(Vector_Create(&grepList), T2ERROR_SUCCESS);
-
-    GrepMarker* marker = (GrepMarker*)malloc(sizeof(GrepMarker));
-    memset(marker, 0, sizeof(GrepMarker));
-    marker->markerName = strdup("TEST_GREP");
-    marker->mType = MTYPE_ABSOLUTE;
-    marker->trimParam = true;             // will hit trimLeadingAndTrailingws
-    marker->regexParam = strdup("[A-Z]+"); // will hit applyRegexToValue
-
-    marker->u.markerValue = strdup(" foo "); // leading/trailing ws
-
-    Vector_PushBack(grepList, marker);
-
-    cJSON* valArray = (cJSON*)malloc(sizeof(cJSON));
-    cJSON* mockArrayObj = (cJSON*)0x1234;
-
-    EXPECT_CALL(*m_reportgenMock, cJSON_CreateObject())
-        .Times(1)
-        .WillOnce(Return(mockArrayObj));
-    // cJSON_AddStringToObject called and succeed
-    EXPECT_CALL(*m_reportgenMock, cJSON_AddStringToObject(mockArrayObj, StrEq("TEST_GREP"), _))
-        .Times(1)
-        .WillOnce(Return((cJSON*)0x5678));
-
-    // Add to array
-    EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToArray(valArray, mockArrayObj))
-        .Times(1)
-        .WillOnce(Return(true));
-
-    // Do not set EXPECT_CALL for applyRegexToValue since it is not called in this code path!
-
-    EXPECT_EQ(T2ERROR_SUCCESS, encodeGrepResultInJSON(valArray, grepList));
-         // Clean up
-     free(marker->markerName);
-     free(marker->regexParam);
-     free(marker);
-     Vector_Destroy(grepList, nullptr);
-     cJSON_Delete(valArray);
-     if(valArray) free(valArray);
-}
-#endif
-// 1. Skip branch: marker is nullptr
 TEST_F(reportgenTestFixture, encodeGrepResultInJSON_null_marker_skipped) {
     Vector *list = nullptr;
     ASSERT_EQ(Vector_Create(&list), T2ERROR_SUCCESS);
@@ -787,7 +697,6 @@ TEST_F(reportgenTestFixture, encodeGrepResultInJSON_null_marker_skipped) {
     Vector_Destroy(list, nullptr);
     free(valArray);
 }
-// 2. Counter marker with regex: regcomp fails, then regexec fails, then succeeds (full inner flow)
 TEST_F(reportgenTestFixture, encodeGrepResultInJSON_counter_regex_all_branches) {
     Vector* list = NULL;
     ASSERT_EQ(Vector_Create(&list), T2ERROR_SUCCESS);
@@ -813,151 +722,6 @@ TEST_F(reportgenTestFixture, encodeGrepResultInJSON_counter_regex_all_branches) 
     Vector_Destroy(list, nullptr);
     free(valArray);
 }
-#if 0
-TEST_F(reportgenTestFixture, encodeGrepResultInJSON_markerValueBranch_success)
-{
-    // Setup grepMarker
-    Vector* grepList = nullptr;
-    ASSERT_EQ(Vector_Create(&grepList), T2ERROR_SUCCESS);
-
-    GrepMarker* marker = (GrepMarker*)malloc(sizeof(GrepMarker));
-    memset(marker, 0, sizeof(GrepMarker));
-    marker->markerName = strdup("TEST_GREP");
-    marker->mType = MTYPE_ABSOLUTE;
-    marker->trimParam = true;             // will hit trimLeadingAndTrailingws
-    marker->regexParam = strdup("[A-Z]+"); // will hit applyRegexToValue
-
-    marker->u.markerValue = strdup(" foo "); // leading/trailing ws
-
-    Vector_PushBack(grepList, marker);
-
-    // Use the official cJSON creation functions
-    cJSON* valArray = cJSON_CreateArray();
-
-    // Use mock objects as real cJSON pointers if mocking is necessary
-    cJSON* mockArrayObj = cJSON_CreateObject();
-
-    EXPECT_CALL(*m_reportgenMock, cJSON_CreateObject())
-        .Times(1)
-        .WillOnce(Return(mockArrayObj));
-        // cJSON_AddStringToObject called and succeed
-    EXPECT_CALL(*m_reportgenMock, cJSON_AddStringToObject(mockArrayObj, StrEq("TEST_GREP"), _))
-        .Times(1)
-        .WillOnce(Return(cJSON_CreateString("some string"))); // you can use actual cJSON object here or nullptr if you don't expect a deref
-
-    // Add to array
-    EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToArray(valArray, mockArrayObj))
-        .Times(1)
-        .WillOnce(Return(true));
-
-    // Do not set EXPECT_CALL for applyRegexToValue since it is not called in this code path!
-
-    EXPECT_EQ(T2ERROR_SUCCESS, encodeGrepResultInJSON(valArray, grepList));
-
-    // Clean up
-    free(marker->markerName);
-    free(marker->regexParam);
-    free(marker->u.markerValue); // You forgot to free this one!
-    free(marker);
-    Vector_Destroy(grepList, nullptr);
-    cJSON_Delete(valArray); // This will clean up all children if they were added correctly
-
-    // No need for: free(valArray); // Do NOT manually free after cJSON_Delete
-
-    // If using mocks, you might need to manually free mockArrayObj only if it's not added to the array
-    // If cJSON_AddItemToArray(valArray, mockArrayObj) is successful, cJSON_Delete(valArray) will free children too
-}
-#endif
-#if 0
-TEST_F(reportgenTestFixture, encodeGrepResultInJSON_markerValueBranch_success)
-{
-    // Setup grepMarker
-    Vector* grepList = nullptr;
-    ASSERT_EQ(Vector_Create(&grepList), T2ERROR_SUCCESS);
-
-    GrepMarker* marker = (GrepMarker*)malloc(sizeof(GrepMarker));
-    memset(marker, 0, sizeof(GrepMarker));
-    marker->markerName = strdup("TEST_GREP");
-    marker->mType = MTYPE_ABSOLUTE;
-    marker->trimParam = true;             // will hit trimLeadingAndTrailingws
-    marker->regexParam = strdup("[A-Z]+"); // will hit applyRegexToValue
-
-    marker->u.markerValue = strdup(" foo "); // leading/trailing ws
-
-    Vector_PushBack(grepList, marker);
-
-    cJSON* valArray = (cJSON*)malloc(sizeof(cJSON));
-    cJSON* mockArrayObj = (cJSON*)0x1234;
-
-    EXPECT_CALL(*m_reportgenMock, cJSON_CreateObject())
-        .Times(1)
-        .WillOnce(Return(mockArrayObj));
-        // cJSON_AddStringToObject called and succeed
-    EXPECT_CALL(*m_reportgenMock, cJSON_AddStringToObject(mockArrayObj, StrEq("TEST_GREP"), _))
-        .Times(1)
-        .WillOnce(Return((cJSON*)0x5678));
-
-    // Add to array
-    EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToArray(valArray, mockArrayObj))
-        .Times(1)
-        .WillOnce(Return(true));
-
-    // Do not set EXPECT_CALL for applyRegexToValue since it is not called in this code path!
-
-    EXPECT_EQ(T2ERROR_SUCCESS, encodeGrepResultInJSON(valArray, grepList));
-
-     // Clean up
-     free(marker->markerName);
-     free(marker->regexParam);
-     free(marker);
-     Vector_Destroy(grepList, nullptr);
-     cJSON_Delete(valArray);
-     if(valArray) free(valArray);
-}
-TEST_F(reportgenTestFixture, encodeGrepResultInJSON_RegcompFails)
-{
-    Vector* grepList = nullptr;
-    ASSERT_EQ(Vector_Create(&grepList), T2ERROR_SUCCESS);
-
-    GrepMarker* marker = (GrepMarker*)malloc(sizeof(GrepMarker));
-    memset(marker, 0, sizeof(GrepMarker));
-    marker->mType = MTYPE_ACCUMULATE;
-    marker->regexParam = strdup("invalid[");
-    Vector_Create(&marker->u.accumulatedValues);
-    Vector_PushBack(marker->u.accumulatedValues, strdup("value"));
-    Vector_PushBack(grepList, marker);
-
-    cJSON* valArray = (cJSON*)0xdeadbeef;
-    cJSON* mockArrayObj = (cJSON*)0x1234;
-    cJSON* mockVectorArray = (cJSON*)0x4321;
-
-    EXPECT_CALL(*m_reportgenMock, cJSON_CreateObject())
-        .Times(1)
-        .WillOnce(::testing::Return(mockArrayObj));
-    EXPECT_CALL(*m_reportgenMock, cJSON_CreateArray())
-        .Times(1)
-        .WillOnce(::testing::Return(mockVectorArray));
-    EXPECT_CALL(*m_reportgenMock, regcomp(_, _, _))
-        .Times(1)
-        .WillOnce(Return(1));
-    // Let any cJSON_AddItemToArray go, regardless of parameters
-    EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToArray(_, _))
-        .Times(::testing::AnyNumber())
-        .WillRepeatedly(Return(true));
-    // Expect cJSON_AddItemToObject to add vectorArray to arrayObj
-    EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToObject(mockArrayObj, _, mockVectorArray))
-        .Times(1)
-        .WillOnce(Return(true));
-        EXPECT_EQ(T2ERROR_SUCCESS, encodeGrepResultInJSON(valArray, grepList));
-
-    free(Vector_At(marker->u.accumulatedValues, 0));
-    Vector_Destroy(marker->u.accumulatedValues, nullptr);
-    free(marker->regexParam);
-    free(marker);
-    Vector_Destroy(grepList, nullptr);
-}
-#endif
-//When ParamValueCount is 0
 TEST_F(reportgenTestFixture, encodeParamResultInJSON)
 {
     Vector *paramNameList = NULL;
@@ -996,7 +760,6 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON)
     Vector_Destroy(paramValueList, freeProfileValues);
 }
 
-//When paramValcount is 1
 TEST_F(reportgenTestFixture, encodeParamResultInJSON1)
 {
     Vector *paramNameList = NULL;
@@ -1920,15 +1683,12 @@ TEST_F(reportgenTestFixture, encodeTopResultInJSON_null_args)
     Vector *topResultList = NULL;
     cJSON *valArray = NULL;
 
-    // Test: Both NULL
     EXPECT_EQ(T2ERROR_INVALID_ARGS, encodeTopResultInJSON(NULL, NULL));
 
-    // Test: valArray NULL, topResultList non-NULL
     Vector_Create(&topResultList);
     EXPECT_EQ(T2ERROR_INVALID_ARGS, encodeTopResultInJSON(NULL, topResultList));
     Vector_Destroy(topResultList, nullptr);
 
-    // Test: valArray non-NULL, topResultList NULL
     valArray = (cJSON*)malloc(sizeof(cJSON));
     EXPECT_EQ(T2ERROR_INVALID_ARGS, encodeTopResultInJSON(valArray, NULL));
     free(valArray);
@@ -1995,11 +1755,9 @@ TEST_F(reportgenTestFixture, encodeTopResultInJSON_otherwise_no_values)
 
     TopMarker* marker = (TopMarker*)calloc(1, sizeof(TopMarker));
     marker->searchString = strdup("sys_slot");
-    // All values are NULL
     Vector_PushBack(topMarkerList, marker);
 
     cJSON* valArray = (cJSON*)malloc(sizeof(cJSON));
-    // Should just hit the debug, but do nothing, still succeed
 
     EXPECT_EQ(T2ERROR_SUCCESS, encodeTopResultInJSON(valArray, topMarkerList));
 
@@ -2017,7 +1775,6 @@ TEST_F(reportgenTestFixture, encodeTopResultInJSON_nullTopMarker_skip)
     Vector_PushBack(topMarkerList, marker); // actually NULL
 
     cJSON* valArray = (cJSON*)malloc(sizeof(cJSON));
-    // Should skip and succeed
 
     EXPECT_EQ(T2ERROR_SUCCESS, encodeTopResultInJSON(valArray, topMarkerList));
 
@@ -2031,7 +1788,6 @@ TEST_F(reportgenTestFixture, encodeTopResultInJSON_cpuMem_cjsonCreateObjectFail)
 
     TopMarker* marker = (TopMarker*)calloc(1, sizeof(TopMarker));
     marker->searchString = strdup("mysys");
-    // Enter CPU/MEM branch:
     marker->cpuValue = strdup("81");
     marker->memValue = strdup("7");
     marker->loadAverage = nullptr; // Not loadAverage path
@@ -2039,7 +1795,6 @@ TEST_F(reportgenTestFixture, encodeTopResultInJSON_cpuMem_cjsonCreateObjectFail)
     Vector_PushBack(topMarkerList, marker);
 
     cJSON* valArray = (cJSON*)malloc(sizeof(cJSON));
-    // This CPU marker's cJSON_CreateObject returns NULL, triggers error/return
     EXPECT_CALL(*m_reportgenMock, cJSON_CreateObject())
         .Times(1)
         .WillOnce(Return((cJSON*)NULL));
@@ -2058,7 +1813,6 @@ extern "C" void tagReportAsCached(char **jsonReport);
 
 TEST_F(reportgenTestFixture, tagReportAsCached_JSONReport_NULL)
 {
-    // Should do nothing and not crash
     tagReportAsCached(NULL);
 }
 
@@ -2103,9 +1857,6 @@ TEST_F(reportgenTestFixture, tagReportAsCached_AddToSearchResult)
     free(fakeJson);
 }
 TEST_F(reportgenTestFixture, tagReportAsCached_ReportAndSearchResultBranches) {
-    // Arrange: Prepare input for both possible branches in code
-    // Change the JSON to only have 'Report' to force that branch;
-    // or both keys and have 'searchResult' handled as not-an-array
 
     char* fakeJson = strdup("{\"searchResult\":null, \"Report\":[]}");
 
@@ -2188,21 +1939,14 @@ TEST_F(reportgenTestFixture, tagReportAsCached_NoArrayErrorBranch) {
 }
 TEST_F(reportgenTestFixture, tagReportAsCached_CreateObjectFails)
 {
-    // Arrange: simulate cJSON_CreateObject failure
     char* fakeJson = strdup("{\"searchResult\":[]}");
     cJSON* mockRoot = (cJSON*)0x1000;
 
-    // cJSON_Parse returns a dummy root
     EXPECT_CALL(*m_reportgenMock, cJSON_Parse(_)).WillOnce(::testing::Return(mockRoot));
-    // cJSON_CreateObject fails
     EXPECT_CALL(*m_reportgenMock, cJSON_CreateObject()).WillOnce(::testing::Return(nullptr));
-    // Optionally: check logging. If T2Error is a macro and not mockable, you can't directly test it here.
-    // Use the REAL destroyJSONReport - no EXPECT_CALL, just ensure it is linked
 
-    // Act: call the function under test
     tagReportAsCached(&fakeJson);
 
-    // (Optionally: Check that jsonReportObj's memory is freed, etc. if possible)
     EXPECT_STREQ("{\"searchResult\":[]}", fakeJson); // Should be unchanged
 
     free(fakeJson); // Clean up
@@ -2258,8 +2002,6 @@ TEST_F(reportgenTestFixture, ApplyRegexToValue_viaCallback_RegexecFails) {
     char **inputValue = &input;
     const char *pattern = "^baz$"; // will not match "foobar"
 
-    // Setup mock for regcomp and regexec.
-    // regcomp returns 0 (success), regexec returns REG_NOMATCH (no match)
     EXPECT_CALL(*m_reportgenMock, regcomp(_, StrEq(pattern), _))
         .Times(1)
         .WillOnce(Return(0));
@@ -2271,8 +2013,6 @@ TEST_F(reportgenTestFixture, ApplyRegexToValue_viaCallback_RegexecFails) {
 
     T2ERROR result = fp(inputValue, pattern);
 
-    // The implementation (per your code block) frees the input, assigns strdup("")
-    // So after call, *inputValue should be ""
     ASSERT_NE(*inputValue, nullptr);
     EXPECT_STREQ(*inputValue, "");
 
@@ -2284,26 +2024,20 @@ TEST(CheckForEmptyString, AllBranchesAreCovered)
 {
     checkForEmptyStringFunc cb = checkForEmptyStringCallback();
 
-    // 1. Null pointer: triggers else at line 48
     EXPECT_TRUE(cb(NULL));
 
-    // 2. Empty string: triggers strlen < 1 at line 42
     char empty[] = "";
     EXPECT_TRUE(cb(empty));
 
-    // 3. Single space: triggers !strncmp(valueString, " ", 1) at line 42
     char space[] = " ";
     EXPECT_TRUE(cb(space));
 
-    // 4. "NULL" string: triggers !strncmp(valueString, "NULL", 4) at line 42
     char nulllit[] = "NULL";
     EXPECT_TRUE(cb(nulllit));
 
-    // 5. Non-empty, not space, not NULL: should return false
     char nonempty[] = "VALUE";
     EXPECT_FALSE(cb(nonempty));
 
-    // 6. "NUL" (should NOT match "NULL") - check that only "NULL" triggers true
     char almostnull[] = "NUL";
     EXPECT_FALSE(cb(almostnull));
 }

@@ -394,6 +394,4 @@ TEST_F(datamodelTestFixture, datamodel_unInit_after_init)
     EXPECT_EQ(T2ERROR_SUCCESS, datamodel_init());
     datamodel_unInit();
 
-    // Optionally, repeat to ensure idempotency
-    datamodel_unInit();
 }

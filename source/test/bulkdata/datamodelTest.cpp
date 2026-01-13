@@ -386,3 +386,14 @@ TEST_F(datamodelTestFixture, datamodel_getSavedMsgpackProfilesasString_read_fail
     EXPECT_EQ(0, datamodel_getSavedMsgpackProfilesasString(&savedProfiles));
     EXPECT_EQ(savedProfiles, nullptr); // savedProfiles should remain NULL
 }
+
+// Unit test for datamodel_unInit (resource cleanup)
+TEST_F(datamodelTestFixture, datamodel_unInit_after_init)
+{
+    // Ensure initialization happens before unInit
+    EXPECT_EQ(T2ERROR_SUCCESS, datamodel_init());
+    datamodel_unInit();
+
+    // Optionally, repeat to ensure idempotency
+    datamodel_unInit();
+}

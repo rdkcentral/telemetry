@@ -2220,7 +2220,7 @@ TEST_F(ProfileTest, createComponentDataElements) {
 }
 
 
-#if 1
+#if 0
 extern "C" {
 typedef void (*freeRequestURIparamFunc)(void *);
 freeRequestURIparamFunc freeRequestURIparamCallback(void);

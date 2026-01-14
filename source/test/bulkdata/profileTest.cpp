@@ -2220,16 +2220,3 @@ TEST_F(ProfileTest, createComponentDataElements) {
 }
 
 
-#if 0
-extern "C" {
-typedef void (*freeRequestURIparamFunc)(void *);
-freeRequestURIparamFunc freeRequestURIparamCallback(void);
-}
-
-
-TEST(ProfileTest, FreeRequestURIparam_NULLInput) {
-    freeRequestURIparamFunc func = freeRequestURIparamCallback();
-    ASSERT_NE(func, nullptr);
-    func(nullptr); // Should not crash
-}
-#endif

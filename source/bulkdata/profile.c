@@ -1783,6 +1783,10 @@ T2ERROR triggerReportOnCondtion(const char *referenceName, const char *reference
 {
     T2Debug("%s ++in\n", __FUNCTION__);
 
+    
+#ifdef GTEST_ENABLE
+printf("################################################ GTEST_ENABLED.....#############\n");
+#endif
     T2Debug("referenceName = %s  referenceValue = %s \n", referenceName, referenceValue);
 
     size_t j, profileIndex = 0;
@@ -1866,6 +1870,7 @@ unsigned int getMinThresholdDuration(char *profileName)
     T2Debug("%s --out\n", __FUNCTION__);
     return minThresholdDuration;
 }
+
 
 #if 1
 typedef void (*freeRequestURIparamFunc) (void *);

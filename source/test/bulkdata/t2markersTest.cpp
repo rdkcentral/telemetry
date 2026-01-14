@@ -382,44 +382,4 @@ TEST_F(t2markersTestFixture, freeT2Marker_all_members_non_null) {
     // If using memory tools, check for leaks.
 }
 
-#if 0
-TEST_F(t2markersTestFixture, freeT2Marker_key_only) {
-    // key non-null, rest null
-    hash_element_t* elem = allocMarkerElement(nullptr, nullptr, {}, true, false, false, false, false);
-    freeT2MarkerFunc func = freeT2MarkerFuncCallback();
-    func(elem);
-}
-
-TEST_F(t2markersTestFixture, freeT2Marker_data_null) {
-    // data NULL, key NULL
-    hash_element_t* elem = (hash_element_t*)malloc(sizeof(hash_element_t));
-    elem->key = NULL;
-    elem->data = NULL;
-    freeT2MarkerFunc func = freeT2MarkerFuncCallback();
-    func(elem);
-}
-
-TEST_F(t2markersTestFixture, freeT2Marker_markerName_null) {
-    // markerName NULL, componentName/profileList non-null
-    std::vector<const char*> profiles = {"profA"};
-    hash_element_t* elem = allocMarkerElement(nullptr, "mycomp", profiles, true, true, true, false, true);
-    freeT2MarkerFunc func = freeT2MarkerFuncCallback();
-    func(elem);
-}
-
-TEST_F(t2markersTestFixture, freeT2Marker_componentName_null) {
-    // componentName NULL, markerName/profileList non-null
-    std::vector<const char*> profiles = {"profB"};
-    hash_element_t* elem = allocMarkerElement("mymarker", nullptr, profiles, true, true, false, true, true);
-    freeT2MarkerFunc func = freeT2MarkerFuncCallback();
-    func(elem);
-}
-
-TEST_F(t2markersTestFixture, freeT2Marker_profileList_null) {
-    // profileList NULL, markerName/componentName non-null
-    hash_element_t* elem = allocMarkerElement("mymarker", "mycomp", {}, true, true, true, true, false);
-    freeT2MarkerFunc func = freeT2MarkerFuncCallback();
-    func(elem);
-}
-#endif
 #endif

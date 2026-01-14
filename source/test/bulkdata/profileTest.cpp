@@ -107,7 +107,7 @@ struct Config {
 TEST_F(ProfileTest, FreeRequestURIparam_Null) {
     freeRequestURIparamFunc freeFunc = freeRequestURIparamFuncCallback();
     ASSERT_NE(freeFunc, nullptr);
-    freeFunc(nullptr); // Just check for crash
+    freeFunc(nullptr); 
 }
 TEST_F(ProfileTest, FreeRequestURIparam_Valid) {
     freeRequestURIparamFunc freeFunc = freeRequestURIparamFuncCallback();
@@ -120,30 +120,24 @@ TEST_F(ProfileTest, FreeRequestURIparam_Valid) {
     param->HttpRef = strdup("TestRef");
     param->HttpValue = strdup("TestValue");
 
-    // This should free all internals, no crash, can valgrind for leaks
     freeFunc(param);
 }
-// Additional branch coverage for some but not all fields non-null
 TEST_F(ProfileTest, FreeRequestURIparam_Partials) {
     freeRequestURIparamFunc freeFunc = freeRequestURIparamFuncCallback();
     ASSERT_NE(freeFunc, nullptr);
 
-    // Only HttpName
     HTTPReqParam* param1 = (HTTPReqParam*)calloc(1, sizeof(HTTPReqParam));
     param1->HttpName = strdup("TestName");
     freeFunc(param1);
 
-    // Only HttpRef
     HTTPReqParam* param2 = (HTTPReqParam*)calloc(1, sizeof(HTTPReqParam));
     param2->HttpRef = strdup("TestRef");
     freeFunc(param2);
 
-    // Only HttpValue
     HTTPReqParam* param3 = (HTTPReqParam*)calloc(1, sizeof(HTTPReqParam));
     param3->HttpValue = strdup("TestValue");
     freeFunc(param3);
 
-    // All NULL
     HTTPReqParam* param4 = (HTTPReqParam*)calloc(1, sizeof(HTTPReqParam));
     freeFunc(param4);
 }
@@ -151,7 +145,7 @@ TEST_F(ProfileTest, FreeRequestURIparam_Partials) {
 TEST_F(ProfileTest, FreeReportProfileConfig_Null) {
     freeReportProfileConfigFunc freeFunc = freeReportProfileConfigFuncCallback();
     ASSERT_NE(freeFunc, nullptr);
-    freeFunc(nullptr); // Should not crash
+    freeFunc(nullptr); 
 }
 
 TEST_F(ProfileTest, FreeReportProfileConfig_Valid) {
@@ -163,7 +157,7 @@ TEST_F(ProfileTest, FreeReportProfileConfig_Valid) {
     config->name = strdup("TestProfile");
     config->configData = strdup("SomeData");
 
-    freeFunc(config); // Should free all
+    freeFunc(config); 
 }
 
 TEST_F(ProfileTest, FreeReportProfileConfig_Partials) {
@@ -179,7 +173,6 @@ TEST_F(ProfileTest, FreeReportProfileConfig_Partials) {
     freeFunc(config2);
 
     Config *config3 = (Config*)calloc(1, sizeof(Config));
-    // Both members null
     freeFunc(config3);
 }
 
@@ -192,7 +185,6 @@ TEST_F(ProfileTest, FreeProfile_Valid) {
     freeProfileFunc freeFunc = freeProfileFuncCallback();
     ASSERT_NE(freeFunc, nullptr);
 
-    // Allocate a Profile and all heap members it expects
     Profile* prof = (Profile*)calloc(1, sizeof(Profile));
     prof->name = strdup("profile_name");
     prof->hash = strdup("profile_hash");
@@ -204,18 +196,14 @@ TEST_F(ProfileTest, FreeProfile_Valid) {
     prof->timeRef = strdup("time");
     prof->jsonEncoding = (JSONEncoding*)malloc(sizeof(JSONEncoding));
 
-        // HTTP destination, with its URL and RequestURIparamList
     prof->t2HTTPDest = (T2HTTP*)calloc(1, sizeof(T2HTTP));
     prof->t2HTTPDest->URL = strdup("https://test.url");
-    // Assume RequestURIparamList is a pointer to Vector; you need a minimal mock:
-    prof->t2HTTPDest->RequestURIparamList = NULL; // Or setup a minimal Vector if you want even more coverage
+    prof->t2HTTPDest->RequestURIparamList = NULL; 
 
-    // RBUS destination, with its rbusMethodName and rbusMethodParamList
     prof->t2RBUSDest = (T2RBUS*)calloc(1, sizeof(T2RBUS));
     prof->t2RBUSDest->rbusMethodName = strdup("method");
     prof->t2RBUSDest->rbusMethodParamList = NULL;
 
-    // Marker lists (set to NULL if you don't want to test all the Vector_Destroy branches)
     prof->eMarkerList = NULL;
     prof->gMarkerList = NULL;
     prof->topMarkerList = NULL;
@@ -224,14 +212,10 @@ TEST_F(ProfileTest, FreeProfile_Valid) {
     prof->triggerConditionList = NULL;
     prof->cachedReportList = NULL;
 
-    // JSON object
     prof->jsonReportObj = cJSON_CreateObject();
    
-
-    // Now free!
     freeFunc(prof);
 }
-// Partial, only name set
 TEST_F(ProfileTest, FreeProfile_OnlyNameSet) {
     freeProfileFunc freeFunc = freeProfileFuncCallback();
     Profile* prof = (Profile*)calloc(1, sizeof(Profile));
@@ -242,9 +226,8 @@ TEST_F(ProfileTest, GetProfile_NullName) {
     getProfileFunc func = getProfileFuncCallback();
     Profile* prof = nullptr;
     T2ERROR err = func(nullptr, &prof);
-    EXPECT_EQ(err, T2ERROR_FAILURE); // Or the constant your implementation uses
+    EXPECT_EQ(err, T2ERROR_FAILURE); 
 }
-
 
 TEST_F(ProfileTest, FreeProfile_WithGMarkerList_CallsVectorDestroy) {
     VectorMock* vectorMock = new VectorMock();
@@ -304,7 +287,6 @@ TEST_F(ProfileTest, FreeProfile_WithRBUSDest_rbusMethodParamList_CallsVectorDest
     g_vectorMock = nullptr;
 }
 
-// Helper for setting up test and mock
 void cover_VectorDestroy_field(void** field, Vector* ptr, VectorMock& vectorMock, Vector_Cleanup expected_cleanup) {
     *field = ptr;
     EXPECT_CALL(vectorMock, Vector_Destroy(ptr, expected_cleanup))
@@ -385,7 +367,7 @@ TEST_F(ProfileTest, FreeProfile_CachedReportList_CallsVectorDestroy_And_SetsNull
     freeProfileFunc freeFunc = freeProfileFuncCallback();
     freeFunc(prof);
 
-    EXPECT_EQ(prof->cachedReportList, nullptr); // after freeProfile, it must be set null
+    EXPECT_EQ(prof->cachedReportList, nullptr);
     g_vectorMock = nullptr;
 }
 
@@ -400,17 +382,16 @@ TEST_F(ProfileTest, InitJSONReportProfile_Success) {
     ASSERT_NE(jsonObj, nullptr);
     ASSERT_NE(valArray, nullptr);
 
-    // Optionally, confirm the structure actually contains an array under root
     cJSON *arr = cJSON_GetObjectItem(jsonObj, rootname);
     ASSERT_TRUE(arr != nullptr && arr == valArray && cJSON_IsArray(arr));
 
-    cJSON_Delete(jsonObj); // Clean up
+    cJSON_Delete(jsonObj); 
 }
 
 TEST(CollectAndReportTest, NullDataReturnsNull) {
     CollectAndReportFunc fn = getCollectAndReportFunc();
     void* ret = fn(nullptr);
-    EXPECT_EQ(ret, nullptr); // Should return null pointer for null input
+    EXPECT_EQ(ret, nullptr); 
 }
 
 TEST(CollectAndReportTest, HandlesRestartEventAndExits) {
@@ -422,69 +403,52 @@ TEST(CollectAndReportTest, HandlesRestartEventAndExits) {
     profile.name = (char*)"test";
     profile.encodingType = (char*)"json";
     profile.protocol = (char*)"http";
-    // Add a restartRequested flag, and initialize mutex/cond if needed
 
     pthread_t tid;
     void* returnVal = nullptr;
 
-    // Start the thread
     pthread_create(&tid, NULL, [](void* arg) -> void* {
         CollectAndReportFunc fn = getCollectAndReportFunc();
         return fn(arg);
     }, &profile);
 
-    // Allow the thread to start and reach the wait point
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-    // Signal the event/restart so the thread can exit
     pthread_mutex_lock(&profile.reuseThreadMutex);
-    // If your code uses another flag, set it here:
-    // profile.restartRequested = true;
     pthread_cond_signal(&profile.reuseThread);
     pthread_mutex_unlock(&profile.reuseThreadMutex);
 
-    // Join, should succeed
     int join_result = pthread_join(tid, &returnVal);
-    EXPECT_EQ(returnVal, nullptr); // or tailored expectation
-    EXPECT_EQ(join_result, 0);     // Should now succeed
+    EXPECT_EQ(returnVal, nullptr); 
+    EXPECT_EQ(join_result, 0);     
 }
+
 TEST(CollectAndReportTest, ProperParametersHappyPath) {
     CollectAndReportFunc fn = getCollectAndReportFunc();
     Profile profile = {};
     GrepSeekProfile grepSeekProfile = {};
     grepSeekProfile.execCounter = 42;
 
-    // Use const_cast for C-string assignments (to avoid C++ warning)
     profile.name = const_cast<char *>("test");
     profile.encodingType = const_cast<char *>("json");
     profile.protocol = const_cast<char *>("http");
     profile.grepSeekProfile = &grepSeekProfile;
 
-    // If there's an additional flag such as restartRequested, set it up here:
-    // profile.restartRequested = false;
 
-    // Start CollectAndReport in a new thread
     pthread_t collectThread;
     pthread_create(&collectThread, nullptr, [](void* arg) -> void* {
         CollectAndReportFunc fn = getCollectAndReportFunc();
         return fn(arg);
     }, &profile);
 
-    // Let the function enter its wait state
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-    // Now send the restart event (adapt as needed for your wait logic!)
     pthread_mutex_lock(&profile.reuseThreadMutex);
-    // If your function needs a flag, set it:
-    // profile.restartRequested = true;
     pthread_cond_signal(&profile.reuseThread);
     pthread_mutex_unlock(&profile.reuseThreadMutex);
-        // Wait for the thread to exit
     void* result = nullptr;
     pthread_join(collectThread, &result);
 
-    // Check that the function returned (adapt this as needed)
-    // EXPECT_EQ(result, expected_val);
 }
 
 TEST(CollectAndReportTest, Null_Parameter1) {
@@ -493,36 +457,25 @@ TEST(CollectAndReportTest, Null_Parameter1) {
     GrepSeekProfile grepSeekProfile = {};
     grepSeekProfile.execCounter = 42;
 
-    // Use const_cast for C-string assignments (to avoid C++ warning)
     profile.name = nullptr;
     profile.encodingType = nullptr;
     profile.protocol = nullptr;
     profile.grepSeekProfile = &grepSeekProfile;
     profile.triggerReportOnCondition = true;
-    // If there's an additional flag such as restartRequested, set it up here:
-    // profile.restartRequested = false;
 
-    // Start CollectAndReport in a new thread
     pthread_t collectThread;
     pthread_create(&collectThread, nullptr, [](void* arg) -> void* {
         CollectAndReportFunc fn = getCollectAndReportFunc();
         return fn(arg);
     }, &profile);
-       // Let the function enter its wait state
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-    // Now send the restart event (adapt as needed for your wait logic!)
     pthread_mutex_lock(&profile.reuseThreadMutex);
-    // If your function needs a flag, set it:
-    // profile.restartRequested = true;
     pthread_cond_signal(&profile.reuseThread);
     pthread_mutex_unlock(&profile.reuseThreadMutex);
-        // Wait for the thread to exit
     void* result = nullptr;
     pthread_join(collectThread, &result);
 
-    // Check that the function returned (adapt this as needed)
-    // EXPECT_EQ(result, expected_val);
 }
 
 TEST(CollectAndReportTest, Null_Profilename) {
@@ -531,36 +484,25 @@ TEST(CollectAndReportTest, Null_Profilename) {
     GrepSeekProfile grepSeekProfile = {};
     grepSeekProfile.execCounter = 42;
 
-    // Use const_cast for C-string assignments (to avoid C++ warning)
     profile.name = nullptr;
     profile.encodingType = nullptr;
     profile.protocol = nullptr;
     profile.grepSeekProfile = &grepSeekProfile;
     profile.triggerReportOnCondition = false;
-    // If there's an additional flag such as restartRequested, set it up here:
-    // profile.restartRequested = false;
 
-    // Start CollectAndReport in a new thread
     pthread_t collectThread;
     pthread_create(&collectThread, nullptr, [](void* arg) -> void* {
         CollectAndReportFunc fn = getCollectAndReportFunc();
         return fn(arg);
     }, &profile);
-       // Let the function enter its wait state
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-    // Now send the restart event (adapt as needed for your wait logic!)
     pthread_mutex_lock(&profile.reuseThreadMutex);
-    // If your function needs a flag, set it:
-    // profile.restartRequested = true;
     pthread_cond_signal(&profile.reuseThread);
     pthread_mutex_unlock(&profile.reuseThreadMutex);
-        // Wait for the thread to exit
     void* result = nullptr;
     pthread_join(collectThread, &result);
 
-    // Check that the function returned (adapt this as needed)
-    // EXPECT_EQ(result, expected_val);
 }
 TEST(CollectAndReportTest, Null_Parameter2) {
     CollectAndReportFunc fn = getCollectAndReportFunc();
@@ -568,36 +510,25 @@ TEST(CollectAndReportTest, Null_Parameter2) {
     GrepSeekProfile grepSeekProfile = {};
     grepSeekProfile.execCounter = 42;
 
-    // Use const_cast for C-string assignments (to avoid C++ warning)
     profile.name = (char*)"test";
     profile.encodingType = (char*)"json1";
     profile.protocol = (char*)"http";
     profile.grepSeekProfile = &grepSeekProfile;
     profile.triggerReportOnCondition = true;
-    // If there's an additional flag such as restartRequested, set it up here:
-    // profile.restartRequested = false;
 
-    // Start CollectAndReport in a new thread
     pthread_t collectThread;
     pthread_create(&collectThread, nullptr, [](void* arg) -> void* {
         CollectAndReportFunc fn = getCollectAndReportFunc();
         return fn(arg);
     }, &profile);
-       // Let the function enter its wait state
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-    // Now send the restart event (adapt as needed for your wait logic!)
     pthread_mutex_lock(&profile.reuseThreadMutex);
-    // If your function needs a flag, set it:
-    // profile.restartRequested = true;
     pthread_cond_signal(&profile.reuseThread);
     pthread_mutex_unlock(&profile.reuseThreadMutex);
-        // Wait for the thread to exit
     void* result = nullptr;
     pthread_join(collectThread, &result);
 
-    // Check that the function returned (adapt this as needed)
-    // EXPECT_EQ(result, expected_val);
 }
 TEST(CollectAndReportTest, JSONEncodingWrongFormatBranch) {
     CollectAndReportFunc fn = getCollectAndReportFunc();
@@ -605,19 +536,15 @@ TEST(CollectAndReportTest, JSONEncodingWrongFormatBranch) {
     GrepSeekProfile grepSeekProfile = {};
     grepSeekProfile.execCounter = 42;
 
-    // Setup fields for this branch
     profile.name = (char*)"test";
     profile.encodingType = (char*)"JSON";
     profile.protocol = (char*)"http";
     profile.grepSeekProfile = &grepSeekProfile;
     profile.triggerReportOnCondition = true;
 
-    // Allocate/initialize JSONEncoding and set BAD format!
     profile.jsonEncoding = (JSONEncoding*)malloc(sizeof(JSONEncoding));
     profile.jsonEncoding->reportFormat = (JSONRF_OBJHIERARCHY); // Anything except JSONRF_KEYVALUEPAIR
 
-    // You must also initialize the triggerCondMutex,
-    // because the code path will call pthread_mutex_unlock on it!
     pthread_mutex_init(&profile.triggerCondMutex, nullptr);
     pthread_cond_init(&profile.reuseThread, nullptr);
     pthread_mutex_init(&profile.reuseThreadMutex, nullptr);
@@ -630,7 +557,6 @@ TEST(CollectAndReportTest, JSONEncodingWrongFormatBranch) {
 
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-    // Unblock thread from reportThreadEnd: send condvar signal
     pthread_mutex_lock(&profile.reuseThreadMutex);
     pthread_cond_signal(&profile.reuseThread);
     pthread_mutex_unlock(&profile.reuseThreadMutex);
@@ -638,12 +564,10 @@ TEST(CollectAndReportTest, JSONEncodingWrongFormatBranch) {
     void* res = nullptr;
     pthread_join(t, &res);
 
-    // Clean up
     pthread_mutex_destroy(&profile.triggerCondMutex);
     pthread_cond_destroy(&profile.reuseThread);
     pthread_mutex_destroy(&profile.reuseThreadMutex);
     free(profile.jsonEncoding);
-    // No assertion is strictly required for coverage, but ensure no crash etc.
 }
 
 TEST(CollectAndReportTest, JSONEncodingWrongFormatBranch1) {
@@ -652,19 +576,15 @@ TEST(CollectAndReportTest, JSONEncodingWrongFormatBranch1) {
     GrepSeekProfile grepSeekProfile = {};
     grepSeekProfile.execCounter = 42;
 
-    // Setup fields for this branch
     profile.name = (char*)"test";
     profile.encodingType = (char*)"JSON";
     profile.protocol = (char*)"http";
     profile.grepSeekProfile = &grepSeekProfile;
     profile.triggerReportOnCondition = false;
 
-    // Allocate/initialize JSONEncoding and set BAD format!
     profile.jsonEncoding = (JSONEncoding*)malloc(sizeof(JSONEncoding));
     profile.jsonEncoding->reportFormat = JSONRF_OBJHIERARCHY; // Anything except JSONRF_KEYVALUEPAIR
 
-    // You must also initialize the triggerCondMutex,
-    // because the code path will call pthread_mutex_unlock on it!
     pthread_mutex_init(&profile.triggerCondMutex, nullptr);
     pthread_cond_init(&profile.reuseThread, nullptr);
     pthread_mutex_init(&profile.reuseThreadMutex, nullptr);
@@ -677,7 +597,6 @@ TEST(CollectAndReportTest, JSONEncodingWrongFormatBranch1) {
 
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-    // Unblock thread from reportThreadEnd: send condvar signal
     pthread_mutex_lock(&profile.reuseThreadMutex);
     pthread_cond_signal(&profile.reuseThread);
     pthread_mutex_unlock(&profile.reuseThreadMutex);
@@ -685,12 +604,10 @@ TEST(CollectAndReportTest, JSONEncodingWrongFormatBranch1) {
     void* res = nullptr;
     pthread_join(t, &res);
 
-    // Clean up
     pthread_mutex_destroy(&profile.triggerCondMutex);
     pthread_cond_destroy(&profile.reuseThread);
     pthread_mutex_destroy(&profile.reuseThreadMutex);
     free(profile.jsonEncoding);
-    // No assertion is strictly required for coverage, but ensure no crash etc.
 }
 
 TEST(CollectAndReportTest, TriggerReportOnConditionWithJsonReportObj) {
@@ -704,11 +621,9 @@ TEST(CollectAndReportTest, TriggerReportOnConditionWithJsonReportObj) {
     profile.protocol = (char*)"http";
     profile.grepSeekProfile = &grepSeekProfile;
 
-    // Required for branch:
     profile.triggerReportOnCondition = true;
     profile.jsonReportObj = cJSON_CreateObject(); // Non-null object
 
-    // JSONEncoding: must set up so it does not fail the reportFormat check!
     profile.jsonEncoding = (JSONEncoding*)malloc(sizeof(JSONEncoding));
     profile.jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
 
@@ -724,7 +639,6 @@ TEST(CollectAndReportTest, TriggerReportOnConditionWithJsonReportObj) {
 
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-    // Unblock thread from reportThreadEnd: send condvar signal
     pthread_mutex_lock(&profile.reuseThreadMutex);
     pthread_cond_signal(&profile.reuseThread);
     pthread_mutex_unlock(&profile.reuseThreadMutex);
@@ -732,13 +646,10 @@ TEST(CollectAndReportTest, TriggerReportOnConditionWithJsonReportObj) {
     void* res = nullptr;
     pthread_join(t, &res);
 
-    // Clean up
     pthread_mutex_destroy(&profile.triggerCondMutex);
     pthread_cond_destroy(&profile.reuseThread);
     pthread_mutex_destroy(&profile.reuseThreadMutex);
 
-    // jsonEncoding and jsonReportObj will be freed inside CollectAndReport/freeProfile
-    // so you do not free them here; just avoid double free.
 }
 
 TEST(CollectAndReportTest, HandlesCheckPreviousSeekBranch) {
@@ -768,7 +679,6 @@ TEST(CollectAndReportTest, HandlesCheckPreviousSeekBranch) {
 
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-    // Unblock thread from reportThreadEnd: send condvar signal
     pthread_mutex_lock(&profile.reuseThreadMutex);
     pthread_cond_signal(&profile.reuseThread);
     pthread_mutex_unlock(&profile.reuseThreadMutex);
@@ -795,13 +705,11 @@ TEST(CollectAndReportTest, Covers_StaticParamList_WithRealVector) {
     profile.jsonEncoding = (JSONEncoding*)malloc(sizeof(JSONEncoding));
     profile.jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
 
-    // Use real Vector implementation
     Vector *staticparamlist = NULL;
     Vector_Create(&staticparamlist);
     Vector_PushBack(staticparamlist, (void*)strdup("param1"));
     profile.staticParamList = staticparamlist;
 
-    // (For paramList, you can do similarly or leave NULL)
     profile.paramList = NULL;
 
     pthread_mutex_init(&profile.triggerCondMutex, nullptr);
@@ -827,11 +735,10 @@ TEST(CollectAndReportTest, Covers_StaticParamList_WithRealVector) {
     pthread_mutex_destroy(&profile.reuseThreadMutex);
 
     free(profile.jsonEncoding);
-    Vector_Destroy(staticparamlist, free); // clean up!
+    Vector_Destroy(staticparamlist, free); 
 }
 
 TEST(CollectAndReportTest, Covers_ParamList_WithRealParamStruct) {
-    // Ensure the Vector functions use the real implementation, not the mock
     g_vectorMock = nullptr;
 
     CollectAndReportFunc fn = getCollectAndReportFunc();
@@ -846,7 +753,6 @@ TEST(CollectAndReportTest, Covers_ParamList_WithRealParamStruct) {
     profile.jsonEncoding = (JSONEncoding*)malloc(sizeof(JSONEncoding));
     profile.jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
 
-    // Real Param vector
     Vector* paramlist = NULL;
     Vector_Create(&paramlist);
 
@@ -887,12 +793,11 @@ TEST(CollectAndReportTest, Covers_ParamList_WithRealParamStruct) {
 
     free(profile.jsonEncoding);
 
-    // Cleanup: free all allocated memory for paramlist
     Vector_Destroy(paramlist, freeParam);
 }
 
 TEST(CollectAndReportTest, Covers_TopMarkerList_WithRealTopMarkerStruct) {
-    g_vectorMock = nullptr; // Ensure real vector functions are used
+    g_vectorMock = nullptr; 
 
     CollectAndReportFunc fn = getCollectAndReportFunc();
 
@@ -906,7 +811,6 @@ TEST(CollectAndReportTest, Covers_TopMarkerList_WithRealTopMarkerStruct) {
     profile.jsonEncoding = (JSONEncoding*)malloc(sizeof(JSONEncoding));
     profile.jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
 
-    // Set up topMarkerList with a sample TopMarker
     Vector* topMarkerList = nullptr;
     ASSERT_EQ(Vector_Create(&topMarkerList), T2ERROR_SUCCESS);
 
@@ -915,13 +819,12 @@ TEST(CollectAndReportTest, Covers_TopMarkerList_WithRealTopMarkerStruct) {
     marker->searchString = strdup("mysearch");
     marker->loadAverage = strdup("   1.23   ");
     marker->trimParam = true;
-    marker->regexParam = nullptr; // No regex branch
+    marker->regexParam = nullptr; 
 
     Vector_PushBack(topMarkerList, marker);
 
     profile.topMarkerList = topMarkerList;
 
-    // Initialize needed mutexes/condvars for thread safety
     pthread_mutex_init(&profile.triggerCondMutex, nullptr);
     pthread_cond_init(&profile.reuseThread, nullptr);
     pthread_mutex_init(&profile.reuseThreadMutex, nullptr);
@@ -947,8 +850,6 @@ TEST(CollectAndReportTest, Covers_TopMarkerList_WithRealTopMarkerStruct) {
 
     free(profile.jsonEncoding);
 
-    // Clean up TopMarker vector and contained structs
-       // Manual cleanup since Vector_Destroy cleanup parameter is nullptr
     free(marker->markerName);
     free(marker->searchString);
     free(marker->loadAverage);
@@ -958,7 +859,7 @@ TEST(CollectAndReportTest, Covers_TopMarkerList_WithRealTopMarkerStruct) {
 }
 
 TEST(CollectAndReportTest, Covers_GMarkerList_WithRealGrepMarkerStruct) {
-    g_vectorMock = nullptr; // Use real vector implementations
+    g_vectorMock = nullptr; 
 
     CollectAndReportFunc fn = getCollectAndReportFunc();
 
@@ -972,7 +873,6 @@ TEST(CollectAndReportTest, Covers_GMarkerList_WithRealGrepMarkerStruct) {
     profile.jsonEncoding = (JSONEncoding*)malloc(sizeof(JSONEncoding));
     profile.jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
 
-    // Set up gMarkerList with a GrepMarker
     Vector* grepResult = NULL;
     Vector_Create(&grepResult);
 
@@ -987,7 +887,6 @@ TEST(CollectAndReportTest, Covers_GMarkerList_WithRealGrepMarkerStruct) {
     Vector_PushBack(grepResult, gparam);
     profile.gMarkerList = grepResult;
 
-    // Initialize required mutex/cond
     pthread_mutex_init(&profile.triggerCondMutex, nullptr);
     pthread_cond_init(&profile.reuseThread, nullptr);
     pthread_mutex_init(&profile.reuseThreadMutex, nullptr);
@@ -1000,7 +899,7 @@ TEST(CollectAndReportTest, Covers_GMarkerList_WithRealGrepMarkerStruct) {
 
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     pthread_mutex_lock(&profile.reuseThreadMutex);
-    pthread_cond_signal(&profile.reuseThread); // Unblock thread
+    pthread_cond_signal(&profile.reuseThread); 
     pthread_mutex_unlock(&profile.reuseThreadMutex);
 
     void* res = nullptr;
@@ -1012,11 +911,10 @@ TEST(CollectAndReportTest, Covers_GMarkerList_WithRealGrepMarkerStruct) {
 
     free(profile.jsonEncoding);
 
-    // Clean up: destroy grepResult, using the production destructor for GrepMarker
     Vector_Destroy(grepResult, freeGMarker);
 }
 TEST(CollectAndReportTest, Covers_EMarkerList_WithRealEventMarkerStruct) {
-    g_vectorMock = nullptr; // Use real vector implementations
+    g_vectorMock = nullptr; 
 
     CollectAndReportFunc fn = getCollectAndReportFunc();
 
@@ -1030,7 +928,6 @@ TEST(CollectAndReportTest, Covers_EMarkerList_WithRealEventMarkerStruct) {
     profile.jsonEncoding = (JSONEncoding*)malloc(sizeof(JSONEncoding));
     profile.jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
 
-    // Set up eMarkerList with an EventMarker
     Vector *eventMarkerList = NULL;
     Vector_Create(&eventMarkerList);
 
@@ -1051,7 +948,6 @@ TEST(CollectAndReportTest, Covers_EMarkerList_WithRealEventMarkerStruct) {
 
     profile.eMarkerList = eventMarkerList;
 
-    // Initialize eventMutex as CollectAndReport may lock/unlock it
     pthread_mutex_init(&profile.eventMutex, nullptr);
     pthread_mutex_init(&profile.triggerCondMutex, nullptr);
     pthread_cond_init(&profile.reuseThread, nullptr);
@@ -1078,11 +974,10 @@ TEST(CollectAndReportTest, Covers_EMarkerList_WithRealEventMarkerStruct) {
 
     free(profile.jsonEncoding);
 
-    // Clean up (eventMarkerList's elements will be freed with freeEMarker)
     Vector_Destroy(eventMarkerList, freeEMarker);
 }
 TEST(CollectAndReportTest, Covers_jsonReportObj_nonNull_forPrepareAndDestroy) {
-    g_vectorMock = nullptr; // Use real vectors
+    g_vectorMock = nullptr; 
 
     CollectAndReportFunc fn = getCollectAndReportFunc();
 
@@ -1096,9 +991,7 @@ TEST(CollectAndReportTest, Covers_jsonReportObj_nonNull_forPrepareAndDestroy) {
     profile.jsonEncoding = (JSONEncoding*)malloc(sizeof(JSONEncoding));
     profile.jsonEncoding->reportFormat = JSONRF_OBJHIERARCHY;
     profile.triggerReportOnCondition = false;
-    // Add some non-null JSON object
     profile.jsonReportObj = cJSON_CreateObject();
-    // Optionally add test data
     cJSON_AddStringToObject(profile.jsonReportObj, "key", "value");
 
     pthread_mutex_init(&profile.triggerCondMutex, nullptr);
@@ -1124,7 +1017,6 @@ TEST(CollectAndReportTest, Covers_jsonReportObj_nonNull_forPrepareAndDestroy) {
     pthread_mutex_destroy(&profile.reuseThreadMutex);
 
     free(profile.jsonEncoding);
-    // Don't free profile.jsonReportObj here (it is cleaned up by the function)
 }
 #endif
 #if 1
@@ -1132,7 +1024,6 @@ TEST(CollectAndReportTest, Covers_jsonReportObj_nonNull_forPrepareAndDestroy) {
 //==================================== profile.c ===================
 
 // Test initProfileList
-#if 1
 TEST_F(ProfileTest, InitProfileList_Success) {
     const char* path = "/tmp/t2reportprofiles/";
     DIR *dir = (DIR*)0xffffffff ;
@@ -1173,7 +1064,6 @@ TEST_F(ProfileTest, InitProfileList_Success) {
     EXPECT_EQ(initProfileList(false), T2ERROR_SUCCESS);
     Vector_Destroy(configlist, free);
 }
-#endif
 // Test profileWithNameExists
 TEST_F(ProfileTest, ProfileWithNameExists_NotInitialized) {
     bool exists = false;
@@ -1344,224 +1234,6 @@ TEST_F(ProfileTest, InitAndDestroyShouldWork) {
         .WillRepeatedly(Return(T2ERROR_SUCCESS));
     EXPECT_EQ(initT2MarkerComponentMap(), T2ERROR_SUCCESS);
 }
-#if 0
-#if 0
-TEST_F(ProfileTest, AddEventMarkerShouldAddMarkerAndProfile) {
-    // Vector mock expectations
-    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
-        .Times(::testing::AtMost(1))
-        .WillRepeatedly(Return(1)); // Return 1 to indicate one profile in the list
-    EXPECT_CALL(*g_vectorMock, Vector_At(_, 0))
-        .Times(::testing::AtMost(1))
-        .WillRepeatedly(Return((void*)strdup("PROFILE_1")));
-    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _))
-        .Times(::testing::AtMost(3)) 
-        .WillRepeatedly(Return(T2ERROR_SUCCESS));
-    EXPECT_CALL(*g_vectorMock, Vector_Create(_))
-        .Times(::testing::AtMost(3))
-        .WillRepeatedly(Return(T2ERROR_SUCCESS));
-    EXPECT_CALL(*g_vectorMock, Vector_PushBack(_, _))
-        .Times(::testing::AtMost(3))
-        .WillRepeatedly(Return(T2ERROR_SUCCESS));
-    
-    EXPECT_EQ(initT2MarkerComponentMap(), T2ERROR_SUCCESS);
-    EXPECT_EQ(addT2EventMarker("SYS_INFO_TEST_MARKER", "sysint", "PROFILE_1", 0), T2ERROR_SUCCESS);
-
-    T2Marker* marker = (T2Marker*)hash_map_get(markerCompMap, "SYS_INFO_TEST_MARKER");
-    ASSERT_NE(marker, nullptr);
-    ASSERT_STREQ(marker->markerName, "SYS_INFO_TEST_MARKER");
-    ASSERT_STREQ(marker->componentName, "sysint");
-
-    // Should contain profile
-    bool foundProfile = false;
-    int sz = Vector_Size(marker->profileList);
-    for (int i = 0; i < sz; ++i) {
-        char* p = (char*)Vector_At(marker->profileList, i);
-        if (strcmp(p, "PROFILE_1") == 0) {
-            foundProfile = true;
-            break;
-        }
-    }
-    EXPECT_TRUE(foundProfile);
-}
-
-TEST_F(ProfileTest, ShouldAddMultipleProfilesToMarker) {
-    // Vector mock expectations
-    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
-        .Times(::testing::AtMost(3))
-        .WillRepeatedly(Return(2)); // Return 2 to indicate two profiles in the list
-    EXPECT_CALL(*g_vectorMock, Vector_At(_, 0))
-        .Times(::testing::AtMost(3))
-        .WillRepeatedly(Return((void*)strdup("PROFILE_1")));
-    EXPECT_CALL(*g_vectorMock, Vector_At(_, 1))
-        .Times(::testing::AtMost(3))
-        .WillRepeatedly(Return((void*)strdup("PROFILE_2")));
-    EXPECT_CALL(*g_vectorMock, Vector_Create(_))
-        .Times(::testing::AtMost(3))  // 1 for local test configlist, 1 for global profileList, 1 for configList in loadReportProfilesFromDisk
-        .WillRepeatedly(Return(T2ERROR_SUCCESS));
-    EXPECT_CALL(*g_vectorMock, Vector_PushBack(_, _))
-        .Times(::testing::AtMost(3))
-        .WillRepeatedly(Return(T2ERROR_SUCCESS));
-        
-    EXPECT_EQ(addT2EventMarker("SYS_INFO_TEST_MARKER", "sysint", "PROFILE_1", 0), T2ERROR_SUCCESS);
-    EXPECT_EQ(addT2EventMarker("SYS_INFO_TEST_MARKER", "sysint", "PROFILE_2", 0), T2ERROR_SUCCESS);
-
-    T2Marker* marker = (T2Marker*)hash_map_get(markerCompMap, "SYS_INFO_TEST_MARKER");
-    ASSERT_NE(marker, nullptr);
-
-    bool foundProfile1 = false, foundProfile2 = false;
-    int sz = Vector_Size(marker->profileList);
-    for (int i = 0; i < sz; ++i) {
-        char* p = (char*)Vector_At(marker->profileList, i);
-        if (strcmp(p, "PROFILE_1") == 0) foundProfile1 = true;
-        if (strcmp(p, "PROFILE_2") == 0) foundProfile2 = true;
-    }
-    EXPECT_TRUE(foundProfile1);
-    EXPECT_TRUE(foundProfile2);
-}
-
-TEST_F(ProfileTest, DuplicateProfilesNotAdded) {
-    // Vector mock expectations
-    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
-        .Times(::testing::AtMost(1))
-        .WillRepeatedly(Return(1)); // Return 1 to indicate only one profile (no duplicates)
-    EXPECT_CALL(*g_vectorMock, Vector_At(_, 0))
-        .Times(::testing::AtMost(1))
-        .WillRepeatedly(Return((void*)strdup("PROFILE_1")));
-    EXPECT_CALL(*g_vectorMock, Vector_Create(_))
-        .Times(::testing::AtMost(3))  // 1 for local test configlist, 1 for global profileList, 1 for configList in loadReportProfilesFromDisk
-        .WillRepeatedly(Return(T2ERROR_SUCCESS));
-    EXPECT_CALL(*g_vectorMock, Vector_PushBack(_, _))
-        .Times(::testing::AtMost(3))
-        .WillRepeatedly(Return(T2ERROR_SUCCESS));
-        
-    EXPECT_EQ(addT2EventMarker("SYS_INFO_TEST_MARKER", "sysint", "PROFILE_1", 0), T2ERROR_SUCCESS);
-    // Add same profile again
-    EXPECT_EQ(addT2EventMarker("SYS_INFO_TEST_MARKER", "sysint", "PROFILE_1", 0), T2ERROR_SUCCESS);
-
-    T2Marker* marker = (T2Marker*)hash_map_get(markerCompMap, "SYS_INFO_TEST_MARKER");
-    ASSERT_NE(marker, nullptr);
-
-    int count = 0;
-    int sz = Vector_Size(marker->profileList);
-    for (int i = 0; i < sz; ++i) {
-        char* p = (char*)Vector_At(marker->profileList, i);
-        if (strcmp(p, "PROFILE_1") == 0) count++;
-    }
-    EXPECT_EQ(count, 1); // Only one instance
-}
-#endif
-
-TEST_F(ProfileTest, ComponentListIsUpdated) {
-    EXPECT_EQ(addT2EventMarker("SYS_INFO_TEST_MARKER", "sysint", "PROFILE_1", 0), T2ERROR_SUCCESS);
-
-    Vector* eventComponentList = nullptr;
-    getComponentsWithEventMarkers(&eventComponentList);
-    ASSERT_NE(eventComponentList, nullptr);
-
-    // Mock Vector calls
-    EXPECT_CALL(*g_vectorMock, Vector_Size(_)).Times(::testing::AtMost(1)).WillRepeatedly(Return(1));
-    EXPECT_CALL(*g_vectorMock, Vector_At(_, 0)).Times(::testing::AtMost(1)).WillRepeatedly(Return((void*)strdup("sysint")));
-
-    bool found = false;
-    int sz = Vector_Size(eventComponentList);
-    for (int i = 0; i < sz; ++i) {
-        char* comp = (char*)Vector_At(eventComponentList, i);
-        if (strcmp(comp, "sysint") == 0) {
-            found = true;
-            break;
-        }
-    }
-    EXPECT_TRUE(found);
-}
-
-TEST_F(ProfileTest, GetMarkerProfileListReturnsProfiles) {
-    EXPECT_EQ(addT2EventMarker("SYS_INFO_TEST_MARKER", "sysint", "PROFILE_1", 0), T2ERROR_SUCCESS);
-    EXPECT_EQ(addT2EventMarker("SYS_INFO_TEST_MARKER", "sysint", "PROFILE_2", 0), T2ERROR_SUCCESS);
-
-    Vector* profileList = nullptr;
-    
-    // Mock Vector calls
-    EXPECT_CALL(*g_vectorMock, Vector_Create(_)).Times(::testing::AtMost(1));
-    EXPECT_CALL(*g_vectorMock, Vector_Size(_)).Times(::testing::AtMost(1)).WillRepeatedly(Return(2));
-    EXPECT_CALL(*g_vectorMock, Vector_At(_, 0)).Times(::testing::AtMost(1)).WillRepeatedly(Return((void*)strdup("PROFILE_1")));
-    EXPECT_CALL(*g_vectorMock, Vector_At(_, 1)).Times(::testing::AtMost(1)).WillRepeatedly(Return((void*)strdup("PROFILE_2")));
-    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).Times(::testing::AtMost(1));
-    
-    Vector_Create(&profileList);
-    EXPECT_EQ(getMarkerProfileList("SYS_INFO_TEST_MARKER", &profileList), T2ERROR_SUCCESS);
-
-    int foundProfiles = 0;
-    int sz = Vector_Size(profileList);
-    for (int i = 0; i < sz; ++i) {
-        char* prof = (char*)Vector_At(profileList, i);
-        if (strcmp(prof, "PROFILE_1") == 0 || strcmp(prof, "PROFILE_2") == 0) {
-            foundProfiles++;
-        }
-    }
-    EXPECT_EQ(foundProfiles, 2);
-    Vector_Destroy(profileList, free);
-}
-
-#if 0
-TEST_F(ProfileTest, GetComponentMarkerListWorks) {
-    EXPECT_EQ(addT2EventMarker("SYS_INFO_TEST_MARKER", "sysint", "PROFILE_1", 0), T2ERROR_SUCCESS);
-
-    void* markerList = nullptr;
-    getComponentMarkerList("sysint", &markerList);
-
-    Vector* list = (Vector*)markerList;
-    ASSERT_NE(list, nullptr);
-
-    // Mock Vector calls
-    EXPECT_CALL(*g_vectorMock, Vector_Size(_)).Times(::testing::AtMost(1)).WillRepeatedly(Return(1));
-    EXPECT_CALL(*g_vectorMock, Vector_At(_, 0)).Times(::testing::AtMost(1)).WillRepeatedly(Return((void*)strdup("SYS_INFO_TEST_MARKER")));
-    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).Times(::testing::AtMost(1))
-        .WillRepeatedly(Return(T2ERROR_SUCCESS));
-    EXPECT_CALL(*g_vectorMock, Vector_Create(_))
-        .Times(::testing::AtMost(3))  // 1 for local test configlist, 1 for global profileList, 1 for configList in loadReportProfilesFromDisk
-        .WillRepeatedly(Return(T2ERROR_SUCCESS));
-    EXPECT_CALL(*g_vectorMock, Vector_PushBack(_, _))
-        .Times(::testing::AtMost(1))
-        .WillRepeatedly(Return(T2ERROR_SUCCESS));
-
-    bool foundMarker = false;
-    int sz = Vector_Size(list);
-    for (int i = 0; i < sz; ++i) {
-        char* marker = (char*)Vector_At(list, i);
-        if (strcmp(marker, "SYS_INFO_TEST_MARKER") == 0) {
-            foundMarker = true;
-            break;
-        }
-    }
-    EXPECT_TRUE(foundMarker);
-    Vector_Destroy(list, free);
-}
-#endif
-
-TEST_F(ProfileTest, ClearMarkerComponentMapShouldRemoveEntries) {
-    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _))
-        .Times(::testing::AtMost(3))  // 1 for local test configlist, 1 for configList in loadReportProfilesFromDisk
-        .WillRepeatedly(Return(T2ERROR_SUCCESS));
-    EXPECT_EQ(addT2EventMarker("SYS_INFO_TEST_MARKER", "sysint", "PROFILE_1", 0), T2ERROR_SUCCESS);
-
-    EXPECT_EQ(clearT2MarkerComponentMap(), T2ERROR_SUCCESS);
-
-    T2Marker* marker = (T2Marker*)hash_map_get(markerCompMap, "SYS_INFO_TEST_MARKER");
-    EXPECT_EQ(marker, nullptr);
-
-    Vector* eventComponentList = nullptr;
-    getComponentsWithEventMarkers(&eventComponentList);
-    
-    // Mock Vector call
-    EXPECT_CALL(*g_vectorMock, Vector_Size(_)).Times(::testing::AtMost(1)).WillRepeatedly(Return(0));
-    
-    EXPECT_EQ(Vector_Size(eventComponentList), 0);
-    EXPECT_EQ(destroyT2MarkerComponentMap(), T2ERROR_SUCCESS);
-}
-
-#endif
-
 #endif
 
 
@@ -1569,7 +1241,7 @@ TEST_F(ProfileTest, ClearMarkerComponentMapShouldRemoveEntries) {
 //comment
 
 //================================ reportProfiles.c ====================================
-
+#if 1
 extern "C" {	
 typedef void* (*reportOnDemandFunc)(void*);
 reportOnDemandFunc reportOnDemandFuncCallback(void);
@@ -1593,7 +1265,7 @@ TEST(ReportProfilesCallbacks, FreeProfilesHashMap) {
     // Test with nullptr
     cb(nullptr);
 }
-
+#endif
 TEST_F(ProfileTest, initReportProfiles) {
     char status[8] = "true";
     DIR *dir = (DIR*)0xffffffff ;
@@ -1946,6 +1618,7 @@ TEST_F(ProfileTest, ReportProfiles_uninit) {
 }
 #endif
 
+#if 1
 TEST_F(ProfileTest, reportOnDemandTest)
 {
         reportOnDemandFunc func = reportOnDemandFuncCallback();
@@ -1983,6 +1656,7 @@ TEST(ReportProfilesCallbacks, FreeReportProfileHashMap) {
     SUCCEED();
 }
 #endif
+#endif
 
 #if 1
 //comment
@@ -1990,7 +1664,6 @@ TEST(ReportProfilesCallbacks, FreeReportProfileHashMap) {
 
 TEST_F(ProfileTest, InitAndUninit) {
     // Covers ProfileXConf_init and ProfileXConf_uninit
-#if 1
     DIR *dir = (DIR*)0xffffffff ;
     EXPECT_CALL(*g_fileIOMock, opendir(_))
            .Times(::testing::AtMost(2))
@@ -2016,7 +1689,6 @@ TEST_F(ProfileTest, InitAndUninit) {
     EXPECT_CALL(*g_vectorMock, Vector_Create(_))
         .Times(::testing::AtMost(3))  // 1 for local test configlist, 1 for global profileList, 1 for configList in loadReportProfilesFromDisk
         .WillRepeatedly(Return(T2ERROR_SUCCESS));
-#endif
     EXPECT_EQ(ProfileXConf_init(false), T2ERROR_SUCCESS);
 }
 
@@ -2250,39 +1922,6 @@ TEST_F(ProfileTest, ProfileXConf_updateMarkerComponentMap)
     ProfileXConf_updateMarkerComponentMap();
     EXPECT_EQ(ProfileXConf_uninit(), T2ERROR_SUCCESS);
 }
-#if 0
-TEST_F(profileXconfTestFixture, Covers_CollectAndReportXconf_UsingMockAndAPI)
-{
-    // Set up mocks if not already in SetUp/tearDown
-    g_profileXConfMock = new profilexconfMock();
-
-    // Arrange: When the config is processed, allocate a ProfileXConf
-    EXPECT_CALL(*g_profileXConfMock, processConfigurationXConf(_, _))
-        .WillOnce([](char* json, ProfileXConf** out) {
-            *out = new ProfileXConf();
-            memset(*out, 0, sizeof(ProfileXConf));
-            (*out)->name = strdup("TestProfile");
-            (*out)->grepSeekProfile = new GrepSeekProfile();
-            (*out)->grepSeekProfile->execCounter = 21; // arbitrary, will hit checked code
-            return T2ERROR_SUCCESS;
-        });
-
-    // This will use processConfigurationXConf and set static singleProfile
-    ASSERT_EQ(ProfileXConf_init(false), T2ERROR_SUCCESS);
-
-    // Now call the function via function pointer - hits static inside source
-    CollectAndReportXconfFunc fn = get_CollectAndReportXconf_func();
-    ASSERT_NE(fn, nullptr);
-    fn(nullptr); // arguments typically unused for threads
-
-    // Optionally verify any observable side effects/calls
-
-    // Clean up
-    ProfileXConf_uninit();
-    delete g_profileXConfMock;
-    g_profileXConfMock = nullptr;
-}
-#endif
 #endif
 #if 1
 //comment
@@ -2581,53 +2220,16 @@ TEST_F(ProfileTest, createComponentDataElements) {
 }
 
 
+#if 1
 extern "C" {
 typedef void (*freeRequestURIparamFunc)(void *);
 freeRequestURIparamFunc freeRequestURIparamCallback(void);
 }
 
 
-#ifdef GTEST_ENABLE
 TEST(ProfileTest, FreeRequestURIparam_NULLInput) {
     freeRequestURIparamFunc func = freeRequestURIparamCallback();
     ASSERT_NE(func, nullptr);
     func(nullptr); // Should not crash
 }
-#if 0
-TEST(ProfileTest, FreeRequestURIparam_AllFieldsPopulated) {
-    freeRequestURIparamFunc func = freeRequestURIparamCallback();
-    ASSERT_NE(func, nullptr);
-
-    HTTPReqParam *hparam = (HTTPReqParam*)malloc(sizeof(HTTPReqParam));
-    hparam->HttpName  = strdup("testName");
-    hparam->HttpRef   = strdup("testRef");
-    hparam->HttpValue = strdup("testValue");
-
-    func(hparam); // Should free everything, no crash or leaks
-}
-
-TEST(ProfileTest, FreeRequestURIparam_SomeFieldsNull) {
-    freeRequestURIparamFunc func = freeRequestURIparamCallback();
-    ASSERT_NE(func, nullptr);
-
-    HTTPReqParam *hparam = (HTTPReqParam*)malloc(sizeof(HTTPReqParam));
-    hparam->HttpName  = nullptr;
-    hparam->HttpRef   = strdup("testRef");
-    hparam->HttpValue = nullptr;
-
-    func(hparam); // Should free the struct and HttpRef safely
-}
-
-TEST(ProfileTest, FreeRequestURIparam_AllFieldsNull) {
-    freeRequestURIparamFunc func = freeRequestURIparamCallback();
-    ASSERT_NE(func, nullptr);
-
-    HTTPReqParam *hparam = (HTTPReqParam*)malloc(sizeof(HTTPReqParam));
-    hparam->HttpName  = nullptr;
-    hparam->HttpRef   = nullptr;
-    hparam->HttpValue = nullptr;
-
-    func(hparam); // Should free struct safely
-}
-#endif
 #endif

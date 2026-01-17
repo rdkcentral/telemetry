@@ -29,9 +29,9 @@ libtelemetry_msgsender_la_LIBADD = -ldbus-1 ${top_builddir}/source/utils/libt2ut
 if ENABLE_CCSP_SUPPORT
 libtelemetry_msgsender_la_LIBADD += -lccsp_common
 endif
-libtelemetry_msgsender_la_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \\
-                                -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/dbus-1.0/include \\
-                                -I${top_srcdir}/source/utils \\
+libtelemetry_msgsender_la_CPPFLAGS = -fPIC -I/usr/include/dbus-1.0 \
+                                -I/usr/lib/x86_64-linux-gnu/dbus-1.0/include \
+                                -I${top_srcdir}/source/utils \
                                 -I${top_srcdir}/include
 libtelemetry_msgsender_la_DEPENDENCIES = ${top_builddir}/source/utils/libt2utils.la
 
@@ -42,9 +42,9 @@ telemetry2_0_client_LDADD = -ldbus-1 ${top_builddir}/source/utils/libt2utils.la 
 if ENABLE_CCSP_SUPPORT
 telemetry2_0_client_LDADD += -lccsp_common
 endif
-telemetry2_0_client_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \\
-                                -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/dbus-1.0/include \\
-                                -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ccsp \\
-                                -I${top_srcdir}/source/utils \\
+telemetry2_0_client_CPPFLAGS = -fPIC -I/usr/include/dbus-1.0 \
+                                -I/usr/lib/x86_64-linux-gnu/dbus-1.0/include \
+                                -I/usr/include/ccsp \
+                                -I${top_srcdir}/source/utils \
                                 -I${top_srcdir}/include
 telemetry2_0_client_DEPENDENCIES = ${top_builddir}/source/utils/libt2utils.la

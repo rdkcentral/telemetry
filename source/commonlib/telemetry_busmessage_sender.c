@@ -365,7 +365,7 @@ static T2ERROR dbusGetMarkerList(const char* component, char** markerList) {
     
     if (!t2dbus_handle.is_initialized) {
         EVENT_ERROR("D-Bus not initialized\n");
-        return T2ERROR_NOT_INITIALIZED;
+        return T2ERROR_INTERNAL_ERROR;
     }
     
     DBusMessage *msg = NULL;
@@ -394,18 +394,18 @@ static T2ERROR dbusGetMarkerList(const char* component, char** markerList) {
     reply = dbus_connection_send_with_reply_and_block(t2dbus_handle.connection, msg,
                                                        T2_DBUS_DEFAULT_TIMEOUT_MS, &error);
     dbus_message_unref(msg);
-    
+
     if (dbus_error_is_set(&error)) {
         EVENT_ERROR("D-Bus method call failed: %s\n", error.message);
         dbus_error_free(&error);
         return T2ERROR_FAILURE;
     }
-    
+
     if (!reply) {
         EVENT_ERROR("No reply received\n");
         return T2ERROR_FAILURE;
     }
-    
+
     /* Parse reply - expecting a string containing the marker list */
     char *value = NULL;
     if (dbus_message_get_args(reply, &error, 
@@ -419,9 +419,9 @@ static T2ERROR dbusGetMarkerList(const char* component, char** markerList) {
         dbus_message_unref(reply);
         return T2ERROR_FAILURE;
     }
-    
+
     dbus_message_unref(reply);
-    
+
     EVENT_DEBUG("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
@@ -436,12 +436,12 @@ static T2ERROR dbusGetOperationalStatus(uint32_t* status) {
         EVENT_ERROR("Invalid arguments\n");
         return T2ERROR_INVALID_ARGS;
     }
-    
+
     if (!t2dbus_handle.is_initialized) {
         EVENT_ERROR("D-Bus not initialized\n");
-        return T2ERROR_NOT_INITIALIZED;
+        return T2ERROR_INTERNAL_ERROR;
     }
-    
+
     DBusMessage *msg = NULL;
     DBusMessage *reply = NULL;
     DBusError error;
@@ -501,12 +501,12 @@ static T2ERROR dbusSubscribeProfileUpdate(void (*callback)(void)) {
         EVENT_ERROR("Invalid callback\n");
         return T2ERROR_INVALID_ARGS;
     }
-    
+
     if (!t2dbus_handle.is_initialized) {
         EVENT_ERROR("D-Bus not initialized\n");
-        return T2ERROR_NOT_INITIALIZED;
+        return T2ERROR_INTERNAL_ERROR;
     }
-    
+
     /* Store callback */
     profileUpdateCallback = callback;
     
@@ -659,20 +659,20 @@ unlock:
 static bool initRFC( )
 {
     bool status = true ;
-    // Check for RFC and proceed - if true - else return now .
-    if(!bus_handle)
-    {
-        if(initMessageBus() != 0)
-        {
-            EVENT_ERROR("initMessageBus failed\n");
-            status = false ;
-        }
-        else
-        {
-            status = true;
-        }
-        isRFCT2Enable = true;
-    }
+    // // Check for RFC and proceed - if true - else return now .
+    // if(!bus_handle)
+    // {
+    //     if(initMessageBus() != 0)
+    //     {
+    //         EVENT_ERROR("initMessageBus failed\n");
+    //         status = false ;
+    //     }
+    //     else
+    //     {
+    //         status = true;
+    //     }
+    //     isRFCT2Enable = true;
+    // }
 
     return status;
 }

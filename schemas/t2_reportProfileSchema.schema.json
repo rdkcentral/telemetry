@@ -95,6 +95,44 @@
                         }
                     }                  
                 ]
+            },
+            "dataModelSimple": {
+                "title": "\"dataModel\" Parameter (restricted for use in dataModelTable)",
+                "type": "object",
+                "properties": {
+                "type": { "type": "string", "const": "dataModel" },
+                "reference": { "type": "string" }
+                },
+                "required": ["type", "reference"],
+                "additionalProperties": false
+            },
+            "dataModelTable": {
+                "title": "\"dataModelTable\" Parameter",
+                "type": "object",
+                "properties": {
+                "type": { "type": "string", "const": "dataModelTable" },
+                "reference": {
+                    "type": "string",
+                    "pattern": ".*\\.$",
+                    "description": "Reference must end with a dot '.'"
+                },
+                "index": {
+                    "type": "string",
+                    "pattern": "^(\\d+(-\\d+)?)(,(\\d+(-\\d+)?))*$",
+                    "description": "Comma separated numbers, ranges (e.g. 1-4), or combinations (e.g. 1,2,5-7)."
+                },
+                "Parameter": {
+                    "type": "array",
+                    "items": {
+                    "oneOf": [
+                        { "$ref": "#/definitions/parmDefinitions/properties/dataModelSimple" },
+                        { "$ref": "#/definitions/parmDefinitions/properties/dataModelTable" }
+                    ]
+                    }
+                }
+                },
+                "required": ["type", "reference", "Parameter"],
+                "additionalProperties": false
             }   
         }     
     },
@@ -234,7 +272,8 @@
                 "oneOf": [
                     { "$ref": "#/definitions/parmDefinitions/properties/grep", "title": "grep" },
                     { "$ref": "#/definitions/parmDefinitions/properties/event", "title": "event" },
-                    { "$ref": "#/definitions/parmDefinitions/properties/dataModel", "title": "dataModel" }
+                    { "$ref": "#/definitions/parmDefinitions/properties/dataModel", "title": "dataModel" },
+                    { "$ref": "#/definitions/parmDefinitions/properties/dataModelTable", "title": "dataModelTable" }
                     ]
             },
             "description": "An array of objects which defines the data to be included in the generated report. Each object defines the type of data, the source of the data and an optional name to be used as the name (marker) for this data in the generated report. "

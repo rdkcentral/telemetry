@@ -216,7 +216,137 @@ static T2ERROR applyRegexToValue(char** inputValue, const char* regexPattern)
     return T2ERROR_SUCCESS;
 }
 
-T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *paramValueList)
+cJSON* findOrCreateArrayItem(cJSON *array, int targetIndex)
+{
+    int currentSize = cJSON_GetArraySize(array);
+    // Check if item already exists at any position
+    for (int i = 0; i < currentSize; i++)
+    {
+        cJSON *item = cJSON_GetArrayItem(array, i);
+        cJSON *indexObj = cJSON_GetObjectItem(item, "index");
+        if (indexObj && atoi(indexObj->valuestring) == targetIndex)
+        {
+            return item;
+        }
+    }
+
+    // If not found, create new item and add to array
+    cJSON *newItem = cJSON_CreateObject();
+    if(newItem == NULL)
+    {
+        T2Error("cJSON_CreateObject failed.. arrayItem is NULL \n");
+        return NULL;
+    }
+    char indexStr[10];
+    snprintf(indexStr, sizeof(indexStr), "%d", targetIndex);
+    if(cJSON_AddStringToObject(newItem, "index", indexStr)  == NULL)
+    {
+        T2Error("cJSON_AddStringToObject failed.\n");
+        cJSON_Delete(newItem);
+        return NULL;
+    }
+    cJSON_AddItemToArray(array, newItem);
+    return newItem;
+}
+
+//Function to get the basePath like Device.WiFi.AccessPoint.
+int getBasePath(const char *input, char *basePath, size_t maxLength)
+{
+    const char *p = input;
+
+    // Find a digit with . before and after (table index)
+    while (*p != '\0')
+    {
+        if (*(p + 1) != '\0' && *(p + 2) != '\0' && *p == '.' && isdigit((unsigned char) * (p + 1)) && *(p + 2) == '.')
+        {
+            size_t length = p - input + 1; // include the dot
+            if (length < maxLength)
+            {
+                strncpy(basePath, input, length);
+                basePath[length] = '\0';
+                return 0;
+            }
+            else
+            {
+                return -1;
+            }
+        }
+        p++;
+    }
+
+    // If not found, then the whole string - Fallback
+    size_t length = strlen(input);
+
+    // Check if the base path fits within the buffer
+    if (length < maxLength)
+    {
+        strncpy(basePath, input, length);
+        basePath[length] = '\0'; // Null-terminate the string
+        return 0; // Success
+    }
+    else
+    {
+        // If truncation would occur, return failure
+        return -1; // Failure
+    }
+}
+
+/**
+ * @brief Finds the best-matching DataModelTable entry based on a full parameter path.
+ *
+ * This function searches the given list of DataModelTables and returns the most specific
+ * table whose reference string is a prefix of the provided full parameter string.
+ * It ensures that the prefix match is on a valid boundary by checking the next character
+ * (must be either end-of-string, '.', or a digit indicating table index).
+ *
+ * @param dataModelTableList Pointer to a vector containing DataModelTable entries.
+ * @param fullParam          Full TR-181 style parameter path to search for.
+ *
+ * @return Pointer to the best-matching DataModelTable, or NULL if no match is found.
+ *
+ * Example:
+ *   fullParam = "Device.WiFi.AccessPoint.1.AssociatedDevice.2.MACAddress"
+ *   matching table->reference = "Device.WiFi.AccessPoint."
+ */
+DataModelTable *findTableByReference(Vector *dataModelTableList, const char *fullParam)
+{
+    DataModelTable *table = NULL;
+    if (dataModelTableList != NULL && Vector_Size(dataModelTableList) > 0)
+    {
+        size_t bestMatchLength = 0;
+        for (size_t tableCount = 0; tableCount < Vector_Size(dataModelTableList); tableCount++)
+        {
+            DataModelTable *tbl = (DataModelTable *)Vector_At(dataModelTableList, tableCount);
+            if (!tbl || !tbl->reference)
+            {
+                continue;
+            }
+            if (strncmp(fullParam, tbl->reference, strlen(tbl->reference)) == 0)
+            {
+                char nextChar = fullParam[strlen(tbl->reference)];
+                if (nextChar == '\0' || nextChar == '.' || isdigit(nextChar))
+                {
+                    if (strlen(tbl->reference) > bestMatchLength)
+                    {
+                        table = tbl;
+                        bestMatchLength = strlen(tbl->reference);
+                        T2Debug("Match found! table->reference = %s, fullParam = %s\n", table->reference, fullParam);
+                    }
+                }
+            }
+        }
+    }
+    return table;
+}
+
+bool isDataModelTable(const char *paramName)
+{
+    // Checking if the parameter name ends with a dot '.'
+    size_t paramNameLength = strlen(paramName);
+    return (paramNameLength > 0 && paramName[paramNameLength - 1] == '.');
+}
+
+T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *paramValueList, Vector *dataModelTableList)
 {
     if(valArray == NULL || paramNameList == NULL || paramValueList == NULL)
     {
@@ -263,7 +393,7 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
                 continue ;
             }
         }
-        else if(paramValCount == 1) // Single value
+        else if(paramValCount == 1 && !isDataModelTable(param->name)) // Single value
         {
             if(paramValues[0])
             {
@@ -324,87 +454,271 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
         }
         else
         {
-            cJSON *valList = NULL;
-            cJSON *valItem = NULL;
-            int valIndex = 0;
-            bool isTableEmpty = true ;
-            cJSON *arrayItem = cJSON_CreateObject();
-            if(arrayItem == NULL)
+            if (((dataModelTableList != NULL) && (Vector_Size(dataModelTableList) > 0)))
             {
-                T2Error("cJSON_CreateObject failed.. arrayItem is NULL \n");
-                return T2ERROR_FAILURE;
-            }
-            cJSON_AddItemToObject(arrayItem, param->name, valList = cJSON_CreateArray());
-            for (; valIndex < paramValCount; valIndex++)
-            {
-                if(paramValues[valIndex])
+                int valIndex = 0;
+                bool isTableEmpty = true;
+                cJSON *arrayItem = NULL; // Initialize to NULL
+                bool isNewPattern = true;
+                cJSON *existingItem = NULL;
+
+                char basePattern[512];
+                int result = getBasePath(param->name, basePattern, sizeof(basePattern));
+                if (result != 0)
                 {
-                    if(param->reportEmptyParam || !checkForEmptyString(paramValues[0]->parameterValue))
+                    T2Error("basePattern is either truncated or invalid.");
+                    return T2ERROR_FAILURE;
+                }
+
+                if (valArray == NULL || cJSON_GetArraySize(valArray) == 0)
+                {
+                    T2Error("ValArray is NULL\n");
+                }
+                else
+                {
+                    int arraySize = cJSON_GetArraySize(valArray);
+                    for (int i = 0; i < arraySize; i++)
                     {
-                        valItem = cJSON_CreateObject();
-                        if(valItem  == NULL)
+                        cJSON *existingObj = cJSON_GetArrayItem(valArray, i);
+                        if (existingObj && cJSON_HasObjectItem(existingObj, basePattern))
                         {
-                            T2Error("cJSON_CreateObject failed.. valItem is NULL \n");
-                            cJSON_Delete(arrayItem);
-                            return T2ERROR_FAILURE;
+                            existingItem = existingObj;
+                            T2Debug("Found existing object for pattern: %s\n", basePattern);
+                            isNewPattern = false;
+                            break;
                         }
-                        if(param->trimParam)
+                    }
+                }
+
+                if (isNewPattern)
+                {
+                    T2Debug("Creating new object for pattern: %s\n", basePattern);
+                    arrayItem = cJSON_CreateObject();
+                    if (arrayItem == NULL)
+                    {
+                        T2Error("cJSON_CreateObject failed.. arrayItem is NULL \n");
+                        return T2ERROR_FAILURE;
+                    }
+                }
+                else
+                {
+                    arrayItem = existingItem;
+                }
+
+                DataModelTable *table = findTableByReference(dataModelTableList, param->name);
+                if (table != NULL)
+                {
+
+                    for (; valIndex < paramValCount; valIndex++)
+                    {
+                        if (!checkForEmptyString(paramValues[valIndex]->parameterValue))
                         {
-                            trimLeadingAndTrailingws(paramValues[valIndex]->parameterValue);
-                        }
-                        if(param->regexParam != NULL)
-                        {
-                            regex_t regpattern;
-                            int rc = 0;
-                            size_t nmatch = 1;
-                            regmatch_t pmatch[2];
-                            char string[256] = {'\0'};
-                            rc = regcomp(&regpattern, param->regexParam, REG_EXTENDED);
-                            if(rc != 0)
+                            char *parameterName = strdup(paramValues[valIndex]->parameterName);
+                            char *parameterWild = strdup(paramValues[valIndex]->parameterName);
+                            size_t basePathLength = strlen(basePattern);
+                            cJSON *currentObject = arrayItem;
+                            char concatenatedKey[256] = "";
+                            bool firstIndexHandled = false;
+                            bool parameterConfigured = false;
+                            char *token = strtok(parameterName + basePathLength, ".");
+
+
+                            //Filtering the list based on DataModelParam List
+                            for (size_t listCount = 0; listCount < Vector_Size(table->paramList); listCount++)
                             {
-                                T2Warning("regcomp() failed, returning nonzero (%d)\n", rc);
-                            }
-                            else
-                            {
-                                T2Debug("regcomp() successful, returning value (%d)\n", rc);
-                                rc = regexec(&regpattern, paramValues[valIndex]->parameterValue, nmatch, pmatch, 0);
-                                if(rc != 0)
+                                DataModelParam *list = (DataModelParam *)Vector_At(table->paramList, listCount);
+                                if (parameterWild && matchesParameter(list->name, parameterWild))
                                 {
-                                    T2Warning("regexec() failed, Failed to match '%s' with '%s',returning %d.\n", paramValues[valIndex]->parameterValue, param->regexParam, rc);
-                                    free(paramValues[valIndex]->parameterValue);
-                                    paramValues[valIndex]->parameterValue = strdup("");
+                                    T2Debug("Match found!: list->name = %s, parameterWild = %s\n", list->name, parameterWild);
+                                    parameterConfigured = true;
+                                    break; // Parameter found, proceed with processing
+                                }
+                            }
+
+                            // If parameter is not configured, skip processing this parameter
+                            if (!parameterConfigured)
+                            {
+                                if (parameterName)
+                                {
+                                    free(parameterName);    // Free if allocated
+                                }
+                                if (parameterWild)
+                                {
+                                    free(parameterWild);    // Free if allocated
+                                }
+                                continue;
+                            }
+
+
+                            while (token != NULL)
+                            {
+                                char *nextToken = strtok(NULL, ".");
+                                if (nextToken == NULL)
+                                {
+                                    // Adding final parameter
+                                    if (cJSON_AddStringToObject(currentObject, token, paramValues[valIndex]->parameterValue) == NULL)
+                                    {
+                                        T2Error("cJSON_AddStringToObject failed.\n");
+                                        cJSON_Delete(currentObject);
+                                        return T2ERROR_FAILURE;
+                                    }
+                                }
+                                else if (isdigit(token[0]))
+                                {
+                                    // Handle array item
+                                    int index = atoi(token);
+                                    if (!firstIndexHandled)
+                                    {
+                                        strcpy(concatenatedKey, basePattern);
+                                    }
+                                    // Create or get array
+                                    cJSON *array = cJSON_GetObjectItem(currentObject, concatenatedKey);
+                                    if (array == NULL)
+                                    {
+                                        array = cJSON_CreateArray();
+                                        cJSON_AddItemToObject(currentObject, concatenatedKey, array);
+                                    }
+                                    // Find or create array item at correct position
+                                    currentObject = findOrCreateArrayItem(array, index);
+                                    concatenatedKey[0] = '\0';
+                                    firstIndexHandled = true;
                                 }
                                 else
                                 {
-                                    T2Debug("regexec successful, Match is found %.*s\n", pmatch[0].rm_eo - pmatch[0].rm_so, &paramValues[valIndex]->parameterValue[pmatch[0].rm_so]);
-                                    sprintf(string, "%.*s", pmatch[0].rm_eo - pmatch[0].rm_so, &paramValues[valIndex]->parameterValue[pmatch[0].rm_so]);
-                                    free(paramValues[valIndex]->parameterValue);
-                                    paramValues[valIndex]->parameterValue = strdup(string);
+                                    // Build concatenated key
+                                    if (concatenatedKey[0] != '\0')
+                                    {
+                                        strcat(concatenatedKey, ".");
+                                    }
+                                    strcat(concatenatedKey, token);
+                                    // Handle nested object creation only after the first index is done
+                                    if (firstIndexHandled && nextToken != NULL && !isdigit(nextToken[0]))
+                                    {
+                                        cJSON *nestedObject = cJSON_GetObjectItem(currentObject, concatenatedKey);
+                                        if (nestedObject == NULL)
+                                        {
+                                            nestedObject = cJSON_CreateObject();
+                                            if (nestedObject == NULL)
+                                            {
+                                                T2Error("cJSON_CreateObject failed.. nestedObject is NULL \n");
+                                                return T2ERROR_FAILURE;
+                                            }
+                                            cJSON_AddItemToObject(currentObject, concatenatedKey, nestedObject);
+                                        }
+                                        currentObject = nestedObject;
+                                        concatenatedKey[0] = '\0';
+                                    }
                                 }
-                                regfree(&regpattern);
+                                token = nextToken;
+                            } // end of while
+
+                            if (parameterName)
+                            {
+                                free(parameterName);    // Free if allocated
                             }
+                            if (parameterWild)
+                            {
+                                free(parameterWild);    // Free if allocated
+                            }
+                            isTableEmpty = false;
                         }
+                    } // end of for
+                } // Table not NULL
 
-                        if(cJSON_AddStringToObject(valItem, paramValues[valIndex]->parameterName, paramValues[valIndex]->parameterValue) == NULL)
-                        {
-                            T2Error("cJSON_AddStringToObject failed\n");
-                            cJSON_Delete(arrayItem);
-                            cJSON_Delete(valItem);
-                            return T2ERROR_FAILURE;
-                        }
-                        cJSON_AddItemToArray(valList, valItem);
-                        isTableEmpty = false ;
-                    }
+                if (isNewPattern && !isTableEmpty)
+                {
+                    cJSON_AddItemToArray(valArray, arrayItem);
                 }
-            }
-
-            if(!isTableEmpty)
-            {
-                cJSON_AddItemToArray(valArray, arrayItem);
+                else if (isTableEmpty && isNewPattern && arrayItem)
+                {
+                    cJSON_Delete(arrayItem);
+                    arrayItem = NULL;
+                }
             }
             else
             {
-                cJSON_free(arrayItem);
+                cJSON *valList = NULL;
+                cJSON *valItem = NULL;
+                int valIndex = 0;
+                bool isTableEmpty = true;
+                cJSON *arrayItem = cJSON_CreateObject();
+                if (arrayItem == NULL)
+                {
+                    T2Error("cJSON_CreateObject failed.. arrayItem is NULL \n");
+                    return T2ERROR_FAILURE;
+                }
+                cJSON_AddItemToObject(arrayItem, param->name, valList = cJSON_CreateArray());
+                for (; valIndex < paramValCount; valIndex++)
+                {
+                    if (paramValues[valIndex])
+                    {
+                        if (param->reportEmptyParam || !checkForEmptyString(paramValues[0]->parameterValue))
+                        {
+                            valItem = cJSON_CreateObject();
+                            if (valItem == NULL)
+                            {
+                                T2Error("cJSON_CreateObject failed.. valItem is NULL \n");
+                                cJSON_Delete(arrayItem);
+                                return T2ERROR_FAILURE;
+                            }
+                            if (param->trimParam)
+                            {
+                                trimLeadingAndTrailingws(paramValues[valIndex]->parameterValue);
+                            }
+                            if (param->regexParam != NULL)
+                            {
+                                regex_t regpattern;
+                                int rc = 0;
+                                size_t nmatch = 1;
+                                regmatch_t pmatch[2];
+                                char string[256] = {'\0'};
+                                rc = regcomp(&regpattern, param->regexParam, REG_EXTENDED);
+                                if (rc != 0)
+                                {
+                                    T2Warning("regcomp() failed, returning nonzero (%d)\n", rc);
+                                }
+                                else
+                                {
+                                    T2Debug("regcomp() successful, returning value (%d)\n", rc);
+                                    rc = regexec(&regpattern, paramValues[valIndex]->parameterValue, nmatch, pmatch, 0);
+                                    if (rc != 0)
+                                    {
+                                        T2Warning("regexec() failed, Failed to match '%s' with '%s',returning %d.\n", paramValues[valIndex]->parameterValue, param->regexParam, rc);
+                                        free(paramValues[valIndex]->parameterValue);
+                                        paramValues[valIndex]->parameterValue = strdup("");
+                                    }
+                                    else
+                                    {
+                                        T2Debug("regexec successful, Match is found %.*s\n", pmatch[0].rm_eo - pmatch[0].rm_so, &paramValues[valIndex]->parameterValue[pmatch[0].rm_so]);
+                                        sprintf(string, "%.*s", pmatch[0].rm_eo - pmatch[0].rm_so, &paramValues[valIndex]->parameterValue[pmatch[0].rm_so]);
+                                        free(paramValues[valIndex]->parameterValue);
+                                        paramValues[valIndex]->parameterValue = strdup(string);
+                                    }
+                                    regfree(&regpattern);
+                                }
+                            }
+
+                            if (cJSON_AddStringToObject(valItem, paramValues[valIndex]->parameterName, paramValues[valIndex]->parameterValue) == NULL)
+                            {
+                                T2Error("cJSON_AddStringToObject failed\n");
+                                cJSON_Delete(arrayItem);
+                                cJSON_Delete(valItem);
+                                return T2ERROR_FAILURE;
+                            }
+                            cJSON_AddItemToArray(valList, valItem);
+                            isTableEmpty = false;
+                        }
+                    }
+                }
+
+                if (!isTableEmpty)
+                {
+                    cJSON_AddItemToArray(valArray, arrayItem);
+                }
+                else
+                {
+                    cJSON_free(arrayItem);
+                }
             }
         }
     }

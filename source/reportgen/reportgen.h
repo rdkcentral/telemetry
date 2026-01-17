@@ -67,7 +67,9 @@ void freeProfileValues(void* data);
 
 T2ERROR destroyJSONReport(cJSON *jsonObj);
 
-T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *paramValueList);
+bool isDataModelTable(const char *paramName);
+
+T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *paramValueList, Vector *dataModelTableList);
 
 T2ERROR encodeStaticParamsInJSON(cJSON *valArray, Vector *staticParamList);
 

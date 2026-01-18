@@ -464,8 +464,18 @@ T2ERROR getPrivacyModeFromPersistentFolder(char **privMode)
         T2Error("Unable to open the file : %s\n", filePath);
         return T2ERROR_FAILURE;
     }
-    stat(filePath, &filestat);
-    fread(data, sizeof(char), filestat.st_size, fp);
+    if (stat(filePath, &filestat) != 0)
+    {
+        T2Error("Unable to stat file : %s\n", filePath);
+        fclose(fp);
+        return T2ERROR_FAILURE;
+    }
+    if (fread(data, sizeof(char), filestat.st_size, fp) != (size_t)filestat.st_size)
+    {
+        T2Error("Failed to read complete data from file : %s\n", filePath);
+        fclose(fp);
+        return T2ERROR_FAILURE;
+    }
     *privMode = strdup(data);
     if(fclose(fp) != 0)
     {

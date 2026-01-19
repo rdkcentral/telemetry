@@ -269,7 +269,7 @@ TEST(TIMEOUTTHREAD, TIMEOUT_LEQ_REF) {
     tProfile->deleteonTime = true;
     tProfile->reportonupdate = true;
     tProfile->firstreportint = 20;
-    tProfile->firstexecution = true;
+    tProfile->firstexecution = false;
 
     TimeoutThread((void *)tProfile);
 

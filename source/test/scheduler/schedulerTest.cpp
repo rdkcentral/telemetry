@@ -157,6 +157,26 @@ TEST(GETLAPSEDTIME, T2_GT_T1)
     EXPECT_EQ(1, getLapsedTime(&output, &time1, &time2));
 }
 
+TEST(GETLAPSEDTIME, T1_TV_NSEC_GT_T2_BY_GT_1SEC)
+{
+    struct timespec time1;
+    struct timespec time2;
+    struct timespec output;
+
+    // Make time1->tv_nsec - time2->tv_nsec > 1,000,000,000
+    time1.tv_sec = 10;
+    time1.tv_nsec = 2'100'000'000; // 2.1 seconds in nanoseconds
+    time2.tv_sec = 10;
+    time2.tv_nsec = 1'000'000;     // 0.001 seconds in nanoseconds
+
+    // This will hit the "if (com)" block for the second condition
+    getLapsedTime(&output, &time1, &time2);
+
+    // You can check output values if you want, but just calling is enough for coverage
+    EXPECT_EQ(output.tv_sec, 0); // 10-10
+    EXPECT_EQ(output.tv_nsec, 2'099'000'000);
+}
+
 TEST(REGISTERSCHEWITHPROFILE_BEFORE_INITSCHEDULER, TEST1)
 {
    EXPECT_EQ(T2ERROR_INVALID_ARGS,  registerProfileWithScheduler(NULL, 50, 3600, true, true, true, 10, "2022-12-20T11:05:56Z"));

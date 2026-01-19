@@ -173,8 +173,8 @@ TEST(GETLAPSEDTIME, T1_TV_NSEC_GT_T2_BY_GT_1SEC)
     getLapsedTime(&output, &time1, &time2);
 
     // You can check output values if you want, but just calling is enough for coverage
-    EXPECT_EQ(output.tv_sec, 0); // 10-10
-    EXPECT_EQ(output.tv_nsec, 2099000000);
+    EXPECT_EQ(output.tv_sec, 2); // 10-10
+    EXPECT_EQ(output.tv_nsec, 99000000);
 }
 
 TEST(REGISTERSCHEWITHPROFILE_BEFORE_INITSCHEDULER, TEST1)

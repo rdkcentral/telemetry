@@ -258,14 +258,15 @@ TEST(TIMEOUTTHREAD, TEST1)
  
     TimeoutThread((void *)tProfile);
 }
-#if 0
-TEST(TIMEOUTTHREAD, TIMEOUT_LEQ_REF) {
-    SchedulerProfile *tProfile = (SchedulerProfile *)calloc(1, sizeof(SchedulerProfile));
+
+TEST(TIMEOUTTHREAD, TEST2)
+{
+    SchedulerProfile *tProfile = (SchedulerProfile *)malloc(sizeof(SchedulerProfile));
     tProfile->name = strdup("RDKB_Profile");
-    tProfile->timeRefinSec = 10;     // nonzero!
-    tProfile->repeat = false;
+    tProfile->timeRefinSec = 10;
+    tProfile->repeat = true;
     tProfile->terminated = false;
-    tProfile->timeOutDuration = 20;   // <= timeRefinSec, so reporting interval is taken
+    tProfile->timeOutDuration = 20;
     tProfile->timeToLive = 100;
     tProfile->deleteonTime = true;
     tProfile->reportonupdate = true;
@@ -273,36 +274,8 @@ TEST(TIMEOUTTHREAD, TIMEOUT_LEQ_REF) {
     tProfile->firstexecution = false;
 
     TimeoutThread((void *)tProfile);
-
-    free(tProfile->name);
-    free(tProfile);
 }
-#endif
-TEST(TIMEOUTTHREAD, TIMEOUT_GT_REF) {
-    SchedulerProfile *tProfile = (SchedulerProfile *)calloc(1, sizeof(SchedulerProfile));
-    tProfile->name = strdup("RDKB_Profile");
-    tProfile->timeRefinSec = 5;      // nonzero!
-    tProfile->repeat = false;
-    tProfile->terminated = false;
-    tProfile->timeOutDuration = 10;  // > timeRefinSec, so time reference is taken
-    tProfile->timeToLive = 100;
-    tProfile->deleteonTime = true;
-    tProfile->reportonupdate = true;
-    tProfile->firstreportint = 20;
-    tProfile->firstexecution = false;
-    tProfile->timeRef = strdup("2022-12-20T11:05:56Z");
-    pthread_mutex_init(&tProfile->tMutex, NULL);
-    pthread_cond_init(&tProfile->tCond, NULL);
 
-    TimeoutThread((void *)tProfile);
-
-    pthread_mutex_destroy(&tProfile->tMutex);
-    pthread_cond_destroy(&tProfile->tCond);
-    free(tProfile->timeRef);
-    free(tProfile->name);
-    free(tProfile);
-}
-#endif
 TEST(SendInterruptToTimeoutThread, NULL_CHECK)
 {
     EXPECT_EQ(T2ERROR_INVALID_ARGS, SendInterruptToTimeoutThread(NULL));

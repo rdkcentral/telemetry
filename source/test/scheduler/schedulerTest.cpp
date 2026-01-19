@@ -165,16 +165,16 @@ TEST(GETLAPSEDTIME, T1_TV_NSEC_GT_T2_BY_GT_1SEC)
 
     // Make time1->tv_nsec - time2->tv_nsec > 1,000,000,000
     time1.tv_sec = 10;
-    time1.tv_nsec = 2'100'000'000; // 2.1 seconds in nanoseconds
+    time1.tv_nsec = 2100000000; // 2.1 seconds in nanoseconds
     time2.tv_sec = 10;
-    time2.tv_nsec = 1'000'000;     // 0.001 seconds in nanoseconds
+    time2.tv_nsec = 1000000;     // 0.001 seconds in nanoseconds
 
     // This will hit the "if (com)" block for the second condition
     getLapsedTime(&output, &time1, &time2);
 
     // You can check output values if you want, but just calling is enough for coverage
     EXPECT_EQ(output.tv_sec, 0); // 10-10
-    EXPECT_EQ(output.tv_nsec, 2'099'000'000);
+    EXPECT_EQ(output.tv_nsec, 2099000000);
 }
 
 TEST(REGISTERSCHEWITHPROFILE_BEFORE_INITSCHEDULER, TEST1)

@@ -261,7 +261,7 @@ TEST(TIMEOUTTHREAD, TEST1)
 
 TEST(TIMEOUTTHREAD, TIMEOUT_LEQ_REF) {
     SchedulerProfile *tProfile = (SchedulerProfile *)calloc(1, sizeof(SchedulerProfile));
-    tProfile->name = strdup("RDKB_Profile_LEQ");
+    tProfile->name = strdup("RDKB_Profile");
     tProfile->timeRefinSec = 10;     // nonzero!
     tProfile->repeat = false;
     tProfile->terminated = false;
@@ -286,7 +286,7 @@ TEST(TIMEOUTTHREAD, TIMEOUT_LEQ_REF) {
 
 TEST(TIMEOUTTHREAD, TIMEOUT_GT_REF) {
     SchedulerProfile *tProfile = (SchedulerProfile *)calloc(1, sizeof(SchedulerProfile));
-    tProfile->name = strdup("RDKB_Profile_GT");
+    tProfile->name = strdup("RDKB_Profile");
     tProfile->timeRefinSec = 5;      // nonzero!
     tProfile->repeat = false;
     tProfile->terminated = false;

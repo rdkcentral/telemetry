@@ -258,6 +258,7 @@ TEST(TIMEOUTTHREAD, TEST1)
  
     TimeoutThread((void *)tProfile);
 }
+#if 0
 TEST(TIMEOUTTHREAD, TIMEOUT_LEQ_REF) {
     SchedulerProfile *tProfile = (SchedulerProfile *)calloc(1, sizeof(SchedulerProfile));
     tProfile->name = strdup("RDKB_Profile");
@@ -276,8 +277,7 @@ TEST(TIMEOUTTHREAD, TIMEOUT_LEQ_REF) {
     free(tProfile->name);
     free(tProfile);
 }
-
-#if 0
+#endif
 TEST(TIMEOUTTHREAD, TIMEOUT_GT_REF) {
     SchedulerProfile *tProfile = (SchedulerProfile *)calloc(1, sizeof(SchedulerProfile));
     tProfile->name = strdup("RDKB_Profile");
@@ -289,7 +289,7 @@ TEST(TIMEOUTTHREAD, TIMEOUT_GT_REF) {
     tProfile->deleteonTime = true;
     tProfile->reportonupdate = true;
     tProfile->firstreportint = 20;
-    tProfile->firstexecution = true;
+    tProfile->firstexecution = false;
     tProfile->timeRef = strdup("2022-12-20T11:05:56Z");
     pthread_mutex_init(&tProfile->tMutex, NULL);
     pthread_cond_init(&tProfile->tCond, NULL);

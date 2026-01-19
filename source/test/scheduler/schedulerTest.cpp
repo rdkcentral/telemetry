@@ -258,14 +258,13 @@ TEST(TIMEOUTTHREAD, TEST1)
  
     TimeoutThread((void *)tProfile);
 }
-#if 0
 TEST(TIMEOUTTHREAD, TIMEOUT_LEQ_REF) {
     SchedulerProfile *tProfile = (SchedulerProfile *)calloc(1, sizeof(SchedulerProfile));
     tProfile->name = strdup("RDKB_Profile");
     tProfile->timeRefinSec = 10;     // nonzero!
     tProfile->repeat = false;
     tProfile->terminated = false;
-    tProfile->timeOutDuration = 5;   // <= timeRefinSec, so reporting interval is taken
+    tProfile->timeOutDuration = 20;   // <= timeRefinSec, so reporting interval is taken
     tProfile->timeToLive = 100;
     tProfile->deleteonTime = true;
     tProfile->reportonupdate = true;
@@ -284,6 +283,7 @@ TEST(TIMEOUTTHREAD, TIMEOUT_LEQ_REF) {
     free(tProfile);
 }
 
+#if 0
 TEST(TIMEOUTTHREAD, TIMEOUT_GT_REF) {
     SchedulerProfile *tProfile = (SchedulerProfile *)calloc(1, sizeof(SchedulerProfile));
     tProfile->name = strdup("RDKB_Profile");

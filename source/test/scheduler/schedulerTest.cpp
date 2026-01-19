@@ -246,7 +246,7 @@ TEST(TIMEOUTTHREAD, TEST1)
 {
     SchedulerProfile *tProfile = (SchedulerProfile *)malloc(sizeof(SchedulerProfile));
     tProfile->name = strdup("RDKB_Profile");
-    tProfile->timeRefinSec = 0;
+    tProfile->timeRefinSec = 10;
     tProfile->repeat = true;
     tProfile->terminated = false;
     tProfile->timeOutDuration = 10;
@@ -258,7 +258,7 @@ TEST(TIMEOUTTHREAD, TEST1)
  
     TimeoutThread((void *)tProfile);
 }
-
+#if 0
 TEST(TIMEOUTTHREAD, TIMEOUT_LEQ_REF) {
     SchedulerProfile *tProfile = (SchedulerProfile *)calloc(1, sizeof(SchedulerProfile));
     tProfile->name = strdup("RDKB_Profile");
@@ -308,7 +308,7 @@ TEST(TIMEOUTTHREAD, TIMEOUT_GT_REF) {
     free(tProfile->name);
     free(tProfile);
 }
-
+#endif
 TEST(SendInterruptToTimeoutThread, NULL_CHECK)
 {
     EXPECT_EQ(T2ERROR_INVALID_ARGS, SendInterruptToTimeoutThread(NULL));

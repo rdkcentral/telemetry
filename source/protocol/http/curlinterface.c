@@ -283,23 +283,6 @@ static void curlCertSelectorInit()
     }
 }
 #endif
-void telemetry_print_sha256(const char *label, const unsigned char *buffer, size_t len)
-{
-    unsigned char hash[SHA256_DIGEST_LENGTH];
-
-    if (!buffer || len == 0) {
-        printf("[certdbg] %s: invalid buffer\n", label ? label : "SHA256");        
-        return;
-    }
-
-    SHA256(buffer, len, hash);
-    printf("[certdbg] %s: SHA256:\n", label ? label : "Buffer");    
-
-    for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
-        printf("%02x\n", hash[i]);         
-    }
-}
-
 T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
 {
     CURL *curl = NULL;
@@ -468,7 +451,6 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
                 else
                 {
                     // skip past file scheme in URI
-                    telemetry_print_sha256("Telmetry hash", (unsigned char *)pCertPC,strlen(pCertPC));
                     pCertFile = pCertURI;                    
                     if ( strncmp( pCertFile, FILESCHEME, sizeof(FILESCHEME) - 1 ) == 0 )
                     {
@@ -492,8 +474,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
                         {
                             // This might not be working we need to review this
                             childCurlResponse.curlSetopCode = code;
-                        }
-                        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+                        }                        
                         curl_code = curl_easy_perform(curl);
                         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
                         if(curl_code != CURLE_OK || http_code != 200)
@@ -501,8 +482,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
 #ifdef LIBRDKCERTSEL_BUILD
                             T2Info("%s: Using xpki Certs connection certname: %s\n", __func__, pCertFile);
 #endif
-                            fprintf(stderr, "curl failed: %s\n", curl_easy_strerror(curl_code));
-                            fprintf(stderr, "Certs path: %s len : %d\n", pCertFile , strlen(pCertPC));
+                            fprintf(stderr, "curl failed: %s\n", curl_easy_strerror(curl_code));                            
                             childCurlResponse.lineNumber = __LINE__;
                         }
                         else

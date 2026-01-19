@@ -270,15 +270,9 @@ TEST(TIMEOUTTHREAD, TIMEOUT_LEQ_REF) {
     tProfile->reportonupdate = true;
     tProfile->firstreportint = 20;
     tProfile->firstexecution = true;
-    tProfile->timeRef = strdup("2022-12-20T11:05:56Z");
-    pthread_mutex_init(&tProfile->tMutex, NULL);
-    pthread_cond_init(&tProfile->tCond, NULL);
 
     TimeoutThread((void *)tProfile);
 
-    pthread_mutex_destroy(&tProfile->tMutex);
-    pthread_cond_destroy(&tProfile->tCond);
-    free(tProfile->timeRef);
     free(tProfile->name);
     free(tProfile);
 }

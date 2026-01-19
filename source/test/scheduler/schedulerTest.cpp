@@ -286,8 +286,11 @@ TEST(UNINITSCHEDULER, TEST1)
    uninitScheduler();
 }
 #if 1
-typedef unsigned int (*getSchdInSec_fn)(char*);
-getSchdInSec_fn getSchdInSec_fnCallback(void);
+extern "C"
+{
+  typedef unsigned int (*getSchdInSec_fn)(char*);
+  getSchdInSec_fn getSchdInSec_fnCallback(void);
+}
 TEST(getSchdInSec, IndirectCall)
 {
     getSchdInSec_fn fn = getSchdInSec_fnCallback();

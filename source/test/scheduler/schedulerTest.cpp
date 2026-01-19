@@ -284,6 +284,7 @@ TEST(UNINITSCHEDULER, TEST1)
    initScheduler((TimeoutNotificationCB)ReportProfiles_ToutCb, (ActivationTimeoutCB)ReportProfiles_ActivationToutCb, (NotifySchedulerstartCB)NotifySchedulerstartCb);
    registerProfileWithScheduler("RDKB_Profile", 10, 100, true, true, true, 10, "0001-01-01T00:00:00Z");
    uninitScheduler();
+}
 #if 1
 typedef unsigned int (*getSchdInSec_fn)(char*);
 getSchdInSec_fn getSchdInSec_fnCallback(void);
@@ -296,4 +297,4 @@ TEST(getSchdInSec, IndirectCall)
     EXPECT_GE(result, 0u);
     EXPECT_LE(result, 86400u);
 }
-#endif}
+#endif

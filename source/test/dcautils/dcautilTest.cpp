@@ -1674,13 +1674,29 @@ TEST(StaticExtractUnixTimestampFunc, CoversBranches)
     EXPECT_EQ(fn(NULL, 12), (time_t)0);
     EXPECT_EQ(fn("foo", 0), (time_t)0);
 
-    // ISO 8601 - this should succeed (modify to an actual date/time string)
+    // ISO 8601 - "2023-05-30T14:15:16.123 extra"
     const char* iso = "2023-05-30T14:15:16.123 extra text";
-    EXPECT_EQ(fn(iso, strlen(iso)), /* expected_time_t value for 2023-05-30T14:15:16 */);
+    struct tm tm1 {};
+    tm1.tm_year = 2023 - 1900; // years since 1900
+    tm1.tm_mon  = 5 - 1;       // months since January
+    tm1.tm_mday = 30;
+    tm1.tm_hour = 14;
+    tm1.tm_min  = 15;
+    tm1.tm_sec  = 16;
+    time_t expected_iso = mktime(&tm1);
+    EXPECT_EQ(fn(iso, strlen(iso)), expected_iso);
 
-    // YYMMDD-HH:MM:SS format (make this match your code's supported format)
+    // YYMMDD-HH:MM:SS - "230530-14:15:16 something"
     const char* yymmdd = "230530-14:15:16 something";
-    EXPECT_EQ(fn(yymmdd, strlen(yymmdd)), /* expected_time_t value for that date/time */);
+    struct tm tm2 {};
+    tm2.tm_year = 2023 - 1900;
+    tm2.tm_mon  = 5 - 1;
+    tm2.tm_mday = 30;
+    tm2.tm_hour = 14;
+    tm2.tm_min  = 15;
+    tm2.tm_sec  = 16;
+    time_t expected_yymmdd = mktime(&tm2);
+    EXPECT_EQ(fn(yymmdd, strlen(yymmdd)), expected_yymmdd);
 
     // Not matching format (should return 0)
     EXPECT_EQ(fn("1656606000 extra text", strlen("1656606000 extra text")), (time_t)0);

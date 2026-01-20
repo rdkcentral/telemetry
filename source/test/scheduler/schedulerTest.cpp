@@ -352,7 +352,7 @@ TEST(TIMEOUTTHREAD, WAIT_NO_REPORTING_INTERVAL)
     tProfile->timeRef = NULL; // Or DEFAULT_TIME_REFERENCE
     tProfile->timeOutDuration = UINT_MAX;
     tProfile->repeat = false;
-    tProfile->terminated = true;
+    tProfile->terminated = false;
     tProfile->timeToLive = 100;
     tProfile->deleteonTime = true;
     tProfile->reportonupdate = true;

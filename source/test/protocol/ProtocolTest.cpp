@@ -797,6 +797,40 @@ TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetHeader_HTTPHEADER_failure)
     EXPECT_EQ(resp.curlSetopCode, CURLE_COULDNT_CONNECT);
 }
 
+TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetHeader_HTTPHEADER_failure_block)
+{
+    SetHeaderFunc setHeaderCb = getSetHeaderCallback();
+    ASSERT_NE(setHeaderCb, nullptr);
+
+    CURL *curl = (CURL*)0x1;
+    const char *destURL = "http://localhost";
+    struct curl_slist *headerList = nullptr;
+    childResponse resp;
+    memset(&resp, 0, sizeof(resp));
+
+    // Simulate curl_slist_append returns
+    EXPECT_CALL(*g_fileIOMock, curl_slist_append(_, _))
+        .Times(2)
+        .WillRepeatedly(Return((struct curl_slist*)0x1));
+
+    // Mock all prior curl_easy_setopt calls to return OK, only HTTPHEADER fails
+    ::testing::Sequence s;
+    EXPECT_CALL(*g_fileIOMock, curl_easy_setopt_mock(_, ::testing::Ne(CURLOPT_HTTPHEADER), _))
+        .Times(::testing::AtLeast(1))
+        .InSequence(s)
+        .WillRepeatedly(Return(CURLE_OK));
+    EXPECT_CALL(*g_fileIOMock, curl_easy_setopt_mock(_, CURLOPT_HTTPHEADER, _))
+        .InSequence(s)
+        .WillOnce(Return(CURLE_COULDNT_CONNECT)); // Simulate failure at HTTPHEADER
+
+    T2ERROR result = setHeaderCb(curl, destURL, &headerList, &resp);
+
+    EXPECT_EQ(result, T2ERROR_FAILURE);
+    EXPECT_EQ(resp.curlSetopCode, CURLE_COULDNT_CONNECT);
+    // Should be set to a non-zero line number corresponding to line 166 in your source
+    EXPECT_NE(resp.lineNumber, 0);
+}
+
 TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetHeader_WRITEFUNCTION_failure)
 {
     SetHeaderFunc setHeaderCb = getSetHeaderCallback();

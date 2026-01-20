@@ -232,6 +232,34 @@ TEST(SendInterruptToTimeoutThread, NON_NULL_CHECK)
     EXPECT_EQ(T2ERROR_SUCCESS, SendInterruptToTimeoutThread("RDKB_Profile"));
 }
 
+#include <errno.h>
+
+TEST(SendInterruptToTimeoutThread, TRYLOCK_FAILURE_EBUSY)
+{
+    // Allocate and initialize a profile
+    SchedulerProfile *tProfile = (SchedulerProfile *)malloc(sizeof(SchedulerProfile));
+    tProfile->name = strdup("RDKB_Profile");
+    pthread_mutex_init(&tProfile->tMutex, NULL);
+    pthread_cond_init(&tProfile->tCond, NULL);
+
+    // Lock tProfile->tMutex so pthread_mutex_trylock will return EBUSY
+    pthread_mutex_lock(&tProfile->tMutex);
+
+    // If your environment allows, set up the global profile list so this profile is discoverable
+    // This setup may require access to internals, or may need a helper/mock setup depending on the repo.
+    // If you cannot inject the profile, make the change in the profile management for the test.
+    T2ERROR ret = SendInterruptToTimeoutThread("RDKB_Profile");
+
+    // Clean up (avoid leak or hanging mutex)
+    pthread_mutex_unlock(&tProfile->tMutex);
+    pthread_mutex_destroy(&tProfile->tMutex);
+    pthread_cond_destroy(&tProfile->tCond);
+    free(tProfile->name);
+    free(tProfile);
+
+    EXPECT_EQ(ret, T2ERROR_FAILURE); // The error path for EBUSY should return failure
+}
+
 TEST(REGISTERSCHEWITHPROFILE_AFTER_INITSCHEDULER, REGISTER_PROFILE)
 {
    EXPECT_EQ(T2ERROR_SUCCESS,  registerProfileWithScheduler("RDKB_Profile", 10, 100, true, true, true, 15, "0001-01-01T00:00:00Z"));

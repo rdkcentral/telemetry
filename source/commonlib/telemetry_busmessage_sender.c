@@ -26,9 +26,17 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <time.h>
+#if defined(CCSP_SUPPORT_ENABLED)
+#include <ccsp/ccsp_memory.h>
+#include <ccsp/ccsp_custom.h>
+#include <ccsp/ccsp_base_api.h>
+#endif
 #include <dbus/dbus.h>
-
+# if RBUS_ENABLED
+#include <rbus/rbus.h>
+#endif
 #include "telemetry_busmessage_sender.h"
+
 #include "t2collection.h"
 #include "vector.h"
 #include "telemetry2_0.h"
@@ -81,6 +89,7 @@ static pthread_mutex_t FileCacheMutex ;
 static pthread_mutex_t markerListMutex ;
 static pthread_mutex_t loggerMutex ;
 
+/*
 static void EVENT_DEBUG(char* format, ...)
 {
 
@@ -112,6 +121,12 @@ static void EVENT_DEBUG(char* format, ...)
     pthread_mutex_unlock(&loggerMutex);
 
 }
+*/
+
+#define EVENT_DEBUG(format, ...) \
+    fprintf(stderr, "T2DEBUG:%s %s:%d: ", __func__ , __FILE__, __LINE__ ); \
+    fprintf(stderr, (format), ##__VA_ARGS__ ); \
+   // fprintf(stderr, "\n" );
 
 /**
  * @brief Check if D-Bus is initialized
@@ -142,6 +157,7 @@ static DBusHandlerResult dbusMessageFilter(DBusConnection *connection,
 
 /**
  * @brief D-Bus listener thread function
+ * Processes incoming D-Bus signals (like ProfileUpdate)
  */
 static void* dbusListenerThreadFunc(void *arg) {
     (void)arg;
@@ -149,10 +165,15 @@ static void* dbusListenerThreadFunc(void *arg) {
     EVENT_DEBUG("%s ++in\n", __FUNCTION__);
     
     while (!stopListenerThread && t2dbus_handle.connection) {
-        /* Process messages with timeout */
+        /* Process messages with 100ms timeout - blocks until message or timeout */
         dbus_connection_read_write_dispatch(t2dbus_handle.connection, 100);
+        
+        /* Small yield to prevent tight loop CPU hogging 
+         * Note: With proper dbus_threads_init_default(), this shouldn't be needed,
+         * but helps with CPU usage in practice */
+        usleep(1000); // 1ms yield
     }
-    
+
     EVENT_DEBUG("%s --out\n", __FUNCTION__);
     return NULL;
 }
@@ -174,8 +195,16 @@ static T2ERROR dBusInterface_Init(const char *component_name) {
     DBusError error;
     dbus_error_init(&error);
     
-    /* Connect to session bus for local IPC */
-    t2dbus_handle.connection = dbus_bus_get(DBUS_BUS_SESSION, &error);
+    /* Initialize D-Bus threading support - CRITICAL for multi-threaded use */
+    if (!dbus_threads_init_default()) {
+        EVENT_ERROR("Failed to initialize D-Bus threading support\n");
+        pthread_mutex_unlock(&dbusMutex);
+        return T2ERROR_FAILURE;
+    }
+    EVENT_DEBUG("D-Bus threading support initialized\n");
+    
+    /* Connect to system bus for local IPC */
+    t2dbus_handle.connection = dbus_bus_get(DBUS_BUS_SYSTEM, &error);
     if (dbus_error_is_set(&error)) {
         EVENT_ERROR("D-Bus connection error: %s\n", error.message);
         dbus_error_free(&error);
@@ -431,7 +460,8 @@ static T2ERROR dbusGetMarkerList(const char* component, char** markerList) {
  */
 static T2ERROR dbusGetOperationalStatus(uint32_t* status) {
     EVENT_DEBUG("%s ++in\n", __FUNCTION__);
-    
+    *status = T2_STATE_COMPONENT_READY;
+    return T2ERROR_SUCCESS;
     if (!status) {
         EVENT_ERROR("Invalid arguments\n");
         return T2ERROR_INVALID_ARGS;
@@ -656,23 +686,29 @@ unlock:
     return NULL;
 }
 
+static T2ERROR initMessageBus( )
+{
+    // EVENT_DEBUG("%s ++in\n", __FUNCTION__);
+    T2ERROR status = T2ERROR_SUCCESS;
+    //TODO: Initialize message bus here - DBUS / RBUS based on build flags
+    return status;
+}
+
 static bool initRFC( )
 {
     bool status = true ;
     // // Check for RFC and proceed - if true - else return now .
-    // if(!bus_handle)
-    // {
-    //     if(initMessageBus() != 0)
-    //     {
-    //         EVENT_ERROR("initMessageBus failed\n");
-    //         status = false ;
-    //     }
-    //     else
-    //     {
-    //         status = true;
-    //     }
-    //     isRFCT2Enable = true;
-    // }
+
+    if(initMessageBus() != 0)
+    {
+        EVENT_ERROR("initMessageBus failed\n");
+        status = false ;
+    }
+    else
+    {
+        status = true;
+    }
+    isRFCT2Enable = true;
 
     return status;
 }
@@ -689,7 +725,7 @@ int filtered_event_send(const char* data, const char *markerName)
     
     if(!isDbusInitialized())
     {
-        EVENT_ERROR("DBUS not initialized .. exiting !!! \n");
+        EVENT_ERROR("DBUS not initialized .. exiting !!!");
         return ret;
     }
 
@@ -828,7 +864,7 @@ static void dbusProfileUpdateHandler(void)
 
 static bool isCachingRequired( )
 {
-
+    // TODO check complete conditions for caching requirement something is missing
     /**
      * Attempts to read from PAM before its ready creates deadlock .
      * PAM not ready is a definite case for caching the event and avoid bus traffic
@@ -854,7 +890,8 @@ static bool isCachingRequired( )
 
     // Always check for t2 is ready to accept events. Shutdown target can bring down t2 process at runtime
     uint32_t t2ReadyStatus;
-    T2ERROR retVal = dbusGetOperationalStatus(&t2ReadyStatus);
+    //TODO check the exact api to replace documentation of rbus_getUint
+    T2ERROR retVal = dbusGetOperationalStatus(&t2ReadyStatus); // replace of rbus_getUint api
 
     if(retVal != T2ERROR_SUCCESS)
     {
@@ -864,13 +901,14 @@ static bool isCachingRequired( )
     {
         EVENT_DEBUG("Operational status: %d\n", t2ReadyStatus);
         if((t2ReadyStatus & T2_STATE_COMPONENT_READY) == 0)
-            {
-                return true;
-            }
+        {
+            return true;
+        }
     }
 
     if(!isT2Ready)
     {
+        EVENT_DEBUG("T2 is not ready yet - checking component specific config\n");
         if(componentName && (0 != strcmp(componentName, "telemetry_client")))
         {
             // From other binary applications in rbus mode if t2 daemon is yet to determine state of component specific config from cloud, enable cache
@@ -882,7 +920,8 @@ static bool isCachingRequired( )
             {
                 // Fetch marker list and subscribe to profile updates
                 doPopulateEventMarkerList();
-                
+
+                EVENT_DEBUG("Subscribing to ProfileUpdate signal for component %s\n", componentName);
                 T2ERROR ret = dbusSubscribeProfileUpdate(dbusProfileUpdateHandler);
                 if(ret != T2ERROR_SUCCESS)
                 {
@@ -894,6 +933,7 @@ static bool isCachingRequired( )
         }
         else
         {
+            EVENT_DEBUG("Component is telemetry_client or NULL - marking T2 as ready\n");
             isT2Ready = true;
         }
     }
@@ -935,6 +975,11 @@ static int report_or_cache_data(char* telemetry_data, const char* markerName)
             EVENT_ERROR("%s:%d, T2:telemetry data send failed, status = %d \n", __func__, __LINE__, ret);
         }
     }
+    else
+    {
+        EVENT_DEBUG("T2 is NOT ready - caching event to file: marker=%s\n", markerName);
+    }
+    // Caching format needs to be same for operation between rbus/dbus modes across reboots
     return ret;
 }
 

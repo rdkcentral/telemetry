@@ -985,6 +985,17 @@ TEST(CurlInterface_Static, SendOverHTTPInit_CoversMutexInit)
     auto fn = sendOverHTTPInitFuncCallback();
     ASSERT_NE(fn, nullptr);
     fn();
+        // Check that the mutex is initialized (trylock succeeds or returns expected error if already locked)
+    pthread_mutex_t *pmutex = getCurlFileMutex();
+    int trylock_result = pthread_mutex_trylock(pmutex);
+    // Accept either success (0) or busy (EBUSY) as initialized.
+    EXPECT_TRUE(trylock_result == 0 || trylock_result == EBUSY);
+
+    if (trylock_result == 0) { // If locked, unlock for cleanup
+        pthread_mutex_unlock(pmutex);
+    }
+
+    pthread_mutex_destroy(pmutex);
 }
 TEST(AsyncMethodHandlerFunc, CoversAllBranches)
 {

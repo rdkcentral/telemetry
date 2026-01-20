@@ -460,8 +460,7 @@ static T2ERROR dbusGetMarkerList(const char* component, char** markerList) {
  */
 static T2ERROR dbusGetOperationalStatus(uint32_t* status) {
     EVENT_DEBUG("%s ++in\n", __FUNCTION__);
-    *status = T2_STATE_COMPONENT_READY;
-    return T2ERROR_SUCCESS;
+    
     if (!status) {
         EVENT_ERROR("Invalid arguments\n");
         return T2ERROR_INVALID_ARGS;

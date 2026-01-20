@@ -57,30 +57,14 @@ static void (*profileUpdateCallback)(void) = NULL;
 /* Callback handlers */
 static TelemetryEventCallback eventCallBack = NULL;
 static T2EventMarkerListCallback getMarkerListCallBack = NULL;
-static dataModelCallBack dmProcessingCallBack = NULL;
-static dataModelMsgPckCallBack dmMsgPckProcessingCallBack = NULL;
-static dataModelSavedJsonCallBack dmSavedJsonProcessingCallBack = NULL;
-static dataModelSavedMsgPackCallBack dmSavedMsgPackProcessingCallBack = NULL;
-static profilememCallBack profilememUsedCallBack = NULL;
-static dataModelReportOnDemandCallBack reportOnDemandCallBack = NULL;
-static triggerReportOnCondtionCallBack reportOnConditionCallBack = NULL;
-static xconfPrivacyModesDoNotShareCallBack privacyModesDoNotShareCallBack = NULL;
-static ReportProfilesDeleteDNDCallBack mprofilesDeleteCallBack = NULL;
 
 /* State variables */
 static uint32_t t2ReadyStatus = T2_STATE_NOT_READY;
-static char* reportProfileVal = NULL;
-static char* tmpReportProfileVal = NULL;
-static char* reportProfilemsgPckVal = NULL;
 
 /* Threading */
 static pthread_mutex_t dbusMutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_t dbusListenerThread;
 static bool stopListenerThread = false;
-
-/* Component to parameter map */
-static hash_map_t *compTr181ParamMap = NULL;
-static pthread_mutex_t compParamMap = PTHREAD_MUTEX_INITIALIZER;
 
 /**
  * @brief Check if D-Bus is initialized
@@ -151,7 +135,7 @@ static void* dbusListenerThreadFunc(void *arg) {
     while (!stopListenerThread && t2dbus_handle.connection) {
         /* Process messages with timeout */
         dbus_connection_read_write_dispatch(t2dbus_handle.connection, 100);
-        uslee(1000);
+        usleep(1000);
     }
     
     T2Debug("%s --out\n", __FUNCTION__);
@@ -497,7 +481,7 @@ T2ERROR dbusSubscribeSignal(const char* signal_name) {
     
     if (!t2dbus_handle.is_initialized) {
         if (dBusInterface_Init(NULL) != T2ERROR_SUCCESS) {
-            T2ERROR("dbus not initialized\n");
+            T2Error("dbus not initialized\n");
             return T2ERROR_FAILURE;
         }
     }
@@ -537,7 +521,8 @@ T2ERROR dbusUnsubscribeSignal(const char* signal_name) {
     }
     
     if (!t2dbus_handle.is_initialized) {
-        return T2ERROR_NOT_INITIALIZED;
+        T2Error("D-Bus not initialized\n");
+        return T2ERROR_FAILURE;
     }
     
     char rule[512];
@@ -726,7 +711,7 @@ T2ERROR registerDbusMethodProviders(void) {
     
     if (!t2dbus_handle.is_initialized) {
         T2Error("D-Bus not initialized\n");
-        return T2ERROR_NOT_INITIALIZED;
+        return T2ERROR_FAILURE;
     }
     
     static const DBusObjectPathVTable vtable = {

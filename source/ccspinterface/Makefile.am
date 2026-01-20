@@ -20,16 +20,16 @@ AM_CFLAGS =
 
 lib_LTLIBRARIES = libccspinterface.la
 
-libccspinterface_la_SOURCES = busInterface.c rbusInterface.c
+libccspinterface_la_SOURCES = busInterface.c rbusInterface.c dbusInterface.c
 libccspinterface_la_CFLAGS = $(GLIB_CFLAGS)
-libccspinterface_la_LDFLAGS = -shared -fPIC -lrbus $(GLIB_LIBS)
+libccspinterface_la_LDFLAGS = -shared -fPIC -lrbus -ldbus-1 $(GLIB_LIBS)
 if ENABLE_CCSP_SUPPORT
 libccspinterface_la_LDFLAGS += -lccsp_common
 libccspinterface_la_SOURCES += ccspinterface.c
 endif
 
-libccspinterface_la_CPPFLAGS = -fPIC $(CPPFLAGS) -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \
-                                -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/dbus-1.0/include \
+libccspinterface_la_CPPFLAGS = -fPIC $(CPPFLAGS) -I/usr/include/dbus-1.0 \
+                                -I/usr/lib/x86_64-linux-gnu/dbus-1.0/include \
                                 -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ \
                                 -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ccsp \
                                 -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/rbus \

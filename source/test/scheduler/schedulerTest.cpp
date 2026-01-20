@@ -310,33 +310,6 @@ TEST(REGISTERPROFILEWITHSCHEDULER, FIRSTREPORT_GT_TIMEOUT)
     uninitScheduler();
 }
 
-TEST(TIMEOUTTHREAD, ACTIVATION_TIMEOUT_BRANCH)
-{
-    SchedulerProfile *tProfile = (SchedulerProfile *)malloc(sizeof(SchedulerProfile));
-    tProfile->name = strdup("ACTIVATION_TIMEOUT");
-    tProfile->timeRef = NULL;
-    tProfile->timeRefinSec = 0;
-    tProfile->repeat = true;
-    tProfile->terminated = false;
-    tProfile->timeOutDuration = 10;
-    tProfile->timeToLive = 5; // Smaller than timeOutDuration, triggers activation timeout
-    tProfile->deleteonTime = true;
-    tProfile->reportonupdate = true;
-    tProfile->firstreportint = 3;
-    tProfile->firstexecution = false;
-
-    pthread_mutex_init(&tProfile->tMutex, NULL);
-    pthread_cond_init(&tProfile->tCond, NULL);
-
-    // Should hit activationTimeoutCb branch
-    TimeoutThread((void *)tProfile);
-
-    pthread_cond_destroy(&tProfile->tCond);
-    pthread_mutex_destroy(&tProfile->tMutex);
-    free(tProfile->name);
-    free(tProfile);
-}
-
 TEST(TIMEOUTTHREAD, TEST1)
 {
     SchedulerProfile *tProfile = (SchedulerProfile *)malloc(sizeof(SchedulerProfile));

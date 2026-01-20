@@ -151,6 +151,7 @@ static void* dbusListenerThreadFunc(void *arg) {
     while (!stopListenerThread && t2dbus_handle.connection) {
         /* Process messages with timeout */
         dbus_connection_read_write_dispatch(t2dbus_handle.connection, 100);
+        uslee(1000);
     }
     
     T2Debug("%s --out\n", __FUNCTION__);
@@ -484,60 +485,6 @@ Vector* getDbusProfileParamValues(Vector *paramList, int execcount) {
 }
 
 /**
- * @brief Publish telemetry event via D-Bus signal
- */
-T2ERROR dbusPublishEvent(const char* eventName, const char* eventValue) {
-    T2Debug("%s ++in\n", __FUNCTION__);
-    
-    if (!eventName || !eventValue) {
-        T2Error("Invalid event parameters\n");
-        return T2ERROR_INVALID_ARGS;
-    }
-    
-    if (!t2dbus_handle.is_initialized) {
-        if (dBusInterface_Init(NULL) != T2ERROR_SUCCESS) {
-            return T2ERROR_FAILURE;
-        }
-    }
-    
-    DBusMessage *signal = NULL;
-    
-    /* Create signal */
-    signal = dbus_message_new_signal(T2_DBUS_OBJECT_PATH,
-                                     T2_DBUS_INTERFACE_NAME,
-                                     T2_DBUS_SIGNAL_EVENT);
-    if (!signal) {
-        T2Error("Failed to create D-Bus signal\n");
-        return T2ERROR_FAILURE;
-    }
-    
-    /* Append arguments */
-    if (!dbus_message_append_args(signal,
-                                  DBUS_TYPE_STRING, &eventName,
-                                  DBUS_TYPE_STRING, &eventValue,
-                                  DBUS_TYPE_INVALID)) {
-        T2Error("Failed to append signal arguments\n");
-        dbus_message_unref(signal);
-        return T2ERROR_FAILURE;
-    }
-    
-    /* Send signal */
-    if (!dbus_connection_send(t2dbus_handle.connection, signal, NULL)) {
-        T2Error("Failed to send D-Bus signal\n");
-        dbus_message_unref(signal);
-        return T2ERROR_FAILURE;
-    }
-    
-    dbus_connection_flush(t2dbus_handle.connection);
-    dbus_message_unref(signal);
-    
-    T2Debug("Published event: %s = %s\n", eventName, eventValue);
-    T2Debug("%s --out\n", __FUNCTION__);
-    
-    return T2ERROR_SUCCESS;
-}
-
-/**
  * @brief Subscribe to D-Bus signal
  */
 T2ERROR dbusSubscribeSignal(const char* signal_name) {
@@ -550,6 +497,7 @@ T2ERROR dbusSubscribeSignal(const char* signal_name) {
     
     if (!t2dbus_handle.is_initialized) {
         if (dBusInterface_Init(NULL) != T2ERROR_SUCCESS) {
+            T2ERROR("dbus not initialized\n");
             return T2ERROR_FAILURE;
         }
     }
@@ -691,177 +639,120 @@ void dbusPublishReportUploadStatus(const char* status) {
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
-/**
- * @brief Set T2 event receiver state
- */
-void dbusSetT2EventReceiveState(int t2_state) {
-    t2ReadyStatus = t2_state;
-    T2Info("T2 state set to: %d\n", t2_state);
-}
-
-/**
- * @brief Check if a D-Bus method exists
- */
-bool dbusCheckMethodExists(const char* methodName) {
-    T2Debug("%s ++in: %s\n", __FUNCTION__, methodName);
+static DBusHandlerResult dbusMethodDispatcher(DBusConnection *conn, 
+                                              DBusMessage *message, 
+                                              void *user_data) {
+    (void)conn;
+    (void)user_data;
     
-    if (!methodName) {
-        return false;
+    const char *method = dbus_message_get_member(message);
+    const char *interface = dbus_message_get_interface(message);
+    
+    if (!interface || strcmp(interface, T2_DBUS_INTERFACE_NAME) != 0) {
+        return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
     }
     
-    /* For now, return true for standard methods */
-    /* In production, this should introspect the remote object */
+    if (!method) {
+        return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+    }
     
-    T2Debug("%s --out\n", __FUNCTION__);
-    return true;
+    T2Debug("Received method call: %s\n", method);
+    
+    DBusMessage *reply = NULL;
+    
+    if (strcmp(method, "GetMarkerList") == 0) {
+        const char *component = NULL;
+        DBusError error;
+        dbus_error_init(&error);
+        
+        if (!dbus_message_get_args(message, &error,
+                                   DBUS_TYPE_STRING, &component,
+                                   DBUS_TYPE_INVALID)) {
+            T2Error("Failed to parse GetMarkerList args: %s\n", error.message);
+            dbus_error_free(&error);
+            reply = dbus_message_new_error(message, DBUS_ERROR_INVALID_ARGS,
+                                          "Expected string argument");
+        } else if (!getMarkerListCallBack) {
+            T2Error("GetMarkerList callback not registered\n");
+            reply = dbus_message_new_error(message, DBUS_ERROR_FAILED,
+                                          "Marker list callback not initialized");
+        } else {
+            Vector *markerList = NULL;
+            getMarkerListCallBack(component, (void**)&markerList);
+            
+            char markerListStr[4096] = "";
+            if (markerList && Vector_Size(markerList) > 0) {
+                for (size_t i = 0; i < Vector_Size(markerList); i++) {
+                    char *marker = (char*)Vector_At(markerList, i);
+                    if (marker) {
+                        if (i > 0) strcat(markerListStr, ",");
+                        strcat(markerListStr, marker);
+                    }
+                }
+                Vector_Destroy(markerList, free);
+            }
+            
+            reply = dbus_message_new_method_return(message);
+            const char *result = markerListStr;
+            dbus_message_append_args(reply,
+                                    DBUS_TYPE_STRING, &result,
+                                    DBUS_TYPE_INVALID);
+            T2Debug("Returning marker list: %s\n", markerListStr);
+        }
+    }
+    else if (strcmp(method, "GetOperationalStatus") == 0) {
+        reply = dbus_message_new_method_return(message);
+        dbus_message_append_args(reply,
+                                DBUS_TYPE_UINT32, &t2ReadyStatus,
+                                DBUS_TYPE_INVALID);
+        T2Debug("Returning operational status: %u\n", t2ReadyStatus);
+    }
+    else {
+        return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+    }
+    
+    if (reply) {
+        dbus_connection_send(conn, reply, NULL);
+        dbus_connection_flush(conn);
+        dbus_message_unref(reply);
+        return DBUS_HANDLER_RESULT_HANDLED;
+    }
+    
+    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
-/** * @brief Get marker list for component via D-Bus method call
- */
-T2ERROR dbusGetMarkerList(const char* component, char** markerList) {
+T2ERROR registerDbusMethodProviders(void) {
     T2Debug("%s ++in\n", __FUNCTION__);
-    
-    if (!component || !markerList) {
-        T2Error("Invalid arguments\n");
-        return T2ERROR_INVALID_ARGS;
-    }
     
     if (!t2dbus_handle.is_initialized) {
         T2Error("D-Bus not initialized\n");
         return T2ERROR_NOT_INITIALIZED;
     }
     
-    DBusMessage *msg = NULL;
-    DBusMessage *reply = NULL;
-    DBusError error;
-    dbus_error_init(&error);
+    static const DBusObjectPathVTable vtable = {
+        NULL,
+        dbusMethodDispatcher,
+        NULL,
+        NULL,
+        NULL,
+        NULL
+    };
     
-    /* Construct parameter name: Telemetry.ReportProfiles.{component}.EventMarkerList */
-    char paramName[256];
-    snprintf(paramName, sizeof(paramName), "Telemetry.ReportProfiles.%s.EventMarkerList", component);
-    
-    /* Create method call message */
-    msg = dbus_message_new_method_call(T2_DBUS_SERVICE_NAME,
-                                       T2_DBUS_OBJECT_PATH,
-                                       T2_DBUS_INTERFACE_NAME,
-                                       "GetMarkerList");
-    if (!msg) {
-        T2Error("Failed to create method call message\n");
+    if (!dbus_connection_register_object_path(t2dbus_handle.connection,
+                                              T2_DBUS_OBJECT_PATH,
+                                              &vtable,
+                                              NULL)) {
+        T2Error("Failed to register object path\n");
         return T2ERROR_FAILURE;
     }
     
-    /* Append component name */
-    if (!dbus_message_append_args(msg, DBUS_TYPE_STRING, &component, DBUS_TYPE_INVALID)) {
-        T2Error("Failed to append arguments\n");
-        dbus_message_unref(msg);
-        return T2ERROR_FAILURE;
-    }
-    
-    /* Send message and get reply */
-    reply = dbus_connection_send_with_reply_and_block(t2dbus_handle.connection, msg,
-                                                       T2_DBUS_DEFAULT_TIMEOUT_MS, &error);
-    dbus_message_unref(msg);
-    
-    if (dbus_error_is_set(&error)) {
-        T2Error("D-Bus method call failed: %s\n", error.message);
-        dbus_error_free(&error);
-        return T2ERROR_FAILURE;
-    }
-    
-    if (!reply) {
-        T2Error("No reply received\n");
-        return T2ERROR_FAILURE;
-    }
-    
-    /* Parse reply - expecting a string containing the marker list */
-    char *value = NULL;
-    if (dbus_message_get_args(reply, &error, 
-                             DBUS_TYPE_STRING, &value,
-                             DBUS_TYPE_INVALID)) {
-        *markerList = strdup(value);
-        T2Debug("Retrieved marker list for %s\n", component);
-    } else {
-        T2Error("Failed to parse reply: %s\n", error.message);
-        dbus_error_free(&error);
-        dbus_message_unref(reply);
-        return T2ERROR_FAILURE;
-    }
-    
-    dbus_message_unref(reply);
-    
+    T2Info("Registered D-Bus method providers at %s\n", T2_DBUS_OBJECT_PATH);
     T2Debug("%s --out\n", __FUNCTION__);
+    
     return T2ERROR_SUCCESS;
 }
 
-/**
- * @brief Get operational status via D-Bus method call
- */
-T2ERROR dbusGetOperationalStatus(uint32_t* status) {
-    T2Debug("%s ++in\n", __FUNCTION__);
-    
-    if (!status) {
-        T2Error("Invalid arguments\n");
-        return T2ERROR_INVALID_ARGS;
-    }
-    
-    if (!t2dbus_handle.is_initialized) {
-        T2Error("D-Bus not initialized\n");
-        return T2ERROR_NOT_INITIALIZED;
-    }
-    
-    DBusMessage *msg = NULL;
-    DBusMessage *reply = NULL;
-    DBusError error;
-    dbus_error_init(&error);
-    
-    /* Create method call message */
-    msg = dbus_message_new_method_call(T2_DBUS_SERVICE_NAME,
-                                       T2_DBUS_OBJECT_PATH,
-                                       T2_DBUS_INTERFACE_NAME,
-                                       "GetOperationalStatus");
-    if (!msg) {
-        T2Error("Failed to create method call message\n");
-        return T2ERROR_FAILURE;
-    }
-    
-    /* Send message and get reply */
-    reply = dbus_connection_send_with_reply_and_block(t2dbus_handle.connection, msg,
-                                                       T2_DBUS_DEFAULT_TIMEOUT_MS, &error);
-    dbus_message_unref(msg);
-    
-    if (dbus_error_is_set(&error)) {
-        T2Error("D-Bus method call failed: %s\n", error.message);
-        dbus_error_free(&error);
-        return T2ERROR_FAILURE;
-    }
-    
-    if (!reply) {
-        T2Error("No reply received\n");
-        return T2ERROR_FAILURE;
-    }
-    
-    /* Parse reply - expecting UINT32 */
-    if (dbus_message_get_args(reply, &error, 
-                             DBUS_TYPE_UINT32, status,
-                             DBUS_TYPE_INVALID)) {
-        T2Debug("Retrieved operational status: %u\n", *status);
-    } else {
-        T2Error("Failed to parse reply: %s\n", error.message);
-        dbus_error_free(&error);
-        dbus_message_unref(reply);
-        return T2ERROR_FAILURE;
-    }
-    
-    dbus_message_unref(reply);
-    
-    T2Debug("%s --out\n", __FUNCTION__);
-    return T2ERROR_SUCCESS;
-}
-
-/**
- * @brief Subscribe to profile update notifications
- */
-T2ERROR dbusSubscribeProfileUpdate(void (*callback)(void)) {
+T2ERROR registerGetMarkerListCallback(T2EventMarkerListCallback callback) {
     T2Debug("%s ++in\n", __FUNCTION__);
     
     if (!callback) {
@@ -869,48 +760,11 @@ T2ERROR dbusSubscribeProfileUpdate(void (*callback)(void)) {
         return T2ERROR_INVALID_ARGS;
     }
     
-    if (!t2dbus_handle.is_initialized) {
-        T2Error("D-Bus not initialized\n");
-        return T2ERROR_NOT_INITIALIZED;
-    }
-    
-    /* Store callback */
-    profileUpdateCallback = callback;
-    
-    /* Subscribe to ProfileUpdate signal */
-    char rule[512];
-    DBusError error;
-    dbus_error_init(&error);
-    
-    snprintf(rule, sizeof(rule), 
-             "type='signal',interface='%s',member='%s'",
-             T2_DBUS_INTERFACE_NAME, T2_DBUS_SIGNAL_PROFILE_UPDATE);
-    
-    dbus_bus_add_match(t2dbus_handle.connection, rule, &error);
-    
-    if (dbus_error_is_set(&error)) {
-        T2Error("Failed to add match rule: %s\n", error.message);
-        dbus_error_free(&error);
-        return T2ERROR_FAILURE;
-    }
-    
-    T2Info("Subscribed to ProfileUpdate signal\n");
+    getMarkerListCallBack = callback;
+    T2Info("Registered GetMarkerList callback\n");
     T2Debug("%s --out\n", __FUNCTION__);
     
     return T2ERROR_SUCCESS;
 }
 
-/** * @brief Process incoming D-Bus messages
- */
-T2ERROR dbusProcessMessages(int timeout_ms) {
-    if (!t2dbus_handle.is_initialized || !t2dbus_handle.connection) {
-        return T2ERROR_NOT_INITIALIZED;
-    }
-    
-    dbus_connection_read_write_dispatch(t2dbus_handle.connection, timeout_ms);
-    
-    return T2ERROR_SUCCESS;
-}
-
-/**
  

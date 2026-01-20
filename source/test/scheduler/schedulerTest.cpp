@@ -242,6 +242,15 @@ TEST(REGISTERSCHEWITHPROFILE_AFTER_INITSCHEDULER, REGISTER_PROFILE_AGAIN)
    EXPECT_EQ(T2ERROR_SUCCESS,  registerProfileWithScheduler("RDKB_Profile", 10, 100, true, true, true, 15, "0001-01-01T00:00:00Z"));
 }
 
+TEST(REGISTERPROFILEWITHSCHEDULER, DUPLICATE_PROFILE)
+{
+    initScheduler((TimeoutNotificationCB)ReportProfiles_ToutCb, (ActivationTimeoutCB)ReportProfiles_ActivationToutCb, (NotifySchedulerstartCB)NotifySchedulerstartCb);
+    registerProfileWithScheduler("DUPLICATE_PROFILE", 5, 100, true, true, true, 5, "0001-01-01T00:00:00Z");
+    EXPECT_EQ(T2ERROR_SUCCESS, registerProfileWithScheduler("DUPLICATE_PROFILE", 5, 100, true, true, true, 5, "0001-01-01T00:00:00Z"));
+    unregisterProfileFromScheduler("DUPLICATE_PROFILE");
+    uninitScheduler();
+}
+
 TEST(TIMEOUTTHREAD, TEST1)
 {
     SchedulerProfile *tProfile = (SchedulerProfile *)malloc(sizeof(SchedulerProfile));

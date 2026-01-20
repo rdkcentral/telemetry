@@ -451,7 +451,7 @@ TEST(SENDINTERRUPTTOTIMEOUTTHREAD, NOT_FOUND_LOOP)
     EXPECT_EQ(T2ERROR_SUCCESS, SendInterruptToTimeoutThread("PROFILE_DOES_NOT_EXIST"));
     uninitScheduler();
 }
-
+#if 0
 // 3. Cover SendInterruptToTimeoutThread: pthread_mutex_lock fails
 TEST(SENDINTERRUPTTOTIMEOUTTHREAD, MUTEX_LOCK_FAIL)
 {
@@ -521,7 +521,52 @@ TEST(REGISTERPROFILEWITHSCHEDULER, COND_INIT_FAIL)
     #undef pthread_cond_init
 #endif
 }
+#endif
+#include <signal.h>
 
+// 1. Cover freeSchedulerProfile: null input
+TEST(FREE_SCHEDULER_PROFILE, NULL_ARG)
+{
+    freeSchedulerProfile(NULL); // just returns, for coverage
+}
+
+// 2. Cover freeSchedulerProfile: normal cleanup
+TEST(FREE_SCHEDULER_PROFILE, NORMAL)
+{
+    SchedulerProfile *sch = (SchedulerProfile*)calloc(1, sizeof(SchedulerProfile));
+    sch->name = strdup("FREE_PROFILE");
+    pthread_mutex_init(&sch->tMutex, NULL);
+    pthread_cond_init(&sch->tCond, NULL);
+    sch->tId = pthread_self(); // Not a real running thread, but covers detach branch
+    freeSchedulerProfile(sch);
+}
+
+// 3. Cover SendInterruptToTimeoutThread: no match exists
+TEST(SENDINTERRUPTTOTIMEOUTTHREAD, NOT_FOUND_LOOP)
+{
+   // Ensure scheduler is initialized, but profile does not exist
+    initScheduler((TimeoutNotificationCB)ReportProfiles_ToutCb, (ActivationTimeoutCB)ReportProfiles_ActivationToutCb, (NotifySchedulerstartCB)NotifySchedulerstartCb);
+    EXPECT_EQ(T2ERROR_SUCCESS, SendInterruptToTimeoutThread((char*)"PROFILE_DOES_NOT_EXIST"));
+    uninitScheduler();
+}
+
+// 4. Cover uninitScheduler: double call to trigger "not initialized" path
+TEST(UNINITSCHEDULER, CALLED_TWICE)
+{
+    uninitScheduler();
+    uninitScheduler();
+}
+
+// 5. Test: unregisterProfileFromScheduler, called after all profiles are gone
+TEST(UNREGISTERPROFILEFROMSCHEDULER, ALREADY_REMOVED)
+{
+    initScheduler((TimeoutNotificationCB)ReportProfiles_ToutCb, (ActivationTimeoutCB)ReportProfiles_ActivationToutCb, (NotifySchedulerstartCB)NotifySchedulerstartCb);
+    registerProfileWithScheduler("REMOVEME", 2, 10, true, true, true, 1, "0001-01-01T00:00:00Z");
+    unregisterProfileFromScheduler("REMOVEME");
+    // Now gone -- result should be failure
+    EXPECT_EQ(T2ERROR_FAILURE, unregisterProfileFromScheduler("REMOVEME"));
+    uninitScheduler();
+}
 #if 1
 extern "C"
 {

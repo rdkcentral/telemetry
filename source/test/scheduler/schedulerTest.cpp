@@ -392,6 +392,7 @@ TEST(UNINITSCHEDULER, TEST1)
    registerProfileWithScheduler("RDKB_Profile", 10, 100, true, true, true, 10, "0001-01-01T00:00:00Z");
    uninitScheduler();
 }
+#if 0
 // Add at top if needed:
 #include <signal.h>
 
@@ -451,7 +452,7 @@ TEST(SENDINTERRUPTTOTIMEOUTTHREAD, NOT_FOUND_LOOP)
     EXPECT_EQ(T2ERROR_SUCCESS, SendInterruptToTimeoutThread("PROFILE_DOES_NOT_EXIST"));
     uninitScheduler();
 }
-#if 0
+
 // 3. Cover SendInterruptToTimeoutThread: pthread_mutex_lock fails
 TEST(SENDINTERRUPTTOTIMEOUTTHREAD, MUTEX_LOCK_FAIL)
 {

@@ -635,6 +635,29 @@ TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetHeader_setopt_failure)
     EXPECT_EQ(resp.curlSetopCode, CURLE_FAILED_INIT);
 }
 
+TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetHeader_FirstSetopt_failure_lineNumber)
+{
+    SetHeaderFunc setHeaderCb = getSetHeaderCallback();
+    ASSERT_NE(setHeaderCb, nullptr);
+
+    CURL *curl = (CURL*)0x1;
+    const char *destURL = "http://localhost";
+    struct curl_slist *headerList = nullptr;
+    childResponse resp;
+    memset(&resp, 0, sizeof(resp));
+
+    // The very first curl_easy_setopt_mock call returns CURLE_FAILED_INIT.
+    EXPECT_CALL(*g_fileIOMock, curl_easy_setopt_mock(_,_,_))
+        .Times(1)
+        .WillOnce(Return(CURLE_FAILED_INIT));
+
+    T2ERROR code = setHeaderCb(curl, destURL, &headerList, &resp);
+    EXPECT_EQ(code, T2ERROR_FAILURE);
+    EXPECT_EQ(resp.curlSetopCode, CURLE_FAILED_INIT);
+    // Assert that lineNumber field gets set. (Should match the __LINE__ where the macro is expanded; we test it's nonzero.)
+    EXPECT_NE(resp.lineNumber, 0);
+}
+
 TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetMtlsHeaders_setopt_failure)
 {
     SetMtlsHeadersFunc cb = getSetMtlsHeadersCallback();

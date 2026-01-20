@@ -1391,4 +1391,15 @@ strnstrFunc strnstrFuncCallback(void)
 {
     return strnstr;
 }
+typedef time_t (*extractUnixTimestampFunc)(const char*, size_t);
+extractUnixTimestampFunc extractUnixTimestampFuncCallback(void)
+{
+    return extractUnixTimestamp;
+}
+
+typedef T2ERROR (*updateLogSeekFunc)(hash_map_t *, const char *, const long);
+updateLogSeekFunc updateLogSeekFuncCallback(void)
+{
+    return updateLogSeek;
+}
 #endif

@@ -1634,6 +1634,10 @@ TEST_F(dcaTestFixture, getGrepResults_success)
 extern "C" {
 typedef const char *(*strnstrFunc)(const char *, const char *, size_t);
 strnstrFunc strnstrFuncCallback(void);
+typedef time_t (*extractUnixTimestampFunc)(const char*, size_t);
+extractUnixTimestampFunc extractUnixTimestampFuncCallback(void);
+typedef T2ERROR (*updateLogSeekFunc)(hash_map_t *, const char *, const long);
+updateLogSeekFunc updateLogSeekFuncCallback(void);
 }
 TEST(StaticStrnstrFunc, CoversAllBranches)
 {
@@ -1656,5 +1660,36 @@ TEST(StaticStrnstrFunc, CoversAllBranches)
     EXPECT_EQ(fn("abcdef", "e", 4), nullptr); // not found within first 4 chars
 
     // needle_len >= 4 path -- you can test if your implementation has a different optimized branch, but above is minimal
+}
+
+TEST(StaticExtractUnixTimestampFunc, CoversBranches)
+{
+    auto fn = extractUnixTimestampFuncCallback();
+    ASSERT_NE(fn, nullptr);
+
+    // 1. Null pointer or zero length → should hit error/return 0.
+    EXPECT_EQ(fn(NULL, 12), (time_t)0);
+    EXPECT_EQ(fn("foo", 0), (time_t)0);
+
+    // You can add further tests to cover parsing a valid numeric string, invalid string, etc.
+    // Example: Parse a valid unix timestamp string at start
+    const char* line = "1656606000 extra text";
+    size_t len = strlen(line);
+    EXPECT_EQ(fn(line, len), (time_t)1656606000);
+}
+TEST(StaticUpdateLogSeekFunc, CoversNullBranches)
+{
+    auto fn = updateLogSeekFuncCallback();
+    ASSERT_NE(fn, nullptr);
+
+    // First branch: logSeekMap == NULL
+    EXPECT_EQ(fn(NULL, "dummy.log", 100), T2ERROR_FAILURE);
+
+    // Second branch: logFileName == NULL
+    hash_map_t dummyMap;
+    EXPECT_EQ(fn(&dummyMap, NULL, 100), T2ERROR_FAILURE);
+
+    // Additional test for a stub/empty map and filename to reach further code
+    // (Will continue past the NULL check; optionally extend to later logic in the function)
 }
 #endif

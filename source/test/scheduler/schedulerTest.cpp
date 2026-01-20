@@ -251,6 +251,65 @@ TEST(REGISTERPROFILEWITHSCHEDULER, DUPLICATE_PROFILE)
     uninitScheduler();
 }
 
+TEST(UNREGISTERPROFILEFROMSCHEDULER, NULL_NAME)
+{
+    EXPECT_EQ(T2ERROR_INVALID_ARGS, unregisterProfileFromScheduler(NULL));
+}
+
+// 5. Test unregisterProfileFromScheduler when scheduler not initialized (should return SUCCESS)
+TEST(UNREGISTERPROFILEFROMSCHEDULER, BEFORE_INIT)
+{
+    uninitScheduler(); // makes sure scheduler is uninitialized
+    EXPECT_EQ(T2ERROR_SUCCESS, unregisterProfileFromScheduler("SOME_PROFILE"));
+}
+
+// 6. Test SendInterruptToTimeoutThread with invalid conditions (uninitialized callbacks)
+TEST(SENDINTERRUPTTOTIMEOUTTHREAD, NOT_INITIALIZED)
+{
+    uninitScheduler(); // ensure not initialized
+    EXPECT_EQ(T2ERROR_FAILURE, SendInterruptToTimeoutThread("SHOULD_FAIL"));
+}
+
+// 7. Test unregistering an already gone profile (should return FAILURE)
+TEST(UNREGISTERPROFILEFROMSCHEDULER, PROFILE_NOT_FOUND)
+{
+    initScheduler((TimeoutNotificationCB)ReportProfiles_ToutCb, (ActivationTimeoutCB)ReportProfiles_ActivationToutCb, (NotifySchedulerstartCB)NotifySchedulerstartCb);
+    EXPECT_EQ(T2ERROR_FAILURE, unregisterProfileFromScheduler("NOT_EXIST_PROFILE"));
+    uninitScheduler();
+}
+
+// 8. Test registerProfileWithScheduler with NULL profile name (invalid args)
+TEST(REGISTERPROFILEWITHSCHEDULER, NULL_PROFILE)
+{
+    initScheduler((TimeoutNotificationCB)ReportProfiles_ToutCb, (ActivationTimeoutCB)ReportProfiles_ActivationToutCb, (NotifySchedulerstartCB)NotifySchedulerstartCb);
+    EXPECT_EQ(T2ERROR_INVALID_ARGS, registerProfileWithScheduler(NULL, 10, 100, true, true, true, 5, "2022-12-20T11:05:56Z"));
+    uninitScheduler();
+}
+
+// 9. Test registerProfileWithScheduler without scheduler initialized (should return FAILURE)
+TEST(REGISTERPROFILEWITHSCHEDULER, NOT_INITIALIZED)
+{
+    uninitScheduler();
+    EXPECT_EQ(T2ERROR_FAILURE, registerProfileWithScheduler("FAIL_PROFILE", 10, 100, true, true, true, 5, "2022-12-20T11:05:56Z"));
+}
+
+// 10. Test uninitScheduler when not initialized (branch coverage)
+TEST(UNINITSCHEDULER, NOT_INITIALIZED)
+{
+    uninitScheduler(); // Should just return/log
+}
+
+// 11. Test for firstreportint < timeOutDuration (should clear firstexecution)
+TEST(REGISTERPROFILEWITHSCHEDULER, FIRSTREPORT_GT_TIMEOUT)
+{
+    initScheduler((TimeoutNotificationCB)ReportProfiles_ToutCb, (ActivationTimeoutCB)ReportProfiles_ActivationToutCb, (NotifySchedulerstartCB)NotifySchedulerstartCb);
+
+    // firstreportint > timeOutDuration: should switch to timed waits only
+    registerProfileWithScheduler("REPORT_TEST", 2, 50, true, true, true, 5, "0001-01-01T00:00:00Z");
+    unregisterProfileFromScheduler("REPORT_TEST");
+    uninitScheduler();
+}
+
 TEST(TIMEOUTTHREAD, TEST1)
 {
     SchedulerProfile *tProfile = (SchedulerProfile *)malloc(sizeof(SchedulerProfile));

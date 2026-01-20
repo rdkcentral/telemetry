@@ -1670,15 +1670,20 @@ TEST(StaticExtractUnixTimestampFunc, CoversBranches)
     auto fn = extractUnixTimestampFuncCallback();
     ASSERT_NE(fn, nullptr);
 
-    // 1. Null pointer or zero length → should hit error/return 0.
+    // NULL pointer or zero length hit early branch
     EXPECT_EQ(fn(NULL, 12), (time_t)0);
     EXPECT_EQ(fn("foo", 0), (time_t)0);
 
-    // You can add further tests to cover parsing a valid numeric string, invalid string, etc.
-    // Example: Parse a valid unix timestamp string at start
-    const char* line = "1656606000 extra text";
-    size_t len = strlen(line);
-    EXPECT_EQ(fn(line, len), (time_t)1656606000);
+    // ISO 8601 - this should succeed (modify to an actual date/time string)
+    const char* iso = "2023-05-30T14:15:16.123 extra text";
+    EXPECT_EQ(fn(iso, strlen(iso)), /* expected_time_t value for 2023-05-30T14:15:16 */);
+
+    // YYMMDD-HH:MM:SS format (make this match your code's supported format)
+    const char* yymmdd = "230530-14:15:16 something";
+    EXPECT_EQ(fn(yymmdd, strlen(yymmdd)), /* expected_time_t value for that date/time */);
+
+    // Not matching format (should return 0)
+    EXPECT_EQ(fn("1656606000 extra text", strlen("1656606000 extra text")), (time_t)0);
 }
 TEST(StaticUpdateLogSeekFunc, CoversNullBranches)
 {

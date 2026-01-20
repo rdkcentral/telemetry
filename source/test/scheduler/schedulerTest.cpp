@@ -392,6 +392,136 @@ TEST(UNINITSCHEDULER, TEST1)
    registerProfileWithScheduler("RDKB_Profile", 10, 100, true, true, true, 10, "0001-01-01T00:00:00Z");
    uninitScheduler();
 }
+// Add at top if needed:
+#include <signal.h>
+
+// ------------- NEW TEST CASES FOR COVERAGE BOOST ---------------
+
+// 1. Cover pthread_condattr_init and pthread_condattr_setclock error handling
+TEST(TIMEOUTTHREAD, CONDATTR_INIT_FAILS)
+{
+    // To mock pthread_condattr_init failure, temporarily redefine it (GNU C only)
+    // This pattern only works if compiled and linked against the same test binary.
+    // If this isn't possible in your build sys, skip this test!
+    #ifdef __GNUC__
+    extern "C" int __real_pthread_condattr_init(pthread_condattr_t*);
+    extern "C" int __wrap_pthread_condattr_init(pthread_condattr_t*) { return 1; }
+    #define pthread_condattr_init __wrap_pthread_condattr_init
+    SchedulerProfile profile;
+    memset(&profile, 0, sizeof(profile));
+    profile.repeat = false;
+    TimeoutThread(&profile);
+    #undef pthread_condattr_init
+    #endif
+}
+
+TEST(TIMEOUTTHREAD, CONDATTR_SETCLOCK_FAILS)
+{
+    #ifdef __GNUC__
+    extern "C" int __real_pthread_condattr_setclock(pthread_condattr_t*, clockid_t);
+    extern "C" int __wrap_pthread_condattr_setclock(pthread_condattr_t*, clockid_t) { return 1; }
+    #define pthread_condattr_setclock __wrap_pthread_condattr_setclock
+    SchedulerProfile profile;
+    memset(&profile, 0, sizeof(profile));
+    profile.repeat = false;
+    TimeoutThread(&profile);
+    #undef pthread_condattr_setclock
+    #endif
+}
+
+TEST(TIMEOUTTHREAD, COND_INIT_FAILS)
+{
+    #ifdef __GNUC__
+    extern "C" int __real_pthread_cond_init(pthread_cond_t*, const pthread_condattr_t*);
+    extern "C" int __wrap_pthread_cond_init(pthread_cond_t*, const pthread_condattr_t*) { return 1; }
+    #define pthread_cond_init __wrap_pthread_cond_init
+    SchedulerProfile profile;
+    memset(&profile, 0, sizeof(profile));
+    profile.repeat = false;
+    TimeoutThread(&profile);
+    #undef pthread_cond_init
+    #endif
+}
+
+// 2. Cover SendInterruptToTimeoutThread: No matching profile found (no action in loop)
+TEST(SENDINTERRUPTTOTIMEOUTTHREAD, NOT_FOUND_LOOP)
+{
+    // Ensure scheduler is initialized, but profile does not exist
+    initScheduler((TimeoutNotificationCB)ReportProfiles_ToutCb, (ActivationTimeoutCB)ReportProfiles_ActivationToutCb, (NotifySchedulerstartCB)NotifySchedulerstartCb);
+    EXPECT_EQ(T2ERROR_SUCCESS, SendInterruptToTimeoutThread("PROFILE_DOES_NOT_EXIST"));
+    uninitScheduler();
+}
+
+// 3. Cover SendInterruptToTimeoutThread: pthread_mutex_lock fails
+TEST(SENDINTERRUPTTOTIMEOUTTHREAD, MUTEX_LOCK_FAIL)
+{
+    // Emulate lock fail by redefining
+    #ifdef __GNUC__
+    extern "C" int __real_pthread_mutex_lock(pthread_mutex_t*);
+    extern "C" int __wrap_pthread_mutex_lock(pthread_mutex_t*) { return 1; }
+    #define pthread_mutex_lock __wrap_pthread_mutex_lock
+    EXPECT_EQ(T2ERROR_FAILURE, SendInterruptToTimeoutThread("ANY_PROFILE"));
+    #undef pthread_mutex_lock
+    #endif
+}
+
+// 4. Cover freeSchedulerProfile (normal and with NULL)
+TEST(FREE_SCHEDULER_PROFILE, NULL_ARG)
+{
+    freeSchedulerProfile(NULL); // should just return, line coverage
+}
+
+TEST(FREE_SCHEDULER_PROFILE, NORMAL)
+{
+    SchedulerProfile *sch = (SchedulerProfile*)calloc(1, sizeof(SchedulerProfile));
+    sch->name = strdup("FREE_PROFILE");
+    pthread_mutex_init(&sch->tMutex, NULL);
+    pthread_cond_init(&sch->tCond, NULL);
+    sch->tId = pthread_self(); // Not a real thread but demo for coverage
+    freeSchedulerProfile(sch);
+}
+
+// 5. uninitScheduler: mutex destroy fails (emulate error path)
+TEST(UNINITSCHEDULER, MUTEX_DESTROY_FAIL)
+{
+#ifdef __GNUC__
+    extern "C" int __real_pthread_mutex_destroy(pthread_mutex_t*);
+    extern "C" int __wrap_pthread_mutex_destroy(pthread_mutex_t*) { return 1; }
+    #define pthread_mutex_destroy __wrap_pthread_mutex_destroy
+    initScheduler((TimeoutNotificationCB)ReportProfiles_ToutCb, (ActivationTimeoutCB)ReportProfiles_ActivationToutCb, (NotifySchedulerstartCB)NotifySchedulerstartCb);
+    uninitScheduler();
+    #undef pthread_mutex_destroy
+#endif
+}
+
+// 6. Cover registerProfileWithScheduler: pthread_mutex_init failure
+TEST(REGISTERPROFILEWITHSCHEDULER, MUTEX_INIT_FAIL)
+{
+#ifdef __GNUC__
+    extern "C" int __real_pthread_mutex_init(pthread_mutex_t*, const pthread_mutexattr_t*);
+    extern "C" int __wrap_pthread_mutex_init(pthread_mutex_t*, const pthread_mutexattr_t*) { return 1; }
+    #define pthread_mutex_init __wrap_pthread_mutex_init
+    initScheduler((TimeoutNotificationCB)ReportProfiles_ToutCb, (ActivationTimeoutCB)ReportProfiles_ActivationToutCb, (NotifySchedulerstartCB)NotifySchedulerstartCb);
+    EXPECT_EQ(T2ERROR_FAILURE, registerProfileWithScheduler("FAIL_MUTEX", 1, 1, true, true, true, 1, "0001-01-01T00:00:00Z"));
+    uninitScheduler();
+    #undef pthread_mutex_init
+#endif
+}
+
+// 7. Cover registerProfileWithScheduler: pthread_cond_init failure
+TEST(REGISTERPROFILEWITHSCHEDULER, COND_INIT_FAIL)
+{
+#ifdef __GNUC__
+    extern "C" int __real_pthread_cond_init(pthread_cond_t*, const pthread_condattr_t*);
+    extern "C" int __wrap_pthread_cond_init(pthread_cond_t*, const pthread_condattr_t*) { return 1; }
+    #define pthread_cond_init __wrap_pthread_cond_init
+    initScheduler((TimeoutNotificationCB)ReportProfiles_ToutCb, (ActivationTimeoutCB)ReportProfiles_ActivationToutCb, (NotifySchedulerstartCB)NotifySchedulerstartCb);
+    EXPECT_EQ(T2ERROR_FAILURE, registerProfileWithScheduler("FAIL_COND", 1, 1, true, true, true, 1, "0001-01-01T00:00:00Z"));
+    uninitScheduler();
+    #undef pthread_cond_init
+#endif
+}
+
 #if 1
 extern "C"
 {

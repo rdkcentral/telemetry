@@ -304,6 +304,28 @@ TEST(TIMEOUTTHREAD, TEST2)
     TimeoutThread((void *)tProfile);
 }
 
+TEST(TIMEOUTTHREAD, WAIT_NO_REPORTING_INTERVAL)
+{
+    SchedulerProfile *tProfile = (SchedulerProfile *)malloc(sizeof(SchedulerProfile));
+    tProfile->name = strdup("RDKB_Profile");
+    tProfile->timeRefinSec = 0;
+    tProfile->timeRef = NULL; // Or DEFAULT_TIME_REFERENCE
+    tProfile->timeOutDuration = UINT_MAX;
+    tProfile->repeat = false;
+    tProfile->terminated = false;
+    tProfile->timeToLive = 100;
+    tProfile->deleteonTime = true;
+    tProfile->reportonupdate = true;
+    tProfile->firstreportint = 0;
+    tProfile->firstexecution = false;
+
+    // Call TimeoutThread directly – will exercise pthread_cond_wait branch
+    TimeoutThread((void *)tProfile);
+
+    free(tProfile->name);
+    free(tProfile);
+}
+
 TEST(SendInterruptToTimeoutThread, NULL_CHECK)
 {
     EXPECT_EQ(T2ERROR_INVALID_ARGS, SendInterruptToTimeoutThread(NULL));

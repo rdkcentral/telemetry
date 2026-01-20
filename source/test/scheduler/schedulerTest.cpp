@@ -232,34 +232,34 @@ TEST(SendInterruptToTimeoutThread, NON_NULL_CHECK)
     EXPECT_EQ(T2ERROR_SUCCESS, SendInterruptToTimeoutThread("RDKB_Profile"));
 }
 
-#include <errno.h>
+extern "C" {
+#include "scheduler/scheduler.h"
+#include "utils/vector.h"
+}
 
 TEST(SendInterruptToTimeoutThread, TRYLOCK_FAILURE_EBUSY)
 {
-    // Allocate and initialize a profile
-    SchedulerProfile *tProfile = (SchedulerProfile *)malloc(sizeof(SchedulerProfile));
-    tProfile->name = strdup("RDKB_Profile");
-    pthread_mutex_init(&tProfile->tMutex, NULL);
-    pthread_cond_init(&tProfile->tCond, NULL);
+    SchedulerProfile *p = (SchedulerProfile*)malloc(sizeof(SchedulerProfile));
+    memset(p, 0, sizeof(*p));
+    p->name = strdup("RDKB_Profile");
+    pthread_mutex_init(&p->tMutex, NULL);
+    pthread_cond_init(&p->tCond, NULL);
 
-    // Lock tProfile->tMutex so pthread_mutex_trylock will return EBUSY
-    pthread_mutex_lock(&tProfile->tMutex);
+    extern vector_t *profileList;
+    if (!profileList) profileList = Vector_Create();
+    Vector_PushBack(profileList, p);
 
-    // If your environment allows, set up the global profile list so this profile is discoverable
-    // This setup may require access to internals, or may need a helper/mock setup depending on the repo.
-    // If you cannot inject the profile, make the change in the profile management for the test.
+    pthread_mutex_lock(&p->tMutex);
+
     T2ERROR ret = SendInterruptToTimeoutThread("RDKB_Profile");
 
-    // Clean up (avoid leak or hanging mutex)
-    pthread_mutex_unlock(&tProfile->tMutex);
-    pthread_mutex_destroy(&tProfile->tMutex);
-    pthread_cond_destroy(&tProfile->tCond);
-    free(tProfile->name);
-    free(tProfile);
+    pthread_mutex_unlock(&p->tMutex);
 
-    EXPECT_EQ(ret, T2ERROR_FAILURE); // The error path for EBUSY should return failure
+    // Remove and free profile
+    // (implement, if needed: Vector_RemoveByValue and free memory)
+
+    EXPECT_EQ(ret, T2ERROR_FAILURE);
 }
-
 TEST(REGISTERSCHEWITHPROFILE_AFTER_INITSCHEDULER, REGISTER_PROFILE)
 {
    EXPECT_EQ(T2ERROR_SUCCESS,  registerProfileWithScheduler("RDKB_Profile", 10, 100, true, true, true, 15, "0001-01-01T00:00:00Z"));

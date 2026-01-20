@@ -568,7 +568,7 @@ TEST(UNREGISTERPROFILEFROMSCHEDULER, ALREADY_REMOVED)
     EXPECT_EQ(T2ERROR_FAILURE, unregisterProfileFromScheduler("REMOVEME"));
     uninitScheduler();
 }
-#if 1
+#ifdef GTEST_ENABLE
 extern "C"
 {
   typedef unsigned int (*getSchdInSec_fn)(char*);

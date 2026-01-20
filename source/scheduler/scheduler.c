@@ -679,7 +679,7 @@ T2ERROR unregisterProfileFromScheduler(const char* profileName)
     T2Info("profile: %s, not found in scheduler. Already removed\n", profileName);
     return T2ERROR_FAILURE;
 }
-#if 1
+#ifdef GTEST_ENABLE
 typedef unsigned int (*getSchdInSec_fn)(char*);
 getSchdInSec_fn getSchdInSec_fnCallback(void)
 {

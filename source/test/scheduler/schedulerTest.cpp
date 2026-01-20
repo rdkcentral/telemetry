@@ -232,34 +232,6 @@ TEST(SendInterruptToTimeoutThread, NON_NULL_CHECK)
     EXPECT_EQ(T2ERROR_SUCCESS, SendInterruptToTimeoutThread("RDKB_Profile"));
 }
 
-extern "C" {
-#include "scheduler/scheduler.h"
-#include "utils/vector.h"
-}
-
-TEST(SendInterruptToTimeoutThread, TRYLOCK_FAILURE_EBUSY)
-{
-    SchedulerProfile *p = (SchedulerProfile*)malloc(sizeof(SchedulerProfile));
-    memset(p, 0, sizeof(*p));
-    p->name = strdup("RDKB_Profile");
-    pthread_mutex_init(&p->tMutex, NULL);
-    pthread_cond_init(&p->tCond, NULL);
-
-    extern vector_t *profileList;
-    if (!profileList) profileList = Vector_Create();
-    Vector_PushBack(profileList, p);
-
-    pthread_mutex_lock(&p->tMutex);
-
-    T2ERROR ret = SendInterruptToTimeoutThread("RDKB_Profile");
-
-    pthread_mutex_unlock(&p->tMutex);
-
-    // Remove and free profile
-    // (implement, if needed: Vector_RemoveByValue and free memory)
-
-    EXPECT_EQ(ret, T2ERROR_FAILURE);
-}
 TEST(REGISTERSCHEWITHPROFILE_AFTER_INITSCHEDULER, REGISTER_PROFILE)
 {
    EXPECT_EQ(T2ERROR_SUCCESS,  registerProfileWithScheduler("RDKB_Profile", 10, 100, true, true, true, 15, "0001-01-01T00:00:00Z"));

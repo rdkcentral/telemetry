@@ -968,3 +968,28 @@ TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetHeader_SUCCESS)
     EXPECT_NE(headerList, nullptr);
 }
 #endif
+#ifdef GTEST_ENABLE
+extern "C" {
+pthread_mutex_t* getRbusMethodMutex(void);	
+typedef void (*asyncMethodHandlerFunc)(rbusHandle_t,char const*,rbusError_t,rbusObject_t);
+asyncMethodHandlerFunc asyncMethodHandlerFuncCallback(void);
+}
+TEST(AsyncMethodHandlerFunc, CoversAllBranches)
+{
+    // Access and initialize the mutex defined in the C module
+    pthread_mutex_t* pmutex = getRbusMethodMutex();
+    pthread_mutex_init(pmutex, NULL);
+
+    // Get function pointer for static asyncMethodHandler
+    auto fn = asyncMethodHandlerFuncCallback();
+    ASSERT_NE(fn, nullptr);
+
+    // Success branch: sets isRbusMethod = true and unlocks
+    fn(NULL, "TestMethodSuccess", RBUS_ERROR_SUCCESS, NULL);
+    // Error branch: sets isRbusMethod = false and unlocks
+    fn(NULL, "TestMethodFail", RBUS_ERROR_GENERAL_ERROR, NULL);
+
+    pthread_mutex_destroy(pmutex);
+}
+
+#endif

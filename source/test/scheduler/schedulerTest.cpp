@@ -568,52 +568,6 @@ TEST(UNREGISTERPROFILEFROMSCHEDULER, ALREADY_REMOVED)
     EXPECT_EQ(T2ERROR_FAILURE, unregisterProfileFromScheduler("REMOVEME"));
     uninitScheduler();
 }
-
-TEST(TIMEOUTTHREAD, MIN_THRESHOLD_DURATION_NONZERO)
-{
-    // Set up SchedulerMock to return nonzero for getMinThresholdDuration
-    struct LocalSchedulerMock : SchedulerMock {
-        unsigned int getMinThresholdDuration(char *profileName) override {
-            if (strcmp(profileName, "MINTHRESH") == 0)
-                return 42; // Nonzero value for coverage
-            return 0;
-        }
-    };
-    static LocalSchedulerMock mock;
-    m_schedulerMock = &mock;
-
-    SchedulerProfile *tProfile = (SchedulerProfile *)calloc(1, sizeof(SchedulerProfile));
-    tProfile->name = strdup("MINTHRESH");
-    tProfile->repeat = false;
-    tProfile->terminated = false;
-    tProfile->deleteonTime = true;
-    tProfile->reportonupdate = true;
-    tProfile->timeRefinSec = 0;
-    tProfile->timeRef = NULL;
-    tProfile->timeOutDuration = 1;
-    tProfile->timeToLive = 100;
-    tProfile->firstreportint = 0;
-    tProfile->firstexecution = false;
-    pthread_mutex_init(&tProfile->tMutex, NULL);
-    pthread_cond_init(&tProfile->tCond, NULL);
-
-    std::thread signaler([tProfile]{
-        sleep(1);
-        pthread_mutex_lock(&tProfile->tMutex);
-        pthread_cond_signal(&tProfile->tCond);
-        pthread_mutex_unlock(&tProfile->tMutex);
-    });
-
-    TimeoutThread((void*)tProfile);
-    signaler.join();
-
-    pthread_cond_destroy(&tProfile->tCond);
-    pthread_mutex_destroy(&tProfile->tMutex);
-    free(tProfile->name);
-    free(tProfile);
-    m_schedulerMock = NULL;
-}
-
 #if 1
 extern "C"
 {

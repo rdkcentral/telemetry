@@ -1385,3 +1385,10 @@ int getDCAResultsInVector(GrepSeekProfile *gSeekProfile, Vector * vecMarkerList,
     T2Debug("%s --out \n", __FUNCTION__);
     return rc;
 }
+#ifdef GTEST_ENABLE
+typedef const char *(*strnstrFunc)(const char *, const char *, size_t);
+strnstrFunc strnstrFuncCallback(void)
+{
+    return strnstr;
+}
+#endif

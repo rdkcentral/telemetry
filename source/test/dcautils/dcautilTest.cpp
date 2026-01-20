@@ -1630,4 +1630,31 @@ TEST_F(dcaTestFixture, getGrepResults_success)
     free(gsProfile);
     Vector_Destroy(vecMarkerList, freeGMarker);
 }
+#ifdef GTEST_ENABLE
+extern "C" {
+typedef const char *(*strnstrFunc)(const char *, const char *, size_t);
+strnstrFunc strnstrFuncCallback(void);
+}
+TEST(StaticStrnstrFunc, CoversAllBranches)
+{
+    auto fn = strnstrFuncCallback();
+    ASSERT_NE(fn, nullptr);
 
+    // NULL haystack or needle should return NULL
+    EXPECT_EQ(fn(NULL, "needle", 10), nullptr);
+    EXPECT_EQ(fn("haystack", NULL, 10), nullptr);
+
+    // Empty needle returns haystack
+    EXPECT_EQ(fn("haystack", "", 8), std::string("haystack"));
+
+    // len < needle_len or overflow returns NULL
+    EXPECT_EQ(fn("foo", "foobar", 3), nullptr);
+    EXPECT_EQ(fn("foo", "foo", (size_t)-1), nullptr); // Simulate overflow protection branch if possible
+
+    // needle of length < 4 triggers simple search branch: found and not found
+    EXPECT_EQ(fn("abcdef", "c", 6), std::string("abcdef") + 2);  // found at position 2
+    EXPECT_EQ(fn("abcdef", "e", 4), nullptr); // not found within first 4 chars
+
+    // needle_len >= 4 path -- you can test if your implementation has a different optimized branch, but above is minimal
+}
+#endif

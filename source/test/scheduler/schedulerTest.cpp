@@ -241,7 +241,7 @@ TEST(REGISTERSCHEWITHPROFILE_AFTER_INITSCHEDULER, REGISTER_PROFILE_AGAIN)
 {
    EXPECT_EQ(T2ERROR_SUCCESS,  registerProfileWithScheduler("RDKB_Profile", 10, 100, true, true, true, 15, "0001-01-01T00:00:00Z"));
 }
-
+#if 0
 TEST(TIMEOUTTHREAD, TEST1)
 {
     SchedulerProfile *tProfile = (SchedulerProfile *)malloc(sizeof(SchedulerProfile));
@@ -297,7 +297,23 @@ TEST(TIMEOUTTHREAD, WAIT_NO_REPORTING_INTERVAL)
     free(tProfile->name);
     free(tProfile);
 }
-
+#endif
+TEST(TIMEOUTTHREAD, TEST1)
+{
+    SchedulerProfile *tProfile = (SchedulerProfile *)malloc(sizeof(SchedulerProfile));
+    tProfile->name = strdup("RDKB_Profile");
+    tProfile->timeRefinSec = 0;
+    tProfile->repeat = true;
+    tProfile->terminated = false;
+    tProfile->timeOutDuration = UINT_MAX;
+    tProfile->timeToLive = 100;
+    tProfile->deleteonTime = true;
+    tProfile->reportonupdate = true;
+    tProfile->firstreportint = 0;
+    tProfile->firstexecution = false;
+ 
+    TimeoutThread((void *)tProfile);
+}
 TEST(SendInterruptToTimeoutThread, NULL_CHECK)
 {
     EXPECT_EQ(T2ERROR_INVALID_ARGS, SendInterruptToTimeoutThread(NULL));

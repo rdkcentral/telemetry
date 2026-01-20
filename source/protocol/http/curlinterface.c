@@ -639,6 +639,14 @@ typedef size_t (*WriteToFileFunc)(void *, size_t, size_t, void *);
 typedef T2ERROR (*SetHeaderFunc)(CURL *, const char *, struct curl_slist **, childResponse *);
 typedef T2ERROR (*SetMtlsHeadersFunc)(CURL *, const char *, const char *, childResponse *);
 typedef T2ERROR (*SetPayloadFunc)(CURL *, const char *, childResponse *);
+pthread_mutex_t* getCurlFileMutex(void) {
+    return &curlFileMutex;
+}
+typedef void (*sendOverHTTPInitFunc)();
+sendOverHTTPInitFunc sendOverHTTPInitFuncCallback()
+{
+   return sendOverHTTPInit;	
+}
 WriteToFileFunc getWriteToFileCallback()
 {
     return writeToFile;

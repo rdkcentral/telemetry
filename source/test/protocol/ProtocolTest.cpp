@@ -970,9 +970,21 @@ TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetHeader_SUCCESS)
 #endif
 #ifdef GTEST_ENABLE
 extern "C" {
-pthread_mutex_t* getRbusMethodMutex(void);	
+pthread_mutex_t* getRbusMethodMutex(void);
+pthread_mutex_t* getCurlFileMutex(void);
+typedef void (*sendOverHTTPInitFunc)();
+sendOverHTTPInitFunc sendOverHTTPInitFuncCallback();
+
 typedef void (*asyncMethodHandlerFunc)(rbusHandle_t,char const*,rbusError_t,rbusObject_t);
 asyncMethodHandlerFunc asyncMethodHandlerFuncCallback(void);
+}
+
+TEST(CurlInterface_Static, SendOverHTTPInit_CoversMutexInit)
+{
+    // Get function pointer to static sendOverHTTPInit
+    auto fn = sendOverHTTPInitFuncCallback();
+    ASSERT_NE(fn, nullptr);
+    fn();
 }
 TEST(AsyncMethodHandlerFunc, CoversAllBranches)
 {

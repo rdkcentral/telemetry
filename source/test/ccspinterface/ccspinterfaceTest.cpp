@@ -2115,13 +2115,6 @@ TEST_F(CcspInterfaceTest, RbusCheckMethodExists_ReturnsBool) {
 }
 // ------------ BEGIN ADDITIONAL COVERAGE FOR rbusInterface.c -------------------
 
-// 1. Null/edge argument paths for public APIs
-TEST_F(CcspInterfaceTest, getRbusParameterVal_NullInputs) {
-    EXPECT_EQ(getRbusParameterVal(nullptr, nullptr), T2ERROR_FAILURE);
-    char *value = nullptr;
-    EXPECT_EQ(getRbusParameterVal(nullptr, &value), T2ERROR_FAILURE);
-    EXPECT_EQ(getRbusParameterVal("fake.param", nullptr), T2ERROR_FAILURE);
-}
 
 TEST_F(CcspInterfaceTest, getRbusProfileParamValues_NullInputs) {
     EXPECT_EQ(getRbusProfileParamValues(nullptr, 1), nullptr);

@@ -324,3 +324,30 @@ TEST_F(TelemetryBusmessageSenderTest, SendStringEvent_Valid) {
     EXPECT_EQ(err, T2ERROR_SUCCESS);
     t2_uninit();
 }
+#ifdef GTEST_ENABLE
+extern "C" {
+typedef void (*rbusEventReceiveHandlerFunc)(rbusHandle_t, rbusEvent_t const*, rbusEventSubscription_t*);
+rbusEventReceiveHandlerFunc getRbusEventReceiveHandlerCallback(void);
+// Also ensure that struct definitions for rbusEvent_t etc. are visible!
+}
+TEST_F(CcspInterfaceTest, rbusEventReceiveHandler_static_coverage) {
+    rbusEventReceiveHandlerFunc handler = getRbusEventReceiveHandlerCallback();
+    ASSERT_NE(handler, nullptr);
+
+    rbusHandle_t h = nullptr;
+    rbusEventSubscription_t sub = {0};
+    rbusEvent_t event = {0};
+
+    // Case 1: correct notify name
+    event.name = T2_PROFILE_UPDATED_NOTIFY;
+    handler(h, &event, &sub);
+
+    // Case 2: any other name
+    event.name = "randomEvent";
+    handler(h, &event, &sub);
+
+    // Case 3: null name
+    event.name = NULL;
+    handler(h, &event, &sub);
+}
+#endif

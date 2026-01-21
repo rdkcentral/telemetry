@@ -896,3 +896,11 @@ T2ERROR t2_event_d(const char* marker, int value)
     pthread_mutex_unlock(&dMutex);
     return retStatus ;
 }
+
+#ifdef GTEST_ENABLE
+typedef void (*rbusEventReceiveHandlerFunc)(rbusHandle_t, rbusEvent_t const*, rbusEventSubscription_t*);
+rbusEventReceiveHandlerFunc getRbusEventReceiveHandlerCallback(void)
+{
+    return rbusEventReceiveHandler;
+}
+#endif

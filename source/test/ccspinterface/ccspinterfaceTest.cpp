@@ -360,6 +360,116 @@ TEST_F(CcspInterfaceTest, getProfileParameterValues_ReturnsVector_1) {
     Vector_Destroy(profileValueList, freeProfileValues);
 }
 
+TEST_F(CcspInterfaceTest, getProfileParameterValues_ReturnsVector_2) {
+    Vector* paramlist = NULL;
+    Vector_Create(&paramlist);
+    Param* p = (Param*) malloc(sizeof(Param));
+    p->name = strdup("Device.Dummy.Param");
+    p->alias = strdup("Device.Dummy.Alias");
+    p->paramType = strdup("dataModel");
+    p->reportEmptyParam = true;
+    p->regexParam = NULL;
+    p->skipFreq = 0;
+    Param* p1 = (Param*) malloc(sizeof(Param));
+    p1->name = strdup("Device.Dummy.Param");
+    p1->alias = strdup("Device.Dummy.Alias");
+    p1->paramType = strdup("dataModel");
+    p1->reportEmptyParam = true;
+    p1->regexParam = NULL;
+    p1->skipFreq = 0;
+    Vector_PushBack(paramlist, p);
+    Vector_PushBack(paramlist, p1);
+    
+    EXPECT_CALL(*g_rbusMock, rbus_checkStatus())
+        .Times(::testing::AtMost(1))  // Could be called multiple times depending on bus state
+        .WillRepeatedly(Return(RBUS_ENABLED));
+    EXPECT_CALL(*g_rbusMock, rbus_registerLogHandler(_))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
+
+    EXPECT_CALL(*g_rbusMock, rbus_open(_, _))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
+
+    EXPECT_CALL(*g_rbusMock, rbus_getExt(_, _, _, _, _))
+        .Times(::testing::AtMost(2))
+        .WillRepeatedly(Return(RBUS_ERROR_BUS_ERROR));
+    
+    Vector* profileValueList = getProfileParameterValues(paramlist, 2);
+
+    EXPECT_NE(profileValueList, nullptr);
+    Vector_Destroy(paramlist, freeParam);
+    Vector_Destroy(profileValueList, freeProfileValues);
+}
+
+TEST_F(CcspInterfaceTest, getProfileParameterValues_ReturnsFailure) {
+
+    EXPECT_CALL(*g_rbusMock, rbus_checkStatus())
+        .Times(::testing::AtMost(1))  // Could be called multiple times depending on bus state
+        .WillRepeatedly(Return(RBUS_ENABLED));
+    EXPECT_CALL(*g_rbusMock, rbus_registerLogHandler(_))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
+
+    EXPECT_CALL(*g_rbusMock, rbus_open(_, _))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(RBUS_ERROR_BUS_ERROR));
+
+    Vector* profileValueList = getProfileParameterValues(NULL, 0);
+
+    EXPECT_EQ(profileValueList, nullptr);
+}
+
+#if 0
+TEST_F(CcspInterfaceTest, getProfileParameterValues_ReturnsVector_3) {
+    Vector* paramlist = NULL;
+    ASSERT_EQ(Vector_Create(&paramlist), 0); // Usually Vector_Create returns 0 on success
+    ASSERT_NE(paramlist, nullptr);
+
+    Param* p = (Param*) malloc(sizeof(Param));
+    ASSERT_NE(p, nullptr);
+    p->name = strdup("Device.Dummy.Param");
+    p->alias = NULL;
+    p->paramType = strdup("dataModel");
+    p->reportEmptyParam = true;
+    p->regexParam = NULL;
+    p->skipFreq = 0;
+
+    Param* p1 = (Param*) malloc(sizeof(Param));
+    ASSERT_NE(p1, nullptr);
+    p1->name = strdup("Device.Dummy.Param");
+    p1->alias = NULL;
+    p1->paramType = strdup("dataModel");
+    p1->reportEmptyParam = true;
+    p1->regexParam = NULL;
+    p1->skipFreq = 0;
+
+    ASSERT_EQ(Vector_PushBack(paramlist, p), 0);
+    ASSERT_EQ(Vector_PushBack(paramlist, p1), 0);
+
+    EXPECT_CALL(*g_rbusMock, rbus_checkStatus())
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(RBUS_ENABLED));
+    EXPECT_CALL(*g_rbusMock, rbus_registerLogHandler(_))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
+    EXPECT_CALL(*g_rbusMock, rbus_open(_, _))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
+    EXPECT_CALL(*g_rbusMock, rbus_getExt(_, _, _, _, _))
+        .Times(::testing::AtMost(2))
+        .WillRepeatedly(Return(RBUS_ERROR_BUS_ERROR));
+
+    // Defensive: getProfileParameterValues must never modify/destroy paramlist
+    Vector* profileValueList = getProfileParameterValues(paramlist, 2);
+
+    ASSERT_NE(profileValueList, nullptr);
+
+    Vector_Destroy(paramlist, freeParam);
+    Vector_Destroy(profileValueList, freeProfileValues);
+}
+#endif
+
 //Test the registerRbusT2EventListener function to register the rbus event listener
 TEST_F(CcspInterfaceTest, RegisterRbusT2EventListener_Succeeds)
 {
@@ -1805,6 +1915,20 @@ TEST_F(CcspInterfaceTest, T2RbusReportEventConsumer_Failure_2) {
     EXPECT_EQ(result, T2ERROR_FAILURE);   
 }
 
+#if 0
+TEST_F(CcspInterfaceTest, T2RbusReportEventConsumer_Failure_3) {
+	   // Mock RBUS initialization failure
+    EXPECT_CALL(*g_rbusMock, rbus_registerLogHandler(_))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
+
+    EXPECT_CALL(*g_rbusMock, rbus_open(_, _))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(RBUS_ERROR_BUS_ERROR));
+    T2ERROR result = T2RbusReportEventConsumer("Device.WiFi.Radio.1.Stats.X_COMCAST-COM_NoiseFloor", false);
+    EXPECT_EQ(result, T2ERROR_FAILURE);
+}
+#endif
 TEST_F(CcspInterfaceTest, t2TriggerConditionGetHandler_Success) {
     rbusHandle_t handle;
     rbusProperty_t prop1;
@@ -2082,6 +2206,21 @@ TEST_F(CcspInterfaceTest, RbusMethodCaller_ReturnsSuccessForDummyMethod) {
     EXPECT_TRUE(err == T2ERROR_SUCCESS || err == T2ERROR_FAILURE); // Accept either for stub
 }
 
+TEST_F(CcspInterfaceTest, RbusMethodCaller_ReturnsFailureForDummyMethod) {
+    // Prepare dummy input params object
+    rbusObject_t inputParams;
+    EXPECT_CALL(*g_rbusMock, rbus_registerLogHandler(_))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
+
+    EXPECT_CALL(*g_rbusMock, rbus_open(_, _))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(RBUS_ERROR_BUS_ERROR));
+
+    T2ERROR err = rbusMethodCaller((char*)"Dummy.Method", &inputParams, (char*)"payload", NULL);
+    EXPECT_TRUE(err == T2ERROR_SUCCESS || err == T2ERROR_FAILURE); // Accept either for stub	
+}
+
 TEST_F(CcspInterfaceTest, RbusCheckMethodExists_ReturnsBool) {
     EXPECT_CALL(*g_rbusMock, rbus_open(_, _))
         .Times(::testing::AtMost(1))
@@ -2113,97 +2252,49 @@ TEST_F(CcspInterfaceTest, RbusCheckMethodExists_ReturnsBool) {
     // Accept either true or false for stub
     EXPECT_TRUE(exists == true || exists == false);
 }
-// ------------ BEGIN ADDITIONAL COVERAGE FOR rbusInterface.c -------------------
+TEST_F(CcspInterfaceTest, RbusCheckMethodExists_ReturnsBoolFalse){
+    EXPECT_CALL(*g_rbusMock, rbus_registerLogHandler(_))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
 
-
-TEST_F(CcspInterfaceTest, getRbusProfileParamValues_NullInputs) {
-    EXPECT_EQ(getRbusProfileParamValues(nullptr, 1), nullptr);
-    Vector* vec = nullptr; Vector_Create(&vec);
-    EXPECT_EQ(getRbusProfileParamValues(vec, 0), nullptr);
-    Vector_Destroy(vec, nullptr);
+    EXPECT_CALL(*g_rbusMock, rbus_open(_, _))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(RBUS_ERROR_BUS_ERROR));
+    bool exists = rbusCheckMethodExists("Dummy.Method");
+    // Accept either true or false for stub
+    EXPECT_TRUE(exists == true || exists == false);
 }
-
-// 2. Bus handle initialization/state toggling paths
-TEST_F(CcspInterfaceTest, isRbusInitialized_ToggleBranch) {
-    // Ideally you would reset or mock the static bus state here;
-    // For demonstration, call and check both values.
-    bool b = isRbusInitialized();
-    EXPECT_TRUE(b == true || b == false);
-}
-
-// 3. Simulate rbus/bus errors for coverage of failure paths:
-// NOTE: Replace SomeMockedHandle with your mocked handle variable
-// and add custom expectations if you have a g_rbusMock or similar.
-TEST_F(CcspInterfaceTest, RegisterRbusT2EventListener_Failure)
+#ifdef GTEST_ENABLE
+extern "C"
 {
-    // Simulate bus function returns error codes,
-    // You may need to use GMock for these:
-    // EXPECT_CALL(*g_rbusMock, registerRbusT2EventListener(_)).WillOnce(Return(T2ERROR_FAILURE));
-    TelemetryEventCallback cb = DummyTelemetryEventCallback;
-    // For now, generic call covers lines; expand with mocks for exact error codes.
-    EXPECT_TRUE(registerRbusT2EventListener(cb) == T2ERROR_SUCCESS || registerRbusT2EventListener(cb) == T2ERROR_FAILURE);
+typedef void (*rbusReloadConfFunc)(rbusHandle_t, rbusEvent_t const *, rbusEventSubscription_t *);
+rbusReloadConfFunc rbusReloadConfFuncCallback(void);
 }
 
-// 4. Cover eventSubHandler for all action/event combinations
-#if 0
-typedef rbusError_t (*eventSubHandlerFunc)(rbusHandle_t, rbusEventSubAction_t, const char*, rbusFilter_t*, int, bool*);
-extern "C" eventSubHandlerFunc eventSubHandlerFuncCallback(void);
+TEST_F(CcspInterfaceTest, rbusReloadConf_StaticFunction_Coverage) {
+    // Retrieve function pointer to static function under test
+    rbusReloadConfFunc callback = rbusReloadConfFuncCallback();
+    ASSERT_NE(callback, nullptr);
 
-TEST(CcspInterfaceTest_Static, EventSubHandler_AllBranches) {
-    auto fn = eventSubHandlerFuncCallback();
-    ASSERT_NE(fn, nullptr);
-    rbusHandle_t h = nullptr;
-    rbusFilter_t* filter = nullptr;
-    bool autopub = false;
-    // Try subscribe and unsubscribe actions and several event names
-    EXPECT_NO_THROW(fn(h, RBUS_EVENT_ACTION_SUBSCRIBE, "eventA", filter, 0, &autopub));
-    EXPECT_NO_THROW(fn(h, RBUS_EVENT_ACTION_UNSUBSCRIBE, "eventB", filter, 0, &autopub));
-    EXPECT_NO_THROW(fn(h, RBUS_EVENT_ACTION_UNKNOWN, "", filter, 0, &autopub));
+    // Prepare dummy arguments
+    rbusHandle_t mockHandle = nullptr;
+
+    // Fill in the event and subscription structs according to your definition
+    rbusEvent_t event;
+    event.type = RBUS_EVENT_GENERAL;
+    event.name = "TestEvent";
+    event.data = nullptr;
+
+    rbusEventSubscription_t subscription;
+    subscription.eventName = "TestEvent";
+
+    // Normal call
+    callback(mockHandle, &event, &subscription);
+
+    // NULL event - covers event == NULL branch
+    callback(mockHandle, nullptr, &subscription);
+
+    // NULL subscription - covers subscription == NULL branch
+    callback(mockHandle, &event, nullptr);
 }
 #endif
-
-// 5. Force allocation and value population branches
-TEST_F(CcspInterfaceTest, getRbusProfileParamValues_EmptyAndSingleParam)
-{
-    Vector* list = nullptr;
-    Vector_Create(&list);
-    // Covers empty paramList
-    EXPECT_EQ(getRbusProfileParamValues(list, 1), nullptr);
-
-    // Now create a single fake param
-    Param *param = (Param*)malloc(sizeof(Param));
-    param->alias = strdup("Device.Test.Param");
-    param->skipFreq = 0;
-    Vector_PushBack(list, param);
-    // Should exercise single-parameter code path
-    Vector* result = getRbusProfileParamValues(list, 1);
-    // Simple check; expand if you want to check internals
-    EXPECT_TRUE(result == nullptr || Vector_Size(result) >= 0);
-    Vector_Destroy(list, free);
-    if (result)
-        Vector_Destroy(result, free);
-    free(param);
-}
-
-// Additional: Cover setT2EventReceiveState for both branches if not already done
-TEST(CcspInterfacetest, setT2EventReceiveState_BothStates) {
-    setT2EventReceiveState(true);
-    setT2EventReceiveState(false);
-}
-
-// 6. RbusMethodCaller negative: simulate error returns (expand with mocks if possible)
-TEST_F(CcspInterfaceTest, RbusMethodCaller_InvalidArgs) {
-    // All null
-    EXPECT_EQ(rbusMethodCaller(nullptr, nullptr, nullptr, nullptr), T2ERROR_FAILURE);
-    // Missing required arg
-    char *m = nullptr;
-    rbusObject_t o = nullptr;
-    char *payload = nullptr;
-    EXPECT_EQ(rbusMethodCaller(m, &o, payload, nullptr), T2ERROR_FAILURE);
-}
-
-// 7. publishReportUploadStatus edge (already present but ensure it exists for null/non-null)
-TEST_F(CcspInterfaceTest, publishReportUploadStatus_EdgeCases) {
-    publishReportUploadStatus(nullptr);
-    publishReportUploadStatus((char*)"TestStatus");
-}

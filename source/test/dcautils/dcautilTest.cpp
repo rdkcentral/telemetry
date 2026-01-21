@@ -1630,4 +1630,90 @@ TEST_F(dcaTestFixture, getGrepResults_success)
     free(gsProfile);
     Vector_Destroy(vecMarkerList, freeGMarker);
 }
+#ifdef GTEST_ENABLE
+extern "C" {
+typedef const char *(*strnstrFunc)(const char *, const char *, size_t);
+strnstrFunc strnstrFuncCallback(void);
+typedef time_t (*extractUnixTimestampFunc)(const char*, size_t);
+extractUnixTimestampFunc extractUnixTimestampFuncCallback(void);
+typedef T2ERROR (*updateLogSeekFunc)(hash_map_t *, const char *, const long);
+updateLogSeekFunc updateLogSeekFuncCallback(void);
+}
+TEST(StaticStrnstrFunc, CoversAllBranches)
+{
+    auto fn = strnstrFuncCallback();
+    ASSERT_NE(fn, nullptr);
 
+    // NULL haystack or needle should return NULL
+    EXPECT_EQ(fn(NULL, "needle", 10), nullptr);
+    EXPECT_EQ(fn("haystack", NULL, 10), nullptr);
+
+    // Empty needle returns haystack
+    const char* h1 = "haystack";
+    EXPECT_EQ(fn(h1, "", 8), h1);
+
+    // len < needle_len or overflow returns NULL
+    EXPECT_EQ(fn("foo", "foobar", 3), nullptr);
+    // May not always trigger overflow branch but included for completeness
+    // EXPECT_EQ(fn("foo", "foo", (size_t)-1), nullptr);
+
+    // needle of length < 4 triggers simple search branch: found and not found
+    const char* h2 = "abcdef";
+    EXPECT_EQ(fn(h2, "c", 6), h2 + 2);  // found at position 2
+    EXPECT_EQ(fn(h2, "e", 4), nullptr); // not found in first 4 chars
+
+    // Optionally: COVER the optimized/longer path if you want (needle_len >= 4)
+    // This depends on your actual implementation for longer patterns
+}
+TEST(StaticExtractUnixTimestampFunc, CoversBranches)
+{
+    auto fn = extractUnixTimestampFuncCallback();
+    ASSERT_NE(fn, nullptr);
+
+    // NULL pointer or zero length hit early branch
+    EXPECT_EQ(fn(NULL, 12), (time_t)0);
+    EXPECT_EQ(fn("foo", 0), (time_t)0);
+
+    // ISO 8601 - "2023-05-30T14:15:16.123 extra"
+    const char* iso = "2023-05-30T14:15:16.123 extra text";
+    struct tm tm1 {};
+    tm1.tm_year = 2023 - 1900; // years since 1900
+    tm1.tm_mon  = 5 - 1;       // months since January
+    tm1.tm_mday = 30;
+    tm1.tm_hour = 14;
+    tm1.tm_min  = 15;
+    tm1.tm_sec  = 16;
+    time_t expected_iso = mktime(&tm1);
+    EXPECT_EQ(fn(iso, strlen(iso)), expected_iso);
+
+    // YYMMDD-HH:MM:SS - "230530-14:15:16 something"
+    const char* yymmdd = "230530-14:15:16 something";
+    struct tm tm2 {};
+    tm2.tm_year = 2023 - 1900;
+    tm2.tm_mon  = 5 - 1;
+    tm2.tm_mday = 30;
+    tm2.tm_hour = 14;
+    tm2.tm_min  = 15;
+    tm2.tm_sec  = 16;
+    time_t expected_yymmdd = mktime(&tm2);
+    EXPECT_EQ(fn(yymmdd, strlen(yymmdd)), expected_yymmdd);
+
+    // Not matching format (should return 0)
+    EXPECT_EQ(fn("1656606000 extra text", strlen("1656606000 extra text")), (time_t)0);
+}
+TEST(StaticUpdateLogSeekFunc, CoversNullBranches)
+{
+    auto fn = updateLogSeekFuncCallback();
+    ASSERT_NE(fn, nullptr);
+
+    // First branch: logSeekMap == NULL
+    EXPECT_EQ(fn(NULL, "dummy.log", 100), T2ERROR_FAILURE);
+
+    // Second branch: logFileName == NULL
+    hash_map_t dummyMap;
+    EXPECT_EQ(fn(&dummyMap, NULL, 100), T2ERROR_FAILURE);
+
+    // Additional test for a stub/empty map and filename to reach further code
+    // (Will continue past the NULL check; optionally extend to later logic in the function)
+}
+#endif

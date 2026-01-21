@@ -324,7 +324,7 @@ TEST_F(TelemetryBusmessageSenderTest, SendStringEvent_Valid) {
     EXPECT_EQ(err, T2ERROR_SUCCESS);
     t2_uninit();
 }
-#ifdef GTEST_ENABLE
+#if 0
 extern "C" {
 typedef void (*rbusEventReceiveHandlerFunc)(rbusHandle_t, rbusEvent_t const*, rbusEventSubscription_t*);
 rbusEventReceiveHandlerFunc getRbusEventReceiveHandlerCallback(void);

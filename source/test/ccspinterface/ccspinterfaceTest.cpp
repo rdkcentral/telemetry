@@ -2189,7 +2189,6 @@ TEST_F(CcspInterfaceTest, getRbusProfileParamValues_EmptyAndSingleParam)
     Vector_Destroy(list, free);
     if (result)
         Vector_Destroy(result, free);
-    free(param->alias);
     free(param);
 }
 

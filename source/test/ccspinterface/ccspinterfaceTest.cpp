@@ -2213,5 +2213,5 @@ TEST_F(CcspInterfaceTest, RbusMethodCaller_InvalidArgs) {
 // 7. publishReportUploadStatus edge (already present but ensure it exists for null/non-null)
 TEST_F(CcspInterfaceTest, publishReportUploadStatus_EdgeCases) {
     publishReportUploadStatus(nullptr);
-    publishReportUploadStatus("TestStatus");
+    publishReportUploadStatus((char*)"TestStatus");
 }

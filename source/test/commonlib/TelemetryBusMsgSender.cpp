@@ -330,7 +330,7 @@ typedef void (*rbusEventReceiveHandlerFunc)(rbusHandle_t, rbusEvent_t const*, rb
 rbusEventReceiveHandlerFunc getRbusEventReceiveHandlerCallback(void);
 // Also ensure that struct definitions for rbusEvent_t etc. are visible!
 }
-TEST_F(CcspInterfaceTest, rbusEventReceiveHandler_static_coverage) {
+TEST_F(TelemetryBusmessageSenderTest, rbusEventReceiveHandler_static_coverage) {
     rbusEventReceiveHandlerFunc handler = getRbusEventReceiveHandlerCallback();
     ASSERT_NE(handler, nullptr);
 

@@ -861,8 +861,8 @@ T2ERROR t2_event_d(const char* marker, int value)
     pthread_mutex_lock(&dMutex);
     if ( NULL == marker )
     {
-        EVENT_ERROR("%s:%d Error in input parameters \n", __func__, __LINE__);
         pthread_mutex_unlock(&dMutex);
+        EVENT_DEBUG("%s Error in input parameters \n", __FUNCTION__);
         EVENT_DEBUG("%s --out\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
@@ -896,7 +896,14 @@ T2ERROR t2_event_d(const char* marker, int value)
     pthread_mutex_unlock(&dMutex);
     return retStatus ;
 }
+#ifdef GTEST_ENABLE
+typedef T2ERROR (*getRbusParameterValFunc)(const char*,char **);
+getRbusParameterValFunc getRbusParameterValFuncCallback(void) {
+	return getRbusParameterVal;
+}
+#endif
 
+#if 0
 #ifdef GTEST_ENABLE
 typedef T2ERROR (*doPopulateEventMarkerListFunc)(void);
 doPopulateEventMarkerListFunc getDoPopulateEventMarkerListCallback(void) {
@@ -905,8 +912,6 @@ doPopulateEventMarkerListFunc getDoPopulateEventMarkerListCallback(void) {
 bool* test_get_isRbusEnabled_ptr(void) { return &isRbusEnabled; }
 void** test_get_bus_handle_ptr(void) { return &bus_handle; }
 #endif
-
-#if 0
 typedef void (*rbusEventReceiveHandlerFunc)(rbusHandle_t, rbusEvent_t const*, rbusEventSubscription_t*);
 rbusEventReceiveHandlerFunc getRbusEventReceiveHandlerCallback(void)
 {

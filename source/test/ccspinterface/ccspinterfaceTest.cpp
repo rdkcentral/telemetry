@@ -2251,7 +2251,7 @@ TEST_F(CcspInterfaceTest, RbusCheckMethodExists_ReturnsBool) {
 
     bool exists = rbusCheckMethodExists("Dummy.Method");
     // Accept either true or false for stub
-    EXPECT_TRUE(exists == true || exists == false);
+    EXPECT_TRUE(exists);
 }
 TEST_F(CcspInterfaceTest, RbusCheckMethodExists_ReturnsBoolFalse){
     EXPECT_CALL(*g_rbusMock, rbus_registerLogHandler(_))

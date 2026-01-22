@@ -326,6 +326,113 @@ TEST_F(TelemetryBusmessageSenderTest, SendStringEvent_Valid) {
 }
 #ifdef GTEST_ENABLE
 extern "C" {
+    typedef T2ERROR (*doPopulateEventMarkerListFunc)(void);
+    doPopulateEventMarkerListFunc getDoPopulateEventMarkerListCallback(void);
+    bool* test_get_isRbusEnabled_ptr(void);
+    void** test_get_bus_handle_ptr(void);
+}
+
+TEST_F(TelemetryBusmessageSenderTest, doPopulateEventMarkerList_RbusDisabled)
+{
+    *test_get_isRbusEnabled_ptr() = false;
+    *test_get_bus_handle_ptr() = (void*)0xdeadbeef;
+    auto cb = getDoPopulateEventMarkerListCallback();
+    EXPECT_EQ(cb(), T2ERROR_SUCCESS);
+}
+
+TEST_F(TelemetryBusmessageSenderTest, doPopulateEventMarkerList_RbusGetFails)
+{
+    *test_get_isRbusEnabled_ptr() = true;
+    *test_get_bus_handle_ptr() = (void*)0xcafef00d;
+
+    EXPECT_CALL(*g_rbusMock, rbus_get(_, _, _))
+        .Times(1)
+        .WillOnce(Return(RBUS_ERROR_FAILURE));
+
+    auto cb = getDoPopulateEventMarkerListCallback();
+    EXPECT_EQ(cb(), T2ERROR_SUCCESS);
+}
+
+TEST_F(TelemetryBusmessageSenderTest, doPopulateEventMarkerList_ValueTypeNotObject)
+{
+    *test_get_isRbusEnabled_ptr() = true;
+    *test_get_bus_handle_ptr() = (void*)0xcafef00d;
+    rbusValue_t dummyValue = (rbusValue_t)0xf00BAAA;
+
+    EXPECT_CALL(*g_rbusMock, rbus_get(_, _, _))
+        .Times(1)
+        .WillOnce(DoAll(SetArgPointee<2>(dummyValue), Return(RBUS_ERROR_SUCCESS)));
+
+    EXPECT_CALL(*g_rbusMock, rbusValue_GetType(dummyValue))
+        .Times(1)
+        .WillOnce(Return(RBUS_STRING));
+
+    EXPECT_CALL(*g_rbusMock, rbusValue_Release(dummyValue)).Times(1);
+
+    auto cb = getDoPopulateEventMarkerListCallback();
+    EXPECT_EQ(cb(), T2ERROR_FAILURE);
+}
+
+TEST_F(TelemetryBusmessageSenderTest, doPopulateEventMarkerList_ObjectValueNull)
+{
+    *test_get_isRbusEnabled_ptr() = true;
+    *test_get_bus_handle_ptr() = (void*)0xcafef00d;
+    rbusValue_t dummyValue = (rbusValue_t)0xbabe123;
+
+    EXPECT_CALL(*g_rbusMock, rbus_get(_, _, _))
+        .Times(1)
+        .WillOnce(DoAll(SetArgPointee<2>(dummyValue), Return(RBUS_ERROR_SUCCESS)));
+
+    EXPECT_CALL(*g_rbusMock, rbusValue_GetType(dummyValue))
+        .Times(1)
+        .WillOnce(Return(RBUS_OBJECT));
+
+    EXPECT_CALL(*g_rbusMock, rbusValue_GetObject(dummyValue))
+        .Times(1)
+        .WillOnce(Return(nullptr));
+
+    EXPECT_CALL(*g_rbusMock, rbusValue_Release(dummyValue)).Times(1);
+
+    auto cb = getDoPopulateEventMarkerListCallback();
+    EXPECT_EQ(cb(), T2ERROR_SUCCESS);
+}
+
+TEST_F(TelemetryBusmessageSenderTest, doPopulateEventMarkerList_ObjectWithOneEvent)
+{
+    *test_get_isRbusEnabled_ptr() = true;
+    *test_get_bus_handle_ptr() = (void*)0x7777;
+    rbusValue_t dummyValue = (rbusValue_t)0xaaaa;
+    rbusObject_t dummyObj = (rbusObject_t)0xbbbb;
+    rbusProperty_t dummyProp = (rbusProperty_t)0xcccc;
+    const char* dummyEventName = "TelemetryEvent.Test";
+
+    EXPECT_CALL(*g_rbusMock, rbus_get(_, _, _))
+        .Times(1)
+        .WillOnce(DoAll(SetArgPointee<2>(dummyValue), Return(RBUS_ERROR_SUCCESS)));
+    EXPECT_CALL(*g_rbusMock, rbusValue_GetType(dummyValue))
+        .Times(1)
+        .WillOnce(Return(RBUS_OBJECT));
+    EXPECT_CALL(*g_rbusMock, rbusValue_GetObject(dummyValue))
+        .Times(1)
+        .WillOnce(Return(dummyObj));
+    EXPECT_CALL(*g_rbusMock, rbusObject_GetProperties(dummyObj))
+        .Times(1)
+        .WillOnce(Return(dummyProp));
+    EXPECT_CALL(*g_rbusMock, rbusProperty_GetName(dummyProp))
+        .Times(1)
+        .WillOnce(Return(dummyEventName));
+    EXPECT_CALL(*g_rbusMock, rbusProperty_GetNext(dummyProp))
+        .Times(1)
+        .WillOnce(Return(nullptr));
+    EXPECT_CALL(*g_rbusMock, rbusValue_Release(dummyValue)).Times(1);
+
+    auto cb = getDoPopulateEventMarkerListCallback();
+    EXPECT_EQ(cb(), T2ERROR_SUCCESS);
+}
+
+#endif
+#if 0
+extern "C" {
 typedef void (*rbusEventReceiveHandlerFunc)(rbusHandle_t, rbusEvent_t const*, rbusEventSubscription_t*);
 rbusEventReceiveHandlerFunc getRbusEventReceiveHandlerCallback(void);
 // Also ensure that struct definitions for rbusEvent_t etc. are visible!

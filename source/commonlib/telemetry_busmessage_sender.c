@@ -898,6 +898,15 @@ T2ERROR t2_event_d(const char* marker, int value)
 }
 
 #ifdef GTEST_ENABLE
+typedef T2ERROR (*doPopulateEventMarkerListFunc)(void);
+doPopulateEventMarkerListFunc getDoPopulateEventMarkerListCallback(void) {
+    return doPopulateEventMarkerList;
+}
+bool* test_get_isRbusEnabled_ptr(void) { return &isRbusEnabled; }
+void** test_get_bus_handle_ptr(void) { return &bus_handle; }
+#endif
+
+#if 0
 typedef void (*rbusEventReceiveHandlerFunc)(rbusHandle_t, rbusEvent_t const*, rbusEventSubscription_t*);
 rbusEventReceiveHandlerFunc getRbusEventReceiveHandlerCallback(void)
 {

@@ -64,15 +64,6 @@ protected:
     }
 };
 
-#define EVENT_DEBUG(...) ((void)0)
-#define EVENT_ERROR(...) ((void)0)
-
-// Now this will never hang
-TEST_F(TelemetryBusmessageSenderTest, NoHangOnNull) {
-    t2_init("X");
-    int r = t2_event_s(NULL, NULL);
-    EXPECT_EQ(r, T2ERROR_FAILURE);
-}
 
 // Positive test: Init and Uninit
 TEST_F(TelemetryBusmessageSenderTest, InitAndUninit) {

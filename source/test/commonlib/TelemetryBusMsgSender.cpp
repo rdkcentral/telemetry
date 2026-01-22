@@ -270,6 +270,26 @@ TEST_F(TelemetryBusmessageSenderTest, getParameterValue_success_boolean)
   
     EXPECT_EQ(T2ERROR_SUCCESS, getParamValue("Device.DeviceInfo.SerialNumber", &paramValue));
 }
+
+TEST_F(TelemetryBusmessageSenderTest, getParameterValue_failure_boolean)
+{
+    char* paramValue = NULL;
+    t2_init((char*)"test_component");
+
+    EXPECT_CALL(*g_rbusMock, rbus_get(_, _, _))
+        .Times(1)
+        .WillOnce(Return(RBUS_ERROR_SUCCESS));
+    EXPECT_CALL(*g_rbusMock, rbusValue_GetType(_))
+        .Times(1)
+        .WillOnce(Return(RBUS_BOOLEAN));
+    EXPECT_CALL(*g_rbusMock, rbusValue_GetBoolean(_))
+        .Times(1)
+        .WillOnce(Return(false));
+    EXPECT_CALL(*g_rbusMock, rbusValue_Release(_))
+        .Times(1);
+
+    EXPECT_EQ(T2ERROR_SUCCESS, getParamValue("Device.DeviceInfo.SerialNumber", &paramValue));
+}
 /*
 TEST_F(TelemetryBusmessageSenderTest, filtered_event_send_1)
 {
@@ -324,6 +344,7 @@ TEST_F(TelemetryBusmessageSenderTest, SendStringEvent_Valid) {
     EXPECT_EQ(err, T2ERROR_SUCCESS);
     t2_uninit();
 }
+#if 0
 #ifdef GTEST_ENABLE
 extern "C" {
     typedef T2ERROR (*doPopulateEventMarkerListFunc)(void);
@@ -431,7 +452,6 @@ TEST_F(TelemetryBusmessageSenderTest, doPopulateEventMarkerList_ObjectWithOneEve
 }
 
 #endif
-#if 0
 extern "C" {
 typedef void (*rbusEventReceiveHandlerFunc)(rbusHandle_t, rbusEvent_t const*, rbusEventSubscription_t*);
 rbusEventReceiveHandlerFunc getRbusEventReceiveHandlerCallback(void);

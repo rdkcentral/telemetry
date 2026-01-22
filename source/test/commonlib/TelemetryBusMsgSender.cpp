@@ -239,12 +239,7 @@ TEST_F(TelemetryBusmessageSenderTest, t2_event_d_iscachingenabled_false)
 {
     t2_init((char*)"sysint");
     EXPECT_CALL(*g_systemMock, access(_,_))
-            .Times(4)
-            .WillOnce(Return(-1))
-            .WillOnce(Return(-1))
-            .WillOnce(Return(-1))
-            .WillOnce(Return(-1));
-
+        .WillRepeatedly(Return(-1)); 
     EXPECT_CALL(*g_rbusMock, rbus_checkStatus())
             .Times(1)
             .WillOnce(Return(RBUS_ENABLED));

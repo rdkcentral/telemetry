@@ -277,7 +277,19 @@ TEST_F(ProfileTest, getMinThresholdDuration_Failure) {
     EXPECT_CALL(*g_vectorMock, Vector_Size(_)).Times(::testing::AtMost(1)).WillRepeatedly(Return(0));
     EXPECT_EQ(getMinThresholdDuration("profile1"), 0);
 }
+#ifdef GTEST_ENABLE
+extern "C" {
+typedef void (*freeRequestURIparamFunc)(void *);
+freeRequestURIparamFunc freeRequestURIparamFuncCallback(void);
+}
 
+TEST_F(ProfileTest, FreeRequestURIparam_Null) {
+    freeRequestURIparamFunc freeFunc = freeRequestURIparamFuncCallback();
+    ASSERT_NE(freeFunc, nullptr);
+    freeFunc(nullptr);
+}
+
+#endif
 #endif
 
 

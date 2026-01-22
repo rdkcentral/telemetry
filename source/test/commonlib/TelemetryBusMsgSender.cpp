@@ -240,17 +240,6 @@ TEST_F(TelemetryBusmessageSenderTest, t2_event_d_iscachingenabled_false)
     t2_init((char*)"sysint");
     EXPECT_CALL(*g_systemMock, access(_,_))
         .WillRepeatedly(Return(-1));
-#if 0 
-    EXPECT_CALL(*g_rbusMock, rbus_checkStatus())
-            .Times(1)
-            .WillOnce(Return(RBUS_ENABLED));
-    EXPECT_CALL(*g_rbusMock, rbus_open(_, _))
-            .Times(1)
-            .WillOnce([](rbusHandle_t* handle, const char* componentName) {
-                *handle = (rbusHandle_t)0xdeadbeef;
-                return RBUS_ERROR_SUCCESS;
-            });
-#endif
     EXPECT_CALL(*g_rbusMock, rbus_getUint(_, _, _))
             .Times(1)
             .WillOnce([](rbusHandle_t handle, const char* name, uint32_t* value) {
@@ -260,6 +249,23 @@ TEST_F(TelemetryBusmessageSenderTest, t2_event_d_iscachingenabled_false)
 
     int ret;
     ret = t2_event_d("marker", 13);
+    EXPECT_EQ(ret, T2ERROR_SUCCESS);
+}
+
+TEST_F(TelemetryBusmessageSenderTest, t2_event_f_iscachingenabled_false)
+{
+    t2_init((char*)"sysint");
+    EXPECT_CALL(*g_systemMock, access(_,_))
+        .WillRepeatedly(Return(-1));
+    EXPECT_CALL(*g_rbusMock, rbus_getUint(_, _, _))
+            .Times(1)
+            .WillOnce([](rbusHandle_t handle, const char* name, uint32_t* value) {
+                *value = 0;
+                return RBUS_ERROR_BUS_ERROR;
+            });
+
+    int ret;
+    ret = t2_event_d("marker", 123.456);
     EXPECT_EQ(ret, T2ERROR_SUCCESS);
 }
 

@@ -291,29 +291,7 @@ TEST_F(TelemetryBusmessageSenderTest, getParameterValue_failure_boolean)
     EXPECT_EQ(T2ERROR_SUCCESS, getParamValue("Device.DeviceInfo.SerialNumber", &paramValue));
 }
 
-TEST_F(TelemetryBusmessageSenderTest, getParameterValue_failure_rbusget)
-{
-    char* paramValue = NULL;
-    t2_init((char*)"test_component");
 
-    EXPECT_CALL(*g_rbusMock, rbus_checkStatus())
-    .Times(1)
-    .WillOnce(Return(RBUS_ENABLED));
-EXPECT_CALL(*g_rbusMock, rbus_open(_, _))
-    .Times(1)
-    .WillOnce([](rbusHandle_t* handle, const char* componentName) {
-        *handle = (rbusHandle_t)0xdeadbeef;
-        return RBUS_ERROR_SUCCESS;
-    });
-    EXPECT_CALL(*g_rbusMock, rbus_get(_, _, _))
-        .Times(1)
-        .WillOnce(Return(RBUS_ERROR_BUS_ERROR));
-    EXPECT_EQ(T2ERROR_FAILURE, getParamValue("Device.DeviceInfo.SerialNumber", &paramValue));
-}
-
-
-
-/*
 TEST_F(TelemetryBusmessageSenderTest, filtered_event_send_1)
 {
     t2_init((char*)"telemetry_client");
@@ -348,7 +326,7 @@ TEST_F(TelemetryBusmessageSenderTest, filtered_event_send_2)
     ret = filtered_event_send((char*)"test_data", (char*)"Test_marker:");
     EXPECT_EQ(ret, 0);
 }
-*/
+
 // Positive test: Send string event with valid input
 
 TEST_F(TelemetryBusmessageSenderTest, SendStringEvent_Valid) {

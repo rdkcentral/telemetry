@@ -308,8 +308,11 @@ TEST_F(TelemetryBusmessageSenderTest, getParameterValue_failure_rbusget)
     EXPECT_CALL(*g_rbusMock, rbusValue_Release(_))
         .Times(1);
 
-    EXPECT_EQ(T2ERROR_SUCCESS, getParamValue("Device.DeviceInfo.SerialNumber", &paramValue));
+    EXPECT_EQ(T2ERROR_FAILURE, getParamValue("Device.DeviceInfo.SerialNumber", &paramValue));
 }
+
+
+
 /*
 TEST_F(TelemetryBusmessageSenderTest, filtered_event_send_1)
 {

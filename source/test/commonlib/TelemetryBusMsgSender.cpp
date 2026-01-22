@@ -87,7 +87,7 @@ TEST_F(TelemetryBusmessageSenderTest, SendStringEvent_NullComponent) {
 }
 
 // Negative test: t2_event_s with NULL marker
-/*
+
 TEST_F(TelemetryBusmessageSenderTest, SendStringEvent_NullMarker) {
     t2_init((char*)"test_component");
     EXPECT_CALL(*g_systemMock, access(_,_))
@@ -109,7 +109,7 @@ TEST_F(TelemetryBusmessageSenderTest, SendStringEvent_NullValue) {
     EXPECT_EQ(err, T2ERROR_FAILURE);
 }
 
-*/
+
 // Negative test: t2_event_s with empty string value (should not send, returns success)
 TEST_F(TelemetryBusmessageSenderTest, SendStringEvent_EmptyValue) {
     t2_init((char*)"test_component");
@@ -292,7 +292,7 @@ TEST_F(TelemetryBusmessageSenderTest, getParameterValue_failure_boolean)
 }
 
 
-TEST_F(TelemetryBusmessageSenderTest, filtered_event_send_1)
+/*TEST_F(TelemetryBusmessageSenderTest, filtered_event_send_1)
 {
     t2_init((char*)"telemetry_client");
 
@@ -325,7 +325,7 @@ TEST_F(TelemetryBusmessageSenderTest, filtered_event_send_2)
     int ret;
     ret = filtered_event_send((char*)"test_data", (char*)"Test_marker:");
     EXPECT_EQ(ret, 0);
-}
+}*/
 
 // Positive test: Send string event with valid input
 

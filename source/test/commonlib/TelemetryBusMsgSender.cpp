@@ -290,7 +290,7 @@ TEST_F(TelemetryBusmessageSenderTest, t2_event_f_iscachingenabled_false)
             });
 
     int ret;
-    ret = t2_event_d("marker", 123.456);
+    ret = t2_event_f("marker", 123.456);
     EXPECT_EQ(ret, T2ERROR_SUCCESS);
 }
 

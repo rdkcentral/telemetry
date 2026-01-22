@@ -347,7 +347,7 @@ TEST_F(TelemetryBusmessageSenderTest, doPopulateEventMarkerList_RbusGetFails)
 
     EXPECT_CALL(*g_rbusMock, rbus_get(_, _, _))
         .Times(1)
-        .WillOnce(Return(RBUS_ERROR_FAILURE));
+        .WillOnce(Return(RBUS_ERROR_BUS_ERROR));
 
     auto cb = getDoPopulateEventMarkerListCallback();
     EXPECT_EQ(cb(), T2ERROR_SUCCESS);

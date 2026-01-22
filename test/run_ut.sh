@@ -74,7 +74,7 @@ done
 if [ "$ENABLE_COV" = true ]; then
     echo "Generating coverage report"
     lcov --directory . --capture --output-file coverage.info
-    lcov --remove coverage.info "${PWD}/source/test/*" --output-file coverage.info
+    lcov --remove coverage.info "${PWD}/source/test/*" "${PWD}/source/xconf-client/*" --output-file coverage.info
 
     lcov --remove coverage.info "$HOME/usr/*" --output-file coverage.info
     lcov --remove coverage.info "/usr/*" --output-file coverage.info

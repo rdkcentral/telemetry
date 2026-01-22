@@ -290,6 +290,26 @@ TEST_F(TelemetryBusmessageSenderTest, getParameterValue_failure_boolean)
 
     EXPECT_EQ(T2ERROR_SUCCESS, getParamValue("Device.DeviceInfo.SerialNumber", &paramValue));
 }
+
+TEST_F(TelemetryBusmessageSenderTest, getParameterValue_failure_rbusget)
+{
+    char* paramValue = NULL;
+    t2_init((char*)"test_component");
+
+    EXPECT_CALL(*g_rbusMock, rbus_get(_, _, _))
+        .Times(1)
+        .WillOnce(Return(RBUS_ERROR_BUS_ERROR));
+    EXPECT_CALL(*g_rbusMock, rbusValue_GetType(_))
+        .Times(1)
+        .WillOnce(Return(RBUS_BOOLEAN));
+    EXPECT_CALL(*g_rbusMock, rbusValue_GetBoolean(_))
+        .Times(1)
+        .WillOnce(Return(false));
+    EXPECT_CALL(*g_rbusMock, rbusValue_Release(_))
+        .Times(1);
+
+    EXPECT_EQ(T2ERROR_SUCCESS, getParamValue("Device.DeviceInfo.SerialNumber", &paramValue));
+}
 /*
 TEST_F(TelemetryBusmessageSenderTest, filtered_event_send_1)
 {

@@ -1639,7 +1639,7 @@ extractUnixTimestampFunc extractUnixTimestampFuncCallback(void);
 typedef T2ERROR (*updateLogSeekFunc)(hash_map_t *, const char *, const long);
 updateLogSeekFunc updateLogSeekFuncCallback(void);
 }
-TEST(StaticStrnstrFunc, CoversAllBranches)
+TEST(StaticStrnstrFunc, CoversMainBranches)
 {
     auto fn = strnstrFuncCallback();
     ASSERT_NE(fn, nullptr);

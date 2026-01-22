@@ -360,7 +360,7 @@ TEST_F(CcspInterfaceTest, getProfileParameterValues_ReturnsVector_1) {
     Vector_Destroy(profileValueList, freeProfileValues);
 }
 
-TEST_F(CcspInterfaceTest, getProfileParameterValues_ReturnsVector_2) {
+TEST_F(CcspInterfaceTest, getProfileParameterValues_ReturnsVector_WithRbusGetExtError) {
     Vector* paramlist = NULL;
     Vector_Create(&paramlist);
     Param* p = (Param*) malloc(sizeof(Param));
@@ -2203,7 +2203,8 @@ TEST_F(CcspInterfaceTest, RbusMethodCaller_ReturnsSuccessForDummyMethod) {
 
 
     T2ERROR err = rbusMethodCaller((char*)"Dummy.Method", &inputParams, (char*)"payload", NULL);
-    EXPECT_TRUE(err == T2ERROR_SUCCESS || err == T2ERROR_FAILURE); // Accept either for stub
+    EXPECT_TRUE(err == T2ERROR_SUCCESS); // Accept either for stub
+    //EXPECT_TRUE(err == T2ERROR_SUCCESS || err == T2ERROR_FAILURE); // Accept either for stub
 }
 
 TEST_F(CcspInterfaceTest, RbusMethodCaller_ReturnsFailureForDummyMethod) {
@@ -2218,7 +2219,7 @@ TEST_F(CcspInterfaceTest, RbusMethodCaller_ReturnsFailureForDummyMethod) {
         .WillRepeatedly(Return(RBUS_ERROR_BUS_ERROR));
 
     T2ERROR err = rbusMethodCaller((char*)"Dummy.Method", &inputParams, (char*)"payload", NULL);
-    EXPECT_TRUE(err == T2ERROR_SUCCESS || err == T2ERROR_FAILURE); // Accept either for stub	
+    EXPECT_EQ(err, T2ERROR_FAILURE);
 }
 
 TEST_F(CcspInterfaceTest, RbusCheckMethodExists_ReturnsBool) {
@@ -2261,8 +2262,9 @@ TEST_F(CcspInterfaceTest, RbusCheckMethodExists_ReturnsBoolFalse){
         .Times(::testing::AtMost(1))
         .WillRepeatedly(Return(RBUS_ERROR_BUS_ERROR));
     bool exists = rbusCheckMethodExists("Dummy.Method");
+    EXPECT_FALSE(exists);
     // Accept either true or false for stub
-    EXPECT_TRUE(exists == true || exists == false);
+    //EXPECT_TRUE(exists == true || exists == false);
 }
 #ifdef GTEST_ENABLE
 extern "C"

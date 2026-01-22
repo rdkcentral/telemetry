@@ -168,7 +168,7 @@ TEST_F(TelemetryBusmessageSenderTest, SendIntEvent_Zero) {
     t2_init((char*)"test_component");
     EXPECT_CALL(*g_systemMock, access(_,_))
            .WillRepeatedly(Return(-1));
-    T2ERROR err = t2_event_d("marker", 123);
+    T2ERROR err = t2_event_d("marker", 0);
     EXPECT_EQ(err, T2ERROR_SUCCESS);
 }
 

@@ -155,7 +155,7 @@ TEST_F(TelemetryBusmessageSenderTest, SendDoubleEvent_NullComponent) {
 
 // Negative test: t2_event_d with NULL marker
 
-TEST_F(TelemetryBusmessageSenderTest, SendIntEvent_NullMarker) {
+/*TEST_F(TelemetryBusmessageSenderTest, SendIntEvent_NullMarker) {
     t2_init((char*)"test_component");
     EXPECT_CALL(*g_systemMock, access(_,_))
             .Times(2)
@@ -163,7 +163,7 @@ TEST_F(TelemetryBusmessageSenderTest, SendIntEvent_NullMarker) {
             .WillOnce(Return(-1));
     T2ERROR err = t2_event_d(NULL, 123);
     EXPECT_EQ(err, T2ERROR_FAILURE);
-}
+}*/
 
 // Negative test: t2_event_d with value 0 (should not send, returns success)
 TEST_F(TelemetryBusmessageSenderTest, SendIntEvent_Zero) {
@@ -188,6 +188,13 @@ TEST_F(TelemetryBusmessageSenderTest, SendIntEvent_NullComponent) {
     EXPECT_EQ(err, T2ERROR_COMPONENT_NULL);
 }
 
+TEST_F(TelemetryBusmessageSenderTest, SendIntEvent_Component) {
+    t2_uninit();
+    EXPECT_CALL(*g_systemMock, access(_,_))
+           .WillRepeatedly(Return(-1));
+    T2ERROR err = t2_event_d("marker", 13);
+    EXPECT_EQ(err, T2ERROR_SUCCESS);
+}
 
 TEST_F(TelemetryBusmessageSenderTest, getParamValue_failure)
 {

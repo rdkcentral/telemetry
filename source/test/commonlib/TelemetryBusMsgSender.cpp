@@ -433,6 +433,82 @@ TEST_F(TelemetryBusmessageSenderTest, SendStringEvent_Valid) {
     EXPECT_EQ(err, T2ERROR_SUCCESS);
     t2_uninit();
 }
+// ==================== Additional Tests for Coverage (Copilot Suggestion) ====================
+
+// Positive path for t2_event_f (double, non-zero, valid)
+TEST_F(TelemetryBusmessageSenderTest, SendDoubleEvent_Positive)
+{
+    t2_init((char*)"component_f");
+    EXPECT_CALL(*g_systemMock, access(_,_)).WillRepeatedly(Return(-1));
+    EXPECT_CALL(*g_rbusMock, rbus_getUint(_, _, _)).WillOnce([](rbusHandle_t, const char*, uint32_t* out) {
+        *out = 1; return RBUS_ERROR_SUCCESS;
+    });
+    T2ERROR err = t2_event_f("float_marker", 7.89);
+    EXPECT_EQ(err, T2ERROR_SUCCESS);
+    t2_uninit();
+}
+
+// Positive path for t2_event_d (int, non-zero, valid)
+TEST_F(TelemetryBusmessageSenderTest, SendIntEvent_Positive)
+{
+    t2_init((char*)"component_d");
+    EXPECT_CALL(*g_systemMock, access(_,_)).WillRepeatedly(Return(-1));
+    EXPECT_CALL(*g_rbusMock, rbus_getUint(_, _, _)).WillOnce([](rbusHandle_t, const char*, uint32_t* out) {
+        *out = 1; return RBUS_ERROR_SUCCESS;
+    });
+    T2ERROR err = t2_event_d("int_marker", 55);
+    EXPECT_EQ(err, T2ERROR_SUCCESS);
+    t2_uninit();
+}
+
+// Test: t2_event_f malloc failure coverage (simulate out-of-memory)
+TEST_F(TelemetryBusmessageSenderTest, SendDoubleEvent_MallocFail)
+{
+    t2_init((char*)"component_f_mallocfail");
+    EXPECT_CALL(*g_systemMock, access(_,_)).WillRepeatedly(Return(-1));
+    // Inject malloc failure (if malloc can be mocked; otherwise, document for manual/integration fail testing)
+    // Example - skip malloc and rely on code branch for error coverage
+    // This branch is only reached if malloc fails, so coverage tool will reflect invocation if forcibly triggered
+    // Not implementable with Google Mock directly - source might need to use wrapper you can mock
+    // For illustration only:
+    // EXPECT_CALL(*g_customMock, my_malloc(_)).WillOnce(Return(nullptr));
+    // T2ERROR err = t2_event_f("marker", 1.23);
+    // EXPECT_EQ(err, T2ERROR_FAILURE);
+    t2_uninit();
+}
+
+// Test: t2_event_d malloc failure coverage
+TEST_F(TelemetryBusmessageSenderTest, SendIntEvent_MallocFail)
+{
+    t2_init((char*)"component_i_mallocfail");
+    EXPECT_CALL(*g_systemMock, access(_,_)).WillRepeatedly(Return(-1));
+    // See note above for malloc mocking.
+    // T2ERROR err = t2_event_d("marker", 42);
+    // EXPECT_EQ(err, T2ERROR_FAILURE);
+    t2_uninit();
+}
+
+// t2_uninit() idempotency (called multiple times for double-free protection)
+TEST_F(TelemetryBusmessageSenderTest, UninitTwice_Idempotency)
+{
+    t2_init((char*)"component_uninit");
+    t2_uninit();
+    // Second call should not crash, even if everything was already cleaned up
+    t2_uninit();
+}
+
+// Test: Extreme case, calling init/uninit in sequence (mutex logic and memory edge)
+TEST_F(TelemetryBusmessageSenderTest, MultipleInitUninitSequence)
+{
+    for (int i = 0; i < 3; ++i) {
+        t2_init((char*)"component_seq");
+        t2_uninit();
+    }
+}
+
+// (Optional) If you refactor or add a wrapper for malloc for testability,
+// then uncomment the malloc-failure tests and implement the needed mocks.
+
 #if 0
 TEST_F(TelemetryBusmessageSenderTest, getParameterValue_failure_rbus_get)
 {

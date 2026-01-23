@@ -505,7 +505,6 @@ TEST_F(TelemetryBusmessageSenderTest, filtered_event_send_script_event_rbus_set_
     EXPECT_EQ(ret, -1);
     t2_uninit();
 }
-#endif
 // ==================== Additional Tests for Coverage (Copilot Suggestion) ====================
 
 // Positive path for t2_event_f (double, non-zero, valid)
@@ -582,6 +581,7 @@ TEST_F(TelemetryBusmessageSenderTest, MultipleInitUninitSequence)
 // (Optional) If you refactor or add a wrapper for malloc for testability,
 // then uncomment the malloc-failure tests and implement the needed mocks.
 
+#endif
 #if 0
 TEST_F(TelemetryBusmessageSenderTest, getParameterValue_failure_rbus_get)
 {

@@ -32,7 +32,10 @@
 #include <ccsp/ccsp_custom.h>
 #include <ccsp/ccsp_base_api.h>
 #endif
+#include <dbus/dbus.h>
+#if defined(RBUS_SUPPORT_ENABLED)
 #include <rbus/rbus.h>
+#endif
 
 #include "telemetry_busmessage_sender.h"
 
@@ -48,6 +51,11 @@
 #define T2_SCRIPT_EVENT_COMPONENT "telemetry_client"
 #define SENDER_LOG_FILE "/tmp/t2_sender_debug.log"
 
+/* D-Bus Configuration */
+#define T2_DBUS_SERVICE_NAME        "telemetry.t2"
+#define T2_DBUS_OBJECT_PATH         "/telemetry/t2"
+#define T2_DBUS_INTERFACE_NAME      "telemetry.t2.interface"
+
 static const char* CCSP_FIXED_COMP_ID = "com.cisco.spvtg.ccsp.t2commonlib" ;
 
 static char *componentName = NULL;
@@ -55,6 +63,7 @@ static void *bus_handle = NULL;
 static bool isRFCT2Enable = false ;
 static bool isT2Ready = false;
 static bool isRbusEnabled = false ;
+static bool isDbusEnabled = false ;
 static pthread_mutex_t initMtx = PTHREAD_MUTEX_INITIALIZER;
 static bool isMutexInitialized = false ;
 
@@ -196,21 +205,118 @@ static T2ERROR getCCSPParamVal(const char* paramName, char **paramValue)
 }
 #endif
 
-
+#if defined(RBUS_SUPPORT_ENABLED)
 static void rBusInterface_Uninit( )
 {
     rbus_close(bus_handle);
 }
+#endif
+
+static void dBusInterface_Uninit(void)
+{
+    if(isDbusEnabled && bus_handle)
+    {
+        dbus_connection_unref((DBusConnection*)bus_handle);
+        bus_handle = NULL;
+        isDbusEnabled = false;
+    }
+}
+
+static int dbus_checkStatus(void)
+{
+    // Check if D-Bus is available by attempting to connect
+    DBusError error;
+    dbus_error_init(&error);
+    DBusConnection *test_conn = dbus_bus_get(DBUS_BUS_SYSTEM, &error);
+    
+    if (dbus_error_is_set(&error))
+    {
+        dbus_error_free(&error);
+        return -1; // D-Bus not available
+    }
+    
+    if (test_conn)
+    {
+        dbus_connection_unref(test_conn);
+        return 0; // D-Bus available
+    }
+    
+    return -1;
+}
+
+static T2ERROR dbus_getUint(const char* paramName, uint32_t* value)
+{
+    if (!paramName || !value)
+    {
+        return T2ERROR_INVALID_ARGS;
+    }
+    
+    if (!bus_handle)
+    {
+        return T2ERROR_FAILURE;
+    }
+    
+    // D-Bus method call to get uint32 parameter
+    DBusMessage *msg = NULL;
+    DBusMessage *reply = NULL;
+    DBusError error;
+    dbus_error_init(&error);
+    
+    msg = dbus_message_new_method_call(T2_DBUS_SERVICE_NAME,
+                                       T2_DBUS_OBJECT_PATH,
+                                       T2_DBUS_INTERFACE_NAME,
+                                       "GetOperationalStatus");
+    if (!msg)
+    {
+        return T2ERROR_FAILURE;
+    }
+    
+    if (!dbus_message_append_args(msg, DBUS_TYPE_STRING, &paramName, DBUS_TYPE_INVALID))
+    {
+        dbus_message_unref(msg);
+        return T2ERROR_FAILURE;
+    }
+    
+    reply = dbus_connection_send_with_reply_and_block((DBusConnection*)bus_handle, msg, 5000, &error);
+    dbus_message_unref(msg);
+
+    if (dbus_error_is_set(&error))
+    {
+        dbus_error_free(&error);
+        return T2ERROR_FAILURE;
+    }
+    
+    if (!reply)
+    {
+        return T2ERROR_FAILURE;
+    }
+
+    if (dbus_message_get_args(reply, &error, DBUS_TYPE_UINT32, value, DBUS_TYPE_INVALID))
+    {
+        dbus_message_unref(reply);
+        return T2ERROR_SUCCESS;
+    }
+    else
+    {
+        if (dbus_error_is_set(&error))
+        {
+            dbus_error_free(&error);
+        }
+        dbus_message_unref(reply);
+        return T2ERROR_FAILURE;
+    }
+}
 
 static T2ERROR initMessageBus( )
 {
-    // EVENT_DEBUG("%s ++in\n", __FUNCTION__);
+    EVENT_DEBUG("%s ++in\n", __FUNCTION__);
     T2ERROR status = T2ERROR_SUCCESS;
     char* component_id = (char*)CCSP_FIXED_COMP_ID;
 #if defined(CCSP_SUPPORT_ENABLED)
     char *pCfg = (char*)CCSP_MSG_BUS_CFG;
 #endif
 
+#if defined(RBUS_SUPPORT_ENABLED)
     if(RBUS_ENABLED == rbus_checkStatus())
     {
         // EVENT_DEBUG("%s:%d, T2:rbus is enabled\n", __func__, __LINE__);
@@ -232,6 +338,54 @@ static T2ERROR initMessageBus( )
         }
         isRbusEnabled = true;
     }
+    else
+#endif
+    if(0 == dbus_checkStatus())
+    {
+        // D-Bus is available
+        char dbusName[124] = { '\0' };
+        if(componentName)
+        {
+            snprintf(dbusName, 124, "telemetry.t2_lib_%s", componentName);
+        }
+        else
+        {
+            snprintf(dbusName, 124, "%s", component_id);
+        }
+        
+        DBusError error;
+        dbus_error_init(&error);
+        bus_handle = (void*)dbus_bus_get(DBUS_BUS_SYSTEM, &error);
+        
+        if (dbus_error_is_set(&error))
+        {
+            EVENT_ERROR("%s:%d, D-Bus init failed: %s\n", __func__, __LINE__, error.message);
+            dbus_error_free(&error);
+            status = T2ERROR_FAILURE;
+        }
+        else if (bus_handle)
+        {
+            int ret = dbus_bus_request_name((DBusConnection*)bus_handle, dbusName,
+                                           DBUS_NAME_FLAG_REPLACE_EXISTING, &error);
+            if (dbus_error_is_set(&error))
+            {
+                EVENT_ERROR("%s:%d, D-Bus name request failed: %s\n", __func__, __LINE__, error.message);
+                dbus_error_free(&error);
+                dbus_connection_unref((DBusConnection*)bus_handle);
+                bus_handle = NULL;
+                status = T2ERROR_FAILURE;
+            }
+            else
+            {
+                isDbusEnabled = true;
+                status = T2ERROR_SUCCESS;
+            }
+        }
+        else
+        {
+            status = T2ERROR_FAILURE;
+        }
+    }
 #if defined(CCSP_SUPPORT_ENABLED)
     else
     {
@@ -248,10 +402,11 @@ static T2ERROR initMessageBus( )
         }
     }
 #endif // CCSP_SUPPORT_ENABLED 
-    // EVENT_DEBUG("%s --out\n", __FUNCTION__);
+    EVENT_DEBUG("%s --out\n", __FUNCTION__);
     return status;
 }
 
+#if defined(RBUS_SUPPORT_ENABLED)
 static T2ERROR getRbusParameterVal(const char* paramName, char **paramValue)
 {
 
@@ -296,18 +451,26 @@ static T2ERROR getRbusParameterVal(const char* paramName, char **paramValue)
 
     return T2ERROR_SUCCESS;
 }
+#endif
 
 T2ERROR getParamValue(const char* paramName, char **paramValue)
 {
     T2ERROR ret = T2ERROR_FAILURE ;
+#if defined(RBUS_SUPPORT_ENABLED)
     if(isRbusEnabled)
     {
         ret = getRbusParameterVal(paramName, paramValue);
     }
-#if defined(CCSP_SUPPORT_ENABLED)
     else
+#endif
+#if defined(CCSP_SUPPORT_ENABLED)
     {
         ret = getCCSPParamVal(paramName, paramValue);
+    }
+#else
+    {
+        // D-Bus mode - not implemented for parameter get
+        ret = T2ERROR_FAILURE;
     }
 #endif
 
@@ -437,15 +600,15 @@ static bool initRFC( )
  */
 int filtered_event_send(const char* data, const char *markerName)
 {
-    rbusError_t ret = RBUS_ERROR_SUCCESS;
     int status = 0 ;
     EVENT_DEBUG("%s ++in\n", __FUNCTION__);
     if(!bus_handle)
     {
         EVENT_ERROR("bus_handle is null .. exiting !!! \n");
-        return ret;
+        return status;
     }
 
+#if defined(RBUS_SUPPORT_ENABLED)
     if(isRbusEnabled)
     {
 
@@ -507,6 +670,79 @@ int filtered_event_send(const char* data, const char *markerName)
         rbusValue_Release(objVal);
 
     }
+    else
+#endif
+    if(isDbusEnabled)
+    {
+        // Filter data from marker list
+        if(componentName && (0 != strcmp(componentName, T2_SCRIPT_EVENT_COMPONENT)))   // Events from scripts needs to be sent without filtering
+        {
+            EVENT_DEBUG("%s markerListMutex lock & get list of marker for component %s \n", __FUNCTION__, componentName);
+            pthread_mutex_lock(&markerListMutex);
+            bool isEventingEnabled = false;
+            if(markerName && eventMarkerMap)
+            {
+                if(hash_map_get(eventMarkerMap, markerName))
+                {
+                    isEventingEnabled = true;
+                }
+            }
+            else
+            {
+                EVENT_DEBUG("%s eventMarkerMap for component %s is empty \n", __FUNCTION__, componentName );
+            }
+            EVENT_DEBUG("%s markerListMutex unlock\n", __FUNCTION__ );
+            pthread_mutex_unlock(&markerListMutex);
+            if(!isEventingEnabled)
+            {
+                EVENT_DEBUG("%s markerName %s not found in event list for component %s . Unlock markerListMutex . \n", __FUNCTION__, markerName, componentName);
+                return status;
+            }
+        }
+        // End of event filtering
+
+        // D-Bus method call to send event
+        DBusMessage *msg = NULL;
+        DBusError error;
+        dbus_error_init(&error);
+        
+        msg = dbus_message_new_method_call(T2_DBUS_SERVICE_NAME,
+                                           T2_DBUS_OBJECT_PATH,
+                                           T2_DBUS_INTERFACE_NAME,
+                                           "SendT2Event");
+        if (!msg)
+        {
+            EVENT_ERROR("Failed to create D-Bus method call message\n");
+            status = -1;
+        }
+        else
+        {
+            if (!dbus_message_append_args(msg,
+                                         DBUS_TYPE_STRING, &markerName,
+                                         DBUS_TYPE_STRING, &data,
+                                         DBUS_TYPE_INVALID))
+            {
+                EVENT_ERROR("Failed to append D-Bus method call arguments\n");
+                dbus_message_unref(msg);
+                status = -1;
+            }
+            else
+            {
+                // Send method call without waiting for reply
+                if (!dbus_connection_send((DBusConnection*)bus_handle, msg, NULL))
+                {
+                    EVENT_ERROR("Failed to send D-Bus method call\n");
+                    status = -1;
+                }
+                else
+                {
+                    dbus_connection_flush((DBusConnection*)bus_handle);
+                    status = 0;
+                }
+                dbus_message_unref(msg);
+            }
+        }
+    }
 #if defined(CCSP_SUPPORT_ENABLED)
     else
     {
@@ -515,7 +751,7 @@ int filtered_event_send(const char* data, const char *markerName)
         if(buffer)
         {
             snprintf(buffer, eventDataLen, "%s%s%s", markerName, MESSAGE_DELIMITER, data);
-            ret = CcspBaseIf_SendTelemetryDataSignal(bus_handle, buffer);
+            int ret = CcspBaseIf_SendTelemetryDataSignal(bus_handle, buffer);
             if(ret != CCSP_SUCCESS)
             {
                 status = -1;
@@ -542,83 +778,203 @@ static T2ERROR doPopulateEventMarkerList( )
 
     T2ERROR status = T2ERROR_SUCCESS;
     char deNameSpace[1][124] = {{ '\0' }};
+#if defined(RBUS_SUPPORT_ENABLED)
     if(!isRbusEnabled)
     {
-        return T2ERROR_SUCCESS;
-    }
-
-    EVENT_DEBUG("%s ++in\n", __FUNCTION__);
-    rbusError_t ret = RBUS_ERROR_SUCCESS;
-    rbusValue_t paramValue_t;
-
-    if(!bus_handle && T2ERROR_SUCCESS != initMessageBus())
-    {
-        EVENT_ERROR("Unable to get message bus handles \n");
-        EVENT_DEBUG("%s --out\n", __FUNCTION__);
-        return T2ERROR_FAILURE;
-    }
-
-    snprintf(deNameSpace[0], 124, "%s%s%s", T2_ROOT_PARAMETER, componentName, T2_EVENT_LIST_PARAM_SUFFIX);
-    EVENT_DEBUG("rbus mode : Query marker list with data element = %s \n", deNameSpace[0]);
-
-    pthread_mutex_lock(&markerListMutex);
-    EVENT_DEBUG("Lock markerListMutex & Clean up eventMarkerMap \n");
-    if(eventMarkerMap != NULL)
-    {
-        hash_map_destroy(eventMarkerMap, free);
-        eventMarkerMap = NULL;
-    }
-
-    ret = rbus_get(bus_handle, deNameSpace[0], &paramValue_t);
-    if(ret != RBUS_ERROR_SUCCESS)
-    {
-        EVENT_ERROR("rbus mode : No event list configured in profiles %s and return value %d\n", deNameSpace[0], ret);
-        pthread_mutex_unlock(&markerListMutex);
-        EVENT_DEBUG("rbus mode : No event list configured in profiles %s and return value %d. Unlock markerListMutex\n", deNameSpace[0], ret);
-        EVENT_DEBUG("%s --out\n", __FUNCTION__);
-        return T2ERROR_SUCCESS;
-    }
-
-    rbusValueType_t type_t = rbusValue_GetType(paramValue_t);
-    if(type_t != RBUS_OBJECT)
-    {
-        EVENT_ERROR("rbus mode : Unexpected data object received for %s get query \n", deNameSpace[0]);
-        rbusValue_Release(paramValue_t);
-        pthread_mutex_unlock(&markerListMutex);
-        EVENT_DEBUG("Unlock markerListMutex\n");
-        EVENT_DEBUG("%s --out\n", __FUNCTION__);
-        return T2ERROR_FAILURE;
-    }
-
-    rbusObject_t objectValue = rbusValue_GetObject(paramValue_t);
-    if(objectValue)
-    {
-        eventMarkerMap = hash_map_create();
-        rbusProperty_t rbusPropertyList = rbusObject_GetProperties(objectValue);
-        EVENT_DEBUG("\t rbus mode :  Update event map for component %s with below events : \n", componentName);
-        while(NULL != rbusPropertyList)
-        {
-            const char* eventname = rbusProperty_GetName(rbusPropertyList);
-            if(eventname && strlen(eventname) > 0)
-            {
-                EVENT_DEBUG("\t %s\n", eventname);
-                hash_map_put(eventMarkerMap, (void*) strdup(eventname), (void*) strdup(eventname), free);
-            }
-            rbusPropertyList = rbusProperty_GetNext(rbusPropertyList);
-        }
+        // Fall through to D-Bus implementation
     }
     else
     {
-        EVENT_ERROR("rbus mode : No configured event markers for %s \n", componentName);
-    }
-    EVENT_DEBUG("Unlock markerListMutex\n");
-    pthread_mutex_unlock(&markerListMutex);
-    rbusValue_Release(paramValue_t);
-    EVENT_DEBUG("%s --out\n", __FUNCTION__);
-    return status;
+        EVENT_DEBUG("%s ++in\n", __FUNCTION__);
+        rbusError_t ret = RBUS_ERROR_SUCCESS;
+        rbusValue_t paramValue_t;
 
+        if(!bus_handle && T2ERROR_SUCCESS != initMessageBus())
+        {
+            EVENT_ERROR("Unable to get message bus handles \n");
+            EVENT_DEBUG("%s --out\n", __FUNCTION__);
+            return T2ERROR_FAILURE;
+        }
+
+        snprintf(deNameSpace[0], 124, "%s%s%s", T2_ROOT_PARAMETER, componentName, T2_EVENT_LIST_PARAM_SUFFIX);
+        EVENT_DEBUG("rbus mode : Query marker list with data element = %s \n", deNameSpace[0]);
+
+        pthread_mutex_lock(&markerListMutex);
+        EVENT_DEBUG("Lock markerListMutex & Clean up eventMarkerMap \n");
+        if(eventMarkerMap != NULL)
+        {
+            hash_map_destroy(eventMarkerMap, free);
+            eventMarkerMap = NULL;
+        }
+
+        ret = rbus_get(bus_handle, deNameSpace[0], &paramValue_t);
+        if(ret != RBUS_ERROR_SUCCESS)
+        {
+            EVENT_ERROR("rbus mode : No event list configured in profiles %s and return value %d\n", deNameSpace[0], ret);
+            pthread_mutex_unlock(&markerListMutex);
+            EVENT_DEBUG("rbus mode : No event list configured in profiles %s and return value %d. Unlock markerListMutex\n", deNameSpace[0], ret);
+            EVENT_DEBUG("%s --out\n", __FUNCTION__);
+            return T2ERROR_SUCCESS;
+        }
+
+        rbusValueType_t type_t = rbusValue_GetType(paramValue_t);
+        if(type_t != RBUS_OBJECT)
+        {
+            EVENT_ERROR("rbus mode : Unexpected data object received for %s get query \n", deNameSpace[0]);
+            rbusValue_Release(paramValue_t);
+            pthread_mutex_unlock(&markerListMutex);
+            EVENT_DEBUG("Unlock markerListMutex\n");
+            EVENT_DEBUG("%s --out\n", __FUNCTION__);
+            return T2ERROR_FAILURE;
+        }
+
+        rbusObject_t objectValue = rbusValue_GetObject(paramValue_t);
+        if(objectValue)
+        {
+            eventMarkerMap = hash_map_create();
+            rbusProperty_t rbusPropertyList = rbusObject_GetProperties(objectValue);
+            EVENT_DEBUG("\t rbus mode :  Update event map for component %s with below events : \n", componentName);
+            while(NULL != rbusPropertyList)
+            {
+                const char* eventname = rbusProperty_GetName(rbusPropertyList);
+                if(eventname && strlen(eventname) > 0)
+                {
+                    EVENT_DEBUG("\t %s\n", eventname);
+                    hash_map_put(eventMarkerMap, (void*) strdup(eventname), (void*) strdup(eventname), free);
+                }
+                rbusPropertyList = rbusProperty_GetNext(rbusPropertyList);
+            }
+        }
+        else
+        {
+            EVENT_ERROR("rbus mode : No configured event markers for %s \n", componentName);
+        }
+        EVENT_DEBUG("Unlock markerListMutex\n");
+        pthread_mutex_unlock(&markerListMutex);
+        rbusValue_Release(paramValue_t);
+        EVENT_DEBUG("%s --out\n", __FUNCTION__);
+        return status;
+    }
+#endif
+
+    // D-Bus implementation
+    if(isDbusEnabled)
+    {
+        EVENT_DEBUG("%s ++in (D-Bus mode)\n", __FUNCTION__);
+        
+        if(!bus_handle && T2ERROR_SUCCESS != initMessageBus())
+        {
+            EVENT_ERROR("Unable to get message bus handles \n");
+            EVENT_DEBUG("%s --out\n", __FUNCTION__);
+            return T2ERROR_FAILURE;
+        }
+
+        pthread_mutex_lock(&markerListMutex);
+        EVENT_DEBUG("Lock markerListMutex & Clean up eventMarkerMap \n");
+        if(eventMarkerMap != NULL)
+        {
+            hash_map_destroy(eventMarkerMap, free);
+            eventMarkerMap = NULL;
+        }
+
+        // Get marker list via D-Bus method call
+        DBusMessage *msg = NULL;
+        DBusMessage *reply = NULL;
+        DBusError error;
+        dbus_error_init(&error);
+        
+        msg = dbus_message_new_method_call(T2_DBUS_SERVICE_NAME,
+                                           T2_DBUS_OBJECT_PATH,
+                                           T2_DBUS_INTERFACE_NAME,
+                                           "GetMarkerList");
+        if (!msg)
+        {
+            EVENT_ERROR("D-Bus mode: Failed to create method call message\n");
+            pthread_mutex_unlock(&markerListMutex);
+            return T2ERROR_FAILURE;
+        }
+        
+        if (!dbus_message_append_args(msg, DBUS_TYPE_STRING, &componentName, DBUS_TYPE_INVALID))
+        {
+            EVENT_ERROR("D-Bus mode: Failed to append arguments\n");
+            dbus_message_unref(msg);
+            pthread_mutex_unlock(&markerListMutex);
+            return T2ERROR_FAILURE;
+        }
+        
+        reply = dbus_connection_send_with_reply_and_block((DBusConnection*)bus_handle, msg, 5000, &error);
+        dbus_message_unref(msg);
+
+        if (dbus_error_is_set(&error))
+        {
+            EVENT_ERROR("D-Bus mode: Method call failed: %s\n", error.message);
+            dbus_error_free(&error);
+            pthread_mutex_unlock(&markerListMutex);
+            EVENT_DEBUG("D-Bus mode: No event list configured. Unlock markerListMutex\n");
+            return T2ERROR_SUCCESS;
+        }
+
+        if (!reply)
+        {
+            EVENT_ERROR("D-Bus mode: No reply received\n");
+            pthread_mutex_unlock(&markerListMutex);
+            return T2ERROR_SUCCESS;
+        }
+
+        // Parse reply - expecting a string containing comma-separated marker list
+        char *markerListStr = NULL;
+        if (dbus_message_get_args(reply, &error, 
+                                 DBUS_TYPE_STRING, &markerListStr,
+                                 DBUS_TYPE_INVALID))
+        {
+            if(markerListStr && strlen(markerListStr) > 0)
+            {
+                eventMarkerMap = hash_map_create();
+                EVENT_DEBUG("\t D-Bus mode: Update event map for component %s with below events : \n", componentName);
+                
+                char* markerListCopy = strdup(markerListStr);
+                char* token = strtok(markerListCopy, ",");
+                while(token != NULL)
+                {
+                    // Trim whitespace
+                    while(*token == ' ' || *token == '\t') token++;
+                    char* end = token + strlen(token) - 1;
+                    while(end > token && (*end == ' ' || *end == '\t' || *end == '\n')) {
+                        *end = '\0';
+                        end--;
+                    }
+                    
+                    if(strlen(token) > 0)
+                    {
+                        EVENT_DEBUG("\t %s\n", token);
+                        hash_map_put(eventMarkerMap, (void*)strdup(token), (void*)strdup(token), free);
+                    }
+                    token = strtok(NULL, ",");
+                }
+                free(markerListCopy);
+            }
+            else
+            {
+                EVENT_ERROR("D-Bus mode: No configured event markers for %s\n", componentName);
+            }
+        }
+        else
+        {
+            EVENT_ERROR("D-Bus mode: Failed to parse reply: %s\n", error.message);
+            dbus_error_free(&error);
+        }
+
+        dbus_message_unref(reply);
+        EVENT_DEBUG("Unlock markerListMutex\n");
+        pthread_mutex_unlock(&markerListMutex);
+        EVENT_DEBUG("%s --out\n", __FUNCTION__);
+        return status;
+    }
+
+    return T2ERROR_SUCCESS;
 }
 
+#if defined(RBUS_SUPPORT_ENABLED)
 static void rbusEventReceiveHandler(rbusHandle_t handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription)
 {
     (void)handle;//To fix compiler warning.
@@ -635,6 +991,22 @@ static void rbusEventReceiveHandler(rbusHandle_t handle, rbusEvent_t const* even
     {
         EVENT_ERROR("eventName is null \n");
     }
+}
+#endif
+
+static DBusHandlerResult dbusEventReceiveHandler(DBusConnection *connection, DBusMessage *message, void *user_data)
+{
+    (void)connection;
+    (void)user_data;
+    
+    if (dbus_message_is_signal(message, T2_DBUS_INTERFACE_NAME, "ProfileUpdate"))
+    {
+        EVENT_DEBUG("D-Bus: Received ProfileUpdate signal\n");
+        doPopulateEventMarkerList();
+        return DBUS_HANDLER_RESULT_HANDLED;
+    }
+    
+    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
 static bool isCachingRequired( )
@@ -665,11 +1037,22 @@ static bool isCachingRequired( )
 
     // Always check for t2 is ready to accept events. Shutdown target can bring down t2 process at runtime
     uint32_t t2ReadyStatus;
-    rbusError_t retVal = RBUS_ERROR_SUCCESS;
+    T2ERROR retVal = T2ERROR_FAILURE;
 
-    retVal = rbus_getUint(bus_handle, T2_OPERATIONAL_STATUS, &t2ReadyStatus);
+#if defined(RBUS_SUPPORT_ENABLED)
+    if(isRbusEnabled)
+    {
+        rbusError_t rbusRetVal = rbus_getUint(bus_handle, T2_OPERATIONAL_STATUS, &t2ReadyStatus);
+        retVal = (rbusRetVal == RBUS_ERROR_SUCCESS) ? T2ERROR_SUCCESS : T2ERROR_FAILURE;
+    }
+    else
+#endif
+    if(isDbusEnabled)
+    {
+        retVal = dbus_getUint(T2_OPERATIONAL_STATUS, &t2ReadyStatus);
+    }
 
-    if(retVal != RBUS_ERROR_SUCCESS)
+    if(retVal != T2ERROR_SUCCESS)
     {
         return true;
     }
@@ -682,10 +1065,16 @@ static bool isCachingRequired( )
         }
     }
 
+#if defined(RBUS_SUPPORT_ENABLED)
     if(!isRbusEnabled)
+    {
+        // Fall through to D-Bus handling
+    }
+    else
     {
         isT2Ready = true;
     }
+#endif
 
     if(!isT2Ready)
     {
@@ -698,15 +1087,48 @@ static bool isCachingRequired( )
             }
             else
             {
-                rbusError_t ret = RBUS_ERROR_SUCCESS;
-                doPopulateEventMarkerList();
-                ret = rbusEvent_Subscribe(bus_handle, T2_PROFILE_UPDATED_NOTIFY, rbusEventReceiveHandler, "T2Event", 0);
-                if(ret != RBUS_ERROR_SUCCESS)
+#if defined(RBUS_SUPPORT_ENABLED)
+                if(isRbusEnabled)
                 {
-                    EVENT_ERROR("Unable to subscribe to event %s with rbus error code : %d\n", T2_PROFILE_UPDATED_NOTIFY, ret);
-                    EVENT_DEBUG("Unable to subscribe to event %s with rbus error code : %d\n", T2_PROFILE_UPDATED_NOTIFY, ret);
+                    rbusError_t ret = RBUS_ERROR_SUCCESS;
+                    doPopulateEventMarkerList();
+                    ret = rbusEvent_Subscribe(bus_handle, T2_PROFILE_UPDATED_NOTIFY, rbusEventReceiveHandler, "T2Event", 0);
+                    if(ret != RBUS_ERROR_SUCCESS)
+                    {
+                        EVENT_ERROR("Unable to subscribe to event %s with rbus error code : %d\n", T2_PROFILE_UPDATED_NOTIFY, ret);
+                        EVENT_DEBUG("Unable to subscribe to event %s with rbus error code : %d\n", T2_PROFILE_UPDATED_NOTIFY, ret);
+                    }
+                    isT2Ready = true;
                 }
-                isT2Ready = true;
+                else
+#endif
+                if(isDbusEnabled)
+                {
+                    doPopulateEventMarkerList();
+                    
+                    // Subscribe to D-Bus ProfileUpdate signal
+                    char rule[512];
+                    DBusError error;
+                    dbus_error_init(&error);
+                    
+                    snprintf(rule, sizeof(rule), 
+                             "type='signal',interface='%s',member='ProfileUpdate'", T2_DBUS_INTERFACE_NAME);
+                    
+                    dbus_bus_add_match((DBusConnection*)bus_handle, rule, &error);
+                    
+                    if (dbus_error_is_set(&error))
+                    {
+                        EVENT_ERROR("Unable to subscribe to ProfileUpdate signal: %s\n", error.message);
+                        EVENT_DEBUG("Unable to subscribe to ProfileUpdate signal: %s\n", error.message);
+                        dbus_error_free(&error);
+                    }
+                    else
+                    {
+                        // Add message filter for handling signals
+                        dbus_connection_add_filter((DBusConnection*)bus_handle, dbusEventReceiveHandler, NULL, NULL);
+                    }
+                    isT2Ready = true;
+                }
             }
         }
         else
@@ -767,9 +1189,16 @@ void t2_uninit(void)
         componentName = NULL ;
     }
 
+#if defined(RBUS_SUPPORT_ENABLED)
     if(isRbusEnabled)
     {
         rBusInterface_Uninit();
+    }
+    else
+#endif
+    if(isDbusEnabled)
+    {
+        dBusInterface_Uninit();
     }
 
     uninitMutex();

@@ -126,7 +126,7 @@ static void terminate()
         uninitXConfClient();
 #endif
         ReportProfiles_uninit();
-	http_pool_cleanup();
+        http_pool_cleanup();
     }
 
 }

@@ -308,7 +308,7 @@ TEST_F(TelemetryBusmessageSenderTest, t2_event_d_iscachingenabled_true_1)
             return RBUS_ERROR_BUS_ERROR; // <-- Simulate SUCCESS
         });
 #ifdef GTEST_ENABLE
-    *test_get_isRbusEnabled_ptr() = true;
+    *test_get_isRbusEnabled_ptr() = false;
     *test_get_isT2Ready_ptr() = true;
 #endif 
     int ret = t2_event_d("marker", 13);

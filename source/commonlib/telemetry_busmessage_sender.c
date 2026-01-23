@@ -81,6 +81,11 @@ static pthread_mutex_t FileCacheMutex ;
 static pthread_mutex_t markerListMutex ;
 static pthread_mutex_t loggerMutex ;
 
+// D-Bus event loop thread
+static pthread_t dbus_event_thread;
+static bool dbus_event_thread_running = false;
+
+#if defined(RBUS_SUPPORT_ENABLED)
 static void EVENT_DEBUG(char* format, ...)
 {
 
@@ -122,6 +127,23 @@ static void EVENT_DEBUG(char* format, ...)
     pthread_mutex_unlock(&loggerMutex);
 
 }
+#else
+#define EVENT_DEBUG(format, ...) do { \
+    struct timespec ts; \
+    struct tm timeinfo; \
+    char timeBuffer[32]; \
+    if (clock_gettime(CLOCK_REALTIME, &ts) == 0) { \
+        localtime_r(&ts.tv_sec, &timeinfo); \
+        long msecs = ts.tv_nsec / 1000000; \
+        strftime(timeBuffer, sizeof(timeBuffer), "%Y-%m-%d %H:%M:%S", &timeinfo); \
+        snprintf(timeBuffer + strlen(timeBuffer), sizeof(timeBuffer) - strlen(timeBuffer), ".%03ld", msecs); \
+        fprintf(stderr, "[%s] T2DEBUG:%s %s:%d: ", timeBuffer, __func__ , __FILE__, __LINE__ ); \
+    } else { \
+        fprintf(stderr, "T2DEBUG:%s %s:%d: ", __func__ , __FILE__, __LINE__ ); \
+    } \
+    fprintf(stderr, (format), ##__VA_ARGS__ ); \
+} while(0)
+#endif
 
 static void initMutex()
 {
@@ -218,6 +240,14 @@ static void dBusInterface_Uninit(void)
 {
     if(isDbusEnabled && bus_handle)
     {
+        // Stop D-Bus event loop thread
+        if (dbus_event_thread_running)
+        {
+            EVENT_DEBUG("D-Bus: Stopping event loop thread\n");
+            dbus_event_thread_running = false;
+            // Thread is detached and will exit on its own - no need to wait
+        }
+        
         dbus_connection_unref((DBusConnection*)bus_handle);
         bus_handle = NULL;
         isDbusEnabled = false;
@@ -246,7 +276,7 @@ static int dbus_checkStatus(void)
     return -1;
 }
 
-static T2ERROR dbus_getUint(const char* paramName, uint32_t* value)
+static T2ERROR dbus_getGetOperationalStatus(const char* paramName, uint32_t* value)
 {
     if (!paramName || !value)
     {
@@ -270,6 +300,7 @@ static T2ERROR dbus_getUint(const char* paramName, uint32_t* value)
                                        "GetOperationalStatus");
     if (!msg)
     {
+        EVENT_ERROR("%s:%d, D-Bus failed to create method call message\n", __func__, __LINE__);
         return T2ERROR_FAILURE;
     }
     
@@ -279,11 +310,14 @@ static T2ERROR dbus_getUint(const char* paramName, uint32_t* value)
         return T2ERROR_FAILURE;
     }
     
-    reply = dbus_connection_send_with_reply_and_block((DBusConnection*)bus_handle, msg, 5000, &error);
+    // Timeout: 1000ms - GetOperationalStatus should respond quickly
+    // This prevents hanging if server is down/unresponsive
+    reply = dbus_connection_send_with_reply_and_block((DBusConnection*)bus_handle, msg, 1000, &error);
     dbus_message_unref(msg);
 
     if (dbus_error_is_set(&error))
     {
+        EVENT_ERROR("%s:%d, D-Bus error: %s\n", __func__, __LINE__, error.message);
         dbus_error_free(&error);
         return T2ERROR_FAILURE;
     }
@@ -296,12 +330,14 @@ static T2ERROR dbus_getUint(const char* paramName, uint32_t* value)
     if (dbus_message_get_args(reply, &error, DBUS_TYPE_UINT32, value, DBUS_TYPE_INVALID))
     {
         dbus_message_unref(reply);
+        EVENT_ERROR("%s:%d, D-Bus got uint32 value: %u\n", __func__, __LINE__, *value);
         return T2ERROR_SUCCESS;
     }
     else
     {
         if (dbus_error_is_set(&error))
         {
+            EVENT_ERROR("%s:%d, D-Bus error: %s\n", __func__, __LINE__, error.message);
             dbus_error_free(&error);
         }
         dbus_message_unref(reply);
@@ -348,7 +384,7 @@ static T2ERROR initMessageBus( )
         char dbusName[124] = { '\0' };
         if(componentName)
         {
-            snprintf(dbusName, 124, "telemetry.t2_lib_%s", componentName);
+            snprintf(dbusName, 124, "telemetry.t2.lib_%s", componentName);
         }
         else
         {
@@ -392,6 +428,11 @@ static T2ERROR initMessageBus( )
         {
             status = T2ERROR_FAILURE;
         }
+    }
+    else
+    {
+        EVENT_ERROR("%s:%d, T2:No supported dbus available\n", __func__, __LINE__);
+        status = T2ERROR_FAILURE;
     }
 #if defined(CCSP_SUPPORT_ENABLED)
     else
@@ -595,6 +636,7 @@ static bool initRFC( )
         }
         else
         {
+            EVENT_DEBUG("initMessageBus successful\n");
             status = true;
         }
         isRFCT2Enable = true;
@@ -745,7 +787,8 @@ int filtered_event_send(const char* data, const char *markerName)
                 }
                 else
                 {
-                    dbus_connection_flush((DBusConnection*)bus_handle);
+                    // Do NOT call flush() - it blocks until server processes message
+                    // The event loop thread will handle actual transmission
                     status = 0;
                 }
                 dbus_message_unref(msg);
@@ -785,7 +828,6 @@ int filtered_event_send(const char* data, const char *markerName)
 static T2ERROR doPopulateEventMarkerList( )
 {
 
-    T2ERROR status = T2ERROR_SUCCESS;
 #if defined(RBUS_SUPPORT_ENABLED)
     char deNameSpace[1][124] = {{ '\0' }};
     if(!isRbusEnabled)
@@ -977,10 +1019,14 @@ static T2ERROR doPopulateEventMarkerList( )
         EVENT_DEBUG("Unlock markerListMutex\n");
         pthread_mutex_unlock(&markerListMutex);
         EVENT_DEBUG("%s --out\n", __FUNCTION__);
-        return status;
+        return T2ERROR_SUCCESS;
+    }
+    else
+    {
+        EVENT_ERROR("No dbus supported message bus available\n");
     }
 
-    return T2ERROR_SUCCESS;
+    return T2ERROR_FAILURE;
 }
 
 #if defined(RBUS_SUPPORT_ENABLED)
@@ -1010,12 +1056,30 @@ static DBusHandlerResult dbusEventReceiveHandler(DBusConnection *connection, DBu
     
     if (dbus_message_is_signal(message, T2_DBUS_INTERFACE_NAME, "ProfileUpdate"))
     {
-        EVENT_DEBUG("D-Bus: Received ProfileUpdate signal\n");
+        EVENT_DEBUG("D-Bus: *** ProfileUpdate signal RECEIVED - updating marker list ***\n");
         doPopulateEventMarkerList();
         return DBUS_HANDLER_RESULT_HANDLED;
     }
     
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+// D-Bus event loop thread function
+static void* dbus_event_loop_thread(void *arg)
+{
+    (void)arg;
+    // DBusConnection *connection = (DBusConnection*)arg;
+    
+    // EVENT_DEBUG("D-Bus: Event loop thread started\n");
+    
+    // while (dbus_event_thread_running)
+    // {
+    //     // Process pending messages with 100ms timeout
+    //     dbus_connection_read_write_dispatch(connection, 100);
+    // }
+    
+    // EVENT_DEBUG("D-Bus: Event loop thread exiting\n");
+    return NULL;
 }
 
 static bool isCachingRequired( )
@@ -1058,11 +1122,13 @@ static bool isCachingRequired( )
 #endif
     if(isDbusEnabled)
     {
-        retVal = dbus_getUint(T2_OPERATIONAL_STATUS, &t2ReadyStatus);
+        retVal = dbus_getGetOperationalStatus(T2_OPERATIONAL_STATUS, &t2ReadyStatus);
+        EVENT_DEBUG("%s:%d, D-Bus t2ReadyStatus: %u\n", __func__, __LINE__, t2ReadyStatus);
     }
 
     if(retVal != T2ERROR_SUCCESS)
     {
+        EVENT_ERROR("Unable to get %s\n", T2_OPERATIONAL_STATUS);
         return true;
     }
     else
@@ -1087,6 +1153,7 @@ static bool isCachingRequired( )
 
     if(!isT2Ready)
     {
+        EVENT_DEBUG("T2 is not ready yet, subscribe to profile update event/signals \n");
         if(componentName && (0 != strcmp(componentName, "telemetry_client")))
         {
             // From other binary applications in rbus mode if t2 daemon is yet to determine state of component specific config from cloud, enable cache
@@ -1113,6 +1180,7 @@ static bool isCachingRequired( )
 #endif
                 if(isDbusEnabled)
                 {
+                    EVENT_DEBUG("D-Bus: Starting ProfileUpdate signal subscription setup\n");
                     doPopulateEventMarkerList();
                     
                     // Subscribe to D-Bus ProfileUpdate signal
@@ -1121,7 +1189,11 @@ static bool isCachingRequired( )
                     dbus_error_init(&error);
                     
                     snprintf(rule, sizeof(rule), 
-                             "type='signal',interface='%s',member='ProfileUpdate'", T2_DBUS_INTERFACE_NAME);
+                             "type='signal',path='%s',interface='%s',member='ProfileUpdate'",
+                             T2_DBUS_OBJECT_PATH, T2_DBUS_INTERFACE_NAME);
+                    
+                    EVENT_DEBUG("D-Bus: Adding match rule: %s\n", rule);
+                    EVENT_DEBUG("D-Bus: Interface: %s, Path: %s\n", T2_DBUS_INTERFACE_NAME, T2_DBUS_OBJECT_PATH);
                     
                     dbus_bus_add_match((DBusConnection*)bus_handle, rule, &error);
                     
@@ -1133,8 +1205,25 @@ static bool isCachingRequired( )
                     }
                     else
                     {
+                        EVENT_DEBUG("D-Bus: Match rule added successfully\n");
                         // Add message filter for handling signals
                         dbus_connection_add_filter((DBusConnection*)bus_handle, dbusEventReceiveHandler, NULL, NULL);
+                        
+                        // Start D-Bus event loop thread to process incoming messages
+                        if (!dbus_event_thread_running)
+                        {
+                            dbus_event_thread_running = true;
+                            if (pthread_create(&dbus_event_thread, NULL, dbus_event_loop_thread, bus_handle) == 0)
+                            {
+                                EVENT_DEBUG("D-Bus: Event loop thread created successfully\n");
+                                pthread_detach(dbus_event_thread);
+                            }
+                            else
+                            {
+                                EVENT_ERROR("D-Bus: Failed to create event loop thread\n");
+                                dbus_event_thread_running = false;
+                            }
+                        }
                     }
                     isT2Ready = true;
                 }

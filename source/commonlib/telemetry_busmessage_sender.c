@@ -667,7 +667,7 @@ static bool isCachingRequired( )
         }
     }
 
-    printf("############## function %s line %d t2ReadyStatus = %d  T2_STATE_COMPONENT_READY = %d\n",__func__,__LINE__,t2ReadyStatus,T2_STATE_COMPONENT_READY);
+    printf("############## function %s line %d t2ReadyStatus = %d  T2_STATE_COMPONENT_READY = %d isRbusEnabled = %d isT2Ready = %d\n",__func__,__LINE__,t2ReadyStatus,T2_STATE_COMPONENT_READY,isRbusEnabled,isT2Ready);
 
     if(!isRbusEnabled)
     {
@@ -736,8 +736,10 @@ static int report_or_cache_data(char* telemetry_data, const char* markerName)
         pthread_mutex_unlock(&eventMutex);
         return T2ERROR_SUCCESS ;
     }
+	printf("############## function %s line %d\n",__func__,__LINE__);    
     pthread_mutex_unlock(&eventMutex);
 
+	printf("############## function %s line %d\n",__func__,__LINE__);    
     if(isT2Ready)
     {
         // EVENT_DEBUG("T2: Sending event : %s\n", telemetry_data);
@@ -747,6 +749,7 @@ static int report_or_cache_data(char* telemetry_data, const char* markerName)
             EVENT_ERROR("%s:%d, T2:telemetry data send failed, status = %d \n", __func__, __LINE__, ret);
         }
     }
+	printf("############## function %s line %d ret = %d\n",__func__,__LINE__,ret);    
     return ret;
 }
 

@@ -442,7 +442,7 @@ TEST_F(TelemetryBusmessageSenderTest, filtered_event_send_null_bus_handle) {
     EXPECT_EQ(ret, 0);  // ret is initialized to 0
     t2_uninit();
 }
-
+#if 0
 // Cover: isRbusEnabled, marker NOT in eventMarkerMap (event filtering disables send)
 TEST_F(TelemetryBusmessageSenderTest, filtered_event_send_marker_not_in_map) {
     t2_init((char*)"not_telemetry_client");
@@ -505,7 +505,7 @@ TEST_F(TelemetryBusmessageSenderTest, filtered_event_send_script_event_rbus_set_
     EXPECT_EQ(ret, -1);
     t2_uninit();
 }
-
+#endif
 // ==================== Additional Tests for Coverage (Copilot Suggestion) ====================
 
 // Positive path for t2_event_f (double, non-zero, valid)

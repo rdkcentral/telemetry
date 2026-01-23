@@ -458,7 +458,6 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
                 if(curlGetCertStatus != certselectorOk)
                 {
                     T2Error("%s, T2:Failed to retrieve the certificate.\n", __func__);
-                    ();
                     curl_easy_cleanup(curl);
                     goto child_cleanReturn;
                 }

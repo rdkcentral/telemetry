@@ -642,6 +642,11 @@ typedef T2ERROR (*SetPayloadFunc)(CURL *, const char *, childResponse *);
 pthread_mutex_t* getCurlFileMutex(void) {
     return &curlFileMutex;
 }
+typedef void (*sendOverHTTPInitFunc)();
+sendOverHTTPInitFunc sendOverHTTPInitFuncCallback()
+{
+   return sendOverHTTPInit;
+}
 WriteToFileFunc getWriteToFileCallback()
 {
     return writeToFile;

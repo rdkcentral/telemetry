@@ -426,6 +426,7 @@ int filtered_event_send(const char* data, const char *markerName)
     }
 
 	printf("################# function %s line %d\n",__func__,__LINE__);
+	printf("################# function %s line %d component name : %s T2_SCRIPT_EVENT_COMPONENT : %s\n",__func__,__LINE__,componentName,T2_SCRIPT_EVENT_COMPONENT);
     if(isRbusEnabled)
     {
 

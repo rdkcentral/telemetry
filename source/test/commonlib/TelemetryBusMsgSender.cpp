@@ -434,6 +434,19 @@ TEST_F(TelemetryBusmessageSenderTest, SendStringEvent_Valid) {
     t2_uninit();
 }
 
+TEST_F(TelemetryBusmessageSenderTest, getParameterValue_failure_rbus_get)
+{
+    t2_init((char*)"test_component");	
+    char* paramValue = NULL;
+    t2_init((char*)"test_component");
+    *test_get_isRbusEnabled_ptr() = true; 
+    EXPECT_CALL(*g_rbusMock, rbus_get(_, _, _))
+        .Times(1)
+        .WillOnce(Return(RBUS_ERROR_BUS_ERROR));
+    *test_get_isRbusEnabled_ptr() = true;
+    EXPECT_EQ(T2ERROR_SUCCESS, getParamValue("Device.DeviceInfo.SerialNumber", &paramValue));
+    t2_uninit();
+}
 
 #if 0
 #ifdef GTEST_ENABLE

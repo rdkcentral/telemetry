@@ -61,11 +61,6 @@ typedef struct
 
 } childResponse ;
 
-#ifdef LIBRDKCERTSEL_BUILD
-static rdkcertselector_h curlCertSelector = NULL;
-static rdkcertselector_h curlRcvryCertSelector = NULL;
-#endif
-
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
 
 #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
@@ -252,63 +247,6 @@ static T2ERROR setPayload(CURL *curl, const char* payload, childResponse *childC
     childCurlResponse->curlSetopCode = code;
     childCurlResponse->lineNumber = __LINE__;
     return T2ERROR_SUCCESS;
-}
-#endif
-
-
-#ifdef LIBRDKCERTSEL_BUILD
-#if defined(ENABLE_RED_RECOVERY_SUPPORT)
-bool isStateRedEnabled(void)
-{
-    return access("/tmp/stateRedEnabled", F_OK) == 0;
-}
-#endif
-void curlCertSelectorFree()
-{
-    rdkcertselector_free(&curlCertSelector);
-    rdkcertselector_free(&curlRcvryCertSelector);
-    if(curlCertSelector == NULL || curlRcvryCertSelector == NULL)
-    {
-        T2Info("%s, T2:Cert selector memory free\n", __func__);
-    }
-    else
-    {
-        T2Info("%s, T2:Cert selector memory free failed\n", __func__);
-    }
-}
-static void curlCertSelectorInit()
-{
-    bool state_red_enable = false;
-#if defined(ENABLE_RED_RECOVERY_SUPPORT)
-    state_red_enable = isStateRedEnabled();
-#endif
-    if (state_red_enable && curlRcvryCertSelector == NULL )
-    {
-        curlRcvryCertSelector = rdkcertselector_new( NULL, NULL, "RCVRY" );
-        if (curlRcvryCertSelector == NULL)
-        {
-            T2Error("%s, T2:statered Cert selector initialization failed\n", __func__);
-        }
-        else
-        {
-            T2Info("%s, T2:statered Cert selector initialization successfully\n", __func__);
-        }
-    }
-    else
-    {
-        if (curlCertSelector == NULL)
-        {
-            curlCertSelector = rdkcertselector_new( NULL, NULL, "MTLS" );
-            if (curlCertSelector == NULL)
-            {
-                T2Error("%s, T2:Cert selector initialization failed\n", __func__);
-            }
-            else
-            {
-                T2Info("%s, T2:Cert selector initialization successfully\n", __func__);
-            }
-        }
-    }
 }
 #endif
 

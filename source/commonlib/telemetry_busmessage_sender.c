@@ -62,7 +62,9 @@ static char *componentName = NULL;
 static void *bus_handle = NULL;
 static bool isRFCT2Enable = false ;
 static bool isT2Ready = false;
+#if defined(RBUS_SUPPORT_ENABLED)
 static bool isRbusEnabled = false ;
+#endif
 static bool isDbusEnabled = false ;
 static pthread_mutex_t initMtx = PTHREAD_MUTEX_INITIALIZER;
 static bool isMutexInitialized = false ;
@@ -375,6 +377,11 @@ static T2ERROR initMessageBus( )
                 bus_handle = NULL;
                 status = T2ERROR_FAILURE;
             }
+            else if (ret != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER && ret != DBUS_REQUEST_NAME_REPLY_ALREADY_OWNER)
+            {
+                EVENT_ERROR("%s:%d, D-Bus name request returned: %d\n", __func__, __LINE__, ret);
+                status = T2ERROR_FAILURE;
+            }
             else
             {
                 isDbusEnabled = true;
@@ -470,6 +477,8 @@ T2ERROR getParamValue(const char* paramName, char **paramValue)
 #else
     {
         // D-Bus mode - not implemented for parameter get
+        (void)paramName;
+        (void)paramValue;
         ret = T2ERROR_FAILURE;
     }
 #endif
@@ -777,8 +786,8 @@ static T2ERROR doPopulateEventMarkerList( )
 {
 
     T2ERROR status = T2ERROR_SUCCESS;
-    char deNameSpace[1][124] = {{ '\0' }};
 #if defined(RBUS_SUPPORT_ENABLED)
+    char deNameSpace[1][124] = {{ '\0' }};
     if(!isRbusEnabled)
     {
         // Fall through to D-Bus implementation

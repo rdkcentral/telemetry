@@ -313,7 +313,7 @@ TEST_F(TelemetryBusmessageSenderTest, t2_event_d_iscachingenabled_true_1)
 #endif 
     int ret = t2_event_d("marker", 13);
     printf("################## ret = %d \n",ret);
-    prrintf("###### T2ERROR_SUCESS = %d\n",T2ERROR_SUCCESS);
+    printf("###### T2ERROR_SUCESS = %d\n",T2ERROR_SUCCESS);
    // EXPECT_EQ(ret, T2ERROR_SUCCESS);
 }
 

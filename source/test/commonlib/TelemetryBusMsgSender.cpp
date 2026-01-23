@@ -305,7 +305,7 @@ TEST_F(TelemetryBusmessageSenderTest, t2_event_d_iscachingenabled_true_1)
         .Times(1)
         .WillOnce([](rbusHandle_t handle, const char* name, uint32_t* value) {
             *value = 1;
-            return RBUS_ERROR_BUS_ERROR; // <-- Simulate SUCCESS
+            return RBUS_ERROR_SUCCESS; // <-- Simulate SUCCESS
         });
 #if 0
     *test_get_isRbusEnabled_ptr() = false;

@@ -658,7 +658,7 @@ static bool isCachingRequired( )
     }
     else
     {
-	printf("############## function %s line %d t2ReadyStatus = %d \n",__func__,__LINE__,t2ReadyStatus);    
+	printf("############## function %s line %d t2ReadyStatus = %d  T2_STATE_COMPONENT_READY = %d\n",__func__,__LINE__,t2ReadyStatus,T2_STATE_COMPONENT_READY);    
         EVENT_DEBUG("value for  %s is : %d\n", T2_OPERATIONAL_STATUS, t2ReadyStatus);
         if((t2ReadyStatus & T2_STATE_COMPONENT_READY) == 0)
         {
@@ -666,6 +666,8 @@ static bool isCachingRequired( )
             return true;
         }
     }
+
+    printf("############## function %s line %d t2ReadyStatus = %d  T2_STATE_COMPONENT_READY = %d\n",__func__,__LINE__,t2ReadyStatus,T2_STATE_COMPONENT_READY);
 
     if(!isRbusEnabled)
     {

@@ -175,3 +175,15 @@ T2ERROR sendCachedReportsOverRBUSMethod(char *methodName, Vector* inputParams, V
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
+
+#ifdef GTEST_ENABLE
+pthread_mutex_t* getRbusMethodMutex(void) {
+    return &rbusMethodMutex;
+}
+
+typedef void (*asyncMethodHandlerFunc)(rbusHandle_t,char const*,rbusError_t,rbusObject_t);
+asyncMethodHandlerFunc asyncMethodHandlerFuncCallback(void)
+{
+    return asyncMethodHandler;
+}
+#endif

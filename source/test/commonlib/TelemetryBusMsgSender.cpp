@@ -307,7 +307,7 @@ TEST_F(TelemetryBusmessageSenderTest, t2_event_d_iscachingenabled_true_1)
             *value = 1;
             return RBUS_ERROR_SUCCESS; // <-- Simulate SUCCESS
         });
-#if 0
+#if 1
     *test_get_isRbusEnabled_ptr() = false;
     *test_get_isT2Ready_ptr() = true;
 #endif 

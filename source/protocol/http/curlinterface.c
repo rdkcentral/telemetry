@@ -281,6 +281,20 @@ static void curlCertSelectorInit()
             T2Info("%s, T2:Cert selector initialization successfully\n", __func__);
         }
     }
+    else 
+    {
+        curlCertSelectorFree ();
+        curlCertSelector = rdkcertselector_new( NULL, NULL, "MTLS" );
+        if(curlCertSelector == NULL)
+        {
+            T2Error("%s, T2:Cert selector initialization failed\n", __func__);
+        }
+        else
+        {
+            T2Info("%s, T2:Cert selector initialization successfully\n", __func__);
+        }   
+        
+    }
 }
 #endif
 T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
@@ -444,7 +458,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
                 if(curlGetCertStatus != certselectorOk)
                 {
                     T2Error("%s, T2:Failed to retrieve the certificate.\n", __func__);
-                    curlCertSelectorFree();
+                    ();
                     curl_easy_cleanup(curl);
                     goto child_cleanReturn;
                 }
@@ -517,7 +531,6 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
         }
 
 child_cleanReturn :
-       curlCertSelectorFree ();
        if (headerList){
            curl_slist_free_all(headerList); 
        }

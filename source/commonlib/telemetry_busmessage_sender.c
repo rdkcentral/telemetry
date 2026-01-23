@@ -903,13 +903,14 @@ getRbusParameterValFunc getRbusParameterValFuncCallback(void) {
 }
 #endif
 
-#if 0
+
 #ifdef GTEST_ENABLE
 typedef T2ERROR (*doPopulateEventMarkerListFunc)(void);
 doPopulateEventMarkerListFunc getDoPopulateEventMarkerListCallback(void) {
     return doPopulateEventMarkerList;
 }
 bool* test_get_isRbusEnabled_ptr(void) { return &isRbusEnabled; }
+bool* test_get_isT2Ready_ptr(void) { return &isT2Ready; }
 void** test_get_bus_handle_ptr(void) { return &bus_handle; }
 #endif
 typedef void (*rbusEventReceiveHandlerFunc)(rbusHandle_t, rbusEvent_t const*, rbusEventSubscription_t*);
@@ -917,4 +918,4 @@ rbusEventReceiveHandlerFunc getRbusEventReceiveHandlerCallback(void)
 {
     return rbusEventReceiveHandler;
 }
-#endif
+

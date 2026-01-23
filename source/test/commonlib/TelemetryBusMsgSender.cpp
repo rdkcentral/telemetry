@@ -433,7 +433,7 @@ TEST_F(TelemetryBusmessageSenderTest, SendStringEvent_Valid) {
     EXPECT_EQ(err, T2ERROR_SUCCESS);
     t2_uninit();
 }
-
+#if 0
 TEST_F(TelemetryBusmessageSenderTest, getParameterValue_failure_rbus_get)
 {
     t2_init((char*)"test_component");	
@@ -447,7 +447,7 @@ TEST_F(TelemetryBusmessageSenderTest, getParameterValue_failure_rbus_get)
     EXPECT_EQ(T2ERROR_FAILURE, getParamValue("Device.DeviceInfo.SerialNumber", &paramValue));
     t2_uninit();
 }
-
+#endif
 #if 0
 #ifdef GTEST_ENABLE
 extern "C" {

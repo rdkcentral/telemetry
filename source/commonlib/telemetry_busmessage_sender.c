@@ -617,7 +617,6 @@ static void rbusEventReceiveHandler(rbusHandle_t handle, rbusEvent_t const* even
 static bool isCachingRequired( )
 {
 
-	printf("############## function %s line %d\n",__func__,__LINE__);    
     /**
      * Attempts to read from PAM before its ready creates deadlock .
      * PAM not ready is a definite case for caching the event and avoid bus traffic
@@ -629,90 +628,71 @@ static bool isCachingRequired( )
     }
 #endif
 
-	printf("############## function %s line %d\n",__func__,__LINE__);    
     if(!initRFC())
     {
         EVENT_ERROR("initRFC failed - cache the events\n");
         return true;
     }
 
-	printf("############## function %s line %d\n",__func__,__LINE__);    
     // If feature is disabled by RFC, caching is always disabled
     if(!isRFCT2Enable)
     {
         return false ;
     }
 
-	printf("############## function %s line %d\n",__func__,__LINE__);    
     // Always check for t2 is ready to accept events. Shutdown target can bring down t2 process at runtime
     uint32_t t2ReadyStatus;
     rbusError_t retVal = RBUS_ERROR_SUCCESS;
 
-	printf("############## function %s line %d\n",__func__,__LINE__);    
     retVal = rbus_getUint(bus_handle, T2_OPERATIONAL_STATUS, &t2ReadyStatus);
 
     if(retVal != RBUS_ERROR_SUCCESS)
     {
-	printf("############## function %s line %d\n",__func__,__LINE__);    
         return true;
     }
     else
     {
-	printf("############## function %s line %d t2ReadyStatus = %d  T2_STATE_COMPONENT_READY = %d\n",__func__,__LINE__,t2ReadyStatus,T2_STATE_COMPONENT_READY);    
         EVENT_DEBUG("value for  %s is : %d\n", T2_OPERATIONAL_STATUS, t2ReadyStatus);
         if((t2ReadyStatus & T2_STATE_COMPONENT_READY) == 0)
         {
-	printf("############## function %s line %d  isRbusEnabled = %d \n",__func__,isRbusEnabled,__LINE__);    
             return true;
         }
     }
 
-    printf("############## function %s line %d t2ReadyStatus = %d  T2_STATE_COMPONENT_READY = %d isRbusEnabled = %d isT2Ready = %d\n",__func__,__LINE__,t2ReadyStatus,T2_STATE_COMPONENT_READY,isRbusEnabled,isT2Ready);
 
     if(!isRbusEnabled)
     {
-	printf("############## function %s line %d\n",__func__,__LINE__);    
         isT2Ready = true;
     }
 
     if(!isT2Ready)
     {
-	printf("############## function %s line %d\n",__func__,__LINE__);    
         if(componentName && (0 != strcmp(componentName, "telemetry_client")))
         {
-	printf("############## function %s line %d\n",__func__,__LINE__);    
             // From other binary applications in rbus mode if t2 daemon is yet to determine state of component specific config from cloud, enable cache
             if((t2ReadyStatus & T2_STATE_COMPONENT_READY) == 0)
             {
-	printf("############## function %s line %d\n",__func__,__LINE__);    
                 return true;
             }
             else
             {
-	printf("############## function %s line %d\n",__func__,__LINE__);    
                 rbusError_t ret = RBUS_ERROR_SUCCESS;
                 doPopulateEventMarkerList();
                 ret = rbusEvent_Subscribe(bus_handle, T2_PROFILE_UPDATED_NOTIFY, rbusEventReceiveHandler, "T2Event", 0);
                 if(ret != RBUS_ERROR_SUCCESS)
                 {
-	printf("############## function %s line %d\n",__func__,__LINE__);    
                     EVENT_ERROR("Unable to subscribe to event %s with rbus error code : %d\n", T2_PROFILE_UPDATED_NOTIFY, ret);
                     EVENT_DEBUG("Unable to subscribe to event %s with rbus error code : %d\n", T2_PROFILE_UPDATED_NOTIFY, ret);
                 }
-	printf("############## function %s line %d\n",__func__,__LINE__);    
                 isT2Ready = true;
             }
-	printf("############## function %s line %d\n",__func__,__LINE__);    
         }
         else
         {
-	printf("############## function %s line %d\n",__func__,__LINE__);    
             isT2Ready = true;
         }
-	printf("############## function %s line %d\n",__func__,__LINE__);    
     }
 
-	printf("############## function %s line %d\n",__func__,__LINE__);    
     return false;
 }
 
@@ -723,7 +703,6 @@ static int report_or_cache_data(char* telemetry_data, const char* markerName)
     pthread_mutex_lock(&eventMutex);
     if(isCachingRequired())
     {
-	printf("############## function %s line %d\n",__func__,__LINE__);    
         EVENT_DEBUG("Caching the event : %s \n", telemetry_data);
         int eventDataLen = strlen(markerName) + strlen(telemetry_data) + strlen(MESSAGE_DELIMITER) + 1;
         char* buffer = (char*) malloc(eventDataLen * sizeof(char));
@@ -736,10 +715,8 @@ static int report_or_cache_data(char* telemetry_data, const char* markerName)
         pthread_mutex_unlock(&eventMutex);
         return T2ERROR_SUCCESS ;
     }
-	printf("############## function %s line %d\n",__func__,__LINE__);    
     pthread_mutex_unlock(&eventMutex);
 
-	printf("############## function %s line %d\n",__func__,__LINE__);    
     if(isT2Ready)
     {
         // EVENT_DEBUG("T2: Sending event : %s\n", telemetry_data);
@@ -749,7 +726,6 @@ static int report_or_cache_data(char* telemetry_data, const char* markerName)
             EVENT_ERROR("%s:%d, T2:telemetry data send failed, status = %d \n", __func__, __LINE__, ret);
         }
     }
-	printf("############## function %s line %d ret = %d\n",__func__,__LINE__,ret);    
     return ret;
 }
 

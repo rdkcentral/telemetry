@@ -433,6 +433,79 @@ TEST_F(TelemetryBusmessageSenderTest, SendStringEvent_Valid) {
     EXPECT_EQ(err, T2ERROR_SUCCESS);
     t2_uninit();
 }
+
+TEST_F(TelemetryBusmessageSenderTest, filtered_event_send_null_bus_handle) {
+    t2_init((char*)"test_component");
+    // Force bus_handle to NULL
+    *test_get_bus_handle_ptr() = nullptr; // Use your GTEST helper
+    int ret = filtered_event_send("somedata", "somemarker");
+    EXPECT_EQ(ret, 0);  // ret is initialized to 0
+    t2_uninit();
+}
+
+// Cover: isRbusEnabled, marker NOT in eventMarkerMap (event filtering disables send)
+TEST_F(TelemetryBusmessageSenderTest, filtered_event_send_marker_not_in_map) {
+    t2_init((char*)"not_telemetry_client");
+    // Setup for bus_handle, rbus enabled
+    static int fake_handle = 42;
+    *test_get_bus_handle_ptr() = (void*)&fake_handle;
+    *test_get_isRbusEnabled_ptr() = true;
+
+    // eventMarkerMap exists but does NOT contain marker
+    extern hash_map_t *eventMarkerMap;
+    extern "C" hash_map_t* hash_map_create();
+    extern "C" void hash_map_destroy(hash_map_t*, void(*)(void*));
+    if(eventMarkerMap) hash_map_destroy(eventMarkerMap, free);
+    eventMarkerMap = hash_map_create();
+
+    int ret = filtered_event_send("somedata", "not_present_marker");
+    EXPECT_EQ(ret, 0);
+    t2_uninit();
+}
+
+// Cover: isRbusEnabled, script event (name is telemetry_client; bypass filtering, rbus_set OK)
+TEST_F(TelemetryBusmessageSenderTest, filtered_event_send_script_event_success) {
+    t2_init((char*)T2_SCRIPT_EVENT_COMPONENT);
+    static int fake_handle = 43;
+    *test_get_bus_handle_ptr() = (void*)&fake_handle;
+    *test_get_isRbusEnabled_ptr() = true;
+
+    // Mocks for rbus
+    EXPECT_CALL(*g_rbusMock, rbusValue_Init(_))
+        .Times(2);
+    EXPECT_CALL(*g_rbusMock, rbusValue_SetString(_, _)).Times(1);
+    EXPECT_CALL(*g_rbusMock, rbusProperty_Init(_, _, _)).Times(1);
+    EXPECT_CALL(*g_rbusMock, rbusValue_SetProperty(_, _)).Times(1);
+    EXPECT_CALL(*g_rbusMock, rbus_set(_,_,_,_)).WillOnce(Return(RBUS_ERROR_SUCCESS));
+    EXPECT_CALL(*g_rbusMock, rbusValue_Release(_)).Times(2);
+    EXPECT_CALL(*g_rbusMock, rbusProperty_Release(_)).Times(1);
+
+    int ret = filtered_event_send("somedata", "somescriptmarker");
+    EXPECT_EQ(ret, 0);
+    t2_uninit();
+}
+
+// Cover: isRbusEnabled, rbus_set returns error branch
+TEST_F(TelemetryBusmessageSenderTest, filtered_event_send_script_event_rbus_set_fail) {
+    t2_init((char*)T2_SCRIPT_EVENT_COMPONENT);
+    static int fake_handle = 44;
+    *test_get_bus_handle_ptr() = (void*)&fake_handle;
+    *test_get_isRbusEnabled_ptr() = true;
+
+    EXPECT_CALL(*g_rbusMock, rbusValue_Init(_))
+        .Times(2);
+    EXPECT_CALL(*g_rbusMock, rbusValue_SetString(_, _)).Times(1);
+    EXPECT_CALL(*g_rbusMock, rbusProperty_Init(_, _, _)).Times(1);
+    EXPECT_CALL(*g_rbusMock, rbusValue_SetProperty(_, _)).Times(1);
+    EXPECT_CALL(*g_rbusMock, rbus_set(_,_,_,_)).WillOnce(Return(RBUS_ERROR_BUS_ERROR));
+    EXPECT_CALL(*g_rbusMock, rbusValue_Release(_)).Times(2);
+    EXPECT_CALL(*g_rbusMock, rbusProperty_Release(_)).Times(1);
+
+    int ret = filtered_event_send("somedata", "failmarker");
+    EXPECT_EQ(ret, -1);
+    t2_uninit();
+}
+
 // ==================== Additional Tests for Coverage (Copilot Suggestion) ====================
 
 // Positive path for t2_event_f (double, non-zero, valid)

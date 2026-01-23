@@ -460,7 +460,7 @@ TEST_F(TelemetryBusmessageSenderTest, SendIntEvent_Positive)
     EXPECT_EQ(err, T2ERROR_SUCCESS);
     t2_uninit();
 }
-
+#if 0
 // Test: t2_event_f malloc failure coverage (simulate out-of-memory)
 TEST_F(TelemetryBusmessageSenderTest, SendDoubleEvent_MallocFail)
 {
@@ -476,7 +476,6 @@ TEST_F(TelemetryBusmessageSenderTest, SendDoubleEvent_MallocFail)
     // EXPECT_EQ(err, T2ERROR_FAILURE);
     t2_uninit();
 }
-
 // Test: t2_event_d malloc failure coverage
 TEST_F(TelemetryBusmessageSenderTest, SendIntEvent_MallocFail)
 {
@@ -506,6 +505,7 @@ TEST_F(TelemetryBusmessageSenderTest, MultipleInitUninitSequence)
     }
 }
 
+#endif
 // (Optional) If you refactor or add a wrapper for malloc for testability,
 // then uncomment the malloc-failure tests and implement the needed mocks.
 

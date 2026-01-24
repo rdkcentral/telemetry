@@ -1017,7 +1017,9 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
 
     //create a tmp file for main file fd
     char tmp_fdmain[] = "/tmp/dca_tmpfile_fdmainXXXXXX";
+    mode_t old_umask = umask(0077); // Set secure umask (owner read/write only)
     int tmp_fd = mkstemp(tmp_fdmain);
+    umask(old_umask); // Restore original umask
     if (tmp_fd == -1)
     {
         T2Error("Failed to create temp file: %s\n", strerror(errno));
@@ -1044,7 +1046,9 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
         if (rd != -1 && fstat(rd, &rb) == 0 && rb.st_size > 0)
         {
             char tmp_fdrotated[] = "/tmp/dca_tmpfile_fdrotatedXXXXXX";
+            mode_t old_umask = umask(0077); // Set secure umask (owner read/write only)
             int tmp_rd = mkstemp(tmp_fdrotated);
+            umask(old_umask); // Restore original umask
             if (tmp_rd == -1)
             {
                 T2Error("Failed to create temp file: %s\n", strerror(errno));

@@ -66,6 +66,7 @@ static void *bus_handle = NULL;
 static bool isRFCT2Enable = false;
 static bool isT2Ready = false;
 static bool isDbusEnabled = false;
+static bool isEventSubscribed = false;
 static bool isInitialized = false;  // Track if initialization is complete
 static hash_map_t *eventMarkerMap = NULL;
 static pthread_t dbus_event_thread;
@@ -470,8 +471,6 @@ static T2ERROR doPopulateEventMarkerList(void)
     }
 }
 
-/* ============== ProfileUpdate Signal Handler ============== */
-
 static DBusHandlerResult dbusEventReceiveHandler(DBusConnection *connection, DBusMessage *message, void *user_data)
 {
     (void)connection;
@@ -523,6 +522,7 @@ static bool isCachingRequired(void)
 
     if(isDbusEnabled)
     {
+        EVENT_DEBUG("%s:%d, D-Bus mode: Checking T2 operational status\n", __func__, __LINE__);
         retVal = dbus_getGetOperationalStatus(T2_OPERATIONAL_STATUS, &t2ReadyStatus);
         EVENT_DEBUG("D-Bus: GetOperationalStatus returned: %d, status: 0x%08X\n", retVal, t2ReadyStatus);
     }
@@ -546,7 +546,7 @@ static bool isCachingRequired(void)
     }
 
     // Always get marker list and subscribe to ProfileUpdate (whether T2 is ready or not)
-    if(isDbusEnabled)
+    if(!isEventSubscribed)
     {
         EVENT_DEBUG("D-Bus: Fetching marker list and setting up ProfileUpdate subscription\n");
         
@@ -576,9 +576,8 @@ static bool isCachingRequired(void)
         {
             EVENT_DEBUG("D-Bus: Match rule added successfully\n");
             dbus_connection_add_filter((DBusConnection*)bus_handle, dbusEventReceiveHandler, NULL, NULL);
-            EVENT_DEBUG("D-Bus: Message filter registered - dbusEventReceiveHandler installed\n");
             EVENT_DEBUG("D-Bus: Now listening for ProfileUpdate signals on interface '%s'\n", T2_DBUS_EVENT_INTERFACE_NAME);
-            
+            isEventSubscribed = true;
             // Start D-Bus event loop thread to process incoming messages
             if (!dbus_event_thread_running)
             {
@@ -597,14 +596,12 @@ static bool isCachingRequired(void)
     }
     else
     {
-        EVENT_ERROR("D-Bus not enabled\n");
+        EVENT_ERROR("Event already initialized \n");
     }
 
     // Return true to cache if T2 is not ready, false if ready
     return !isT2Ready;
 }
-
-/* ============== Event Sending ============== */
 
 static int filtered_event_send(const char* data, const char *markerName)
 {
@@ -698,13 +695,17 @@ static int filtered_event_send(const char* data, const char *markerName)
 
 static int report_or_cache_data(char* telemetry_data, const char* markerName)
 {
+    EVENT_DEBUG("%s ++in\n", __FUNCTION__);
     int ret = 0;
-    
-    // Check if initialization is complete
+    if(isCachingRequired())
+    {
+        EVENT_DEBUG("Caching required - T2 not ready, caching event\n");
+        return -1;
+    }
+    EVENT_DEBUG("isCachingRequired completed\n");
     if(!isInitialized)
     {
         EVENT_ERROR("T2 not initialized - call t2_init() first\n");
-        free(telemetry_data);
         return -1;
     }
     
@@ -712,7 +713,6 @@ static int report_or_cache_data(char* telemetry_data, const char* markerName)
     if(!isT2Ready)
     {
         EVENT_DEBUG("T2 not ready yet - would cache event\n");
-        free(telemetry_data);
         return -1;
     }
 
@@ -793,7 +793,7 @@ void t2_init(char *component)
             EVENT_DEBUG("D-Bus: ProfileUpdate subscription successful\n");
             dbus_connection_add_filter((DBusConnection*)bus_handle, dbusEventReceiveHandler, NULL, NULL);
             EVENT_DEBUG("D-Bus: Event handler registered\n");
-            
+            isEventSubscribed = true;
             // Start D-Bus event loop thread
             if (!dbus_event_thread_running)
             {
@@ -988,7 +988,6 @@ int main(int argc, char *argv[])
     printf("===========================================\n");
     
     t2_init(COMP_NAME);
-    
     printf("\nSending test events...\n");
     
     printf("1. Sending: c1Test1_split = test_value_1\n");

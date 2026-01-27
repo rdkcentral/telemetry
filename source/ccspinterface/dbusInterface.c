@@ -45,7 +45,6 @@
 
 /* Global D-Bus handle */
 static T2DbusHandle_t t2dbus_handle = {NULL, NULL, false};
-static void (*profileUpdateCallback)(void) = NULL;
 
 /* Callback handlers */
 static TelemetryEventCallback eventCallBack = NULL;
@@ -85,15 +84,9 @@ static DBusHandlerResult handle_get_operational_status(DBusConnection *connectio
     T2Info("GetOperationalStatus called with param_name: %s", param_name);
 
     uint32_t value = 0;
-    
-    /* Check if requesting operational status */
-    if (g_server_ready) {
-        value = t2ReadyStatus;
-        T2Info("Returning operational status: READY (0x%08X)", value);
-    } else {
-        value = 0;
-        T2Info("Returning operational status: NOT READY (0x%08X)", value);
-    }
+    /* TODO check oprtational status of specific component param_name will componet name */
+    value = t2ReadyStatus;
+    T2Info("Returning operational status for %s: 0x%08X", param_name, value);
 
     /* Create reply */
     DBusMessage *reply = dbus_message_new_method_return(message);
@@ -315,12 +308,13 @@ T2ERROR publishdbusEventsProfileUpdates(void)
     //dbus_connection_flush(t2dbus_handle.connection);
 
     T2Debug("ProfileUpdate signal sent successfully (serial=%u)", serial);
+    return T2ERROR_SUCCESS;
 }
 
 /**
  * @brief Initialize D-Bus interface
  */
-T2ERROR dBusInterface_Init(const char *component_name) {
+T2ERROR dBusInterface_Init() {
     T2Debug("%s ++in\n", __FUNCTION__);
     
     pthread_mutex_lock(&dbusMutex);
@@ -335,7 +329,7 @@ T2ERROR dBusInterface_Init(const char *component_name) {
     dbus_error_init(&error);
 
     if (!dbus_threads_init_default()) {
-        LOG_ERROR("Failed to initialize D-Bus threading");
+        T2Error("Failed to initialize D-Bus threading");
         return 1;
     }
     
@@ -468,7 +462,7 @@ T2ERROR getDbusParameterVal(const char* paramName, char **paramValue) {
     }
     
     if (!t2dbus_handle.is_initialized) {
-        if (dBusInterface_Init(NULL) != T2ERROR_SUCCESS) {
+        if (dBusInterface_Init() != T2ERROR_SUCCESS) {
             return T2ERROR_FAILURE;
         }
     }
@@ -543,7 +537,7 @@ T2ERROR setDbusParameterVal(const char* paramName, const char* paramValue, int p
     }
     
     if (!t2dbus_handle.is_initialized) {
-        if (dBusInterface_Init(NULL) != T2ERROR_SUCCESS) {
+        if (dBusInterface_Init() != T2ERROR_SUCCESS) {
             return T2ERROR_FAILURE;
         }
     }

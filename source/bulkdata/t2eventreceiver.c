@@ -335,24 +335,15 @@ T2ERROR T2ER_Init()
 
     EREnabled = true;
 
-    /* Old RBUS event registration - commented out for DBUS migration */
-    // if(isRbusEnabled())
-    // {
-    //     T2Debug("Register event call back function T2ER_Push \n");
-    //     registerForTelemetryEvents(T2ER_Push);
-    // }
-    // else
-    // {
-    //     T2Debug("Register event call back function T2ER_PushDataWithDelim \n");
-    //     registerForTelemetryEvents(T2ER_PushDataWithDelim);
-    // }
-    
-    /* Register DBUS event listener for TelemetryEvent signals */
-    T2ERROR ret = registerDbusT2EventListener(T2ER_Push);
-    if(ret != T2ERROR_SUCCESS) {
-        T2Error("Failed to register DBUS event listener with error: %d\n", ret);
-    } else {
-        T2Info("DBUS event listener registered successfully\n");
+    if(isRbusEnabled())
+    {
+        T2Debug("Register event call back function T2ER_Push \n");
+        registerForTelemetryEvents(T2ER_Push);
+    }
+    else
+    {
+        T2Debug("Register event call back function T2ER_PushDataWithDelim \n");
+        registerForTelemetryEvents(T2ER_PushDataWithDelim);
     }
 
     system("touch /tmp/.t2ReadyToReceiveEvents");

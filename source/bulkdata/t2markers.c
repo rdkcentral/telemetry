@@ -331,19 +331,10 @@ void createComponentDataElements()
         char *compName = (char*) Vector_At(componentList, i);
         if(compName)
         {
-            /* Old RBUS registration - commented out for DBUS migration */
-            // regDEforCompEventList(compName, getComponentMarkerList);
+            regDEforCompEventList(compName, getComponentMarkerList);
         }
     }
     pthread_mutex_unlock(&t2CompListMutex);
-    
-    /* Register DBUS callback for GetMarkerList method */
-    T2ERROR ret = registerGetMarkerListCallback(getComponentMarkerList);
-    if(ret != T2ERROR_SUCCESS) {
-        T2Error("Failed to register DBUS marker list callback with error: %d\n", ret);
-    } else {
-        T2Info("DBUS marker list callback registered successfully\n");
-    }
     
     T2Debug("%s --out\n", __FUNCTION__);
 }

@@ -29,6 +29,7 @@
 #endif
 
 #include "rbusInterface.h"
+#include "dbusInterface.h"
 
 static bool isRbus = false ;
 static bool isBusInit = false ;
@@ -59,6 +60,15 @@ static bool busInit( )
             T2Debug("%s --RBUS mode is active \n", __FUNCTION__);    //CID 158206:Unchecked return value
         }
         isBusInit = true;
+
+        if (dBusInterface_Init() == T2ERROR_SUCCESS)
+        {
+            T2Debug("%s --DBUS mode is active \n", __FUNCTION__);    //CID 158206:Unchecked return value
+        }
+        else
+        {
+            T2Error("%s --DBUS init failed \n", __FUNCTION__);
+        }
     }
     T2Debug("%s --out \n", __FUNCTION__);
     return isBusInit;
@@ -119,10 +129,14 @@ T2ERROR registerForTelemetryEvents(TelemetryEventCallback eventCB)
 {
     T2ERROR ret = T2ERROR_FAILURE;
     T2Debug("%s ++in\n", __FUNCTION__);
+
     if(!isBusInit)
     {
         busInit();
     }
+
+    ret = registerDbusT2EventListener(eventCB);
+
 
     if (isRbus)
     {

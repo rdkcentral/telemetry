@@ -254,22 +254,6 @@ static void t2DaemonMainModeInit( )
 #endif
 #endif
 
-    /* Initialize DBUS for CommonLib <-> BulkData communication */
-    T2ERROR dbusRet = dBusInterface_Init("telemetry2_0");
-    if(dbusRet != T2ERROR_SUCCESS) {
-        T2Error("DBUS initialization failed for telemetry2_0 daemon with error: %d - proceeding without DBUS support\n", dbusRet);
-    } else {
-        T2Info("DBUS interface initialized successfully\n");
-        
-        /* Register DBUS method providers for GetMarkerList and GetOperationalStatus */
-        dbusRet = registerDbusMethodProviders();
-        if(dbusRet != T2ERROR_SUCCESS) {
-            T2Error("DBUS method provider registration failed with error: %d\n", dbusRet);
-        } else {
-            T2Info("DBUS method providers registered successfully\n");
-        }
-    }
-
     /**
     * Create a Signal Mask for signals that need to be blocked while using fork
     */

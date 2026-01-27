@@ -76,7 +76,7 @@ typedef struct {
 typedef void (*dbusMethodCallBackPtr)(DBusMessage *reply, int retStatus);
 
 bool isDbusInitialized(void);
-T2ERROR dBusInterface_Init(const char *component_name);
+T2ERROR dBusInterface_Init(void);
 void dBusInterface_Uninit(void);
 
 T2ERROR getDbusParameterVal(const char* paramName, char **paramValue);

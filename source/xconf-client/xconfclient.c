@@ -88,9 +88,6 @@ static pthread_mutex_t xcMutex;
 static pthread_mutex_t xcThreadMutex;
 static pthread_cond_t xcCond;
 static pthread_cond_t xcThreadCond;
-#ifdef LIBRDKCERTSEL_BUILD
-static rdkcertselector_h xcCertSelector = NULL;
-#endif
 #if defined(ENABLE_REMOTE_PROFILE_DOWNLOAD)
 static int retryCount = 0;
 #endif
@@ -554,35 +551,6 @@ static size_t httpGetCallBack(void *response, size_t len, size_t nmemb,
 }
 #endif
 
-#ifdef LIBRDKCERTSEL_BUILD
-void xcCertSelectorFree()
-{
-    rdkcertselector_free(&xcCertSelector);
-    if(xcCertSelector == NULL)
-    {
-        T2Info("%s, T2:Cert selector memory free  \n", __func__);
-    }
-    else
-    {
-        T2Info("%s, T2:Cert selector memory free failed \n", __func__);
-    }
-}
-static void xcCertSelectorInit()
-{
-    if(xcCertSelector == NULL)
-    {
-        xcCertSelector = rdkcertselector_new( NULL, NULL, "MTLS" );
-        if(xcCertSelector == NULL)
-        {
-            T2Error("%s, T2:Cert selector initialization failed\n", __func__);
-        }
-        else
-        {
-            T2Info("%s, T2:Cert selector initialization successfully \n", __func__);
-        }
-    }
-}
-#endif
 T2ERROR doHttpGet(char* httpsUrl, char **data)
 {
     T2Info("%s with url %s \n", __FUNCTION__, httpsUrl);
@@ -1162,9 +1130,6 @@ void uninitXConfClient()
         bexitDCMThread = false;
         pthread_join(dcmThread, NULL);
 #endif
-#ifdef LIBRDKCERTSEL_BUILD
-        xcCertSelectorFree();
-#endif
     }
     T2Debug("%s --out\n", __FUNCTION__);
     T2Info("Uninit XConf Client Successful\n");
@@ -1229,9 +1194,6 @@ T2ERROR initXConfClient()
     pthread_cond_init(&xcCond, NULL);
     pthread_cond_init(&xcThreadCond, NULL);
     isXconfInit = true ;
-#ifdef LIBRDKCERTSEL_BUILD
-    xcCertSelectorInit();
-#endif
     pthread_create(&xcrThread, NULL, getUpdatedConfigurationThread, NULL);
     //startXConfClient(); // Removing startXConfClient as getUpdatedConfigurationThread is created in this function itself
     T2Debug("%s --out\n", __FUNCTION__);

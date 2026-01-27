@@ -40,20 +40,47 @@
 #define FILESCHEME "file://"
 #endif
 
+//Global variables
+#define MAX_POOL_SIZE 3
+#define HTTP_RESPONSE_FILE "/tmp/httpOutput.txt"
+#define RESPONSE_BUFFER_SIZE 8192
+static bool pool_initialized = false;
+
+// High-level design for connection pooling - Memory optimized
+typedef struct
+{
+    CURLM *multi_handle;
+    CURL *easy_handles[MAX_POOL_SIZE];
+    bool handle_available[MAX_POOL_SIZE];
+    pthread_mutex_t pool_mutex;
+    struct curl_slist *post_headers;
+    // Response buffers removed - only used by GET requests locally
+} http_connection_pool_t;
+
+typedef struct http_pool_config
+{
+    int max_connections;
+    int connection_timeout;
+    int keep_alive_timeout;
+    bool enable_mtls;
+} http_pool_config_t;
+
+http_connection_pool_t pool;
+
 // External variables needed from xconfclient.c
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
 #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
-extern char waninterface[256];
+char waninterface[256];
 #endif
 #endif
 
 #ifdef LIBRDKCERTSEL_BUILD
-extern rdkcertselector_h xcCertSelector;
+rdkcertselector_h xcCertSelector;
 #endif
 
 #ifdef LIBRDKCERTSEL_BUILD
-static rdkcertselector_h curlCertSelector = NULL;
-static rdkcertselector_h curlRcvryCertSelector = NULL;
+rdkcertselector_h curlCertSelector = NULL;
+rdkcertselector_h curlRcvryCertSelector = NULL;
 
 #if defined(ENABLE_RED_RECOVERY_SUPPORT)
 bool isStateRedEnabled(void)
@@ -113,32 +140,35 @@ void curlCertSelectorInit()
 #endif
 
 
-//Global variables
-#define MAX_POOL_SIZE 3
-#define HTTP_RESPONSE_FILE "/tmp/httpOutput.txt"
-#define RESPONSE_BUFFER_SIZE 8192
-static bool pool_initialized = false;
-
-// High-level design for connection pooling - Memory optimized
-typedef struct
+#ifdef LIBRDKCERTSEL_BUILD
+void xcCertSelectorFree()
 {
-    CURLM *multi_handle;
-    CURL *easy_handles[MAX_POOL_SIZE];
-    bool handle_available[MAX_POOL_SIZE];
-    pthread_mutex_t pool_mutex;
-    struct curl_slist *post_headers;
-    // Response buffers removed - only used by GET requests locally
-} http_connection_pool_t;
-
-typedef struct http_pool_config
+    rdkcertselector_free(&xcCertSelector);
+    if(xcCertSelector == NULL)
+    {
+        T2Info("%s, T2:Cert selector memory free  \n", __func__);
+    }
+    else
+    {
+        T2Info("%s, T2:Cert selector memory free failed \n", __func__);
+    }
+}
+static void xcCertSelectorInit()
 {
-    int max_connections;
-    int connection_timeout;
-    int keep_alive_timeout;
-    bool enable_mtls;
-} http_pool_config_t;
-
-http_connection_pool_t pool;
+    if(xcCertSelector == NULL)
+    {
+        xcCertSelector = rdkcertselector_new( NULL, NULL, "MTLS" );
+        if(xcCertSelector == NULL)
+        {
+            T2Error("%s, T2:Cert selector initialization failed\n", __func__);
+        }
+        else
+        {
+            T2Info("%s, T2:Cert selector initialization successfully \n", __func__);
+        }
+    }
+}
+#endif
 
 static size_t httpGetCallBack(void *response, size_t len, size_t nmemb,
                               void *stream)
@@ -225,6 +255,7 @@ T2ERROR init_connection_pool()
 #ifdef LIBRDKCERTSEL_BUILD
     // Initialize certificate selector before setting up connection pool
     curlCertSelectorInit();
+    xcCertSelectorInit();
 #endif
 
     //pool.multi_handle = curl_multi_init();

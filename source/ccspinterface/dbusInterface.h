@@ -45,18 +45,14 @@
 #define T2_DBUS_SERVICE_NAME        "telemetry.t2"
 #define T2_DBUS_OBJECT_PATH         "/telemetry/t2"
 #define T2_DBUS_INTERFACE_NAME      "telemetry.t2.interface"
+#define T2_DBUS_EVENT_INTERFACE_NAME "telemetry.t2.event.interface"
 
 /* D-Bus Method Names */
 #define T2_DBUS_METHOD_GET_PARAM    "GetParameter"
 #define T2_DBUS_METHOD_SET_PARAM    "SetParameter"
-#define T2_DBUS_METHOD_SUBSCRIBE    "SubscribeEvent"
-#define T2_DBUS_METHOD_UNSUBSCRIBE  "UnsubscribeEvent"
-#define T2_DBUS_METHOD_CALL         "CallMethod"
 
 /* D-Bus Signal Names */
-#define T2_DBUS_SIGNAL_EVENT        "TelemetryEvent"
 #define T2_DBUS_SIGNAL_PROFILE_UPDATE "ProfileUpdate"
-#define T2_DBUS_SIGNAL_UPLOAD_STATUS  "UploadStatus"
 
 /* D-Bus Error Codes */
 #define T2_DBUS_ERROR_SUCCESS           0
@@ -85,17 +81,11 @@ void dBusInterface_Uninit(void);
 
 T2ERROR getDbusParameterVal(const char* paramName, char **paramValue);
 T2ERROR setDbusParameterVal(const char* paramName, const char* paramValue, int paramType);
-Vector* getDbusProfileParamValues(Vector *paramList, int execcount);
 
 T2ERROR registerDbusT2EventListener(TelemetryEventCallback eventCB);
 T2ERROR unregisterDbusT2EventListener(void);
 
-T2ERROR dbusSubscribeSignal(const char* signal_name);
-T2ERROR dbusUnsubscribeSignal(const char* signal_name);
-
-void dbusPublishReportUploadStatus(const char* status);
-
-T2ERROR registerDbusMethodProviders(void);
+T2ERROR publishdbusEventsProfileUpdates(void);
 T2ERROR registerGetMarkerListCallback(T2EventMarkerListCallback callback);
 
 #endif /* _DBUSINTERFACE_H_ */

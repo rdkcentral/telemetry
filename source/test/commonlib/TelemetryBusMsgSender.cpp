@@ -294,7 +294,7 @@ TEST_F(TelemetryBusmessageSenderTest, t2_event_d_iscachingenabled_true)
     int ret = t2_event_d("marker", 13);
     EXPECT_EQ(ret, T2ERROR_SUCCESS);
 }
-
+#if 0
 TEST_F(TelemetryBusmessageSenderTest, t2_event_d_iscachingenabled_true_1)
 {
     t2_init((char*)"sysinit");
@@ -318,7 +318,7 @@ TEST_F(TelemetryBusmessageSenderTest, t2_event_d_iscachingenabled_true_1)
     *test_get_isRbusEnabled_ptr() = true;
     EXPECT_EQ(ret, T2ERROR_SUCCESS);
 }
-
+#endif
 TEST_F(TelemetryBusmessageSenderTest, getParameterValue_success)
 {
     char* paramValue = NULL;

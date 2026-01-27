@@ -219,7 +219,7 @@ static DBusHandlerResult handle_get_operational_status(DBusConnection *connectio
     
     LOG_DEBUG("GetOperationalStatus: Reply sent successfully");
     dbus_message_unref(reply);
-    dbus_connection_flush(connection);
+    // dbus_connection_flush(connection);
     
     return DBUS_HANDLER_RESULT_HANDLED;
 }
@@ -268,7 +268,7 @@ static DBusHandlerResult handle_send_t2_event(DBusConnection *connection, DBusMe
     
     LOG_DEBUG("SendT2Event: Reply sent successfully");
     dbus_message_unref(reply);
-    dbus_connection_flush(connection);
+    // dbus_connection_flush(connection);
     
     return DBUS_HANDLER_RESULT_HANDLED;
 }
@@ -321,7 +321,7 @@ static DBusHandlerResult handle_get_marker_list(DBusConnection *connection, DBus
     LOG_DEBUG("GetMarkerList: Reply sent successfully");
     dbus_message_unref(reply);
     free(marker_list);
-    dbus_connection_flush(connection);
+    // dbus_connection_flush(connection);
     
     return DBUS_HANDLER_RESULT_HANDLED;
 }
@@ -382,7 +382,7 @@ static void send_profile_update_signal(void)
         return;
     }
     
-    dbus_message_unref(signal);
+    //dbus_message_unref(signal);
     
     /* Flush to ensure signal is sent immediately */
     dbus_connection_flush(g_connection);
@@ -534,6 +534,9 @@ int main(int argc, char *argv[]) {
          * Timeout of 100ms allows responsive shutdown on g_running = false
          */
         dbus_connection_read_write_dispatch(g_connection, 100);
+        
+        // Small sleep to avoid busy-waiting
+        usleep(1000); // 10ms
     }
     
     LOG_INFO("Exiting main event loop");

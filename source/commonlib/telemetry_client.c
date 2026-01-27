@@ -20,15 +20,46 @@
 #include <stdio.h>
 #include <telemetry_busmessage_sender.h>
 
-#define COMP_NAME "telemetry_client"
+#define COMP_NAME "client_one"
 
+// int main(int argc, char *argv[])
+// {
+//     (void) argc;// To fix compiler warning
+//     (void) argv;// To fix compiler warning
+//     t2_init(COMP_NAME);
+//     t2_event_s("c1Test2_bootup", "test_value_1");
+//     t2_event_s("c1Test2_bootup", "test_value_2");
+//     //sleep(10); // Sleep for 100ms
+//     t2_uninit();
+
+//     return 0;
+// }
 int main(int argc, char *argv[])
 {
-    (void) argc;// To fix compiler warning
+    (void)argc;
+    (void)argv;
+    
     t2_init(COMP_NAME);
-    t2_event_s(argv[1], argv[2]);
-
+    
+    printf("1. Sending: c1Test1_split = test_value_1\n");
+    t2_event_s("c1Test1_split", "test_value_1");
+    
+    printf("2. Sending: c1Test2_bootup = test_value_2\n");
+    t2_event_s("c1Test2_bootup", "test_value_2");
+    
+    printf("3. Sending: c1Test2_bootup = test_value_3\n");
+    t2_event_s("c1Test2_bootup", "test_value_3");
+    
+    printf("4. Sending: c1Test3_network = test_value_4\n");
+    t2_event_s("c1Test3_network", "test_value_4");
+    
+    printf("5. Sending: c1Test4_wifi = test_value_5\n");
+    t2_event_s("c1Test4_wifi", "test_value_5");
+    
+    
+    sleep(10); // Sleep for 10 seconds
+    
     t2_uninit();
-
+    
     return 0;
 }

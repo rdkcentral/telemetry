@@ -407,8 +407,6 @@ static bool initRFC(void)
     return status;
 }
 
-/* ============== Event Marker List Management ============== */
-
 static T2ERROR doPopulateEventMarkerList(void)
 {
     EVENT_DEBUG("%s ++in (D-Bus mode)\n", __FUNCTION__);
@@ -781,8 +779,6 @@ static int report_or_cache_data(char* telemetry_data, const char* markerName)
     return ret;
 }
 
-/* ============== Public API ============== */
-
 void t2_init(char *component)
 {
     EVENT_DEBUG("t2_init called with component: %s\n", component);
@@ -867,7 +863,7 @@ T2ERROR t2_event_s(const char* marker, const char* value)
     {
         strvalue[strlen(strvalue) - 1] = '\0';
     }
-    
+
     ret = report_or_cache_data(strvalue, marker);
     
     if(ret != -1)

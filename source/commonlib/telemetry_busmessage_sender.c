@@ -297,7 +297,7 @@ static int dbus_checkStatus(void)
     
     return -1;
 }
-/*
+
 static T2ERROR dbus_getGetOperationalStatus(const char* paramName, uint32_t* value)
 {
     if (!paramName || !value)
@@ -366,7 +366,7 @@ static T2ERROR dbus_getGetOperationalStatus(const char* paramName, uint32_t* val
         return T2ERROR_FAILURE;
     }
 }
-*/
+
 static T2ERROR initMessageBus( )
 {
     EVENT_DEBUG("%s ++in\n", __FUNCTION__);
@@ -402,7 +402,14 @@ static T2ERROR initMessageBus( )
 #endif
     if(0 == dbus_checkStatus())
     {
-        // D-Bus is available
+        // D-Bus is available - initialize threading support first
+        if (!dbus_threads_init_default())
+        {
+            EVENT_ERROR("%s:%d, Failed to initialize D-Bus threading\n", __func__, __LINE__);
+            return T2ERROR_FAILURE;
+        }
+        EVENT_DEBUG("%s:%d, D-Bus threading initialized\n", __func__, __LINE__);
+        
         char dbusName[124] = { '\0' };
         char signalDbusName[124] = { '\0' };
         if(componentName)
@@ -1145,7 +1152,7 @@ static DBusHandlerResult dbusEventReceiveHandler(DBusConnection *connection, DBu
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
-// D-Bus event loop thread function - uses SIGNAL connection only
+// D-Bus event loop thread function - processes BOTH connections
 static void* dbus_event_loop_thread(void *arg)
 {
     (void)arg;
@@ -1156,13 +1163,21 @@ static void* dbus_event_loop_thread(void *arg)
         return NULL;
     }
     
-    DBusConnection *connection = (DBusConnection*)signal_bus_handle;
-    EVENT_DEBUG("D-Bus: Event loop thread started (using signal connection)\n");
+    EVENT_DEBUG("D-Bus: Event loop thread started (processing both connections)\n");
     
     while (dbus_event_thread_running)
     {
-        // Only process signals on the SIGNAL connection
-        dbus_connection_read_write_dispatch(connection, 100);
+        // Process signal connection (for ProfileUpdate signals)
+        dbus_connection_read_write_dispatch((DBusConnection*)signal_bus_handle, 0);
+        
+        // Process method call connection (flush outgoing SendT2Event messages)
+        if (bus_handle)
+        {
+            dbus_connection_read_write_dispatch((DBusConnection*)bus_handle, 0);
+        }
+        
+        // Small sleep to avoid busy-waiting
+        usleep(100000); // 100ms
     }
     
     EVENT_DEBUG("D-Bus: Event loop thread exiting\n");
@@ -1209,9 +1224,9 @@ static bool isCachingRequired( )
 #endif
     if(isDbusEnabled && bus_handle)
     {
-       // retVal = dbus_getGetOperationalStatus(T2_OPERATIONAL_STATUS, &t2ReadyStatus);
-       retVal = T2ERROR_SUCCESS; // Temporarily bypass D-Bus get for operational status
-       t2ReadyStatus = T2_STATE_COMPONENT_READY; // Assume ready for now
+       retVal = dbus_getGetOperationalStatus(T2_OPERATIONAL_STATUS, &t2ReadyStatus);
+    //    retVal = T2ERROR_SUCCESS; // Temporarily bypass D-Bus get for operational status
+    //    t2ReadyStatus = T2_STATE_COMPONENT_READY; // Assume ready for now
         EVENT_DEBUG("%s:%d, D-Bus t2ReadyStatus: %u\n", __func__, __LINE__, t2ReadyStatus);
     }
 

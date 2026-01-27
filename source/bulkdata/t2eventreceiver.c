@@ -29,7 +29,6 @@
 #include "t2log_wrapper.h"
 #include "busInterface.h"
 #include "dca.h"
-#include "dbusInterface.h"
 
 #define T2EVENTQUEUE_MAX_LIMIT 200
 #define MESSAGE_DELIMITER "<#=#>"

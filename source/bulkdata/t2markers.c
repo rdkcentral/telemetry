@@ -25,7 +25,6 @@
 #include "t2eventreceiver.h"
 #include "t2log_wrapper.h"
 #include "rbusInterface.h"
-#include "dbusInterface.h"
 
 /**
  * Store event markers associated with a component
@@ -335,6 +334,5 @@ void createComponentDataElements()
         }
     }
     pthread_mutex_unlock(&t2CompListMutex);
-    
     T2Debug("%s --out\n", __FUNCTION__);
 }

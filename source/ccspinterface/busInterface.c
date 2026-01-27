@@ -129,14 +129,12 @@ T2ERROR registerForTelemetryEvents(TelemetryEventCallback eventCB)
 {
     T2ERROR ret = T2ERROR_FAILURE;
     T2Debug("%s ++in\n", __FUNCTION__);
-
     if(!isBusInit)
     {
         busInit();
     }
 
     ret = registerDbusT2EventListener(eventCB);
-
 
     if (isRbus)
     {

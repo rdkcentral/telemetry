@@ -17,7 +17,6 @@
  * limitations under the License.
 */
 #include "telemetry2_0.h"
-#include "dbusInterface.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -253,7 +252,6 @@ static void t2DaemonMainModeInit( )
     eh = newBreakPadWrapExceptionHandler();
 #endif
 #endif
-
     /**
     * Create a Signal Mask for signals that need to be blocked while using fork
     */

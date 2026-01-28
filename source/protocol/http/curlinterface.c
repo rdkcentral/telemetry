@@ -63,8 +63,10 @@ typedef struct
 
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
 
+#if 0
 #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
 static char waninterface[256];
+#endif
 #endif
 #endif
 

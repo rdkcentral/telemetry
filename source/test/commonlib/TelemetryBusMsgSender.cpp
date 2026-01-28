@@ -363,10 +363,10 @@ TEST_F(TelemetryBusmessageSenderTest, FilteredEventSend_RbusEnabled_RbusSetSucce
 #endif
 TEST_F(TelemetryBusmessageSenderTest, FilteredEventSend_RbusEnabled_RbusSetSuccess) {
 
+    t2_init((char*)"sysint");
     *test_get_isRbusEnabled_ptr() = true;
     *test_get_bus_handle_ptr() = reinterpret_cast<void*>(0xdeadbeef);
 
-    t2_init((char*)"sysint");
     rbusValue_t fakeObjVal = reinterpret_cast<rbusValue_t>(0x10);
     rbusProperty_t fakeProperty = reinterpret_cast<rbusProperty_t>(0x20);
     rbusValue_t fakeValue = reinterpret_cast<rbusValue_t>(0x30);

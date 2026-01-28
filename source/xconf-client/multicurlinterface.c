@@ -351,7 +351,7 @@ static T2ERROR acquire_pool_handle(CURL **easy, int *idx)
                 *idx = i;
                 pool.handle_available[i] = false;
                 *easy = pool.easy_handles[i];
-                
+
                 pthread_mutex_unlock(&pool.pool_mutex);
                 return T2ERROR_SUCCESS;
             }
@@ -392,7 +392,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
     // Acquire any available handle (with waiting)
     CURL *easy;
     int idx = -1;
-    
+
     T2ERROR ret = acquire_pool_handle(&easy, &idx);
     if(ret != T2ERROR_SUCCESS)
     {
@@ -445,7 +445,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
     {
 #ifdef LIBRDKCERTSEL_BUILD
         // Use certificate selector if available
-extern rdkcertselector_h xcCertSelector; // Declared in xconfclient.c
+        extern rdkcertselector_h xcCertSelector; // Declared in xconfclient.c
         rdkcertselectorStatus_t xcGetCertStatus;
         char *pCertURI = NULL;
 
@@ -470,7 +470,7 @@ extern rdkcertselector_h xcCertSelector; // Declared in xconfclient.c
                 {
                     pCertFile += (sizeof(FILESCHEME) - 1);
                 }
-                
+
                 // Configure mTLS certificates
                 code = curl_easy_setopt(easy, CURLOPT_SSLCERTTYPE, "P12");
                 if(code != CURLE_OK)
@@ -556,12 +556,12 @@ extern rdkcertselector_h xcCertSelector; // Declared in xconfclient.c
 #ifndef LIBRDKCERTSEL_BUILD
         if(NULL != pCertFile)
         {
-free(pCertFile);
-}
+            free(pCertFile);
+        }
         if(NULL != pPasswd)
         {
-free(pPasswd);
-}
+            free(pPasswd);
+        }
 #endif
         release_pool_handle(idx);
         return T2ERROR_FAILURE;
@@ -636,8 +636,14 @@ free(pPasswd);
 
     // Clean up certificates if not using certificate selector
 #ifndef LIBRDKCERTSEL_BUILD
-    if(NULL != pCertFile) free(pCertFile);
-    if(NULL != pPasswd) free(pPasswd);
+    if(NULL != pCertFile)
+    {
+        free(pCertFile);
+    }
+    if(NULL != pPasswd)
+    {
+        free(pPasswd);
+    }
 #endif
 
     release_pool_handle(idx);
@@ -662,7 +668,7 @@ T2ERROR http_pool_post(const char *url, const char *payload)
     // Acquire any available handle (with waiting)
     CURL *easy;
     int idx = -1;
-    
+
     T2ERROR ret = acquire_pool_handle(&easy, &idx);
     if(ret != T2ERROR_SUCCESS)
     {
@@ -746,7 +752,10 @@ T2ERROR http_pool_post(const char *url, const char *payload)
             if(curlGetCertStatus != certselectorOk)
             {
                 T2Error("%s, T2:Failed to retrieve the certificate.\n", __func__);
-                if(fp) fclose(fp);
+                if(fp)
+                {
+                    fclose(fp);
+                }
                 release_pool_handle(idx);
                 return T2ERROR_FAILURE;
             }
@@ -758,7 +767,7 @@ T2ERROR http_pool_post(const char *url, const char *payload)
                 {
                     pCertFile += (sizeof(FILESCHEME) - 1);
                 }
-                
+
                 // Configure mTLS certificates
                 code = curl_easy_setopt(easy, CURLOPT_SSLCERTTYPE, "P12");
                 if(code != CURLE_OK)
@@ -825,14 +834,17 @@ T2ERROR http_pool_post(const char *url, const char *payload)
             {
                 T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
             }
-            
+
             // Execute the request
             curl_code = curl_easy_perform(easy);
         }
         else
         {
             T2Error("mTLS_get failure\n");
-            if(fp) fclose(fp);
+            if(fp)
+            {
+                fclose(fp);
+            }
             release_pool_handle(idx);
             return T2ERROR_FAILURE;
         }
@@ -874,7 +886,10 @@ T2ERROR http_pool_post(const char *url, const char *payload)
 
     // Clean up certificates if not using certificate selector
 #ifndef LIBRDKCERTSEL_BUILD
-    if(NULL != pCertFile) free(pCertFile);
+    if(NULL != pCertFile)
+    {
+        free(pCertFile);
+    }
     if(NULL != pCertPC)
     {
 #ifdef LIBRDKCONFIG_BUILD

@@ -330,6 +330,30 @@ TEST_F(TelemetryBusmessageSenderTest, t2_event_d_iscachingenabled_true_1)
     EXPECT_EQ(ret, T2ERROR_SUCCESS);
 }
 
+TEST_F(TelemetryBusmessageSenderTest, t2_event_d_iscachingenabled_true_2)
+{
+    t2_init((char*)"sysinit");
+
+    EXPECT_CALL(*g_systemMock, access(_,_))
+        .WillRepeatedly(Return(-1)); // Accept any number of calls
+    EXPECT_CALL(*g_rbusMock, rbus_getUint(_, _, _))
+        .Times(1)
+        .WillOnce([](rbusHandle_t handle, const char* name, uint32_t* value) {
+            *value = 0;
+            return RBUS_ERROR_SUCCESS; // <-- Simulate SUCCESS
+        });
+#if 1
+    *test_get_isRbusEnabled_ptr() = false;
+    *test_get_isT2Ready_ptr() = false;
+#endif
+    int ret = t2_event_d("marker", 13);
+
+    printf("################## ret = %d \n",ret);
+    printf("###### T2ERROR_SUCESS = %d\n",T2ERROR_SUCCESS);
+    *test_get_isRbusEnabled_ptr() = true;
+    EXPECT_EQ(ret, T2ERROR_SUCCESS);
+}
+
 TEST_F(TelemetryBusmessageSenderTest, getParameterValue_success)
 {
     char* paramValue = NULL;

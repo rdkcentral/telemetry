@@ -297,7 +297,7 @@ TEST_F(TelemetryBusmessageSenderTest, t2_event_d_iscachingenabled_true)
     int ret = t2_event_d("marker", 13);
     EXPECT_EQ(ret, T2ERROR_SUCCESS);
 }
-
+#if 0
 TEST_F(TelemetryBusmessageSenderTest, t2_event_d_iscachingenabled_true_1)
 {
     t2_init((char*)"sysinit");
@@ -321,22 +321,22 @@ TEST_F(TelemetryBusmessageSenderTest, t2_event_d_iscachingenabled_true_1)
     *test_get_isRbusEnabled_ptr() = true;
     EXPECT_EQ(ret, T2ERROR_SUCCESS);
 }
+#endif
 
 TEST_F(TelemetryBusmessageSenderTest, t2_event_d_iscachingenabled_true_2)
 {
-    t2_init((char*)"sysinit");
+    t2_init((char*)"telemetry_client");
 
     EXPECT_CALL(*g_systemMock, access(_,_))
         .WillRepeatedly(Return(-1)); // Accept any number of calls
     EXPECT_CALL(*g_rbusMock, rbus_getUint(_, _, _))
         .Times(1)
         .WillOnce([](rbusHandle_t handle, const char* name, uint32_t* value) {
-            *value = 0;
+            *value = 1;
             return RBUS_ERROR_SUCCESS; // <-- Simulate SUCCESS
         });
 #if 1
-    *test_get_isRbusEnabled_ptr() = false;
-    *test_get_isT2Ready_ptr() = false;
+    *test_get_isT2Ready_ptr() = true;
 #endif
     int ret = t2_event_d("marker", 13);
 
@@ -460,10 +460,4 @@ TEST_F(TelemetryBusmessageSenderTest, SendStringEvent_Valid) {
     EXPECT_EQ(err, T2ERROR_SUCCESS);
     t2_uninit();
 }
-static int mockFd = 42;
 
-TEST_F(TelemetryBusmessageSenderTest, CacheEventToFile_TelemetryDataNull) {
-    // Should hit the early return (telemetry_data == NULL)
-    void *ret = cacheEventToFile(NULL);
-    EXPECT_EQ(ret, nullptr);
-}

@@ -351,7 +351,6 @@ TEST_F(TelemetryBusmessageSenderTest, FilteredEventSend_RbusEnabled_RbusSetSucce
             .WillOnce(Return(RBUS_ERROR_SUCCESS));
     EXPECT_CALL(*g_rbusMock,  rbusProperty_Release(_))
             .Times(1);
-    int ret;
 //    ret = filtered_event_send((char*)"test_data", (char*)"Test_marker:");
     // Call the function under test
     int ret = filtered_event_send("dataval", "markerval");

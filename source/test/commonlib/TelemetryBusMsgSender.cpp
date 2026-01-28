@@ -316,7 +316,7 @@ TEST_F(TelemetryBusmessageSenderTest, t2_event_d_iscachingenabled_true_1)
     *test_get_isRbusEnabled_ptr() = true;
     EXPECT_EQ(ret, T2ERROR_SUCCESS);
 }
-#if 1
+#if 0
 TEST_F(TelemetryBusmessageSenderTest, FilteredEventSend_RbusEnabled_RbusSetSuccess) {
     t2_init((char*)"sysint");
 
@@ -471,12 +471,25 @@ TEST_F(TelemetryBusmessageSenderTest, filtered_event_send_1)
 }
 #endif
 
-#if 0
+#if 1
 TEST_F(TelemetryBusmessageSenderTest, filtered_event_send_2)
 {
     t2_init((char*)"sysint");
-    int ret;
-    *test_get_isRbusEnabled_ptr() = true;
+        t2_init((char*)"sysint");
+    // Simulate access calls (if they are used in the flow)
+    EXPECT_CALL(*g_systemMock, access(_,_))
+        .WillRepeatedly(Return(-1)); // Accept any number of calls
+    // Simulate successful rbus_checkStatus and rbus_open
+    EXPECT_CALL(*g_rbusMock, rbus_checkStatus())
+        .Times(1)
+        .WillOnce(Return(RBUS_ENABLED));
+    EXPECT_CALL(*g_rbusMock, rbus_open(_, _))
+        .Times(1)
+        .WillOnce([](rbusHandle_t* handle, const char* componentName) {
+            *handle = (rbusHandle_t)0xdeadbeef;
+            return RBUS_ERROR_SUCCESS;
+        })
+
     ret = filtered_event_send((char*)"test_data", (char*)"Test_marker:");
     EXPECT_EQ(ret, 0);
 }

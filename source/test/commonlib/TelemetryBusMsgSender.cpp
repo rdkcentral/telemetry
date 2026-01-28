@@ -71,6 +71,8 @@ extern "C" {
     bool* test_get_isRbusEnabled_ptr(void);
     bool* test_get_isT2Ready_ptr(void);
     void** test_get_bus_handle_ptr(void);
+    typedef void (*event_debug_fn)(char*, ...);
+    event_debug_fn get_EVENT_DEBUG_ptr(void);
 }
 
 TEST_F(TelemetryBusmessageSenderTest, EventDebug_DebugEnabled) {

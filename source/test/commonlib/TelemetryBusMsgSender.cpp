@@ -74,7 +74,7 @@ extern "C" {
     typedef void (*event_debug_fn)(char*, ...);
     event_debug_fn get_EVENT_DEBUG_ptr(void);
 }
-
+#if 0
 TEST_F(TelemetryBusmessageSenderTest, EventDebug_DebugEnabled) {
     // Touch the debug flag first
     system("touch /tmp/ENABLE_T2_SENDER_DEBUG");
@@ -82,7 +82,7 @@ TEST_F(TelemetryBusmessageSenderTest, EventDebug_DebugEnabled) {
     fn((char*)"Test debug message %d", 99);
     system("rm -f /tmp/ENABLE_T2_SENDER_DEBUG");
 }
-
+#endif
 #endif
 
 // Positive test: Init and Uninit

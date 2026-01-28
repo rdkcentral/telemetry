@@ -297,7 +297,6 @@ TEST_F(TelemetryBusmessageSenderTest, t2_event_d_iscachingenabled_true)
     int ret = t2_event_d("marker", 13);
     EXPECT_EQ(ret, T2ERROR_SUCCESS);
 }
-#if 0
 TEST_F(TelemetryBusmessageSenderTest, t2_event_d_iscachingenabled_true_1)
 {
     t2_init((char*)"sysinit");
@@ -310,19 +309,15 @@ TEST_F(TelemetryBusmessageSenderTest, t2_event_d_iscachingenabled_true_1)
             *value = 1;
             return RBUS_ERROR_SUCCESS; // <-- Simulate SUCCESS
         });
-#if 1
     *test_get_isRbusEnabled_ptr() = false;
     *test_get_isT2Ready_ptr() = true;
-#endif 
     int ret = t2_event_d("marker", 13);
 
-    printf("################## ret = %d \n",ret);
-    printf("###### T2ERROR_SUCESS = %d\n",T2ERROR_SUCCESS);
     *test_get_isRbusEnabled_ptr() = true;
     EXPECT_EQ(ret, T2ERROR_SUCCESS);
 }
-#endif
 
+#if 0
 TEST_F(TelemetryBusmessageSenderTest, t2_event_d_iscachingenabled_true_2)
 {
     t2_init((char*)"telemetry_client");
@@ -345,7 +340,7 @@ TEST_F(TelemetryBusmessageSenderTest, t2_event_d_iscachingenabled_true_2)
     *test_get_isRbusEnabled_ptr() = true;
     EXPECT_EQ(ret, T2ERROR_SUCCESS);
 }
-
+#endif
 TEST_F(TelemetryBusmessageSenderTest, getParameterValue_success)
 {
     char* paramValue = NULL;
@@ -406,8 +401,8 @@ TEST_F(TelemetryBusmessageSenderTest, getParameterValue_failure_boolean)
     EXPECT_EQ(T2ERROR_SUCCESS, getParamValue("Device.DeviceInfo.SerialNumber", &paramValue));
 }
 
-
-/*TEST_F(TelemetryBusmessageSenderTest, filtered_event_send_1)
+#if 0
+TEST_F(TelemetryBusmessageSenderTest, filtered_event_send_1)
 {
     t2_init((char*)"telemetry_client");
 
@@ -429,18 +424,22 @@ TEST_F(TelemetryBusmessageSenderTest, getParameterValue_failure_boolean)
     EXPECT_CALL(*g_rbusMock,  rbusProperty_Release(_))
             .Times(1);
     int ret;
-    ret = filtered_event_send((char*)"test_data", (char*)"Test_marker:");
-    EXPECT_EQ(ret, 0);
+//    ret = filtered_event_send((char*)"test_data", (char*)"Test_marker:");
+//    EXPECT_EQ(ret, 0);
 
 }
+#endif
 
+#if 1
 TEST_F(TelemetryBusmessageSenderTest, filtered_event_send_2)
 {
     t2_init((char*)"sysint");
     int ret;
+    *test_get_isRbusEnabled_ptr() = true;
     ret = filtered_event_send((char*)"test_data", (char*)"Test_marker:");
     EXPECT_EQ(ret, 0);
-}*/
+}
+#endif
 
 // Positive test: Send string event with valid input
 

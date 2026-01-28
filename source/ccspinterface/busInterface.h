@@ -101,6 +101,7 @@ void unregisterDEforCompEventList();
 T2ERROR regDEforProfileDataModel(callBackHandlers* cbHandlers);
 
 T2ERROR publishEventsProfileUpdates() ;
+T2ERROR publishDBUSEventsProfileUpdates();
 
 #ifdef DCMAGENT
 /* DCM RBus event Publish functions */

@@ -122,6 +122,17 @@ Vector* getProfileParameterValues(Vector *paramList, int count)
     return profileValueList;
 }
 
+T2ERROR publishDBUSEventsProfileUpdates()
+{
+    T2Debug("%s ++in\n", __FUNCTION__);
+    T2ERROR ret = T2ERROR_FAILURE ;
+    T2Info("Publishing dbus event for t2profile update notification to components \n");
+    // ret = publishdbusEventsProfileUpdates();
+
+    T2Debug("%s --out\n", __FUNCTION__);
+    return ret;
+}
+
 /**
  * Register with right bus call back dpending on dbus/rbus mode
  */
@@ -138,7 +149,8 @@ T2ERROR registerForTelemetryEvents(TelemetryEventCallback eventCB)
 
     if (isRbus)
     {
-        ret = registerRbusT2EventListener(eventCB);
+        // ret = registerRbusT2EventListener(eventCB);
+        T2Info("RBUS repeaceled with dbus\n");
 
 #ifdef DCMAGENT
         /* Register DCM Events */

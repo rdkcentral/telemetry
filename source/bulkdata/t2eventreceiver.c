@@ -196,13 +196,13 @@ void T2ER_Push(char* eventName, char* eventValue)
             }
             else
             {
-                T2Debug("Received eventInfo : %s value : %s\n", eventName, (char* ) eventValue);
+                T2Info("Received eventInfo : %s value : %s\n", eventName, (char* ) eventValue);
                 T2Event *event = (T2Event *) malloc(sizeof(T2Event));
                 if(event != NULL)
                 {
                     event->name = strdup(eventName);
                     event->value = strdup(eventValue);
-                    T2Debug("Adding eventName : %s eventValue : %s to t2event queue\n", event->name, event->value);
+                    T2Info("Adding eventName : %s eventValue : %s to t2event queue\n", event->name, event->value);
                     t2_queue_push(eQueue, (void *) event);
                     if(!stopDispatchThread)
                     {

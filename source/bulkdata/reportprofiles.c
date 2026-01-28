@@ -315,7 +315,9 @@ T2ERROR ReportProfiles_setProfileXConf(ProfileXConf *profile)
     {
         unregisterDEforCompEventList();
         createComponentDataElements();
-        publishEventsProfileUpdates();
+        //publishEventsProfileUpdates();
+        publishDBUSEventsProfileUpdates();
+        
     }
     T2ER_StartDispatchThread();
 
@@ -1082,7 +1084,8 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
     {
         createComponentDataElements();
         // Notify registered components that profile has received an update
-        publishEventsProfileUpdates();
+        //publishEventsProfileUpdates();
+        publishDBUSEventsProfileUpdates();
         getMarkerCompRbusSub(true);
     }
     hash_map_destroy(receivedProfileHashMap, freeReportProfileHashMap);
@@ -1451,7 +1454,8 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
     {
         createComponentDataElements();
         // Notify registered components that profile has received an update
-        publishEventsProfileUpdates();
+        // publishEventsProfileUpdates();
+        publishDBUSEventsProfileUpdates();
         getMarkerCompRbusSub(true);
     }
     msgpack_unpacked_destroy(&result);

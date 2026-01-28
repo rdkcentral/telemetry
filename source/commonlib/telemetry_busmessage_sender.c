@@ -1238,7 +1238,7 @@ static bool isCachingRequired( )
     else
     {
         EVENT_DEBUG("value for  %s is : %d\n", T2_OPERATIONAL_STATUS, t2ReadyStatus);
-        if((t2ReadyStatus & T2_STATE_COMPONENT_READY) == 0)
+        if((t2ReadyStatus & T2_STATE_READY) == 0)
         {
             return true;
         }
@@ -1381,7 +1381,6 @@ static int report_or_cache_data(char* telemetry_data, const char* markerName)
 void t2_init(char *component)
 {
     componentName = strdup(component);
-    isCachingRequired();
 }
 
 void t2_uninit(void)

@@ -23,8 +23,8 @@
 #include <unistd.h>
 #include <telemetry_busmessage_sender.h>
 
-#define COMP_NAME "telemetry_client"
-/*
+#define COMP_NAME "client_one"
+
 int main(int argc, char *argv[])
 {
     (void) argc;// To fix compiler warning
@@ -35,8 +35,8 @@ int main(int argc, char *argv[])
 
     return 0;
 }
-*/
-/*
+
+#if 0
 int main(int argc, char *argv[])
 {
     int i = 0, n;
@@ -53,9 +53,8 @@ int main(int argc, char *argv[])
     printf("Sent %d t2_event_d events.\n", n);
     return 0;
 }
-    */
-
-
+#endif
+#if 0
 // Thread argument structure
 typedef struct {
     int value;
@@ -130,3 +129,4 @@ int main(int argc, char *argv[])
     t2_uninit();
     return 0;
 }
+#endif

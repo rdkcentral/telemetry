@@ -911,6 +911,12 @@ typedef T2ERROR (*getRbusParameterValFunc)(const char*,char **);
 getRbusParameterValFunc getRbusParameterValFuncCallback(void) {
 	return getRbusParameterVal;
 }
+
+typedef void (*event_debug_fn)(char*, ...);
+
+event_debug_fn get_EVENT_DEBUG_ptr(void) {
+    return EVENT_DEBUG;
+}
 #endif
 
 

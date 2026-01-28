@@ -72,6 +72,15 @@ extern "C" {
     bool* test_get_isT2Ready_ptr(void);
     void** test_get_bus_handle_ptr(void);
 }
+
+TEST_F(TelemetryBusmessageSenderTest, EventDebug_DebugEnabled) {
+    // Touch the debug flag first
+    system("touch /tmp/ENABLE_T2_SENDER_DEBUG");
+    event_debug_fn fn = get_EVENT_DEBUG_ptr();
+    fn((char*)"Test debug message %d", 99);
+    system("rm -f /tmp/ENABLE_T2_SENDER_DEBUG");
+}
+
 #endif
 
 // Positive test: Init and Uninit
@@ -433,20 +442,6 @@ TEST_F(TelemetryBusmessageSenderTest, SendStringEvent_Valid) {
     EXPECT_EQ(err, T2ERROR_SUCCESS);
     t2_uninit();
 }
-#ifdef GTEST_ENABLE
-extern "C" {
-    typedef void (*event_debug_fn)(char*, ...);
-    event_debug_fn get_EVENT_DEBUG_ptr(void);
-}
-
-TEST_F(TelemetryBusmessageSenderTest, EventDebug_DebugEnabled) {
-    // Touch the debug flag first
-    system("touch /tmp/ENABLE_T2_SENDER_DEBUG");
-    event_debug_fn fn = get_EVENT_DEBUG_ptr();
-    fn((char*)"Test debug message %d", 99);
-    system("rm -f /tmp/ENABLE_T2_SENDER_DEBUG");
-}
-#endif
 
 #if 0
 #ifdef GTEST_ENABLE

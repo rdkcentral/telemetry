@@ -488,9 +488,9 @@ TEST_F(TelemetryBusmessageSenderTest, filtered_event_send_2)
         .WillOnce([](rbusHandle_t* handle, const char* componentName) {
             *handle = (rbusHandle_t)0xdeadbeef;
             return RBUS_ERROR_SUCCESS;
-        })
+        });
 
-    ret = filtered_event_send((char*)"test_data", (char*)"Test_marker:");
+    int ret = filtered_event_send((char*)"test_data", (char*)"Test_marker:");
     EXPECT_EQ(ret, 0);
 }
 #endif

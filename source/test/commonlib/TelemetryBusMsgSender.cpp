@@ -24,6 +24,7 @@ extern "C" {
 #include "telemetry_busmessage_sender.h"
 
 T2ERROR getParamValue(const char* paramName, char **paramValue);
+void *cacheEventToFile(void *arg);
 }
 #include "../mocks/rbusMock.h"
 #include "../mocks/SystemMock.h"
@@ -459,4 +460,10 @@ TEST_F(TelemetryBusmessageSenderTest, SendStringEvent_Valid) {
     EXPECT_EQ(err, T2ERROR_SUCCESS);
     t2_uninit();
 }
+static int mockFd = 42;
 
+TEST_F(TelemetryBusmessageSenderTest, CacheEventToFile_TelemetryDataNull) {
+    // Should hit the early return (telemetry_data == NULL)
+    void *ret = cacheEventToFile(NULL);
+    EXPECT_EQ(ret, nullptr);
+}

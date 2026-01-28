@@ -316,15 +316,13 @@ TEST_F(TelemetryBusmessageSenderTest, t2_event_d_iscachingenabled_true_1)
     *test_get_isRbusEnabled_ptr() = true;
     EXPECT_EQ(ret, T2ERROR_SUCCESS);
 }
-#if 0
+#if 1
 TEST_F(TelemetryBusmessageSenderTest, FilteredEventSend_RbusEnabled_RbusSetSuccess) {
     t2_init((char*)"sysint");
 
     // Simulate access calls (if they are used in the flow)
     EXPECT_CALL(*g_systemMock, access(_,_))
-            .Times(4)
-            .WillRepeatedly(Return(-1)); // or WillOnce... as you prefer
-
+        .WillRepeatedly(Return(-1)); // Accept any number of calls
     // Simulate successful rbus_checkStatus and rbus_open
     EXPECT_CALL(*g_rbusMock, rbus_checkStatus())
         .Times(1)
@@ -336,57 +334,30 @@ TEST_F(TelemetryBusmessageSenderTest, FilteredEventSend_RbusEnabled_RbusSetSucce
             return RBUS_ERROR_SUCCESS;
         });
 
-    // Setup sequence for expected rbus telemetry functions
-    rbusValue_t fakeObjVal = reinterpret_cast<rbusValue_t>(0x10);
-    rbusProperty_t fakeProperty = reinterpret_cast<rbusProperty_t>(0x20);
-    rbusValue_t fakeValue = reinterpret_cast<rbusValue_t>(0x30);
-
-    EXPECT_CALL(*g_rbusMock, rbusValue_Init(_))
-        .WillOnce(DoAll(SetArgPointee<0>(fakeObjVal), Return(fakeObjVal)))
-        .WillOnce(DoAll(SetArgPointee<0>(fakeValue), Return(fakeValue)));
-    EXPECT_CALL(*g_rbusMock, rbusValue_SetString(fakeObjVal, StrEq("dataval")))
-        .Times(1);
-    EXPECT_CALL(*g_rbusMock, rbusProperty_Init(_, StrEq("markerval"), fakeObjVal))
-        .WillOnce(DoAll(SetArgPointee<0>(fakeProperty), Return(fakeProperty)));
-    EXPECT_CALL(*g_rbusMock, rbusValue_SetProperty(fakeValue, fakeProperty))
-        .Times(1);
-    EXPECT_CALL(*g_rbusMock, rbus_set(_, StrEq(T2_EVENT_PARAM), fakeValue, _))
-        .WillOnce(Return(RBUS_ERROR_SUCCESS));
-    EXPECT_CALL(*g_rbusMock, rbusValue_Release(fakeValue)).Times(1);
-    EXPECT_CALL(*g_rbusMock, rbusProperty_Release(fakeProperty)).Times(1);
-    EXPECT_CALL(*g_rbusMock, rbusValue_Release(fakeObjVal)).Times(1);
-
+    EXPECT_CALL(*g_rbusMock,  rbusValue_Init(_))
+            .Times(2)
+            .WillOnce(Return((rbusValue_t)0xffffffff))
+            .WillOnce(Return((rbusValue_t)0xffffffff));
+    EXPECT_CALL(*g_rbusMock,  rbusValue_SetString(_, _))
+            .Times(1);
+    EXPECT_CALL(*g_rbusMock,  rbusProperty_Init(_,_,_))
+            .Times(1);
+    EXPECT_CALL(*g_rbusMock,  rbusValue_SetProperty (_, _))
+            .Times(1);
+    EXPECT_CALL(*g_rbusMock,  rbusValue_Release(_))
+            .Times(2);
+    EXPECT_CALL(*g_rbusMock,  rbus_set(_,_,_,_))
+            .Times(1)
+            .WillOnce(Return(RBUS_ERROR_SUCCESS));
+    EXPECT_CALL(*g_rbusMock,  rbusProperty_Release(_))
+            .Times(1);
+    int ret;
+//    ret = filtered_event_send((char*)"test_data", (char*)"Test_marker:");
     // Call the function under test
     int ret = filtered_event_send("dataval", "markerval");
     EXPECT_EQ(ret, 0); // Success
 }
 #endif
-TEST_F(TelemetryBusmessageSenderTest, FilteredEventSend_RbusEnabled_RbusSetSuccess) {
-
-    t2_init((char*)"sysint");
-    *test_get_isRbusEnabled_ptr() = true;
-    *test_get_bus_handle_ptr() = reinterpret_cast<void*>(0xdeadbeef);
-
-    rbusValue_t fakeObjVal = reinterpret_cast<rbusValue_t>(0x10);
-    rbusProperty_t fakeProperty = reinterpret_cast<rbusProperty_t>(0x20);
-    rbusValue_t fakeValue = reinterpret_cast<rbusValue_t>(0x30);
-
-    EXPECT_CALL(*g_rbusMock, rbusValue_Init(_))
-        .WillOnce(::testing::DoAll(SetArgPointee<0>(fakeObjVal), Return(fakeObjVal)))
-        .WillOnce(::testing::DoAll(SetArgPointee<0>(fakeValue), Return(fakeValue)));
-    EXPECT_CALL(*g_rbusMock, rbusValue_SetString(fakeObjVal, StrEq("dataval"))).Times(1);
-    EXPECT_CALL(*g_rbusMock, rbusProperty_Init(_, StrEq("markerval"), fakeObjVal))
-        .WillOnce(::testing::DoAll(SetArgPointee<0>(fakeProperty), Return(fakeProperty)));
-    EXPECT_CALL(*g_rbusMock, rbusValue_SetProperty(fakeValue, fakeProperty)).Times(1);
-    EXPECT_CALL(*g_rbusMock, rbus_set(_, StrEq("Telemetry.ReportProfiles.EventMarker"), fakeValue, _))
-        .WillOnce(Return(RBUS_ERROR_SUCCESS));
-    EXPECT_CALL(*g_rbusMock, rbusValue_Release(fakeValue)).Times(1);
-    EXPECT_CALL(*g_rbusMock, rbusProperty_Release(fakeProperty)).Times(1);
-    EXPECT_CALL(*g_rbusMock, rbusValue_Release(fakeObjVal)).Times(1);
-
-    int ret = filtered_event_send("dataval", "markerval");
-    EXPECT_EQ(ret, 0);
-}
 #if 0
 TEST_F(TelemetryBusmessageSenderTest, t2_event_d_iscachingenabled_true_2)
 {

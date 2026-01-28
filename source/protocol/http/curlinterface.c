@@ -468,7 +468,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
                 goto child_cleanReturn;
             }
 #ifdef LIBRDKCERTSEL_BUILD
-	    pEngine = rdkcertselector_getEngine(curlCertSelector);
+	    pEngine = rdkcertselector_getEngine(thisCertSel);
 	    if(pEngine != NULL ) {
 		    code = curl_easy_setopt(curl, CURLOPT_SSLENGINE, pEngine);
 		    if(code != CURLE_OK) {

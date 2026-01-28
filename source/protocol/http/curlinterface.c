@@ -280,6 +280,10 @@ static void curlCertSelectorInit()
 #endif
     if (state_red_enable && curlRcvryCertSelector == NULL )
     {
+		if(curlCertSelector != NULL){
+			rdkcertselector_free(&curlCertSelector);
+			curlCertSelector = NULL;
+		}
         curlRcvryCertSelector = rdkcertselector_new( NULL, NULL, "RCVRY" );
         if (curlRcvryCertSelector == NULL)
         {

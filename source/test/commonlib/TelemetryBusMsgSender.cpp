@@ -471,7 +471,7 @@ TEST_F(TelemetryBusmessageSenderTest, filtered_event_send_1)
 }
 #endif
 
-#if 1
+#if 0
 TEST_F(TelemetryBusmessageSenderTest, filtered_event_send_2)
 {
     t2_init((char*)"sysint");

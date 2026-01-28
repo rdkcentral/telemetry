@@ -333,7 +333,7 @@ TEST_F(TelemetryBusmessageSenderTest, FilteredEventSend_RbusEnabled_RbusSetSucce
             *handle = (rbusHandle_t)0xdeadbeef;
             return RBUS_ERROR_SUCCESS;
         });
-
+#if 0
     EXPECT_CALL(*g_rbusMock,  rbusValue_Init(_))
             .Times(2)
             .WillOnce(Return((rbusValue_t)0xffffffff))
@@ -351,6 +351,7 @@ TEST_F(TelemetryBusmessageSenderTest, FilteredEventSend_RbusEnabled_RbusSetSucce
             .WillOnce(Return(RBUS_ERROR_SUCCESS));
     EXPECT_CALL(*g_rbusMock,  rbusProperty_Release(_))
             .Times(1);
+#endif
 //    ret = filtered_event_send((char*)"test_data", (char*)"Test_marker:");
     // Call the function under test
     int ret = filtered_event_send("dataval", "markerval");

@@ -677,6 +677,45 @@ TEST_F(reportgenTestFixture, encodeGrepResultInJSON3)
       Vector_Destroy(grepResult, freeGResult);
 }
 
+TEST_F(reportgenTestFixture, encodeGrepResultInJSON_trim_and_regexParam_both_set_success)
+{
+    Vector* grepResult = NULL;
+    Vector_Create(&grepResult);
+
+    GrepMarker* gparam = (GrepMarker*)calloc(1, sizeof(GrepMarker));
+    gparam->markerName = strdup("MARK1");
+    gparam->mType = MTYPE_ABSOLUTE;
+    gparam->trimParam = true;                 // covers trimLeadingAndTrailingws
+    gparam->regexParam = strdup("[A-Z]+");    // covers regex branch
+    gparam->u.markerValue = strdup("  FOOfoo  ");   // will be trimmed then regexed
+
+    Vector_PushBack(grepResult, gparam);
+
+    cJSON* valArray = (cJSON*)malloc(sizeof(cJSON));
+    cJSON* mockObj = (cJSON*)0xABCD;
+
+    EXPECT_CALL(*m_reportgenMock, cJSON_CreateObject())
+        .Times(1).WillOnce(Return(mockObj));
+    // applyRegexToValue should get called and succeed
+    EXPECT_CALL(*m_reportgenMock, applyRegexToValue(::testing::_, StrEq("[A-Z]+")))
+        .WillOnce([](char **val, const char*) {
+            // simulate setting *val to "FOO"
+            if (*val) free(*val);
+            *val = strdup("FOO");
+            return T2ERROR_SUCCESS;
+        });
+    EXPECT_CALL(*m_reportgenMock, cJSON_AddStringToObject(mockObj, StrEq("MARK1"), StrEq("FOO")))
+        .Times(1).WillOnce(Return(mockObj));
+    EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToArray(valArray, mockObj))
+        .Times(1).WillOnce(Return(true));
+
+    EXPECT_EQ(T2ERROR_SUCCESS, encodeGrepResultInJSON(valArray, grepResult));
+
+    Vector_Destroy(grepResult, freeGResult);
+    cJSON_Delete(valArray);
+    if(valArray) free(valArray);
+}
+
 TEST_F(reportgenTestFixture, encodeGrepResultInJSON4)
 {
     // Case 1: both NULL

@@ -31,6 +31,7 @@ extern "C"
 #include <bulkdata/profilexconf.h>
 #include <dcautil/dcautil.h>
 #include <ccspinterface/busInterface.h>
+#include <dlfcn.h>	
 sigset_t blocking_signal;
 }
 #include "gmock/gmock.h"

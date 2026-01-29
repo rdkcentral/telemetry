@@ -87,7 +87,6 @@ static pthread_mutex_t loggerMutex ;
 static pthread_t dbus_event_thread;
 static bool dbus_event_thread_running = false;
 
-#if defined(RBUS_SUPPORT_ENABLED)
 static void EVENT_DEBUG(char* format, ...)
 {
 
@@ -129,7 +128,7 @@ static void EVENT_DEBUG(char* format, ...)
     pthread_mutex_unlock(&loggerMutex);
 
 }
-#else
+#if 0
 #define EVENT_DEBUG(format, ...) do { \
     struct timespec ts; \
     struct tm timeinfo; \
@@ -777,7 +776,7 @@ int filtered_event_send(const char* data, const char *markerName)
             pthread_mutex_unlock(&markerListMutex);
             if(!isEventingEnabled)
             {
-                EVENT_DEBUG("markerName %s not found in event list for component %s . Unlock markerListMutex . \n", markerName, componentName);
+                EVENT_DEBUG("markerName %s not found in event list for component %s \n", markerName, componentName);
                 return status;
             }
         }
@@ -1245,9 +1244,6 @@ static bool isCachingRequired( )
                              "type='signal',path='%s',interface='%s',member='ProfileUpdate'",
                              T2_DBUS_OBJECT_PATH, T2_DBUS_EVENT_INTERFACE_NAME);
                     
-                    EVENT_DEBUG("D-Bus: Adding match rule: %s\n", rule);
-                    EVENT_DEBUG("D-Bus: Event Interface: %s, Path: %s\n", T2_DBUS_EVENT_INTERFACE_NAME, T2_DBUS_OBJECT_PATH);
-                    
                     dbus_bus_add_match((DBusConnection*)signal_bus_handle, rule, &error);
                     
                     if (dbus_error_is_set(&error))
@@ -1257,10 +1253,8 @@ static bool isCachingRequired( )
                     }
                     else
                     {
-                        EVENT_DEBUG("D-Bus: Match rule added successfully\n");
-                        // Add message filter for handling signals on SIGNAL connection
                         dbus_connection_add_filter((DBusConnection*)signal_bus_handle, dbusEventReceiveHandler, NULL, NULL);
-                        EVENT_DEBUG("D-Bus: Now listening for ProfileUpdate signals on interface '%s'\n", T2_DBUS_EVENT_INTERFACE_NAME);
+                        EVENT_DEBUG("Now listening for ProfileUpdate signals on interface '%s'\n", T2_DBUS_EVENT_INTERFACE_NAME);
                         
                         // Start D-Bus event loop thread to process incoming signals
                         if (!dbus_event_thread_running)
@@ -1268,7 +1262,6 @@ static bool isCachingRequired( )
                             dbus_event_thread_running = true;
                             if (pthread_create(&dbus_event_thread, NULL, dbus_event_loop_thread, NULL) == 0)
                             {
-                                EVENT_DEBUG("D-Bus: Event loop thread created successfully\n");
                                 pthread_detach(dbus_event_thread);
                             }
                             else

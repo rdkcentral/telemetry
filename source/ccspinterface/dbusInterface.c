@@ -67,7 +67,6 @@ bool isDbusInitialized(void) {
 
 /* Handle GetOperationalStatus Method */
 static DBusHandlerResult handle_get_operational_status(DBusConnection *connection, DBusMessage *message) {
-    T2Info("handle_get_operational_status: Received GetOperationalStatus method call\n");
 
     DBusError error;
     dbus_error_init(&error);
@@ -81,7 +80,7 @@ static DBusHandlerResult handle_get_operational_status(DBusConnection *connectio
         return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
     }
 
-    T2Info("GetOperationalStatus called with param_name: %s\n", param_name);
+    T2Debug("GetOperationalStatus called with param_name: %s\n", param_name);
 
     uint32_t value = 0;
     /* TODO check oprtational status of specific component param_name will componet name */
@@ -109,7 +108,6 @@ static DBusHandlerResult handle_get_operational_status(DBusConnection *connectio
         return DBUS_HANDLER_RESULT_NEED_MEMORY;
     }
 
-    T2Info("GetOperationalStatus: Reply sent successfully\n");
     dbus_message_unref(reply);
     dbus_connection_flush(connection);
 
@@ -118,7 +116,7 @@ static DBusHandlerResult handle_get_operational_status(DBusConnection *connectio
 
 /* Handle SendT2Event Method */
 static DBusHandlerResult handle_send_t2_event(DBusConnection *connection, DBusMessage *message) {
-    T2Info("handle_send_t2_event: Received SendT2Event method call\n");
+    T2Debug("handle_send_t2_event: Received SendT2Event method call\n");
 
     DBusError error;
     dbus_error_init(&error);
@@ -153,7 +151,7 @@ static DBusHandlerResult handle_send_t2_event(DBusConnection *connection, DBusMe
         return DBUS_HANDLER_RESULT_NEED_MEMORY;
     }
 
-    T2Info("SendT2Event: Reply sent successfully\n");
+    T2Debug("SendT2Event: Reply sent successfully\n");
     dbus_message_unref(reply);
     dbus_connection_flush(connection);
 
@@ -162,8 +160,7 @@ static DBusHandlerResult handle_send_t2_event(DBusConnection *connection, DBusMe
 
 /* Handle GetMarkerList Method */
 static DBusHandlerResult handle_get_marker_list(DBusConnection *connection, DBusMessage *message) {
-    T2Info("handle_get_marker_list: Received GetMarkerList method call\n");
-
+    T2Debug("handle_get_marker_list: Received GetMarkerList method call\n");
     DBusMessage *reply = NULL;
     DBusError error;
     dbus_error_init(&error);
@@ -229,7 +226,7 @@ static DBusHandlerResult handle_get_marker_list(DBusConnection *connection, DBus
         }
 
         dbus_connection_flush(connection);
-        T2Info("GetMarkerList: Reply sent successfully\n");
+        T2Debug("GetMarkerList: Reply sent successfully\n");
         dbus_message_unref(reply);
     }
 
@@ -244,7 +241,7 @@ static DBusHandlerResult message_handler(DBusConnection *connection, DBusMessage
     const char* member = dbus_message_get_member(message);
     const char* path = dbus_message_get_path(message);
 
-    T2Info("Received D-Bus message: interface=%s, member=%s, path=%s\n",
+    T2Debug("Received D-Bus message: interface=%s, member=%s, path=%s\n",
               interface ? interface : "NULL",
               member ? member : "NULL", 
               path ? path : "NULL");
@@ -272,19 +269,19 @@ static DBusHandlerResult message_handler(DBusConnection *connection, DBusMessage
 static void* dbusListenerThreadFunc(void *arg) {
     (void)arg;
     
-    T2Info("%s ++in\n", __FUNCTION__);
+    T2Debug("%s ++in\n", __FUNCTION__);
     
     while (!stopListenerThread && t2dbus_handle.connection) {
         dbus_connection_read_write_dispatch(t2dbus_handle.connection, 100);
         usleep(1000);
     }
-    T2Info("%s --out\n", __FUNCTION__);
+    T2Debug("%s --out\n", __FUNCTION__);
     return NULL;
 }
 
 T2ERROR publishdbusEventsProfileUpdates(void)
 {
-    T2Info("%s ++in\n", __FUNCTION__);
+    T2Debug("%s ++in\n", __FUNCTION__);
     if (!t2dbus_handle.is_initialized) {
         if (dBusInterface_Init() != T2ERROR_SUCCESS) {
             return T2ERROR_FAILURE;
@@ -312,7 +309,7 @@ T2ERROR publishdbusEventsProfileUpdates(void)
     /* Flush to ensure signal is sent immediately */
     //dbus_connection_flush(t2dbus_handle.connection);
 
-    T2Info("ProfileUpdate signal sent successfully (serial=%u)\n", serial);
+    T2Debug("ProfileUpdate signal sent successfully (serial=%u)\n", serial);
     return T2ERROR_SUCCESS;
 }
 

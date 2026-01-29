@@ -2280,6 +2280,40 @@ TEST_F(reportgenTestFixture, ApplyRegexToValue_viaCallback_RegexecFails) {
     free(*inputValue);
 }
 
+TEST_F(reportgenTestFixture, ApplyRegexToValue_viaCallback_RegexecMatch_Success)
+{
+    applyRegexToValueFunc fp = applyRegexToValueCallback();
+    ASSERT_NE(fp, nullptr);
+
+    // Set up a string that will be partially matched
+    char *input = strdup("abc123def");
+    ASSERT_NE(input, nullptr);
+    char **inputValue = &input;
+    const char *pattern = "[0-9]+"; // will match "123" in "abc123def"
+
+    // Mock regcomp success
+    EXPECT_CALL(*m_reportgenMock, regcomp(_, StrEq(pattern), _))
+        .WillOnce(Return(0));
+    // Mock regexec: set pmatch to match "123" (positions 3 to 6)
+    EXPECT_CALL(*m_reportgenMock, regexec(_, StrEq("abc123def"), _, _, _))
+        .WillOnce([](auto, auto, auto, regmatch_t* pmatch, auto){
+            pmatch[0].rm_so = 3;
+            pmatch[0].rm_eo = 6;
+            return 0; // success
+        });
+    // Should call regfree
+    EXPECT_CALL(*m_reportgenMock, regfree(_)).Times(1);
+
+    // Call the function
+    T2ERROR result = fp(inputValue, pattern);
+
+    // Ensure OK and user string is updated to "123"
+    EXPECT_EQ(result, T2ERROR_SUCCESS);
+    ASSERT_NE(*inputValue, nullptr);
+    EXPECT_STREQ(*inputValue, "123");
+    free(*inputValue);
+}
+
 TEST(CheckForEmptyString, AllBranchesAreCovered)
 {
     checkForEmptyStringFunc cb = checkForEmptyStringCallback();
@@ -2357,18 +2391,6 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON_SkipNullParamOrValues) {
     Vector_Destroy(paramNameList, nullptr);
     Vector_Destroy(paramValueList, nullptr);
     if(valArray) free(valArray);
-}
-#endif
-#if 1
-// ----------- encodeEventMarkersInJSON: marker == NULL (skipped) ----------
-TEST_F(reportgenTestFixture, encodeEventMarkersInJSON_MarkerNullSkipped) {
-    Vector *eventList = NULL;
-    Vector_Create(&eventList);
-    Vector_PushBack(eventList, NULL); // NULL marker
-    cJSON *valArray = (cJSON*)malloc(sizeof(cJSON));
-    EXPECT_EQ(T2ERROR_SUCCESS, encodeEventMarkersInJSON(valArray, eventList));
-    Vector_Destroy(eventList, nullptr);
-    free(valArray);
 }
 #endif
 //

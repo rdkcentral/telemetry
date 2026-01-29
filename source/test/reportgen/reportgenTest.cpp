@@ -1604,6 +1604,7 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON_array_regex_regexec_match)
     Vector_Destroy(paramNameList, freeParam);
     Vector_Destroy(paramValueList, freeProfileValues);
 }
+
 /*
 TEST_F(reportgenTestFixture, encodeParamResultInJSON10)
 {

@@ -2308,3 +2308,197 @@ TEST(CheckForEmptyString, AllBranchesAreCovered)
     EXPECT_FALSE(cb(almostnull));
 }
 #endif
+
+
+// Additional tests for improved coverage
+
+// ------------- trimLeadingAndTrailingws --------------------
+TEST(TrimLeadingAndTrailingWs, VariousCases) {
+    // Empty string
+    char empty[] = "";
+    trimLeadingAndTrailingws(empty);
+    EXPECT_STREQ("", empty);
+
+    // Only spaces
+    char spaces[] = "    ";
+    trimLeadingAndTrailingws(spaces);
+    EXPECT_STREQ("", spaces);
+
+    // Leading and trailing
+    char test1[] = "  abc def  ";
+    trimLeadingAndTrailingws(test1);
+    EXPECT_STREQ("abc def", test1);
+
+    // Leading tab
+    char test2[] = "\t\tHello\t";
+    trimLeadingAndTrailingws(test2);
+    EXPECT_STREQ("Hello", test2);
+
+    // No whitespace
+    char pure[] = "Test";
+    trimLeadingAndTrailingws(pure);
+    EXPECT_STREQ("Test", pure);
+
+    // All whitespace (tab and space)
+    char allws[] = " \t\t ";
+    trimLeadingAndTrailingws(allws);
+    EXPECT_STREQ("", allws);
+
+    // Internal whitespace
+    char intw[] = " \tA B C \t";
+    trimLeadingAndTrailingws(intw);
+    EXPECT_STREQ("A B C", intw);
+}
+
+// ------------- applyRegexToValue ("happy path" case) -------------
+#ifdef GTEST_ENABLE
+TEST(applyRegexToValue, RegexMatch_Success) {
+    char *str = strdup("Device.Hosts.Host.1.MACAddress=AA:BB:CC:DD:EE:FF");
+    char *orig = str;
+    const char *pattern = "[A-F0-9:]{17}";
+    // Should match "AA:BB:CC:DD:EE:FF"
+    T2ERROR ret = applyRegexToValue(&str, pattern);
+    EXPECT_EQ(ret, T2ERROR_SUCCESS);
+    EXPECT_STREQ(str, "AA:BB:CC:DD:EE:FF");
+    free(str);
+}
+#endif
+
+// ------------- applyRegexToValue (where regcomp fails) -------------
+#ifdef GTEST_ENABLE
+TEST(applyRegexToValue, RegcompFails_ReturnsFailure) {
+    // Use a deliberately invalid regex pattern (unclosed bracket)
+    char *sample = strdup("anything");
+    const char *badpattern = "[a-z";
+    T2ERROR res = applyRegexToValue(&sample, badpattern);
+    // Should not crash, should return T2ERROR_FAILURE
+    EXPECT_EQ(res, T2ERROR_FAILURE);
+    free(sample);
+}
+#endif
+
+// ------------- tagReportAsCached (searchResult not array, Report not array) -----------
+TEST_F(reportgenTestFixture, tagReportAsCached_ReportAndSearchResultNeitherArray) {
+    char* fakeJson = strdup("{\"foo\":\"bar\"}");
+    cJSON* mockRoot = (cJSON*)0x1100;
+    cJSON* mockReportTypeObj = (cJSON*)0x2200;
+
+    EXPECT_CALL(*m_reportgenMock, cJSON_Parse(_))
+        .WillOnce(::testing::Return(mockRoot));
+    EXPECT_CALL(*m_reportgenMock, cJSON_CreateObject())
+        .WillOnce(::testing::Return(mockReportTypeObj));
+    EXPECT_CALL(*m_reportgenMock, cJSON_AddStringToObject(
+        mockReportTypeObj,
+        ::testing::StrEq("REPORT_TYPE"),
+        ::testing::StrEq("CACHED"))).WillOnce(::testing::Return(mockReportTypeObj));
+    // Both arrays not present
+    EXPECT_CALL(*m_reportgenMock, cJSON_GetObjectItemCaseSensitive(mockRoot, ::testing::StrEq("searchResult")))
+        .WillOnce(::testing::Return(nullptr));
+    EXPECT_CALL(*m_reportgenMock, cJSON_GetObjectItemCaseSensitive(mockRoot, ::testing::StrEq("Report")))
+        .WillOnce(::testing::Return(nullptr));
+    // Both objects freed on error
+    destroyJSONReport(mockReportTypeObj);
+    destroyJSONReport(mockRoot);
+    tagReportAsCached(&fakeJson);
+    // Input string unchanged
+    EXPECT_STREQ("{\"foo\":\"bar\"}", fakeJson);
+    free(fakeJson);
+}
+
+// ------------- convertVectorToJson: output argument NULL -----------
+TEST(ConvertVectorToJson, OutputIsNull) {
+    Vector* vec = nullptr;
+    ASSERT_EQ(Vector_Create(&vec), T2ERROR_SUCCESS);
+    Vector_PushBack(vec, strdup("ONE"));
+    Vector_PushBack(vec, strdup("TWO"));
+    // All cJSON functions will be called on output (simulate output == NULL path)
+    cJSON *resultArray = nullptr;
+    // This will create a new array and populate it, but that object is lost after call (not accessible)
+    convertVectorToJson(nullptr, vec);
+    // The test here is just that it does not crash/leak
+    Vector_Destroy(vec, free);
+}
+
+// ------------- freeParamValueSt: null/empty branches -------------
+TEST(freeParamValueSt, NullPointerAndZeroSize) {
+    // NULL pointer
+    freeParamValueSt(NULL, 0);
+    freeParamValueSt(NULL, 1);
+    // Non-NULL pointer, zero size
+    tr181ValStruct_t** arr = (tr181ValStruct_t**)malloc(2 * sizeof(tr181ValStruct_t*));
+    arr[0] = nullptr;
+    arr[1] = nullptr;
+    freeParamValueSt(arr, 0); // No deallocation
+    // Memory must still be freed manually here
+    free(arr);
+}
+
+// ------------- freeProfileValues: null pointer ----------
+TEST(freeProfileValues, NullPointer) {
+    freeProfileValues(NULL);
+}
+
+// ------------- encodeStaticParamsInJSON: skip if name or value is NULL -------------
+TEST_F(reportgenTestFixture, encodeStaticParamsInJSON_SkipIfNameOrValueNull) {
+    Vector* staticParamList = NULL;
+    Vector_Create(&staticParamList);
+
+    // param1: NULL name
+    StaticParam* sparam1 = (StaticParam*)calloc(1, sizeof(StaticParam));
+    sparam1->paramType = strdup("datamodel");
+    sparam1->name = NULL;
+    sparam1->value = strdup("val");
+    Vector_PushBack(staticParamList, sparam1);
+
+    // param2: NULL value
+    StaticParam* sparam2 = (StaticParam*)calloc(1, sizeof(StaticParam));
+    sparam2->paramType = strdup("datamodel");
+    sparam2->name = strdup("n");
+    sparam2->value = NULL;
+    Vector_PushBack(staticParamList, sparam2);
+
+    cJSON* valArray = (cJSON*)malloc(sizeof(cJSON));
+    // Should not attempt to call cJSON_CreateObject for either, simply success
+    EXPECT_EQ(T2ERROR_SUCCESS, encodeStaticParamsInJSON(valArray, staticParamList));
+
+    cJSON_Delete(valArray);
+    if(valArray) free(valArray);
+    Vector_Destroy(staticParamList, freeStaticParam);
+}
+
+// ----------- encodeParamResultInJSON: param == NULL or paramValues == NULL -----------
+TEST_F(reportgenTestFixture, encodeParamResultInJSON_SkipNullParamOrValues) {
+    Vector *paramNameList = NULL, *paramValueList = NULL;
+
+    Vector_Create(&paramNameList);
+    Vector_Create(&paramValueList);
+
+    // PUSH: param == NULL, paramValues == NULL
+    Vector_PushBack(paramNameList, NULL);
+    Vector_PushBack(paramValueList, NULL);
+
+    cJSON *valArray = (cJSON*)malloc(sizeof(cJSON));
+    // Should skip, just succeed
+    EXPECT_EQ(T2ERROR_SUCCESS, encodeParamResultInJSON(valArray, paramNameList, paramValueList));
+
+    Vector_Destroy(paramNameList, nullptr);
+    Vector_Destroy(paramValueList, nullptr);
+    if(valArray) free(valArray);
+}
+
+// ----------- encodeEventMarkersInJSON: marker == NULL (skipped) ----------
+TEST_F(reportgenTestFixture, encodeEventMarkersInJSON_MarkerNullSkipped) {
+    Vector *eventList = NULL;
+    Vector_Create(&eventList);
+    Vector_PushBack(eventList, NULL); // NULL marker
+    cJSON *valArray = (cJSON*)malloc(sizeof(cJSON));
+    EXPECT_EQ(T2ERROR_SUCCESS, encodeEventMarkersInJSON(valArray, eventList));
+    Vector_Destroy(eventList, nullptr);
+    free(valArray);
+}
+
+//
+// More branches and paths can be added for specific "regaccumulateValues" branches,
+// invalid patterns in regex, cJSON/Vector error returns, and for destructive or memory-leak checks.
+//
+

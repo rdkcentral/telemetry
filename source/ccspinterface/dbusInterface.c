@@ -620,7 +620,7 @@ T2ERROR unregisterDbusT2EventListener(void) {
     return T2ERROR_SUCCESS;
 }
 
-T2ERROR registerGetMarkerListCallback(T2EventMarkerListCallback callback) {
+T2ERROR registerDbusHandlerGetMarkerListCallback(T2EventMarkerListCallback callback) {
     T2Debug("%s ++in\n", __FUNCTION__);
     
     if (!callback) {

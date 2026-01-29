@@ -331,7 +331,17 @@ void createComponentDataElements()
         if(compName)
         {
             T2Info("Register data element for component %s \n", compName);
-            regDEforCompEventList(compName, getComponentMarkerList);
+            //TODO componet specific dbus inteface registration like rbus data element registration
+            if(T2ERROR_SUCCESS == registerGetMarkerListCallback(getComponentMarkerList))
+            {
+                T2Info("Registered get marker list callback for component %s \n", compName);
+                i = length; // exit for loop because dbus uses common callback for all components
+            }
+            else
+            {
+                T2Error("Failed to register get marker list callback for component %s \n", compName);
+            }
+            //regDEforCompEventList(compName, getComponentMarkerList);
         }
     }
     pthread_mutex_unlock(&t2CompListMutex);

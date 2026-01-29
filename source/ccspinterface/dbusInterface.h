@@ -86,6 +86,6 @@ T2ERROR registerDbusT2EventListener(TelemetryEventCallback eventCB);
 T2ERROR unregisterDbusT2EventListener(void);
 
 T2ERROR publishdbusEventsProfileUpdates(void);
-T2ERROR registerGetMarkerListCallback(T2EventMarkerListCallback callback);
+T2ERROR registerDbusHandlerGetMarkerListCallback(T2EventMarkerListCallback callback);
 
 #endif /* _DBUSINTERFACE_H_ */

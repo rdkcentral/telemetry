@@ -127,7 +127,18 @@ T2ERROR publishDBUSEventsProfileUpdates()
     T2Debug("%s ++in\n", __FUNCTION__);
     T2ERROR ret = T2ERROR_FAILURE ;
     T2Info("Publishing dbus event for t2profile update notification to components \n");
-    // ret = publishdbusEventsProfileUpdates();
+    ret = publishdbusEventsProfileUpdates();
+
+    T2Debug("%s --out\n", __FUNCTION__);
+    return ret;
+}
+
+T2ERROR registerGetMarkerListCallback(T2EventMarkerListCallback callback)
+{
+    T2Debug("%s ++in\n", __FUNCTION__);
+    T2ERROR ret = T2ERROR_FAILURE ;
+
+    ret = registerDbusHandlerGetMarkerListCallback(callback);
 
     T2Debug("%s --out\n", __FUNCTION__);
     return ret;

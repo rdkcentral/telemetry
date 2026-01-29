@@ -714,7 +714,7 @@ static bool initRFC( )
         if(initMessageBus() != 0)
         {
             EVENT_ERROR("initMessageBus failed\n");
-            status = false ;
+            status = false;
         }
         else
         {
@@ -810,7 +810,7 @@ int filtered_event_send(const char* data, const char *markerName)
         // Filter data from marker list
         if(componentName && (0 != strcmp(componentName, T2_SCRIPT_EVENT_COMPONENT)))   // Events from scripts needs to be sent without filtering
         {
-            EVENT_DEBUG("%s markerListMutex lock & get list of marker for component %s \n", __FUNCTION__, componentName);
+            EVENT_DEBUG("markerListMutex lock & component %s , marker %s\n", componentName, markerName);
             pthread_mutex_lock(&markerListMutex);
             bool isEventingEnabled = false;
             if(markerName && eventMarkerMap)
@@ -822,13 +822,13 @@ int filtered_event_send(const char* data, const char *markerName)
             }
             else
             {
-                EVENT_DEBUG("%s eventMarkerMap for component %s is empty \n", __FUNCTION__, componentName );
+                EVENT_DEBUG("eventMarkerMap for component %s is empty \n", componentName );
             }
             EVENT_DEBUG("%s markerListMutex unlock\n", __FUNCTION__ );
             pthread_mutex_unlock(&markerListMutex);
             if(!isEventingEnabled)
             {
-                EVENT_DEBUG("%s markerName %s not found in event list for component %s . Unlock markerListMutex . \n", __FUNCTION__, markerName, componentName);
+                EVENT_DEBUG("markerName %s not found in event list for component %s . Unlock markerListMutex . \n", markerName, componentName);
                 return status;
             }
         }
@@ -1069,7 +1069,7 @@ static T2ERROR doPopulateEventMarkerList( )
             if(markerListStr && strlen(markerListStr) > 0)
             {
                 eventMarkerMap = hash_map_create();
-                EVENT_DEBUG("\t D-Bus mode: Update event map for component %s with below events :", componentName);
+                EVENT_DEBUG("Update event map for component %s with below events :\n", componentName);
 
                 char* markerListCopy = strdup(markerListStr);
                 char* token = strtok(markerListCopy, ",");

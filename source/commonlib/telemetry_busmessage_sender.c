@@ -435,77 +435,26 @@ static T2ERROR initMessageBus( )
             dbus_error_free(&error);
             status = T2ERROR_FAILURE;
         }
-        else if (bus_handle)
+            
+        /*  Initialize SIGNAL connection separately */
+        signal_bus_handle = (void*)dbus_bus_get(DBUS_BUS_SYSTEM, &error);
+        
+        if (dbus_error_is_set(&error))
         {
-            int ret = dbus_bus_request_name((DBusConnection*)bus_handle, dbusName,
-                                           DBUS_NAME_FLAG_REPLACE_EXISTING, &error);
-            if (dbus_error_is_set(&error))
-            {
-                EVENT_ERROR("%s:%d, D-Bus method call name request failed: %s\n", __func__, __LINE__, error.message);
-                dbus_error_free(&error);
-                dbus_connection_unref((DBusConnection*)bus_handle);
-                bus_handle = NULL;
-                status = T2ERROR_FAILURE;
-            }
-            else if (ret != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER && ret != DBUS_REQUEST_NAME_REPLY_ALREADY_OWNER)
-            {
-                EVENT_ERROR("%s:%d, D-Bus method call name request returned: %d\n", __func__, __LINE__, ret);
-                dbus_connection_unref((DBusConnection*)bus_handle);
-                bus_handle = NULL;
-                status = T2ERROR_FAILURE;
-            }
-            else
-            {
-                EVENT_DEBUG("%s:%d, D-Bus method call connection initialized as: %s\n", __func__, __LINE__, dbusName);
-                
-                /* Initialize SIGNAL connection separately */
-                signal_bus_handle = (void*)dbus_bus_get(DBUS_BUS_SYSTEM, &error);
-                
-                if (dbus_error_is_set(&error))
-                {
-                    EVENT_ERROR("%s:%d, D-Bus signal connection init failed: %s\n", __func__, __LINE__, error.message);
-                    dbus_error_free(&error);
-                    /* Continue without signal support */
-                    signal_bus_handle = NULL;
-                }
-                else if (signal_bus_handle)
-                {
-                    ret = dbus_bus_request_name((DBusConnection*)signal_bus_handle, signalDbusName,
-                                                   DBUS_NAME_FLAG_REPLACE_EXISTING, &error);
-                    if (dbus_error_is_set(&error))
-                    {
-                        EVENT_ERROR("%s:%d, D-Bus signal name request failed: %s\n", __func__, __LINE__, error.message);
-                        dbus_error_free(&error);
-                        dbus_connection_unref((DBusConnection*)signal_bus_handle);
-                        signal_bus_handle = NULL;
-                    }
-                    else if (ret != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER && ret != DBUS_REQUEST_NAME_REPLY_ALREADY_OWNER)
-                    {
-                        EVENT_ERROR("%s:%d, D-Bus signal name request returned: %d\n", __func__, __LINE__, ret);
-                        dbus_connection_unref((DBusConnection*)signal_bus_handle);
-                        signal_bus_handle = NULL;
-                    }
-                    else
-                    {
-                        EVENT_DEBUG("%s:%d, D-Bus signal connection initialized as: %s\n", __func__, __LINE__, signalDbusName);
-                    }
-                }
-                
-                if (signal_bus_handle && bus_handle)
-                {
-                    status = T2ERROR_SUCCESS;
-                    EVENT_DEBUG("%s:%d, D-Bus initialized successfully with separate connections\n", __func__, __LINE__);
-                }
-                else if (bus_handle)
-                {
-                    /* Allow operation with method calls only if signal connection failed */
-                    status = T2ERROR_SUCCESS;
-                    EVENT_ERROR("%s:%d, D-Bus initialized with method calls only (signal connection failed)\n", __func__, __LINE__);
-                }
-            }
+            EVENT_ERROR("%s:%d, D-Bus signal connection init failed: %s\n", __func__, __LINE__, error.message);
+            dbus_error_free(&error);
+            /* Continue without signal support */
+            signal_bus_handle = NULL;
+        }
+
+        if (signal_bus_handle && bus_handle)
+        {
+            status = T2ERROR_SUCCESS;
+            EVENT_DEBUG("%s:%d, D-Bus initialized successfully with separate connections\n", __func__, __LINE__);
         }
         else
         {
+            EVENT_ERROR("%s:%d, D-Bus initialization failed\n", __func__, __LINE__);
             status = T2ERROR_FAILURE;
         }
     }

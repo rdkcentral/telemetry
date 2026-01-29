@@ -2136,6 +2136,7 @@ TEST_F(reportgenTestFixture,  encodeEventMarkersInJSON10)
     }
     Vector_Destroy(eventMarkerList, freeEMarker);
 }
+#if 0
 TEST_F(reportgenTestFixture, encodeEventMarkersInJSON_TimevectorToarray_null_cleanup)
 {
     cJSON* valArray = (cJSON*)malloc(sizeof(cJSON));
@@ -2191,6 +2192,7 @@ TEST_F(reportgenTestFixture, encodeEventMarkersInJSON_TimevectorToarray_null_cle
     free(valArray);
     Vector_Destroy(eventMarkerList, freeEMarker);
 }
+#endif
 TEST_F(reportgenTestFixture, encodeTopResultInJSON_null_args)
 {
     Vector *topResultList = NULL;

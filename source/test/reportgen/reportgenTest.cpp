@@ -1507,7 +1507,7 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON_array_regex_regcomp_fails)
     Vector_Destroy(paramValueList, freeProfileValues);
 }
 
-TEST_F(reportgenTestFixture, encodeParamResultInJSON_array_regex_regexec_fails)
+TEST_F(reportgenTestFixture, encodeParamResultInJSON_array_regex_regcomp_fails)
 {
     Vector *paramNameList = NULL, *paramValueList = NULL;
     Vector_Create(&paramNameList); Vector_Create(&paramValueList);
@@ -1516,7 +1516,7 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON_array_regex_regexec_fails)
     param->reportEmptyParam = true;
     param->name = strdup("Multi");
     param->paramType = strdup("event");
-    param->regexParam = strdup("[0-9]+");
+    param->regexParam = strdup("[");
     param->trimParam = false;
     Vector_PushBack(paramNameList, param);
 
@@ -1524,32 +1524,36 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON_array_regex_regexec_fails)
     profVals->paramValues = (tr181ValStruct_t**) malloc(2*sizeof(tr181ValStruct_t*));
     profVals->paramValues[0] = (tr181ValStruct_t*) malloc(sizeof(tr181ValStruct_t));
     profVals->paramValues[0]->parameterName = strdup("Multi");
-    profVals->paramValues[0]->parameterValue = strdup("alpha");
+    profVals->paramValues[0]->parameterValue = strdup("VAL1");
     profVals->paramValues[1] = (tr181ValStruct_t*) malloc(sizeof(tr181ValStruct_t));
     profVals->paramValues[1]->parameterName = strdup("Multi");
-    profVals->paramValues[1]->parameterValue = strdup("beta");
+    profVals->paramValues[1]->parameterValue = strdup("VAL2");
     profVals->paramValueCount = 2;
     Vector_PushBack(paramValueList, profVals);
 
-    cJSON* mockObj = (cJSON*)0xabc1;
-    cJSON* mockArr = (cJSON*)0xabc2;
-    cJSON* mockItem = (cJSON*)0xabc3;
-    EXPECT_CALL(*m_reportgenMock, cJSON_CreateObject()).Times(1).WillOnce(Return(mockObj));
+    cJSON* mockObj = (cJSON*)0xabc1; // outer { }
+    cJSON* mockArr = (cJSON*)0xabc2; // array [ ]
+    cJSON* mockItem1 = (cJSON*)0xabc3; // { val #1 }
+    cJSON* mockItem2 = (cJSON*)0xabc4; // { val #2 }
+
+    EXPECT_CALL(*m_reportgenMock, cJSON_CreateObject()).Times(3)
+        .WillOnce(Return(mockObj))      // outer object
+        .WillOnce(Return(mockItem1))    // first val item
+        .WillOnce(Return(mockItem2));   // second val item
     EXPECT_CALL(*m_reportgenMock, cJSON_CreateArray()).Times(1).WillOnce(Return(mockArr));
-    EXPECT_CALL(*m_reportgenMock, cJSON_CreateObject()).Times(2).WillRepeatedly(Return(mockItem));
-    EXPECT_CALL(*m_reportgenMock, regcomp(_, StrEq("[0-9]+"), _)).Times(2).WillRepeatedly(Return(0));
-    EXPECT_CALL(*m_reportgenMock, regexec(_, _, _, _, _)).Times(2).WillRepeatedly(Return(REG_NOMATCH));
-    EXPECT_CALL(*m_reportgenMock, regfree(_)).Times(2);
-    EXPECT_CALL(*m_reportgenMock, cJSON_AddStringToObject(mockItem, _, _)).Times(2).WillRepeatedly(Return(mockItem));
-    EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToArray(mockArr, mockItem)).Times(2).WillRepeatedly(Return(true));
+    EXPECT_CALL(*m_reportgenMock, regcomp(_, StrEq("["), _)).Times(2).WillRepeatedly(Return(1)); // both fail
+    EXPECT_CALL(*m_reportgenMock, cJSON_AddStringToObject(_, _, _)).Times(2).WillRepeatedly(Return(mockItem1));
+    EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToArray(mockArr, _)).Times(2).WillRepeatedly(Return(true));
     EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToObject(mockObj, StrEq("Multi"), mockArr)).WillOnce(Return(true));
     EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToArray(valArray, mockObj)).WillOnce(Return(true));
 
+    // Should succeed because regcomp fail just skips regex logic
     EXPECT_EQ(T2ERROR_SUCCESS, encodeParamResultInJSON(valArray, paramNameList, paramValueList));
     cJSON_Delete(valArray); free(valArray);
     Vector_Destroy(paramNameList, freeParam);
     Vector_Destroy(paramValueList, freeProfileValues);
 }
+
 TEST_F(reportgenTestFixture, encodeParamResultInJSON_array_regex_regexec_match)
 {
     Vector *paramNameList = NULL, *paramValueList = NULL;

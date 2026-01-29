@@ -1368,6 +1368,99 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON8)
     Vector_Destroy(paramValueList, freeProfileValues);
 }
 
+TEST_F(reportgenTestFixture, encodeParamResultInJSON_regex_no_match)
+{
+    Vector *paramNameList = NULL;
+    Vector *paramValueList = NULL;
+    Vector_Create(&paramNameList);
+    Vector_Create(&paramValueList);
+
+    cJSON* valArray = (cJSON*)malloc(sizeof(cJSON));
+    Param* param = (Param *) malloc(sizeof(Param));
+    param->reportEmptyParam = true;
+    param->paramType = strdup("event");
+    param->name = strdup("Event1");
+    param->alias = strdup("EventMarker1");
+    param->trimParam = false;
+    param->regexParam = strdup("[a-z]+");
+    Vector_PushBack(paramNameList, param);
+
+    profileValues *profVals = (profileValues *) malloc(sizeof(profileValues));
+    profVals->paramValues = (tr181ValStruct_t**) malloc(sizeof(tr181ValStruct_t*));
+    profVals->paramValues[0] = (tr181ValStruct_t*) malloc(sizeof(tr181ValStruct_t));
+    profVals->paramValues[0]->parameterName = strdup("Event1");
+    profVals->paramValues[0]->parameterValue = strdup("VALUE123"); // UPPER, so won't match [a-z]+
+    profVals->paramValueCount = 1;
+    Vector_PushBack(paramValueList, profVals);
+
+    cJSON* mockObj = (cJSON*)0xabcd;
+    EXPECT_CALL(*m_reportgenMock, cJSON_CreateObject())
+            .Times(1).WillOnce(Return(mockObj));
+    // regcomp succeeds for the regex
+    EXPECT_CALL(*m_reportgenMock, regcomp(_, StrEq("[a-z]+"), _)).WillOnce(Return(0));
+    // regexec returns no match
+    EXPECT_CALL(*m_reportgenMock, regexec(_, StrEq("VALUE123"), _, _, _)).WillOnce(Return(REG_NOMATCH));
+    EXPECT_CALL(*m_reportgenMock, regfree(_)).Times(1);
+    // Accept string-add and array-add to let the operation pass
+    EXPECT_CALL(*m_reportgenMock, cJSON_AddStringToObject(mockObj, _, _)).WillOnce(Return(mockObj));
+    EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToArray(valArray, mockObj)).WillOnce(Return(true));
+
+    // It should succeed, because the function continues after branch
+    EXPECT_EQ(T2ERROR_SUCCESS, encodeParamResultInJSON(valArray, paramNameList, paramValueList));
+    cJSON_Delete(valArray);
+    free(valArray);
+    Vector_Destroy(paramNameList, freeParam);
+    Vector_Destroy(paramValueList, freeProfileValues);
+}
+
+TEST_F(reportgenTestFixture, encodeParamResultInJSON_regex_match)
+{
+    Vector *paramNameList = NULL;
+    Vector *paramValueList = NULL;
+    Vector_Create(&paramNameList);
+    Vector_Create(&paramValueList);
+
+    cJSON* valArray = (cJSON*)malloc(sizeof(cJSON));
+    Param* param = (Param *) malloc(sizeof(Param));
+    param->reportEmptyParam = true;
+    param->paramType = strdup("event");
+    param->name = strdup("Event2");
+    param->alias = strdup("EventMarker2");
+    param->trimParam = false;
+    param->regexParam = strdup("[A-Z]+");
+    Vector_PushBack(paramNameList, param);
+
+    profileValues *profVals = (profileValues *) malloc(sizeof(profileValues));
+    profVals->paramValues = (tr181ValStruct_t**) malloc(sizeof(tr181ValStruct_t*));
+    profVals->paramValues[0] = (tr181ValStruct_t*) malloc(sizeof(tr181ValStruct_t));
+    profVals->paramValues[0]->parameterName = strdup("Event2");
+    profVals->paramValues[0]->parameterValue = strdup("FOOabc"); // The match will be "FOO"
+    profVals->paramValueCount = 1;
+    Vector_PushBack(paramValueList, profVals);
+
+    cJSON* mockObj = (cJSON*)0xabce;
+    EXPECT_CALL(*m_reportgenMock, cJSON_CreateObject())
+            .Times(1).WillOnce(Return(mockObj));
+    // regcomp succeeds
+    EXPECT_CALL(*m_reportgenMock, regcomp(_, StrEq("[A-Z]+"), _)).WillOnce(Return(0));
+    // regexec: match "FOO" at offset 0-3
+    EXPECT_CALL(*m_reportgenMock, regexec(_, StrEq("FOOabc"), _, _, _))
+            .WillOnce([](const regex_t*, const char*, size_t, regmatch_t* pmatch, int){
+                pmatch[0].rm_so = 0; pmatch[0].rm_eo = 3;
+                return 0; // match!
+            });
+    EXPECT_CALL(*m_reportgenMock, regfree(_)).Times(1);
+    // Accept string-add and array-add to let the operation pass
+    EXPECT_CALL(*m_reportgenMock, cJSON_AddStringToObject(mockObj, _, _)).WillOnce(Return(mockObj));
+    EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToArray(valArray, mockObj)).WillOnce(Return(true));
+
+    EXPECT_EQ(T2ERROR_SUCCESS, encodeParamResultInJSON(valArray, paramNameList, paramValueList));
+    cJSON_Delete(valArray);
+    free(valArray);
+    Vector_Destroy(paramNameList, freeParam);
+    Vector_Destroy(paramValueList, freeProfileValues);
+}
+
 /*
 TEST_F(reportgenTestFixture, encodeParamResultInJSON10)
 {

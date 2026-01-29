@@ -35,22 +35,6 @@
 #endif
 
 unsigned int rdkLogLevel = RDK_LOG_INFO;
-static pthread_mutex_t loggerMutex = PTHREAD_MUTEX_INITIALIZER;
-
-/* Convert log level to string */
-static const char* getLogLevelString(unsigned int level)
-{
-    switch(level)
-    {
-        case RDK_LOG_FATAL:  return "FATAL";
-        case RDK_LOG_ERROR:  return "ERROR";
-        case RDK_LOG_WARN:   return "WARN";
-        case RDK_LOG_NOTICE: return "NOTICE";
-        case RDK_LOG_INFO:   return "INFO";
-        case RDK_LOG_DEBUG:  return "DEBUG";
-        default:             return "UNKNOWN";
-    }
-}
 
 void  LOGInit()
 {
@@ -62,7 +46,7 @@ void  LOGInit()
 
 }
 
-#if 0
+#if 1
 void T2Log(unsigned int level, const char *msg, ...)
 {
     va_list arg;
@@ -114,6 +98,24 @@ void T2Log(unsigned int level, const char *msg, ...)
     }
 }
 #endif
+#if 0
+
+static pthread_mutex_t loggerMutex = PTHREAD_MUTEX_INITIALIZER;
+
+/* Convert log level to string */
+static const char* getLogLevelString(unsigned int level)
+{
+    switch(level)
+    {
+        case RDK_LOG_FATAL:  return "FATAL";
+        case RDK_LOG_ERROR:  return "ERROR";
+        case RDK_LOG_WARN:   return "WARN";
+        case RDK_LOG_NOTICE: return "NOTICE";
+        case RDK_LOG_INFO:   return "INFO";
+        case RDK_LOG_DEBUG:  return "DEBUG";
+        default:             return "UNKNOWN";
+    }
+}
 
 void T2Log(unsigned int level, const char *msg, ...)
 {
@@ -194,3 +196,4 @@ void T2Log(unsigned int level, const char *msg, ...)
 
     free(pTempChar);
 }
+#endif

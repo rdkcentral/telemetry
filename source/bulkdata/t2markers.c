@@ -330,6 +330,7 @@ void createComponentDataElements()
         char *compName = (char*) Vector_At(componentList, i);
         if(compName)
         {
+            T2Info("Register data element for component %s \n", compName);
             regDEforCompEventList(compName, getComponentMarkerList);
         }
     }

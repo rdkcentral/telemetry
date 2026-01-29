@@ -400,6 +400,12 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
         return ret;
     }
 
+    // Clear any POST-specific settings so that the handle can be used for GET operations
+    curl_easy_setopt(easy, CURLOPT_CUSTOMREQUEST, NULL);
+    curl_easy_setopt(easy, CURLOPT_POSTFIELDS, NULL);
+    curl_easy_setopt(easy, CURLOPT_POSTFIELDSIZE, 0L);  // Clear POST size
+    curl_easy_setopt(easy, CURLOPT_HTTPHEADER, NULL);  // Clear POST headers
+
     T2Info("http_pool_get using handle %d\n", idx);
 
     // Allocate response buffer locally for GET requests only
@@ -677,6 +683,11 @@ T2ERROR http_pool_post(const char *url, const char *payload)
     }
 
     T2Info("http_pool_post using handle %d\n", idx);
+
+    // Clear any GET-specific settings from previous use
+    curl_easy_setopt(easy, CURLOPT_HTTPGET, 0L);       // Disable GET mode
+    curl_easy_setopt(easy, CURLOPT_WRITEFUNCTION, NULL); // Clear GET callback (will set POST one later)
+    curl_easy_setopt(easy, CURLOPT_WRITEDATA, NULL);     // Clear GET write data
 
     // Configure basic options for POST request
     CURLcode code = CURLE_OK;

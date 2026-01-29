@@ -109,7 +109,7 @@ static DBusHandlerResult handle_get_operational_status(DBusConnection *connectio
     }
 
     dbus_message_unref(reply);
-    dbus_connection_flush(connection);
+    //dbus_connection_flush(connection);
 
     return DBUS_HANDLER_RESULT_HANDLED;
 }
@@ -153,7 +153,7 @@ static DBusHandlerResult handle_send_t2_event(DBusConnection *connection, DBusMe
 
     T2Debug("SendT2Event: Reply sent successfully\n");
     dbus_message_unref(reply);
-    dbus_connection_flush(connection);
+    //dbus_connection_flush(connection);
 
     return DBUS_HANDLER_RESULT_HANDLED;
 }
@@ -182,7 +182,7 @@ static DBusHandlerResult handle_get_marker_list(DBusConnection *connection, DBus
                                         "Marker list callback not initialized");
         if (reply) {
             dbus_connection_send(connection, reply, NULL);
-            dbus_connection_flush(connection);
+            //dbus_connection_flush(connection);
             dbus_message_unref(reply);
         }
     }
@@ -225,7 +225,7 @@ static DBusHandlerResult handle_get_marker_list(DBusConnection *connection, DBus
             return DBUS_HANDLER_RESULT_NEED_MEMORY;
         }
 
-        dbus_connection_flush(connection);
+        //dbus_connection_flush(connection);
         T2Debug("GetMarkerList: Reply sent successfully\n");
         dbus_message_unref(reply);
     }

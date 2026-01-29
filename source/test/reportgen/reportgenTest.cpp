@@ -583,7 +583,7 @@ TEST_F(reportgenTestFixture, encodeGrepResultInJSON1)
       gparam->markerName = strdup("TEST_MARKER1");
       gparam->u.markerValue = strdup("TEST_STRING1");
       gparam->mType = MTYPE_ABSOLUTE;
-      gparam->trimParam = false;
+      gparam->trimParam = true;
       gparam->regexParam = NULL;
       Vector_PushBack(grepResult, gparam);
       cJSON *valArray = NULL;

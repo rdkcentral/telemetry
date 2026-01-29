@@ -702,15 +702,11 @@ TEST_F(reportgenTestFixture, encodeGrepResultInJSON_trimParam_trims_markerValue)
 
     EXPECT_EQ(T2ERROR_SUCCESS, encodeGrepResultInJSON(valArray, grepResult));
 
-    // Cleanup
-    free(gparam->markerName);
-    free(gparam->u.markerValue);
-    free(gparam);
-    Vector_Destroy(grepResult, nullptr);
+    // Safer: only use your central cleanup (which is how all your other tests do it)
+    Vector_Destroy(grepResult, freeGResult);
     cJSON_Delete(valArray);
-    if(valArray != NULL) free(valArray);
+    if(valArray) free(valArray);
 }
-
 TEST_F(reportgenTestFixture, encodeGrepResultInJSON4)
 {
     // Case 1: both NULL

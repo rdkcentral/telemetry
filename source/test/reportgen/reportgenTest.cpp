@@ -1434,6 +1434,68 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON8)
     Vector_Destroy(paramValueList, freeProfileValues);
 }
 
+TEST_F(reportgenTestFixture, encodeParamResultInJSON_array_trim_and_regex)
+{
+    Vector *paramNameList = NULL, *paramValueList = NULL;
+    Vector_Create(&paramNameList);
+    Vector_Create(&paramValueList);
+    cJSON* valArray = (cJSON*)malloc(sizeof(cJSON));
+    Param* param = (Param *) malloc(sizeof(Param));
+    param->reportEmptyParam = true;
+    param->paramType = strdup("event");
+    param->name = strdup("EventTable");
+    param->alias = strdup("EventAlias");
+    param->trimParam = true;                    // trigger trim branch
+    param->regexParam = strdup("[0-9]+");       // trigger regex branch
+    Vector_PushBack(paramNameList, param);
+
+    profileValues *profVals = (profileValues *) malloc(sizeof(profileValues));
+    profVals->paramValues = (tr181ValStruct_t**) malloc(2 * sizeof(tr181ValStruct_t*));
+    profVals->paramValues[0] = (tr181ValStruct_t*) malloc(sizeof(tr181ValStruct_t));
+    profVals->paramValues[0]->parameterName = strdup("EventTable");
+    profVals->paramValues[0]->parameterValue = strdup("  123foo ");
+    profVals->paramValues[1] = (tr181ValStruct_t*) malloc(sizeof(tr181ValStruct_t));
+    profVals->paramValues[1]->parameterName = strdup("EventTable");
+    profVals->paramValues[1]->parameterValue = strdup("\t456bar\t");
+    profVals->paramValueCount = 2;
+    Vector_PushBack(paramValueList, profVals);
+
+    cJSON* mockObj = (cJSON*)0xb010;
+    cJSON* mockArr = (cJSON*)0xb011;
+    cJSON* mockItem1 = (cJSON*)0xb012;
+    cJSON* mockItem2 = (cJSON*)0xb013;
+    EXPECT_CALL(*m_reportgenMock, cJSON_CreateObject())
+        .Times(3)
+        .WillOnce(Return(mockObj))
+        .WillOnce(Return(mockItem1))
+        .WillOnce(Return(mockItem2));
+    EXPECT_CALL(*m_reportgenMock, cJSON_CreateArray())
+        .Times(1).WillOnce(Return(mockArr));
+    EXPECT_CALL(*m_reportgenMock, cJSON_AddStringToObject(mockItem1, _, _)).WillOnce(Return(mockItem1));
+    EXPECT_CALL(*m_reportgenMock, cJSON_AddStringToObject(mockItem2, _, _)).WillOnce(Return(mockItem2));
+    EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToArray(mockArr, mockItem1)).WillOnce(Return(true));
+    EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToArray(mockArr, mockItem2)).WillOnce(Return(true));
+    EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToObject(mockObj, StrEq("EventTable"), mockArr)).WillOnce(Return(true));
+    EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToArray(valArray, mockObj)).WillOnce(Return(true));
+    // Regex mocks for both values
+    EXPECT_CALL(*m_reportgenMock, regcomp(_, StrEq("[0-9]+"), _)).Times(2).WillRepeatedly(Return(0));
+    EXPECT_CALL(*m_reportgenMock, regexec(_, _, _, _, _)).Times(2)
+        .WillRepeatedly([](const regex_t*, const char* s, size_t, regmatch_t* pmatch, int){
+            // match the number at start after trimming
+            if (strstr(s, "123")) { pmatch[0].rm_so = 0; pmatch[0].rm_eo = 3; }
+            else if (strstr(s, "456")) { pmatch[0].rm_so = 0; pmatch[0].rm_eo = 3; }
+            else { pmatch[0].rm_so = 0; pmatch[0].rm_eo = 0; }
+            return 0;
+        });
+    EXPECT_CALL(*m_reportgenMock, regfree(_)).Times(2);
+
+    EXPECT_EQ(T2ERROR_SUCCESS, encodeParamResultInJSON(valArray,paramNameList,paramValueList));
+    cJSON_Delete(valArray);
+    free(valArray);
+    Vector_Destroy(paramNameList, freeParam);
+    Vector_Destroy(paramValueList, freeProfileValues);
+}
+
 TEST_F(reportgenTestFixture, encodeParamResultInJSON_regex_no_match)
 {
     Vector *paramNameList = NULL;

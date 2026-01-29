@@ -470,11 +470,6 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
                         pCertFile += (sizeof(FILESCHEME) - 1);
                     }
 #endif
-                    if (pCertPC == NULL)
-                        T2Error("%s : passcode is NULL\n",__func__);
-                    if (pCertURI == NULL)
-                        T2Error("%s : cert URI is NULL\n",__func__);
-                    T2Info("%s: pCertPC size = %d\n",__func__,sizeof(pCertPC));
                     if((mtls_enable == true) && (setMtlsHeaders(curl, pCertFile, pCertPC, &childCurlResponse) != T2ERROR_SUCCESS))
                     {
                         curl_easy_cleanup(curl); // CID 189985: Resource leak

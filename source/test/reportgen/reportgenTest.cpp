@@ -1461,51 +1461,6 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON_regex_match)
     Vector_Destroy(paramValueList, freeProfileValues);
 }
 
-TEST_F(reportgenTestFixture, encodeParamResultInJSON_array_regex_regcomp_fails)
-{
-    Vector *paramNameList = NULL, *paramValueList = NULL;
-    Vector_Create(&paramNameList); Vector_Create(&paramValueList);
-    cJSON* valArray = (cJSON*)malloc(sizeof(cJSON));
-    Param* param = (Param *) malloc(sizeof(Param));
-    param->reportEmptyParam = true;
-    param->name = strdup("Multi");
-    param->paramType = strdup("event");
-    param->regexParam = strdup("[");
-    param->trimParam = false;
-    Vector_PushBack(paramNameList, param);
-
-    profileValues *profVals = (profileValues *) malloc(sizeof(profileValues));
-    profVals->paramValues = (tr181ValStruct_t**) malloc(2*sizeof(tr181ValStruct_t*));
-    // two values, like a table
-    profVals->paramValues[0] = (tr181ValStruct_t*) malloc(sizeof(tr181ValStruct_t));
-    profVals->paramValues[0]->parameterName = strdup("Multi");
-    profVals->paramValues[0]->parameterValue = strdup("VAL1");
-    profVals->paramValues[1] = (tr181ValStruct_t*) malloc(sizeof(tr181ValStruct_t));
-    profVals->paramValues[1]->parameterName = strdup("Multi");
-    profVals->paramValues[1]->parameterValue = strdup("VAL2");
-    profVals->paramValueCount = 2;
-    Vector_PushBack(paramValueList, profVals);
-
-    cJSON* mockObj = (cJSON*)0xabc1;
-    cJSON* mockArr = (cJSON*)0xabc2;
-    cJSON* mockItem = (cJSON*)0xabc3;
-    EXPECT_CALL(*m_reportgenMock, cJSON_CreateObject()).Times(1).WillOnce(Return(mockObj));
-    EXPECT_CALL(*m_reportgenMock, cJSON_CreateArray()).Times(1).WillOnce(Return(mockArr));
-    EXPECT_CALL(*m_reportgenMock, cJSON_CreateObject()).Times(2).WillRepeatedly(Return(mockItem));
-    // regcomp fails
-    EXPECT_CALL(*m_reportgenMock, regcomp(_, StrEq("["), _)).Times(2).WillRepeatedly(Return(1));
-    // Should not call regexec/regfree
-    // Json population for both items
-    EXPECT_CALL(*m_reportgenMock, cJSON_AddStringToObject(mockItem, _, _)).Times(2).WillRepeatedly(Return(mockItem));
-    EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToArray(mockArr, mockItem)).Times(2).WillRepeatedly(Return(true));
-    EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToObject(mockObj, StrEq("Multi"), mockArr)).WillOnce(Return(true));
-    EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToArray(valArray, mockObj)).WillOnce(Return(true));
-
-    EXPECT_EQ(T2ERROR_SUCCESS, encodeParamResultInJSON(valArray, paramNameList, paramValueList));
-    cJSON_Delete(valArray); free(valArray);
-    Vector_Destroy(paramNameList, freeParam);
-    Vector_Destroy(paramValueList, freeProfileValues);
-}
 
 TEST_F(reportgenTestFixture, encodeParamResultInJSON_array_regex_regcomp_fails)
 {

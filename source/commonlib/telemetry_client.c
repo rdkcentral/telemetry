@@ -23,7 +23,7 @@
 #include <unistd.h>
 #include <telemetry_busmessage_sender.h>
 
-#define COMP_NAME "client_one"
+#define COMP_NAME "telemetry_client"
 
 int main(int argc, char *argv[])
 {

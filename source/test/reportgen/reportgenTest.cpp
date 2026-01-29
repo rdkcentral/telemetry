@@ -1161,7 +1161,7 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON3)
     param->paramType = strdup("event");
     param->name = strdup("Event1");
     param->alias = strdup("EventMarker1");
-    param->trimParam = true;
+    param->trimParam = false;
     param->regexParam = NULL;
     Vector_PushBack(paramNameList, param);
     Param* param1 = (Param *) malloc(sizeof(Param));
@@ -1169,7 +1169,7 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON3)
     param1->paramType = strdup("event");
     param1->name = strdup("Event2");
     param1->alias = strdup("EventMarker2");
-    param1->trimParam = true;
+    param1->trimParam = false;
     param1->regexParam = NULL;
     Vector_PushBack(paramNameList, param1);
     profileValues *profVals = (profileValues *) malloc(sizeof(profileValues));

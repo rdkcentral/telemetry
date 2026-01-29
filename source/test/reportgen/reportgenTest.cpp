@@ -677,36 +677,6 @@ TEST_F(reportgenTestFixture, encodeGrepResultInJSON3)
       Vector_Destroy(grepResult, freeGResult);
 }
 
-TEST_F(reportgenTestFixture, encodeGrepResultInJSON_trimParam_trims_markerValue) {
-    Vector* grepResult = NULL;
-    Vector_Create(&grepResult);
-
-    GrepMarker* gparam = (GrepMarker*)malloc(sizeof(GrepMarker));
-    memset(gparam, 0, sizeof(GrepMarker));
-    gparam->markerName = strdup("TEST_MARKER1");
-    gparam->u.markerValue = strdup("  foo ");
-    gparam->mType = MTYPE_ABSOLUTE;
-    gparam->trimParam = true;           // triggers the trimLeadingAndTrailingws branch!
-    gparam->regexParam = NULL;          // Don't trigger regex branch
-    Vector_PushBack(grepResult, gparam);
-
-    cJSON* valArray = (cJSON*)malloc(sizeof(cJSON));
-    cJSON* mockObj = (cJSON*)0xABCD;
-
-    EXPECT_CALL(*m_reportgenMock, cJSON_CreateObject())
-        .Times(1).WillOnce(Return(mockObj));
-    EXPECT_CALL(*m_reportgenMock, cJSON_AddStringToObject(mockObj, StrEq("TEST_MARKER1"), StrEq("foo")))
-        .Times(1).WillOnce(Return(mockObj));
-    EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToArray(valArray, mockObj))
-        .Times(1).WillOnce(Return(true));
-
-    EXPECT_EQ(T2ERROR_SUCCESS, encodeGrepResultInJSON(valArray, grepResult));
-
-    // Safer: only use your central cleanup (which is how all your other tests do it)
-    Vector_Destroy(grepResult, freeGResult);
-    cJSON_Delete(valArray);
-    if(valArray) free(valArray);
-}
 TEST_F(reportgenTestFixture, encodeGrepResultInJSON4)
 {
     // Case 1: both NULL

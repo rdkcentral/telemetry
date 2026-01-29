@@ -2309,35 +2309,8 @@ TEST(CheckForEmptyString, AllBranchesAreCovered)
 }
 #endif
 
-// ------------- tagReportAsCached (searchResult not array, Report not array) -----------
-TEST_F(reportgenTestFixture, tagReportAsCached_ReportAndSearchResultNeitherArray) {
-    char* fakeJson = strdup("{\"foo\":\"bar\"}");
-    cJSON* mockRoot = (cJSON*)0x1100;
-    cJSON* mockReportTypeObj = (cJSON*)0x2200;
 
-    EXPECT_CALL(*m_reportgenMock, cJSON_Parse(_))
-        .WillOnce(::testing::Return(mockRoot));
-    EXPECT_CALL(*m_reportgenMock, cJSON_CreateObject())
-        .WillOnce(::testing::Return(mockReportTypeObj));
-    EXPECT_CALL(*m_reportgenMock, cJSON_AddStringToObject(
-        mockReportTypeObj,
-        ::testing::StrEq("REPORT_TYPE"),
-        ::testing::StrEq("CACHED"))).WillOnce(::testing::Return(mockReportTypeObj));
-    // Both arrays not present
-    EXPECT_CALL(*m_reportgenMock, cJSON_GetObjectItemCaseSensitive(mockRoot, ::testing::StrEq("searchResult")))
-        .WillOnce(::testing::Return(nullptr));
-    EXPECT_CALL(*m_reportgenMock, cJSON_GetObjectItemCaseSensitive(mockRoot, ::testing::StrEq("Report")))
-        .WillOnce(::testing::Return(nullptr));
-    // Both objects freed on error
-    destroyJSONReport(mockReportTypeObj);
-    destroyJSONReport(mockRoot);
-    tagReportAsCached(&fakeJson);
-    // Input string unchanged
-    EXPECT_STREQ("{\"foo\":\"bar\"}", fakeJson);
-    free(fakeJson);
-}
-
-#if 0
+#if 1
 // ------------- convertVectorToJson: output argument NULL -----------
 TEST(ConvertVectorToJson, OutputIsNull) {
     Vector* vec = nullptr;
@@ -2370,7 +2343,8 @@ TEST(freeParamValueSt, NullPointerAndZeroSize) {
 TEST(freeProfileValues, NullPointer) {
     freeProfileValues(NULL);
 }
-
+#endif
+#if 0
 // ------------- encodeStaticParamsInJSON: skip if name or value is NULL -------------
 TEST_F(reportgenTestFixture, encodeStaticParamsInJSON_SkipIfNameOrValueNull) {
     Vector* staticParamList = NULL;

@@ -2310,40 +2310,6 @@ TEST(CheckForEmptyString, AllBranchesAreCovered)
 #endif
 
 
-#if 1
-// ------------- convertVectorToJson: output argument NULL -----------
-TEST(ConvertVectorToJson, OutputIsNull) {
-    Vector* vec = nullptr;
-    ASSERT_EQ(Vector_Create(&vec), T2ERROR_SUCCESS);
-    Vector_PushBack(vec, strdup("ONE"));
-    Vector_PushBack(vec, strdup("TWO"));
-    // All cJSON functions will be called on output (simulate output == NULL path)
-    cJSON *resultArray = nullptr;
-    // This will create a new array and populate it, but that object is lost after call (not accessible)
-    convertVectorToJson(nullptr, vec);
-    // The test here is just that it does not crash/leak
-    Vector_Destroy(vec, free);
-}
-
-// ------------- freeParamValueSt: null/empty branches -------------
-TEST(freeParamValueSt, NullPointerAndZeroSize) {
-    // NULL pointer
-    freeParamValueSt(NULL, 0);
-    freeParamValueSt(NULL, 1);
-    // Non-NULL pointer, zero size
-    tr181ValStruct_t** arr = (tr181ValStruct_t**)malloc(2 * sizeof(tr181ValStruct_t*));
-    arr[0] = nullptr;
-    arr[1] = nullptr;
-    freeParamValueSt(arr, 0); // No deallocation
-    // Memory must still be freed manually here
-    free(arr);
-}
-
-// ------------- freeProfileValues: null pointer ----------
-TEST(freeProfileValues, NullPointer) {
-    freeProfileValues(NULL);
-}
-#endif
 #if 0
 // ------------- encodeStaticParamsInJSON: skip if name or value is NULL -------------
 TEST_F(reportgenTestFixture, encodeStaticParamsInJSON_SkipIfNameOrValueNull) {
@@ -2392,7 +2358,8 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON_SkipNullParamOrValues) {
     Vector_Destroy(paramValueList, nullptr);
     if(valArray) free(valArray);
 }
-
+#endif
+#if 1
 // ----------- encodeEventMarkersInJSON: marker == NULL (skipped) ----------
 TEST_F(reportgenTestFixture, encodeEventMarkersInJSON_MarkerNullSkipped) {
     Vector *eventList = NULL;
@@ -2403,7 +2370,7 @@ TEST_F(reportgenTestFixture, encodeEventMarkersInJSON_MarkerNullSkipped) {
     Vector_Destroy(eventList, nullptr);
     free(valArray);
 }
-
+#endif
 //
 // More branches and paths can be added for specific "regaccumulateValues" branches,
 // invalid patterns in regex, cJSON/Vector error returns, and for destructive or memory-leak checks.

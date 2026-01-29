@@ -2296,7 +2296,7 @@ TEST_F(reportgenTestFixture, ApplyRegexToValue_viaCallback_RegexecMatch_Success)
         .WillOnce(Return(0));
     // Mock regexec: set pmatch to match "123" (positions 3 to 6)
     EXPECT_CALL(*m_reportgenMock, regexec(_, StrEq("abc123def"), _, _, _))
-        .WillOnce([](auto, auto, auto, regmatch_t* pmatch, auto){
+        .WillOnce([](const regex_t*, const char*, size_t, regmatch_t* pmatch, int){
             pmatch[0].rm_so = 3;
             pmatch[0].rm_eo = 6;
             return 0; // success
@@ -2313,7 +2313,6 @@ TEST_F(reportgenTestFixture, ApplyRegexToValue_viaCallback_RegexecMatch_Success)
     EXPECT_STREQ(*inputValue, "123");
     free(*inputValue);
 }
-
 TEST(CheckForEmptyString, AllBranchesAreCovered)
 {
     checkForEmptyStringFunc cb = checkForEmptyStringCallback();
@@ -2344,57 +2343,3 @@ TEST(CheckForEmptyString, AllBranchesAreCovered)
 #endif
 
 
-#if 0
-// ------------- encodeStaticParamsInJSON: skip if name or value is NULL -------------
-TEST_F(reportgenTestFixture, encodeStaticParamsInJSON_SkipIfNameOrValueNull) {
-    Vector* staticParamList = NULL;
-    Vector_Create(&staticParamList);
-
-    // param1: NULL name
-    StaticParam* sparam1 = (StaticParam*)calloc(1, sizeof(StaticParam));
-    sparam1->paramType = strdup("datamodel");
-    sparam1->name = NULL;
-    sparam1->value = strdup("val");
-    Vector_PushBack(staticParamList, sparam1);
-
-    // param2: NULL value
-    StaticParam* sparam2 = (StaticParam*)calloc(1, sizeof(StaticParam));
-    sparam2->paramType = strdup("datamodel");
-    sparam2->name = strdup("n");
-    sparam2->value = NULL;
-    Vector_PushBack(staticParamList, sparam2);
-
-    cJSON* valArray = (cJSON*)malloc(sizeof(cJSON));
-    // Should not attempt to call cJSON_CreateObject for either, simply success
-    EXPECT_EQ(T2ERROR_SUCCESS, encodeStaticParamsInJSON(valArray, staticParamList));
-
-    cJSON_Delete(valArray);
-    if(valArray) free(valArray);
-    Vector_Destroy(staticParamList, freeStaticParam);
-}
-
-// ----------- encodeParamResultInJSON: param == NULL or paramValues == NULL -----------
-TEST_F(reportgenTestFixture, encodeParamResultInJSON_SkipNullParamOrValues) {
-    Vector *paramNameList = NULL, *paramValueList = NULL;
-
-    Vector_Create(&paramNameList);
-    Vector_Create(&paramValueList);
-
-    // PUSH: param == NULL, paramValues == NULL
-    Vector_PushBack(paramNameList, NULL);
-    Vector_PushBack(paramValueList, NULL);
-
-    cJSON *valArray = (cJSON*)malloc(sizeof(cJSON));
-    // Should skip, just succeed
-    EXPECT_EQ(T2ERROR_SUCCESS, encodeParamResultInJSON(valArray, paramNameList, paramValueList));
-
-    Vector_Destroy(paramNameList, nullptr);
-    Vector_Destroy(paramValueList, nullptr);
-    if(valArray) free(valArray);
-}
-#endif
-//
-// More branches and paths can be added for specific "regaccumulateValues" branches,
-// invalid patterns in regex, cJSON/Vector error returns, and for destructive or memory-leak checks.
-//
-#endif

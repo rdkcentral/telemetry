@@ -2073,6 +2073,64 @@ TEST_F(reportgenTestFixture,  encodeEventMarkersInJSON10)
     }
     Vector_Destroy(eventMarkerList, freeEMarker);
 }
+
+TEST_F(reportgenTestFixture, encodeEventMarkersInJSON_TimevectorToarray_null_cleanup)
+{
+    // 1. Set up event marker list with one MTYPE_ACCUMULATE marker needing timestamp vector
+    cJSON* valArray = (cJSON*)malloc(sizeof(cJSON));
+    Vector *eventMarkerList = NULL;
+    Vector_Create(&eventMarkerList);
+
+    EventMarker *eMarker = (EventMarker *) malloc(sizeof(EventMarker));
+    eMarker->markerName = strdup("Ev1");
+    eMarker->compName = strdup("C1");
+    eMarker->paramType = strdup("event");
+    eMarker->alias = NULL;
+    eMarker->markerName_CT = strdup("Ev1_CT");
+    eMarker->timestamp = strdup("1717112319000");
+    eMarker->mType = MTYPE_ACCUMULATE;
+    eMarker->trimParam = false;
+    eMarker->regexParam = strdup("[0-9]+");
+    eMarker->reportTimestampParam = REPORTTIMESTAMP_UNIXEPOCH;
+
+    Vector_Create(&eMarker->u.accumulatedValues);
+    Vector_Create(&eMarker->accumulatedTimestamp);
+
+    Vector_PushBack(eMarker->u.accumulatedValues, strdup("123"));
+    Vector_PushBack(eMarker->accumulatedTimestamp, strdup("1700000099999"));
+
+    Vector_PushBack(eventMarkerList, eMarker);
+
+    cJSON* arrayItem = (cJSON*)0x1234;
+    cJSON* vectorToArray = (cJSON*)0x5678;
+
+    // Outer object for arrayItem, vectorToArray for accumulatedValues, TimevectorToarray will be NULL
+    EXPECT_CALL(*m_reportgenMock, cJSON_CreateObject()).Times(1).WillOnce(Return(arrayItem));
+    EXPECT_CALL(*m_reportgenMock, cJSON_CreateArray()).Times(1).WillOnce(Return(vectorToArray));
+
+    // Regex branch: regcomp/exec/free for value extraction in accumulatedValues
+    EXPECT_CALL(*m_reportgenMock, regcomp(_,StrEq("[0-9]+"),_)).WillOnce(Return(0));
+    EXPECT_CALL(*m_reportgenMock, regexec(_, StrEq("123"), _, _, _))
+        .WillOnce([](const regex_t*, const char*, size_t, regmatch_t* pmatch, int){
+            pmatch[0].rm_so = 0; pmatch[0].rm_eo = 3; return 0;
+        });
+    EXPECT_CALL(*m_reportgenMock, regfree(_)).Times(1);
+
+    // Convert vectorToJson to do nothing (the function will be passed a valid pointer)
+    // Now, fail creation for TimevectorToarray (timestamp array)
+    EXPECT_CALL(*m_reportgenMock, cJSON_CreateArray()).Times(1).WillOnce(Return(nullptr));
+
+    // Should cleanup: deletes arrayItem, and clears/frees regaccumulateValues
+    EXPECT_CALL(*m_reportgenMock, cJSON_Delete(arrayItem)).Times(1);
+    // (optional: you can verify if Vector_Clear/free are called - here they will be)
+
+    // Should return failure
+    EXPECT_EQ(T2ERROR_FAILURE, encodeEventMarkersInJSON(valArray, eventMarkerList));
+
+    cJSON_Delete(valArray);
+    free(valArray);
+    Vector_Destroy(eventMarkerList, freeEMarker); // your custom free for EventMarker
+}
 TEST_F(reportgenTestFixture, encodeTopResultInJSON_null_args)
 {
     Vector *topResultList = NULL;

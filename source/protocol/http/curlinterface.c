@@ -68,7 +68,7 @@ typedef enum _ADDRESS_TYPE
     ADDR_IPV6
 } ADDRESS_TYPE;
 
-T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid) // TODO - remove forkid
+T2ERROR sendReportOverHTTP(char *httpUrl, char *payload)
 {
     T2ERROR ret = T2ERROR_FAILURE;
 
@@ -88,12 +88,6 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid) //
     {
         T2Error("Failed to send report using connection pool\n");
     }
-    // TODO- Argument to be removed
-    // Set outForkedPid to 0 since we're not forking anymore
-    if(outForkedPid)
-    {
-        *outForkedPid = 0;
-    }
 
     T2Debug("%s --out\n", __FUNCTION__);
     return ret;
@@ -108,7 +102,7 @@ T2ERROR sendCachedReportsOverHTTP(char *httpUrl, Vector *reportList)
     while(Vector_Size(reportList) > 0)
     {
         char* payload = (char *)Vector_At(reportList, 0);
-        if(T2ERROR_FAILURE == sendReportOverHTTP(httpUrl, payload, NULL))
+        if(T2ERROR_FAILURE == sendReportOverHTTP(httpUrl, payload))
         {
             T2Error("Failed to send cached report, left with %lu reports in cache \n", (unsigned long)Vector_Size(reportList));
             return T2ERROR_FAILURE;

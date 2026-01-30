@@ -27,7 +27,7 @@
 // Request types for different HTTP operations
 typedef enum
 {
-    HTTP_REQUEST_GET,    // For doHttpGet (XCONF client)
+    HTTP_REQUEST_GET,    // For HTTP GET
     HTTP_REQUEST_POST    // For sendReportOverHTTP
 } http_request_type_t;
 

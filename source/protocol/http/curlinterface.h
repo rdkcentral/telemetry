@@ -39,7 +39,7 @@
 #define TR181_DEVICE_CURRENT_WAN_IFNAME             "Device.X_RDK_WanManager.CurrentActiveInterface"
 #endif
 
-T2ERROR sendReportOverHTTP(char *httpUrl, char* payload, pid_t* outForkedPid);
+T2ERROR sendReportOverHTTP(char *httpUrl, char* payload);
 
 T2ERROR sendCachedReportsOverHTTP(char *httpUrl, Vector *reportList);
 

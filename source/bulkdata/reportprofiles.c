@@ -433,8 +433,8 @@ static void* reportOnDemand(void *input)
     }
     else if(!strncmp(action, ON_DEMAND_ACTION_ABORT, MAX_PROFILENAMES_LENGTH))
     {
-        T2Info("Abort report on demand \n");
-        ProfileXConf_terminateReport();
+        T2Info("Abort report on demand\n");
+        T2Info("Cannot Abort the on demand report since the reporting is being done on the main process\n");
     }
     else
     {

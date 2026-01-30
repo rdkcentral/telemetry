@@ -527,30 +527,6 @@ error:
     return ret;
 }
 
-#if 0
-static size_t httpGetCallBack(void *response, size_t len, size_t nmemb,
-                              void *stream)
-{
-
-    size_t realsize = len * nmemb;
-    curlResponseData* httpResponse = (curlResponseData*) stream;
-
-    char *ptr = (char*) realloc(httpResponse->data,
-                                httpResponse->size + realsize + 1);
-    if (!ptr)
-    {
-        T2Error("%s:%u , T2:memory realloc failed\n", __func__, __LINE__);
-        return 0;
-    }
-    httpResponse->data = ptr;
-    memcpy(&(httpResponse->data[httpResponse->size]), response, realsize);
-    httpResponse->size += realsize;
-    httpResponse->data[httpResponse->size] = 0;
-
-    return realsize;
-}
-#endif
-
 T2ERROR doHttpGet(char* httpsUrl, char **data)
 {
     T2Info("%s with url %s \n", __FUNCTION__, httpsUrl);
@@ -561,31 +537,6 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
         T2Error("NULL httpsUrl given, doHttpGet failed\n");
         return T2ERROR_FAILURE;
     }
-
-#if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
-
-#if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
-    char *paramVal = NULL;
-    memset(waninterface, 0, sizeof(waninterface));
-    snprintf(waninterface, sizeof(waninterface), "%s", IFINTERFACE);
-
-    if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_CURRENT_WAN_IFNAME, &paramVal))
-    {
-        if(strlen(paramVal) > 0)
-        {
-            memset(waninterface, 0, sizeof(waninterface));
-            snprintf(waninterface, sizeof(waninterface), "%s", paramVal);
-            T2Info("TR181_DEVICE_CURRENT_WAN_IFNAME -- %s\n", waninterface);
-        }
-        free(paramVal);
-        paramVal = NULL;
-    }
-    else
-    {
-        T2Error("Failed to get Value for %s\n", TR181_DEVICE_CURRENT_WAN_IFNAME);
-    }
-#endif
-#endif
 
     ret = http_pool_get(httpsUrl, data, true);
     if(ret == T2ERROR_SUCCESS)

@@ -49,9 +49,6 @@ T2ERROR init_connection_pool();
 T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_output);
 T2ERROR http_pool_post(const char *url, const char *payload);
 
-// Legacy APIs (maintained for backward compatibility)
-T2ERROR http_pool_request_ex(const http_pool_request_config_t *config);
-T2ERROR http_pool_request(const char *url, const char *payload, char** data); // Backward compatibility
 T2ERROR http_pool_cleanup(void);
 
 #endif /* _MULTI_CURL_INTERFACE_H_ */

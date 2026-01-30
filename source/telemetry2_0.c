@@ -73,7 +73,6 @@ T2ERROR initTelemetry()
     T2Debug("%s ++in\n", __FUNCTION__);
 
     initWhoamiSupport();
-    init_connection_pool();
     if (init_connection_pool() != 0)
     {
         T2Error("Failed to initialize HTTP connection pool\n");

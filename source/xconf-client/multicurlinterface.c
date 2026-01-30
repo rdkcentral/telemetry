@@ -61,6 +61,7 @@
     } while(0)
 
 //Global variables
+#define IFINTERFACE      "erouter0"
 #define MAX_POOL_SIZE 3
 #define HTTP_RESPONSE_FILE "/tmp/httpOutput.txt"
 #define RESPONSE_BUFFER_SIZE 8192
@@ -77,13 +78,11 @@ typedef struct
 
 static http_connection_pool_t pool = {0};
 
-#if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
-#if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
-char waninterface[256];
-#endif
-#endif
-
 #ifdef LIBRDKCERTSEL_BUILD
+static rdkcertselector_h curlCertSelector = NULL;
+static rdkcertselector_h curlRcvryCertSelector = NULL;
+static rdkcertselector_h xcCertSelector;
+
 #if defined(ENABLE_RED_RECOVERY_SUPPORT)
 bool isStateRedEnabled(void)
 {
@@ -304,10 +303,6 @@ static T2ERROR acquire_pool_handle(CURL **easy, int *idx)
         T2Info("No curl handle available, waiting for one to become free...\n");
         pthread_cond_wait(&pool.handle_available_cond, &pool.pool_mutex);
     }
-
-    T2Warning("Unable to get any curl handle even after waiting\n");
-    pthread_mutex_unlock(&pool.pool_mutex);
-    return T2ERROR_FAILURE;
 }
 
 // Helper function to release handle back to pool
@@ -372,6 +367,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
 #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
     char *paramVal = NULL;
+    char waninterface[256];
     memset(waninterface, 0, sizeof(waninterface));
     snprintf(waninterface, sizeof(waninterface), "%s", IFINTERFACE);
 
@@ -407,7 +403,6 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
     {
 #ifdef LIBRDKCERTSEL_BUILD
         // Use certificate selector if available
-        rdkcertselector_h xcCertSelector; // Declared in xconfclient.c
         rdkcertselectorStatus_t xcGetCertStatus;
         char *pCertURI = NULL;
 
@@ -540,7 +535,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
             if (response_data)
             {
                 *response_data = NULL;
-                if(response.size <= SIZE_MAX)
+                if(response.size <= SIZE_MAX - 1)
                 {
                     *response_data = (char*)malloc(response.size + 1);
                     if(*response_data)
@@ -548,6 +543,16 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
                         memcpy(*response_data, response.data, response.size);
                         (*response_data)[response.size] = '\0';
                     }
+                    else
+                    {
+                        T2Error("Failed to allocate memory for response data of size %zu\n", response.size);
+                        result = T2ERROR_FAILURE;
+                    }
+                }
+                else
+                {
+                    T2Error("Response size %zu exceeds maximum allowable size\n", response.size);
+                    result = T2ERROR_FAILURE;
                 }
             }
         }
@@ -629,9 +634,29 @@ T2ERROR http_pool_post(const char *url, const char *payload)
     CURL_SETOPT_CHECK_STR(easy, CURLOPT_POSTFIELDS, payload);
     CURL_SETOPT_CHECK(easy, CURLOPT_POSTFIELDSIZE, strlen(payload));
 
-    // Configure interface binding
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
 #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
+    char *paramVal = NULL;
+    char waninterface[256];
+    memset(waninterface, 0, sizeof(waninterface));
+    snprintf(waninterface, sizeof(waninterface), "%s", IFINTERFACE);
+
+    if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_CURRENT_WAN_IFNAME, &paramVal))
+    {
+        if(strlen(paramVal) > 0)
+        {
+            memset(waninterface, 0, sizeof(waninterface));
+            snprintf(waninterface, sizeof(waninterface), "%s", paramVal);
+            T2Info("TR181_DEVICE_CURRENT_WAN_IFNAME -- %s\n", waninterface);
+        }
+        free(paramVal);
+        paramVal = NULL;
+    }
+    else
+    {
+        T2Error("Failed to get Value for %s\n", TR181_DEVICE_CURRENT_WAN_IFNAME);
+    }
+
     CURL_SETOPT_CHECK_STR(easy, CURLOPT_INTERFACE, waninterface);
     T2Info("TR181_DEVICE_CURRENT_WAN_IFNAME ---- %s\n", waninterface);
 #else
@@ -671,8 +696,6 @@ T2ERROR http_pool_post(const char *url, const char *payload)
     {
 #ifdef LIBRDKCERTSEL_BUILD
         // Use certificate selector if available
-        rdkcertselector_h curlCertSelector = NULL;
-        rdkcertselector_h curlRcvryCertSelector = NULL;
         rdkcertselector_h thisCertSel = NULL;
         rdkcertselectorStatus_t curlGetCertStatus;
         char *pCertURI = NULL;

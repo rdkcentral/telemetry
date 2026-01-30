@@ -83,7 +83,6 @@ static http_connection_pool_t pool = {0};
 #ifdef LIBRDKCERTSEL_BUILD
 static rdkcertselector_h curlCertSelector = NULL;
 static rdkcertselector_h curlRcvryCertSelector = NULL;
-static rdkcertselector_h xcCertSelector;
 
 #if defined(ENABLE_RED_RECOVERY_SUPPORT)
 bool isStateRedEnabled(void)
@@ -141,33 +140,6 @@ void curlCertSelectorInit()
     }
 }
 
-void xcCertSelectorFree()
-{
-    rdkcertselector_free(&xcCertSelector);
-    if(xcCertSelector == NULL)
-    {
-        T2Info("%s, T2:Cert selector memory free  \n", __func__);
-    }
-    else
-    {
-        T2Info("%s, T2:Cert selector memory free failed \n", __func__);
-    }
-}
-static void xcCertSelectorInit()
-{
-    if(xcCertSelector == NULL)
-    {
-        xcCertSelector = rdkcertselector_new( NULL, NULL, "MTLS" );
-        if(xcCertSelector == NULL)
-        {
-            T2Error("%s, T2:Cert selector initialization failed\n", __func__);
-        }
-        else
-        {
-            T2Info("%s, T2:Cert selector initialization successfully \n", __func__);
-        }
-    }
-}
 #endif
 
 static size_t httpGetCallBack(void *response, size_t len, size_t nmemb,
@@ -215,7 +187,6 @@ T2ERROR init_connection_pool()
 #ifdef LIBRDKCERTSEL_BUILD
     // Initialize certificate selector before setting up connection pool
     curlCertSelectorInit();
-    xcCertSelectorInit();
 #endif
 
     // Pre-allocate easy handles
@@ -400,6 +371,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
     bool mtls_enable = isMtlsEnabled();
     char *pCertFile = NULL;
     char *pPasswd = NULL;
+    CURLcode curl_code = CURLE_OK;
 
     if(mtls_enable == true)
     {
@@ -413,7 +385,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
             pCertFile = NULL;
             pPasswd = NULL;
             pCertURI = NULL;
-            xcGetCertStatus = rdkcertselector_getCert(xcCertSelector, &pCertURI, &pPasswd);
+            xcGetCertStatus = rdkcertselector_getCert(curlCertSelector, &pCertURI, &pPasswd);
             if(xcGetCertStatus != certselectorOk)
             {
                 T2Error("%s, T2:Failed to retrieve the certificate.\n", __func__);
@@ -435,9 +407,24 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
                 CURL_SETOPT_CHECK_STR(easy, CURLOPT_SSLCERT, pCertFile);
                 CURL_SETOPT_CHECK_STR(easy, CURLOPT_KEYPASSWD, pPasswd);
                 CURL_SETOPT_CHECK(easy, CURLOPT_SSL_VERIFYPEER, 1L);
+
+                // Execute the request directly
+                curl_code = curl_easy_perform(easy);
+
+                long http_code;
+                curl_easy_getinfo(easy, CURLINFO_RESPONSE_CODE, &http_code);
+
+                if(curl_code != CURLE_OK || http_code != 200)
+                {
+                    T2Error("%s: Failed to establish connection using xPKI certificate: %s, Curl failed : %d\n", __func__, pCertFile, curl_code);
+                }
+                else
+                {
+                    T2Info("%s: Using xpki Certs connection certname : %s \n", __FUNCTION__, pCertFile);
+                }
             }
         }
-        while(rdkcertselector_setCurlStatus(xcCertSelector, CURLE_OK, (const char*)url) == TRY_ANOTHER);
+        while(rdkcertselector_setCurlStatus(curlCertSelector, curl_code, (const char*)url) == TRY_ANOTHER);
 #else
         // Fallback to getMtlsCerts if certificate selector not available
         if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pPasswd))
@@ -447,6 +434,9 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
             CURL_SETOPT_CHECK_STR(easy, CURLOPT_SSLCERT, pCertFile);
             CURL_SETOPT_CHECK_STR(easy, CURLOPT_KEYPASSWD, pPasswd);
             CURL_SETOPT_CHECK(easy, CURLOPT_SSL_VERIFYPEER, 1L);
+
+            // Execute the request
+            curl_code = curl_easy_perform(easy);
         }
         else
         {
@@ -457,24 +447,11 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
         }
 #endif
     }
-
-    // Execute the request directly
-    CURLcode curl_code = curl_easy_perform(easy);
-
-#ifdef LIBRDKCERTSEL_BUILD
-    if(mtls_enable && curl_code != CURLE_OK)
+    else
     {
-        T2Error("%s: Failed to establish connection using xPKI certificate: %s, Curl failed : %d\n", __func__, pCertFile, curl_code);
-        if(rdkcertselector_setCurlStatus(xcCertSelector, curl_code, (const char*)url) == TRY_ANOTHER)
-        {
-            T2Info("Retrying with different certificate\n");
-        }
+        // Execute without mTLS
+        curl_code = curl_easy_perform(easy);
     }
-    else if(mtls_enable)
-    {
-        T2Info("%s: Using xpki Certs connection certname : %s \n", __FUNCTION__, pCertFile);
-    }
-#endif
 
     if (curl_code != CURLE_OK)
     {
@@ -852,14 +829,14 @@ T2ERROR http_pool_post(const char *url, const char *payload)
 
 T2ERROR http_pool_cleanup(void)
 {
+    T2Debug("%s ++in\n", __FUNCTION__);
     if (!pool_initialized)
     {
         T2Info("Pool not initialized, nothing to cleanup\n");
         return T2ERROR_SUCCESS;
     }
 
-    T2Info("%s ++in\n", __FUNCTION__);
-
+    T2Info("Cleaning up http pool resources\n");
     // Signal any waiting threads to wake up
     pthread_mutex_lock(&pool.pool_mutex);
     pthread_cond_broadcast(&pool.handle_available_cond);
@@ -868,10 +845,9 @@ T2ERROR http_pool_cleanup(void)
 #ifdef LIBRDKCERTSEL_BUILD
     // Cleanup certificate selectors to prevent memory leak
     curlCertSelectorFree();
-    xcCertSelectorFree();
 #endif
 
-    // FIX: Free all header lists before cleanup
+    // Free all header lists before cleanup
     if(pool.post_headers)
     {
         curl_slist_free_all(pool.post_headers);
@@ -895,7 +871,7 @@ T2ERROR http_pool_cleanup(void)
     // Reset initialization flag
     pool_initialized = false;
 
-    T2Info("%s ++out\n", __FUNCTION__);
+    T2Debug("%s ++out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 

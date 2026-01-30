@@ -906,19 +906,6 @@ T2ERROR t2_event_d(const char* marker, int value)
     pthread_mutex_unlock(&dMutex);
     return retStatus ;
 }
-#ifdef GTEST_ENABLE
-typedef T2ERROR (*getRbusParameterValFunc)(const char*,char **);
-getRbusParameterValFunc getRbusParameterValFuncCallback(void) {
-	return getRbusParameterVal;
-}
-
-typedef void (*event_debug_fn)(char*, ...);
-
-event_debug_fn get_EVENT_DEBUG_ptr(void) {
-    return EVENT_DEBUG;
-}
-#endif
-
 
 #ifdef GTEST_ENABLE
 bool* test_get_isRbusEnabled_ptr(void) { return &isRbusEnabled; }

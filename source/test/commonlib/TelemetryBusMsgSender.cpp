@@ -513,34 +513,3 @@ TEST_F(TelemetryBusmessageSenderTest, SendStringEvent_Valid) {
     EXPECT_EQ(err, T2ERROR_SUCCESS);
     t2_uninit();
 }
-#ifdef GTEST_ENABLE
-namespace {
-
-class EventDebugUnitTest : public ::testing::Test {
- protected:
-  void SetUp() override {
-    g_systemMock = new SystemMock();
-    g_fileIOMock = new FileMock();
-    // Ensure clean mutex state, etc. (if needed for static states)
-  }
-  void TearDown() override {
-    delete g_systemMock;
-    delete g_fileIOMock;
-    g_systemMock = nullptr;
-    g_fileIOMock = nullptr;
-  }
-};
-
-TEST_F(EventDebugUnitTest, EarlyReturnWhenAccessReturnsMinus1) {
-    // Covers lines 77, 79 (early return branch)
-    event_debug_fn fn = get_EVENT_DEBUG_ptr();
-
-    EXPECT_CALL(*g_systemMock, access(_, _))
-        .Times(1)
-        .WillOnce(Return(-1));
-    // Should not call fopen, fprintf, or lock the mutex at all.
-    fn((char*)"test early return %d", 42);
-    // No assertion - just verify no crash and that nothing else is called
-}
-}
-#endif

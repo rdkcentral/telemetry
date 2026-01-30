@@ -414,28 +414,22 @@ static bool initRFC( )
  */
 int filtered_event_send(const char* data, const char *markerName)
 {
-	printf("################# function %s line %d\n",__func__,__LINE__);
     rbusError_t ret = RBUS_ERROR_SUCCESS;
     int status = 0 ;
     EVENT_DEBUG("%s ++in\n", __FUNCTION__);
     if(!bus_handle)
     {
-	printf("################# function %s line %d\n",__func__,__LINE__);
         EVENT_ERROR("bus_handle is null .. exiting !!! \n");
         return ret;
     }
 
-	printf("################# function %s line %d\n",__func__,__LINE__);
-	printf("################# function %s line %d component name : %s T2_SCRIPT_EVENT_COMPONENT : %s\n",__func__,__LINE__,componentName,T2_SCRIPT_EVENT_COMPONENT);
     if(isRbusEnabled)
     {
 
-	printf("################# function %s line %d component name : %s T2_SCRIPT_EVENT_COMPONENT : %s\n",__func__,__LINE__,componentName,T2_SCRIPT_EVENT_COMPONENT);
         // Filter data from marker list
         if(componentName && (0 != strcmp(componentName, T2_SCRIPT_EVENT_COMPONENT)))   // Events from scripts needs to be sent without filtering
         {
 
-	printf("################# function %s line %d\n",__func__,__LINE__);
             EVENT_DEBUG("%s markerListMutex lock & get list of marker for component %s \n", __FUNCTION__, componentName);
             pthread_mutex_lock(&markerListMutex);
             bool isEventingEnabled = false;
@@ -726,15 +720,12 @@ static int report_or_cache_data(char* telemetry_data, const char* markerName)
     if(isT2Ready)
     {
         // EVENT_DEBUG("T2: Sending event : %s\n", telemetry_data);
-	printf("################# function %s line %d\n",__func__,__LINE__);
         ret = filtered_event_send(telemetry_data, markerName);
         if(0 != ret)
         {
-	printf("################# function %s line %d\n",__func__,__LINE__);
             EVENT_ERROR("%s:%d, T2:telemetry data send failed, status = %d \n", __func__, __LINE__, ret);
         }
     }
-	printf("################# function %s line %d\n",__func__,__LINE__);
     return ret;
 }
 

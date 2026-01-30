@@ -474,7 +474,7 @@ TEST_F(TelemetryBusmessageSenderTest, doPopulateEventMarkerList_ReturnsEarlyIfRb
 
 TEST_F(TelemetryBusmessageSenderTest, doPopulateEventMarkerList_BusHandleFail) {
 t2_uninit();
-t2_init();
+t2_init((char*)"test_component");
 
 EXPECT_CALL(*g_rbusMock, rbus_checkStatus())
     .WillRepeatedly(Return(RBUS_ENABLED));

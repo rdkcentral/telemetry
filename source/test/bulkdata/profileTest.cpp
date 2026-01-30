@@ -70,6 +70,7 @@ protected:
        delete g_rbusMock;
        delete g_rdkconfigMock;
        delete g_vectorMock;
+	   delete g_schedulerMock;
        delete g_profileMock;
 
         g_fileIOMock = nullptr;

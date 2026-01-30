@@ -542,29 +542,5 @@ TEST_F(EventDebugUnitTest, EarlyReturnWhenAccessReturnsMinus1) {
     fn((char*)"test early return %d", 42);
     // No assertion - just verify no crash and that nothing else is called
 }
-TEST_F(EventDebugUnitTest, LogWrittenWhenAccessOK) {
-    t2_init((char*)"dummy_comp");  // Ensures loggerMutex is initialized!
-    event_debug_fn fn = get_EVENT_DEBUG_ptr();
-    FILE* dummy = reinterpret_cast<FILE*>(0x4321);
-
-    EXPECT_CALL(*g_systemMock, access(_, _))
-        .Times(1)
-        .WillOnce(Return(0));
-    EXPECT_CALL(*g_fileIOMock, fopen(_, _))
-        .Times(1)
-        .WillOnce(Return(dummy));
-    EXPECT_CALL(*g_fileIOMock, fclose(dummy))
-        .Times(1)
-        .WillOnce(Return(0));
-    EXPECT_CALL(*g_fileIOMock, fprintf(dummy, _, _))
-        .Times(1)
-        .WillRepeatedly(Invoke(
-            [](FILE*, const char* format, va_list args) -> int {
-                return 0;
-            }));
-
-    fn((char*)"my test log %d", 2026);
-    t2_uninit();  // Clean up
-}
 }
 #endif

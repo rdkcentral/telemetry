@@ -321,7 +321,7 @@ TEST_F(TelemetryBusmessageSenderTest, t2_event_d_iscachingenabled_true_1)
     EXPECT_EQ(ret, T2ERROR_SUCCESS);
 }
 #endif
-#ifdef GTEST_ENABLE
+#if 0
 TEST_F(TelemetryBusmessageSenderTest, doPopulateEventMarkerList_ReturnsEarlyIfRbusDisabled) {
     t2_init((char*)"test_component");
 
@@ -459,6 +459,20 @@ TEST_F(TelemetryBusmessageSenderTest, getParameterValue_failure_boolean)
 
     EXPECT_EQ(T2ERROR_SUCCESS, getParamValue("Device.DeviceInfo.SerialNumber", &paramValue));
 }
+
+#ifdef GTEST_ENABLE
+TEST_F(TelemetryBusmessageSenderTest, doPopulateEventMarkerList_ReturnsEarlyIfRbusDisabled) {
+    t2_init((char*)"test_component");
+
+    *test_get_isRbusEnabled_ptr() = false;
+
+    auto cb = getDoPopulateEventMarkerListCallback();
+    T2ERROR ret = cb();
+    EXPECT_EQ(ret, T2ERROR_SUCCESS); // Should return immediately
+    // Optionally, you could verify no calls/mocks for rbus_get, etc., are triggered,
+    // as the logic is skipped
+}
+#endif
 
 #if 0
 TEST_F(TelemetryBusmessageSenderTest, filtered_event_send_1)

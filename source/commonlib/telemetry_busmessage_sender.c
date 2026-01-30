@@ -907,5 +907,10 @@ bool* _test_get_isRbusEnabled() { return &isRbusEnabled; }
 bool* _test_get_isRFCT2Enable() { return &isRFCT2Enable; }
 void** _test_get_bus_handle() { return &bus_handle; }
 bool* _test_get_isT2Ready() { return &isT2Ready; }
+typedef T2ERROR (*doPopulateEventMarkerListFunc)(void);
+doPopulateEventMarkerListFunc getDoPopulateEventMarkerListCallback(void)
+{
+	return doPopulateEventMarkerList;
+}
 #endif
 

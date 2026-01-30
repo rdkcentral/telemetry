@@ -924,7 +924,5 @@ event_debug_fn get_EVENT_DEBUG_ptr(void) {
 bool* test_get_isRbusEnabled_ptr(void) { return &isRbusEnabled; }
 bool* test_get_isT2Ready_ptr(void) { return &isT2Ready; }
 void** test_get_bus_handle_ptr(void) { return &bus_handle; }
-char ENABLE_DEBUG_FLAG[128] = "/tmp/telemetry_debug.flag";
-char SENDER_LOG_FILE[128] = "/tmp/telemetry_log.log";
 #endif
 

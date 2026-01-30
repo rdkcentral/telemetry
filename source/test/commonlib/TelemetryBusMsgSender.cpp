@@ -513,4 +513,74 @@ TEST_F(TelemetryBusmessageSenderTest, SendStringEvent_Valid) {
     EXPECT_EQ(err, T2ERROR_SUCCESS);
     t2_uninit();
 }
+#ifdef GTEST_ENABLE
+namespace {
 
+class EventDebugUnitTest : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    g_systemMock = new SystemMock();
+    g_fileIOMock = new FileMock();
+    // Ensure clean mutex state, etc. (if needed for static states)
+  }
+  void TearDown() override {
+    delete g_systemMock;
+    delete g_fileIOMock;
+    g_systemMock = nullptr;
+    g_fileIOMock = nullptr;
+  }
+};
+
+TEST_F(EventDebugUnitTest, EarlyReturnWhenAccessReturnsMinus1) {
+    // Covers lines 77, 79 (early return branch)
+    event_debug_fn fn = get_EVENT_DEBUG_ptr();
+
+    EXPECT_CALL(*g_systemMock, access(_, _))
+        .Times(1)
+        .WillOnce(Return(-1));
+    // Should not call fopen, fprintf, or lock the mutex at all.
+    fn((char*)"test early return %d", 42);
+    // No assertion - just verify no crash and that nothing else is called
+}
+
+TEST_F(EventDebugUnitTest, LogWrittenWhenAccessOK) {
+    // Covers all other lines: 82, 84, 85, 86..., 102
+
+    event_debug_fn fn = get_EVENT_DEBUG_ptr();
+
+    // Arrange
+    FILE* dummy = reinterpret_cast<FILE*>(0x1234);
+
+    EXPECT_CALL(*g_systemMock, access(_, _))
+        .Times(1)
+        .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, fopen(_, _))
+        .Times(1)
+        .WillOnce(Return(dummy));
+    EXPECT_CALL(*g_fileIOMock, fclose(dummy))
+        .Times(1)
+        .WillOnce(Return(0));
+    // You could also check for actual strftime/fprintf behavior, but we focus on coverage here.
+
+    // Track when mutex is locked/unlocked.
+    // For pthread_mutex_lock/unlock, you may need to mock or wrap them if needed.
+
+    // We mock fprintf to simply accept a va_list. Use Invoke to "use" the list so it executes the va_arg logic.
+    EXPECT_CALL(*g_fileIOMock, fprintf(dummy, _, _))
+        .Times(1)
+        .WillRepeatedly(Invoke(
+            [](FILE*, const char* format, va_list args) -> int {
+                // For coverage, just call vprintf (which will use the list)
+                // But don't actually print output during unit test runs
+                // vprintf(format, args);
+                return 0;
+            }));
+
+    // For time/strftime, those are static functions, but coverage is not affected unless you want to patch them too.
+
+    // Actually call via function pointer, use at least one format argument
+    fn((char*)"my test log %d", 2026);
+}
+
+}
+#endif

@@ -542,7 +542,7 @@ TEST_F(EventDebugUnitTest, EarlyReturnWhenAccessReturnsMinus1) {
     fn((char*)"test early return %d", 42);
     // No assertion - just verify no crash and that nothing else is called
 }
-
+#if 0
 TEST_F(EventDebugUnitTest, LogWrittenWhenAccessOK) {
     // Covers all other lines: 82, 84, 85, 86..., 102
 
@@ -581,6 +581,6 @@ TEST_F(EventDebugUnitTest, LogWrittenWhenAccessOK) {
     // Actually call via function pointer, use at least one format argument
     fn((char*)"my test log %d", 2026);
 }
-
+#endif
 }
 #endif

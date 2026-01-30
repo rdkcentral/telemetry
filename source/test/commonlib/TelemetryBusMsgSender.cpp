@@ -542,14 +542,10 @@ TEST_F(EventDebugUnitTest, EarlyReturnWhenAccessReturnsMinus1) {
     fn((char*)"test early return %d", 42);
     // No assertion - just verify no crash and that nothing else is called
 }
-#if 0
 TEST_F(EventDebugUnitTest, LogWrittenWhenAccessOK) {
-    // Covers all other lines: 82, 84, 85, 86..., 102
-
+    t2_init((char*)"dummy_comp");  // Ensures loggerMutex is initialized!
     event_debug_fn fn = get_EVENT_DEBUG_ptr();
-
-    // Arrange
-    FILE* dummy = reinterpret_cast<FILE*>(0x1234);
+    FILE* dummy = reinterpret_cast<FILE*>(0x4321);
 
     EXPECT_CALL(*g_systemMock, access(_, _))
         .Times(1)
@@ -560,27 +556,15 @@ TEST_F(EventDebugUnitTest, LogWrittenWhenAccessOK) {
     EXPECT_CALL(*g_fileIOMock, fclose(dummy))
         .Times(1)
         .WillOnce(Return(0));
-    // You could also check for actual strftime/fprintf behavior, but we focus on coverage here.
-
-    // Track when mutex is locked/unlocked.
-    // For pthread_mutex_lock/unlock, you may need to mock or wrap them if needed.
-
-    // We mock fprintf to simply accept a va_list. Use Invoke to "use" the list so it executes the va_arg logic.
     EXPECT_CALL(*g_fileIOMock, fprintf(dummy, _, _))
         .Times(1)
         .WillRepeatedly(Invoke(
             [](FILE*, const char* format, va_list args) -> int {
-                // For coverage, just call vprintf (which will use the list)
-                // But don't actually print output during unit test runs
-                // vprintf(format, args);
                 return 0;
             }));
 
-    // For time/strftime, those are static functions, but coverage is not affected unless you want to patch them too.
-
-    // Actually call via function pointer, use at least one format argument
     fn((char*)"my test log %d", 2026);
+    t2_uninit();  // Clean up
 }
-#endif
 }
 #endif

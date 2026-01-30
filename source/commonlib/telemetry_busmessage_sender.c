@@ -55,7 +55,6 @@ static void *bus_handle = NULL;
 static bool isRFCT2Enable = false ;
 static bool isT2Ready = false;
 static bool isRbusEnabled = false ;
-static int count = 0;
 static pthread_mutex_t initMtx = PTHREAD_MUTEX_INITIALIZER;
 static bool isMutexInitialized = false ;
 
@@ -85,13 +84,23 @@ static void EVENT_DEBUG(char* format, ...)
     logHandle = fopen(SENDER_LOG_FILE, "a+");
     if(logHandle)
     {
-        time_t rawtime;
-        struct tm* timeinfo;
+        struct timespec ts;
+        struct tm timeinfo;
 
-        time(&rawtime);
-        timeinfo = localtime(&rawtime);
-        static char timeBuffer[20] = { '\0' };
-        strftime(timeBuffer, sizeof(timeBuffer), "%Y-%m-%d %H:%M:%S", timeinfo);
+        if(clock_gettime(CLOCK_REALTIME, &ts) == -1)
+        {
+            fclose(logHandle);
+            pthread_mutex_unlock(&loggerMutex);
+            return;
+        }
+
+        char timeBuffer[24] = { '\0' };
+        long msecs;
+
+        localtime_r(&ts.tv_sec, &timeinfo);
+        msecs = ts.tv_nsec / 1000000;
+        strftime(timeBuffer, sizeof(timeBuffer), "%Y-%m-%d %H:%M:%S", &timeinfo);
+        snprintf(timeBuffer + strlen(timeBuffer), sizeof(timeBuffer) - strlen(timeBuffer), ".%03ld", msecs);
         fprintf(logHandle, "%s : ", timeBuffer);
         va_list argList;
         va_start(argList, format);
@@ -316,8 +325,9 @@ void *cacheEventToFile(void *arg)
     fl.l_len = 0;
     fl.l_pid = 0;
     FILE *fs = NULL;
-    char path[100];
     pthread_detach(pthread_self());
+    int ch;
+    int count = 0;
     EVENT_ERROR("%s:%d, Caching the event to File\n", __func__, __LINE__);
     if(telemetry_data == NULL)
     {
@@ -353,12 +363,25 @@ void *cacheEventToFile(void *arg)
         EVENT_ERROR("%s: File open error %s\n", __FUNCTION__, T2_CACHE_FILE);
         goto unlock;
     }
-    fs = popen ("cat /tmp/t2_caching_file | wc -l", "r");
-    if(fs != NULL)
+
+    fs = fopen(T2_CACHE_FILE, "r");
+    if (fs != NULL)
     {
-        fgets(path, 100, fs);
-        count = atoi ( path );
-        pclose(fs);
+        while ((ch = fgetc(fs)) != EOF)
+        {
+            if (ch == '\n')
+            {
+                count++;
+            }
+        }
+
+        //If the file is not empty and does not contain a newline, call it one line
+        if (count == 0 && ftell(fs) > 0)
+        {
+            count++;
+        }
+        fclose(fs);
+        fs = NULL;
     }
     if(count < MAX_EVENT_CACHE)
     {

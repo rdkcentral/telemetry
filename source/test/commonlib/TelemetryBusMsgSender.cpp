@@ -472,6 +472,19 @@ TEST_F(TelemetryBusmessageSenderTest, doPopulateEventMarkerList_ReturnsEarlyIfRb
     // Optionally, you could verify no calls/mocks for rbus_get, etc., are triggered,
     // as the logic is skipped
 }
+
+TEST_F(TelemetryBusmessageSenderTest, doPopulateEventMarkerList_BusHandleFail) {
+    t2_init((char*)"test_component");
+
+    *test_get_isRbusEnabled_ptr() = true;
+    *test_get_bus_handle_ptr() = nullptr; // Simulate bus_handle == NULL
+
+    auto cb = getDoPopulateEventMarkerListCallback();
+    T2ERROR ret = cb();
+
+    EXPECT_EQ(ret, T2ERROR_FAILURE); // Should fail due to bus_handle/init failure
+
+}
 #endif
 
 #if 0

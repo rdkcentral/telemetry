@@ -36,7 +36,7 @@
 #include "reportprofiles.h"
 #include "t2MtlsUtils.h"
 #include "t2log_wrapper.h"
-#include "multicurlinterface.h"
+#include "../../xconf-client/multicurlinterface.h"
 #include "busInterface.h"
 #ifdef LIBRDKCERTSEL_BUILD
 #include "rdkcertselector.h"

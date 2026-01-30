@@ -513,3 +513,9 @@ TEST_F(TelemetryBusmessageSenderTest, SendStringEvent_Valid) {
     EXPECT_EQ(err, T2ERROR_SUCCESS);
     t2_uninit();
 }
+
+TEST_F(TelemetryBusmessageSenderTest, CacheEventToFile_NullArg) {
+    EXPECT_NO_FATAL_FAILURE({
+        cacheEventToFile(NULL); // should just return NULL
+    });
+}

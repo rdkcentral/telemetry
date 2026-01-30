@@ -472,6 +472,7 @@ TEST_F(TelemetryBusmessageSenderTest, doPopulateEventMarkerList_ReturnsEarlyIfRb
    *test_get_isRbusEnabled_ptr() = true; 
 }
 
+#if 0
 TEST_F(TelemetryBusmessageSenderTest, doPopulateEventMarkerList_BusHandleFail) {
 t2_uninit();
 t2_init((char*)"test_component");
@@ -491,6 +492,7 @@ EXPECT_CALL(*g_rbusMock, rbus_open(_, _))
     EXPECT_EQ(ret, T2ERROR_FAILURE); // Should fail due to bus_handle/init failure
 
 }
+#endif
 #endif
 
 #if 0

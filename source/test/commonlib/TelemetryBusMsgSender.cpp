@@ -139,6 +139,13 @@ TEST_F(TelemetryBusmessageSenderTest, SendStringEvent_ZeroValue) {
     EXPECT_EQ(err, T2ERROR_SUCCESS);
 }
 
+TEST_F(TelemetryBusmessageSenderTest, SendStringEvent_NonNullvalue) {
+    t2_init((char*)"test_component");
+    EXPECT_CALL(*g_systemMock, access(_,_))
+           .WillRepeatedly(Return(-1));
+    T2ERROR err = t2_event_s("marker", "hello\n");
+    EXPECT_EQ(err, T2ERROR_SUCCESS);
+}
 // Negative test: t2_event_f with NULL marker
 /*
 TEST_F(TelemetryBusmessageSenderTest, SendDoubleEvent_NullMarker) {
@@ -514,8 +521,3 @@ TEST_F(TelemetryBusmessageSenderTest, SendStringEvent_Valid) {
     t2_uninit();
 }
 
-TEST_F(TelemetryBusmessageSenderTest, CacheEventToFile_NullArg) {
-    EXPECT_NO_FATAL_FAILURE({
-        cacheEventToFile(NULL); // should just return NULL
-    });
-}

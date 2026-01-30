@@ -33,6 +33,7 @@
 #include <sys/stat.h>
 #include <signal.h>
 #include "multicurlinterface.h"
+#include "busInterface.h"
 #include "t2log_wrapper.h"
 #include "xconfclient.h"
 #include "reportprofiles.h"
@@ -56,7 +57,8 @@
     do { \
         CURLcode _curl_code = curl_easy_setopt(handle, option, value); \
         if(_curl_code != CURLE_OK) { \
-            T2Error("%s : Failed to set %s=%s, error: %s\n", __FUNCTION__, #option, (value) ? (const char*)(value) : "NULL", curl_easy_strerror(_curl_code)); \
+            const char* _val_str = (const char*)(value); \
+            T2Error("%s : Failed to set %s=%s, error: %s\n", __FUNCTION__, #option, _val_str ? _val_str : "NULL", curl_easy_strerror(_curl_code)); \
         } \
     } while(0)
 

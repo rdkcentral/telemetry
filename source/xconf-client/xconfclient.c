@@ -56,7 +56,6 @@
 #define RFC_RETRY_TIMEOUT 60
 #define XCONF_RETRY_TIMEOUT 180
 #define MAX_XCONF_RETRY_COUNT 5
-#define IFINTERFACE      "erouter0"
 #define XCONF_CONFIG_FILE  "DCMresponse.txt"
 #define PROCESS_CONFIG_COMPLETE_FLAG "/tmp/t2DcmComplete"
 #define HTTP_RESPONSE_FILE "/tmp/httpOutput.txt"
@@ -65,12 +64,6 @@
 
 extern sigset_t blocking_signal;
 
-#if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
-
-#if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
-static char waninterface[256];
-#endif
-#endif
 static const int MAX_URL_LEN = 1024;
 static const int MAX_URL_ARG_LEN = 128;
 static int xConfRetryCount = 0;

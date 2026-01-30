@@ -21,7 +21,6 @@
 #define _MULTI_CURL_INTERFACE_H_
 
 #include <curl/curl.h>
-#include "xconfclient.h"
 #include "telemetry2_0.h"
 
 // Request types for different HTTP operations
@@ -31,16 +30,15 @@ typedef enum
     HTTP_REQUEST_POST    // For sendReportOverHTTP
 } http_request_type_t;
 
-// Request configuration structure
-typedef struct
+/*
+ * Structure to store the xconf response, this is to manage large responses
+ * as curl parses large responses in chunks
+ */
+typedef struct _curlResponseData
 {
-    http_request_type_t type;
-    const char *url;
-    const char *payload;           // NULL for GET requests
-    char **response_data;          // For storing response (GET requests)
-    bool enable_mtls;              // Enable mTLS authentication
-    bool enable_file_output;       // Write to file (for GET requests)
-} http_pool_request_config_t;
+    char *data;
+    size_t size;
+} curlResponseData;
 
 size_t writeToFile(void *ptr, size_t size, size_t nmemb, void *stream);
 T2ERROR init_connection_pool();

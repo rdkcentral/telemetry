@@ -74,6 +74,10 @@ T2ERROR initTelemetry()
 
     initWhoamiSupport();
     init_connection_pool();
+    if (init_connection_pool() != 0)
+    {
+        T2Error("Failed to initialize HTTP connection pool\n");
+    }
     if(T2ERROR_SUCCESS == initReportProfiles())
     {
 #ifndef DEVICE_EXTENDER

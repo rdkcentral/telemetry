@@ -36,7 +36,7 @@
 #include "reportprofiles.h"
 #include "t2MtlsUtils.h"
 #include "t2log_wrapper.h"
-#include "../xconf-client/multicurlinterface.h"
+#include "multicurlinterface.h"
 #include "busInterface.h"
 #ifdef LIBRDKCERTSEL_BUILD
 #include "rdkcertselector.h"
@@ -61,20 +61,6 @@ typedef struct
 
 } childResponse ;
 
-#if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
-
-#if 0
-#if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
-static char waninterface[256];
-#endif
-#endif
-#endif
-
-#if 0
-static pthread_once_t curlFileMutexOnce = PTHREAD_ONCE_INIT;
-static pthread_mutex_t curlFileMutex;
-#endif
-
 typedef enum _ADDRESS_TYPE
 {
     ADDR_UNKNOWN,
@@ -82,181 +68,11 @@ typedef enum _ADDRESS_TYPE
     ADDR_IPV6
 } ADDRESS_TYPE;
 
-#if 0
-static void sendOverHTTPInit()
-{
-    pthread_mutex_init(&curlFileMutex, NULL);
-}
-
-static size_t writeToFile(void *ptr, size_t size, size_t nmemb, void *stream)
-{
-    size_t written = fwrite(ptr, size, nmemb, (FILE *) stream);
-    return written;
-}
-
-static T2ERROR setHeader(CURL *curl, const char* destURL, struct curl_slist **headerList, childResponse *childCurlResponse)
-{
-
-    //T2Debug("%s ++in\n", __FUNCTION__);
-    if(curl == NULL || destURL == NULL)
-    {
-        childCurlResponse->lineNumber = __LINE__;
-        return T2ERROR_FAILURE;
-    }
-
-    //T2Debug("%s DEST URL %s \n", __FUNCTION__, destURL);
-    CURLcode code = CURLE_OK;
-    code = curl_easy_setopt(curl, CURLOPT_URL, destURL);
-    if(code != CURLE_OK)
-    {
-        childCurlResponse->curlSetopCode = code;
-        childCurlResponse->lineNumber = __LINE__;
-        return T2ERROR_FAILURE;
-    }
-    code = curl_easy_setopt(curl, CURLOPT_SSLVERSION, TLSVERSION);
-    if(code != CURLE_OK)
-    {
-        childCurlResponse->curlSetopCode = code;
-        childCurlResponse->lineNumber = __LINE__;
-        return T2ERROR_FAILURE;
-    }
-    code = curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, HTTP_METHOD);
-    if(code != CURLE_OK)
-    {
-        childCurlResponse->curlSetopCode = code;
-        childCurlResponse->lineNumber = __LINE__;
-        return T2ERROR_FAILURE;
-    }
-    code = curl_easy_setopt(curl, CURLOPT_TIMEOUT, TIMEOUT);
-    if(code != CURLE_OK)
-    {
-        childCurlResponse->curlSetopCode = code;
-        childCurlResponse->lineNumber = __LINE__;
-        return T2ERROR_FAILURE;
-    }
-
-#if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
-
-#if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
-    code = curl_easy_setopt(curl, CURLOPT_INTERFACE, waninterface);
-    if(code != CURLE_OK)
-    {
-        childCurlResponse->curlSetopCode = code;
-        childCurlResponse->lineNumber = __LINE__;
-        return T2ERROR_FAILURE;
-    }
-#else
-    /* CID 125287: Unchecked return value from library */
-    code = curl_easy_setopt(curl, CURLOPT_INTERFACE, INTERFACE);
-    if(code != CURLE_OK)
-    {
-        childCurlResponse->curlSetopCode = code;
-        childCurlResponse->lineNumber = __LINE__;
-        return T2ERROR_FAILURE;
-    }
-
-#endif
-#endif
-    *headerList = curl_slist_append(NULL, "Accept: application/json");
-    curl_slist_append(*headerList, "Content-type: application/json");
-
-    code = curl_easy_setopt(curl, CURLOPT_HTTPHEADER, *headerList);
-    if(code != CURLE_OK)
-    {
-        childCurlResponse->curlSetopCode = code;
-        childCurlResponse->lineNumber = __LINE__;
-        return T2ERROR_FAILURE;
-    }
-
-    code = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeToFile);
-    if(code != CURLE_OK)
-    {
-        childCurlResponse->curlSetopCode = code;
-        childCurlResponse->lineNumber = __LINE__;
-        return T2ERROR_FAILURE;
-    }
-    childCurlResponse->curlSetopCode = code;
-    childCurlResponse->lineNumber = __LINE__;
-    //T2Debug("%s --out\n", __FUNCTION__);
-    return T2ERROR_SUCCESS;
-}
-
-static T2ERROR setMtlsHeaders(CURL *curl, const char* certFile, const char* pPasswd, childResponse *childCurlResponse)
-{
-    if(curl == NULL || certFile == NULL || pPasswd == NULL)
-    {
-        childCurlResponse->lineNumber = __LINE__;
-        return T2ERROR_FAILURE;
-    }
-    CURLcode code = CURLE_OK;
-    code = curl_easy_setopt(curl, CURLOPT_SSLCERTTYPE, "P12");
-    if(code != CURLE_OK)
-    {
-        childCurlResponse->curlSetopCode = code;
-        childCurlResponse->lineNumber = __LINE__;
-        return T2ERROR_FAILURE;
-    }
-    /* set the cert for client authentication */
-    code = curl_easy_setopt(curl, CURLOPT_SSLCERT, certFile);
-    if(code != CURLE_OK)
-    {
-        childCurlResponse->curlSetopCode = code;
-        childCurlResponse->lineNumber = __LINE__;
-        return T2ERROR_FAILURE;
-    }
-    code = curl_easy_setopt(curl, CURLOPT_KEYPASSWD, pPasswd);
-    if(code != CURLE_OK)
-    {
-        childCurlResponse->curlSetopCode = code;
-        childCurlResponse->lineNumber = __LINE__;
-        return T2ERROR_FAILURE;
-    }
-    /* disconnect if we cannot authenticate */
-    code = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
-    if(code != CURLE_OK)
-    {
-        childCurlResponse->curlSetopCode = code;
-        childCurlResponse->lineNumber = __LINE__;
-        return T2ERROR_FAILURE;
-    }
-    childCurlResponse->curlSetopCode = code;
-    childCurlResponse->lineNumber = __LINE__;
-    return T2ERROR_SUCCESS;
-}
-
-static T2ERROR setPayload(CURL *curl, const char* payload, childResponse *childCurlResponse)
-{
-    if(curl == NULL || payload == NULL)
-    {
-        childCurlResponse->lineNumber = __LINE__;
-        return T2ERROR_FAILURE;
-    }
-    CURLcode code = CURLE_OK ;
-    code = curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload);
-    if(code != CURLE_OK)
-    {
-        childCurlResponse->curlSetopCode = code;
-        childCurlResponse->lineNumber = __LINE__;
-        return T2ERROR_FAILURE;
-    }
-    code = curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(payload));
-    if(code != CURLE_OK)
-    {
-        childCurlResponse->curlSetopCode = code;
-        childCurlResponse->lineNumber = __LINE__;
-        return T2ERROR_FAILURE;
-    }
-    childCurlResponse->curlSetopCode = code;
-    childCurlResponse->lineNumber = __LINE__;
-    return T2ERROR_SUCCESS;
-}
-#endif
-
 T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid) // TODO - remove forkid
 {
     T2ERROR ret = T2ERROR_FAILURE;
 
-    T2Info("%s ++in\n", __FUNCTION__);
+    T2Debug("%s ++in\n", __FUNCTION__);
     if(httpUrl == NULL || payload == NULL)
     {
         return ret;
@@ -279,7 +95,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid) //
         *outForkedPid = 0;
     }
 
-    T2Info("%s --out\n", __FUNCTION__);
+    T2Debug("%s --out\n", __FUNCTION__);
     return ret;
 }
 

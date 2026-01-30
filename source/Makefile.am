@@ -78,6 +78,7 @@ endif
 if IS_LIBRDKCERTSEL_ENABLED
 telemetry2_0_LDFLAGS += -lRdkCertSelector
 telemetry2_0_CFLAGS += $(LIBRDKCERTSEL_FLAG)
+telemetry2_0_CFLAGS += -DENABLE_RDKB_SUPPORT
 endif
 
 if ENABLE_CCSP_SUPPORT

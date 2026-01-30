@@ -809,7 +809,7 @@ int filtered_event_send(const char* data, const char *markerName)
             }
             else
             {
-                // Send method call and wait for reply with timeout (1000ms)
+                // Send method call and wait for reply with timeout (1000 ms)
                 reply = dbus_connection_send_with_reply_and_block((DBusConnection*)bus_handle, msg, 1000, &error);
                 dbus_message_unref(msg);
                 
@@ -1134,7 +1134,7 @@ static void* dbus_event_loop_thread(void *arg)
 {
     (void)arg;
     
-    if (!signal_bus_handle)
+    if (!signal_bus_handle || !bus_handle)
     {
         EVENT_ERROR("Signal bus handle is NULL\n");
         return NULL;
@@ -1146,13 +1146,8 @@ static void* dbus_event_loop_thread(void *arg)
     {
         // Process signal connection (for ProfileUpdate signals)
         dbus_connection_read_write_dispatch((DBusConnection*)signal_bus_handle, 0);
-        
-        // Process method call connection (flush outgoing SendT2Event messages)
-        if (bus_handle)
-        {
-            dbus_connection_read_write_dispatch((DBusConnection*)bus_handle, 0);
-        }
-        
+        dbus_connection_read_write_dispatch((DBusConnection*)bus_handle, 0);
+
         // Small sleep to avoid busy-waiting
         usleep(100000); // 100ms
     }

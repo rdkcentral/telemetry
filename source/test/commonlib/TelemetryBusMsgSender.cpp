@@ -473,19 +473,18 @@ TEST_F(TelemetryBusmessageSenderTest, doPopulateEventMarkerList_ReturnsEarlyIfRb
 }
 
 TEST_F(TelemetryBusmessageSenderTest, doPopulateEventMarkerList_BusHandleFail) {
-    *test_get_bus_handle_ptr() = nullptr;    
-    t2_init((char*)"test_component");
-    EXPECT_CALL(*g_rbusMock, rbus_checkStatus())
-    .Times(1)
-    .WillOnce(Return(RBUS_ENABLED));
+t2_uninit();
+t2_init();
 
-    EXPECT_CALL(*g_rbusMock, rbus_open(_, _))
+EXPECT_CALL(*g_rbusMock, rbus_checkStatus())
+    .WillRepeatedly(Return(RBUS_ENABLED));
+
+EXPECT_CALL(*g_rbusMock, rbus_open(_, _))
     .Times(1)
     .WillOnce([](rbusHandle_t* handle, const char* componentName) {
-        *handle = nullptr; // or any value, since it fails
-        return RBUS_ERROR_BUS_ERROR; // Simulate failure in open
+        *handle = nullptr;
+        return RBUS_ERROR_BUS_ERROR;
     });
-
     auto cb = getDoPopulateEventMarkerListCallback();
     T2ERROR ret = cb();
 

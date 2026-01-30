@@ -42,6 +42,24 @@
 #define FILESCHEME "file://"
 #endif
 
+// Macro to check curl_easy_setopt return value and log errors
+#define CURL_SETOPT_CHECK(handle, option, value) \
+    do { \
+        CURLcode _curl_code = curl_easy_setopt(handle, option, value); \
+        if(_curl_code != CURLE_OK) { \
+            T2Error("%s : Failed to set %s=%s, error: %s\n", __FUNCTION__, #option, #value, curl_easy_strerror(_curl_code)); \
+        } \
+    } while(0)
+
+// Macro for string values that need proper formatting
+#define CURL_SETOPT_CHECK_STR(handle, option, value) \
+    do { \
+        CURLcode _curl_code = curl_easy_setopt(handle, option, value); \
+        if(_curl_code != CURLE_OK) { \
+            T2Error("%s : Failed to set %s=%s, error: %s\n", __FUNCTION__, #option, (value) ? (const char*)(value) : "NULL", curl_easy_strerror(_curl_code)); \
+        } \
+    } while(0)
+
 //Global variables
 #define MAX_POOL_SIZE 3
 #define HTTP_RESPONSE_FILE "/tmp/httpOutput.txt"
@@ -191,7 +209,6 @@ T2ERROR init_connection_pool()
         return T2ERROR_SUCCESS;
     }
 
-    CURLcode code = CURLE_OK;
     T2Debug("%s ++in\n", __FUNCTION__);
 
 #ifdef LIBRDKCERTSEL_BUILD
@@ -207,43 +224,38 @@ T2ERROR init_connection_pool()
         pool.handle_available[i] = true;
 
         //Set common options for each handle
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_TIMEOUT, 30L);    // Overall operation timeout
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_CONNECTTIMEOUT, 10L);    // Connection timeout
+        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_TIMEOUT, 30L);
+        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_CONNECTTIMEOUT, 10L);
 
         // More aggressive keepalive settings for your environment
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPALIVE, 1L);    // Enable TCP keepalive
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPIDLE, 50L);    // 50 seconds of idle time before starting probes
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPINTVL, 30L);   // 30 seconds of probe interval
+        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_TCP_KEEPALIVE, 1L);
+        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_TCP_KEEPIDLE, 50L);
+        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_TCP_KEEPINTVL, 30L);
 
 #ifdef CURLOPT_TCP_KEEPCNT
         // The option CURLOPT_TCP_KEEPCNT is not available in libcurl versions older than 7.25.0
         // Set number of keepalive probes before considering the connection dead
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_TCP_KEEPCNT, 15L);  // Allow up to 15 probes
+        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_TCP_KEEPCNT, 15L);
 #endif
 
         // Add connection reuse validation
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_FORBID_REUSE, 0L);   // Allow reuse of connections
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_FRESH_CONNECT, 0L);   // Don't force new connection every time
+        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_FORBID_REUSE, 0L);
+        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_FRESH_CONNECT, 0L);
 
         // Add low-level socket options for better connection health detection
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_NOSIGNAL, 1L);
+        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_NOSIGNAL, 1L);
 
         // Add HTTP-level keep-alive headers for better server compatibility
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_HTTPHEADER, NULL); // Reset any existing headers first
+        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_HTTPHEADER, NULL);
 
         // Connection management options that work with older libcurl
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_PIPEWAIT, 0L);     // Don't wait for pipelining
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1); // Use HTTP/1.1
-
-        code = curl_easy_setopt(pool.easy_handles[i], CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
-        if(code != CURLE_OK)
-        {
-            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-        }
+        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_PIPEWAIT, 0L);
+        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
+        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
 
         // Certificate selector and SSL/TLS specific options from original code
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_SSL_VERIFYPEER, 1L);
-        curl_easy_setopt(pool.easy_handles[i], CURLOPT_SSLENGINE_DEFAULT, 1L);
+        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_SSL_VERIFYPEER, 1L);
+        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_SSLENGINE_DEFAULT, 1L);
     }
     pool.post_headers = curl_slist_append(NULL, "Accept: application/json");
     pool.post_headers = curl_slist_append(pool.post_headers, "Content-type: application/json");
@@ -332,10 +344,10 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
     }
 
     // Clear any POST-specific settings so that the handle can be used for GET operations
-    curl_easy_setopt(easy, CURLOPT_CUSTOMREQUEST, NULL);
-    curl_easy_setopt(easy, CURLOPT_POSTFIELDS, NULL);
-    curl_easy_setopt(easy, CURLOPT_POSTFIELDSIZE, 0L);  // Clear POST size
-    curl_easy_setopt(easy, CURLOPT_HTTPHEADER, NULL);  // Clear POST headers
+    CURL_SETOPT_CHECK(easy, CURLOPT_CUSTOMREQUEST, NULL);
+    CURL_SETOPT_CHECK(easy, CURLOPT_POSTFIELDS, NULL);
+    CURL_SETOPT_CHECK(easy, CURLOPT_POSTFIELDSIZE, 0L);
+    CURL_SETOPT_CHECK(easy, CURLOPT_HTTPHEADER, NULL);
 
     T2Info("http_pool_get using handle %d\n", idx);
 
@@ -352,16 +364,10 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
     response.size = 0;
 
     // Configure basic options for GET request
-    CURLcode code = CURLE_OK;
-    code = curl_easy_setopt(easy, CURLOPT_URL, url);
-    if(code != CURLE_OK)
-    {
-        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-    }
-
-    curl_easy_setopt(easy, CURLOPT_HTTPGET, 1L);
-    curl_easy_setopt(easy, CURLOPT_WRITEFUNCTION, httpGetCallBack);
-    curl_easy_setopt(easy, CURLOPT_WRITEDATA, (void *) &response);
+    CURL_SETOPT_CHECK_STR(easy, CURLOPT_URL, url);
+    CURL_SETOPT_CHECK(easy, CURLOPT_HTTPGET, 1L);
+    CURL_SETOPT_CHECK(easy, CURLOPT_WRITEFUNCTION, httpGetCallBack);
+    CURL_SETOPT_CHECK(easy, CURLOPT_WRITEDATA, (void *) &response);
 
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
 #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
@@ -385,10 +391,10 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
         T2Error("Failed to get Value for %s\n", TR181_DEVICE_CURRENT_WAN_IFNAME);
     }
 
-    curl_easy_setopt(easy, CURLOPT_INTERFACE, waninterface);
+    CURL_SETOPT_CHECK_STR(easy, CURLOPT_INTERFACE, waninterface);
     T2Info("TR181_DEVICE_CURRENT_WAN_IFNAME ---- %s\n", waninterface);
 #else
-    curl_easy_setopt(easy, CURLOPT_INTERFACE, "erouter0");
+    CURL_SETOPT_CHECK(easy, CURLOPT_INTERFACE, "erouter0");
 #endif
 #endif
 
@@ -428,26 +434,10 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
                 }
 
                 // Configure mTLS certificates
-                code = curl_easy_setopt(easy, CURLOPT_SSLCERTTYPE, "P12");
-                if(code != CURLE_OK)
-                {
-                    T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-                }
-                code = curl_easy_setopt(easy, CURLOPT_SSLCERT, pCertFile);
-                if(code != CURLE_OK)
-                {
-                    T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-                }
-                code = curl_easy_setopt(easy, CURLOPT_KEYPASSWD, pPasswd);
-                if(code != CURLE_OK)
-                {
-                    T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-                }
-                code = curl_easy_setopt(easy, CURLOPT_SSL_VERIFYPEER, 1L);
-                if(code != CURLE_OK)
-                {
-                    T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-                }
+                CURL_SETOPT_CHECK_STR(easy, CURLOPT_SSLCERTTYPE, "P12");
+                CURL_SETOPT_CHECK_STR(easy, CURLOPT_SSLCERT, pCertFile);
+                CURL_SETOPT_CHECK_STR(easy, CURLOPT_KEYPASSWD, pPasswd);
+                CURL_SETOPT_CHECK(easy, CURLOPT_SSL_VERIFYPEER, 1L);
             }
         }
         while(rdkcertselector_setCurlStatus(xcCertSelector, CURLE_OK, (const char*)url) == TRY_ANOTHER);
@@ -456,26 +446,10 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
         if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pPasswd))
         {
             // Configure mTLS certificates
-            code = curl_easy_setopt(easy, CURLOPT_SSLCERTTYPE, "P12");
-            if(code != CURLE_OK)
-            {
-                T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-            }
-            code = curl_easy_setopt(easy, CURLOPT_SSLCERT, pCertFile);
-            if(code != CURLE_OK)
-            {
-                T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-            }
-            code = curl_easy_setopt(easy, CURLOPT_KEYPASSWD, pPasswd);
-            if(code != CURLE_OK)
-            {
-                T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-            }
-            code = curl_easy_setopt(easy, CURLOPT_SSL_VERIFYPEER, 1L);
-            if(code != CURLE_OK)
-            {
-                T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-            }
+            CURL_SETOPT_CHECK_STR(easy, CURLOPT_SSLCERTTYPE, "P12");
+            CURL_SETOPT_CHECK_STR(easy, CURLOPT_SSLCERT, pCertFile);
+            CURL_SETOPT_CHECK_STR(easy, CURLOPT_KEYPASSWD, pPasswd);
+            CURL_SETOPT_CHECK(easy, CURLOPT_SSL_VERIFYPEER, 1L);
         }
         else
         {
@@ -644,30 +618,24 @@ T2ERROR http_pool_post(const char *url, const char *payload)
     T2Info("http_pool_post using handle %d\n", idx);
 
     // Clear any GET-specific settings from previous use
-    curl_easy_setopt(easy, CURLOPT_HTTPGET, 0L);       // Disable GET mode
-    curl_easy_setopt(easy, CURLOPT_WRITEFUNCTION, NULL); // Clear GET callback (will set POST one later)
-    curl_easy_setopt(easy, CURLOPT_WRITEDATA, NULL);     // Clear GET write data
+    CURL_SETOPT_CHECK(easy, CURLOPT_HTTPGET, 0L);
+    CURL_SETOPT_CHECK(easy, CURLOPT_WRITEFUNCTION, NULL);
+    CURL_SETOPT_CHECK(easy, CURLOPT_WRITEDATA, NULL);
 
     // Configure basic options for POST request
-    CURLcode code = CURLE_OK;
-    code = curl_easy_setopt(easy, CURLOPT_URL, url);
-    if(code != CURLE_OK)
-    {
-        T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-    }
-
-    curl_easy_setopt(easy, CURLOPT_CUSTOMREQUEST, "POST");
-    curl_easy_setopt(easy, CURLOPT_HTTPHEADER, pool.post_headers);
-    curl_easy_setopt(easy, CURLOPT_POSTFIELDS, payload);
-    curl_easy_setopt(easy, CURLOPT_POSTFIELDSIZE, strlen(payload));
+    CURL_SETOPT_CHECK_STR(easy, CURLOPT_URL, url);
+    CURL_SETOPT_CHECK_STR(easy, CURLOPT_CUSTOMREQUEST, "POST");
+    CURL_SETOPT_CHECK(easy, CURLOPT_HTTPHEADER, pool.post_headers);
+    CURL_SETOPT_CHECK_STR(easy, CURLOPT_POSTFIELDS, payload);
+    CURL_SETOPT_CHECK(easy, CURLOPT_POSTFIELDSIZE, strlen(payload));
 
     // Configure interface binding
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
 #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
-    curl_easy_setopt(easy, CURLOPT_INTERFACE, waninterface);
+    CURL_SETOPT_CHECK_STR(easy, CURLOPT_INTERFACE, waninterface);
     T2Info("TR181_DEVICE_CURRENT_WAN_IFNAME ---- %s\n", waninterface);
 #else
-    curl_easy_setopt(easy, CURLOPT_INTERFACE, "erouter0");
+    CURL_SETOPT_CHECK(easy, CURLOPT_INTERFACE, "erouter0");
 #endif
 #endif
 
@@ -679,8 +647,8 @@ T2ERROR http_pool_post(const char *url, const char *payload)
         fp = fdopen(curl_output_fd, "wb");
         if (fp != NULL)
         {
-            curl_easy_setopt(easy, CURLOPT_WRITEFUNCTION, writeToFile);
-            curl_easy_setopt(easy, CURLOPT_WRITEDATA, (void *)fp);
+            CURL_SETOPT_CHECK(easy, CURLOPT_WRITEFUNCTION, writeToFile);
+            CURL_SETOPT_CHECK(easy, CURLOPT_WRITEDATA, (void *)fp);
         }
         else
         {
@@ -749,26 +717,10 @@ T2ERROR http_pool_post(const char *url, const char *payload)
                 }
 
                 // Configure mTLS certificates
-                code = curl_easy_setopt(easy, CURLOPT_SSLCERTTYPE, "P12");
-                if(code != CURLE_OK)
-                {
-                    T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-                }
-                code = curl_easy_setopt(easy, CURLOPT_SSLCERT, pCertFile);
-                if(code != CURLE_OK)
-                {
-                    T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-                }
-                code = curl_easy_setopt(easy, CURLOPT_KEYPASSWD, pCertPC);
-                if(code != CURLE_OK)
-                {
-                    T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-                }
-                code = curl_easy_setopt(easy, CURLOPT_SSL_VERIFYPEER, 1L);
-                if(code != CURLE_OK)
-                {
-                    T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-                }
+                CURL_SETOPT_CHECK_STR(easy, CURLOPT_SSLCERTTYPE, "P12");
+                CURL_SETOPT_CHECK_STR(easy, CURLOPT_SSLCERT, pCertFile);
+                CURL_SETOPT_CHECK_STR(easy, CURLOPT_KEYPASSWD, pCertPC);
+                CURL_SETOPT_CHECK(easy, CURLOPT_SSL_VERIFYPEER, 1L);
 
                 // Execute the request directly
                 curl_code = curl_easy_perform(easy);
@@ -793,26 +745,10 @@ T2ERROR http_pool_post(const char *url, const char *payload)
         if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pCertPC))
         {
             // Configure mTLS certificates
-            code = curl_easy_setopt(easy, CURLOPT_SSLCERTTYPE, "P12");
-            if(code != CURLE_OK)
-            {
-                T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-            }
-            code = curl_easy_setopt(easy, CURLOPT_SSLCERT, pCertFile);
-            if(code != CURLE_OK)
-            {
-                T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-            }
-            code = curl_easy_setopt(easy, CURLOPT_KEYPASSWD, pCertPC);
-            if(code != CURLE_OK)
-            {
-                T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-            }
-            code = curl_easy_setopt(easy, CURLOPT_SSL_VERIFYPEER, 1L);
-            if(code != CURLE_OK)
-            {
-                T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-            }
+            CURL_SETOPT_CHECK_STR(easy, CURLOPT_SSLCERTTYPE, "P12");
+            CURL_SETOPT_CHECK_STR(easy, CURLOPT_SSLCERT, pCertFile);
+            CURL_SETOPT_CHECK_STR(easy, CURLOPT_KEYPASSWD, pCertPC);
+            CURL_SETOPT_CHECK(easy, CURLOPT_SSL_VERIFYPEER, 1L);
 
             // Execute the request
             curl_code = curl_easy_perform(easy);

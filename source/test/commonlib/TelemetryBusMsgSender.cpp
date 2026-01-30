@@ -474,11 +474,7 @@ TEST_F(TelemetryBusmessageSenderTest, doPopulateEventMarkerList_ReturnsEarlyIfRb
 }
 
 TEST_F(TelemetryBusmessageSenderTest, doPopulateEventMarkerList_BusHandleFail) {
-    t2_init((char*)"test_component");
-
-    *test_get_isRbusEnabled_ptr() = true;
-    *test_get_bus_handle_ptr() = nullptr; // Simulate bus_handle == NULL
-
+    t2_uninit();
     auto cb = getDoPopulateEventMarkerListCallback();
     T2ERROR ret = cb();
 

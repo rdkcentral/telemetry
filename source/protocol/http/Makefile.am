@@ -20,7 +20,7 @@ AM_CFLAGS =
 
 lib_LTLIBRARIES = libhttp.la
 
-libhttp_la_SOURCES = curlinterface.c
+libhttp_la_SOURCES = curlinterface.c multicurlinterface.c
 libhttp_la_LDFLAGS = -shared -fPIC -lcurl
 if IS_LIBRDKCERTSEL_ENABLED
 libhttp_la_CFLAGS = $(LIBRDKCERTSEL_FLAG)

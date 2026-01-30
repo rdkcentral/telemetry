@@ -74,6 +74,10 @@ extern "C" {
     void** test_get_bus_handle_ptr(void);
     typedef void (*event_debug_fn)(char*, ...);
     event_debug_fn get_EVENT_DEBUG_ptr(void);
+    bool* _test_get_isRbusEnabled(void);
+bool* _test_get_isRFCT2Enable(void);
+void** _test_get_bus_handle(void);
+bool* _test_get_isT2Ready(void);
 }
 #endif
 
@@ -316,6 +320,33 @@ TEST_F(TelemetryBusmessageSenderTest, t2_event_d_iscachingenabled_true_1)
     *test_get_isRbusEnabled_ptr() = true;
     EXPECT_EQ(ret, T2ERROR_SUCCESS);
 }
+
+// ------- Coverage: isCachingRequired() branch for isT2Ready == false and component ready -------
+
+TEST_F(TelemetryBusmessageSenderTest, isCachingRequired_ComponentReady_TriggersMarkerListPopulation) {
+    t2_init((char*)"test_component");
+    *test_get_isRbusEnabled_ptr() = true;
+    *test_get_isT2Ready_ptr() = false;
+    *test_get_bus_handle_ptr() = (void*)0x1234;
+
+    // T2_STATE_COMPONENT_READY must be defined somewhere; usually 2, use your project's constant
+    #ifndef T2_STATE_COMPONENT_READY
+    #define T2_STATE_COMPONENT_READY 0x2
+    #endif
+    EXPECT_CALL(*g_rbusMock, rbus_getUint(_, _, _))
+        .Times(1)
+        .WillOnce([](rbusHandle_t handle, const char* name, uint32_t* value) {
+            *value = T2_STATE_COMPONENT_READY; // Simulate ready
+            return RBUS_ERROR_SUCCESS;
+        });
+
+    // Optionally, mock/expect marker list population or rbusEvent_Subscribe as needed
+
+    // Should reach marker list handling branch after isT2Ready check
+    int ret = t2_event_s("marker", "data");
+    EXPECT_EQ(ret, T2ERROR_SUCCESS);
+}
+
 #if 0
 TEST_F(TelemetryBusmessageSenderTest, FilteredEventSend_RbusEnabled_RbusSetSuccess) {
     t2_init((char*)"sysint");

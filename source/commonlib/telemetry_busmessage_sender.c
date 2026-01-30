@@ -902,5 +902,10 @@ T2ERROR t2_event_d(const char* marker, int value)
 bool* test_get_isRbusEnabled_ptr(void) { return &isRbusEnabled; }
 bool* test_get_isT2Ready_ptr(void) { return &isT2Ready; }
 void** test_get_bus_handle_ptr(void) { return &bus_handle; }
+
+bool* _test_get_isRbusEnabled() { return &isRbusEnabled; }
+bool* _test_get_isRFCT2Enable() { return &isRFCT2Enable; }
+void** _test_get_bus_handle() { return &bus_handle; }
+bool* _test_get_isT2Ready() { return &isT2Ready; }
 #endif
 

@@ -783,6 +783,7 @@ int filtered_event_send(const char* data, const char *markerName)
 
         // D-Bus method call to send event
         DBusMessage *msg = NULL;
+        DBusMessage *reply = NULL;
         DBusError error;
         dbus_error_init(&error);
         
@@ -808,20 +809,48 @@ int filtered_event_send(const char* data, const char *markerName)
             }
             else
             {
-                // Send method call without waiting for reply
-                if (!dbus_connection_send((DBusConnection*)bus_handle, msg, NULL))
+                // Send method call and wait for reply with timeout (1000ms)
+                reply = dbus_connection_send_with_reply_and_block((DBusConnection*)bus_handle, msg, 1000, &error);
+                dbus_message_unref(msg);
+                
+                if (dbus_error_is_set(&error))
                 {
-                    EVENT_ERROR("Failed to send D-Bus method call\n");
+                    EVENT_ERROR("D-Bus method call failed: %s\n", error.message);
+                    dbus_error_free(&error);
+                    status = -1;
+                }
+                else if (!reply)
+                {
+                    EVENT_ERROR("No reply received from SendT2Event\n");
                     status = -1;
                 }
                 else
                 {
-                    // Flush the connection to ensure message is actually sent
-                    //dbus_connection_flush((DBusConnection*)bus_handle);
-                    EVENT_DEBUG("call sent for event marker [%s] with data [%s]\n", markerName, data);
-                    status = 0;
+                    // Parse boolean success status from reply
+                    dbus_bool_t success = FALSE;
+                    if (dbus_message_get_args(reply, &error,
+                                             DBUS_TYPE_BOOLEAN, &success,
+                                             DBUS_TYPE_INVALID))
+                    {
+                        if (success)
+                        {
+                            EVENT_DEBUG("SendT2Event succeeded for marker [%s] with data [%s]\n", markerName, data);
+                            status = 0;
+                        }
+                        else
+                        {
+                            EVENT_ERROR("SendT2Event returned failure for marker [%s]\n", markerName);
+                            status = -1;
+                        }
+                    }
+                    else
+                    {
+                        EVENT_ERROR("Failed to parse reply: %s\n", error.message);
+                        dbus_error_free(&error);
+                        status = -1;
+                    }
+                    dbus_message_unref(reply);
                 }
-                dbus_message_unref(msg);
             }
         }
     }

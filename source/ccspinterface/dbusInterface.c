@@ -123,6 +123,7 @@ static DBusHandlerResult handle_send_t2_event(DBusConnection *connection, DBusMe
 
     const char* marker_name = NULL;
     const char* data = NULL;
+    dbus_bool_t success = FALSE;
 
     if (!dbus_message_get_args(message, &error,
                                DBUS_TYPE_STRING, &marker_name,
@@ -136,12 +137,24 @@ static DBusHandlerResult handle_send_t2_event(DBusConnection *connection, DBusMe
     if (marker_name && data && eventCallBack) {
         T2Info("Received event: name=%s, value=%s\n", marker_name, data);
         eventCallBack(strdup(marker_name), strdup(data));
+        success = TRUE;
+    } else {
+        T2Error("Failed to process event - invalid parameters or callback not registered\n");
+        success = FALSE;
     }
 
-    /* Create empty reply (method returns void) */
+    /* Create reply with success status */
     DBusMessage *reply = dbus_message_new_method_return(message);
     if (!reply) {
         T2Error("Failed to create reply message\n");
+        return DBUS_HANDLER_RESULT_NEED_MEMORY;
+    }
+
+    if (!dbus_message_append_args(reply,
+                                  DBUS_TYPE_BOOLEAN, &success,
+                                  DBUS_TYPE_INVALID)) {
+        T2Error("Failed to append reply arguments\n");
+        dbus_message_unref(reply);
         return DBUS_HANDLER_RESULT_NEED_MEMORY;
     }
 
@@ -151,7 +164,7 @@ static DBusHandlerResult handle_send_t2_event(DBusConnection *connection, DBusMe
         return DBUS_HANDLER_RESULT_NEED_MEMORY;
     }
 
-    T2Debug("SendT2Event: Reply sent successfully\n");
+    T2Debug("SendT2Event: Reply sent successfully with status=%s\n", success ? "true" : "false");
     dbus_message_unref(reply);
     //dbus_connection_flush(connection);
 

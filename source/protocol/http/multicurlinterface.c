@@ -699,6 +699,7 @@ T2ERROR http_pool_post(const char *url, const char *payload)
         rdkcertselector_h thisCertSel = NULL;
         rdkcertselectorStatus_t curlGetCertStatus;
         char *pCertURI = NULL;
+        char *pPasswd = NULL;
         bool state_red_enable = false;
 
 #if defined(ENABLE_RED_RECOVERY_SUPPORT)

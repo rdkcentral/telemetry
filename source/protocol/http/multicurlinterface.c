@@ -393,17 +393,8 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
 
         do
         {
-            // Free previous iteration's allocations
-            if(pCertURI != NULL)
-            {
-                free(pCertURI);
-                pCertURI = NULL;
-            }
-            if(pPasswd != NULL)
-            {
-                free(pPasswd);
-                pPasswd = NULL;
-            }
+            pCertURI = NULL;
+            pPasswd = NULL;
             pCertFile = NULL;
 
             xcGetCertStatus = rdkcertselector_getCert(curlCertSelector, &pCertURI, &pPasswd);
@@ -443,6 +434,16 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
                 {
                     T2Info("%s: Using xpki Certs connection certname : %s \n", __FUNCTION__, pCertFile);
                 }
+            }
+            if(pCertURI != NULL)
+            {
+                free(pCertURI);
+                pCertURI = NULL;
+            }
+            if(pPasswd != NULL)
+            {
+                free(pPasswd);
+                pPasswd = NULL;
             }
         }
         while(rdkcertselector_setCurlStatus(curlCertSelector, curl_code, (const char*)url) == TRY_ANOTHER);
@@ -717,17 +718,8 @@ T2ERROR http_pool_post(const char *url, const char *payload)
 
         do
         {
-            // Free previous iteration's allocations
-            if(pCertURI != NULL)
-            {
-                free(pCertURI);
-                pCertURI = NULL;
-            }
-            if(pPasswd != NULL)
-            {
-                free(pPasswd);
-                pPasswd = NULL;
-            }
+            pCertURI = NULL;
+            pPasswd = NULL;
             pCertFile = NULL;
 
             curlGetCertStatus = rdkcertselector_getCert(thisCertSel, &pCertURI, &pCertPC);
@@ -771,6 +763,16 @@ T2ERROR http_pool_post(const char *url, const char *payload)
                     T2Info("%s: Using xpki Certs connection certname : %s \n", __FUNCTION__, pCertFile);
                     T2Info("Report Sent Successfully over HTTP : %ld\n", http_code);
                 }
+            }
+            if(pCertURI != NULL)
+            {
+                free(pCertURI);
+                pCertURI = NULL;
+            }
+            if(pPasswd != NULL)
+            {
+                free(pPasswd);
+                pPasswd = NULL;
             }
         }
         while(rdkcertselector_setCurlStatus(thisCertSel, curl_code, (const char*)url) == TRY_ANOTHER);

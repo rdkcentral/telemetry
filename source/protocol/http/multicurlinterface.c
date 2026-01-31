@@ -183,6 +183,20 @@ T2ERROR init_connection_pool()
 
     T2Debug("%s ++in\n", __FUNCTION__);
 
+    // Initialize synchronization primitives first
+    if(pthread_mutex_init(&pool.pool_mutex, NULL) != 0)
+    {
+        T2Error("%s : Failed to initialize pool mutex\n", __FUNCTION__);
+        return T2ERROR_FAILURE;
+    }
+
+    if(pthread_cond_init(&pool.handle_available_cond, NULL) != 0)
+    {
+        T2Error("%s : Failed to initialize condition variable\n", __FUNCTION__);
+        pthread_mutex_destroy(&pool.pool_mutex);
+        return T2ERROR_FAILURE;
+    }
+
 #ifdef LIBRDKCERTSEL_BUILD
     // Initialize certificate selector before setting up connection pool
     curlCertSelectorInit();
@@ -231,8 +245,6 @@ T2ERROR init_connection_pool()
     pool.post_headers = curl_slist_append(NULL, "Accept: application/json");
     pool.post_headers = curl_slist_append(pool.post_headers, "Content-type: application/json");
 
-    pthread_mutex_init(&pool.pool_mutex, NULL);
-    pthread_cond_init(&pool.handle_available_cond, NULL); // Initialize condition variable
     pool_initialized = true;
     T2Debug("%s ++out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
@@ -381,9 +393,19 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
 
         do
         {
+            // Free previous iteration's allocations
+            if(pCertURI != NULL)
+            {
+                free(pCertURI);
+                pCertURI = NULL;
+            }
+            if(pPasswd != NULL)
+            {
+                free(pPasswd);
+                pPasswd = NULL;
+            }
             pCertFile = NULL;
-            pPasswd = NULL;
-            pCertURI = NULL;
+
             xcGetCertStatus = rdkcertselector_getCert(curlCertSelector, &pCertURI, &pPasswd);
             if(xcGetCertStatus != certselectorOk)
             {
@@ -509,7 +531,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
                 }
             }
 
-            // Copy response data if requested
+            // Copy response data
             if (response_data)
             {
                 *response_data = NULL;
@@ -694,9 +716,19 @@ T2ERROR http_pool_post(const char *url, const char *payload)
 
         do
         {
+            // Free previous iteration's allocations
+            if(pCertURI != NULL)
+            {
+                free(pCertURI);
+                pCertURI = NULL;
+            }
+            if(pPasswd != NULL)
+            {
+                free(pPasswd);
+                pPasswd = NULL;
+            }
             pCertFile = NULL;
-            pCertPC = NULL;
-            pCertURI = NULL;
+
             curlGetCertStatus = rdkcertselector_getCert(thisCertSel, &pCertURI, &pCertPC);
             if(curlGetCertStatus != certselectorOk)
             {

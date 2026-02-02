@@ -81,7 +81,6 @@ protected:
 	g_vectorMock = nullptr;
 	g_schedulerMock = nullptr;
 	g_profileMock = nullptr;
-	g_schedulerMock = nullptr;
     }
 };
 

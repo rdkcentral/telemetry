@@ -19,6 +19,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <pthread.h>
 #include <net/if.h>
 #include <netdb.h>
@@ -94,7 +95,7 @@ void curlCertSelectorFree()
 {
     rdkcertselector_free(&curlCertSelector);
     rdkcertselector_free(&curlRcvryCertSelector);
-    if(curlCertSelector == NULL || curlRcvryCertSelector == NULL)
+    if(curlCertSelector == NULL && curlRcvryCertSelector == NULL)
     {
         T2Info("%s, T2:Cert selector memory free\n", __func__);
     }
@@ -173,14 +174,31 @@ static size_t httpGetCallBack(void *response, size_t len, size_t nmemb,
     return realsize;
 }
 
-T2ERROR init_connection_pool()
+static void cleanup_curl_handles(void)
 {
-    if(pool_initialized)
+    T2Debug("%s ++in\n", __FUNCTION__);
+
+    if(pool.post_headers)
     {
-        T2Debug("Connection pool already initialized\n");
-        return T2ERROR_SUCCESS;
+        curl_slist_free_all(pool.post_headers);
+        pool.post_headers = NULL;
     }
 
+    for(int i = 0; i < MAX_POOL_SIZE; i++)
+    {
+        if(pool.easy_handles[i])
+        {
+            curl_easy_cleanup(pool.easy_handles[i]);
+            pool.easy_handles[i] = NULL;
+            pool.handle_available[i] = false;
+        }
+    }
+
+    T2Debug("%s ++out\n", __FUNCTION__);
+}
+
+T2ERROR init_connection_pool()
+{
     T2Debug("%s ++in\n", __FUNCTION__);
 
     // Initialize synchronization primitives first
@@ -197,6 +215,8 @@ T2ERROR init_connection_pool()
         return T2ERROR_FAILURE;
     }
 
+    pthread_mutex_lock(&pool.pool_mutex);
+
 #ifdef LIBRDKCERTSEL_BUILD
     // Initialize certificate selector before setting up connection pool
     curlCertSelectorInit();
@@ -206,6 +226,16 @@ T2ERROR init_connection_pool()
     for(int i = 0; i < MAX_POOL_SIZE; i++)
     {
         pool.easy_handles[i] = curl_easy_init();
+        if(pool.easy_handles[i] == NULL)
+        {
+            T2Error("%s : Failed to initialize curl handle %d\n", __FUNCTION__, i);
+            // Cleanup previously initialized handles using helper function
+            cleanup_curl_handles();
+            pthread_mutex_unlock(&pool.pool_mutex);
+            pthread_cond_destroy(&pool.handle_available_cond);
+            pthread_mutex_destroy(&pool.pool_mutex);
+            return T2ERROR_FAILURE;
+        }
         pool.handle_available[i] = true;
 
         //Set common options for each handle
@@ -242,10 +272,25 @@ T2ERROR init_connection_pool()
         CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_SSL_VERIFYPEER, 1L);
         CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_SSLENGINE_DEFAULT, 1L);
     }
+
     pool.post_headers = curl_slist_append(NULL, "Accept: application/json");
+    if (pool.post_headers == NULL)
+    {
+        T2Error("%s : Failed to append HTTP header: Accept: application/json\n", __FUNCTION__);
+        return T2ERROR_FAILURE;
+    }
+
     pool.post_headers = curl_slist_append(pool.post_headers, "Content-type: application/json");
+    if (pool.post_headers == NULL)
+    {
+        T2Error("%s : Failed to append HTTP header: Content-type: application/json\n", __FUNCTION__);
+        curl_slist_free_all(pool.post_headers);
+        pool.post_headers = NULL;
+        return T2ERROR_FAILURE;
+    }
 
     pool_initialized = true;
+    pthread_mutex_unlock(&pool.pool_mutex);
     T2Debug("%s ++out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }

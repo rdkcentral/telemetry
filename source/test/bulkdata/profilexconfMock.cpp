@@ -54,8 +54,8 @@ extern "C" cJSON* cJSON_AddStringToObject(cJSON* object, const char* string, con
 
 extern "C" bool ProfileXConf_isNameEqual(char* profileName) {
     // Forward to mock if present, else default behavior
-    if (g_ProfileXConfMock)
-        return g_ProfileXConfMock->ProfileXConf_isNameEqual(profileName);
+    if (g_profileXConfMock)
+        return g_profileXConfMock->ProfileXConf_isNameEqual(profileName);
     // Optionally fallback to default (real) impl:
     // return real_ProfileXConf_isNameEqual(profileName);
     return false; // Or whatever default makes sense

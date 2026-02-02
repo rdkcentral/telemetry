@@ -629,3 +629,136 @@ TEST_F(profileXconfTestFixture, ProfileXConf_uninit)
 {
     EXPECT_EQ(ProfileXConf_uninit(), T2ERROR_SUCCESS);
 }
+
+ProfileXConf* CreateProfile(const char* name, bool withCached, bool withEMarker, MarkerType mType, bool withGMarker, bool withReportInProgress) {
+    ProfileXConf* localProfile = (ProfileXConf*)calloc(1, sizeof(ProfileXConf));
+    localProfile->name = strdup(name);
+
+    if (withEMarker) {
+        EventMarker *eMarker = (EventMarker*)calloc(1, sizeof(EventMarker));
+        eMarker->markerName = strdup("sys_info_bootup");
+        eMarker->compName = strdup("sysint");
+        eMarker->skipFreq = 0;
+        eMarker->mType = mType;
+        Vector_Create(&localProfile->eMarkerList);
+        Vector_PushBack(localProfile->eMarkerList, eMarker);
+    }
+
+    if (withGMarker) {
+        Vector_Create(&localProfile->gMarkerList);
+        void* dummy = strdup("dummy");
+        Vector_PushBack(localProfile->gMarkerList, dummy);
+    }
+
+    if (withCached) {
+        Vector_Create(&localProfile->cachedReportList);
+        void* dummy = strdup("cached");
+        Vector_PushBack(localProfile->cachedReportList, dummy);
+    }
+
+    localProfile->reportInProgress = withReportInProgress;
+    localProfile->protocol = strdup("HTTP");
+    localProfile->encodingType = strdup("JSON");
+
+    return localProfile;
+}
+TEST_F(profileXconfTestFixture, DeleteProfile_NotInitialized) {
+    ProfileXConf* prof = CreateProfile("RDK_Profile_2", false, false, (MarkerType)MTYPE_XCONF_COUNTER, false, false);
+    EXPECT_EQ(ProfileXConf_delete(prof), T2ERROR_FAILURE);
+    free(prof->name); free(prof->protocol); free(prof->encodingType); free(prof);
+}
+
+
+TEST_F(profileXconfTestFixture , notifyTimeoutTest)
+{
+    ProfileXConf* prof = CreateProfile("RDK_Profile_2", false, false, (MarkerType)MTYPE_XCONF_COUNTER, false, true);
+    ProfileXConf_notifyTimeout(true,true);
+    free(prof->name); free(prof->protocol); free(prof->encodingType);  free(prof);
+}
+
+//Test the uninit of XConf profiles
+TEST_F(profileXconfTestFixture, ProfileXConf_uninit)
+{
+    EXPECT_EQ(ProfileXConf_uninit(), T2ERROR_SUCCESS);
+}
+
+#ifdef GTEST_ENABLE
+extern "C" {
+typedef char* (*getTimeStampFuncType)(void);
+getTimeStampFuncType getTimeStampFuncCallback(void);
+
+typedef T2ERROR (*initJSONReportXconfFuncType)(cJSON**, cJSON**);
+initJSONReportXconfFuncType initJSONReportXconfCallback(void);
+
+typedef void* (*CollectAndReportXconfFuncType)(void*);
+CollectAndReportXconfFuncType CollectAndReportXconfCallback(void);
+}
+TEST(ProfileXconfStatic, GetTimeStampAllocatesProperString)
+{
+    getTimeStampFuncType cb = getTimeStampFuncCallback();
+    ASSERT_NE(cb, nullptr);
+    char *result = cb();
+    ASSERT_NE(result, nullptr);
+    free(result);
+}
+
+TEST_F(profileXconfTestFixture, InitJSONReportXConf_CreateObjectFails) {
+    EXPECT_CALL(*g_profileXConfMock, cJSON_CreateObject())
+        .WillOnce(::testing::Return(nullptr));
+
+    cJSON* jsonObj = reinterpret_cast<cJSON*>(0xDEADBEEF);
+    cJSON* valArray = reinterpret_cast<cJSON*>(0xDEADC0DE);
+
+    auto initJSONReportXconfFP = initJSONReportXconfCallback();
+    T2ERROR ret = initJSONReportXconfFP(&jsonObj, &valArray);
+
+    EXPECT_EQ(ret, T2ERROR_FAILURE);
+    EXPECT_EQ(jsonObj, nullptr);
+}
+
+TEST_F(profileXconfTestFixture, InitJSONReportXConf_Success) {
+    cJSON dummyObj1, dummyArr, dummyItem1, dummyItem2, dummyItem3;
+
+    EXPECT_CALL(*g_profileXConfMock, cJSON_CreateObject())
+        .WillOnce(::testing::Return(&dummyObj1))    // *jsonObj
+        .WillOnce(::testing::Return(&dummyItem1))   // arrayItem 1 (T2)
+        .WillOnce(::testing::Return(&dummyItem2))   // arrayItem 2 (Profile)
+        .WillOnce(::testing::Return(&dummyItem3));  // arrayItem 3 (Time)
+
+    EXPECT_CALL(*g_profileXConfMock, cJSON_CreateArray())
+        .WillOnce(::testing::Return(&dummyArr));
+
+    EXPECT_CALL(*g_profileXConfMock, cJSON_AddItemToObject(&dummyObj1, ::testing::StrEq("searchResult"), &dummyArr))
+        .WillOnce(::testing::Return(1)); // cJSON_True
+
+    EXPECT_CALL(*g_profileXConfMock, cJSON_AddStringToObject(&dummyItem1, ::testing::StrEq("T2"), ::testing::StrEq("1.0")))
+        .WillOnce(::testing::Return(&dummyItem1));
+    EXPECT_CALL(*g_profileXConfMock, cJSON_AddItemToArray(&dummyArr, &dummyItem1))
+        .WillOnce(::testing::Return(1));
+    EXPECT_CALL(*g_profileXConfMock, cJSON_AddStringToObject(&dummyItem2, ::testing::StrEq("Profile"), ::testing::_))
+        .WillOnce(::testing::Return(&dummyItem2));
+    EXPECT_CALL(*g_profileXConfMock, cJSON_AddItemToArray(&dummyArr, &dummyItem2))
+        .WillOnce(::testing::Return(1));
+    EXPECT_CALL(*g_profileXConfMock, cJSON_AddStringToObject(&dummyItem3, ::testing::StrEq("Time"), ::testing::_))
+        .WillOnce(::testing::Return(&dummyItem3));
+    EXPECT_CALL(*g_profileXConfMock, cJSON_AddItemToArray(&dummyArr, &dummyItem3))
+        .WillOnce(::testing::Return(1));
+
+    cJSON* jsonObj = nullptr;
+    cJSON* valArray = nullptr;
+    auto func = initJSONReportXconfCallback();
+    T2ERROR ret = func(&jsonObj, &valArray);
+
+    EXPECT_EQ(ret, T2ERROR_SUCCESS);
+    EXPECT_EQ(jsonObj, &dummyObj1);
+    EXPECT_EQ(valArray, &dummyArr);
+}
+
+TEST_F(profileXconfTestFixture, Cover_CollectAndReportXconf)
+{
+    CollectAndReportXconfFuncType fn = CollectAndReportXconfCallback();
+    ASSERT_NE(fn, nullptr);
+    void* result = fn(nullptr);
+}
+#endif
+

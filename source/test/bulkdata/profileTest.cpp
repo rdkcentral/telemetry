@@ -1466,6 +1466,31 @@ TEST_F(ProfileTest, ClearMarkerComponentMapShouldRemoveEntries) {
 
 //================================ reportProfiles.c ====================================
 
+#ifdef GTEST_ENABLE
+extern "C" {
+typedef void* (*reportOnDemandFunc)(void*);
+reportOnDemandFunc reportOnDemandFuncCallback(void);
+typedef void (*freeProfilesHashMapFunc)(void *);
+freeProfilesHashMapFunc freeProfilesHashMapFuncCallback(void);
+typedef void (*freeReportProfileHashMapFunc)(void *);
+freeReportProfileHashMapFunc freeReportProfileHashMapFuncCallback(void);
+}
+
+TEST(ReportProfilesCallbacks, FreeProfilesHashMap) {
+    auto cb = freeProfilesHashMapFuncCallback();
+    ASSERT_NE(cb, nullptr);
+
+    // Test with an actual element
+    hash_element_t* item = (hash_element_t*) std::malloc(sizeof(hash_element_t));
+    item->key = (char*) std::malloc(12);
+    std::strcpy(item->key, "testkey");
+    item->data = std::malloc(8);
+    cb(item);
+
+    // Test with nullptr
+    cb(nullptr);
+}
+#endif
 TEST_F(ProfileTest, initReportProfiles) {
     char status[8] = "true";
     DIR *dir = (DIR*)0xffffffff ;
@@ -2348,5 +2373,27 @@ TEST_F(ProfileTest, VectorMockDemo_PushBack_Success) {
 TEST_F(ProfileTest, createComponentDataElements) {
     EXPECT_CALL(*g_vectorMock, Vector_Size(_)).Times(::testing::AtMost(1)).WillRepeatedly(Return(0));
     createComponentDataElements();
+}
+
+TEST_F(ProfileTest, GetProfileHashMap_Simple) {
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(0));
+
+    hash_map_t *hashMap = getProfileHashMap();
+    EXPECT_NE(hashMap, nullptr);
+    if(hashMap) {
+        hash_map_destroy(hashMap, free);
+    }
+}
+
+// Test 1.5: NotifySchedulerstart - Simple tests
+TEST_F(ProfileTest, NotifySchedulerstart_Simple) {
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(::testing::AtLeast(1))
+        .WillRepeatedly(Return(0));
+
+    NotifySchedulerstart("TestProfile", true);
+    NotifySchedulerstart("TestProfile", false);
 }
 

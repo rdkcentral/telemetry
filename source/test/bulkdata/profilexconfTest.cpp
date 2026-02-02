@@ -351,7 +351,7 @@ TEST_F(profileXconfTestFixture, InitandUninit)
                  gsProfile->execCounter = 0;
             }
             (*profile)->grepSeekProfile = gsProfile;
-            (*profile)->reportInProgress = false;
+            (*profile)->reportInProgress = true;
             (*profile)->isUpdated = false;
             return T2ERROR_SUCCESS;
         });

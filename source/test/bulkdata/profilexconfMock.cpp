@@ -132,14 +132,14 @@ extern "C" bool firstBootStatus()
 
 
 //protocol mock functions
-extern "C" T2ERROR __wrap_sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
+extern "C" T2ERROR __wrap_sendReportOverHTTP(char *httpUrl, char *payload)
 { 
     if(!g_profileXConfMock)
     {
         return T2ERROR_FAILURE;
     }
     // No mock function needed, just a stub
-    return g_profileXConfMock->sendReportOverHTTP(httpUrl, payload, outForkedPid);
+    return g_profileXConfMock->sendReportOverHTTP(httpUrl, payload);
 }
 
 extern "C" T2ERROR __wrap_sendCachedReportsOverHTTP(char *httpUrl, Vector *reportList)

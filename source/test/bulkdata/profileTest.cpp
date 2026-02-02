@@ -287,7 +287,27 @@ TEST_F(ProfileTest, getMinThresholdDuration_Failure) {
 extern "C" {
 typedef void (*freeRequestURIparamFunc)(void *);
 freeRequestURIparamFunc freeRequestURIparamFuncCallback(void);
+
+typedef void (*freeReportProfileConfigFunc)(void *);
+freeReportProfileConfigFunc freeReportProfileConfigFuncCallback(void);
+
+typedef void (*freeProfileFunc)(void *);
+freeProfileFunc freeProfileFuncCallback(void);
+
+typedef T2ERROR (*getProfileFunc)(const char*, Profile**);
+getProfileFunc getProfileFuncCallback(void);
+
+typedef T2ERROR (*initJSONReportProfileFunc)(cJSON **, cJSON **, char *);
+initJSONReportProfileFunc initJSONReportProfileFuncCallback(void);
+
+typedef void* (*CollectAndReportFunc)(void*);
+CollectAndReportFunc getCollectAndReportFunc(void);
 }
+
+struct Config {
+    char* name;
+    char* configData;
+};
 
 TEST_F(ProfileTest, FreeRequestURIparam_Null) {
     freeRequestURIparamFunc freeFunc = freeRequestURIparamFuncCallback();
@@ -295,6 +315,915 @@ TEST_F(ProfileTest, FreeRequestURIparam_Null) {
     freeFunc(nullptr);
 }
 
+TEST_F(ProfileTest, FreeRequestURIparam_Valid) {
+    freeRequestURIparamFunc freeFunc = freeRequestURIparamFuncCallback();
+    ASSERT_NE(freeFunc, nullptr);
+
+    HTTPReqParam* param = (HTTPReqParam*)malloc(sizeof(HTTPReqParam));
+    ASSERT_NE(param, nullptr);
+
+    param->HttpName = strdup("TestName");
+    param->HttpRef = strdup("TestRef");
+    param->HttpValue = strdup("TestValue");
+
+    freeFunc(param);
+}
+TEST_F(ProfileTest, FreeRequestURIparam_Partials) {
+    freeRequestURIparamFunc freeFunc = freeRequestURIparamFuncCallback();
+    ASSERT_NE(freeFunc, nullptr);
+
+    HTTPReqParam* param1 = (HTTPReqParam*)calloc(1, sizeof(HTTPReqParam));
+    param1->HttpName = strdup("TestName");
+    freeFunc(param1);
+
+    HTTPReqParam* param2 = (HTTPReqParam*)calloc(1, sizeof(HTTPReqParam));
+    param2->HttpRef = strdup("TestRef");
+    freeFunc(param2);
+
+    HTTPReqParam* param3 = (HTTPReqParam*)calloc(1, sizeof(HTTPReqParam));
+    param3->HttpValue = strdup("TestValue");
+    freeFunc(param3);
+
+    HTTPReqParam* param4 = (HTTPReqParam*)calloc(1, sizeof(HTTPReqParam));
+    freeFunc(param4);
+}
+
+TEST_F(ProfileTest, FreeReportProfileConfig_Null) {
+    freeReportProfileConfigFunc freeFunc = freeReportProfileConfigFuncCallback();
+    ASSERT_NE(freeFunc, nullptr);
+    freeFunc(nullptr);
+}
+
+TEST_F(ProfileTest, FreeReportProfileConfig_Valid) {
+    freeReportProfileConfigFunc freeFunc = freeReportProfileConfigFuncCallback();
+    ASSERT_NE(freeFunc, nullptr);
+
+    Config *config = (Config*)malloc(sizeof(Config));
+    ASSERT_NE(config, nullptr);
+    config->name = strdup("TestProfile");
+    config->configData = strdup("SomeData");
+
+    freeFunc(config);
+}
+
+TEST_F(ProfileTest, FreeReportProfileConfig_Partials) {
+    freeReportProfileConfigFunc freeFunc = freeReportProfileConfigFuncCallback();
+    ASSERT_NE(freeFunc, nullptr);
+
+    Config *config1 = (Config*)calloc(1, sizeof(Config));
+    config1->name = strdup("TestProfile");
+    freeFunc(config1);
+
+    Config *config2 = (Config*)calloc(1, sizeof(Config));
+    config2->configData = strdup("SomeData");
+    freeFunc(config2);
+
+    Config *config3 = (Config*)calloc(1, sizeof(Config));
+    freeFunc(config3);
+}
+
+TEST_F(ProfileTest, FreeProfile_Null) {
+    freeProfileFunc freeFunc = freeProfileFuncCallback();
+    ASSERT_NE(freeFunc, nullptr);
+    freeFunc(nullptr);
+}
+TEST_F(ProfileTest, FreeProfile_Valid) {
+    freeProfileFunc freeFunc = freeProfileFuncCallback();
+    ASSERT_NE(freeFunc, nullptr);
+
+    Profile* prof = (Profile*)calloc(1, sizeof(Profile));
+    prof->name = strdup("profile_name");
+    prof->hash = strdup("profile_hash");
+    prof->protocol = strdup("HTTP");
+    prof->encodingType = strdup("JSON");
+    prof->RootName = strdup("Root");
+    prof->Description = strdup("desc");
+    prof->version = strdup("1.0");
+    prof->timeRef = strdup("time");
+    prof->jsonEncoding = (JSONEncoding*)malloc(sizeof(JSONEncoding));
+
+    prof->t2HTTPDest = (T2HTTP*)calloc(1, sizeof(T2HTTP));
+    prof->t2HTTPDest->URL = strdup("https://test.url");
+    prof->t2HTTPDest->RequestURIparamList = NULL;
+
+    prof->t2RBUSDest = (T2RBUS*)calloc(1, sizeof(T2RBUS));
+    prof->t2RBUSDest->rbusMethodName = strdup("method");
+    prof->t2RBUSDest->rbusMethodParamList = NULL;
+
+    prof->eMarkerList = NULL;
+    prof->gMarkerList = NULL;
+    prof->topMarkerList = NULL;
+    prof->paramList = NULL;
+    prof->staticParamList = NULL;
+    prof->triggerConditionList = NULL;
+    prof->cachedReportList = NULL;
+
+    prof->jsonReportObj = cJSON_CreateObject();
+
+    freeFunc(prof);
+}
+TEST_F(ProfileTest, FreeProfile_OnlyNameSet) {
+    freeProfileFunc freeFunc = freeProfileFuncCallback();
+    Profile* prof = (Profile*)calloc(1, sizeof(Profile));
+    prof->name = strdup("profile_name");
+    freeFunc(prof);
+}
+TEST_F(ProfileTest, GetProfile_NullName) {
+    getProfileFunc func = getProfileFuncCallback();
+    Profile* prof = nullptr;
+    T2ERROR err = func(nullptr, &prof);
+    EXPECT_EQ(err, T2ERROR_FAILURE);
+}
+
+TEST_F(ProfileTest, FreeProfile_WithGMarkerList_CallsVectorDestroy) {
+    VectorMock* vectorMock = new VectorMock();
+    g_vectorMock = vectorMock;
+
+    Profile* prof = (Profile*)calloc(1, sizeof(Profile));
+    Vector* test_vector = (Vector*)0x456;
+    prof->gMarkerList = test_vector;
+    EXPECT_CALL(*vectorMock, Vector_Destroy(test_vector, testing::_))
+        .Times(1)
+        .WillOnce(testing::Return(T2ERROR_SUCCESS));
+
+    freeProfileFunc freeFunc = freeProfileFuncCallback();
+    freeFunc(prof);
+
+    delete vectorMock;
+    g_vectorMock = nullptr;
+}
+
+TEST_F(ProfileTest, FreeProfile_WithHTTPDest_RequestURIparamList_CallsVectorDestroy) {
+    VectorMock* vectorMock = new VectorMock();
+    g_vectorMock = vectorMock;
+
+    Profile* prof = (Profile*)calloc(1, sizeof(Profile));
+    prof->t2HTTPDest = (T2HTTP*)calloc(1, sizeof(T2HTTP));
+    Vector* test_vector = (Vector*)0x789;
+    prof->t2HTTPDest->RequestURIparamList = test_vector;
+    prof->t2HTTPDest->URL = strdup("dummy");
+    EXPECT_CALL(*vectorMock, Vector_Destroy(test_vector, testing::_))
+        .Times(1)
+        .WillOnce(testing::Return(T2ERROR_SUCCESS));
+
+    freeProfileFunc freeFunc = freeProfileFuncCallback();
+    freeFunc(prof);
+
+    delete vectorMock;
+    g_vectorMock = nullptr;
+}
+
+TEST_F(ProfileTest, FreeProfile_WithRBUSDest_rbusMethodParamList_CallsVectorDestroy) {
+    VectorMock* vectorMock = new VectorMock();
+    g_vectorMock = vectorMock;
+
+    Profile* prof = (Profile*)calloc(1, sizeof(Profile));
+    prof->t2RBUSDest = (T2RBUS*)calloc(1, sizeof(T2RBUS));
+    Vector* test_vector = (Vector*)0xABC;
+    prof->t2RBUSDest->rbusMethodParamList = test_vector;
+    prof->t2RBUSDest->rbusMethodName = strdup("dummy");
+    EXPECT_CALL(*vectorMock, Vector_Destroy(test_vector, testing::_))
+        .Times(1)
+        .WillOnce(testing::Return(T2ERROR_SUCCESS));
+
+    freeProfileFunc freeFunc = freeProfileFuncCallback();
+    freeFunc(prof);
+
+    delete vectorMock;
+    g_vectorMock = nullptr;
+}
+
+void cover_VectorDestroy_field(void** field, Vector* ptr, VectorMock& vectorMock, Vector_Cleanup expected_cleanup) {
+    *field = ptr;
+    EXPECT_CALL(vectorMock, Vector_Destroy(ptr, expected_cleanup))
+        .Times(1)
+        .WillOnce(::testing::Return(T2ERROR_SUCCESS));
+}
+
+TEST_F(ProfileTest, FreeProfile_EMarkerList_CallsVectorDestroy) {
+    VectorMock vectorMock;
+    g_vectorMock = &vectorMock;
+    Profile* prof = (Profile*)calloc(1, sizeof(Profile));
+    cover_VectorDestroy_field((void**)&prof->eMarkerList, (Vector*)0xEACE, vectorMock, freeEMarker);
+    freeProfileFunc freeFunc = freeProfileFuncCallback();
+    freeFunc(prof);
+    g_vectorMock = nullptr;
+}
+
+TEST_F(ProfileTest, FreeProfile_GMarkerList_CallsVectorDestroy) {
+    VectorMock vectorMock;
+    g_vectorMock = &vectorMock;
+    Profile* prof = (Profile*)calloc(1, sizeof(Profile));
+    cover_VectorDestroy_field((void**)&prof->gMarkerList, (Vector*)0xBEEF, vectorMock, freeGMarker);
+    freeProfileFunc freeFunc = freeProfileFuncCallback();
+    freeFunc(prof);
+    g_vectorMock = nullptr;
+}
+
+TEST_F(ProfileTest, FreeProfile_TopMarkerList_CallsVectorDestroy) {
+    VectorMock vectorMock;
+    g_vectorMock = &vectorMock;
+    Profile* prof = (Profile*)calloc(1, sizeof(Profile));
+    cover_VectorDestroy_field((void**)&prof->topMarkerList, (Vector*)0xFAFA, vectorMock, freeGMarker);
+    freeProfileFunc freeFunc = freeProfileFuncCallback();
+    freeFunc(prof);
+    g_vectorMock = nullptr;
+}
+
+TEST_F(ProfileTest, FreeProfile_ParamList_CallsVectorDestroy) {
+    VectorMock vectorMock;
+    g_vectorMock = &vectorMock;
+    Profile* prof = (Profile*)calloc(1, sizeof(Profile));
+    cover_VectorDestroy_field((void**)&prof->paramList, (Vector*)0xCAFE, vectorMock, freeParam);
+    freeProfileFunc freeFunc = freeProfileFuncCallback();
+    freeFunc(prof);
+    g_vectorMock = nullptr;
+}
+
+TEST_F(ProfileTest, FreeProfile_StaticParamList_CallsVectorDestroy) {
+    VectorMock vectorMock;
+    g_vectorMock = &vectorMock;
+    Profile* prof = (Profile*)calloc(1, sizeof(Profile));
+    cover_VectorDestroy_field((void**)&prof->staticParamList, (Vector*)0xF00D, vectorMock, freeStaticParam);
+    freeProfileFunc freeFunc = freeProfileFuncCallback();
+    freeFunc(prof);
+    g_vectorMock = nullptr;
+}
+
+TEST_F(ProfileTest, FreeProfile_TriggerConditionList_CallsVectorDestroy) {
+    VectorMock vectorMock;
+    g_vectorMock = &vectorMock;
+    Profile* prof = (Profile*)calloc(1, sizeof(Profile));
+    cover_VectorDestroy_field((void**)&prof->triggerConditionList, (Vector*)0xDEAD, vectorMock, freeTriggerCondition);
+    freeProfileFunc freeFunc = freeProfileFuncCallback();
+    freeFunc(prof);
+    g_vectorMock = nullptr;
+}
+
+TEST_F(ProfileTest, FreeProfile_CachedReportList_CallsVectorDestroy_And_SetsNull) {
+    VectorMock vectorMock;
+    g_vectorMock = &vectorMock;
+    Profile* prof = (Profile*)calloc(1, sizeof(Profile));
+    Vector* dummyVec = (Vector*)0x123456;
+    prof->cachedReportList = dummyVec;
+    EXPECT_CALL(vectorMock, Vector_Destroy(dummyVec, free))
+        .Times(1)
+        .WillOnce(::testing::Return(T2ERROR_SUCCESS));
+
+    freeProfileFunc freeFunc = freeProfileFuncCallback();
+    freeFunc(prof);
+
+    EXPECT_EQ(prof->cachedReportList, nullptr);
+    g_vectorMock = nullptr;
+}
+
+TEST_F(ProfileTest, InitJSONReportProfile_Success) {
+    initJSONReportProfileFunc func = initJSONReportProfileFuncCallback();
+    cJSON *jsonObj = nullptr;
+    cJSON *valArray = nullptr;
+    const char *rootname = "root";
+
+    T2ERROR result = func(&jsonObj, &valArray, (char*)rootname);
+    EXPECT_EQ(result, T2ERROR_SUCCESS);
+    ASSERT_NE(jsonObj, nullptr);
+    ASSERT_NE(valArray, nullptr);
+
+    cJSON *arr = cJSON_GetObjectItem(jsonObj, rootname);
+    ASSERT_TRUE(arr != nullptr && arr == valArray && cJSON_IsArray(arr));
+
+    cJSON_Delete(jsonObj);
+}
+
+TEST(CollectAndReportTest, NullDataReturnsNull) {
+    CollectAndReportFunc fn = getCollectAndReportFunc();
+    void* ret = fn(nullptr);
+    EXPECT_EQ(ret, nullptr);
+}
+
+TEST(CollectAndReportTest, HandlesRestartEventAndExits) {
+    CollectAndReportFunc fn = getCollectAndReportFunc();
+    Profile profile = {};
+    GrepSeekProfile grepSeekProfile = {};
+    grepSeekProfile.execCounter = 1;
+    profile.grepSeekProfile = &grepSeekProfile;
+    profile.name = (char*)"test";
+    profile.encodingType = (char*)"json";
+    profile.protocol = (char*)"http";
+
+    pthread_t tid;
+    void* returnVal = nullptr;
+
+    pthread_create(&tid, NULL, [](void* arg) -> void* {
+        CollectAndReportFunc fn = getCollectAndReportFunc();
+        return fn(arg);
+    }, &profile);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    pthread_mutex_lock(&profile.reuseThreadMutex);
+    pthread_cond_signal(&profile.reuseThread);
+    pthread_mutex_unlock(&profile.reuseThreadMutex);
+
+    int join_result = pthread_join(tid, &returnVal);
+    EXPECT_EQ(returnVal, nullptr);
+    EXPECT_EQ(join_result, 0);
+}
+
+TEST(CollectAndReportTest, ProperParametersHappyPath) {
+    CollectAndReportFunc fn = getCollectAndReportFunc();
+    Profile profile = {};
+    GrepSeekProfile grepSeekProfile = {};
+    grepSeekProfile.execCounter = 42;
+
+    profile.name = const_cast<char *>("test");
+    profile.encodingType = const_cast<char *>("json");
+    profile.protocol = const_cast<char *>("http");
+    profile.grepSeekProfile = &grepSeekProfile;
+
+
+    pthread_t collectThread;
+    pthread_create(&collectThread, nullptr, [](void* arg) -> void* {
+        CollectAndReportFunc fn = getCollectAndReportFunc();
+        return fn(arg);
+    }, &profile);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    pthread_mutex_lock(&profile.reuseThreadMutex);
+    pthread_cond_signal(&profile.reuseThread);
+    pthread_mutex_unlock(&profile.reuseThreadMutex);
+    void* result = nullptr;
+    pthread_join(collectThread, &result);
+
+}
+
+TEST(CollectAndReportTest, Null_Parameter1) {
+    CollectAndReportFunc fn = getCollectAndReportFunc();
+    Profile profile = {};
+    GrepSeekProfile grepSeekProfile = {};
+    grepSeekProfile.execCounter = 42;
+
+    profile.name = nullptr;
+    profile.encodingType = nullptr;
+    profile.protocol = nullptr;
+    profile.grepSeekProfile = &grepSeekProfile;
+    profile.triggerReportOnCondition = true;
+
+    pthread_t collectThread;
+    pthread_create(&collectThread, nullptr, [](void* arg) -> void* {
+        CollectAndReportFunc fn = getCollectAndReportFunc();
+        return fn(arg);
+    }, &profile);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    pthread_mutex_lock(&profile.reuseThreadMutex);
+    pthread_cond_signal(&profile.reuseThread);
+    pthread_mutex_unlock(&profile.reuseThreadMutex);
+    void* result = nullptr;
+    pthread_join(collectThread, &result);
+
+}
+
+TEST(CollectAndReportTest, Null_Profilename) {
+    CollectAndReportFunc fn = getCollectAndReportFunc();
+    Profile profile = {};
+    GrepSeekProfile grepSeekProfile = {};
+    grepSeekProfile.execCounter = 42;
+
+    profile.name = nullptr;
+    profile.encodingType = nullptr;
+    profile.protocol = nullptr;
+    profile.grepSeekProfile = &grepSeekProfile;
+    profile.triggerReportOnCondition = false;
+
+    pthread_t collectThread;
+    pthread_create(&collectThread, nullptr, [](void* arg) -> void* {
+        CollectAndReportFunc fn = getCollectAndReportFunc();
+        return fn(arg);
+    }, &profile);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    pthread_mutex_lock(&profile.reuseThreadMutex);
+    pthread_cond_signal(&profile.reuseThread);
+    pthread_mutex_unlock(&profile.reuseThreadMutex);
+    void* result = nullptr;
+    pthread_join(collectThread, &result);
+
+}
+TEST(CollectAndReportTest, Null_Parameter2) {
+    CollectAndReportFunc fn = getCollectAndReportFunc();
+    Profile profile = {};
+    GrepSeekProfile grepSeekProfile = {};
+    grepSeekProfile.execCounter = 42;
+
+    profile.name = (char*)"test";
+    profile.encodingType = (char*)"json1";
+    profile.protocol = (char*)"http";
+    profile.grepSeekProfile = &grepSeekProfile;
+    profile.triggerReportOnCondition = true;
+
+    pthread_t collectThread;
+    pthread_create(&collectThread, nullptr, [](void* arg) -> void* {
+        CollectAndReportFunc fn = getCollectAndReportFunc();
+        return fn(arg);
+    }, &profile);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    pthread_mutex_lock(&profile.reuseThreadMutex);
+    pthread_cond_signal(&profile.reuseThread);
+    pthread_mutex_unlock(&profile.reuseThreadMutex);
+    void* result = nullptr;
+    pthread_join(collectThread, &result);
+
+}
+TEST(CollectAndReportTest, JSONEncodingWrongFormatBranch) {
+    CollectAndReportFunc fn = getCollectAndReportFunc();
+    Profile profile = {};
+    GrepSeekProfile grepSeekProfile = {};
+    grepSeekProfile.execCounter = 42;
+
+    profile.name = (char*)"test";
+    profile.encodingType = (char*)"JSON";
+    profile.protocol = (char*)"http";
+    profile.grepSeekProfile = &grepSeekProfile;
+    profile.triggerReportOnCondition = true;
+
+    profile.jsonEncoding = (JSONEncoding*)malloc(sizeof(JSONEncoding));
+    profile.jsonEncoding->reportFormat = (JSONRF_OBJHIERARCHY); // Anything except JSONRF_KEYVALUEPAIR
+
+    pthread_mutex_init(&profile.triggerCondMutex, nullptr);
+    pthread_cond_init(&profile.reuseThread, nullptr);
+    pthread_mutex_init(&profile.reuseThreadMutex, nullptr);
+
+    pthread_t t;
+    pthread_create(&t, nullptr, [](void* arg) -> void* {
+        CollectAndReportFunc fn = getCollectAndReportFunc();
+        return fn(arg);
+    }, &profile);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    pthread_mutex_lock(&profile.reuseThreadMutex);
+    pthread_cond_signal(&profile.reuseThread);
+    pthread_mutex_unlock(&profile.reuseThreadMutex);
+
+    void* res = nullptr;
+    pthread_join(t, &res);
+
+    pthread_mutex_destroy(&profile.triggerCondMutex);
+    pthread_cond_destroy(&profile.reuseThread);
+    pthread_mutex_destroy(&profile.reuseThreadMutex);
+    free(profile.jsonEncoding);
+}
+
+TEST(CollectAndReportTest, JSONEncodingWrongFormatBranch1) {
+    CollectAndReportFunc fn = getCollectAndReportFunc();
+    Profile profile = {};
+    GrepSeekProfile grepSeekProfile = {};
+    grepSeekProfile.execCounter = 42;
+
+    profile.name = (char*)"test";
+    profile.encodingType = (char*)"JSON";
+    profile.protocol = (char*)"http";
+    profile.grepSeekProfile = &grepSeekProfile;
+    profile.triggerReportOnCondition = false;
+
+    profile.jsonEncoding = (JSONEncoding*)malloc(sizeof(JSONEncoding));
+    profile.jsonEncoding->reportFormat = JSONRF_OBJHIERARCHY; // Anything except JSONRF_KEYVALUEPAIR
+
+    pthread_mutex_init(&profile.triggerCondMutex, nullptr);
+    pthread_cond_init(&profile.reuseThread, nullptr);
+    pthread_mutex_init(&profile.reuseThreadMutex, nullptr);
+
+    pthread_t t;
+    pthread_create(&t, nullptr, [](void* arg) -> void* {
+        CollectAndReportFunc fn = getCollectAndReportFunc();
+        return fn(arg);
+    }, &profile);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    pthread_mutex_lock(&profile.reuseThreadMutex);
+    pthread_cond_signal(&profile.reuseThread);
+    pthread_mutex_unlock(&profile.reuseThreadMutex);
+
+    void* res = nullptr;
+    pthread_join(t, &res);
+
+    pthread_mutex_destroy(&profile.triggerCondMutex);
+    pthread_cond_destroy(&profile.reuseThread);
+    pthread_mutex_destroy(&profile.reuseThreadMutex);
+    free(profile.jsonEncoding);
+}
+
+TEST(CollectAndReportTest, TriggerReportOnConditionWithJsonReportObj) {
+    CollectAndReportFunc fn = getCollectAndReportFunc();
+    Profile profile = {};
+    GrepSeekProfile grepSeekProfile = {};
+    grepSeekProfile.execCounter = 11;
+
+    profile.name = (char*)"test";
+    profile.encodingType = (char*)"JSON";
+    profile.protocol = (char*)"http";
+    profile.grepSeekProfile = &grepSeekProfile;
+
+    profile.triggerReportOnCondition = true;
+    profile.jsonReportObj = cJSON_CreateObject(); // Non-null object
+
+    profile.jsonEncoding = (JSONEncoding*)malloc(sizeof(JSONEncoding));
+    profile.jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
+
+    pthread_mutex_init(&profile.triggerCondMutex, nullptr);
+    pthread_cond_init(&profile.reuseThread, nullptr);
+    pthread_mutex_init(&profile.reuseThreadMutex, nullptr);
+
+    pthread_t t;
+    pthread_create(&t, nullptr, [](void* arg) -> void* {
+        CollectAndReportFunc fn = getCollectAndReportFunc();
+        return fn(arg);
+    }, &profile);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    pthread_mutex_lock(&profile.reuseThreadMutex);
+    pthread_cond_signal(&profile.reuseThread);
+    pthread_mutex_unlock(&profile.reuseThreadMutex);
+
+    void* res = nullptr;
+    pthread_join(t, &res);
+
+    pthread_mutex_destroy(&profile.triggerCondMutex);
+    pthread_cond_destroy(&profile.reuseThread);
+    pthread_mutex_destroy(&profile.reuseThreadMutex);
+
+}
+
+TEST(CollectAndReportTest, HandlesCheckPreviousSeekBranch) {
+    CollectAndReportFunc fn = getCollectAndReportFunc();
+    Profile profile = {};
+    GrepSeekProfile grepSeekProfile = {};
+    grepSeekProfile.execCounter = 3;
+
+    profile.name = (char*)"test";
+    profile.encodingType = (char*)"JSON";
+    profile.protocol = (char*)"http";
+    profile.grepSeekProfile = &grepSeekProfile;
+
+    profile.checkPreviousSeek = true;  // <-- triggers the branch!
+    profile.jsonEncoding = (JSONEncoding*)malloc(sizeof(JSONEncoding));
+    profile.jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
+
+    pthread_mutex_init(&profile.triggerCondMutex, nullptr);
+    pthread_cond_init(&profile.reuseThread, nullptr);
+    pthread_mutex_init(&profile.reuseThreadMutex, nullptr);
+
+    pthread_t t;
+    pthread_create(&t, nullptr, [](void* arg) -> void* {
+        CollectAndReportFunc fn = getCollectAndReportFunc();
+        return fn(arg);
+    }, &profile);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    pthread_mutex_lock(&profile.reuseThreadMutex);
+    pthread_cond_signal(&profile.reuseThread);
+    pthread_mutex_unlock(&profile.reuseThreadMutex);
+
+    void* res = nullptr;
+    pthread_join(t, &res);
+
+    pthread_mutex_destroy(&profile.triggerCondMutex);
+    pthread_cond_destroy(&profile.reuseThread);
+    pthread_mutex_destroy(&profile.reuseThreadMutex);
+
+    free(profile.jsonEncoding);
+}
+TEST(CollectAndReportTest, Covers_StaticParamList_WithRealVector) {
+    CollectAndReportFunc fn = getCollectAndReportFunc();
+
+    Profile profile = {};
+    GrepSeekProfile grepSeekProfile = {};
+    grepSeekProfile.execCounter = 42;
+    profile.name = (char*)"branchtest_staticparam";
+    profile.encodingType = (char*)"JSON";
+    profile.protocol = (char*)"http";
+    profile.grepSeekProfile = &grepSeekProfile;
+    profile.jsonEncoding = (JSONEncoding*)malloc(sizeof(JSONEncoding));
+    profile.jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
+
+    Vector *staticparamlist = NULL;
+    Vector_Create(&staticparamlist);
+    Vector_PushBack(staticparamlist, (void*)strdup("param1"));
+    profile.staticParamList = staticparamlist;
+
+    profile.paramList = NULL;
+
+    pthread_mutex_init(&profile.triggerCondMutex, nullptr);
+    pthread_cond_init(&profile.reuseThread, nullptr);
+    pthread_mutex_init(&profile.reuseThreadMutex, nullptr);
+
+    pthread_t t;
+    pthread_create(&t, nullptr, [](void* arg) -> void* {
+        CollectAndReportFunc fn = getCollectAndReportFunc();
+        return fn(arg);
+    }, &profile);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    pthread_mutex_lock(&profile.reuseThreadMutex);
+    pthread_cond_signal(&profile.reuseThread);
+    pthread_mutex_unlock(&profile.reuseThreadMutex);
+
+    void* res = nullptr;
+    pthread_join(t, &res);
+
+    pthread_mutex_destroy(&profile.triggerCondMutex);
+    pthread_cond_destroy(&profile.reuseThread);
+    pthread_mutex_destroy(&profile.reuseThreadMutex);
+
+    free(profile.jsonEncoding);
+    Vector_Destroy(staticparamlist, free);
+}
+
+TEST(CollectAndReportTest, Covers_ParamList_WithRealParamStruct) {
+    g_vectorMock = nullptr;
+
+    CollectAndReportFunc fn = getCollectAndReportFunc();
+
+    Profile profile = {};
+    GrepSeekProfile grepSeekProfile = {};
+    grepSeekProfile.execCounter = 42;
+    profile.name = (char*)"branchtest_paramlist_paramstruct";
+    profile.encodingType = (char*)"JSON";
+    profile.protocol = (char*)"http";
+    profile.grepSeekProfile = &grepSeekProfile;
+    profile.jsonEncoding = (JSONEncoding*)malloc(sizeof(JSONEncoding));
+    profile.jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
+
+    Vector* paramlist = NULL;
+    Vector_Create(&paramlist);
+
+    Param* p = (Param*) malloc(sizeof(Param));
+    p->name = strdup("Device.Dummy.Param");
+    p->alias = strdup("Device.Dummy.Alias");
+    p->paramType = strdup("dataModel");
+    p->reportEmptyParam = true;
+    p->regexParam = NULL;
+    p->skipFreq = 0;
+
+    Vector_PushBack(paramlist, p);
+
+    profile.paramList = paramlist;
+
+    pthread_mutex_init(&profile.triggerCondMutex, nullptr);
+    pthread_cond_init(&profile.reuseThread, nullptr);
+    pthread_mutex_init(&profile.reuseThreadMutex, nullptr);
+
+    pthread_t t;
+    pthread_create(&t, nullptr, [](void* arg) -> void* {
+        CollectAndReportFunc fn = getCollectAndReportFunc();
+        return fn(arg);
+    }, &profile);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    pthread_mutex_lock(&profile.reuseThreadMutex);
+    pthread_cond_signal(&profile.reuseThread);
+    pthread_mutex_unlock(&profile.reuseThreadMutex);
+
+    void* res = nullptr;
+    pthread_join(t, &res);
+
+    pthread_mutex_destroy(&profile.triggerCondMutex);
+    pthread_cond_destroy(&profile.reuseThread);
+    pthread_mutex_destroy(&profile.reuseThreadMutex);
+
+    free(profile.jsonEncoding);
+
+    Vector_Destroy(paramlist, freeParam);
+}
+
+TEST(CollectAndReportTest, Covers_TopMarkerList_WithRealTopMarkerStruct) {
+    g_vectorMock = nullptr;
+
+    CollectAndReportFunc fn = getCollectAndReportFunc();
+
+    Profile profile = {};
+    GrepSeekProfile grepSeekProfile = {};
+    grepSeekProfile.execCounter = 21;
+    profile.name = (char*)"branchtest_topmarker";
+    profile.encodingType = (char*)"JSON";
+    profile.protocol = (char*)"http";
+    profile.grepSeekProfile = &grepSeekProfile;
+    profile.jsonEncoding = (JSONEncoding*)malloc(sizeof(JSONEncoding));
+    profile.jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
+
+    Vector* topMarkerList = nullptr;
+    ASSERT_EQ(Vector_Create(&topMarkerList), T2ERROR_SUCCESS);
+
+    TopMarker* marker = (TopMarker*)calloc(1, sizeof(TopMarker));
+    marker->markerName = strdup("load_marker");
+    marker->searchString = strdup("mysearch");
+    marker->loadAverage = strdup("   1.23   ");
+    marker->trimParam = true;
+    marker->regexParam = nullptr;
+
+    Vector_PushBack(topMarkerList, marker);
+
+    profile.topMarkerList = topMarkerList;
+
+    pthread_mutex_init(&profile.triggerCondMutex, nullptr);
+    pthread_cond_init(&profile.reuseThread, nullptr);
+    pthread_mutex_init(&profile.reuseThreadMutex, nullptr);
+
+    pthread_t t;
+    pthread_create(&t, nullptr, [](void* arg) -> void* {
+        CollectAndReportFunc fn = getCollectAndReportFunc();
+        return fn(arg);
+    }, &profile);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    pthread_mutex_lock(&profile.reuseThreadMutex);
+    pthread_cond_signal(&profile.reuseThread);
+    pthread_mutex_unlock(&profile.reuseThreadMutex);
+
+    void* res = nullptr;
+    pthread_join(t, &res);
+
+    pthread_mutex_destroy(&profile.triggerCondMutex);
+    pthread_cond_destroy(&profile.reuseThread);
+    pthread_mutex_destroy(&profile.reuseThreadMutex);
+
+    free(profile.jsonEncoding);
+
+    free(marker->markerName);
+    free(marker->searchString);
+    free(marker->loadAverage);
+    free(marker);
+
+    Vector_Destroy(topMarkerList, nullptr);
+}
+
+TEST(CollectAndReportTest, Covers_GMarkerList_WithRealGrepMarkerStruct) {
+    g_vectorMock = nullptr;
+
+    CollectAndReportFunc fn = getCollectAndReportFunc();
+
+    Profile profile = {};
+    GrepSeekProfile grepSeekProfile = {};
+    grepSeekProfile.execCounter = 55;
+    profile.name = (char*)"branchtest_gmarker";
+    profile.encodingType = (char*)"JSON";
+    profile.protocol = (char*)"http";
+    profile.grepSeekProfile = &grepSeekProfile;
+    profile.jsonEncoding = (JSONEncoding*)malloc(sizeof(JSONEncoding));
+    profile.jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
+
+    Vector* grepResult = NULL;
+    Vector_Create(&grepResult);
+
+    GrepMarker* gparam = (GrepMarker *) malloc(sizeof(GrepMarker));
+    memset(gparam, 0, sizeof(GrepMarker));
+    gparam->markerName = strdup("TEST_MARKER1");
+    gparam->u.markerValue = strdup("TEST_STRING1");
+    gparam->mType = MTYPE_ABSOLUTE;
+    gparam->trimParam = false;
+    gparam->regexParam = NULL;
+
+    Vector_PushBack(grepResult, gparam);
+    profile.gMarkerList = grepResult;
+
+    pthread_mutex_init(&profile.triggerCondMutex, nullptr);
+    pthread_cond_init(&profile.reuseThread, nullptr);
+    pthread_mutex_init(&profile.reuseThreadMutex, nullptr);
+
+    pthread_t t;
+    pthread_create(&t, nullptr, [](void* arg) -> void* {
+        CollectAndReportFunc fn = getCollectAndReportFunc();
+        return fn(arg);
+    }, &profile);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    pthread_mutex_lock(&profile.reuseThreadMutex);
+    pthread_cond_signal(&profile.reuseThread);
+    pthread_mutex_unlock(&profile.reuseThreadMutex);
+
+    void* res = nullptr;
+    pthread_join(t, &res);
+
+    pthread_mutex_destroy(&profile.triggerCondMutex);
+    pthread_cond_destroy(&profile.reuseThread);
+    pthread_mutex_destroy(&profile.reuseThreadMutex);
+
+    free(profile.jsonEncoding);
+
+    Vector_Destroy(grepResult, freeGMarker);
+}
+TEST(CollectAndReportTest, Covers_EMarkerList_WithRealEventMarkerStruct) {
+    g_vectorMock = nullptr;
+
+    CollectAndReportFunc fn = getCollectAndReportFunc();
+
+    Profile profile = {};
+    GrepSeekProfile grepSeekProfile = {};
+    grepSeekProfile.execCounter = 99;
+    profile.name = (char*)"branchtest_eventmarker";
+    profile.encodingType = (char*)"JSON";
+    profile.protocol = (char*)"http";
+    profile.grepSeekProfile = &grepSeekProfile;
+    profile.jsonEncoding = (JSONEncoding*)malloc(sizeof(JSONEncoding));
+    profile.jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
+
+    Vector *eventMarkerList = NULL;
+    Vector_Create(&eventMarkerList);
+
+    EventMarker *eMarker = (EventMarker *) malloc(sizeof(EventMarker));
+    eMarker->markerName = strdup("Event1");
+    eMarker->compName = strdup("sysint");
+    eMarker->alias = strdup("EventMarker1");
+    eMarker->paramType = strdup("event");
+    eMarker->markerName_CT = strdup("Event1_CT");
+    eMarker->timestamp = strdup("162716381732");
+    eMarker->mType = MTYPE_COUNTER;
+    eMarker->reportTimestampParam = REPORTTIMESTAMP_UNIXEPOCH;
+    eMarker->u.count = 1;
+    eMarker->trimParam = true;
+    eMarker->regexParam = strdup("[A-Z]+");
+
+    Vector_PushBack(eventMarkerList, eMarker);
+
+    profile.eMarkerList = eventMarkerList;
+
+    pthread_mutex_init(&profile.eventMutex, nullptr);
+    pthread_mutex_init(&profile.triggerCondMutex, nullptr);
+    pthread_cond_init(&profile.reuseThread, nullptr);
+    pthread_mutex_init(&profile.reuseThreadMutex, nullptr);
+
+    pthread_t t;
+    pthread_create(&t, nullptr, [](void* arg) -> void* {
+        CollectAndReportFunc fn = getCollectAndReportFunc();
+        return fn(arg);
+    }, &profile);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    pthread_mutex_lock(&profile.reuseThreadMutex);
+    pthread_cond_signal(&profile.reuseThread);
+    pthread_mutex_unlock(&profile.reuseThreadMutex);
+
+    void* res = nullptr;
+    pthread_join(t, &res);
+
+    pthread_mutex_destroy(&profile.eventMutex);
+    pthread_mutex_destroy(&profile.triggerCondMutex);
+    pthread_cond_destroy(&profile.reuseThread);
+    pthread_mutex_destroy(&profile.reuseThreadMutex);
+
+    free(profile.jsonEncoding);
+
+    Vector_Destroy(eventMarkerList, freeEMarker);
+}
+TEST(CollectAndReportTest, Covers_jsonReportObj_nonNull_forPrepareAndDestroy) {
+    g_vectorMock = nullptr;
+
+    CollectAndReportFunc fn = getCollectAndReportFunc();
+
+    Profile profile = {};
+    GrepSeekProfile grepSeekProfile = {};
+    grepSeekProfile.execCounter = 99;
+    profile.name = (char*)"testjsonReportObj";
+    profile.encodingType = (char*)"JSON";
+    profile.protocol = (char*)"http";
+    profile.grepSeekProfile = &grepSeekProfile;
+    profile.jsonEncoding = (JSONEncoding*)malloc(sizeof(JSONEncoding));
+    profile.jsonEncoding->reportFormat = JSONRF_OBJHIERARCHY;
+    profile.triggerReportOnCondition = false;
+    profile.jsonReportObj = cJSON_CreateObject();
+    cJSON_AddStringToObject(profile.jsonReportObj, "key", "value");
+
+    pthread_mutex_init(&profile.triggerCondMutex, nullptr);
+    pthread_cond_init(&profile.reuseThread, nullptr);
+    pthread_mutex_init(&profile.reuseThreadMutex, nullptr);
+
+    pthread_t t;
+    pthread_create(&t, nullptr, [](void* arg) -> void* {
+        CollectAndReportFunc fn = getCollectAndReportFunc();
+        return fn(arg);
+    }, &profile);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    pthread_mutex_lock(&profile.reuseThreadMutex);
+    pthread_cond_signal(&profile.reuseThread);
+    pthread_mutex_unlock(&profile.reuseThreadMutex);
+
+    void* res = nullptr;
+    pthread_join(t, &res);
+
+    pthread_mutex_destroy(&profile.triggerCondMutex);
+    pthread_cond_destroy(&profile.reuseThread);
+    pthread_mutex_destroy(&profile.reuseThreadMutex);
+
+    free(profile.jsonEncoding);
+}
 #endif
 #endif
 

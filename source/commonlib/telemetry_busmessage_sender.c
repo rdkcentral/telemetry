@@ -781,76 +781,43 @@ int filtered_event_send(const char* data, const char *markerName)
             }
         }
 
-        // D-Bus method call to send event
-        DBusMessage *msg = NULL;
-        DBusMessage *reply = NULL;
-        DBusError error;
-        dbus_error_init(&error);
+        // D-Bus signal to send event (no reply)
+        DBusMessage *signal = NULL;
         
-        msg = dbus_message_new_method_call(T2_DBUS_SERVICE_NAME,
-                                           T2_DBUS_OBJECT_PATH,
-                                           T2_DBUS_INTERFACE_NAME,
-                                           "SendT2Event");
-        if (!msg)
+        signal = dbus_message_new_signal(T2_DBUS_OBJECT_PATH,
+                                         T2_DBUS_EVENT_INTERFACE_NAME,
+                                         "SendT2Event");
+        if (!signal)
         {
-            EVENT_ERROR("Failed to create D-Bus method call message\n");
+            EVENT_ERROR("Failed to create D-Bus signal message\n");
             status = -1;
         }
         else
         {
-            if (!dbus_message_append_args(msg,
+            if (!dbus_message_append_args(signal,
                                          DBUS_TYPE_STRING, &markerName,
                                          DBUS_TYPE_STRING, &data,
                                          DBUS_TYPE_INVALID))
             {
-                EVENT_ERROR("Failed to append D-Bus method call arguments\n");
-                dbus_message_unref(msg);
+                EVENT_ERROR("Failed to append D-Bus signal arguments\n");
+                dbus_message_unref(signal);
                 status = -1;
             }
             else
             {
-                // Send method call and wait for reply with timeout (1000 ms)
-                reply = dbus_connection_send_with_reply_and_block((DBusConnection*)bus_handle, msg, 1000, &error);
-                dbus_message_unref(msg);
-                
-                if (dbus_error_is_set(&error))
+                // Send signal (no reply expected)
+                dbus_uint32_t serial = 0;
+                if (!dbus_connection_send((DBusConnection*)bus_handle, signal, &serial))
                 {
-                    EVENT_ERROR("D-Bus method call failed: %s\n", error.message);
-                    dbus_error_free(&error);
-                    status = -1;
-                }
-                else if (!reply)
-                {
-                    EVENT_ERROR("No reply received from SendT2Event\n");
+                    EVENT_ERROR("Failed to send D-Bus signal\n");
                     status = -1;
                 }
                 else
                 {
-                    // Parse boolean success status from reply
-                    dbus_bool_t success = FALSE;
-                    if (dbus_message_get_args(reply, &error,
-                                             DBUS_TYPE_BOOLEAN, &success,
-                                             DBUS_TYPE_INVALID))
-                    {
-                        if (success)
-                        {
-                            EVENT_DEBUG("SendT2Event succeeded for marker [%s] with data [%s]\n", markerName, data);
-                            status = 0;
-                        }
-                        else
-                        {
-                            EVENT_ERROR("SendT2Event returned failure for marker [%s]\n", markerName);
-                            status = -1;
-                        }
-                    }
-                    else
-                    {
-                        EVENT_ERROR("Failed to parse reply: %s\n", error.message);
-                        dbus_error_free(&error);
-                        status = -1;
-                    }
-                    dbus_message_unref(reply);
+                    EVENT_DEBUG("SendT2Event signal sent successfully (serial=%u)\n", serial);
+                    status = 0;
                 }
+                dbus_message_unref(signal);
             }
         }
     }

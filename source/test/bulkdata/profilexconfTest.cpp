@@ -625,7 +625,10 @@ TEST_F(profileXconfTestFixture, ProfileXConf_deleteProfile)
     localProfile->gMarkerList = nullptr;
     localProfile->topMarkerList = nullptr;
     localProfile->paramList = nullptr;
-    localProfile->cachedReportList = nullptr;
+    //localProfile->cachedReportList = nullptr;
+    Vector_Create(&localProfile->cachedReportList);
+    void* dummy = strdup("cached");
+    Vector_PushBack(localProfile->cachedReportList, dummy);
     localProfile->protocol = strdup("HTTP");
     localProfile->encodingType = strdup("JSON");
     localProfile->t2HTTPDest = nullptr;

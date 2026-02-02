@@ -434,7 +434,7 @@ static void* reportOnDemand(void *input)
     else if(!strncmp(action, ON_DEMAND_ACTION_ABORT, MAX_PROFILENAMES_LENGTH))
     {
         T2Info("Abort report on demand\n");
-        T2Info("Cannot abort the on-demand report since reporting is being done on the main process\n");
+        T2Info("Abort of the on-demand report is no longer supported; fork-based report execution and termination have been removed\n");
     }
     else
     {

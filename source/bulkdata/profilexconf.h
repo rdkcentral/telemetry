@@ -80,7 +80,6 @@ void    ProfileXConf_updateMarkerComponentMap();
 void    ProfileXConf_notifyTimeout(bool isClearSeekMap, bool isOnDemand);
 T2ERROR ProfileXConf_storeMarkerEvent(T2Event *eventInfo);
 char*   ProfileXconf_getName();
-T2ERROR ProfileXConf_terminateReport();
 
 T2ERROR ReportProfiles_setProfileXConf(ProfileXConf *profile);
 

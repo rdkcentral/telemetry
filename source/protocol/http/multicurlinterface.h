@@ -27,13 +27,6 @@
 #define TR181_DEVICE_CURRENT_WAN_IFNAME             "Device.X_RDK_WanManager.CurrentActiveInterface"
 #endif
 
-// Request types for different HTTP operations
-typedef enum
-{
-    HTTP_REQUEST_GET,    // For HTTP GET
-    HTTP_REQUEST_POST    // For sendReportOverHTTP
-} http_request_type_t;
-
 /*
  * Structure to store the xconf response, this is to manage large responses
  * as curl parses large responses in chunks

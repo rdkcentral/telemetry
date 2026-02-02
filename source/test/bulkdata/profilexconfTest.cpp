@@ -630,7 +630,7 @@ TEST_F(profileXconfTestFixture, ProfileXConf_deleteProfile)
     localProfile->encodingType = strdup("JSON");
     localProfile->t2HTTPDest = nullptr;
     localProfile->grepSeekProfile = nullptr;
-    localProfile->reportInProgress = false;
+    localProfile->reportInProgress = true;
     localProfile->isUpdated = false;
 
     //EXPECT_CALL(*g_schedulerMock, unregisterProfileFromScheduler(_))

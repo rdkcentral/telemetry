@@ -49,7 +49,7 @@ profilexconf_gtest_bin_CPPFLAGS = -I$(PKG_CONFIG_SYSROOT_DIR)/usr/include/gtest 
 
 profilexconf_gtest_bin_LDFLAGS =  -L/usr/src/googletest/googletest/lib/.libs  -lgcov -L/src/googletest/googlemock/lib -L/usr/src/googletest/googlemock/lib/.libs -L/usr/include/glib-2.0 -lgmock -lcjson -lcurl -lmsgpackc -lgtest -lgtest_main -lglib-2.0
 
-profilexconf_gtest_bin_LDFLAGS += -Wl,--wrap=sendReportOverHTTP -Wl,--wrap=sendCachedReportsOverHTTP
+profilexconf_gtest_bin_LDFLAGS += -Wl,--wrap=sendReportOverHTTP -Wl,--wrap=sendCachedReportsOverHTTP -Wl,--wrap=ProfileXConf_isNameEqual
 
 profilexconf_gtest_bin_SOURCES = gtest_main.cpp profilexconfTest.cpp  profilexconfMock.cpp SchedulerMock.cpp ../mocks/SystemMock.cpp ../mocks/FileioMock.cpp ../mocks/rdklogMock.cpp ../mocks/rbusMock.cpp ../../bulkdata/profilexconf.c ../../utils/vector.c ../../utils/t2log_wrapper.c ../../utils/t2common.c ../../utils/t2collection.c ../../utils/persistence.c ../../bulkdata/t2markers.c ../../reportgen/reportgen.c ../../dcautil/legacyutils.c
 

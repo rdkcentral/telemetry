@@ -122,18 +122,4 @@ WriteToFileFunc getWriteToFileCallback()
 {
     return writeToFile;
 }
-
-SetHeaderFunc getSetHeaderCallback(void)
-{
-    return setHeader;
-}
-
-SetMtlsHeadersFunc getSetMtlsHeadersCallback(void)
-{
-    return setMtlsHeaders;
-}
-SetPayloadFunc getSetPayloadCallback(void)
-{
-    return setPayload;
-}
 #endif

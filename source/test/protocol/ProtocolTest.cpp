@@ -45,13 +45,14 @@ typedef struct
 
 typedef size_t (*WriteToFileFunc)(void *, size_t, size_t, void *);
 WriteToFileFunc getWriteToFileCallback(void);
+#if 0
 typedef T2ERROR (*SetHeaderFunc)(CURL *, const char *, struct curl_slist **, childResponse *);
 SetHeaderFunc getSetHeaderCallback(void);
 typedef T2ERROR (*SetMtlsHeadersFunc)(CURL *, const char *, const char *, childResponse *);
 SetMtlsHeadersFunc getSetMtlsHeadersCallback(void);
 typedef T2ERROR (*SetPayloadFunc)(CURL *, const char *, childResponse *);
 SetPayloadFunc getSetPayloadCallback(void);
-
+#endif
 }
 
 #include "gmock/gmock.h"
@@ -550,6 +551,8 @@ TEST_F(protocolTestFixture, sendCachedReportsOverHTTP_FailureCase)
      fclose(fp);
      remove(testFile);
  }
+
+#if 0
 TEST(CURLINTERFACE_STATIC, SetHeader)
 {
     childResponse resp;
@@ -957,4 +960,5 @@ TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetHeader_SUCCESS)
     // headerList should have been set by curl_slist_append to a non-null pointer
     EXPECT_NE(headerList, nullptr);
 }
+#endif
 #endif

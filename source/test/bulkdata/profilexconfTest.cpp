@@ -640,6 +640,7 @@ TEST_F(profileXconfTestFixture, ProfileXConf_deleteProfile)
       //  .Times(1)
         //.WillOnce(Return(T2ERROR_SUCCESS));
     EXPECT_EQ(ProfileXConf_delete(localProfile), T2ERROR_SUCCESS);
+    Vector_Destroy(localProfile->cachedReportList, free);
 }
 
 ProfileXConf* CreateProfile(const char* name, bool withCached, bool withEMarker, MarkerType mType, bool withGMarker, bool withReportInProgress) {

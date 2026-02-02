@@ -1035,4 +1035,25 @@ T2ERROR ProfileXConf_terminateReport()
     return ret;
 
 }
+#ifdef GTEST_ENABLE
+typedef char* (*getTimeStampFuncType)(void);
 
+getTimeStampFuncType getTimeStampFuncCallback(void)
+{
+    return getTimeStamp;
+}
+
+typedef T2ERROR (*initJSONReportXconfFuncType)(cJSON**, cJSON**);
+
+initJSONReportXconfFuncType initJSONReportXconfCallback(void) {
+    return initJSONReportXconf;
+}
+
+typedef void* (*CollectAndReportXconfFuncType)(void*);
+CollectAndReportXconfFuncType CollectAndReportXconfCallback(void) {
+    return CollectAndReportXconf;
+}
+
+ProfileXConf **_test_get_singleProfile_ptr() { return &singleProfile; }
+void _test_set_singleProfile(ProfileXConf *ptr) { singleProfile = ptr; }
+#endif

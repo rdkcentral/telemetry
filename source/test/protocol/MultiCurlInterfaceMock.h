@@ -23,12 +23,14 @@
 #include <gmock/gmock.h>
 
 #ifdef LIBRDKCERTSEL_BUILD
-typedef enum {
+typedef enum
+{
     certselectorOk = 0,
     certselectorFail = 1
 } rdkcertselectorStatus_t;
 
-typedef enum {
+typedef enum
+{
     TRY_ANOTHER = 1,
     STOP_TRYING = 0
 } rdkcertselectorRetry_t;
@@ -47,21 +49,21 @@ public:
     MOCK_METHOD(int, pthread_cond_wait_mock, (pthread_cond_t *cond, pthread_mutex_t *mutex), ());
     MOCK_METHOD(int, pthread_cond_signal_mock, (pthread_cond_t *cond), ());
     MOCK_METHOD(int, pthread_cond_broadcast_mock, (pthread_cond_t *cond), ());
-    
+
     // Memory functions
     MOCK_METHOD(void*, malloc_mock, (size_t size), ());
     MOCK_METHOD(void, free_mock, (void* ptr), ());
-    
+
     // File functions
     MOCK_METHOD(FILE*, fdopen_mock, (int fd, const char* mode), ());
     MOCK_METHOD(int, fclose_mock, (FILE* stream), ());
     MOCK_METHOD(int, fputs_mock, (const char* s, FILE* stream), ());
-    
+
 #ifdef LIBRDKCERTSEL_BUILD
     // Certificate selector functions
-    MOCK_METHOD(rdkcertselectorStatus_t, rdkcertselector_getCert_mock, 
+    MOCK_METHOD(rdkcertselectorStatus_t, rdkcertselector_getCert_mock,
                 (void* selector, char** certUri, char** password), ());
-    MOCK_METHOD(rdkcertselectorRetry_t, rdkcertselector_setCurlStatus_mock, 
+    MOCK_METHOD(rdkcertselectorRetry_t, rdkcertselector_setCurlStatus_mock,
                 (void* selector, int curlCode, const char* url), ());
 #endif
 };

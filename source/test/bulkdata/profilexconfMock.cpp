@@ -52,6 +52,15 @@ extern "C" cJSON* cJSON_AddStringToObject(cJSON* object, const char* string, con
     return g_profileXConfMock->cJSON_AddStringToObject(object, string, value);
 }
 
+extern "C" bool ProfileXConf_isNameEqual(char* profileName) {
+    // Forward to mock if present, else default behavior
+    if (g_ProfileXConfMock)
+        return g_ProfileXConfMock->ProfileXConf_isNameEqual(profileName);
+    // Optionally fallback to default (real) impl:
+    // return real_ProfileXConf_isNameEqual(profileName);
+    return false; // Or whatever default makes sense
+}
+
 // Mock Method
 //t2parser mock functions
 extern "C" T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)

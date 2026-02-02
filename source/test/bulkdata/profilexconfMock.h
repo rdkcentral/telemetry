@@ -49,6 +49,7 @@ public:
     MOCK_METHOD(cJSON_bool, cJSON_AddItemToObject, (cJSON* object, const char* string, cJSON* item), ());
     MOCK_METHOD(cJSON_bool, cJSON_AddItemToArray, (cJSON* array, cJSON* item), ());
     MOCK_METHOD(cJSON*, cJSON_AddStringToObject, (cJSON* object, const char* string, const char* value), ());
+    MOCK_METHOD(bool, ProfileXConf_isNameEqual, (char* profileName), ());
 };
 
 extern profilexconfMock *g_profileXConfMock;

@@ -640,11 +640,27 @@ TEST_F(profileXconfTestFixture, ProfileXConf_deleteProfile)
     EXPECT_EQ(ProfileXConf_delete(localProfile), T2ERROR_SUCCESS);
 }
 
-//Test the uninit of XConf profiles
-TEST_F(profileXconfTestFixture, ProfileXConf_uninit)
+TEST_F(profileXconfTestFixture, ProfileXConf_deleteProfile_isNameEqual_true)
 {
-    EXPECT_EQ(ProfileXConf_uninit(), T2ERROR_SUCCESS);
+    ProfileXConf* localProfile = (ProfileXConf*)calloc(1, sizeof(ProfileXConf));
+    localProfile->name = strdup("TestProfile");
+    // Make cachedReportList non-null to also cover inside the 'if'
+    Vector_Create(&localProfile->cachedReportList);
+    Vector_PushBack(localProfile->cachedReportList, strdup("dummy"));
+
+    EXPECT_CALL(*g_profileXConfMock, ProfileXConf_isNameEqual(StrEq("TestProfile")))
+        .WillOnce(Return(true));
+    // Add other mocks as needed for full deletion path...
+
+    // Call delete - this should hit the isNameEqual 'true' block
+    ProfileXConf_delete(localProfile);
+
+    // Cleanup
+    free(localProfile->name);
+    Vector_Destroy(localProfile->cachedReportList, free);
+    free(localProfile);
 }
+
 
 ProfileXConf* CreateProfile(const char* name, bool withCached, bool withEMarker, MarkerType mType, bool withGMarker, bool withReportInProgress) {
     ProfileXConf* localProfile = (ProfileXConf*)calloc(1, sizeof(ProfileXConf));

@@ -1868,4 +1868,30 @@ freeRequestURIparamFunc freeRequestURIparamFuncCallback(void)
 {
    return freeRequestURIparam;
 }
+
+typedef void (*freeReportProfileConfigFunc)(void *);
+freeReportProfileConfigFunc freeReportProfileConfigFuncCallback(void) {
+    return freeReportProfileConfig;
+}
+
+typedef void (*freeProfileFunc)(void *);
+freeProfileFunc freeProfileFuncCallback(void) {
+    return freeProfile;
+}
+
+typedef T2ERROR (*getProfileFunc)(const char*, Profile**);
+getProfileFunc getProfileFuncCallback(void) {
+    return getProfile;
+}
+
+typedef T2ERROR (*initJSONReportProfileFunc)(cJSON **, cJSON **, char *);
+initJSONReportProfileFunc initJSONReportProfileFuncCallback(void) {
+    return initJSONReportProfile;
+}
+
+typedef void* (*CollectAndReportFunc)(void*);
+CollectAndReportFunc getCollectAndReportFunc(void) {
+    return CollectAndReport;
+}
+
 #endif

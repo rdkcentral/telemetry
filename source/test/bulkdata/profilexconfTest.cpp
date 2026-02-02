@@ -610,34 +610,6 @@ TEST_F(profileXconfTestFixture, ProfileXConf_notifyTimeout)
 }
 */
 //Test the deletion of xconf profile
-TEST_F(profileXconfTestFixture, ProfileXConf_deleteProfile)
-{
-    ProfileXConf *localProfile = (ProfileXConf*)malloc(sizeof(ProfileXConf));
-    memset(localProfile, 0, sizeof(ProfileXConf));
-    localProfile->name = strdup("RDK_Profile_2");
-    EventMarker *eMarker = (EventMarker*)malloc(sizeof (EventMarker));
-    eMarker->markerName = strdup("sys_info_bootup");
-    eMarker->compName = strdup("sysint");
-    eMarker->skipFreq = 0;
-    eMarker->mType = (MarkerType)MTYPE_XCONF_COUNTER;
-
-    Vector_PushBack(localProfile->eMarkerList, eMarker);
-    localProfile->gMarkerList = nullptr;
-    localProfile->topMarkerList = nullptr;
-    localProfile->paramList = nullptr;
-    localProfile->cachedReportList = nullptr;
-    localProfile->protocol = strdup("HTTP");
-    localProfile->encodingType = strdup("JSON");
-    localProfile->t2HTTPDest = nullptr;
-    localProfile->grepSeekProfile = nullptr;
-    localProfile->reportInProgress = false;
-    localProfile->isUpdated = false;
-
-    EXPECT_CALL(*g_schedulerMock, unregisterProfileFromScheduler(_))
-        .Times(1)
-        .WillOnce(Return(T2ERROR_SUCCESS));
-    EXPECT_EQ(ProfileXConf_delete(localProfile), T2ERROR_SUCCESS);
-}
 
 TEST_F(profileXconfTestFixture, ProfileXConf_deleteProfile1)
 {
@@ -670,6 +642,35 @@ TEST_F(profileXconfTestFixture, ProfileXConf_deleteProfile1)
         //.WillOnce(Return(T2ERROR_SUCCESS));
     EXPECT_EQ(ProfileXConf_delete(localProfile), T2ERROR_SUCCESS);
     Vector_Destroy(localProfile->cachedReportList, free);
+}
+
+TEST_F(profileXconfTestFixture, ProfileXConf_deleteProfile)
+{
+    ProfileXConf *localProfile = (ProfileXConf*)malloc(sizeof(ProfileXConf));
+    memset(localProfile, 0, sizeof(ProfileXConf));
+    localProfile->name = strdup("RDK_Profile_2");
+    EventMarker *eMarker = (EventMarker*)malloc(sizeof (EventMarker));
+    eMarker->markerName = strdup("sys_info_bootup");
+    eMarker->compName = strdup("sysint");
+    eMarker->skipFreq = 0;
+    eMarker->mType = (MarkerType)MTYPE_XCONF_COUNTER;
+
+    Vector_PushBack(localProfile->eMarkerList, eMarker);
+    localProfile->gMarkerList = nullptr;
+    localProfile->topMarkerList = nullptr;
+    localProfile->paramList = nullptr;
+    localProfile->cachedReportList = nullptr;
+    localProfile->protocol = strdup("HTTP");
+    localProfile->encodingType = strdup("JSON");
+    localProfile->t2HTTPDest = nullptr;
+    localProfile->grepSeekProfile = nullptr;
+    localProfile->reportInProgress = false;
+    localProfile->isUpdated = false;
+
+    EXPECT_CALL(*g_schedulerMock, unregisterProfileFromScheduler(_))
+        .Times(1)
+        .WillOnce(Return(T2ERROR_SUCCESS));
+    EXPECT_EQ(ProfileXConf_delete(localProfile), T2ERROR_SUCCESS);
 }
 
 ProfileXConf* CreateProfile(const char* name, bool withCached, bool withEMarker, MarkerType mType, bool withGMarker, bool withReportInProgress) {

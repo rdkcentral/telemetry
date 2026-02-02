@@ -27,7 +27,6 @@ using ::testing::Invoke;
 
 extern "C" {
 #include "busInterface.h"
-//#include "profile.c"
 #include "profile.h"
 #include "datamodel.h"
 #include "t2markers.h"

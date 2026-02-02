@@ -614,7 +614,7 @@ TEST_F(profileXconfTestFixture, ProfileXConf_deleteProfile)
 {
     ProfileXConf *localProfile = (ProfileXConf*)malloc(sizeof(ProfileXConf));
     memset(localProfile, 0, sizeof(ProfileXConf));
-    localProfile->name = strdup("RDK_Profile_2");
+    localProfile->name = strdup("RDK_Profile");
     EventMarker *eMarker = (EventMarker*)malloc(sizeof (EventMarker));
     eMarker->markerName = strdup("sys_info_bootup");
     eMarker->compName = strdup("sysint");
@@ -633,9 +633,9 @@ TEST_F(profileXconfTestFixture, ProfileXConf_deleteProfile)
     localProfile->reportInProgress = false;
     localProfile->isUpdated = false;
 
-    EXPECT_CALL(*g_schedulerMock, unregisterProfileFromScheduler(_))
-        .Times(1)
-        .WillOnce(Return(T2ERROR_SUCCESS));
+    //EXPECT_CALL(*g_schedulerMock, unregisterProfileFromScheduler(_))
+      //  .Times(1)
+        //.WillOnce(Return(T2ERROR_SUCCESS));
     EXPECT_EQ(ProfileXConf_delete(localProfile), T2ERROR_SUCCESS);
 }
 

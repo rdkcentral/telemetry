@@ -579,9 +579,6 @@ TEST_F(profileXconfTestFixture, ProfileXConf_notifyTimeout)
         .WillOnce(Return(T2ERROR_SUCCESS));
     
     
-    EXPECT_CALL(*g_profileXConfMock, sendReportOverHTTP(_, _, _))
-        .Times(1)
-        .WillOnce(Return(T2ERROR_SUCCESS));
     EXPECT_CALL(*g_profileXConfMock, sendCachedReportsOverHTTP(_,_))
         .Times(1)
         .WillOnce(Return(T2ERROR_SUCCESS));

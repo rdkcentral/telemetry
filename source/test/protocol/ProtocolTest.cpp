@@ -112,13 +112,13 @@ protected:
 TEST(SENDREPORTOVERHTTP, 1_NULL_CHECK)
 {
     char *payload = "This is a payload string";
-    EXPECT_EQ(T2ERROR_FAILURE, sendReportOverHTTP(NULL, payload, NULL));
+    EXPECT_EQ(T2ERROR_FAILURE, sendReportOverHTTP(NULL, payload));
 }
 
 TEST(SENDREPORTOVERHTTP, 2_NULL_CHECK)
 {
     char *url = "https://test.com";
-    EXPECT_EQ(T2ERROR_FAILURE, sendReportOverHTTP(url, NULL, NULL));
+    EXPECT_EQ(T2ERROR_FAILURE, sendReportOverHTTP(url, NULL));
 }
 
 TEST(SENDCACREPOVERHTTP, 1_NULL_CHECK)
@@ -192,7 +192,7 @@ TEST_F(protocolTestFixture, SENDREPORTOVERHTTP1)
       EXPECT_CALL(*g_fileIOMock, pipe(_))
               .Times(1)
               .WillOnce(Return(-1));
-      EXPECT_EQ(T2ERROR_FAILURE, sendReportOverHTTP(httpURL, payload, NULL));
+      EXPECT_EQ(T2ERROR_FAILURE, sendReportOverHTTP(httpURL, payload));
       free(payload);
 }
 
@@ -225,7 +225,7 @@ TEST_F(protocolTestFixture, SENDREPORTOVERHTTP2)
       EXPECT_CALL(*g_fileIOMock, fork())
               .Times(1)
               .WillOnce(Return(-1));
-      EXPECT_EQ(T2ERROR_FAILURE, sendReportOverHTTP(httpURL, payload, NULL));
+      EXPECT_EQ(T2ERROR_FAILURE, sendReportOverHTTP(httpURL, payload));
       free(payload);
 }
 
@@ -266,7 +266,7 @@ TEST_F(protocolTestFixture, SENDREPORTOVERHTTP3)
       EXPECT_CALL(*g_fileIOMock, read(_,_,_))
               .Times(1)
               .WillOnce(Return(-1));
-      EXPECT_EQ(T2ERROR_SUCCESS, sendReportOverHTTP(httpURL, payload, NULL));
+      EXPECT_EQ(T2ERROR_SUCCESS, sendReportOverHTTP(httpURL, payload));
       free(payload);
 }
 
@@ -486,7 +486,7 @@ TEST_F(protocolTestFixture, sendReportOverHTTP_6)
              .Times(1)
              .WillOnce(Return(RDKCONFIG_OK));
       #endif
-      EXPECT_EQ(T2ERROR_SUCCESS, sendReportOverHTTP(httpURL, payload,NULL));
+      EXPECT_EQ(T2ERROR_SUCCESS, sendReportOverHTTP(httpURL, payload));
       Vector_Destroy(reportlist, free);
 }
 

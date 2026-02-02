@@ -66,7 +66,6 @@
 #define IFINTERFACE      "erouter0"
 #define MAX_POOL_SIZE 3
 #define HTTP_RESPONSE_FILE "/tmp/httpOutput.txt"
-#define RESPONSE_BUFFER_SIZE 8192
 static bool pool_initialized = false;
 
 typedef struct
@@ -142,22 +141,22 @@ void curlCertSelectorInit()
 
 #endif
 
-static size_t httpGetCallBack(void *response, size_t len, size_t nmemb,
+static size_t httpGetCallBack(void *responseBuffer, size_t len, size_t nmemb,
                               void *stream)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
     size_t realsize = len * nmemb;
-    curlResponseData* httpResponse = (curlResponseData*) stream;
+    curlResponseData* response = (curlResponseData*) stream;
 
     // FIX: Check for NULL stream to prevent crashes
-    if (!httpResponse)
+    if (!response)
     {
         T2Error("httpGetCallBack: NULL stream parameter\n");
         return 0;
     }
 
-    char *ptr = (char*) realloc(httpResponse->data,
-                                httpResponse->size + realsize + 1);
+    char *ptr = (char*) realloc(response->data,
+                                response->size + realsize + 1);
     if (!ptr)
     {
         T2Error("%s:%u , T2:memory realloc failed\n", __func__, __LINE__);
@@ -165,10 +164,10 @@ static size_t httpGetCallBack(void *response, size_t len, size_t nmemb,
         // Return 0 to signal an error to curl
         return 0;
     }
-    httpResponse->data = ptr;
-    memcpy(&(httpResponse->data[httpResponse->size]), response, realsize);
-    httpResponse->size += realsize;
-    httpResponse->data[httpResponse->size] = 0;
+    response->data = ptr;
+    memcpy(&(response->data[response->size]), responseBuffer, realsize);
+    response->size += realsize;
+    response->data[response->size] = 0;
 
     T2Debug("%s ++out\n", __FUNCTION__);
     return realsize;
@@ -376,22 +375,31 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
     T2Info("http_pool_get using handle %d\n", idx);
 
     // Allocate response buffer locally for GET requests only
-    curlResponseData response;
-    response.data = (char*)malloc(RESPONSE_BUFFER_SIZE);
-    if (!response.data)
+    curlResponseData* response = (curlResponseData *) malloc(sizeof(curlResponseData));
+    if (!response)
     {
-        T2Error("Failed to allocate response buffer\n");
+        T2Error("Failed to allocate response structure\n");
         release_pool_handle(idx);
         return T2ERROR_FAILURE;
     }
-    response.data[0] = '\0';
-    response.size = 0;
+
+    response->data = (char*)malloc(1);
+    if (!response->data)
+    {
+        T2Error("Failed to allocate response data buffer\n");
+        free(response);
+        release_pool_handle(idx);
+        return T2ERROR_FAILURE;
+    }
+
+    response->data[0] = '\0';
+    response->size = 0;
 
     // Configure basic options for GET request
     CURL_SETOPT_CHECK_STR(easy, CURLOPT_URL, url);
     CURL_SETOPT_CHECK(easy, CURLOPT_HTTPGET, 1L);
     CURL_SETOPT_CHECK(easy, CURLOPT_WRITEFUNCTION, httpGetCallBack);
-    CURL_SETOPT_CHECK(easy, CURLOPT_WRITEDATA, (void *) &response);
+    CURL_SETOPT_CHECK(easy, CURLOPT_WRITEDATA, (void *) response);
 
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
 #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
@@ -455,7 +463,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
             if(xcGetCertStatus != certselectorOk)
             {
                 T2Error("%s, T2:Failed to retrieve the certificate.\n", __func__);
-                free(response.data);
+                free(response->data);
                 release_pool_handle(idx);
                 return T2ERROR_FAILURE;
             }
@@ -507,7 +515,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
         else
         {
             T2Error("mTLS_get failure\n");
-            free(response.data);
+            free(response->data);
             release_pool_handle(idx);
             return T2ERROR_FAILURE;
         }
@@ -522,7 +530,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
     if (curl_code != CURLE_OK)
     {
         T2Error("curl_easy_perform failed: %s\n", curl_easy_strerror(curl_code));
-        free(response.data);
+        free(response->data);
 #ifndef LIBRDKCERTSEL_BUILD
         if(NULL != pCertFile)
         {
@@ -547,9 +555,9 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
         result = T2ERROR_SUCCESS;
         T2Info("%s:%d, T2:Telemetry XCONF communication success\n", __func__, __LINE__);
 
-        if (response.data)
+        if (response->data)
         {
-            T2Info("%s ; Response data size = %zu\n", __FUNCTION__, response.size);
+            T2Info("%s ; Response data size = %zu\n", __FUNCTION__, response->size);
 
             // Handle file output for GET requests
             if (enable_file_output)
@@ -561,7 +569,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
                     if (httpOutput)
                     {
                         T2Debug("Update config data in response file %s \n", HTTP_RESPONSE_FILE);
-                        fputs(response.data, httpOutput);
+                        fputs(response->data, httpOutput);
                         fclose(httpOutput);
                     }
                     else
@@ -580,23 +588,23 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
             if (response_data)
             {
                 *response_data = NULL;
-                if(response.size <= SIZE_MAX - 1)
+                if(response->size <= SIZE_MAX - 1)
                 {
-                    *response_data = (char*)malloc(response.size + 1);
+                    *response_data = (char*)malloc(response->size + 1);
                     if(*response_data)
                     {
-                        memcpy(*response_data, response.data, response.size);
-                        (*response_data)[response.size] = '\0';
+                        memcpy(*response_data, response->data, response->size);
+                        (*response_data)[response->size] = '\0';
                     }
                     else
                     {
-                        T2Error("Failed to allocate memory for response data of size %zu\n", response.size);
+                        T2Error("Failed to allocate memory for response data of size %zu\n", response->size);
                         result = T2ERROR_FAILURE;
                     }
                 }
                 else
                 {
-                    T2Error("Response size %zu exceeds maximum allowable size\n", response.size);
+                    T2Error("Response size %zu exceeds maximum allowable size\n", response->size);
                     result = T2ERROR_FAILURE;
                 }
             }
@@ -621,7 +629,26 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
     }
 
     // Clean up local response buffer
-    free(response.data);
+    if (response)
+    {
+        if (response->data)
+        {
+            free(response->data);
+        }
+        free(response);
+    }
+
+#ifdef LIBRDKCERTSEL_BUILD
+    // Clean up final iteration's certificate allocations
+    if(mtls_enable && pCertURI != NULL)
+    {
+        free(pCertURI);
+    }
+    if(mtls_enable && pPasswd != NULL)
+    {
+        free(pPasswd);
+    }
+#endif
 
     // Clean up certificates if not using certificate selector
 #ifndef LIBRDKCERTSEL_BUILD

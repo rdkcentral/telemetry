@@ -67,7 +67,6 @@ static bool firstreport_after_bootup = false; // the rotated logs check should r
 // Define a struct to hold the file descriptor and size
 typedef struct
 {
-    //int fd; This is not needed
     off_t cf_map_size;
     off_t rf_map_size;
     off_t cf_file_size;
@@ -1291,7 +1290,7 @@ static int parseMarkerListOptimized(GrepSeekProfile *gsProfile, Vector * ip_vMar
             }
 
             fileDescriptor = getFileDeltaInMemMapAndSearch(fd, seek_value, logPath, log_file_for_this_iteration, check_rotated_logs);
-            
+
             if (fd != -1)
             {
                 close(fd);
@@ -1323,12 +1322,6 @@ static int parseMarkerListOptimized(GrepSeekProfile *gsProfile, Vector * ip_vMar
     {
         free(prevfile);
         prevfile = NULL;
-    }
-
-    if (fd != -1)
-    {
-        close(fd);
-        fd = -1;
     }
 
     if (fileDescriptor != NULL)

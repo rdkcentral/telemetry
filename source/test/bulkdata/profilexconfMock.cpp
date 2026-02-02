@@ -52,7 +52,7 @@ extern "C" cJSON* cJSON_AddStringToObject(cJSON* object, const char* string, con
     return g_profileXConfMock->cJSON_AddStringToObject(object, string, value);
 }
 
-extern "C" bool ProfileXConf_isNameEqual(char* profileName) {
+extern "C" bool __wrap_ProfileXConf_isNameEqual(char* profileName) {
     // Forward to mock if present, else default behavior
     if (g_profileXConfMock)
         return g_profileXConfMock->ProfileXConf_isNameEqual(profileName);

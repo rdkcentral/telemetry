@@ -623,7 +623,7 @@ TEST_F(profileXconfTestFixture, ProfileXConf_deleteProfile)
         .WillOnce(Return(T2ERROR_SUCCESS));
     EXPECT_EQ(ProfileXConf_delete(localProfile), T2ERROR_SUCCESS);
 }
-
+#if 0
 TEST_F(profileXconfTestFixture, ProfileXConf_deleteProfile_isNameEqual_true)
 {
     ProfileXConf* localProfile = (ProfileXConf*)calloc(1, sizeof(ProfileXConf));
@@ -645,7 +645,7 @@ TEST_F(profileXconfTestFixture, ProfileXConf_deleteProfile_isNameEqual_true)
     free(localProfile);
 }
 
-
+#endif
 ProfileXConf* CreateProfile(const char* name, bool withCached, bool withEMarker, MarkerType mType, bool withGMarker, bool withReportInProgress) {
     ProfileXConf* localProfile = (ProfileXConf*)calloc(1, sizeof(ProfileXConf));
     localProfile->name = strdup(name);

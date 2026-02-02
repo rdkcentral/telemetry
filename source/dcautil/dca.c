@@ -67,7 +67,7 @@ static bool firstreport_after_bootup = false; // the rotated logs check should r
 // Define a struct to hold the file descriptor and size
 typedef struct
 {
-    int fd;
+    //int fd; This is not needed
     off_t cf_map_size;
     off_t rf_map_size;
     off_t cf_file_size;
@@ -966,11 +966,6 @@ static void freeFileDescriptor(FileDescriptor* fileDescriptor)
         }
         fileDescriptor->cfaddr = NULL;
         fileDescriptor->rfaddr = NULL;
-        if(fileDescriptor->fd != -1)
-        {
-            close(fileDescriptor->fd);
-            fileDescriptor->fd = -1;
-        }
         free(fileDescriptor);
     }
 }
@@ -1119,7 +1114,6 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
 
                 T2Debug("Log file got rotated. Ignoring invalid mapping\n");
                 close(tmp_fd);
-                close(fd);
                 if(rd != -1)
                 {
                     close(rd);
@@ -1147,13 +1141,11 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
         {
             T2Debug("Log file got rotated. Ignoring invalid mapping\n");
             close(tmp_fd);
-            close(fd);
             return NULL;
         }
         addrrf = NULL;
     }
     close(tmp_fd);
-    close(fd);
 
     if (addrcf == MAP_FAILED)
     {
@@ -1196,7 +1188,6 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
         fileDescriptor->rfaddr = NULL;
     }
     fileDescriptor->cfaddr = addrcf;
-    fileDescriptor->fd = fd;
     fileDescriptor->cf_map_size = main_fsize;
     fileDescriptor->cf_file_size = sb.st_size;
     if(fileDescriptor->rfaddr != NULL)
@@ -1283,12 +1274,6 @@ static int parseMarkerListOptimized(GrepSeekProfile *gsProfile, Vector * ip_vMar
                 prevfile = NULL;
             }
 
-            if (fd != -1)
-            {
-                close(fd);
-                fd = -1;
-            }
-
             if (fileDescriptor != NULL)
             {
                 freeFileDescriptor(fileDescriptor);
@@ -1306,14 +1291,16 @@ static int parseMarkerListOptimized(GrepSeekProfile *gsProfile, Vector * ip_vMar
             }
 
             fileDescriptor = getFileDeltaInMemMapAndSearch(fd, seek_value, logPath, log_file_for_this_iteration, check_rotated_logs);
+            
+            if (fd != -1)
+            {
+                close(fd);
+                fd = -1;
+            }
+
             if (fileDescriptor == NULL)
             {
                 T2Error("Failed to get file descriptor for %s\n", log_file_for_this_iteration);
-                if (fd != -1)
-                {
-                    close(fd);
-                    fd = -1;
-                }
                 continue;
             }
         }

@@ -333,7 +333,7 @@ static T2ERROR dbus_getGetOperationalStatus(const char* paramName, uint32_t* val
     
     // Timeout: 1000ms - GetOperationalStatus should respond quickly
     // This prevents hanging if server is down/unresponsive
-    reply = dbus_connection_send_with_reply_and_block((DBusConnection*)bus_handle, msg, 1000, &error);
+    reply = dbus_connection_send_with_reply_and_block((DBusConnection*)bus_handle, msg, 10, &error);
     dbus_message_unref(msg);
 
     if (dbus_error_is_set(&error))
@@ -985,7 +985,7 @@ static T2ERROR doPopulateEventMarkerList( )
         }
         // TODO : check markers list size and set timeout accordingly
         // Timeout: 500ms
-        reply = dbus_connection_send_with_reply_and_block((DBusConnection*)bus_handle, msg, 500, &error);
+        reply = dbus_connection_send_with_reply_and_block((DBusConnection*)bus_handle, msg, 50, &error);
         dbus_message_unref(msg);
 
         if (dbus_error_is_set(&error))
@@ -1114,6 +1114,7 @@ static void* dbus_event_loop_thread(void *arg)
         // Process signal connection (for ProfileUpdate signals)
         dbus_connection_read_write_dispatch((DBusConnection*)signal_bus_handle, 0);
         dbus_connection_read_write_dispatch((DBusConnection*)bus_handle, 0);
+        usleep(10);
     }
     
     EVENT_DEBUG("D-Bus: Event loop thread exiting\n");

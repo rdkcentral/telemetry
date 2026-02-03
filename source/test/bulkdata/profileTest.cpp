@@ -1959,6 +1959,8 @@ TEST_F(ProfileTest, SetAndIsSet) {
     EXPECT_STREQ(name, "TestProfile");
     free(name);
 
+    ProfileXConf_notifyTimeout(true,true);
+
     // Clean up - ProfileXConf_uninit calls unregisterProfileFromScheduler
     EXPECT_CALL(*g_schedulerMock, unregisterProfileFromScheduler(_))
         .Times(::testing::AtMost(1))

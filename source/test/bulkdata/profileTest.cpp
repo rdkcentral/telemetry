@@ -2158,13 +2158,13 @@ extern "C"
     typedef T2ERROR (*FlushCacheFunc)(void);
     FlushCacheFunc FlushCacheFuncCallback(void);
 }
-#if 0
+#if 1
 TEST_F(ProfileTest, FlushCacheFromFile_AndRemove_WithFuncPtr) {
     std::ofstream f(T2_CACHE_FILE);
     f << "marker1<#=#>value1\n";
     f.close();
 
-    T2ER_Init();
+    //T2ER_Init();
 
     // Call via function pointer
     FlushCacheFunc fn = FlushCacheFuncCallback();

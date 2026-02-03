@@ -39,9 +39,11 @@ static bool checkForEmptyString( char* valueString )
     {
         // rbusInterface implementation explicitly adds string as "NULL" for parameters which doesn't exist on device
         // Consider "NULL" string value as qualified for empty string
-        if(strlen(valueString) < 1 || !strncmp(valueString, " ", 1) || !strncmp(valueString, "NULL", 4))
+        // If the string has zero value it should be ignored
+        if(strlen(valueString) < 1 || !strncmp(valueString, " ", 1) || !strcmp(valueString, "0") || !strncmp(valueString, "NULL", 4))
         {
             isEmpty = true ;
+            T2Debug("Marker Value is empty or zero or NULL\n");
         }
     }
     else

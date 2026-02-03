@@ -1782,7 +1782,6 @@ TEST_F(ProfileTest, RemovePreRPfromDisk) {
     EXPECT_EQ(RemovePreRPfromDisk("/tmp", &dummy), T2ERROR_SUCCESS);
 }
 
-#if 0
 TEST_F(ProfileTest, deleteAllReportProfiles) {
     EXPECT_CALL(*g_vectorMock, Vector_Size(_))
         .Times(::testing::AtMost(1))
@@ -1791,7 +1790,6 @@ TEST_F(ProfileTest, deleteAllReportProfiles) {
         .WillRepeatedly(Return(T2ERROR_SUCCESS));
     EXPECT_EQ(deleteAllReportProfiles(), T2ERROR_SUCCESS);
 }
-#endif
 
 #if 0
 TEST_F(ProfileTest, isMtlsEnabled) {
@@ -1844,7 +1842,44 @@ TEST_F(ProfileTest, ReportProfiles_uninit) {
 }
 #endif
 #endif
+#ifdef GTEST_ENABLE
+TEST_F(ProfileTest, reportOnDemandTest)
+{
+        reportOnDemandFunc func = reportOnDemandFuncCallback();
+        ASSERT_NE(func,nullptr);
+        //func((void*)"UPLOAD");
+        func((void*)"ABORT");
+        func((void*)"FOO");
+        func(nullptr);
+}
 
+TEST(ReportProfilesCallbacks, FreeReportProfileHashMap) {
+    auto cb = freeReportProfileHashMapFuncCallback();
+    ASSERT_NE(cb, nullptr);
+
+    // Make an item with ReportProfile-like .data
+    hash_element_t* item = (hash_element_t*) std::malloc(sizeof(hash_element_t));
+    item->key = (char*) std::malloc(12);
+    std::strcpy(item->key, "profkey");
+    struct ReportProfile {
+        char* hash;
+        char* config;
+        void* hash_map_pad; // just to align with how your system might fill it, can be omitted
+    };
+    ReportProfile* rp = (ReportProfile*) std::malloc(sizeof(ReportProfile));
+    rp->hash = (char*) std::malloc(6);
+    std::strcpy(rp->hash, "hashV");
+    rp->config = (char*) std::malloc(8);
+    std::strcpy(rp->config, "cfgVal");
+    item->data = rp;
+
+    cb(item);
+
+    // Safe to call with nullptr
+    cb(nullptr);
+    SUCCEED();
+}
+#endif
 #if 1
 //comment
 //=================================== profilexconf.c ================================

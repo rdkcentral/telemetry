@@ -19,7 +19,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <pthread.h>
 #include <net/if.h>
 #include <netdb.h>
@@ -68,12 +67,14 @@
 #define HTTP_RESPONSE_FILE "/tmp/httpOutput.txt"
 static bool pool_initialized = false;
 
+// Static initialization of mutex and condition variable to avoid race conditions
+static pthread_mutex_t pool_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t pool_cond = PTHREAD_COND_INITIALIZER;
+
 typedef struct
 {
     CURL *easy_handles[MAX_POOL_SIZE];
     bool handle_available[MAX_POOL_SIZE];
-    pthread_mutex_t pool_mutex;
-    pthread_cond_t handle_available_cond;
     struct curl_slist *post_headers;
 } http_connection_pool_t;
 
@@ -138,7 +139,6 @@ void curlCertSelectorInit()
         }
     }
 }
-
 #endif
 
 static size_t httpGetCallBack(void *responseBuffer, size_t len, size_t nmemb,
@@ -200,21 +200,16 @@ T2ERROR init_connection_pool()
 {
     T2Debug("%s ++in\n", __FUNCTION__);
 
-    // Initialize synchronization primitives first
-    if(pthread_mutex_init(&pool.pool_mutex, NULL) != 0)
-    {
-        T2Error("%s : Failed to initialize pool mutex\n", __FUNCTION__);
-        return T2ERROR_FAILURE;
-    }
+    // Use statically initialized mutex - no need to call pthread_mutex_init
+    pthread_mutex_lock(&pool_mutex);
 
-    if(pthread_cond_init(&pool.handle_available_cond, NULL) != 0)
+    // Check if already initialized
+    if(pool_initialized)
     {
-        T2Error("%s : Failed to initialize condition variable\n", __FUNCTION__);
-        pthread_mutex_destroy(&pool.pool_mutex);
-        return T2ERROR_FAILURE;
+        T2Debug("Connection pool already initialized\n");
+        pthread_mutex_unlock(&pool_mutex);
+        return T2ERROR_SUCCESS;
     }
-
-    pthread_mutex_lock(&pool.pool_mutex);
 
 #ifdef LIBRDKCERTSEL_BUILD
     // Initialize certificate selector before setting up connection pool
@@ -230,9 +225,7 @@ T2ERROR init_connection_pool()
             T2Error("%s : Failed to initialize curl handle %d\n", __FUNCTION__, i);
             // Cleanup previously initialized handles using helper function
             cleanup_curl_handles();
-            pthread_mutex_unlock(&pool.pool_mutex);
-            pthread_cond_destroy(&pool.handle_available_cond);
-            pthread_mutex_destroy(&pool.pool_mutex);
+            pthread_mutex_unlock(&pool_mutex);
             return T2ERROR_FAILURE;
         }
         pool.handle_available[i] = true;
@@ -247,7 +240,7 @@ T2ERROR init_connection_pool()
         CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_TCP_KEEPINTVL, 30L);
 
 #ifdef CURLOPT_TCP_KEEPCNT
-        // The option CURLOPT_TCP_KEEPCNT is not available in libcurl versions older than 7.25.0
+// The option CURLOPT_TCP_KEEPCNT is not available in libcurl versions older than 7.25.0
         // Set number of keepalive probes before considering the connection dead
         CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_TCP_KEEPCNT, 15L);
 #endif
@@ -276,6 +269,8 @@ T2ERROR init_connection_pool()
     if (pool.post_headers == NULL)
     {
         T2Error("%s : Failed to append HTTP header: Accept: application/json\n", __FUNCTION__);
+        cleanup_curl_handles();
+        pthread_mutex_unlock(&pool_mutex);
         return T2ERROR_FAILURE;
     }
 
@@ -285,11 +280,13 @@ T2ERROR init_connection_pool()
         T2Error("%s : Failed to append HTTP header: Content-type: application/json\n", __FUNCTION__);
         curl_slist_free_all(pool.post_headers);
         pool.post_headers = NULL;
+        cleanup_curl_handles();
+        pthread_mutex_unlock(&pool_mutex);
         return T2ERROR_FAILURE;
     }
 
     pool_initialized = true;
-    pthread_mutex_unlock(&pool.pool_mutex);
+    pthread_mutex_unlock(&pool_mutex);
     T2Debug("%s ++out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
@@ -307,7 +304,7 @@ static T2ERROR acquire_pool_handle(CURL **easy, int *idx)
         }
     }
 
-    pthread_mutex_lock(&pool.pool_mutex);
+    pthread_mutex_lock(&pool_mutex);
 
     // Waits until a handle becomes available
     while(1)
@@ -322,24 +319,24 @@ static T2ERROR acquire_pool_handle(CURL **easy, int *idx)
                 pool.handle_available[i] = false;
                 *easy = pool.easy_handles[i];
 
-                pthread_mutex_unlock(&pool.pool_mutex);
+                pthread_mutex_unlock(&pool_mutex);
                 return T2ERROR_SUCCESS;
             }
         }
 
         // No handle available, wait for one to become free
         T2Info("No curl handle available, waiting for one to become free...\n");
-        pthread_cond_wait(&pool.handle_available_cond, &pool.pool_mutex);
+        pthread_cond_wait(&pool_cond, &pool_mutex);
     }
 }
 
 // Helper function to release handle back to pool
 static void release_pool_handle(int idx)
 {
-    pthread_mutex_lock(&pool.pool_mutex);
+    pthread_mutex_lock(&pool_mutex);
     pool.handle_available[idx] = true;
-    pthread_cond_signal(&pool.handle_available_cond); // Signal waiting threads
-    pthread_mutex_unlock(&pool.pool_mutex);
+    pthread_cond_signal(&pool_cond); // Signal waiting threads
+    pthread_mutex_unlock(&pool_mutex);
 }
 
 // GET API - Updated to use shared pool with waiting
@@ -941,36 +938,23 @@ T2ERROR http_pool_cleanup(void)
     }
 
     T2Info("Cleaning up http pool resources\n");
+
     // Signal any waiting threads to wake up
-    pthread_mutex_lock(&pool.pool_mutex);
-    pthread_cond_broadcast(&pool.handle_available_cond);
-    pthread_mutex_unlock(&pool.pool_mutex);
+    pthread_mutex_lock(&pool_mutex);
+    pthread_cond_broadcast(&pool_cond);
+    pthread_mutex_unlock(&pool_mutex);
 
 #ifdef LIBRDKCERTSEL_BUILD
     // Cleanup certificate selectors to prevent memory leak
     curlCertSelectorFree();
 #endif
 
-    // Free all header lists before cleanup
-    if(pool.post_headers)
-    {
-        curl_slist_free_all(pool.post_headers);
-        pool.post_headers = NULL;
-    }
+    // Cleanup all curl handles using helper function
+    cleanup_curl_handles();
 
-    // Cleanup all easy handles
-    for(int i = 0; i < MAX_POOL_SIZE; i++)
-    {
-        if(pool.easy_handles[i])
-        {
-            curl_easy_cleanup(pool.easy_handles[i]);
-            pool.easy_handles[i] = NULL;
-        }
-    }
-
-    // Destroy condition variable and mutex
-    pthread_cond_destroy(&pool.handle_available_cond);
-    pthread_mutex_destroy(&pool.pool_mutex);
+    // Note: We don't destroy the statically initialized mutex and condition variable
+    // They are initialized with PTHREAD_MUTEX_INITIALIZER and PTHREAD_COND_INITIALIZER
+    // and will be cleaned up automatically when the program exits
 
     // Reset initialization flag
     pool_initialized = false;

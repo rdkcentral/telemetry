@@ -452,7 +452,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
 #ifdef LIBRDKCERTSEL_BUILD
         if(OPENSSL_init_crypto(OPENSSL_INIT_NO_LOAD_CONFIG, NULL) != 1)
         {
-            T2Info("%s, T2:OPENSSL_init_crypto failed.\n", __func__);
+             fprintf(stderr, "T2:OPENSSL_init_crypto failed\n"); // avoiding T2 logger in the child. 
         }
 #endif
         curl = curl_easy_init();

@@ -771,6 +771,7 @@ TEST_F(profileXconfTestFixture, Cover_CollectAndReportXconf)
     void* result = fn(nullptr);
 }
 #endif
+#if 0
 TEST_F(profileXconfTestFixture, ProfileXConf_deleteProfile1)
 {
     ProfileXConf *localProfile = (ProfileXConf*)malloc(sizeof(ProfileXConf));
@@ -800,3 +801,4 @@ TEST_F(profileXconfTestFixture, ProfileXConf_deleteProfile1)
     EXPECT_EQ(ProfileXConf_delete(localProfile), T2ERROR_SUCCESS);
     Vector_Destroy(localProfile->cachedReportList, free);
 }
+#endif

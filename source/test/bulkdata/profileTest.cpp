@@ -2152,6 +2152,37 @@ TEST_F(ProfileTest, Uninit_NotInitialized) {
 }
 #endif
 
+#ifdef GTEST_ENABLE
+extern "C" 
+{
+    typedef T2ERROR (*FlushCacheFunc)(void);
+    FlushCacheFunc FlushCacheFuncCallback(void);
+}
+
+TEST_F(ProfileTest, FlushCacheFromFile_AndRemove_WithFuncPtr) {
+    std::ofstream f(T2_CACHE_FILE);
+    f << "marker1<#=#>value1\n";
+    f.close();
+
+    T2ER_Init();
+
+    // Call via function pointer
+    FlushCacheFunc fn = FlushCacheFuncCallback();
+    fn();
+
+    ASSERT_FALSE(std::ifstream(T2_CACHE_FILE).good());
+}
+
+TEST_F(ProfileTest, FlushCacheFromFile_FopenFail_WithFuncPtr) {
+    remove(T2_CACHE_FILE); // Ensure file does not exist
+    T2ER_Init();
+
+    // Use the function pointer callback
+    FlushCacheFunc fn = FlushCacheFuncCallback();
+    fn();
+    ASSERT_FALSE(std::ifstream(T2_CACHE_FILE).good());
+}
+#endif
 /* Static functions
 TEST_F(ProfileTest, FlushCacheFromFile_AndRemove) {
     std::ofstream f(T2_CACHE_FILE);

@@ -2071,7 +2071,7 @@ TEST_F(ProfileTest, PushEvent_NullNameOrValue) {
     T2ER_Push(nullptr, strdup("value1"));
     T2ER_Push(strdup("marker1"), nullptr);
 }
-
+#if 0
 TEST_F(ProfileTest, PushEvent_QueueLimit) {
     //T2ER_Init();
     //EREnabled = true;
@@ -2080,7 +2080,17 @@ TEST_F(ProfileTest, PushEvent_QueueLimit) {
     char* value = strdup("value1");
     T2ER_Push(name, value);
 }
+#endif
 
+TEST_F(ProfileTest, PushEvent_QueueLimit) {
+    for (int i = 0; i < 200; ++i) {
+        char* name = strdup("marker1");
+        char* value = strdup("value1");
+        T2ER_Push(name, value);
+        // If T2ER_Push frees name and value, you do not need to free them here.
+        // If not, you should add: free(name); free(value);
+    }
+}
 TEST_F(ProfileTest, PushEvent_NotInitialized) {
     //EREnabled = false;
     T2ER_Push(strdup("marker1"), strdup("value1"));

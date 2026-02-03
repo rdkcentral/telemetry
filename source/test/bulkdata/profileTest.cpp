@@ -1971,6 +1971,26 @@ TEST_F(ProfileTest, FlushCacheFromFile_SuccessMultipleLines)
     auto flushCache = FlushCacheFuncCallback();
     ASSERT_EQ(flushCache(), T2ERROR_SUCCESS);
 }
+
+TEST_F(ProfileTest, FlushCacheFromFile_RemoveFails)
+{
+    FILE* fakeFp = (FILE*)0xf00dbabe;
+    char testbuf[] = "event1<#=#>val1\n";
+    EXPECT_CALL(*g_fileIOMock, fopen(::testing::StrEq(T2_CACHE_FILE), ::testing::StrEq("r")))
+        .WillOnce(Return(fakeFp));
+    EXPECT_CALL(*g_fileIOMock, fgets(_, 255, fakeFp))
+        .WillOnce(Invoke([&](char* str, int, FILE*) -> char* {
+            strcpy(str, testbuf);
+            return str;
+        }))
+        .WillOnce(Return(nullptr));
+    EXPECT_CALL(*g_fileIOMock, fclose(fakeFp)).WillOnce(Return(0));
+    // Simulate remove() failing using SystemMock!
+    EXPECT_CALL(*g_systemMock, remove(::testing::StrEq(T2_CACHE_FILE))).WillOnce(Return(-1));
+
+    auto flushCache = FlushCacheFuncCallback();
+    ASSERT_EQ(flushCache(), T2ERROR_SUCCESS);
+}
 #endif
 
 TEST_F(ProfileTest, FreeT2EventHandlesNullAndValid) {

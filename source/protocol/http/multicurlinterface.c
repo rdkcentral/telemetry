@@ -429,7 +429,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
     CURL_SETOPT_CHECK(easy, CURLOPT_HTTPGET, 1L);
     CURL_SETOPT_CHECK(easy, CURLOPT_WRITEFUNCTION, httpGetCallBack);
     CURL_SETOPT_CHECK(easy, CURLOPT_WRITEDATA, (void *) response);
-    
+
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
     configure_wan_interface(easy);
 #endif
@@ -842,7 +842,7 @@ T2ERROR http_pool_post(const char *url, const char *payload)
             }
         }
         while(rdkcertselector_setCurlStatus(thisCertSel, curl_code, (const char*)url) == TRY_ANOTHER);
-        
+
         // Clean up final iteration's certificate allocations
         if(pCertURI != NULL)
         {

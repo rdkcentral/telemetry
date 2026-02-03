@@ -280,10 +280,11 @@ static void curlCertSelectorInit()
 #endif
     if (state_red_enable && curlRcvryCertSelector == NULL )
     {
-		if(curlCertSelector != NULL){
-			rdkcertselector_free(&curlCertSelector);
-			curlCertSelector = NULL;
-		}
+        if(curlCertSelector != NULL)
+        {
+            rdkcertselector_free(&curlCertSelector);
+            curlCertSelector = NULL;
+        }
         curlRcvryCertSelector = rdkcertselector_new( NULL, NULL, "RCVRY" );
         if (curlRcvryCertSelector == NULL)
         {
@@ -448,10 +449,11 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
      */
     if(childPid == 0)
     {
-#ifdef LIBRDKCERTSEL_BUILD 
-	if(OPENSSL_init_crypto(OPENSSL_INIT_NO_LOAD_CONFIG, NULL) != 1){
-		T2Info("%s, T2:OPENSSL_init_crypto failed.\n", __func__);
-	}
+#ifdef LIBRDKCERTSEL_BUILD
+        if(OPENSSL_init_crypto(OPENSSL_INIT_NO_LOAD_CONFIG, NULL) != 1)
+        {
+            T2Info("%s, T2:OPENSSL_init_crypto failed.\n", __func__);
+        }
 #endif
         curl = curl_easy_init();
         if(curl)
@@ -468,22 +470,27 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
                 goto child_cleanReturn;
             }
 #ifdef LIBRDKCERTSEL_BUILD
-	    pEngine = rdkcertselector_getEngine(thisCertSel);
-	    if(pEngine != NULL ) {
-		    code = curl_easy_setopt(curl, CURLOPT_SSLENGINE, pEngine);
-		    if(code != CURLE_OK) {
-			    childCurlResponse.lineNumber = __LINE__;
-			    curl_easy_cleanup(curl);
-			    goto child_cleanReturn;
-		    }
-	    } else {
-		    code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
-		    if(code != CURLE_OK ) {
-			    childCurlResponse.lineNumber = __LINE__;
-			    curl_easy_cleanup(curl);
-			    goto child_cleanReturn;
-		    }
-	    }
+            pEngine = rdkcertselector_getEngine(thisCertSel);
+            if(pEngine != NULL )
+            {
+                code = curl_easy_setopt(curl, CURLOPT_SSLENGINE, pEngine);
+                if(code != CURLE_OK)
+                {
+                    childCurlResponse.lineNumber = __LINE__;
+                    curl_easy_cleanup(curl);
+                    goto child_cleanReturn;
+                }
+            }
+            else
+            {
+                code = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
+                if(code != CURLE_OK )
+                {
+                    childCurlResponse.lineNumber = __LINE__;
+                    curl_easy_cleanup(curl);
+                    goto child_cleanReturn;
+                }
+            }
 
             do
             {

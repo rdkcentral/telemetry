@@ -810,7 +810,7 @@ int filtered_event_send(const char* data, const char *markerName)
             else
             {
                 // Send method call and wait for reply with timeout (10 ms)
-                reply = dbus_connection_send_with_reply_and_block((DBusConnection*)bus_handle, msg, 10`, &error);
+                reply = dbus_connection_send_with_reply_and_block((DBusConnection*)bus_handle, msg, 10, &error);
                 dbus_message_unref(msg);
                 
                 if (dbus_error_is_set(&error))

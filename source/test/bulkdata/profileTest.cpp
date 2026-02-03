@@ -2115,7 +2115,71 @@ TEST_F(ProfileTest, ProfileXConf_updateMarkerComponentMap)
 #if 1
 //comment
 //=============================== t2eventreceiver.c =============================
+#ifdef GTEST_ENABLE
+extern "C"
+{
+    typedef T2ERROR (*FlushCacheFunc)(void);
+    FlushCacheFunc FlushCacheFuncCallback(void);
+}
+TEST_F(ProfileTest, FlushCacheFromFile_FopenFail)
+{
+    // Setup mock: fopen returns NULL, => should log "fopen failed"
+    EXPECT_CALL(*g_fileIOMock, fopen(::testing::StrEq(T2_CACHE_FILE), ::testing::StrEq("r")))
+        .WillOnce(Return(nullptr));
+    // No further calls expected since file open failed
 
+    auto flushCache = FlushCacheFuncCallback();
+    ASSERT_EQ(flushCache(), T2ERROR_SUCCESS);
+}
+TEST_F(ProfileTest, FlushCacheFromFile_SuccessMultipleLines)
+{
+    FILE* fakeFp = (FILE*)0xbaadf00d;
+    const char* testlines[] = {
+        "event2<#=#>val2\n",
+        "event3<#=#>val3\n"
+    };
+    int num_lines = 2;
+    int lineIdx = 0;
+
+    EXPECT_CALL(*g_fileIOMock, fopen(::testing::StrEq(T2_CACHE_FILE), ::testing::StrEq("r")))
+        .WillOnce(Return(fakeFp));
+    EXPECT_CALL(*g_fileIOMock, fgets(_, 255, fakeFp))
+        .WillRepeatedly(Invoke(
+            [&](char* str, int, FILE*) -> char* {
+                if (lineIdx < num_lines) {
+                    strcpy(str, testlines[lineIdx++]);
+                    return str;
+                }
+                return nullptr; // End of file after both lines
+            }
+        ));
+    EXPECT_CALL(*g_fileIOMock, fclose(fakeFp)).WillOnce(Return(0));
+    EXPECT_CALL(*g_systemMock, remove(::testing::StrEq(T2_CACHE_FILE))).WillOnce(Return(0));
+    // Actually call static via pointer
+    auto flushCache = FlushCacheFuncCallback();
+    ASSERT_EQ(flushCache(), T2ERROR_SUCCESS);
+}
+
+TEST_F(ProfileTest, FlushCacheFromFile_RemoveFails)
+{
+    FILE* fakeFp = (FILE*)0xf00dbabe;
+    char testbuf[] = "event1<#=#>val1\n";
+    EXPECT_CALL(*g_fileIOMock, fopen(::testing::StrEq(T2_CACHE_FILE), ::testing::StrEq("r")))
+        .WillOnce(Return(fakeFp));
+    EXPECT_CALL(*g_fileIOMock, fgets(_, 255, fakeFp))
+        .WillOnce(Invoke([&](char* str, int, FILE*) -> char* {
+            strcpy(str, testbuf);
+            return str;
+        }))
+        .WillOnce(Return(nullptr));
+    EXPECT_CALL(*g_fileIOMock, fclose(fakeFp)).WillOnce(Return(0));
+    // Simulate remove() failing using SystemMock!
+    EXPECT_CALL(*g_systemMock, remove(::testing::StrEq(T2_CACHE_FILE))).WillOnce(Return(-1));
+
+    auto flushCache = FlushCacheFuncCallback();
+    ASSERT_EQ(flushCache(), T2ERROR_SUCCESS);
+}
+#endif
 
 TEST_F(ProfileTest, FreeT2EventHandlesNullAndValid) {
     freeT2Event(nullptr);
@@ -2157,11 +2221,10 @@ TEST_F(ProfileTest, PushDataWithDelim_NullEvent) {
 }
 
 TEST_F(ProfileTest, PushDataWithDelim_QueueLimit) {
-    //T2ER_Init();
-    ////EREnabled = true;
-    ////gQueueCount = 201;
-    char event[] = "marker1<#=#>value1";
-    T2ER_PushDataWithDelim(event, nullptr);
+    for (int i = 0; i < 200; ++i) {
+        char event[] = "marker1<#=#>value1";
+        T2ER_PushDataWithDelim(event, nullptr);
+    }
 }
 
 TEST_F(ProfileTest, PushDataWithDelim_MissingValue) {
@@ -2197,14 +2260,14 @@ TEST_F(ProfileTest, PushEvent_NullNameOrValue) {
 }
 
 TEST_F(ProfileTest, PushEvent_QueueLimit) {
-    //T2ER_Init();
-    //EREnabled = true;
-    //gQueueCount = 201;
-    char* name = strdup("marker1");
-    char* value = strdup("value1");
-    T2ER_Push(name, value);
+    for (int i = 0; i < 200; ++i) {
+        char* name = strdup("marker1");
+        char* value = strdup("value1");
+        T2ER_Push(name, value);
+        // If T2ER_Push frees name and value, you do not need to free them here.
+        // If not, you should add: free(name); free(value);
+    }
 }
-
 TEST_F(ProfileTest, PushEvent_NotInitialized) {
     //EREnabled = false;
     T2ER_Push(strdup("marker1"), strdup("value1"));

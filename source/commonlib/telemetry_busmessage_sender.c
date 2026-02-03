@@ -331,9 +331,9 @@ static T2ERROR dbus_getGetOperationalStatus(const char* paramName, uint32_t* val
         return T2ERROR_FAILURE;
     }
     
-    // Timeout: 1000ms - GetOperationalStatus should respond quickly
+    // Timeout: 10ms - GetOperationalStatus should respond quickly
     // This prevents hanging if server is down/unresponsive
-    reply = dbus_connection_send_with_reply_and_block((DBusConnection*)bus_handle, msg, 1000, &error);
+    reply = dbus_connection_send_with_reply_and_block((DBusConnection*)bus_handle, msg, 10, &error);
     dbus_message_unref(msg);
 
     if (dbus_error_is_set(&error))
@@ -809,8 +809,8 @@ int filtered_event_send(const char* data, const char *markerName)
             }
             else
             {
-                // Send method call and wait for reply with timeout (1000 ms)
-                reply = dbus_connection_send_with_reply_and_block((DBusConnection*)bus_handle, msg, 1000, &error);
+                // Send method call and wait for reply with timeout (10 ms)
+                reply = dbus_connection_send_with_reply_and_block((DBusConnection*)bus_handle, msg, 10`, &error);
                 dbus_message_unref(msg);
                 
                 if (dbus_error_is_set(&error))
@@ -1017,8 +1017,8 @@ static T2ERROR doPopulateEventMarkerList( )
             return T2ERROR_FAILURE;
         }
         // TODO : check markers list size and set timeout accordingly
-        // Timeout: 500ms
-        reply = dbus_connection_send_with_reply_and_block((DBusConnection*)bus_handle, msg, 500, &error);
+        // Timeout: 10ms
+        reply = dbus_connection_send_with_reply_and_block((DBusConnection*)bus_handle, msg, 10, &error);
         dbus_message_unref(msg);
 
         if (dbus_error_is_set(&error))
@@ -1149,7 +1149,7 @@ static void* dbus_event_loop_thread(void *arg)
         dbus_connection_read_write_dispatch((DBusConnection*)bus_handle, 0);
 
         // Small sleep to avoid busy-waiting
-        usleep(100000); // 100ms
+        usleep(1); // 1us
     }
     
     EVENT_DEBUG("D-Bus: Event loop thread exiting\n");

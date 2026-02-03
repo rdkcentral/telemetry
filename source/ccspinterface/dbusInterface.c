@@ -286,7 +286,7 @@ static void* dbusListenerThreadFunc(void *arg) {
     
     while (!stopListenerThread && t2dbus_handle.connection) {
         dbus_connection_read_write_dispatch(t2dbus_handle.connection, 0);
-        usleep(1000); // Sleep for 1ms to avoid busy-waiting
+        usleep(1); // Sleep for 1us to avoid busy-waiting
     }
     T2Debug("%s --out\n", __FUNCTION__);
     return NULL;

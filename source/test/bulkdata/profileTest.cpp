@@ -1930,7 +1930,7 @@ TEST_F(ProfileTest, SetAndIsSet) {
     profile->encodingType = strdup("JSON");
     profile->t2HTTPDest = nullptr;
     profile->grepSeekProfile = nullptr;
-    profile->reportInProgress = false;
+    profile->reportInProgress = true;
     profile->isUpdated = false;
 
     EXPECT_CALL(*g_vectorMock, Vector_Size(_))

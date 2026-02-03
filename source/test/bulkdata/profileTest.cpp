@@ -2032,12 +2032,21 @@ TEST_F(ProfileTest, PushDataWithDelim_NullEvent) {
     T2ER_PushDataWithDelim(NULL, NULL);
 }
 
+#if 0
 TEST_F(ProfileTest, PushDataWithDelim_QueueLimit) {
     //T2ER_Init();
     ////EREnabled = true;
     ////gQueueCount = 201;
     char event[] = "marker1<#=#>value1";
     T2ER_PushDataWithDelim(event, nullptr);
+}
+#endif
+
+TEST_F(ProfileTest, PushDataWithDelim_QueueLimit) {
+    for (int i = 0; i < 200; ++i) {
+        char event[] = "marker1<#=#>value1";
+        T2ER_PushDataWithDelim(event, nullptr);
+    }
 }
 
 TEST_F(ProfileTest, PushDataWithDelim_MissingValue) {

@@ -63,7 +63,7 @@
 
 //Global variables
 #define IFINTERFACE      "erouter0"
-#define MAX_POOL_SIZE 3
+#define MAX_POOL_SIZE 2
 #define HTTP_RESPONSE_FILE "/tmp/httpOutput.txt"
 static bool pool_initialized = false;
 
@@ -144,7 +144,7 @@ void curlCertSelectorInit()
 static size_t httpGetCallBack(void *responseBuffer, size_t len, size_t nmemb,
                               void *stream)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     size_t realsize = len * nmemb;
     curlResponseData* response = (curlResponseData*) stream;
 
@@ -169,13 +169,13 @@ static size_t httpGetCallBack(void *responseBuffer, size_t len, size_t nmemb,
     response->size += realsize;
     response->data[response->size] = 0;
 
-    T2Debug("%s ++out\n", __FUNCTION__);
+    T2Info("%s ++out\n", __FUNCTION__);
     return realsize;
 }
 
 static void cleanup_curl_handles(void)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
 
     if(pool.post_headers)
     {
@@ -193,12 +193,12 @@ static void cleanup_curl_handles(void)
         }
     }
 
-    T2Debug("%s ++out\n", __FUNCTION__);
+    T2Info("%s ++out\n", __FUNCTION__);
 }
 
 T2ERROR init_connection_pool()
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
 
     // Use statically initialized mutex - no need to call pthread_mutex_init
     pthread_mutex_lock(&pool_mutex);
@@ -206,7 +206,7 @@ T2ERROR init_connection_pool()
     // Check if already initialized
     if(pool_initialized)
     {
-        T2Debug("Connection pool already initialized\n");
+        T2Info("Connection pool already initialized\n");
         pthread_mutex_unlock(&pool_mutex);
         return T2ERROR_SUCCESS;
     }
@@ -287,7 +287,7 @@ T2ERROR init_connection_pool()
 
     pool_initialized = true;
     pthread_mutex_unlock(&pool_mutex);
-    T2Debug("%s ++out\n", __FUNCTION__);
+    T2Info("%s ++out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
@@ -322,7 +322,7 @@ static T2ERROR acquire_pool_handle(CURL **easy, int *idx)
         {
             if(pool.handle_available[i])
             {
-                T2Debug("acquire_pool_handle ; Available handle = %d\n", i);
+                T2Info("acquire_pool_handle ; Available handle = %d\n", i);
                 *idx = i;
                 pool.handle_available[i] = false;
                 *easy = pool.easy_handles[i];
@@ -458,6 +458,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
 
         do
         {
+            T2Info("%s %d\n", __func__, __LINE__);
             // Free previous iteration's allocations
             if(pCertURI != NULL)
             {
@@ -470,6 +471,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
                 pCertPC = NULL;
             }
             pCertFile = NULL;
+            T2Info("%s %d\n", __func__, __LINE__);
 
             xcGetCertStatus = rdkcertselector_getCert(curlCertSelector, &pCertURI, &pCertPC);
             if(xcGetCertStatus != certselectorOk)
@@ -488,6 +490,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
             }
             else
             {
+                T2Info("%s %d\n", __func__, __LINE__);
                 // skip past file scheme in URI
                 pCertFile = pCertURI;
                 if ( strncmp( pCertFile, FILESCHEME, sizeof(FILESCHEME) - 1 ) == 0 )
@@ -500,12 +503,15 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
                 CURL_SETOPT_CHECK_STR(easy, CURLOPT_SSLCERT, pCertFile);
                 CURL_SETOPT_CHECK_STR(easy, CURLOPT_KEYPASSWD, pCertPC);
                 CURL_SETOPT_CHECK(easy, CURLOPT_SSL_VERIFYPEER, 1L);
+                T2Info("%s %d\n", __func__, __LINE__);
 
                 // Execute the request directly
                 curl_code = curl_easy_perform(easy);
+                T2Info("%s %d\n", __func__, __LINE__);
 
                 long http_code;
                 curl_easy_getinfo(easy, CURLINFO_RESPONSE_CODE, &http_code);
+                T2Info("%s %d\n", __func__, __LINE__);
 
                 if(curl_code != CURLE_OK || http_code != 200)
                 {
@@ -516,8 +522,10 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
                     T2Info("%s: Using xpki Certs connection certname : %s \n", __FUNCTION__, pCertFile);
                 }
             }
+            T2Info("%s %d\n", __func__, __LINE__);
         }
         while(rdkcertselector_setCurlStatus(curlCertSelector, curl_code, (const char*)url) == TRY_ANOTHER);
+        T2Info("%s %d\n", __func__, __LINE__);
 
         // Clean up final iteration's certificate allocations
         if(pCertURI != NULL)
@@ -564,6 +572,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
         // Execute without mTLS
         curl_code = curl_easy_perform(easy);
     }
+    T2Info("%s %d\n", __func__, __LINE__);
 
     if (curl_code != CURLE_OK)
     {
@@ -586,7 +595,11 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
             free(pCertPC);
         }
 #endif
+        T2Info("%s %d\n", __func__, __LINE__);
+
         release_pool_handle(idx);
+        T2Info("%s %d\n", __func__, __LINE__);
+
         return T2ERROR_FAILURE;
     }
 
@@ -613,7 +626,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
                     FILE *httpOutput = fdopen(fd, "w+");
                     if (httpOutput)
                     {
-                        T2Debug("Update config data in response file %s \n", HTTP_RESPONSE_FILE);
+                        T2Info("Update config data in response file %s \n", HTTP_RESPONSE_FILE);
                         fputs(response->data, httpOutput);
                         fclose(httpOutput);
                     }
@@ -948,7 +961,7 @@ T2ERROR http_pool_post(const char *url, const char *payload)
 
 T2ERROR http_pool_cleanup(void)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     if (!pool_initialized)
     {
         T2Info("Pool not initialized, nothing to cleanup\n");
@@ -974,7 +987,7 @@ T2ERROR http_pool_cleanup(void)
     // Cleaning up all the curl handles
     cleanup_curl_handles();
 
-    T2Debug("%s ++out\n", __FUNCTION__);
+    T2Info("%s ++out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 

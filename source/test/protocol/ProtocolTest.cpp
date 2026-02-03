@@ -626,6 +626,29 @@ TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetHeader_setopt_failure)
     EXPECT_EQ(resp.curlSetopCode, CURLE_FAILED_INIT);
 }
 
+TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetHeader_FirstSetopt_failure_lineNumber)
+{
+    SetHeaderFunc setHeaderCb = getSetHeaderCallback();
+    ASSERT_NE(setHeaderCb, nullptr);
+
+    CURL *curl = (CURL*)0x1;
+    const char *destURL = "http://localhost";
+    struct curl_slist *headerList = nullptr;
+    childResponse resp;
+    memset(&resp, 0, sizeof(resp));
+
+    // The very first curl_easy_setopt_mock call returns CURLE_FAILED_INIT.
+    EXPECT_CALL(*g_fileIOMock, curl_easy_setopt_mock(_,_,_))
+        .Times(1)
+        .WillOnce(Return(CURLE_FAILED_INIT));
+
+    T2ERROR code = setHeaderCb(curl, destURL, &headerList, &resp);
+    EXPECT_EQ(code, T2ERROR_FAILURE);
+    EXPECT_EQ(resp.curlSetopCode, CURLE_FAILED_INIT);
+    // Assert that lineNumber field gets set. (Should match the __LINE__ where the macro is expanded; we test it's nonzero.)
+    EXPECT_NE(resp.lineNumber, 0);
+}
+
 TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetMtlsHeaders_setopt_failure)
 {
     SetMtlsHeadersFunc cb = getSetMtlsHeadersCallback();
@@ -762,6 +785,40 @@ TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetHeader_HTTPHEADER_failure)
     T2ERROR result = setHeaderCb(curl, destURL, &headerList, &resp);
     EXPECT_EQ(result, T2ERROR_FAILURE);
     EXPECT_EQ(resp.curlSetopCode, CURLE_COULDNT_CONNECT);
+}
+
+TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetHeader_HTTPHEADER_failure_block)
+{
+    SetHeaderFunc setHeaderCb = getSetHeaderCallback();
+    ASSERT_NE(setHeaderCb, nullptr);
+
+    CURL *curl = (CURL*)0x1;
+    const char *destURL = "http://localhost";
+    struct curl_slist *headerList = nullptr;
+    childResponse resp;
+    memset(&resp, 0, sizeof(resp));
+
+    // Simulate curl_slist_append returns
+    EXPECT_CALL(*g_fileIOMock, curl_slist_append(_, _))
+        .Times(2)
+        .WillRepeatedly(Return((struct curl_slist*)0x1));
+
+    // Mock all prior curl_easy_setopt calls to return OK, only HTTPHEADER fails
+    ::testing::Sequence s;
+    EXPECT_CALL(*g_fileIOMock, curl_easy_setopt_mock(_, ::testing::Ne(CURLOPT_HTTPHEADER), _))
+        .Times(::testing::AtLeast(1))
+        .InSequence(s)
+        .WillRepeatedly(Return(CURLE_OK));
+    EXPECT_CALL(*g_fileIOMock, curl_easy_setopt_mock(_, CURLOPT_HTTPHEADER, _))
+        .InSequence(s)
+        .WillOnce(Return(CURLE_COULDNT_CONNECT)); // Simulate failure at HTTPHEADER
+
+    T2ERROR result = setHeaderCb(curl, destURL, &headerList, &resp);
+
+    EXPECT_EQ(result, T2ERROR_FAILURE);
+    EXPECT_EQ(resp.curlSetopCode, CURLE_COULDNT_CONNECT);
+    // Should be set to a non-zero line number corresponding to line 166 in your source
+    EXPECT_NE(resp.lineNumber, 0);
 }
 
 TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetHeader_WRITEFUNCTION_failure)
@@ -956,5 +1013,53 @@ TEST_F(protocolTestFixture, CURLINTERFACE_STATIC_SetHeader_SUCCESS)
     EXPECT_EQ(result, T2ERROR_SUCCESS);
     // headerList should have been set by curl_slist_append to a non-null pointer
     EXPECT_NE(headerList, nullptr);
+}
+#endif
+
+#ifdef GTEST_ENABLE
+extern "C" {
+pthread_mutex_t* getRbusMethodMutex(void);
+pthread_mutex_t* getCurlFileMutex(void);
+typedef void (*sendOverHTTPInitFunc)();
+sendOverHTTPInitFunc sendOverHTTPInitFuncCallback();
+
+typedef void (*asyncMethodHandlerFunc)(rbusHandle_t,char const*,rbusError_t,rbusObject_t);
+asyncMethodHandlerFunc asyncMethodHandlerFuncCallback(void);
+}
+
+TEST(CurlInterface_Static, SendOverHTTPInit_CoversMutexInit)
+{
+    // Get function pointer to static sendOverHTTPInit
+    auto fn = sendOverHTTPInitFuncCallback();
+    ASSERT_NE(fn, nullptr);
+    fn();
+        // Check that the mutex is initialized (trylock succeeds or returns expected error if already locked)
+    pthread_mutex_t *pmutex = getCurlFileMutex();
+    int trylock_result = pthread_mutex_trylock(pmutex);
+    // Accept either success (0) or busy (EBUSY) as initialized.
+    EXPECT_TRUE(trylock_result == 0 || trylock_result == EBUSY);
+
+    if (trylock_result == 0) { // If locked, unlock for cleanup
+        pthread_mutex_unlock(pmutex);
+    }
+
+    pthread_mutex_destroy(pmutex);
+}
+TEST(AsyncMethodHandlerFunc, CoversAllBranches)
+{
+    // Access and initialize the mutex defined in the C module
+    pthread_mutex_t* pmutex = getRbusMethodMutex();
+    pthread_mutex_init(pmutex, NULL);
+
+    // Get function pointer for static asyncMethodHandler
+    auto fn = asyncMethodHandlerFuncCallback();
+    ASSERT_NE(fn, nullptr);
+
+    // Success branch: sets isRbusMethod = true and unlocks
+    fn(NULL, "TestMethodSuccess", RBUS_ERROR_SUCCESS, NULL);
+    // Error branch: sets isRbusMethod = false and unlocks
+    fn(NULL, "TestMethodFail", RBUS_ERROR_BUS_ERROR, NULL);
+
+    pthread_mutex_destroy(pmutex);
 }
 #endif

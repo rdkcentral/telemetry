@@ -347,6 +347,7 @@ static void release_pool_handle(int idx)
     pthread_mutex_unlock(&pool_mutex);
 }
 
+#if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
 // Function to configure WAN interface for CURL handle
 static void configure_wan_interface(CURL *easy)
 {
@@ -378,6 +379,7 @@ static void configure_wan_interface(CURL *easy)
     CURL_SETOPT_CHECK(easy, CURLOPT_INTERFACE, "erouter0");
 #endif
 }
+#endif
 
 // GET API - Updated to use shared pool with waiting
 T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_output)
@@ -521,10 +523,12 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
         if(pCertURI != NULL)
         {
             free(pCertURI);
+            pCertURI = NULL;
         }
         if(pCertPC != NULL)
         {
             free(pCertPC);
+            pCertPC = NULL;
         }
 #else
         // Fallback to getMtlsCerts if certificate selector not available
@@ -679,18 +683,6 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
         free(response);
     }
 
-#ifdef LIBRDKCERTSEL_BUILD
-    // Clean up final iteration's certificate allocations
-    if(mtls_enable && pCertURI != NULL)
-    {
-        free(pCertURI);
-    }
-    if(mtls_enable && pCertPC != NULL)
-    {
-        free(pCertPC);
-    }
-#endif
-
     // Clean up certificates if not using certificate selector
 #ifndef LIBRDKCERTSEL_BUILD
     if(NULL != pCertFile)
@@ -785,7 +777,6 @@ T2ERROR http_pool_post(const char *url, const char *payload)
         rdkcertselector_h thisCertSel = NULL;
         rdkcertselectorStatus_t curlGetCertStatus;
         char *pCertURI = NULL;
-        char *pPasswd = NULL;
         bool state_red_enable = false;
 
 #if defined(ENABLE_RED_RECOVERY_SUPPORT)

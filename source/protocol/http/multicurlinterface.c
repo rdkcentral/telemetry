@@ -527,6 +527,8 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
         while(rdkcertselector_setCurlStatus(curlCertSelector, curl_code, (const char*)url) == TRY_ANOTHER);
         T2Info("%s %d\n", __func__, __LINE__);
 
+#if 0
+// Getting crash with this free
         // Clean up final iteration's certificate allocations
         if(pCertURI != NULL)
         {
@@ -553,7 +555,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
 
         }
         T2Info("%s %d\n", __func__, __LINE__);
-
+#endif
 #else
         // Fallback to getMtlsCerts if certificate selector not available
         if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pCertPC))

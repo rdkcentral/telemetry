@@ -134,12 +134,20 @@ void T2ER_PushDataWithDelim(char* eventInfo, char* user_data)
                         {
                             T2Debug("Adding eventName : %s eventValue : %s to t2event queue\n", event->name, event->value);
                             t2_queue_push(eQueue, (void *) event);
-                            if(!stopDispatchThread)
+                            // Check stopDispatchThread with proper lock to avoid stale reads from compiler
+                            // optimizations or CPU caching. We hold sTDMutex while reading stopDispatchThread
+                            // to ensure proper synchronization with the thread that sets this flag.
+                            if(pthread_mutex_lock(&sTDMutex) == 0)
                             {
-                                ret = pthread_cond_signal(&erCond);
-                                if(ret != 0) // pthread cond signal failed so return after unlocking the mutex
+                                bool shouldSignal = !stopDispatchThread;
+                                pthread_mutex_unlock(&sTDMutex);
+                                if(shouldSignal)
                                 {
-                                    T2Error("%s pthread_cond_signal for erCond failed with error code : %d\n", __FUNCTION__, ret);
+                                    ret = pthread_cond_signal(&erCond);
+                                    if(ret != 0) // pthread cond signal failed so return after unlocking the mutex
+                                    {
+                                        T2Error("%s pthread_cond_signal for erCond failed with error code : %d\n", __FUNCTION__, ret);
+                                    }
                                 }
 
                             }
@@ -204,20 +212,29 @@ void T2ER_Push(char* eventName, char* eventValue)
                     event->value = strdup(eventValue);
                     T2Debug("Adding eventName : %s eventValue : %s to t2event queue\n", event->name, event->value);
                     t2_queue_push(eQueue, (void *) event);
-                    if(!stopDispatchThread)
-                    {
-                        ret = pthread_cond_signal(&erCond);
-                        if(ret != 0) // pthread_cond _signal failed so after unlocking the mutex it will return
-                        {
-                            T2Error("%s pthread_cond_signal for erCond failed with error code : %d\n", __FUNCTION__, ret);
-                        }
-                    }
+
                 }
 
             }
+            // Unlock erMutex before acquiring sTDMutex to avoid lock order reversal and potential deadlock
             if(pthread_mutex_unlock(&erMutex) != 0)
             {
                 T2Error("%s pthread_mutex_unlock for erMutex failed\n", __FUNCTION__);
+            }
+            // Signal dispatch thread if needed (after releasing erMutex)
+            bool shouldSignal = false;
+            if(pthread_mutex_lock(&sTDMutex) == 0)
+            {
+                shouldSignal = !stopDispatchThread;
+                pthread_mutex_unlock(&sTDMutex);
+            }
+            if(shouldSignal)
+            {
+                ret = pthread_cond_signal(&erCond);
+                if(ret != 0)
+                {
+                    T2Error("%s pthread_cond_signal for erCond failed with error code : %d\n", __FUNCTION__, ret);
+                }
             }
             free(eventName);
             free(eventValue);
@@ -235,7 +252,8 @@ void* T2ER_EventDispatchThread(void *arg)
     (void) arg; // To avoid compiler warning
     T2Debug("%s ++in\n", __FUNCTION__);
     Vector *profileList = NULL;
-    while(!stopDispatchThread)
+    bool shouldContinue = true;
+    while(shouldContinue)
     {
         if(pthread_mutex_lock(&erMutex) != 0) // mutex lock failed, without locking eQueue shouldn't be accessed
         {
@@ -243,7 +261,40 @@ void* T2ER_EventDispatchThread(void *arg)
             return NULL;
         }
         T2Debug("Checking for events in event queue , event count = %d\n", t2_queue_count(eQueue));
-        if(t2_queue_count(eQueue) > 0)
+        while(t2_queue_count(eQueue) == 0 && shouldContinue)
+        {
+            T2Debug("Event Queue size is 0, Waiting events from T2ER_Push\n");
+            int ret = pthread_cond_wait(&erCond, &erMutex);
+            if(ret != 0) // pthread cond wait failed return after unlock
+            {
+                T2Error("%s pthread_cond_wait failed with error code: %d\n", __FUNCTION__, ret);
+            }
+            T2Debug("Received signal from T2ER_Push\n");
+            // Release erMutex before acquiring sTDMutex to avoid lock order reversal and potential deadlock
+            if(pthread_mutex_unlock(&erMutex) != 0)
+            {
+                T2Error("%s pthread_mutex_unlock for erMutex failed\n", __FUNCTION__);
+                return NULL;
+            }
+            // Re-check shouldContinue after waking up from condition wait
+            if(pthread_mutex_lock(&sTDMutex) == 0)
+            {
+                shouldContinue = !stopDispatchThread;
+                pthread_mutex_unlock(&sTDMutex);
+            }
+            else
+            {
+                shouldContinue = false; // Exit on lock failure
+            }
+            // Re-acquire erMutex before checking queue count again
+            if(pthread_mutex_lock(&erMutex) != 0)
+            {
+                T2Error("%s pthread_mutex_lock for erMutex failed\n", __FUNCTION__);
+                return NULL;
+            }
+        }
+
+        if(t2_queue_count(eQueue) > 0 && shouldContinue)
         {
             T2Event *event = (T2Event *)t2_queue_pop(eQueue);
             if(event == NULL)
@@ -280,18 +331,21 @@ void* T2ER_EventDispatchThread(void *arg)
         }
         else
         {
-            T2Debug("Event Queue size is 0, Waiting events from T2ER_Push\n");
-            int ret = pthread_cond_wait(&erCond, &erMutex);
-            if(ret != 0) // pthread cond wait failed return after unlock
-            {
-                T2Error("%s pthread_cond_wait failed with error code: %d\n", __FUNCTION__, ret);
-            }
             if(pthread_mutex_unlock(&erMutex) != 0)
             {
                 T2Error("%s pthread_mutex_unlock for erMutex failed\n", __FUNCTION__);
                 return NULL;
             }
-            T2Debug("Received signal from T2ER_Push\n");
+        }
+        // Check if thread should continue
+        if(pthread_mutex_lock(&sTDMutex) == 0)
+        {
+            shouldContinue = !stopDispatchThread;
+            pthread_mutex_unlock(&sTDMutex);
+        }
+        else
+        {
+            shouldContinue = false; // Exit on lock failure
         }
     }
     T2Debug("%s --out\n", __FUNCTION__);
@@ -345,7 +399,10 @@ T2ERROR T2ER_Init()
         registerForTelemetryEvents(T2ER_PushDataWithDelim);
     }
 
-    system("touch /tmp/.t2ReadyToReceiveEvents");
+    if (system("touch /tmp/.t2ReadyToReceiveEvents") != 0)
+    {
+        T2Error("Failed to create /tmp/.t2ReadyToReceiveEvents flag file \n");
+    }
     setT2EventReceiveState(T2_STATE_COMPONENT_READY);
     T2Info("T2 is now Ready to Recieve Events\n");
 
@@ -444,14 +501,16 @@ T2ERROR T2ER_StopDispatchThread()
     }
     stopDispatchThread = true;
 
+    // Release sTDMutex before acquiring erMutex to avoid lock order reversal and potential deadlock
+    if(pthread_mutex_unlock(&sTDMutex) != 0)
+    {
+        T2Error("%s pthread_mutex_unlock for sTDMutex failed\n", __FUNCTION__);
+        return T2ERROR_FAILURE;
+    }
 
     if(pthread_mutex_lock(&erMutex) != 0)
     {
         T2Error("%s pthread_mutex_lock for erMutex failed\n", __FUNCTION__);
-        if(pthread_mutex_unlock(&sTDMutex) != 0)
-        {
-            T2Error("%s pthread_mutex_unlock for sTDMutex failed\n", __FUNCTION__);
-        }
         return T2ERROR_FAILURE;
     }
     ret = pthread_cond_signal(&erCond);
@@ -462,30 +521,25 @@ T2ERROR T2ER_StopDispatchThread()
         {
             T2Error("%s pthread_mutex_unlock for erMutex failed\n", __FUNCTION__);
         }
-        if(pthread_mutex_unlock(&sTDMutex) != 0)
-        {
-            T2Error("%s pthread_mutex_unlock for sTDMutex failed\n", __FUNCTION__);
-        }
         return T2ERROR_FAILURE;
 
     }
     if(pthread_mutex_unlock(&erMutex) != 0)
     {
         T2Error("%s pthread_mutex_unlock for erMutex failed\n", __FUNCTION__);
-        if(pthread_mutex_unlock(&sTDMutex) != 0)
-        {
-            T2Error("%s pthread_mutex_unlock for sTDMutex failed\n", __FUNCTION__);
-        }
         return T2ERROR_FAILURE;
     }
 
-    ret = pthread_detach(erThread);
-    flushCacheFromFile();
-    if(pthread_mutex_unlock(&sTDMutex) != 0)
+    // Re-acquire sTDMutex to safely access erThread
+    if(pthread_mutex_lock(&sTDMutex) != 0)
     {
-        T2Error("%s pthread_mutex_unlock for sTDMutex failed\n", __FUNCTION__);
+        T2Error("%s pthread_mutex_lock for sTDMutex failed\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
+    ret = pthread_detach(erThread);
+    pthread_mutex_unlock(&sTDMutex);
+
+    flushCacheFromFile();
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
@@ -500,14 +554,16 @@ void T2ER_Uninit()
     }
     EREnabled = false;
 
+    pthread_t threadToJoin;
+    if(pthread_mutex_lock(&sTDMutex) != 0) // mutex lock failed so return from T2ER_Uninit
+    {
+        T2Error("%s pthread_mutex_lock for sTDMutex failed\n", __FUNCTION__);
+        return;
+    }
     if(!stopDispatchThread)
     {
-        if(pthread_mutex_lock(&sTDMutex) != 0) // mutex lock failed so return from T2ER_Uninit
-        {
-            T2Error("%s pthread_mutex_lock for sTDMutex failed\n", __FUNCTION__);
-            return;
-        }
         stopDispatchThread = true;
+        threadToJoin = erThread; // Save thread handle while holding lock
         if(pthread_mutex_unlock(&sTDMutex) != 0) //mutex unlock failed so return from T2ER_Uninit
         {
             T2Error("%s pthread_mutex_unlock for sTDMutex failed\n", __FUNCTION__);
@@ -530,7 +586,7 @@ void T2ER_Uninit()
             return;
         }
 
-        if(pthread_join(erThread, NULL) != 0)
+        if(pthread_join(threadToJoin, NULL) != 0)
         {
             T2Error("%s erThread join failed\n", __FUNCTION__);
         }
@@ -548,6 +604,14 @@ void T2ER_Uninit()
         if(pthread_cond_destroy(&erCond) != 0)
         {
             T2Error("%s pthread_cond_destroy for erCond failed\n", __FUNCTION__);
+            return;
+        }
+    }
+    else
+    {
+        if(pthread_mutex_unlock(&sTDMutex) != 0)
+        {
+            T2Error("%s pthread_mutex_unlock for sTDMutex failed\n", __FUNCTION__);
             return;
         }
     }

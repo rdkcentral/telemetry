@@ -281,7 +281,7 @@ Vector* getRbusProfileParamValues(Vector *paramList, int execcount)
             if(paramValues != NULL)
             {
                 paramValues[0] = (tr181ValStruct_t*) malloc(sizeof(tr181ValStruct_t));
-                paramValues[0]->parameterName = strdup(param);
+                paramValues[0]->parameterName = (param != NULL) ? strdup(param) : strdup("UNKNOWN");
                 paramValues[0]->parameterValue = strdup("NULL");
                 // If parameter doesn't exist in device we do populate with entry as NULL.
                 // So count of populated data list has 1 entry and is not 0

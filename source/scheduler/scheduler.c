@@ -200,7 +200,7 @@ void* TimeoutThread(void *arg)
         T2Error("pthread_condattr_destroy failed \n");
     }
 
-    while(tProfile->repeat && !tProfile->terminated && tProfile->name)
+    while(1)
     {
         memset(&_ts, 0, sizeof(struct timespec));
         memset(&_now, 0, sizeof(struct timespec));
@@ -209,6 +209,16 @@ void* TimeoutThread(void *arg)
         {
             T2Error("tProfile Mutex lock failed\n");
             return NULL;
+        }
+
+        // Check loop conditions while holding the lock
+        if(!tProfile->repeat || tProfile->terminated || !tProfile->name)
+        {
+            if(pthread_mutex_unlock(&tProfile->tMutex) != 0)
+            {
+                T2Error("tProfile Mutex unlock failed\n");
+            }
+            break;
         }
 
         if( clock_gettime(CLOCK_MONOTONIC, &_now) == -1 )
@@ -258,19 +268,31 @@ void* TimeoutThread(void *arg)
         if(tProfile->firstreportint > 0 && tProfile->firstexecution == true )
         {
             T2Info("Waiting for %d sec for next TIMEOUT for profile as firstreporting interval is given - %s\n", tProfile->firstreportint, tProfile->name);
-            n = pthread_cond_timedwait(&tProfile->tCond, &tProfile->tMutex, &_ts);
+            do
+            {
+                n = pthread_cond_timedwait(&tProfile->tCond, &tProfile->tMutex, &_ts);
+            }
+            while(n == EINTR);
         }
         else
         {
             if(tProfile->timeOutDuration == UINT_MAX && tProfile->timeRefinSec == 0)
             {
                 T2Info("Waiting for condition as reporting interval is not configured for profile - %s\n", tProfile->name);
-                n = pthread_cond_wait(&tProfile->tCond, &tProfile->tMutex);
+                do
+                {
+                    n = pthread_cond_wait(&tProfile->tCond, &tProfile->tMutex);
+                }
+                while (n == EINTR);
             }
             else
             {
                 T2Info("Waiting for timeref or reporting interval for the profile - %s is started\n", tProfile->name);
-                n = pthread_cond_timedwait(&tProfile->tCond, &tProfile->tMutex, &_ts);
+                do
+                {
+                    n = pthread_cond_timedwait(&tProfile->tCond, &tProfile->tMutex, &_ts);
+                }
+                while (n == EINTR);
             }
         }
         if(n == ETIMEDOUT)
@@ -633,6 +655,7 @@ T2ERROR unregisterProfileFromScheduler(const char* profileName)
             if(pthread_mutex_lock(&tProfile->tMutex) != 0)
             {
                 T2Error("tProfile Mutex lock failed\n");
+                pthread_mutex_unlock(&scMutex);
                 return T2ERROR_FAILURE;
             }
             tProfile->terminated = true;
@@ -647,9 +670,24 @@ T2ERROR unregisterProfileFromScheduler(const char* profileName)
             T2Info(" tProfile->tId = %d tProfile->name = %s\n", (int)tProfile->tId, tProfile->name);
             // pthread_join(tProfile->tId, NULL); // pthread_detach in freeSchedulerProfile will detach the thread
             sched_yield(); // This will give chance for the signal receiving thread to start
+
             int count = 0;
-            while(signalrecived_and_executing && !is_activation_time_out)
+            bool is_signal_executing = true;
+            while(is_signal_executing && !is_activation_time_out)
             {
+                if(pthread_mutex_lock(&tProfile->tMutex) != 0)
+                {
+                    T2Error("tProfile Mutex lock failed\n");
+                    pthread_mutex_unlock(&scMutex);
+                    return T2ERROR_FAILURE;
+                }
+                is_signal_executing = signalrecived_and_executing;
+                if(pthread_mutex_unlock(&tProfile->tMutex) != 0)
+                {
+                    T2Error("tProfile Mutex unlock failed\n");
+                    pthread_mutex_unlock(&scMutex);
+                    return T2ERROR_FAILURE;
+                }
                 if(count++ > 10)
                 {
                     break;
@@ -657,9 +695,12 @@ T2ERROR unregisterProfileFromScheduler(const char* profileName)
                 sleep(1);
             }
 
-            pthread_mutex_lock(&tProfile->tMutex);
+            // Keep scMutex held across the wait loop to prevent concurrent removal/free of tProfile.
+            // This avoids using a potentially stale/freed pointer (Coverity ATOMICITY/CWE-662).
+            // Don't lock tProfile->tMutex here as Vector_RemoveItem will free tProfile via
+            // freeSchedulerProfile callback, which would cause use-after-free when unlocking.
             Vector_RemoveItem(profileList, tProfile, freeSchedulerProfile);
-            pthread_mutex_unlock(&tProfile->tMutex);
+
             T2Debug("%s:%d scMutex is unlocked\n", __FUNCTION__, __LINE__);
             if(pthread_mutex_unlock(&scMutex) != 0)
             {

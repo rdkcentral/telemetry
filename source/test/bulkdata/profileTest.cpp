@@ -1971,7 +1971,7 @@ TEST_F(ProfileTest, FlushCacheFromFile_SuccessMultipleLines)
     auto flushCache = FlushCacheFuncCallback();
     ASSERT_EQ(flushCache(), T2ERROR_SUCCESS);
 }
-
+#endif
 
 TEST_F(ProfileTest, FreeT2EventHandlesNullAndValid) {
     freeT2Event(nullptr);

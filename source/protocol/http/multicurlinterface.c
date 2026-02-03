@@ -309,6 +309,14 @@ static T2ERROR acquire_pool_handle(CURL **easy, int *idx)
     // Waits until a handle becomes available
     while(1)
     {
+        // Check if pool is not destroyed
+        if (!pool_initialized)
+        {
+            T2Info("Pool is being cleaned up, aborting handle acquisition\n");
+            pthread_mutex_unlock(&pool_mutex);
+            return T2ERROR_FAILURE;
+        }
+
         // Find an available handle
         for(int i = 0; i < MAX_POOL_SIZE; i++)
         {
@@ -436,7 +444,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
     //Certificate handling - check if mTLS is enabled
     bool mtls_enable = isMtlsEnabled();
     char *pCertFile = NULL;
-    char *pPasswd = NULL;
+    char *pCertPC = NULL;
     CURLcode curl_code = CURLE_OK;
 
     if(mtls_enable == true)
@@ -454,14 +462,14 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
                 free(pCertURI);
                 pCertURI = NULL;
             }
-            if(pPasswd != NULL)
+            if(pCertPC != NULL)
             {
-                free(pPasswd);
-                pPasswd = NULL;
+                free(pCertPC);
+                pCertPC = NULL;
             }
             pCertFile = NULL;
 
-            xcGetCertStatus = rdkcertselector_getCert(curlCertSelector, &pCertURI, &pPasswd);
+            xcGetCertStatus = rdkcertselector_getCert(curlCertSelector, &pCertURI, &pCertPC);
             if(xcGetCertStatus != certselectorOk)
             {
                 T2Error("%s, T2:Failed to retrieve the certificate.\n", __func__);
@@ -488,7 +496,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
                 // Configure mTLS certificates
                 CURL_SETOPT_CHECK_STR(easy, CURLOPT_SSLCERTTYPE, "P12");
                 CURL_SETOPT_CHECK_STR(easy, CURLOPT_SSLCERT, pCertFile);
-                CURL_SETOPT_CHECK_STR(easy, CURLOPT_KEYPASSWD, pPasswd);
+                CURL_SETOPT_CHECK_STR(easy, CURLOPT_KEYPASSWD, pCertPC);
                 CURL_SETOPT_CHECK(easy, CURLOPT_SSL_VERIFYPEER, 1L);
 
                 // Execute the request directly
@@ -508,14 +516,24 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
             }
         }
         while(rdkcertselector_setCurlStatus(curlCertSelector, curl_code, (const char*)url) == TRY_ANOTHER);
+
+        // Clean up final iteration's certificate allocations
+        if(pCertURI != NULL)
+        {
+            free(pCertURI);
+        }
+        if(pCertPC != NULL)
+        {
+            free(pCertPC);
+        }
 #else
         // Fallback to getMtlsCerts if certificate selector not available
-        if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pPasswd))
+        if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pCertPC))
         {
             // Configure mTLS certificates
             CURL_SETOPT_CHECK_STR(easy, CURLOPT_SSLCERTTYPE, "P12");
             CURL_SETOPT_CHECK_STR(easy, CURLOPT_SSLCERT, pCertFile);
-            CURL_SETOPT_CHECK_STR(easy, CURLOPT_KEYPASSWD, pPasswd);
+            CURL_SETOPT_CHECK_STR(easy, CURLOPT_KEYPASSWD, pCertPC);
             CURL_SETOPT_CHECK(easy, CURLOPT_SSL_VERIFYPEER, 1L);
 
             // Execute the request
@@ -559,9 +577,9 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
         {
             free(pCertFile);
         }
-        if(NULL != pPasswd)
+        if(NULL != pCertPC)
         {
-            free(pPasswd);
+            free(pCertPC);
         }
 #endif
         release_pool_handle(idx);
@@ -667,9 +685,9 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
     {
         free(pCertURI);
     }
-    if(mtls_enable && pPasswd != NULL)
+    if(mtls_enable && pCertPC != NULL)
     {
-        free(pPasswd);
+        free(pCertPC);
     }
 #endif
 
@@ -679,9 +697,9 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
     {
         free(pCertFile);
     }
-    if(NULL != pPasswd)
+    if(NULL != pCertPC)
     {
-        free(pPasswd);
+        free(pCertPC);
     }
 #endif
 
@@ -948,6 +966,9 @@ T2ERROR http_pool_cleanup(void)
 
     T2Info("Cleaning up http pool resources\n");
 
+    // Reset initialization flag
+    pool_initialized = false;
+
     // Signal any waiting threads to wake up
     pthread_mutex_lock(&pool_mutex);
     pthread_cond_broadcast(&pool_cond);
@@ -959,15 +980,8 @@ T2ERROR http_pool_cleanup(void)
     uninitMtls();
 #endif
 
-    // Cleanup all curl handles using helper function
+    // Cleaning up all the curl handles
     cleanup_curl_handles();
-
-    // Note: We don't destroy the statically initialized mutex and condition variable
-    // They are initialized with PTHREAD_MUTEX_INITIALIZER and PTHREAD_COND_INITIALIZER
-    // and will be cleaned up automatically when the program exits
-
-    // Reset initialization flag
-    pool_initialized = false;
 
     T2Debug("%s ++out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;

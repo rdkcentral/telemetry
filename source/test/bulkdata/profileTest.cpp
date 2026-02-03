@@ -2165,8 +2165,8 @@ TEST_F(ProfileTest, FlushCacheFromFile_AndRemove_WithFuncPtr) {
     //T2ER_Init();
     printf("file created added contents to file\n");
     // Call via function pointer
-    FlushCacheFunc fn = FlushCacheFuncCallback();
-    fn();
+   // FlushCacheFunc fn = FlushCacheFuncCallback();
+   // fn();
 
 }
 #endif

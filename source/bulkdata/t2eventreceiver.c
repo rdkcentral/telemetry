@@ -396,29 +396,44 @@ static T2ERROR flushCacheFromFile(void)
     fp = fopen(T2_CACHE_FILE, "r");
     if(fp)
     {
+	    printf("######### line %d\n",__LINE__);
         while(fgets(telemetry_data, 255, (FILE*)fp) != NULL)
         {
+	    printf("######### line %d\n",__LINE__);
             data_len = strlen(telemetry_data);
             if(data_len > 0 && telemetry_data[data_len - 1] == '\n' )
             {
+	    printf("######### line %d\n",__LINE__);
                 telemetry_data[data_len - 1] = '\0' ;
             }
 
+	    printf("######### line %d\n",__LINE__);
             T2Debug("T2: Sending cache event : %s\n", telemetry_data);
+	    printf("######### line %d\n",__LINE__);
             T2ER_PushDataWithDelim(telemetry_data, NULL);
+	    printf("######### line %d\n",__LINE__);
             memset(telemetry_data, 0, sizeof(telemetry_data));
+	    printf("######### line %d\n",__LINE__);
         }
+	    printf("######### line %d\n",__LINE__);
         fclose(fp);
+	    printf("######### line %d\n",__LINE__);
         if(remove(T2_CACHE_FILE) != 0)
         {
+	    printf("######### line %d\n",__LINE__);
             T2Error("Failed to remove the file %s\n", T2_CACHE_FILE);
+	    printf("######### line %d\n",__LINE__);
         }
+	    printf("######### line %d\n",__LINE__);
     }
     else
     {
+	    printf("######### line %d\n",__LINE__);
         T2Debug("fopen failed for %s\n", T2_CACHE_FILE);
+	    printf("######### line %d\n",__LINE__);
     }
 
+	    printf("######### line %d\n",__LINE__);
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }

@@ -1114,9 +1114,6 @@ static void* dbus_event_loop_thread(void *arg)
         // Process signal connection (for ProfileUpdate signals)
         dbus_connection_read_write_dispatch((DBusConnection*)signal_bus_handle, 0);
         dbus_connection_read_write_dispatch((DBusConnection*)bus_handle, 0);
-
-        // Small sleep to avoid busy-waiting
-        usleep(100000); // 100ms
     }
     
     EVENT_DEBUG("D-Bus: Event loop thread exiting\n");

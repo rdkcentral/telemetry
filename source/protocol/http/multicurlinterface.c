@@ -530,14 +530,30 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
         // Clean up final iteration's certificate allocations
         if(pCertURI != NULL)
         {
+            T2Info("%s %d\n", __func__, __LINE__);
+
             free(pCertURI);
+            T2Info("%s %d\n", __func__, __LINE__);
+
             pCertURI = NULL;
+            T2Info("%s %d\n", __func__, __LINE__);
+
         }
+        T2Info("%s %d\n", __func__, __LINE__);
+
         if(pCertPC != NULL)
         {
+            T2Info("%s %d\n", __func__, __LINE__);
+
             free(pCertPC);
+            T2Info("%s %d\n", __func__, __LINE__);
+
             pCertPC = NULL;
+            T2Info("%s %d\n", __func__, __LINE__);
+
         }
+        T2Info("%s %d\n", __func__, __LINE__);
+
 #else
         // Fallback to getMtlsCerts if certificate selector not available
         if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pCertPC))
@@ -569,8 +585,10 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
     }
     else
     {
+        T2Info("%s %d\n", __func__, __LINE__);
         // Execute without mTLS
         curl_code = curl_easy_perform(easy);
+        T2Info("%s %d\n", __func__, __LINE__);
     }
     T2Info("%s %d\n", __func__, __LINE__);
 

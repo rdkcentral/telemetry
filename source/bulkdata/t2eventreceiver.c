@@ -397,7 +397,6 @@ static T2ERROR flushCacheFromFile(void)
     if(fp)
     {
 	    printf("######### line %d\n",__LINE__);
-#if 0
         while(fgets(telemetry_data, 255, (FILE*)fp) != NULL)
         {
 	    printf("######### line %d\n",__LINE__);
@@ -411,12 +410,13 @@ static T2ERROR flushCacheFromFile(void)
 	    printf("######### line %d\n",__LINE__);
             T2Debug("T2: Sending cache event : %s\n", telemetry_data);
 	    printf("######### line %d\n",__LINE__);
+#if 0
             T2ER_PushDataWithDelim(telemetry_data, NULL);
 	    printf("######### line %d\n",__LINE__);
+#endif
             memset(telemetry_data, 0, sizeof(telemetry_data));
 	    printf("######### line %d\n",__LINE__);
         }
-#endif
 	    printf("######### line %d\n",__LINE__);
         fclose(fp);
 	    printf("######### line %d\n",__LINE__);

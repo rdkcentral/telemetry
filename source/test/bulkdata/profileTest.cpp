@@ -2152,7 +2152,7 @@ TEST_F(ProfileTest, Uninit_NotInitialized) {
 }
 #endif
 
-#ifdef GTEST_ENABLE
+#if 1
 extern "C" 
 {
     typedef T2ERROR (*FlushCacheFunc)(void);

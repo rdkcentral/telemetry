@@ -571,7 +571,7 @@ void T2ER_Uninit()
     eQueue = NULL;
     T2Debug("%s --out\n", __FUNCTION__);
 }
-#ifdef GTEST_ENABLE
+#if 1
 typedef T2ERROR (*FlushCacheFunc)(void);
 FlushCacheFunc FlushCacheFuncCallback(void)
 {

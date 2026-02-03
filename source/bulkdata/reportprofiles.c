@@ -704,11 +704,6 @@ T2ERROR ReportProfiles_uninit( )
     {
         getMarkerCompRbusSub(false);    // remove Rbus subscription
     }
-#ifdef LIBRDKCERTSEL_BUILD
-    curlCertSelectorFree();
-#else
-    uninitMtls();
-#endif
     T2ER_Uninit();
     destroyT2MarkerComponentMap();
     uninitScheduler();

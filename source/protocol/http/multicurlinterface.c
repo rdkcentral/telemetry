@@ -339,6 +339,38 @@ static void release_pool_handle(int idx)
     pthread_mutex_unlock(&pool_mutex);
 }
 
+// Function to configure WAN interface for CURL handle
+static void configure_wan_interface(CURL *easy)
+{
+#if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
+    char *paramVal = NULL;
+    char waninterface[256];
+    memset(waninterface, 0, sizeof(waninterface));
+    snprintf(waninterface, sizeof(waninterface), "%s", IFINTERFACE);
+
+    if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_CURRENT_WAN_IFNAME, &paramVal))
+    {
+        if(strlen(paramVal) > 0)
+        {
+            memset(waninterface, 0, sizeof(waninterface));
+            snprintf(waninterface, sizeof(waninterface), "%s", paramVal);
+            T2Info("TR181_DEVICE_CURRENT_WAN_IFNAME -- %s\n", waninterface);
+        }
+        free(paramVal);
+        paramVal = NULL;
+    }
+    else
+    {
+        T2Error("Failed to get Value for %s\n", TR181_DEVICE_CURRENT_WAN_IFNAME);
+    }
+
+    CURL_SETOPT_CHECK_STR(easy, CURLOPT_INTERFACE, waninterface);
+    T2Info("TR181_DEVICE_CURRENT_WAN_IFNAME ---- %s\n", waninterface);
+#else
+    CURL_SETOPT_CHECK(easy, CURLOPT_INTERFACE, "erouter0");
+#endif
+}
+
 // GET API - Updated to use shared pool with waiting
 T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_output)
 {
@@ -397,37 +429,10 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
     CURL_SETOPT_CHECK(easy, CURLOPT_HTTPGET, 1L);
     CURL_SETOPT_CHECK(easy, CURLOPT_WRITEFUNCTION, httpGetCallBack);
     CURL_SETOPT_CHECK(easy, CURLOPT_WRITEDATA, (void *) response);
-
+    
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
-#if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
-    char *paramVal = NULL;
-    char waninterface[256];
-    memset(waninterface, 0, sizeof(waninterface));
-    snprintf(waninterface, sizeof(waninterface), "%s", IFINTERFACE);
-
-    if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_CURRENT_WAN_IFNAME, &paramVal))
-    {
-        if(strlen(paramVal) > 0)
-        {
-            memset(waninterface, 0, sizeof(waninterface));
-            snprintf(waninterface, sizeof(waninterface), "%s", paramVal);
-            T2Info("TR181_DEVICE_CURRENT_WAN_IFNAME -- %s\n", waninterface);
-        }
-        free(paramVal);
-        paramVal = NULL;
-    }
-    else
-    {
-        T2Error("Failed to get Value for %s\n", TR181_DEVICE_CURRENT_WAN_IFNAME);
-    }
-
-    CURL_SETOPT_CHECK_STR(easy, CURLOPT_INTERFACE, waninterface);
-    T2Info("TR181_DEVICE_CURRENT_WAN_IFNAME ---- %s\n", waninterface);
-#else
-    CURL_SETOPT_CHECK(easy, CURLOPT_INTERFACE, "erouter0");
+    configure_wan_interface(easy);
 #endif
-#endif
-
     //Certificate handling - check if mTLS is enabled
     bool mtls_enable = isMtlsEnabled();
     char *pCertFile = NULL;
@@ -460,7 +465,14 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
             if(xcGetCertStatus != certselectorOk)
             {
                 T2Error("%s, T2:Failed to retrieve the certificate.\n", __func__);
-                free(response->data);
+                if (response)
+                {
+                    if (response->data)
+                    {
+                        free(response->data);
+                    }
+                    free(response);
+                }
                 release_pool_handle(idx);
                 return T2ERROR_FAILURE;
             }
@@ -512,7 +524,14 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
         else
         {
             T2Error("mTLS_get failure\n");
-            free(response->data);
+            if (response)
+            {
+                if (response->data)
+                {
+                    free(response->data);
+                }
+                free(response);
+            }
             release_pool_handle(idx);
             return T2ERROR_FAILURE;
         }
@@ -527,7 +546,14 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
     if (curl_code != CURLE_OK)
     {
         T2Error("curl_easy_perform failed: %s\n", curl_easy_strerror(curl_code));
-        free(response->data);
+        if (response)
+        {
+            if (response->data)
+            {
+                free(response->data);
+            }
+            free(response);
+        }
 #ifndef LIBRDKCERTSEL_BUILD
         if(NULL != pCertFile)
         {
@@ -704,35 +730,8 @@ T2ERROR http_pool_post(const char *url, const char *payload)
     CURL_SETOPT_CHECK(easy, CURLOPT_POSTFIELDSIZE, strlen(payload));
 
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
-#if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
-    char *paramVal = NULL;
-    char waninterface[256];
-    memset(waninterface, 0, sizeof(waninterface));
-    snprintf(waninterface, sizeof(waninterface), "%s", IFINTERFACE);
-
-    if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_CURRENT_WAN_IFNAME, &paramVal))
-    {
-        if(strlen(paramVal) > 0)
-        {
-            memset(waninterface, 0, sizeof(waninterface));
-            snprintf(waninterface, sizeof(waninterface), "%s", paramVal);
-            T2Info("TR181_DEVICE_CURRENT_WAN_IFNAME -- %s\n", waninterface);
-        }
-        free(paramVal);
-        paramVal = NULL;
-    }
-    else
-    {
-        T2Error("Failed to get Value for %s\n", TR181_DEVICE_CURRENT_WAN_IFNAME);
-    }
-
-    CURL_SETOPT_CHECK_STR(easy, CURLOPT_INTERFACE, waninterface);
-    T2Info("TR181_DEVICE_CURRENT_WAN_IFNAME ---- %s\n", waninterface);
-#else
-    CURL_SETOPT_CHECK(easy, CURLOPT_INTERFACE, "erouter0");
+    configure_wan_interface(easy);
 #endif
-#endif
-
     // Set up file output for POST requests
     int curl_output_fd = open("/tmp/curlOutput.txt", O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
     FILE *fp = NULL;
@@ -792,10 +791,10 @@ T2ERROR http_pool_post(const char *url, const char *payload)
                 free(pCertURI);
                 pCertURI = NULL;
             }
-            if(pPasswd != NULL)
+            if(pCertPC != NULL)
             {
-                free(pPasswd);
-                pPasswd = NULL;
+                free(pCertPC);
+                pCertPC = NULL;
             }
             pCertFile = NULL;
 
@@ -843,6 +842,16 @@ T2ERROR http_pool_post(const char *url, const char *payload)
             }
         }
         while(rdkcertselector_setCurlStatus(thisCertSel, curl_code, (const char*)url) == TRY_ANOTHER);
+        
+        // Clean up final iteration's certificate allocations
+        if(pCertURI != NULL)
+        {
+            free(pCertURI);
+        }
+        if(pCertPC != NULL)
+        {
+            free(pCertPC);
+        }
 #else
         // Fallback to getMtlsCerts if certificate selector not available
         if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pCertPC))
@@ -945,8 +954,9 @@ T2ERROR http_pool_cleanup(void)
     pthread_mutex_unlock(&pool_mutex);
 
 #ifdef LIBRDKCERTSEL_BUILD
-    // Cleanup certificate selectors to prevent memory leak
     curlCertSelectorFree();
+#else
+    uninitMtls();
 #endif
 
     // Cleanup all curl handles using helper function

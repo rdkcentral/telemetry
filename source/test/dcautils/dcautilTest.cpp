@@ -1193,9 +1193,7 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_1)
             .Times(1)
             .WillOnce(Return(0));
     EXPECT_CALL(*g_fileIOMock, close(_)) 
-            .Times(4)
-            .WillOnce(Return(0))
-            .WillOnce(Return(0))
+            .Times(2)
             .WillOnce(Return(0))
             .WillOnce(Return(0));
 
@@ -1275,9 +1273,7 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_2)
             .Times(1)
             .WillOnce(Return(0));
     EXPECT_CALL(*g_fileIOMock, close(_)) 
-            .Times(4)
-            .WillOnce(Return(0))
-            .WillOnce(Return(0))
+            .Times(2)
             .WillOnce(Return(0))
             .WillOnce(Return(0));
 
@@ -1361,9 +1357,7 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_3)
             .WillOnce(Return(0))
             .WillOnce(Return(0));
     EXPECT_CALL(*g_fileIOMock, close(_)) 
-            .Times(6)
-            .WillOnce(Return(0))
-            .WillOnce(Return(0))
+            .Times(4)
             .WillOnce(Return(0))
             .WillOnce(Return(0))
             .WillOnce(Return(0))
@@ -1582,9 +1576,7 @@ TEST_F(dcaTestFixture, getGrepResults_success)
             .Times(1)
             .WillOnce(Return(0));
     EXPECT_CALL(*g_fileIOMock, close(_)) 
-            .Times(4)
-            .WillOnce(Return(0))
-            .WillOnce(Return(0))
+            .Times(2)
             .WillOnce(Return(0))
             .WillOnce(Return(0));
 

@@ -180,10 +180,14 @@ TEST_F(t2markersTestFixture,  getMarkerProfileList_success)
 
 
 //t2eventreceiver.c
-
+extern "C"
+{
+void test_set_stopDispatchThread(bool value);
+}
 //Uninit is ignored when event receiver is not initialized
 TEST_F(t2markersTestFixture, T2ER_Uninit_ignored_when_not_initialized)
 {
+   test_set_stopDispatchThread(false);  	
    T2ER_Uninit();
 }
 

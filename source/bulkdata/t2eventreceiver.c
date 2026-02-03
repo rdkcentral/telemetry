@@ -564,4 +564,7 @@ FlushCacheFunc FlushCacheFuncCallback(void)
 {
     return flushCacheFromFile;
 }
+void test_set_stopDispatchThread(bool value) {
+    stopDispatchThread = value;
+}
 #endif

@@ -884,7 +884,7 @@ T2ERROR http_pool_post(const char *url, const char *payload)
             }
         }
         while(rdkcertselector_setCurlStatus(thisCertSel, curl_code, (const char*)url) == TRY_ANOTHER);
-
+#if 0
         // Clean up final iteration's certificate allocations
         if(pCertURI != NULL)
         {
@@ -894,6 +894,7 @@ T2ERROR http_pool_post(const char *url, const char *payload)
         {
             free(pCertPC);
         }
+#endif
 #else
         // Fallback to getMtlsCerts if certificate selector not available
         if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pCertPC))

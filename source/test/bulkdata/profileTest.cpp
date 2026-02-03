@@ -1927,6 +1927,51 @@ TEST_F(ProfileTest, ProfileXConf_updateMarkerComponentMap)
 //comment
 //=============================== t2eventreceiver.c =============================
 
+#if 1
+extern "C"
+{
+    typedef T2ERROR (*FlushCacheFunc)(void);
+    FlushCacheFunc FlushCacheFuncCallback(void);
+}
+TEST_F(ProfileTest, FlushCacheFromFile_FopenFail)
+{
+    // Setup mock: fopen returns NULL, => should log "fopen failed"
+    EXPECT_CALL(*g_fileIOMock, fopen(::testing::StrEq(T2_CACHE_FILE), ::testing::StrEq("r")))
+        .WillOnce(Return(nullptr));
+    // No further calls expected since file open failed
+
+    auto flushCache = FlushCacheFuncCallback();
+    ASSERT_EQ(flushCache(), T2ERROR_SUCCESS);
+}
+TEST_F(ProfileTest, FlushCacheFromFile_SuccessMultipleLines)
+{
+    FILE* fakeFp = (FILE*)0xbaadf00d;
+    const char* testlines[] = {
+        "event2<#=#>val2\n",
+        "event3<#=#>val3\n"
+    };
+    int num_lines = 2;
+    int lineIdx = 0;
+
+    EXPECT_CALL(*g_fileIOMock, fopen(::testing::StrEq(T2_CACHE_FILE), ::testing::StrEq("r")))
+        .WillOnce(Return(fakeFp));
+    EXPECT_CALL(*g_fileIOMock, fgets(_, 255, fakeFp))
+        .WillRepeatedly(Invoke(
+            [&](char* str, int, FILE*) -> char* {
+                if (lineIdx < num_lines) {
+                    strcpy(str, testlines[lineIdx++]);
+                    return str;
+                }
+                return nullptr; // End of file after both lines
+            }
+        ));
+    EXPECT_CALL(*g_fileIOMock, fclose(fakeFp)).WillOnce(Return(0));
+    EXPECT_CALL(*g_systemMock, remove(::testing::StrEq(T2_CACHE_FILE))).WillOnce(Return(0));
+    // Actually call static via pointer
+    auto flushCache = FlushCacheFuncCallback();
+    ASSERT_EQ(flushCache(), T2ERROR_SUCCESS);
+}
+
 
 TEST_F(ProfileTest, FreeT2EventHandlesNullAndValid) {
     freeT2Event(nullptr);
@@ -2152,34 +2197,6 @@ TEST_F(ProfileTest, Uninit_NotInitialized) {
 }
 #endif
 
-#if 1
-extern "C" 
-{
-    typedef T2ERROR (*FlushCacheFunc)(void);
-    FlushCacheFunc FlushCacheFuncCallback(void);
-}
-#if 1
-TEST_F(ProfileTest, FlushCacheFromFile_AndRemove_WithFuncPtr) {
-    system("touch /tmp/t2_caching_file");	
-    system("printf 'marker1<#=#>value1\\n' > " T2_CACHE_FILE);
-    //T2ER_Init();
-    printf("file created added contents to file\n");
-    // Call via function pointer
-   // FlushCacheFunc fn = FlushCacheFuncCallback();
-   // fn();
-
-}
-#endif
-TEST_F(ProfileTest, FlushCacheFromFile_FopenFail_WithFuncPtr) {
-    remove(T2_CACHE_FILE); // Ensure file does not exist
-    T2ER_Init();
-
-    // Use the function pointer callback
-    FlushCacheFunc fn = FlushCacheFuncCallback();
-    fn();
-    ASSERT_FALSE(std::ifstream(T2_CACHE_FILE).good());
-}
-#endif
 /* Static functions
 TEST_F(ProfileTest, FlushCacheFromFile_AndRemove) {
     std::ofstream f(T2_CACHE_FILE);

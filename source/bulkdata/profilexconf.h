@@ -50,6 +50,8 @@ typedef struct _ProfileXConf
 {
     bool isUpdated;
     bool reportInProgress;
+    pthread_cond_t reportInProgressCond;
+    pthread_mutex_t reportInProgressMutex;
     bool bClearSeekMap;
     bool checkPreviousSeek; // To support Previous_Logs report post reboot
     bool saveSeekConfig; // To save the Seek config to persistant storage

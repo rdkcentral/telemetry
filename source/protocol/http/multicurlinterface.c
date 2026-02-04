@@ -63,7 +63,9 @@
 
 //Global variables
 #define IFINTERFACE      "erouter0"
-#define MAX_POOL_SIZE 2
+#define DEFAULT_POOL_SIZE 2
+#define MAX_ALLOWED_POOL_SIZE 5  // Maximum allowed pool size
+#define MIN_ALLOWED_POOL_SIZE 1  // Minimum allowed pool size
 #define HTTP_RESPONSE_FILE "/tmp/httpOutput.txt"
 static bool pool_initialized = false;
 
@@ -73,13 +75,14 @@ static pthread_cond_t pool_cond = PTHREAD_COND_INITIALIZER;
 
 typedef struct
 {
-    CURL *easy_handles[MAX_POOL_SIZE];
-    bool handle_available[MAX_POOL_SIZE];
+    CURL **easy_handles;          // Dynamic array of CURL handles
+    bool *handle_available;       // Dynamic array of availability flags
 #ifdef LIBRDKCERTSEL_BUILD
-    rdkcertselector_h cert_selectors[MAX_POOL_SIZE];       // One cert selector per handle
-    rdkcertselector_h rcvry_cert_selectors[MAX_POOL_SIZE]; // One recovery cert selector per handle
+    rdkcertselector_h *cert_selectors;       // Dynamic array - one cert selector per handle
+    rdkcertselector_h *rcvry_cert_selectors; // Dynamic array - one recovery cert selector per handle
 #endif
     struct curl_slist *post_headers;
+    int size;                     // Actual pool size
 } http_connection_pool_t;
 
 static http_connection_pool_t pool = {0};
@@ -92,6 +95,35 @@ bool isStateRedEnabled(void)
 }
 #endif
 #endif
+
+// Helper function to read pool size from environment variable
+static int get_configured_pool_size(void)
+{
+    int configured_size = DEFAULT_POOL_SIZE;
+
+    // Check environment variable T2_CONNECTION_POOL_SIZE
+    const char *env_size = getenv("T2_CONNECTION_POOL_SIZE");
+    if (env_size != NULL)
+    {
+        int env_value = atoi(env_size);
+        if (env_value >= MIN_ALLOWED_POOL_SIZE && env_value <= MAX_ALLOWED_POOL_SIZE)
+        {
+            configured_size = env_value;
+            T2Info("Using connection pool size from environment: %d\n", configured_size);
+        }
+        else
+        {
+            T2Error("Invalid pool size in T2_CONNECTION_POOL_SIZE=%s, must be between %d and %d. Using default: %d\n",
+                    env_size, MIN_ALLOWED_POOL_SIZE, MAX_ALLOWED_POOL_SIZE, DEFAULT_POOL_SIZE);
+        }
+    }
+    else
+    {
+        T2Info("T2_CONNECTION_POOL_SIZE not set, using default pool size: %d\n", DEFAULT_POOL_SIZE);
+    }
+
+    return configured_size;
+}
 
 static size_t httpGetCallBack(void *responseBuffer, size_t len, size_t nmemb,
                               void *stream)
@@ -137,32 +169,58 @@ static void cleanup_curl_handles(void)
 
 #ifdef LIBRDKCERTSEL_BUILD
     // Clean up per-handle certificate selectors
-    for(int i = 0; i < MAX_POOL_SIZE; i++)
+    if(pool.cert_selectors)
     {
-        if(pool.cert_selectors[i])
+        for(int i = 0; i < pool.size; i++)
         {
-            T2Info("Freeing cert_selector for handle %d\n", i);
-            rdkcertselector_free(&pool.cert_selectors[i]);
-            pool.cert_selectors[i] = NULL;
+            if(pool.cert_selectors[i])
+            {
+                T2Info("Freeing cert_selector for handle %d\n", i);
+                rdkcertselector_free(&pool.cert_selectors[i]);
+                pool.cert_selectors[i] = NULL;
+            }
         }
-        if(pool.rcvry_cert_selectors[i])
+        free(pool.cert_selectors);
+        pool.cert_selectors = NULL;
+    }
+
+    if(pool.rcvry_cert_selectors)
+    {
+        for(int i = 0; i < pool.size; i++)
         {
-            T2Info("Freeing rcvry_cert_selector for handle %d\n", i);
-            rdkcertselector_free(&pool.rcvry_cert_selectors[i]);
-            pool.rcvry_cert_selectors[i] = NULL;
+            if(pool.rcvry_cert_selectors[i])
+            {
+                T2Info("Freeing rcvry_cert_selector for handle %d\n", i);
+                rdkcertselector_free(&pool.rcvry_cert_selectors[i]);
+                pool.rcvry_cert_selectors[i] = NULL;
+            }
         }
+        free(pool.rcvry_cert_selectors);
+        pool.rcvry_cert_selectors = NULL;
     }
 #endif
 
-    for(int i = 0; i < MAX_POOL_SIZE; i++)
+    if(pool.easy_handles)
     {
-        if(pool.easy_handles[i])
+        for(int i = 0; i < pool.size; i++)
         {
-            curl_easy_cleanup(pool.easy_handles[i]);
-            pool.easy_handles[i] = NULL;
-            pool.handle_available[i] = false;
+            if(pool.easy_handles[i])
+            {
+                curl_easy_cleanup(pool.easy_handles[i]);
+                pool.easy_handles[i] = NULL;
+            }
         }
+        free(pool.easy_handles);
+        pool.easy_handles = NULL;
     }
+
+    if(pool.handle_available)
+    {
+        free(pool.handle_available);
+        pool.handle_available = NULL;
+    }
+
+    pool.size = 0;
 
     T2Info("%s ++out\n", __FUNCTION__);
 }
@@ -176,13 +234,40 @@ T2ERROR init_connection_pool()
     // Check if already initialized
     if(pool_initialized)
     {
-        T2Info("Connection pool already initialized\n");
+        T2Info("Connection pool already initialized with size %d\n", pool.size);
         pthread_mutex_unlock(&pool_mutex);
         return T2ERROR_SUCCESS;
     }
 
+    // Get configured pool size from environment variable
+    pool.size = get_configured_pool_size();
+
+    T2Info("Initializing connection pool with size: %d\n", pool.size);
+
+    // Allocate dynamic arrays based on configured pool size
+    pool.easy_handles = (CURL **)calloc(pool.size, sizeof(CURL *));
+    pool.handle_available = (bool *)calloc(pool.size, sizeof(bool));
+
+#ifdef LIBRDKCERTSEL_BUILD
+    pool.cert_selectors = (rdkcertselector_h *)calloc(pool.size, sizeof(rdkcertselector_h));
+    pool.rcvry_cert_selectors = (rdkcertselector_h *)calloc(pool.size, sizeof(rdkcertselector_h));
+#endif
+
+    // Check if all allocations succeeded
+    if (!pool.easy_handles || !pool.handle_available
+#ifdef LIBRDKCERTSEL_BUILD
+            || !pool.cert_selectors || !pool.rcvry_cert_selectors
+#endif
+       )
+    {
+        T2Error("Failed to allocate memory for connection pool of size %d\n", pool.size);
+        cleanup_curl_handles();
+        pthread_mutex_unlock(&pool_mutex);
+        return T2ERROR_FAILURE;
+    }
+
     // Pre-allocate easy handles
-    for(int i = 0; i < MAX_POOL_SIZE; i++)
+    for(int i = 0; i < pool.size; i++)
     {
         pool.easy_handles[i] = curl_easy_init();
         if(pool.easy_handles[i] == NULL)
@@ -314,10 +399,10 @@ static T2ERROR acquire_pool_handle(CURL **easy, int *idx)
 
     pthread_mutex_lock(&pool_mutex);
 
-    // Waits until a handle becomes available
+    // Waits until a handle becomes available or pool is being cleaned up
     while(1)
     {
-        // Check if pool is not destroyed
+        // Check if pool is being shut down
         if (!pool_initialized)
         {
             T2Info("Pool is being cleaned up, aborting handle acquisition\n");
@@ -326,11 +411,11 @@ static T2ERROR acquire_pool_handle(CURL **easy, int *idx)
         }
 
         // Find an available handle
-        for(int i = 0; i < MAX_POOL_SIZE; i++)
+        for(int i = 0; i < pool.size; i++)
         {
             if(pool.handle_available[i])
             {
-                T2Info("acquire_pool_handle ; Available handle = %d\n", i);
+                T2Info("acquire_pool_handle ; Available handle = %d (pool size: %d)\n", i, pool.size);
                 *idx = i;
                 pool.handle_available[i] = false;
                 *easy = pool.easy_handles[i];
@@ -341,8 +426,10 @@ static T2ERROR acquire_pool_handle(CURL **easy, int *idx)
         }
 
         // No handle available, wait for one to become free
-        T2Info("No curl handle available, waiting for one to become free...\n");
+        T2Info("No curl handle available (pool size: %d), waiting for one to become free...\n", pool.size);
         pthread_cond_wait(&pool_cond, &pool_mutex);
+        // After waking up, loop back to check pool_initialized status
+        // This handles both spurious wakeups and shutdown signals
     }
 }
 
@@ -350,8 +437,16 @@ static T2ERROR acquire_pool_handle(CURL **easy, int *idx)
 static void release_pool_handle(int idx)
 {
     pthread_mutex_lock(&pool_mutex);
-    pool.handle_available[idx] = true;
-    pthread_cond_signal(&pool_cond); // Signal waiting threads
+    if (idx >= 0 && idx < pool.size)
+    {
+        pool.handle_available[idx] = true;
+        pthread_cond_signal(&pool_cond); // Signal waiting threads
+        T2Info("release_pool_handle ; Released handle = %d (pool size: %d)\n", idx, pool.size);
+    }
+    else
+    {
+        T2Error("release_pool_handle ; Invalid handle index = %d (pool size: %d)\n", idx, pool.size);
+    }
     pthread_mutex_unlock(&pool_mutex);
 }
 
@@ -470,17 +565,8 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
         do
         {
             T2Info("%s %d\n", __func__, __LINE__);
-            // Free previous iteration's allocations
-            if(pCertURI != NULL)
-            {
-                free(pCertURI);
-                pCertURI = NULL;
-            }
-            if(pCertPC != NULL)
-            {
-                free(pCertPC);
-                pCertPC = NULL;
-            }
+            pCertURI = NULL;
+            pCertPC = NULL;
             pCertFile = NULL;
             T2Info("%s %d\n", __func__, __LINE__);
 
@@ -843,21 +929,8 @@ T2ERROR http_pool_post(const char *url, const char *payload)
         do
         {
             T2Info("%s %d\n", __func__, __LINE__);
-            // Free previous iteration's allocations
-            if(pCertURI != NULL)
-            {
-                free(pCertURI);
-                pCertURI = NULL;
-            }
-            T2Info("%s %d\n", __func__, __LINE__);
-
-            if(pCertPC != NULL)
-            {
-                free(pCertPC);
-                pCertPC = NULL;
-            }
-            T2Info("%s %d\n", __func__, __LINE__);
-
+            pCertURI = NULL;
+            pCertPC = NULL;
             pCertFile = NULL;
             T2Info("%s %d\n", __func__, __LINE__);
 

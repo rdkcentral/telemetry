@@ -890,15 +890,19 @@ T2ERROR http_pool_post(const char *url, const char *payload)
                 if(curl_code != CURLE_OK || http_code != 200)
                 {
                     T2Error("%s: Failed to establish connection using xPKI certificate: %s, curl failed: %d (handle %d)\n", __func__, pCertFile, curl_code, idx);
+                    T2Info("%s %d\n", __func__, __LINE__);
                 }
                 else
                 {
                     T2Info("%s: Using xpki Certs connection certname : %s (handle %d)\n", __FUNCTION__, pCertFile, idx);
                     T2Info("Report Sent Successfully over HTTP : %ld\n", http_code);
                 }
+                T2Info("%s %d\n", __func__, __LINE__);
             }
+            T2Info("%s %d\n", __func__, __LINE__);
         }
         while(rdkcertselector_setCurlStatus(thisCertSel, curl_code, (const char*)url) == TRY_ANOTHER);
+        T2Info("%s %d\n", __func__, __LINE__);
 #if 0
         // Clean up final iteration's certificate allocations
         if(pCertURI != NULL)
@@ -940,16 +944,20 @@ T2ERROR http_pool_post(const char *url, const char *payload)
         // Execute without mTLS
         curl_code = curl_easy_perform(easy);
     }
+    T2Info("%s %d\n", __func__, __LINE__);
 
     // Close output file
     if(fp)
     {
         fclose(fp);
     }
+    T2Info("%s %d\n", __func__, __LINE__);
 
     T2ERROR result = T2ERROR_FAILURE;
     if (curl_code == CURLE_OK)
     {
+        T2Info("%s %d\n", __func__, __LINE__);
+
         long http_code;
         curl_easy_getinfo(easy, CURLINFO_RESPONSE_CODE, &http_code);
         T2Info("%s ; HTTP response code: %ld\n", __FUNCTION__, http_code);

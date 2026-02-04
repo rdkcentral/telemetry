@@ -551,6 +551,9 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
     bool mtls_enable = isMtlsEnabled();
     char *pCertFile = NULL;
     char *pCertPC = NULL;
+#ifdef LIBRDKCERTSEL_BUILD
+    char *pCertURI = NULL;  // Declare at same scope as pCertFile
+#endif
     CURLcode curl_code = CURLE_OK;
 
     if(mtls_enable == true)
@@ -559,7 +562,6 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
         // Use per-handle certificate selector for thread safety
         rdkcertselector_h handleCertSelector = pool.cert_selectors[idx];
         rdkcertselectorStatus_t xcGetCertStatus;
-        char *pCertURI = NULL;
 
         T2Info("%s: Using cert selector for handle %d\n", __func__, idx);
 
@@ -618,28 +620,13 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
                 else
                 {
                     T2Info("%s: Using xpki Certs connection certname : %s (handle %d)\n", __FUNCTION__, pCertFile, idx);
-                    CURL_SETOPT_CHECK(easy, CURLOPT_SSLCERT, NULL);
-                    CURL_SETOPT_CHECK(easy, CURLOPT_KEYPASSWD, NULL);
-
-                    // Free certificate memory after successful operation
-                    if(pCertURI != NULL)
-                    {
-                        T2Info("%s: Freeing pCertURI after successful operation (handle %d)\n", __func__, idx);
-                        free(pCertURI);
-                        pCertURI = NULL;
-                    }
-                    if(pCertPC != NULL)
-                    {
-                        T2Info("%s: Freeing pCertPC after successful operation (handle %d)\n", __func__, idx);
-                        free(pCertPC);
-                        pCertPC = NULL;
-                    }
                 }
             }
             T2Info("%s %d\n", __func__, __LINE__);
         }
         while(rdkcertselector_setCurlStatus(handleCertSelector, curl_code, (const char*)url) == TRY_ANOTHER);
-        T2Info("%s %d\n", __func__, __LINE__);
+        T2Info("%s: Certificate rotation loop completed\n", __func__);
+
 #else
         // Fallback to getMtlsCerts if certificate selector not available
         if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pCertPC))
@@ -800,17 +787,29 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
         free(response);
     }
 
-    // Clean up certificates if not using certificate selector
-#ifndef LIBRDKCERTSEL_BUILD
-    if(NULL != pCertFile)
+    // Clean up certificates - unified cleanup for all paths
+#ifdef LIBRDKCERTSEL_BUILD
+    if(pCertURI != NULL)
     {
-        free(pCertFile);
-    }
-    if(NULL != pCertPC)
-    {
-        free(pCertPC);
+        T2Info("%s: Freeing final pCertURI (handle %d)\n", __func__, idx);
+        free(pCertURI);
+        pCertURI = NULL;
     }
 #endif
+    if(pCertPC != NULL)
+    {
+        T2Info("%s: Freeing final pCertPC (handle %d)\n", __func__, idx);
+        free(pCertPC);
+        pCertPC = NULL;
+    }
+    if(pCertFile != NULL)
+    {
+#ifndef LIBRDKCERTSEL_BUILD
+        // Only free pCertFile if it was allocated by getMtlsCerts (not LIBRDKCERTSEL_BUILD)
+        free(pCertFile);
+#endif
+        pCertFile = NULL;
+    }
 
     release_pool_handle(idx);
 
@@ -885,6 +884,9 @@ T2ERROR http_pool_post(const char *url, const char *payload)
     bool mtls_enable = isMtlsEnabled();
     char *pCertFile = NULL;
     char *pCertPC = NULL;
+#ifdef LIBRDKCERTSEL_BUILD
+    char *pCertURI = NULL;  // Declare at same scope as pCertFile
+#endif
     CURLcode curl_code = CURLE_OK;
 
     if(mtls_enable == true)
@@ -893,7 +895,6 @@ T2ERROR http_pool_post(const char *url, const char *payload)
         // Use per-handle certificate selector for thread safety
         rdkcertselector_h thisCertSel = NULL;
         rdkcertselectorStatus_t curlGetCertStatus;
-        char *pCertURI = NULL;
         bool state_red_enable = false;
 
 #if defined(ENABLE_RED_RECOVERY_SUPPORT)
@@ -917,6 +918,11 @@ T2ERROR http_pool_post(const char *url, const char *payload)
         {
             T2Info("%s %d\n", __func__, __LINE__);
             pCertURI = NULL;
+        }
+        if(pCertPC != NULL)
+        {
+            T2Info("%s: Freeing pCertPC from previous iteration (handle %d)\n", __func__, idx);
+            free(pCertPC);
             pCertPC = NULL;
             pCertFile = NULL;
             T2Info("%s %d\n", __func__, __LINE__);
@@ -1052,14 +1058,18 @@ T2ERROR http_pool_post(const char *url, const char *payload)
         T2Error("curl_easy_perform failed: %s\n", curl_easy_strerror(curl_code));
     }
 
-    // Clean up certificates if not using certificate selector
-#ifndef LIBRDKCERTSEL_BUILD
-    if(NULL != pCertFile)
+    // Clean up certificates - unified cleanup for all paths
+#ifdef LIBRDKCERTSEL_BUILD
+    if(pCertURI != NULL)
     {
-        free(pCertFile);
+        T2Info("%s: Freeing final pCertURI (handle %d)\n", __func__, idx);
+        free(pCertURI);
+        pCertURI = NULL;
     }
-    if(NULL != pCertPC)
+#endif
+    if(pCertPC != NULL)
     {
+        T2Info("%s: Freeing final pCertPC (handle %d)\n", __func__, idx);
 #ifdef LIBRDKCONFIG_BUILD
         size_t sKey = strlen(pCertPC);
         if (rdkconfig_free((unsigned char**)&pCertPC, sKey) == RDKCONFIG_FAIL)
@@ -1069,8 +1079,16 @@ T2ERROR http_pool_post(const char *url, const char *payload)
 #else
         free(pCertPC);
 #endif
+        pCertPC = NULL;
     }
+    if(pCertFile != NULL)
+    {
+#ifndef LIBRDKCERTSEL_BUILD
+        // Only free pCertFile if it was allocated by getMtlsCerts (not LIBRDKCERTSEL_BUILD)
+        free(pCertFile);
 #endif
+        pCertFile = NULL;
+    }
 
     release_pool_handle(idx);
 

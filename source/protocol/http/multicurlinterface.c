@@ -655,6 +655,8 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
             return T2ERROR_FAILURE;
         }
 #endif
+        CURL_SETOPT_CHECK(easy, CURLOPT_SSLCERT, NULL);
+        CURL_SETOPT_CHECK(easy, CURLOPT_KEYPASSWD, NULL);
     }
     else
     {
@@ -971,23 +973,6 @@ T2ERROR http_pool_post(const char *url, const char *payload)
                 else
                 {
                     T2Info("%s: Using xpki Certs connection certname : %s (handle %d)\n", __FUNCTION__, pCertFile, idx);
-                    T2Info("Report Sent Successfully over HTTP : %ld\n", http_code);
-                    CURL_SETOPT_CHECK(easy, CURLOPT_SSLCERT, NULL);
-                    CURL_SETOPT_CHECK(easy, CURLOPT_KEYPASSWD, NULL);
-
-                    // Free certificate memory after successful operation
-                    if(pCertURI != NULL)
-                    {
-                        T2Info("%s: Freeing pCertURI after successful operation (handle %d)\n", __func__, idx);
-                        free(pCertURI);
-                        pCertURI = NULL;
-                    }
-                    if(pCertPC != NULL)
-                    {
-                        T2Info("%s: Freeing pCertPC after successful operation (handle %d)\n", __func__, idx);
-                        free(pCertPC);
-                        pCertPC = NULL;
-                    }
                 }
                 T2Info("%s %d\n", __func__, __LINE__);
             }
@@ -1019,6 +1004,8 @@ T2ERROR http_pool_post(const char *url, const char *payload)
             return T2ERROR_FAILURE;
         }
 #endif
+        CURL_SETOPT_CHECK(easy, CURLOPT_SSLCERT, NULL);
+        CURL_SETOPT_CHECK(easy, CURLOPT_KEYPASSWD, NULL);
     }
     else
     {

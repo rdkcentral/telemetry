@@ -988,6 +988,9 @@ T2ERROR ProfileXConf_storeMarkerEvent(T2Event *eventInfo)
 }
 
 #ifdef GTEST_ENABLE
+void test_set_reportThreadExits(bool value) {
+    reportThreadExits = value;
+}
 typedef char* (*getTimeStampFuncType)(void);
 
 getTimeStampFuncType getTimeStampFuncCallback(void)

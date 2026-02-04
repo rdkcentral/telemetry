@@ -1882,7 +1882,11 @@ TEST(ReportProfilesCallbacks, FreeReportProfileHashMap) {
 #if 1
 //comment
 //=================================== profilexconf.c ================================
-
+#ifdef GTEST_ENABLE
+extern "C" {
+        void test_set_reportThreadExits(bool value);
+}
+#endif
 TEST_F(ProfileTest, InitAndUninit) {
     // Covers ProfileXConf_init and ProfileXConf_uninit
 #if 1
@@ -1927,11 +1931,27 @@ TEST_F(ProfileTest, SetAndIsSet) {
     profile->cachedReportList = nullptr;
     profile->protocol = strdup("HTTP");
     profile->encodingType = strdup("JSON");
+#if 0
     profile->t2HTTPDest = nullptr;
     profile->grepSeekProfile = nullptr;
     profile->reportInProgress = true;
     profile->isUpdated = false;
+#endif
+    profile->jsonReportObj = nullptr;  // types now match
+    profile->checkPreviousSeek = true;
 
+    profile->t2HTTPDest = (T2HTTP *)malloc(sizeof(T2HTTP));
+    profile->t2HTTPDest->URL = strdup("https://mock1xconf:50051/dataLakeMockXconf");
+    profile->isUpdated = true;
+    GrepSeekProfile *gsProfile = (GrepSeekProfile *)malloc(sizeof(GrepSeekProfile));
+    if (gsProfile)
+    {
+         gsProfile->logFileSeekMap = hash_map_create();
+         gsProfile->execCounter = 0;
+    }
+    profile->grepSeekProfile = gsProfile;
+    //profile->grepSeekProfile = nullptr;
+    profile->reportInProgress = false;
     EXPECT_CALL(*g_vectorMock, Vector_Size(_))
         .Times(::testing::AtMost(3))
         .WillRepeatedly(Return(0)); // Return 1 to indicate one profile in the list
@@ -1959,12 +1979,14 @@ TEST_F(ProfileTest, SetAndIsSet) {
     EXPECT_STREQ(name, "TestProfile");
     free(name);
 
-
+    test_set_reportThreadExits(true);
+    ProfileXConf_notifyTimeout(true,true);
+#if 0
     // Clean up - ProfileXConf_uninit calls unregisterProfileFromScheduler
     EXPECT_CALL(*g_schedulerMock, unregisterProfileFromScheduler(_))
         .Times(::testing::AtMost(1))
         .WillRepeatedly(Return(T2ERROR_SUCCESS));
-    
+#endif
     EXPECT_EQ(ProfileXConf_uninit(), T2ERROR_SUCCESS);
 }
 

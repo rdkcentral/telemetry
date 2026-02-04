@@ -387,17 +387,18 @@ T2ERROR init_connection_pool()
 // Helper function to acquire any available handle with waiting
 static T2ERROR acquire_pool_handle(CURL **easy, int *idx)
 {
+    pthread_mutex_lock(&pool_mutex);
     if (!pool_initialized)
     {
+        pthread_mutex_unlock(&pool_mutex);
         T2ERROR ret = init_connection_pool();
         if(ret != T2ERROR_SUCCESS)
         {
             T2Error("Failed to initialize connection pool\n");
             return ret;
         }
+        pthread_mutex_lock(&pool_mutex);
     }
-
-    pthread_mutex_lock(&pool_mutex);
 
     // Waits until a handle becomes available or pool is being cleaned up
     while(1)
@@ -617,42 +618,26 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
                 else
                 {
                     T2Info("%s: Using xpki Certs connection certname : %s (handle %d)\n", __FUNCTION__, pCertFile, idx);
+
+                    // Free certificate memory after successful operation
+                    if(pCertURI != NULL)
+                    {
+                        T2Info("%s: Freeing pCertURI after successful operation (handle %d)\n", __func__, idx);
+                        free(pCertURI);
+                        pCertURI = NULL;
+                    }
+                    if(pCertPC != NULL)
+                    {
+                        T2Info("%s: Freeing pCertPC after successful operation (handle %d)\n", __func__, idx);
+                        free(pCertPC);
+                        pCertPC = NULL;
+                    }
                 }
             }
             T2Info("%s %d\n", __func__, __LINE__);
         }
         while(rdkcertselector_setCurlStatus(handleCertSelector, curl_code, (const char*)url) == TRY_ANOTHER);
         T2Info("%s %d\n", __func__, __LINE__);
-
-#if 0
-// Getting crash with this free
-        // Clean up final iteration's certificate allocations
-        if(pCertURI != NULL)
-        {
-            T2Info("%s %d\n", __func__, __LINE__);
-
-            free(pCertURI);
-            T2Info("%s %d\n", __func__, __LINE__);
-
-            pCertURI = NULL;
-            T2Info("%s %d\n", __func__, __LINE__);
-
-        }
-        T2Info("%s %d\n", __func__, __LINE__);
-
-        if(pCertPC != NULL)
-        {
-            T2Info("%s %d\n", __func__, __LINE__);
-
-            free(pCertPC);
-            T2Info("%s %d\n", __func__, __LINE__);
-
-            pCertPC = NULL;
-            T2Info("%s %d\n", __func__, __LINE__);
-
-        }
-        T2Info("%s %d\n", __func__, __LINE__);
-#endif
 #else
         // Fallback to getMtlsCerts if certificate selector not available
         if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pCertPC))
@@ -979,6 +964,20 @@ T2ERROR http_pool_post(const char *url, const char *payload)
                 {
                     T2Info("%s: Using xpki Certs connection certname : %s (handle %d)\n", __FUNCTION__, pCertFile, idx);
                     T2Info("Report Sent Successfully over HTTP : %ld\n", http_code);
+
+                    // Free certificate memory after successful operation
+                    if(pCertURI != NULL)
+                    {
+                        T2Info("%s: Freeing pCertURI after successful operation (handle %d)\n", __func__, idx);
+                        free(pCertURI);
+                        pCertURI = NULL;
+                    }
+                    if(pCertPC != NULL)
+                    {
+                        T2Info("%s: Freeing pCertPC after successful operation (handle %d)\n", __func__, idx);
+                        free(pCertPC);
+                        pCertPC = NULL;
+                    }
                 }
                 T2Info("%s %d\n", __func__, __LINE__);
             }
@@ -986,17 +985,6 @@ T2ERROR http_pool_post(const char *url, const char *payload)
         }
         while(rdkcertselector_setCurlStatus(thisCertSel, curl_code, (const char*)url) == TRY_ANOTHER);
         T2Info("%s %d\n", __func__, __LINE__);
-#if 0
-        // Clean up final iteration's certificate allocations
-        if(pCertURI != NULL)
-        {
-            free(pCertURI);
-        }
-        if(pCertPC != NULL)
-        {
-            free(pCertPC);
-        }
-#endif
 #else
         // Fallback to getMtlsCerts if certificate selector not available
         if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pCertPC))
@@ -1089,15 +1077,16 @@ T2ERROR http_pool_post(const char *url, const char *payload)
 T2ERROR http_pool_cleanup(void)
 {
     T2Info("%s ++in\n", __FUNCTION__);
+    pthread_mutex_lock(&pool_mutex);
     if (!pool_initialized)
     {
         T2Info("Pool not initialized, nothing to cleanup\n");
+        pthread_mutex_unlock(&pool_mutex);
         return T2ERROR_SUCCESS;
     }
 
     T2Info("Cleaning up http pool resources\n");
 
-    pthread_mutex_lock(&pool_mutex);
     // Reset initialization flag
     pool_initialized = false;
 

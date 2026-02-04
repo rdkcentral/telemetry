@@ -618,6 +618,8 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
                 else
                 {
                     T2Info("%s: Using xpki Certs connection certname : %s (handle %d)\n", __FUNCTION__, pCertFile, idx);
+                    CURL_SETOPT_CHECK(easy, CURLOPT_SSLCERT, NULL);
+                    CURL_SETOPT_CHECK(easy, CURLOPT_KEYPASSWD, NULL);
 
                     // Free certificate memory after successful operation
                     if(pCertURI != NULL)
@@ -964,6 +966,8 @@ T2ERROR http_pool_post(const char *url, const char *payload)
                 {
                     T2Info("%s: Using xpki Certs connection certname : %s (handle %d)\n", __FUNCTION__, pCertFile, idx);
                     T2Info("Report Sent Successfully over HTTP : %ld\n", http_code);
+                    CURL_SETOPT_CHECK(easy, CURLOPT_SSLCERT, NULL);
+                    CURL_SETOPT_CHECK(easy, CURLOPT_KEYPASSWD, NULL);
 
                     // Free certificate memory after successful operation
                     if(pCertURI != NULL)

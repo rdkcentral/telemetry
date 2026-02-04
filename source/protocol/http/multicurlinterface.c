@@ -920,11 +920,6 @@ T2ERROR http_pool_post(const char *url, const char *payload)
         {
             T2Info("%s %d\n", __func__, __LINE__);
             pCertURI = NULL;
-        }
-        if(pCertPC != NULL)
-        {
-            T2Info("%s: Freeing pCertPC from previous iteration (handle %d)\n", __func__, idx);
-            free(pCertPC);
             pCertPC = NULL;
             pCertFile = NULL;
             T2Info("%s %d\n", __func__, __LINE__);

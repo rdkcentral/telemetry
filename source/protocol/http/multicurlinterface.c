@@ -842,18 +842,24 @@ T2ERROR http_pool_post(const char *url, const char *payload)
 
         do
         {
+            T2Info("%s %d\n", __func__, __LINE__);
             // Free previous iteration's allocations
             if(pCertURI != NULL)
             {
                 free(pCertURI);
                 pCertURI = NULL;
             }
+            T2Info("%s %d\n", __func__, __LINE__);
+
             if(pCertPC != NULL)
             {
                 free(pCertPC);
                 pCertPC = NULL;
             }
+            T2Info("%s %d\n", __func__, __LINE__);
+
             pCertFile = NULL;
+            T2Info("%s %d\n", __func__, __LINE__);
 
             curlGetCertStatus = rdkcertselector_getCert(thisCertSel, &pCertURI, &pCertPC);
             if(curlGetCertStatus != certselectorOk)
@@ -868,6 +874,8 @@ T2ERROR http_pool_post(const char *url, const char *payload)
             }
             else
             {
+                T2Info("%s %d\n", __func__, __LINE__);
+
                 // skip past file scheme in URI
                 pCertFile = pCertURI;
                 if ( strncmp( pCertFile, FILESCHEME, sizeof(FILESCHEME) - 1 ) == 0 )
@@ -880,12 +888,14 @@ T2ERROR http_pool_post(const char *url, const char *payload)
                 CURL_SETOPT_CHECK_STR(easy, CURLOPT_SSLCERT, pCertFile);
                 CURL_SETOPT_CHECK_STR(easy, CURLOPT_KEYPASSWD, pCertPC);
                 CURL_SETOPT_CHECK(easy, CURLOPT_SSL_VERIFYPEER, 1L);
+                T2Info("%s %d\n", __func__, __LINE__);
 
                 // Execute the request directly
                 curl_code = curl_easy_perform(easy);
 
                 long http_code;
                 curl_easy_getinfo(easy, CURLINFO_RESPONSE_CODE, &http_code);
+                T2Info("%s %d\n", __func__, __LINE__);
 
                 if(curl_code != CURLE_OK || http_code != 200)
                 {

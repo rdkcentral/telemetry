@@ -720,7 +720,7 @@ static int report_or_cache_data(char* telemetry_data, const char* markerName)
 
     if(isT2Ready)
     {
-        // EVENT_DEBUG("T2: Sending event : %s\n", telemetry_data);
+        printf("T2: Sending event : %s markername : %s\n", telemetry_data,markerName);
         ret = filtered_event_send(telemetry_data, markerName);
         if(0 != ret)
         {

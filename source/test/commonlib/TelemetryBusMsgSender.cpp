@@ -318,8 +318,10 @@ TEST_F(TelemetryBusmessageSenderTest, t2_event_d_iscachingenabled_true_1)
     int ret = t2_event_d("marker", 13);
 
     *test_get_isRbusEnabled_ptr() = true;
+    
     EXPECT_EQ(ret, T2ERROR_SUCCESS);
 }
+///add test case here
 #endif
 #if 0
 TEST_F(TelemetryBusmessageSenderTest, doPopulateEventMarkerList_ReturnsEarlyIfRbusDisabled) {

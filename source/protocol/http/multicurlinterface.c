@@ -73,19 +73,21 @@ static bool pool_initialized = false;
 static pthread_mutex_t pool_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t pool_cond = PTHREAD_COND_INITIALIZER;
 
+// Single pool entry structure
 typedef struct
 {
-    CURL **easy_handles;          // Dynamic array of CURL handles
-    bool *handle_available;       // Dynamic array of availability flags
+    CURL *easy_handle;               // Single CURL handle for this pool entry
+    bool handle_available;           // Availability flag for this pool entry
 #ifdef LIBRDKCERTSEL_BUILD
-    rdkcertselector_h *cert_selectors;       // Dynamic array - one cert selector per handle
-    rdkcertselector_h *rcvry_cert_selectors; // Dynamic array - one recovery cert selector per handle
+    rdkcertselector_h cert_selector;        // Single cert selector for this pool entry
+    rdkcertselector_h rcvry_cert_selector;  // Single recovery cert selector for this pool entry
 #endif
-    struct curl_slist *post_headers;
-    int size;                     // Actual pool size
-} http_connection_pool_t;
+} http_pool_entry_t;
 
-static http_connection_pool_t pool = {0};
+// Global pool variables
+static http_pool_entry_t *pool_entries = NULL;  // Dynamic array of pool entries
+static struct curl_slist *post_headers = NULL;  // Shared POST headers
+static int pool_size = 0;                       // Number of pool entries
 
 #ifdef LIBRDKCERTSEL_BUILD
 #if defined(ENABLE_RED_RECOVERY_SUPPORT)
@@ -161,66 +163,49 @@ static void cleanup_curl_handles(void)
 {
     T2Info("%s ++in\n", __FUNCTION__);
 
-    if(pool.post_headers)
+    if(post_headers)
     {
-        curl_slist_free_all(pool.post_headers);
-        pool.post_headers = NULL;
+        curl_slist_free_all(post_headers);
+        post_headers = NULL;
     }
 
 #ifdef LIBRDKCERTSEL_BUILD
-    // Clean up per-handle certificate selectors
-    if(pool.cert_selectors)
+    // Clean up per-entry certificate selectors
+    if(pool_entries)
     {
-        for(int i = 0; i < pool.size; i++)
+        for(int i = 0; i < pool_size; i++)
         {
-            if(pool.cert_selectors[i])
+            if(pool_entries[i].cert_selector)
             {
-                T2Info("Freeing cert_selector for handle %d\n", i);
-                rdkcertselector_free(&pool.cert_selectors[i]);
-                pool.cert_selectors[i] = NULL;
+                T2Info("Freeing cert_selector for entry %d\n", i);
+                rdkcertselector_free(&pool_entries[i].cert_selector);
+                pool_entries[i].cert_selector = NULL;
+            }
+            if(pool_entries[i].rcvry_cert_selector)
+            {
+                T2Info("Freeing rcvry_cert_selector for entry %d\n", i);
+                rdkcertselector_free(&pool_entries[i].rcvry_cert_selector);
+                pool_entries[i].rcvry_cert_selector = NULL;
             }
         }
-        free(pool.cert_selectors);
-        pool.cert_selectors = NULL;
-    }
-
-    if(pool.rcvry_cert_selectors)
-    {
-        for(int i = 0; i < pool.size; i++)
-        {
-            if(pool.rcvry_cert_selectors[i])
-            {
-                T2Info("Freeing rcvry_cert_selector for handle %d\n", i);
-                rdkcertselector_free(&pool.rcvry_cert_selectors[i]);
-                pool.rcvry_cert_selectors[i] = NULL;
-            }
-        }
-        free(pool.rcvry_cert_selectors);
-        pool.rcvry_cert_selectors = NULL;
     }
 #endif
 
-    if(pool.easy_handles)
+    if(pool_entries)
     {
-        for(int i = 0; i < pool.size; i++)
+        for(int i = 0; i < pool_size; i++)
         {
-            if(pool.easy_handles[i])
+            if(pool_entries[i].easy_handle)
             {
-                curl_easy_cleanup(pool.easy_handles[i]);
-                pool.easy_handles[i] = NULL;
+                curl_easy_cleanup(pool_entries[i].easy_handle);
+                pool_entries[i].easy_handle = NULL;
             }
         }
-        free(pool.easy_handles);
-        pool.easy_handles = NULL;
+        free(pool_entries);
+        pool_entries = NULL;
     }
 
-    if(pool.handle_available)
-    {
-        free(pool.handle_available);
-        pool.handle_available = NULL;
-    }
-
-    pool.size = 0;
+    pool_size = 0;
 
     T2Info("%s ++out\n", __FUNCTION__);
 }
@@ -234,43 +219,33 @@ T2ERROR init_connection_pool()
     // Check if already initialized
     if(pool_initialized)
     {
-        T2Info("Connection pool already initialized with size %d\n", pool.size);
+        T2Info("Connection pool already initialized with size %d\n", pool_size);
         pthread_mutex_unlock(&pool_mutex);
         return T2ERROR_SUCCESS;
     }
 
     // Get configured pool size from environment variable
-    pool.size = get_configured_pool_size();
+    pool_size = get_configured_pool_size();
 
-    T2Info("Initializing connection pool with size: %d\n", pool.size);
+    T2Info("Initializing connection pool with size: %d\n", pool_size);
 
-    // Allocate dynamic arrays based on configured pool size
-    pool.easy_handles = (CURL **)calloc(pool.size, sizeof(CURL *));
-    pool.handle_available = (bool *)calloc(pool.size, sizeof(bool));
+    // Allocate dynamic array of pool entries based on configured pool size
+    pool_entries = (http_pool_entry_t *)calloc(pool_size, sizeof(http_pool_entry_t));
 
-#ifdef LIBRDKCERTSEL_BUILD
-    pool.cert_selectors = (rdkcertselector_h *)calloc(pool.size, sizeof(rdkcertselector_h));
-    pool.rcvry_cert_selectors = (rdkcertselector_h *)calloc(pool.size, sizeof(rdkcertselector_h));
-#endif
-
-    // Check if all allocations succeeded
-    if (!pool.easy_handles || !pool.handle_available
-#ifdef LIBRDKCERTSEL_BUILD
-            || !pool.cert_selectors || !pool.rcvry_cert_selectors
-#endif
-       )
+    // Check if allocation succeeded
+    if (!pool_entries)
     {
-        T2Error("Failed to allocate memory for connection pool of size %d\n", pool.size);
+        T2Error("Failed to allocate memory for connection pool of size %d\n", pool_size);
         cleanup_curl_handles();
         pthread_mutex_unlock(&pool_mutex);
         return T2ERROR_FAILURE;
     }
 
-    // Pre-allocate easy handles
-    for(int i = 0; i < pool.size; i++)
+    // Pre-allocate easy handles and initialize pool entries
+    for(int i = 0; i < pool_size; i++)
     {
-        pool.easy_handles[i] = curl_easy_init();
-        if(pool.easy_handles[i] == NULL)
+        pool_entries[i].easy_handle = curl_easy_init();
+        if(pool_entries[i].easy_handle == NULL)
         {
             T2Error("%s : Failed to initialize curl handle %d\n", __FUNCTION__, i);
             // Cleanup previously initialized handles using helper function
@@ -278,37 +253,37 @@ T2ERROR init_connection_pool()
             pthread_mutex_unlock(&pool_mutex);
             return T2ERROR_FAILURE;
         }
-        pool.handle_available[i] = true;
+        pool_entries[i].handle_available = true;
 
         // Set common options for each handle that persist across requests
-        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_TIMEOUT, 30L);
-        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_CONNECTTIMEOUT, 10L);
+        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_TIMEOUT, 30L);
+        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_CONNECTTIMEOUT, 10L);
 
         // TCP keepalive settings
-        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_TCP_KEEPALIVE, 1L);
-        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_TCP_KEEPIDLE, 50L);
-        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_TCP_KEEPINTVL, 30L);
+        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_TCP_KEEPALIVE, 1L);
+        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_TCP_KEEPIDLE, 50L);
+        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_TCP_KEEPINTVL, 30L);
 
 #ifdef CURLOPT_TCP_KEEPCNT
-        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_TCP_KEEPCNT, 15L);
+        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_TCP_KEEPCNT, 15L);
 #endif
 
         // Connection reuse settings
-        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_FORBID_REUSE, 0L);
-        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_FRESH_CONNECT, 0L);
+        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_FORBID_REUSE, 0L);
+        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_FRESH_CONNECT, 0L);
 
         // Socket options
-        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_NOSIGNAL, 1L);
+        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_NOSIGNAL, 1L);
 
         // HTTP version and SSL settings
-        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_PIPEWAIT, 0L);
-        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
-        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
-        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_SSL_VERIFYPEER, 1L);
-        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_SSLENGINE_DEFAULT, 1L);
+        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_PIPEWAIT, 0L);
+        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
+        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
+        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_SSL_VERIFYPEER, 1L);
+        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_SSLENGINE_DEFAULT, 1L);
 
 #ifdef LIBRDKCERTSEL_BUILD
-        // Initialize per-handle certificate selectors
+        // Initialize per-entry certificate selectors
         bool state_red_enable = false;
 #if defined(ENABLE_RED_RECOVERY_SUPPORT)
         state_red_enable = isStateRedEnabled();
@@ -316,43 +291,43 @@ T2ERROR init_connection_pool()
 
         if (state_red_enable)
         {
-            // Initialize recovery certificate selector for this handle
-            pool.rcvry_cert_selectors[i] = rdkcertselector_new(NULL, NULL, "RCVRY");
-            if (pool.rcvry_cert_selectors[i] == NULL)
+            // Initialize recovery certificate selector for this entry
+            pool_entries[i].rcvry_cert_selector = rdkcertselector_new(NULL, NULL, "RCVRY");
+            if (pool_entries[i].rcvry_cert_selector == NULL)
             {
-                T2Error("%s: Failed to initialize recovery cert selector for handle %d\n", __func__, i);
+                T2Error("%s: Failed to initialize recovery cert selector for entry %d\n", __func__, i);
                 cleanup_curl_handles();
                 pthread_mutex_unlock(&pool_mutex);
                 return T2ERROR_FAILURE;
             }
             else
             {
-                T2Info("%s: Initialized recovery cert selector for handle %d\n", __func__, i);
+                T2Info("%s: Initialized recovery cert selector for entry %d\n", __func__, i);
             }
-            pool.cert_selectors[i] = NULL; // Not used in recovery mode
+            pool_entries[i].cert_selector = NULL; // Not used in recovery mode
         }
         else
         {
-            // Initialize normal certificate selector for this handle
-            pool.cert_selectors[i] = rdkcertselector_new(NULL, NULL, "MTLS");
-            if (pool.cert_selectors[i] == NULL)
+            // Initialize normal certificate selector for this entry
+            pool_entries[i].cert_selector = rdkcertselector_new(NULL, NULL, "MTLS");
+            if (pool_entries[i].cert_selector == NULL)
             {
-                T2Error("%s: Failed to initialize cert selector for handle %d\n", __func__, i);
+                T2Error("%s: Failed to initialize cert selector for entry %d\n", __func__, i);
                 cleanup_curl_handles();
                 pthread_mutex_unlock(&pool_mutex);
                 return T2ERROR_FAILURE;
             }
             else
             {
-                T2Info("%s: Initialized cert selector for handle %d\n", __func__, i);
+                T2Info("%s: Initialized cert selector for entry %d\n", __func__, i);
             }
-            pool.rcvry_cert_selectors[i] = NULL; // Not used in normal mode
+            pool_entries[i].rcvry_cert_selector = NULL; // Not used in normal mode
         }
 #endif
     }
 
-    pool.post_headers = curl_slist_append(NULL, "Accept: application/json");
-    if (pool.post_headers == NULL)
+    post_headers = curl_slist_append(NULL, "Accept: application/json");
+    if (post_headers == NULL)
     {
         T2Error("%s : Failed to append HTTP header: Accept: application/json\n", __FUNCTION__);
         cleanup_curl_handles();
@@ -360,12 +335,12 @@ T2ERROR init_connection_pool()
         return T2ERROR_FAILURE;
     }
 
-    pool.post_headers = curl_slist_append(pool.post_headers, "Content-type: application/json");
-    if (pool.post_headers == NULL)
+    post_headers = curl_slist_append(post_headers, "Content-type: application/json");
+    if (post_headers == NULL)
     {
         T2Error("%s : Failed to append HTTP header: Content-type: application/json\n", __FUNCTION__);
-        curl_slist_free_all(pool.post_headers);
-        pool.post_headers = NULL;
+        curl_slist_free_all(post_headers);
+        post_headers = NULL;
         cleanup_curl_handles();
         pthread_mutex_unlock(&pool_mutex);
         return T2ERROR_FAILURE;
@@ -405,14 +380,14 @@ static T2ERROR acquire_pool_handle(CURL **easy, int *idx)
         }
 
         // Find an available handle
-        for(int i = 0; i < pool.size; i++)
+        for(int i = 0; i < pool_size; i++)
         {
-            if(pool.handle_available[i])
+            if(pool_entries[i].handle_available)
             {
-                T2Info("acquire_pool_handle ; Available handle = %d (pool size: %d)\n", i, pool.size);
+                T2Info("acquire_pool_handle ; Available handle = %d (pool size: %d)\n", i, pool_size);
                 *idx = i;
-                pool.handle_available[i] = false;
-                *easy = pool.easy_handles[i];
+                pool_entries[i].handle_available = false;
+                *easy = pool_entries[i].easy_handle;
 
                 pthread_mutex_unlock(&pool_mutex);
                 return T2ERROR_SUCCESS;
@@ -420,7 +395,7 @@ static T2ERROR acquire_pool_handle(CURL **easy, int *idx)
         }
 
         // No handle available, wait for one to become free
-        T2Info("No curl handle available (pool size: %d), waiting for one to become free...\n", pool.size);
+        T2Info("No curl handle available (pool size: %d), waiting for one to become free...\n", pool_size);
         pthread_cond_wait(&pool_cond, &pool_mutex);
         // After waking up, loop back to check pool_initialized status
         // This handles both spurious wakeups and shutdown signals
@@ -431,15 +406,15 @@ static T2ERROR acquire_pool_handle(CURL **easy, int *idx)
 static void release_pool_handle(int idx)
 {
     pthread_mutex_lock(&pool_mutex);
-    if (idx >= 0 && idx < pool.size)
+    if (idx >= 0 && idx < pool_size)
     {
-        pool.handle_available[idx] = true;
+        pool_entries[idx].handle_available = true;
         pthread_cond_signal(&pool_cond); // Signal waiting threads
-        T2Info("release_pool_handle ; Released handle = %d (pool size: %d)\n", idx, pool.size);
+        T2Info("release_pool_handle ; Released handle = %d (pool size: %d)\n", idx, pool_size);
     }
     else
     {
-        T2Error("release_pool_handle ; Invalid handle index = %d (pool size: %d)\n", idx, pool.size);
+        T2Error("release_pool_handle ; Invalid handle index = %d (pool size: %d)\n", idx, pool_size);
     }
     pthread_mutex_unlock(&pool_mutex);
 }
@@ -554,11 +529,11 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
     if(mtls_enable == true)
     {
 #ifdef LIBRDKCERTSEL_BUILD
-        // Use per-handle certificate selector from pool
-        rdkcertselector_h handleCertSelector = pool.cert_selectors[idx];
+        // Use per-entry certificate selector from pool
+        rdkcertselector_h handleCertSelector = pool_entries[idx].cert_selector;
         rdkcertselectorStatus_t xcGetCertStatus;
 
-        T2Info("%s: Using cert selector for handle %d\n", __func__, idx);
+        T2Info("%s: Using cert selector for entry %d\n", __func__, idx);
 
         do
         {
@@ -571,7 +546,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
             xcGetCertStatus = rdkcertselector_getCert(handleCertSelector, &pCertURI, &pCertPC);
             if(xcGetCertStatus != certselectorOk)
             {
-                T2Error("%s, T2:Failed to retrieve the certificate for handle %d.\n", __func__, idx);
+                T2Error("%s, T2:Failed to retrieve the certificate for entry %d.\n", __func__, idx);
                 if (response)
                 {
                     if (response->data)
@@ -610,11 +585,11 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
 
                 if(curl_code != CURLE_OK || http_code != 200)
                 {
-                    T2Error("%s: Failed to establish connection using xPKI certificate: %s, Curl failed : %d (handle %d)\n", __func__, pCertFile, curl_code, idx);
+                    T2Error("%s: Failed to establish connection using xPKI certificate: %s, Curl failed : %d (entry %d)\n", __func__, pCertFile, curl_code, idx);
                 }
                 else
                 {
-                    T2Info("%s: Using xpki Certs connection certname : %s (handle %d)\n", __FUNCTION__, pCertFile, idx);
+                    T2Info("%s: Using xpki Certs connection certname : %s (entry %d)\n", __FUNCTION__, pCertFile, idx);
                 }
             }
             T2Info("%s %d\n", __func__, __LINE__);
@@ -848,7 +823,7 @@ T2ERROR http_pool_post(const char *url, const char *payload)
     // Configure request-specific options for POST
     CURL_SETOPT_CHECK_STR(easy, CURLOPT_URL, url);
     CURL_SETOPT_CHECK_STR(easy, CURLOPT_CUSTOMREQUEST, "POST");
-    CURL_SETOPT_CHECK(easy, CURLOPT_HTTPHEADER, pool.post_headers);
+    CURL_SETOPT_CHECK(easy, CURLOPT_HTTPHEADER, post_headers);
     CURL_SETOPT_CHECK_STR(easy, CURLOPT_POSTFIELDS, payload);
     CURL_SETOPT_CHECK(easy, CURLOPT_POSTFIELDSIZE, strlen(payload));
 
@@ -873,7 +848,7 @@ T2ERROR http_pool_post(const char *url, const char *payload)
 #ifdef LIBRDKCERTSEL_BUILD
         T2Info("%s %d\n", __func__, __LINE__);
 
-        // Use per-handle certificate selector from pool
+        // Use per-entry certificate selector from pool
         rdkcertselector_h thisCertSel = NULL;
         rdkcertselectorStatus_t curlGetCertStatus;
         bool state_red_enable = false;
@@ -883,16 +858,16 @@ T2ERROR http_pool_post(const char *url, const char *payload)
         T2Info("%s: state_red_enable: %d\n", __func__, state_red_enable);
 #endif
 
-        // Select the appropriate per-handle certificate selector from pool
+        // Select the appropriate per-entry certificate selector from pool
         if (state_red_enable)
         {
-            thisCertSel = pool.rcvry_cert_selectors[idx];
-            T2Info("%s: Using recovery cert selector for handle %d\n", __func__, idx);
+            thisCertSel = pool_entries[idx].rcvry_cert_selector;
+            T2Info("%s: Using recovery cert selector for entry %d\n", __func__, idx);
         }
         else
         {
-            thisCertSel = pool.cert_selectors[idx];
-            T2Info("%s: Using normal cert selector for handle %d\n", __func__, idx);
+            thisCertSel = pool_entries[idx].cert_selector;
+            T2Info("%s: Using normal cert selector for entry %d\n", __func__, idx);
         }
 
         do
@@ -906,7 +881,7 @@ T2ERROR http_pool_post(const char *url, const char *payload)
             curlGetCertStatus = rdkcertselector_getCert(thisCertSel, &pCertURI, &pCertPC);
             if(curlGetCertStatus != certselectorOk)
             {
-                T2Error("%s, T2:Failed to retrieve the certificate for handle %d.\n", __func__, idx);
+                T2Error("%s, T2:Failed to retrieve the certificate for entry %d.\n", __func__, idx);
                 release_pool_handle(idx);
                 return T2ERROR_FAILURE;
             }
@@ -937,12 +912,12 @@ T2ERROR http_pool_post(const char *url, const char *payload)
 
                 if(curl_code != CURLE_OK || http_code != 200)
                 {
-                    T2Error("%s: Failed to establish connection using xPKI certificate: %s, curl failed: %d (handle %d)\n", __func__, pCertFile, curl_code, idx);
+                    T2Error("%s: Failed to establish connection using xPKI certificate: %s, curl failed: %d (entry %d)\n", __func__, pCertFile, curl_code, idx);
                     T2Info("%s %d\n", __func__, __LINE__);
                 }
                 else
                 {
-                    T2Info("%s: Using xpki Certs connection certname : %s (handle %d)\n", __FUNCTION__, pCertFile, idx);
+                    T2Info("%s: Using xpki Certs connection certname : %s (entry %d)\n", __FUNCTION__, pCertFile, idx);
                 }
                 T2Info("%s %d\n", __func__, __LINE__);
             }
@@ -1061,7 +1036,7 @@ T2ERROR http_pool_cleanup(void)
     pthread_cond_broadcast(&pool_cond);
     pthread_mutex_unlock(&pool_mutex);
 
-    // Cleanup all curl handles and per-handle certificate selectors
+    // Cleanup all curl handles and per-entry certificate selectors
     cleanup_curl_handles();
 
 #ifndef LIBRDKCERTSEL_BUILD

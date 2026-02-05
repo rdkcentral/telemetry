@@ -414,6 +414,7 @@ static bool initRFC( )
  */
 int filtered_event_send(const char* data, const char *markerName)
 {
+	printf("############ function : %s line : %d\n",__func__,__LINE__);
     rbusError_t ret = RBUS_ERROR_SUCCESS;
     int status = 0 ;
     EVENT_DEBUG("%s ++in\n", __FUNCTION__);

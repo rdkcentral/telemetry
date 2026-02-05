@@ -77,6 +77,10 @@ typedef struct
 {
     CURL **easy_handles;          // Dynamic array of CURL handles
     bool *handle_available;       // Dynamic array of availability flags
+#ifdef LIBRDKCERTSEL_BUILD
+    rdkcertselector_h *cert_selectors;       // Dynamic array - one cert selector per handle
+    rdkcertselector_h *rcvry_cert_selectors; // Dynamic array - one recovery cert selector per handle
+#endif
     struct curl_slist *post_headers;
     int size;                     // Actual pool size
 } http_connection_pool_t;
@@ -163,6 +167,39 @@ static void cleanup_curl_handles(void)
         pool.post_headers = NULL;
     }
 
+#ifdef LIBRDKCERTSEL_BUILD
+    // Clean up per-handle certificate selectors
+    if(pool.cert_selectors)
+    {
+        for(int i = 0; i < pool.size; i++)
+        {
+            if(pool.cert_selectors[i])
+            {
+                T2Info("Freeing cert_selector for handle %d\n", i);
+                rdkcertselector_free(&pool.cert_selectors[i]);
+                pool.cert_selectors[i] = NULL;
+            }
+        }
+        free(pool.cert_selectors);
+        pool.cert_selectors = NULL;
+    }
+
+    if(pool.rcvry_cert_selectors)
+    {
+        for(int i = 0; i < pool.size; i++)
+        {
+            if(pool.rcvry_cert_selectors[i])
+            {
+                T2Info("Freeing rcvry_cert_selector for handle %d\n", i);
+                rdkcertselector_free(&pool.rcvry_cert_selectors[i]);
+                pool.rcvry_cert_selectors[i] = NULL;
+            }
+        }
+        free(pool.rcvry_cert_selectors);
+        pool.rcvry_cert_selectors = NULL;
+    }
+#endif
+
     if(pool.easy_handles)
     {
         for(int i = 0; i < pool.size; i++)
@@ -211,8 +248,17 @@ T2ERROR init_connection_pool()
     pool.easy_handles = (CURL **)calloc(pool.size, sizeof(CURL *));
     pool.handle_available = (bool *)calloc(pool.size, sizeof(bool));
 
+#ifdef LIBRDKCERTSEL_BUILD
+    pool.cert_selectors = (rdkcertselector_h *)calloc(pool.size, sizeof(rdkcertselector_h));
+    pool.rcvry_cert_selectors = (rdkcertselector_h *)calloc(pool.size, sizeof(rdkcertselector_h));
+#endif
+
     // Check if all allocations succeeded
-    if (!pool.easy_handles || !pool.handle_available)
+    if (!pool.easy_handles || !pool.handle_available
+#ifdef LIBRDKCERTSEL_BUILD
+            || !pool.cert_selectors || !pool.rcvry_cert_selectors
+#endif
+       )
     {
         T2Error("Failed to allocate memory for connection pool of size %d\n", pool.size);
         cleanup_curl_handles();
@@ -233,6 +279,76 @@ T2ERROR init_connection_pool()
             return T2ERROR_FAILURE;
         }
         pool.handle_available[i] = true;
+
+        // Set common options for each handle that persist across requests
+        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_TIMEOUT, 30L);
+        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_CONNECTTIMEOUT, 10L);
+
+        // TCP keepalive settings
+        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_TCP_KEEPALIVE, 1L);
+        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_TCP_KEEPIDLE, 50L);
+        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_TCP_KEEPINTVL, 30L);
+
+#ifdef CURLOPT_TCP_KEEPCNT
+        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_TCP_KEEPCNT, 15L);
+#endif
+
+        // Connection reuse settings
+        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_FORBID_REUSE, 0L);
+        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_FRESH_CONNECT, 0L);
+
+        // Socket options
+        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_NOSIGNAL, 1L);
+
+        // HTTP version and SSL settings
+        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_PIPEWAIT, 0L);
+        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
+        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
+        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_SSL_VERIFYPEER, 1L);
+        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_SSLENGINE_DEFAULT, 1L);
+
+#ifdef LIBRDKCERTSEL_BUILD
+        // Initialize per-handle certificate selectors
+        bool state_red_enable = false;
+#if defined(ENABLE_RED_RECOVERY_SUPPORT)
+        state_red_enable = isStateRedEnabled();
+#endif
+
+        if (state_red_enable)
+        {
+            // Initialize recovery certificate selector for this handle
+            pool.rcvry_cert_selectors[i] = rdkcertselector_new(NULL, NULL, "RCVRY");
+            if (pool.rcvry_cert_selectors[i] == NULL)
+            {
+                T2Error("%s: Failed to initialize recovery cert selector for handle %d\n", __func__, i);
+                cleanup_curl_handles();
+                pthread_mutex_unlock(&pool_mutex);
+                return T2ERROR_FAILURE;
+            }
+            else
+            {
+                T2Info("%s: Initialized recovery cert selector for handle %d\n", __func__, i);
+            }
+            pool.cert_selectors[i] = NULL; // Not used in recovery mode
+        }
+        else
+        {
+            // Initialize normal certificate selector for this handle
+            pool.cert_selectors[i] = rdkcertselector_new(NULL, NULL, "MTLS");
+            if (pool.cert_selectors[i] == NULL)
+            {
+                T2Error("%s: Failed to initialize cert selector for handle %d\n", __func__, i);
+                cleanup_curl_handles();
+                pthread_mutex_unlock(&pool_mutex);
+                return T2ERROR_FAILURE;
+            }
+            else
+            {
+                T2Info("%s: Initialized cert selector for handle %d\n", __func__, i);
+            }
+            pool.rcvry_cert_selectors[i] = NULL; // Not used in normal mode
+        }
+#endif
     }
 
     pool.post_headers = curl_slist_append(NULL, "Accept: application/json");
@@ -332,6 +448,7 @@ static void release_pool_handle(int idx)
 // Function to configure WAN interface for CURL handle
 static void configure_wan_interface(CURL *easy)
 {
+    T2Info("%s %d\n", __func__, __LINE__);
 #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
     char *paramVal = NULL;
     char waninterface[256];
@@ -359,6 +476,7 @@ static void configure_wan_interface(CURL *easy)
 #else
     CURL_SETOPT_CHECK(easy, CURLOPT_INTERFACE, "erouter0");
 #endif
+    T2Info("%s %d\n", __func__, __LINE__);
 }
 #endif
 
@@ -415,35 +533,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
     response->data[0] = '\0';
     response->size = 0;
 
-    // ✅ Set all required CURL options for this request
-    // Timeouts
-    CURL_SETOPT_CHECK(easy, CURLOPT_TIMEOUT, 30L);
-    CURL_SETOPT_CHECK(easy, CURLOPT_CONNECTTIMEOUT, 10L);
-
-    // TCP keepalive settings
-    CURL_SETOPT_CHECK(easy, CURLOPT_TCP_KEEPALIVE, 1L);
-    CURL_SETOPT_CHECK(easy, CURLOPT_TCP_KEEPIDLE, 50L);
-    CURL_SETOPT_CHECK(easy, CURLOPT_TCP_KEEPINTVL, 30L);
-
-#ifdef CURLOPT_TCP_KEEPCNT
-    CURL_SETOPT_CHECK(easy, CURLOPT_TCP_KEEPCNT, 15L);
-#endif
-
-    // Connection reuse settings
-    CURL_SETOPT_CHECK(easy, CURLOPT_FORBID_REUSE, 0L);
-    CURL_SETOPT_CHECK(easy, CURLOPT_FRESH_CONNECT, 0L);
-
-    // Socket options
-    CURL_SETOPT_CHECK(easy, CURLOPT_NOSIGNAL, 1L);
-
-    // HTTP version and SSL settings
-    CURL_SETOPT_CHECK(easy, CURLOPT_PIPEWAIT, 0L);
-    CURL_SETOPT_CHECK(easy, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
-    CURL_SETOPT_CHECK(easy, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
-    CURL_SETOPT_CHECK(easy, CURLOPT_SSL_VERIFYPEER, 1L);
-    CURL_SETOPT_CHECK(easy, CURLOPT_SSLENGINE_DEFAULT, 1L);
-
-    // Configure basic options for GET request
+    // Configure request-specific options for GET
     CURL_SETOPT_CHECK_STR(easy, CURLOPT_URL, url);
     CURL_SETOPT_CHECK(easy, CURLOPT_HTTPGET, 1L);
     CURL_SETOPT_CHECK(easy, CURLOPT_WRITEFUNCTION, httpGetCallBack);
@@ -464,23 +554,8 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
     if(mtls_enable == true)
     {
 #ifdef LIBRDKCERTSEL_BUILD
-        // Use per-request certificate selector for thread safety
-        rdkcertselector_h handleCertSelector = rdkcertselector_new(NULL, NULL, "MTLS");
-        if (!handleCertSelector)
-        {
-            T2Error("%s, T2:Failed to create certificate selector.\n", __func__);
-            if (response)
-            {
-                if (response->data)
-                {
-                    free(response->data);
-                }
-                free(response);
-            }
-            release_pool_handle(idx);
-            return T2ERROR_FAILURE;
-        }
-
+        // Use per-handle certificate selector from pool
+        rdkcertselector_h handleCertSelector = pool.cert_selectors[idx];
         rdkcertselectorStatus_t xcGetCertStatus;
 
         T2Info("%s: Using cert selector for handle %d\n", __func__, idx);
@@ -505,7 +580,6 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
                     }
                     free(response);
                 }
-                rdkcertselector_free(&handleCertSelector);
                 release_pool_handle(idx);
                 return T2ERROR_FAILURE;
             }
@@ -548,7 +622,6 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
         while(rdkcertselector_setCurlStatus(handleCertSelector, curl_code, (const char*)url) == TRY_ANOTHER);
         T2Info("%s: Certificate rotation loop completed\n", __func__);
 
-        rdkcertselector_free(&handleCertSelector);
 #else
         // Fallback to getMtlsCerts if certificate selector not available
         if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pCertPC))
@@ -735,20 +808,6 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
     // Note: When using LIBRDKCERTSEL_BUILD, pCertURI and pCertPC are owned by the
     // cert selector object and are freed when rdkcertselector_free() is called
 
-    // ✅ Explicitly clear ALL CURL options before reset to ensure internal memory is freed
-    CURL_SETOPT_CHECK(easy, CURLOPT_URL, NULL);
-    CURL_SETOPT_CHECK(easy, CURLOPT_WRITEFUNCTION, NULL);
-    CURL_SETOPT_CHECK(easy, CURLOPT_WRITEDATA, NULL);
-    CURL_SETOPT_CHECK(easy, CURLOPT_HTTPGET, 0L);
-    CURL_SETOPT_CHECK(easy, CURLOPT_SSLCERT, NULL);
-    CURL_SETOPT_CHECK(easy, CURLOPT_KEYPASSWD, NULL);
-    CURL_SETOPT_CHECK(easy, CURLOPT_SSLCERTTYPE, NULL);
-
-    // ✅ Reset CURL handle to clear ALL internal state and free internal memory
-    // This ensures no leftover state accumulates across requests
-    curl_easy_reset(easy);
-    T2Info("%s: CURL handle %d reset after request completion\n", __func__, idx);
-
     release_pool_handle(idx);
 
     T2Info("%s ++out\n", __FUNCTION__);
@@ -781,40 +840,12 @@ T2ERROR http_pool_post(const char *url, const char *payload)
 
     T2Info("http_pool_post using handle %d\n", idx);
 
-    // ✅ Set all required CURL options for this request
-    // Timeouts
-    CURL_SETOPT_CHECK(easy, CURLOPT_TIMEOUT, 30L);
-    CURL_SETOPT_CHECK(easy, CURLOPT_CONNECTTIMEOUT, 10L);
-
-    // TCP keepalive settings
-    CURL_SETOPT_CHECK(easy, CURLOPT_TCP_KEEPALIVE, 1L);
-    CURL_SETOPT_CHECK(easy, CURLOPT_TCP_KEEPIDLE, 50L);
-    CURL_SETOPT_CHECK(easy, CURLOPT_TCP_KEEPINTVL, 30L);
-
-#ifdef CURLOPT_TCP_KEEPCNT
-    CURL_SETOPT_CHECK(easy, CURLOPT_TCP_KEEPCNT, 15L);
-#endif
-
-    // Connection reuse settings
-    CURL_SETOPT_CHECK(easy, CURLOPT_FORBID_REUSE, 0L);
-    CURL_SETOPT_CHECK(easy, CURLOPT_FRESH_CONNECT, 0L);
-
-    // Socket options
-    CURL_SETOPT_CHECK(easy, CURLOPT_NOSIGNAL, 1L);
-
-    // HTTP version and SSL settings
-    CURL_SETOPT_CHECK(easy, CURLOPT_PIPEWAIT, 0L);
-    CURL_SETOPT_CHECK(easy, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
-    CURL_SETOPT_CHECK(easy, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
-    CURL_SETOPT_CHECK(easy, CURLOPT_SSL_VERIFYPEER, 1L);
-    CURL_SETOPT_CHECK(easy, CURLOPT_SSLENGINE_DEFAULT, 1L);
-
     // Clear any GET-specific settings from previous use
     CURL_SETOPT_CHECK(easy, CURLOPT_HTTPGET, 0L);
     CURL_SETOPT_CHECK(easy, CURLOPT_WRITEFUNCTION, NULL);
     CURL_SETOPT_CHECK(easy, CURLOPT_WRITEDATA, NULL);
 
-    // Configure basic options for POST request
+    // Configure request-specific options for POST
     CURL_SETOPT_CHECK_STR(easy, CURLOPT_URL, url);
     CURL_SETOPT_CHECK_STR(easy, CURLOPT_CUSTOMREQUEST, "POST");
     CURL_SETOPT_CHECK(easy, CURLOPT_HTTPHEADER, pool.post_headers);
@@ -825,6 +856,7 @@ T2ERROR http_pool_post(const char *url, const char *payload)
     configure_wan_interface(easy);
 #endif
 
+    T2Info("%s %d\n", __func__, __LINE__);
     // Certificate handling - check if mTLS is enabled
     bool mtls_enable = isMtlsEnabled();
     char *pCertFile = NULL;
@@ -836,8 +868,12 @@ T2ERROR http_pool_post(const char *url, const char *payload)
 
     if(mtls_enable == true)
     {
+        T2Info("%s %d\n", __func__, __LINE__);
+
 #ifdef LIBRDKCERTSEL_BUILD
-        // Use per-request certificate selector for thread safety
+        T2Info("%s %d\n", __func__, __LINE__);
+
+        // Use per-handle certificate selector from pool
         rdkcertselector_h thisCertSel = NULL;
         rdkcertselectorStatus_t curlGetCertStatus;
         bool state_red_enable = false;
@@ -847,21 +883,16 @@ T2ERROR http_pool_post(const char *url, const char *payload)
         T2Info("%s: state_red_enable: %d\n", __func__, state_red_enable);
 #endif
 
-        // Select the appropriate per-request certificate selector
+        // Select the appropriate per-handle certificate selector from pool
         if (state_red_enable)
         {
-            thisCertSel = rdkcertselector_new(NULL, NULL, "RCVRY");
+            thisCertSel = pool.rcvry_cert_selectors[idx];
+            T2Info("%s: Using recovery cert selector for handle %d\n", __func__, idx);
         }
         else
         {
-            thisCertSel = rdkcertselector_new(NULL, NULL, "MTLS");
-        }
-
-        if (!thisCertSel)
-        {
-            T2Error("%s, T2:Failed to create certificate selector.\n", __func__);
-            release_pool_handle(idx);
-            return T2ERROR_FAILURE;
+            thisCertSel = pool.cert_selectors[idx];
+            T2Info("%s: Using normal cert selector for handle %d\n", __func__, idx);
         }
 
         do
@@ -876,7 +907,6 @@ T2ERROR http_pool_post(const char *url, const char *payload)
             if(curlGetCertStatus != certselectorOk)
             {
                 T2Error("%s, T2:Failed to retrieve the certificate for handle %d.\n", __func__, idx);
-                rdkcertselector_free(&thisCertSel);
                 release_pool_handle(idx);
                 return T2ERROR_FAILURE;
             }
@@ -921,11 +951,14 @@ T2ERROR http_pool_post(const char *url, const char *payload)
         while(rdkcertselector_setCurlStatus(thisCertSel, curl_code, (const char*)url) == TRY_ANOTHER);
         T2Info("%s %d\n", __func__, __LINE__);
 
-        rdkcertselector_free(&thisCertSel);
 #else
+        T2Info("%s %d\n", __func__, __LINE__);
+
         // Fallback to getMtlsCerts if certificate selector not available
         if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pCertPC))
         {
+            T2Info("%s %d\n", __func__, __LINE__);
+
             // Configure mTLS certificates
             CURL_SETOPT_CHECK_STR(easy, CURLOPT_SSLCERTTYPE, "P12");
             CURL_SETOPT_CHECK_STR(easy, CURLOPT_SSLCERT, pCertFile);
@@ -947,6 +980,8 @@ T2ERROR http_pool_post(const char *url, const char *payload)
     }
     else
     {
+        T2Info("%s %d\n", __func__, __LINE__);
+
         // Execute without mTLS
         curl_code = curl_easy_perform(easy);
     }
@@ -999,21 +1034,6 @@ T2ERROR http_pool_post(const char *url, const char *payload)
 #endif
     // Note: When using LIBRDKCERTSEL_BUILD, pCertURI and pCertPC are owned by the
     // cert selector object and are freed when rdkcertselector_free() is called
-
-    // ✅ Explicitly clear ALL CURL options before reset to ensure internal memory is freed
-    CURL_SETOPT_CHECK(easy, CURLOPT_URL, NULL);
-    CURL_SETOPT_CHECK(easy, CURLOPT_CUSTOMREQUEST, NULL);
-    CURL_SETOPT_CHECK(easy, CURLOPT_POSTFIELDS, NULL);
-    CURL_SETOPT_CHECK(easy, CURLOPT_POSTFIELDSIZE, 0L);
-    CURL_SETOPT_CHECK(easy, CURLOPT_HTTPHEADER, NULL);
-    CURL_SETOPT_CHECK(easy, CURLOPT_SSLCERT, NULL);
-    CURL_SETOPT_CHECK(easy, CURLOPT_KEYPASSWD, NULL);
-    CURL_SETOPT_CHECK(easy, CURLOPT_SSLCERTTYPE, NULL);
-
-    // ✅ Reset CURL handle to clear ALL internal state and free internal memory
-    // This ensures no leftover state accumulates across requests
-    curl_easy_reset(easy);
-    T2Info("%s: CURL handle %d reset after request completion\n", __func__, idx);
 
     release_pool_handle(idx);
 

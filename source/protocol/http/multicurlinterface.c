@@ -233,9 +233,6 @@ T2ERROR init_connection_pool()
             return T2ERROR_FAILURE;
         }
         pool.handle_available[i] = true;
-
-        // NOTE: We do NOT set any options here
-        // Options will be set per-request and handle will be reset after each use
     }
 
     pool.post_headers = curl_slist_append(NULL, "Accept: application/json");
@@ -738,6 +735,15 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
     // Note: When using LIBRDKCERTSEL_BUILD, pCertURI and pCertPC are owned by the
     // cert selector object and are freed when rdkcertselector_free() is called
 
+    // ✅ Explicitly clear ALL CURL options before reset to ensure internal memory is freed
+    CURL_SETOPT_CHECK(easy, CURLOPT_URL, NULL);
+    CURL_SETOPT_CHECK(easy, CURLOPT_WRITEFUNCTION, NULL);
+    CURL_SETOPT_CHECK(easy, CURLOPT_WRITEDATA, NULL);
+    CURL_SETOPT_CHECK(easy, CURLOPT_HTTPGET, 0L);
+    CURL_SETOPT_CHECK(easy, CURLOPT_SSLCERT, NULL);
+    CURL_SETOPT_CHECK(easy, CURLOPT_KEYPASSWD, NULL);
+    CURL_SETOPT_CHECK(easy, CURLOPT_SSLCERTTYPE, NULL);
+
     // ✅ Reset CURL handle to clear ALL internal state and free internal memory
     // This ensures no leftover state accumulates across requests
     curl_easy_reset(easy);
@@ -818,27 +824,6 @@ T2ERROR http_pool_post(const char *url, const char *payload)
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
     configure_wan_interface(easy);
 #endif
-    // Set up file output for POST requests
-    int curl_output_fd = open("/tmp/curlOutput.txt", O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
-    FILE *fp = NULL;
-    if (curl_output_fd >= 0)
-    {
-        fp = fdopen(curl_output_fd, "wb");
-        if (fp != NULL)
-        {
-            CURL_SETOPT_CHECK(easy, CURLOPT_WRITEFUNCTION, writeToFile);
-            CURL_SETOPT_CHECK(easy, CURLOPT_WRITEDATA, (void *)fp);
-        }
-        else
-        {
-            T2Error("fdopen failed for /tmp/curlOutput.txt\n");
-            close(curl_output_fd);
-        }
-    }
-    else
-    {
-        T2Error("Unable to open /tmp/curlOutput.txt for writing\n");
-    }
 
     // Certificate handling - check if mTLS is enabled
     bool mtls_enable = isMtlsEnabled();
@@ -875,10 +860,6 @@ T2ERROR http_pool_post(const char *url, const char *payload)
         if (!thisCertSel)
         {
             T2Error("%s, T2:Failed to create certificate selector.\n", __func__);
-            if(fp)
-            {
-                fclose(fp);
-            }
             release_pool_handle(idx);
             return T2ERROR_FAILURE;
         }
@@ -895,10 +876,6 @@ T2ERROR http_pool_post(const char *url, const char *payload)
             if(curlGetCertStatus != certselectorOk)
             {
                 T2Error("%s, T2:Failed to retrieve the certificate for handle %d.\n", __func__, idx);
-                if(fp)
-                {
-                    fclose(fp);
-                }
                 rdkcertselector_free(&thisCertSel);
                 release_pool_handle(idx);
                 return T2ERROR_FAILURE;
@@ -961,10 +938,6 @@ T2ERROR http_pool_post(const char *url, const char *payload)
         else
         {
             T2Error("mTLS_get failure\n");
-            if(fp)
-            {
-                fclose(fp);
-            }
             release_pool_handle(idx);
             return T2ERROR_FAILURE;
         }
@@ -976,13 +949,6 @@ T2ERROR http_pool_post(const char *url, const char *payload)
     {
         // Execute without mTLS
         curl_code = curl_easy_perform(easy);
-    }
-    T2Info("%s %d\n", __func__, __LINE__);
-
-    // Close output file
-    if(fp)
-    {
-        fclose(fp);
     }
     T2Info("%s %d\n", __func__, __LINE__);
 
@@ -1033,6 +999,16 @@ T2ERROR http_pool_post(const char *url, const char *payload)
 #endif
     // Note: When using LIBRDKCERTSEL_BUILD, pCertURI and pCertPC are owned by the
     // cert selector object and are freed when rdkcertselector_free() is called
+
+    // ✅ Explicitly clear ALL CURL options before reset to ensure internal memory is freed
+    CURL_SETOPT_CHECK(easy, CURLOPT_URL, NULL);
+    CURL_SETOPT_CHECK(easy, CURLOPT_CUSTOMREQUEST, NULL);
+    CURL_SETOPT_CHECK(easy, CURLOPT_POSTFIELDS, NULL);
+    CURL_SETOPT_CHECK(easy, CURLOPT_POSTFIELDSIZE, 0L);
+    CURL_SETOPT_CHECK(easy, CURLOPT_HTTPHEADER, NULL);
+    CURL_SETOPT_CHECK(easy, CURLOPT_SSLCERT, NULL);
+    CURL_SETOPT_CHECK(easy, CURLOPT_KEYPASSWD, NULL);
+    CURL_SETOPT_CHECK(easy, CURLOPT_SSLCERTTYPE, NULL);
 
     // ✅ Reset CURL handle to clear ALL internal state and free internal memory
     // This ensures no leftover state accumulates across requests

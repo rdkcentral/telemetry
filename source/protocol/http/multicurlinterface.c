@@ -234,39 +234,8 @@ T2ERROR init_connection_pool()
         }
         pool.handle_available[i] = true;
 
-        //Set common options for each handle
-        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_TIMEOUT, 30L);
-        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_CONNECTTIMEOUT, 10L);
-
-        // More aggressive keepalive settings for your environment
-        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_TCP_KEEPALIVE, 1L);
-        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_TCP_KEEPIDLE, 50L);
-        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_TCP_KEEPINTVL, 30L);
-
-#ifdef CURLOPT_TCP_KEEPCNT
-        // The option CURLOPT_TCP_KEEPCNT is not available in libcurl versions older than 7.25.0
-        // Set number of keepalive probes before considering the connection dead
-        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_TCP_KEEPCNT, 15L);
-#endif
-
-        // Add connection reuse validation
-        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_FORBID_REUSE, 0L);
-        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_FRESH_CONNECT, 0L);
-
-        // Add low-level socket options for better connection health detection
-        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_NOSIGNAL, 1L);
-
-        // Add HTTP-level keep-alive headers for better server compatibility
-        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_HTTPHEADER, NULL);
-
-        // Connection management options that work with older libcurl
-        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_PIPEWAIT, 0L);
-        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
-        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
-
-        // Certificate selector and SSL/TLS specific options from original code
-        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_SSL_VERIFYPEER, 1L);
-        CURL_SETOPT_CHECK(pool.easy_handles[i], CURLOPT_SSLENGINE_DEFAULT, 1L);
+        // NOTE: We do NOT set any options here
+        // Options will be set per-request and handle will be reset after each use
     }
 
     pool.post_headers = curl_slist_append(NULL, "Accept: application/json");
@@ -448,6 +417,34 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
 
     response->data[0] = '\0';
     response->size = 0;
+
+    // ✅ Set all required CURL options for this request
+    // Timeouts
+    CURL_SETOPT_CHECK(easy, CURLOPT_TIMEOUT, 30L);
+    CURL_SETOPT_CHECK(easy, CURLOPT_CONNECTTIMEOUT, 10L);
+
+    // TCP keepalive settings
+    CURL_SETOPT_CHECK(easy, CURLOPT_TCP_KEEPALIVE, 1L);
+    CURL_SETOPT_CHECK(easy, CURLOPT_TCP_KEEPIDLE, 50L);
+    CURL_SETOPT_CHECK(easy, CURLOPT_TCP_KEEPINTVL, 30L);
+
+#ifdef CURLOPT_TCP_KEEPCNT
+    CURL_SETOPT_CHECK(easy, CURLOPT_TCP_KEEPCNT, 15L);
+#endif
+
+    // Connection reuse settings
+    CURL_SETOPT_CHECK(easy, CURLOPT_FORBID_REUSE, 0L);
+    CURL_SETOPT_CHECK(easy, CURLOPT_FRESH_CONNECT, 0L);
+
+    // Socket options
+    CURL_SETOPT_CHECK(easy, CURLOPT_NOSIGNAL, 1L);
+
+    // HTTP version and SSL settings
+    CURL_SETOPT_CHECK(easy, CURLOPT_PIPEWAIT, 0L);
+    CURL_SETOPT_CHECK(easy, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
+    CURL_SETOPT_CHECK(easy, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
+    CURL_SETOPT_CHECK(easy, CURLOPT_SSL_VERIFYPEER, 1L);
+    CURL_SETOPT_CHECK(easy, CURLOPT_SSLENGINE_DEFAULT, 1L);
 
     // Configure basic options for GET request
     CURL_SETOPT_CHECK_STR(easy, CURLOPT_URL, url);
@@ -741,6 +738,11 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
     // Note: When using LIBRDKCERTSEL_BUILD, pCertURI and pCertPC are owned by the
     // cert selector object and are freed when rdkcertselector_free() is called
 
+    // ✅ Reset CURL handle to clear ALL internal state and free internal memory
+    // This ensures no leftover state accumulates across requests
+    curl_easy_reset(easy);
+    T2Info("%s: CURL handle %d reset after request completion\n", __func__, idx);
+
     release_pool_handle(idx);
 
     T2Info("%s ++out\n", __FUNCTION__);
@@ -772,6 +774,34 @@ T2ERROR http_pool_post(const char *url, const char *payload)
     }
 
     T2Info("http_pool_post using handle %d\n", idx);
+
+    // ✅ Set all required CURL options for this request
+    // Timeouts
+    CURL_SETOPT_CHECK(easy, CURLOPT_TIMEOUT, 30L);
+    CURL_SETOPT_CHECK(easy, CURLOPT_CONNECTTIMEOUT, 10L);
+
+    // TCP keepalive settings
+    CURL_SETOPT_CHECK(easy, CURLOPT_TCP_KEEPALIVE, 1L);
+    CURL_SETOPT_CHECK(easy, CURLOPT_TCP_KEEPIDLE, 50L);
+    CURL_SETOPT_CHECK(easy, CURLOPT_TCP_KEEPINTVL, 30L);
+
+#ifdef CURLOPT_TCP_KEEPCNT
+    CURL_SETOPT_CHECK(easy, CURLOPT_TCP_KEEPCNT, 15L);
+#endif
+
+    // Connection reuse settings
+    CURL_SETOPT_CHECK(easy, CURLOPT_FORBID_REUSE, 0L);
+    CURL_SETOPT_CHECK(easy, CURLOPT_FRESH_CONNECT, 0L);
+
+    // Socket options
+    CURL_SETOPT_CHECK(easy, CURLOPT_NOSIGNAL, 1L);
+
+    // HTTP version and SSL settings
+    CURL_SETOPT_CHECK(easy, CURLOPT_PIPEWAIT, 0L);
+    CURL_SETOPT_CHECK(easy, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
+    CURL_SETOPT_CHECK(easy, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
+    CURL_SETOPT_CHECK(easy, CURLOPT_SSL_VERIFYPEER, 1L);
+    CURL_SETOPT_CHECK(easy, CURLOPT_SSLENGINE_DEFAULT, 1L);
 
     // Clear any GET-specific settings from previous use
     CURL_SETOPT_CHECK(easy, CURLOPT_HTTPGET, 0L);
@@ -1003,6 +1033,11 @@ T2ERROR http_pool_post(const char *url, const char *payload)
 #endif
     // Note: When using LIBRDKCERTSEL_BUILD, pCertURI and pCertPC are owned by the
     // cert selector object and are freed when rdkcertselector_free() is called
+
+    // ✅ Reset CURL handle to clear ALL internal state and free internal memory
+    // This ensures no leftover state accumulates across requests
+    curl_easy_reset(easy);
+    T2Info("%s: CURL handle %d reset after request completion\n", __func__, idx);
 
     release_pool_handle(idx);
 

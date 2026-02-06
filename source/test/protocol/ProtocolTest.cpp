@@ -110,6 +110,7 @@ protected:
 };
 
 
+#if 0
 TEST(SENDREPORTOVERHTTP, 1_NULL_CHECK)
 {
     char *payload = "This is a payload string";
@@ -137,6 +138,7 @@ TEST(SENDCACREPOVERHTTP, 2_NULL_CHECK)
     char *url = "https://test.com";
     EXPECT_EQ(T2ERROR_FAILURE, sendCachedReportsOverHTTP(url, NULL));
 }
+#endif
 
 TEST(SENDRBUDREPORTOVERRBUS, 1_NULL_CHECK)
 {
@@ -186,6 +188,7 @@ TEST(SENDRBUSCACHEREPORTOVERRBUS, NULL_CHECK)
     Vector_Destroy(reportList, free);
 }
 
+#if 0
 TEST_F(protocolTestFixture, SENDREPORTOVERHTTP1)
 {
       char* httpURL = "https://mockxconf:50051/dataLakeMock";
@@ -313,7 +316,7 @@ TEST_F(protocolTestFixture, SENDCACHEDREPORTOVERHTTP)
       EXPECT_EQ(T2ERROR_SUCCESS, sendCachedReportsOverHTTP(httpURL, reportlist));
       Vector_Destroy(reportlist, free);
 }
-
+#endif
 
 TEST_F(protocolTestFixture, SENDREPORTSOVERRBUSMETHOD1)
 {

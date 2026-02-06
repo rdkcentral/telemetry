@@ -320,6 +320,12 @@ TEST_F(TelemetryBusmessageSenderTest, t2_event_d_iscachingenabled_true_1)
     *test_get_isT2Ready_ptr() = true;
     filtered_event_send("13","marker"); 
     EXPECT_EQ(ret, T2ERROR_SUCCESS);
+
+    auto cb = getDoPopulateEventMarkerListCallback();
+    T2ERROR ret = cb();
+    EXPECT_EQ(ret, T2ERROR_SUCCESS);
+
+    
 }
 TEST_F(TelemetryBusmessageSenderTest, getParameterValue_success)
 {
@@ -385,7 +391,7 @@ TEST_F(TelemetryBusmessageSenderTest, getParameterValue_failure_boolean)
 TEST_F(TelemetryBusmessageSenderTest, doPopulateEventMarkerList_ReturnsEarlyIfRbusDisabled) {
     t2_init((char*)"test_component");
 
-    *test_get_isRbusEnabled_ptr() = true;
+    *test_get_isRbusEnabled_ptr() = false;
 
     auto cb = getDoPopulateEventMarkerListCallback();
     T2ERROR ret = cb();

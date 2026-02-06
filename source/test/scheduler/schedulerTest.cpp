@@ -329,7 +329,6 @@ TEST(TIMEOUTTHREAD, TEST1)
     free(tProfile);
 }
 
-#if 0
 TEST(TIMEOUTTHREAD, TEST2)
 {
     SchedulerProfile *tProfile = (SchedulerProfile *)malloc(sizeof(SchedulerProfile));
@@ -370,7 +369,6 @@ TEST(TIMEOUTTHREAD, WAIT_NO_REPORTING_INTERVAL)
     free(tProfile->name);
     free(tProfile);
 }
-#endif
 
 TEST(SendInterruptToTimeoutThread, NULL_CHECK)
 {

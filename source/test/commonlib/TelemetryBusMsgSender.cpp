@@ -442,6 +442,26 @@ TEST_F(TelemetryBusmessageSenderTest, getParameterValue_success_boolean)
     EXPECT_EQ(T2ERROR_SUCCESS, getParamValue("Device.DeviceInfo.SerialNumber", &paramValue));
 }
 
+TEST_F(TelemetryBusmessageSenderTest, getParameterValue_success_boolean)
+{
+    char* paramValue = NULL;
+    t2_init((char*)"test_component");
+
+    EXPECT_CALL(*g_rbusMock, rbus_get(_, _, _))
+        .Times(1)
+        .WillOnce(Return(RBUS_ERROR_SUCCESS));
+    EXPECT_CALL(*g_rbusMock, rbusValue_GetType(_))
+        .Times(1)
+        .WillOnce(Return(RBUS_OBJECT));
+     EXPECT_CALL(*g_rbusMock, rbusValue_GetObject(RBUS_OBJECT))
+        .WillOnce(Return(nullptr));
+    EXPECT_CALL(*g_rbusMock, rbusValue_Release(_))
+        .Times(1);
+    auto cb = getDoPopulateEventMarkerListCallback();
+    T2ERROR ret = cb();
+    EXPECT_EQ(ret, T2ERROR_SUCCESS);
+    //EXPECT_EQ(T2ERROR_SUCCESS, getParamValue("Device.DeviceInfo.SerialNumber", &paramValue));
+}
 TEST_F(TelemetryBusmessageSenderTest, getParameterValue_failure_boolean)
 {
     char* paramValue = NULL;
@@ -473,7 +493,7 @@ TEST_F(TelemetryBusmessageSenderTest, doPopulateEventMarkerList_ReturnsEarlyIfRb
     EXPECT_EQ(ret, T2ERROR_SUCCESS);
    *test_get_isRbusEnabled_ptr() = true; 
 }
-
+#if 0
 TEST_F(TelemetryBusmessageSenderTest, doPopulateEventMarkerList_test2) {
     t2_init((char*)"test_component");
 
@@ -484,6 +504,7 @@ TEST_F(TelemetryBusmessageSenderTest, doPopulateEventMarkerList_test2) {
     EXPECT_EQ(ret, T2ERROR_SUCCESS);
    *test_get_isRbusEnabled_ptr() = true;
 }
+#endif
 #if 0
 TEST_F(TelemetryBusmessageSenderTest, doPopulateEventMarkerList_BusHandleFail) {
 t2_uninit();

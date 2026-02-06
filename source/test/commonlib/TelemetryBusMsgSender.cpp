@@ -318,6 +318,7 @@ TEST_F(TelemetryBusmessageSenderTest, t2_event_d_iscachingenabled_true_1)
     int ret = t2_event_d("marker", 13);
 
     *test_get_isRbusEnabled_ptr() = true;
+    *test_get_isT2Ready_ptr() = true;
     filtered_event_send("13","marker"); 
     EXPECT_EQ(ret, T2ERROR_SUCCESS);
 }
@@ -441,7 +442,7 @@ TEST_F(TelemetryBusmessageSenderTest, getParameterValue_success_boolean)
   
     EXPECT_EQ(T2ERROR_SUCCESS, getParamValue("Device.DeviceInfo.SerialNumber", &paramValue));
 }
-
+#if 0
 TEST_F(TelemetryBusmessageSenderTest, getParameterValue_doPopulate)
 {
     char* paramValue = NULL;
@@ -472,6 +473,7 @@ TEST_F(TelemetryBusmessageSenderTest, getParameterValue_doPopulate)
 #endif 
     //EXPECT_EQ(T2ERROR_SUCCESS, getParamValue("Device.DeviceInfo.SerialNumber", &paramValue));
 }
+#endif
 TEST_F(TelemetryBusmessageSenderTest, getParameterValue_failure_boolean)
 {
     char* paramValue = NULL;

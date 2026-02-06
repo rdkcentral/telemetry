@@ -518,81 +518,106 @@ int filtered_event_send(const char* data, const char *markerName)
 static T2ERROR doPopulateEventMarkerList( )
 {
 
+	printf("############## function %s line %d\n",__func__,__LINE__);
     T2ERROR status = T2ERROR_SUCCESS;
     char deNameSpace[1][124] = {{ '\0' }};
     if(!isRbusEnabled)
     {
+	printf("############## function %s line %d\n",__func__,__LINE__);
         return T2ERROR_SUCCESS;
     }
 
+	printf("############## function %s line %d\n",__func__,__LINE__);
     EVENT_DEBUG("%s ++in\n", __FUNCTION__);
     rbusError_t ret = RBUS_ERROR_SUCCESS;
     rbusValue_t paramValue_t;
 
+	printf("############## function %s line %d\n",__func__,__LINE__);
     if(!bus_handle && T2ERROR_SUCCESS != initMessageBus())
     {
+	printf("############## function %s line %d\n",__func__,__LINE__);
         EVENT_ERROR("Unable to get message bus handles \n");
         EVENT_DEBUG("%s --out\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
 
+	printf("############## function %s line %d\n",__func__,__LINE__);
     snprintf(deNameSpace[0], 124, "%s%s%s", T2_ROOT_PARAMETER, componentName, T2_EVENT_LIST_PARAM_SUFFIX);
     EVENT_DEBUG("rbus mode : Query marker list with data element = %s \n", deNameSpace[0]);
 
+	printf("############## function %s line %d\n",__func__,__LINE__);
     pthread_mutex_lock(&markerListMutex);
     EVENT_DEBUG("Lock markerListMutex & Clean up eventMarkerMap \n");
+	printf("############## function %s line %d\n",__func__,__LINE__);
     if(eventMarkerMap != NULL)
     {
+	printf("############## function %s line %d\n",__func__,__LINE__);
         hash_map_destroy(eventMarkerMap, free);
         eventMarkerMap = NULL;
     }
 
+	printf("############## function %s line %d\n",__func__,__LINE__);
     ret = rbus_get(bus_handle, deNameSpace[0], &paramValue_t);
     if(ret != RBUS_ERROR_SUCCESS)
     {
+	printf("############## function %s line %d\n",__func__,__LINE__);
         EVENT_ERROR("rbus mode : No event list configured in profiles %s and return value %d\n", deNameSpace[0], ret);
         pthread_mutex_unlock(&markerListMutex);
         EVENT_DEBUG("rbus mode : No event list configured in profiles %s and return value %d. Unlock markerListMutex\n", deNameSpace[0], ret);
         EVENT_DEBUG("%s --out\n", __FUNCTION__);
+	printf("############## function %s line %d\n",__func__,__LINE__);
         return T2ERROR_SUCCESS;
     }
 
+	printf("############## function %s line %d\n",__func__,__LINE__);
     rbusValueType_t type_t = rbusValue_GetType(paramValue_t);
     if(type_t != RBUS_OBJECT)
     {
+	printf("############## function %s line %d\n",__func__,__LINE__);
         EVENT_ERROR("rbus mode : Unexpected data object received for %s get query \n", deNameSpace[0]);
         rbusValue_Release(paramValue_t);
         pthread_mutex_unlock(&markerListMutex);
         EVENT_DEBUG("Unlock markerListMutex\n");
         EVENT_DEBUG("%s --out\n", __FUNCTION__);
+	printf("############## function %s line %d\n",__func__,__LINE__);
         return T2ERROR_FAILURE;
     }
 
     rbusObject_t objectValue = rbusValue_GetObject(paramValue_t);
+	printf("############## function %s line %d\n",__func__,__LINE__);
     if(objectValue)
     {
+	printf("############## function %s line %d\n",__func__,__LINE__);
         eventMarkerMap = hash_map_create();
         rbusProperty_t rbusPropertyList = rbusObject_GetProperties(objectValue);
         EVENT_DEBUG("\t rbus mode :  Update event map for component %s with below events : \n", componentName);
         while(NULL != rbusPropertyList)
         {
+	printf("############## function %s line %d\n",__func__,__LINE__);
             const char* eventname = rbusProperty_GetName(rbusPropertyList);
             if(eventname && strlen(eventname) > 0)
             {
+	printf("############## function %s line %d\n",__func__,__LINE__);
                 EVENT_DEBUG("\t %s\n", eventname);
                 hash_map_put(eventMarkerMap, (void*) strdup(eventname), (void*) strdup(eventname), free);
             }
+	printf("############## function %s line %d\n",__func__,__LINE__);
             rbusPropertyList = rbusProperty_GetNext(rbusPropertyList);
+	printf("############## function %s line %d\n",__func__,__LINE__);
         }
+	printf("############## function %s line %d\n",__func__,__LINE__);
     }
     else
     {
+	printf("############## function %s line %d\n",__func__,__LINE__);
         EVENT_ERROR("rbus mode : No configured event markers for %s \n", componentName);
     }
+	printf("############## function %s line %d\n",__func__,__LINE__);
     EVENT_DEBUG("Unlock markerListMutex\n");
     pthread_mutex_unlock(&markerListMutex);
     rbusValue_Release(paramValue_t);
     EVENT_DEBUG("%s --out\n", __FUNCTION__);
+	printf("############## function %s line %d\n",__func__,__LINE__);
     return status;
 
 }

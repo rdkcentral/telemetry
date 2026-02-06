@@ -451,13 +451,17 @@ TEST_F(TelemetryBusmessageSenderTest, getParameterValue_doPopulate)
     EXPECT_CALL(*g_rbusMock, rbus_get(_, _, _))
         .Times(1)
         .WillOnce(Return(RBUS_ERROR_SUCCESS));
+    printf("########### function %s line %d\n",__func__,__LINE__);
     EXPECT_CALL(*g_rbusMock, rbusValue_GetType(_))
         .Times(1)
         .WillOnce(Return(RBUS_OBJECT));
+    printf("########### function %s line %d\n",__func__,__LINE__);
      EXPECT_CALL(*g_rbusMock, rbusValue_GetObject(_))
         .WillOnce(Return(nullptr));
+    printf("########### function %s line %d\n",__func__,__LINE__);
     EXPECT_CALL(*g_rbusMock, rbusValue_Release(_))
         .Times(1);
+    printf("########### function %s line %d\n",__func__,__LINE__);
     auto cb = getDoPopulateEventMarkerListCallback();
     T2ERROR ret = cb();
     EXPECT_EQ(ret, T2ERROR_SUCCESS);

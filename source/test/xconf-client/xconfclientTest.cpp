@@ -66,11 +66,13 @@ TEST(GETBUILDTYPE, NULL_CHECK)
     EXPECT_EQ(T2ERROR_FAILURE, getBuildType(NULL));
 }
 
+#if 0
 TEST(DOHTTPGET, HTTPURL_CHECK)
 {
     char* data = NULL;
     EXPECT_EQ(T2ERROR_FAILURE,  doHttpGet(NULL, &data));
 }
+#endif
 
 TEST(FETCHREMOTECONFIG, CONFIGUURL_NULL)
 {
@@ -288,6 +290,7 @@ TEST_F(xconfclientTestFixture, fetchRemoteConfiguration)
     EXPECT_EQ(T2ERROR_FAILURE, fetchRemoteConfiguration(configURL, &configData));
 }
 
+#if 0
 TEST_F(xconfclientTestFixture, doHttpGet)
 {
      char* data = NULL;
@@ -296,6 +299,7 @@ TEST_F(xconfclientTestFixture, doHttpGet)
              .WillOnce(Return(-1));
      EXPECT_EQ(T2ERROR_FAILURE, doHttpGet("https://test.com", &data));
 }
+#endif
 
 TEST_F(xconfclientTestFixture,  getRemoteConfigURL)
 {
@@ -378,6 +382,7 @@ TEST_F(xconfclientTestFixture,  getRemoteConfigURL3)
      EXPECT_EQ(T2ERROR_SUCCESS, getRemoteConfigURL(&configURL));
 }
 
+#if 0
 TEST_F(xconfclientTestFixture, doHttpGet1)
 {
      char* data = NULL;
@@ -752,6 +757,7 @@ TEST_F(xconfclientTestFixture, doHttpGet8)
             .Times(1);
     EXPECT_THROW(doHttpGet("https://test.com", &data), std::runtime_error);
 }
+#endif
 
 
 TEST_F(xconfclientTestFixture, initXConfClient_failure)

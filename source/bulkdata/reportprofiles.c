@@ -433,8 +433,8 @@ static void* reportOnDemand(void *input)
     }
     else if(!strncmp(action, ON_DEMAND_ACTION_ABORT, MAX_PROFILENAMES_LENGTH))
     {
-        T2Info("Abort report on demand \n");
-        ProfileXConf_terminateReport();
+        T2Info("Abort report on demand\n");
+        T2Info("Abort of the on-demand report is no longer supported; fork-based report execution and termination have been removed\n");
     }
     else
     {
@@ -704,11 +704,6 @@ T2ERROR ReportProfiles_uninit( )
     {
         getMarkerCompRbusSub(false);    // remove Rbus subscription
     }
-#ifdef LIBRDKCERTSEL_BUILD
-    curlCertSelectorFree();
-#else
-    uninitMtls();
-#endif
     T2ER_Uninit();
     destroyT2MarkerComponentMap();
     uninitScheduler();

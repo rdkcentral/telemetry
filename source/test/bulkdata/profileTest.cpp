@@ -27,7 +27,6 @@ using ::testing::Invoke;
 
 extern "C" {
 #include "busInterface.h"
-//#include "profile.c"
 #include "profile.h"
 #include "datamodel.h"
 #include "t2markers.h"
@@ -1075,38 +1074,6 @@ TEST_F(ProfileTest, StoreMarkerEventSuccess) {
     event.name = const_cast<char*>("EventName");
     event.value = const_cast<char*>("EventValue");
     EXPECT_EQ(ProfileXConf_storeMarkerEvent(&event), T2ERROR_SUCCESS);
-
-    ProfileXConf_uninit();
-}
-#endif
-
-#if 0
-TEST_F(ProfileTest, TerminateReportNoProfile) {
-    // Should fail if no profile
-    EXPECT_EQ(ProfileXConf_terminateReport(), T2ERROR_SUCCESS);
-}
-#endif
-
-#if 0
-TEST_F(ProfileTest, TerminateReportNoInProgress) {
-    ProfileXConf* profile = (ProfileXConf*)malloc(sizeof(ProfileXConf));
-    memset(profile, 0, sizeof(ProfileXConf));
-    profile->name = strdup("TerminateProfile");
-    profile->eMarkerList = nullptr;
-    profile->gMarkerList = nullptr;
-    profile->topMarkerList = nullptr;
-    profile->paramList = nullptr;
-    profile->cachedReportList = nullptr;
-    profile->protocol = strdup("HTTP");
-    profile->encodingType = strdup("JSON");
-    profile->t2HTTPDest = nullptr;
-    profile->grepSeekProfile = nullptr;
-    profile->reportInProgress = false;
-    profile->isUpdated = false;
-
-    ProfileXConf_set(profile);
-
-    EXPECT_EQ(ProfileXConf_terminateReport(), T2ERROR_FAILURE);
 
     ProfileXConf_uninit();
 }

@@ -322,8 +322,8 @@ TEST_F(TelemetryBusmessageSenderTest, t2_event_d_iscachingenabled_true_1)
     EXPECT_EQ(ret, T2ERROR_SUCCESS);
 
     auto cb = getDoPopulateEventMarkerListCallback();
-    T2ERROR ret = cb();
-    EXPECT_EQ(ret, T2ERROR_SUCCESS);
+    T2ERROR ret1 = cb();
+    EXPECT_EQ(ret1, T2ERROR_SUCCESS);
 
     
 }

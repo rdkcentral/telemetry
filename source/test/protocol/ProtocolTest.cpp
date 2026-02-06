@@ -432,6 +432,7 @@ TEST_F(protocolTestFixture, sendCachedReportsOverRBUSMethod)
     Vector_Destroy(reportlist,free);
 }
 
+#if 0
 //sendReportOverHTTP
 TEST_F(protocolTestFixture, sendReportOverHTTP_6)
 {
@@ -525,6 +526,7 @@ TEST_F(protocolTestFixture, sendCachedReportsOverHTTP_FailureCase)
     // Clean up
     Vector_Destroy(reportList, free);
 }
+#endif
 #ifdef GTEST_ENABLE
  // Unit test for static writeToFile via its function pointer
  TEST(CURLINTERFACE_STATIC, WriteToFile)

@@ -130,7 +130,7 @@ static int get_configured_pool_size(void)
 static size_t httpGetCallBack(void *responseBuffer, size_t len, size_t nmemb,
                               void *stream)
 {
-    T2Info("%s ++in\n", __FUNCTION__);
+    T2Debug("%s ++in\n", __FUNCTION__);
     size_t realsize = len * nmemb;
     curlResponseData* response = (curlResponseData*) stream;
 
@@ -155,13 +155,13 @@ static size_t httpGetCallBack(void *responseBuffer, size_t len, size_t nmemb,
     response->size += realsize;
     response->data[response->size] = 0;
 
-    T2Info("%s ++out\n", __FUNCTION__);
+    T2Debug("%s ++out\n", __FUNCTION__);
     return realsize;
 }
 
 static void cleanup_curl_handles(void)
 {
-    T2Info("%s ++in\n", __FUNCTION__);
+    T2Debug("%s ++in\n", __FUNCTION__);
 
     if(post_headers)
     {
@@ -207,12 +207,12 @@ static void cleanup_curl_handles(void)
 
     pool_size = 0;
 
-    T2Info("%s ++out\n", __FUNCTION__);
+    T2Debug("%s ++out\n", __FUNCTION__);
 }
 
 T2ERROR init_connection_pool()
 {
-    T2Info("%s ++in\n", __FUNCTION__);
+    T2Debug("%s ++in\n", __FUNCTION__);
 
     pthread_mutex_lock(&pool_mutex);
 
@@ -278,9 +278,20 @@ T2ERROR init_connection_pool()
         // HTTP version and SSL settings
         CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_PIPEWAIT, 0L);
         CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
-        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
+        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_SSLVERSION, CURL_SSLVERSION_DEFAULT);
         CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_SSL_VERIFYPEER, 1L);
-        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_SSLENGINE_DEFAULT, 1L);
+
+
+
+
+
+
+
+
+
+
+
+
 
 #ifdef LIBRDKCERTSEL_BUILD
         // Initialize per-entry certificate selectors
@@ -348,7 +359,7 @@ T2ERROR init_connection_pool()
 
     pool_initialized = true;
     pthread_mutex_unlock(&pool_mutex);
-    T2Info("%s ++out\n", __FUNCTION__);
+    T2Debug("%s ++out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
@@ -423,7 +434,7 @@ static void release_pool_handle(int idx)
 // Function to configure WAN interface for CURL handle
 static void configure_wan_interface(CURL *easy)
 {
-    T2Info("%s %d\n", __func__, __LINE__);
+    T2Debug("%s ++in\n", __FUNCTION__);
 #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
     char *paramVal = NULL;
     char waninterface[256];
@@ -436,7 +447,6 @@ static void configure_wan_interface(CURL *easy)
         {
             memset(waninterface, 0, sizeof(waninterface));
             snprintf(waninterface, sizeof(waninterface), "%s", paramVal);
-            T2Info("TR181_DEVICE_CURRENT_WAN_IFNAME -- %s\n", waninterface);
         }
         free(paramVal);
         paramVal = NULL;
@@ -447,18 +457,17 @@ static void configure_wan_interface(CURL *easy)
     }
 
     CURL_SETOPT_CHECK_STR(easy, CURLOPT_INTERFACE, waninterface);
-    T2Info("TR181_DEVICE_CURRENT_WAN_IFNAME ---- %s\n", waninterface);
+    T2Debug("TR181_DEVICE_CURRENT_WAN_IFNAME ---- %s\n", waninterface);
 #else
     CURL_SETOPT_CHECK(easy, CURLOPT_INTERFACE, "erouter0");
 #endif
-    T2Info("%s %d\n", __func__, __LINE__);
 }
 #endif
 
-// GET API - Updated to use shared pool with waiting
+// GET API - Updated to use shared pool
 T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_output)
 {
-    T2Info("%s ++in\n", __FUNCTION__);
+    T2Debug("%s ++in\n", __FUNCTION__);
 
     if (!url)
     {
@@ -468,7 +477,6 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
 
     T2Info("%s ; GET url = %s\n", __FUNCTION__, url);
 
-    // Acquire any available handle (with waiting)
     CURL *easy;
     int idx = -1;
 
@@ -485,7 +493,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
     CURL_SETOPT_CHECK(easy, CURLOPT_POSTFIELDSIZE, 0L);
     CURL_SETOPT_CHECK(easy, CURLOPT_HTTPHEADER, NULL);
 
-    T2Info("http_pool_get using handle %d\n", idx);
+    T2Debug("http_pool_get using handle %d\n", idx);
 
     // Allocate response buffer locally for GET requests only
     curlResponseData* response = (curlResponseData *) malloc(sizeof(curlResponseData));
@@ -517,31 +525,26 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
     configure_wan_interface(easy);
 #endif
-    //Certificate handling - check if mTLS is enabled
     bool mtls_enable = isMtlsEnabled();
     char *pCertFile = NULL;
     char *pCertPC = NULL;
 #ifdef LIBRDKCERTSEL_BUILD
-    char *pCertURI = NULL;  // Declare at same scope as pCertFile
+    char *pCertURI = NULL;
 #endif
     CURLcode curl_code = CURLE_OK;
 
     if(mtls_enable == true)
     {
 #ifdef LIBRDKCERTSEL_BUILD
-        // Use per-entry certificate selector from pool
         rdkcertselector_h handleCertSelector = pool_entries[idx].cert_selector;
         rdkcertselectorStatus_t xcGetCertStatus;
-        
-        T2Info("%s: Using cert selector for entry %d\n", __func__, idx);
 
+        T2Debug("%s: Using cert selector for entry %d\n", __func__, idx);
         do
         {
-            T2Info("%s %d\n", __func__, __LINE__);
             pCertURI = NULL;
             pCertPC = NULL;
             pCertFile = NULL;
-            T2Info("%s %d\n", __func__, __LINE__);
 
             xcGetCertStatus = rdkcertselector_getCert(handleCertSelector, &pCertURI, &pCertPC);
             if(xcGetCertStatus != certselectorOk)
@@ -560,7 +563,6 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
             }
             else
             {
-                T2Info("%s %d\n", __func__, __LINE__);
                 // skip past file scheme in URI
                 pCertFile = pCertURI;
                 if ( strncmp( pCertFile, FILESCHEME, sizeof(FILESCHEME) - 1 ) == 0 )
@@ -573,15 +575,12 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
                 CURL_SETOPT_CHECK_STR(easy, CURLOPT_SSLCERT, pCertFile);
                 CURL_SETOPT_CHECK_STR(easy, CURLOPT_KEYPASSWD, pCertPC);
                 CURL_SETOPT_CHECK(easy, CURLOPT_SSL_VERIFYPEER, 1L);
-                T2Info("%s %d\n", __func__, __LINE__);
 
                 // Execute the request directly
                 curl_code = curl_easy_perform(easy);
-                T2Info("%s %d\n", __func__, __LINE__);
 
                 long http_code;
                 curl_easy_getinfo(easy, CURLINFO_RESPONSE_CODE, &http_code);
-                T2Info("%s %d\n", __func__, __LINE__);
 
                 if(curl_code != CURLE_OK || http_code != 200)
                 {
@@ -592,11 +591,8 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
                     T2Info("%s: Using xpki Certs connection certname : %s (entry %d)\n", __FUNCTION__, pCertFile, idx);
                 }
             }
-            T2Info("%s %d\n", __func__, __LINE__);
         }
         while(rdkcertselector_setCurlStatus(handleCertSelector, curl_code, (const char*)url) == TRY_ANOTHER);
-        T2Info("%s: Certificate rotation loop completed\n", __func__);
-
 #else
         // Fallback to getMtlsCerts if certificate selector not available
         if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pCertPC))
@@ -630,12 +626,10 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
     }
     else
     {
-        T2Info("%s %d\n", __func__, __LINE__);
+        T2Info("Attempting curl communication without mtls\n");
         // Execute without mTLS
         curl_code = curl_easy_perform(easy);
-        T2Info("%s %d\n", __func__, __LINE__);
     }
-    T2Info("%s %d\n", __func__, __LINE__);
 
     if (curl_code != CURLE_OK)
     {
@@ -658,11 +652,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
             free(pCertPC);
         }
 #endif
-        T2Info("%s %d\n", __func__, __LINE__);
-
         release_pool_handle(idx);
-        T2Info("%s %d\n", __func__, __LINE__);
-
         return T2ERROR_FAILURE;
     }
 
@@ -678,7 +668,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
 
         if (response->data)
         {
-            T2Info("%s ; Response data size = %zu\n", __FUNCTION__, response->size);
+            T2Debug("%s ; Response data size = %zu\n", __FUNCTION__, response->size);
 
             // Handle file output for GET requests
             if (enable_file_output)
@@ -689,7 +679,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
                     FILE *httpOutput = fdopen(fd, "w+");
                     if (httpOutput)
                     {
-                        T2Info("Update config data in response file %s \n", HTTP_RESPONSE_FILE);
+                        T2Debug("Update config data in response file %s \n", HTTP_RESPONSE_FILE);
                         fputs(response->data, httpOutput);
                         fclose(httpOutput);
                     }
@@ -780,20 +770,19 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
         pCertPC = NULL;
     }
 #endif
-    // Note: When using LIBRDKCERTSEL_BUILD, pCertURI and pCertPC are owned by the
+    // Important Note: When using LIBRDKCERTSEL_BUILD, pCertURI and pCertPC are owned by the
     // cert selector object and are freed when rdkcertselector_free() is called
 
     release_pool_handle(idx);
 
-    T2Info("%s ++out\n", __FUNCTION__);
+    T2Debug("%s ++out\n", __FUNCTION__);
     return result;
 }
 
-// POST API - Updated to use shared pool with waiting
+// POST API - Updated to use shared pool
 T2ERROR http_pool_post(const char *url, const char *payload)
 {
-    T2Info("%s ++in\n", __FUNCTION__);
-
+    T2Debug("%s ++in\n", __FUNCTION__);
     if (!url || !payload)
     {
         T2Error("Invalid URL or payload parameter\n");
@@ -813,7 +802,7 @@ T2ERROR http_pool_post(const char *url, const char *payload)
         return ret;
     }
 
-    T2Info("http_pool_post using handle %d\n", idx);
+    T2Debug("http_pool_post using handle %d\n", idx);
 
     // Clear any GET-specific settings from previous use
     CURL_SETOPT_CHECK(easy, CURLOPT_HTTPGET, 0L);
@@ -831,24 +820,40 @@ T2ERROR http_pool_post(const char *url, const char *payload)
     configure_wan_interface(easy);
 #endif
 
-    T2Info("%s %d\n", __func__, __LINE__);
+    // Set up file output for POST requests
+    int curl_output_fd = open("/tmp/curlOutput.txt", O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+    FILE *fp = NULL;
+    if (curl_output_fd >= 0)
+    {
+        fp = fdopen(curl_output_fd, "wb");
+        if (fp != NULL)
+        {
+            CURL_SETOPT_CHECK(easy, CURLOPT_WRITEFUNCTION, writeToFile);
+            CURL_SETOPT_CHECK(easy, CURLOPT_WRITEDATA, (void *)fp);
+        }
+        else
+        {
+            T2Error("fdopen failed for /tmp/curlOutput.txt\n");
+            close(curl_output_fd);
+        }
+    }
+    else
+    {
+        T2Error("Unable to open /tmp/curlOutput.txt for writing\n");
+    }
+
     // Certificate handling - check if mTLS is enabled
     bool mtls_enable = isMtlsEnabled();
     char *pCertFile = NULL;
     char *pCertPC = NULL;
 #ifdef LIBRDKCERTSEL_BUILD
-    char *pCertURI = NULL;  // Declare at same scope as pCertFile
+    char *pCertURI = NULL;
 #endif
     CURLcode curl_code = CURLE_OK;
 
     if(mtls_enable == true)
     {
-        T2Info("%s %d\n", __func__, __LINE__);
-
 #ifdef LIBRDKCERTSEL_BUILD
-        T2Info("%s %d\n", __func__, __LINE__);
-
-        // Use per-entry certificate selector from pool
         rdkcertselector_h thisCertSel = NULL;
         rdkcertselectorStatus_t curlGetCertStatus;
         bool state_red_enable = false;
@@ -858,25 +863,29 @@ T2ERROR http_pool_post(const char *url, const char *payload)
         T2Info("%s: state_red_enable: %d\n", __func__, state_red_enable);
 #endif
 
-        // Lazy initialization: Initialize the appropriate selector if it's NULL
+        // When status of state red changes, switch cert selectors accordingly
         if (state_red_enable)
         {
             // RED recovery mode - use recovery cert selector
             if (pool_entries[idx].rcvry_cert_selector == NULL)
             {
-                T2Info("%s: Lazy initializing recovery cert selector for entry %d\n", __func__, idx);
+                T2Info("%s: Initializing recovery cert selector for entry %d\n", __func__, idx);
                 pool_entries[idx].rcvry_cert_selector = rdkcertselector_new(NULL, NULL, "RCVRY");
                 if (pool_entries[idx].rcvry_cert_selector == NULL)
                 {
-                    T2Error("%s: Failed to lazy initialize recovery cert selector for entry %d\n", __func__, idx);
+                    T2Error("%s: Failed to initialize recovery cert selector for entry %d\n", __func__, idx);
                     release_pool_handle(idx);
+                    if(fp)
+                    {
+                        fclose(fp);
+                    }
                     return T2ERROR_FAILURE;
                 }
             }
             thisCertSel = pool_entries[idx].rcvry_cert_selector;
             T2Info("%s: Using recovery cert selector for entry %d\n", __func__, idx);
-            
-            // Clean up normal cert selector if it exists (state transition)
+
+            // Clean up normal cert selector if it exists
             if (pool_entries[idx].cert_selector != NULL)
             {
                 T2Info("%s: State transition detected, freeing normal cert selector for entry %d\n", __func__, idx);
@@ -886,21 +895,24 @@ T2ERROR http_pool_post(const char *url, const char *payload)
         }
         else
         {
-            // Normal mode - use normal cert selector
+            // Device not in red recovery - use regular cert selector
             if (pool_entries[idx].cert_selector == NULL)
             {
-                T2Info("%s: Lazy initializing normal cert selector for entry %d\n", __func__, idx);
+                T2Info("%s: Initializing normal cert selector for entry %d\n", __func__, idx);
                 pool_entries[idx].cert_selector = rdkcertselector_new(NULL, NULL, "MTLS");
                 if (pool_entries[idx].cert_selector == NULL)
                 {
-                    T2Error("%s: Failed to lazy initialize cert selector for entry %d\n", __func__, idx);
+                    T2Error("%s: Failed to initialize cert selector for entry %d\n", __func__, idx);
+                    if(fp)
+                    {
+                        fclose(fp);
+                    }
                     release_pool_handle(idx);
                     return T2ERROR_FAILURE;
                 }
             }
             thisCertSel = pool_entries[idx].cert_selector;
-            T2Info("%s: Using normal cert selector for entry %d\n", __func__, idx);
-            
+
             // Clean up recovery cert selector if it exists (state transition)
             if (pool_entries[idx].rcvry_cert_selector != NULL)
             {
@@ -912,23 +924,23 @@ T2ERROR http_pool_post(const char *url, const char *payload)
 
         do
         {
-            T2Info("%s %d\n", __func__, __LINE__);
             pCertURI = NULL;
             pCertPC = NULL;
             pCertFile = NULL;
-            T2Info("%s %d\n", __func__, __LINE__);
 
             curlGetCertStatus = rdkcertselector_getCert(thisCertSel, &pCertURI, &pCertPC);
             if(curlGetCertStatus != certselectorOk)
             {
                 T2Error("%s, T2:Failed to retrieve the certificate for entry %d.\n", __func__, idx);
+                if(fp)
+                {
+                    fclose(fp);
+                }
                 release_pool_handle(idx);
                 return T2ERROR_FAILURE;
             }
             else
             {
-                T2Info("%s %d\n", __func__, __LINE__);
-
                 // skip past file scheme in URI
                 pCertFile = pCertURI;
                 if ( strncmp( pCertFile, FILESCHEME, sizeof(FILESCHEME) - 1 ) == 0 )
@@ -941,39 +953,28 @@ T2ERROR http_pool_post(const char *url, const char *payload)
                 CURL_SETOPT_CHECK_STR(easy, CURLOPT_SSLCERT, pCertFile);
                 CURL_SETOPT_CHECK_STR(easy, CURLOPT_KEYPASSWD, pCertPC);
                 CURL_SETOPT_CHECK(easy, CURLOPT_SSL_VERIFYPEER, 1L);
-                T2Info("%s %d\n", __func__, __LINE__);
 
                 // Execute the request directly
                 curl_code = curl_easy_perform(easy);
 
                 long http_code;
                 curl_easy_getinfo(easy, CURLINFO_RESPONSE_CODE, &http_code);
-                T2Info("%s %d\n", __func__, __LINE__);
 
                 if(curl_code != CURLE_OK || http_code != 200)
                 {
                     T2Error("%s: Failed to establish connection using xPKI certificate: %s, curl failed: %d (entry %d)\n", __func__, pCertFile, curl_code, idx);
-                    T2Info("%s %d\n", __func__, __LINE__);
                 }
                 else
                 {
                     T2Info("%s: Using xpki Certs connection certname : %s (entry %d)\n", __FUNCTION__, pCertFile, idx);
                 }
-                T2Info("%s %d\n", __func__, __LINE__);
             }
-            T2Info("%s %d\n", __func__, __LINE__);
         }
         while(rdkcertselector_setCurlStatus(thisCertSel, curl_code, (const char*)url) == TRY_ANOTHER);
-        T2Info("%s %d\n", __func__, __LINE__);
-
 #else
-        T2Info("%s %d\n", __func__, __LINE__);
-
         // Fallback to getMtlsCerts if certificate selector not available
         if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pCertPC))
         {
-            T2Info("%s %d\n", __func__, __LINE__);
-
             // Configure mTLS certificates
             CURL_SETOPT_CHECK_STR(easy, CURLOPT_SSLCERTTYPE, "P12");
             CURL_SETOPT_CHECK_STR(easy, CURLOPT_SSLCERT, pCertFile);
@@ -986,6 +987,10 @@ T2ERROR http_pool_post(const char *url, const char *payload)
         else
         {
             T2Error("mTLS_get failure\n");
+            if(fp)
+            {
+                fclose(fp);
+            }
             release_pool_handle(idx);
             return T2ERROR_FAILURE;
         }
@@ -995,26 +1000,26 @@ T2ERROR http_pool_post(const char *url, const char *payload)
     }
     else
     {
-        T2Info("%s %d\n", __func__, __LINE__);
-
         // Execute without mTLS
+        T2Info("Attempting curl communication without mtls\n");
         curl_code = curl_easy_perform(easy);
     }
-    T2Info("%s %d\n", __func__, __LINE__);
-
+    // Close output file
+    if(fp)
+    {
+        fclose(fp);
+    }
     T2ERROR result = T2ERROR_FAILURE;
     if (curl_code == CURLE_OK)
     {
-        T2Info("%s %d\n", __func__, __LINE__);
-
         long http_code;
         curl_easy_getinfo(easy, CURLINFO_RESPONSE_CODE, &http_code);
-        T2Info("%s ; HTTP response code: %ld\n", __FUNCTION__, http_code);
+        T2Debug("%s ; HTTP response code: %ld\n", __FUNCTION__, http_code);
 
         if (http_code == 200)
         {
             result = T2ERROR_SUCCESS;
-            T2Info("%s ; Request successful\n", __FUNCTION__);
+            T2Info("%s ; HTTP Request successful\n", __FUNCTION__);
         }
         else
         {
@@ -1049,16 +1054,15 @@ T2ERROR http_pool_post(const char *url, const char *payload)
 #endif
     // Note: When using LIBRDKCERTSEL_BUILD, pCertURI and pCertPC are owned by the
     // cert selector object and are freed when rdkcertselector_free() is called
-
     release_pool_handle(idx);
 
-    T2Info("%s ++out\n", __FUNCTION__);
+    T2Debug("%s ++out\n", __FUNCTION__);
     return result;
 }
 
 T2ERROR http_pool_cleanup(void)
 {
-    T2Info("%s ++in\n", __FUNCTION__);
+    T2Debug("%s ++in\n", __FUNCTION__);
     pthread_mutex_lock(&pool_mutex);
     if (!pool_initialized)
     {
@@ -1083,7 +1087,7 @@ T2ERROR http_pool_cleanup(void)
     uninitMtls();
 #endif
 
-    T2Info("%s ++out\n", __FUNCTION__);
+    T2Debug("%s ++out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 

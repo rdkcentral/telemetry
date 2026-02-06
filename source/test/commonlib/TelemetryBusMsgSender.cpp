@@ -442,7 +442,7 @@ TEST_F(TelemetryBusmessageSenderTest, getParameterValue_success_boolean)
     EXPECT_EQ(T2ERROR_SUCCESS, getParamValue("Device.DeviceInfo.SerialNumber", &paramValue));
 }
 
-TEST_F(TelemetryBusmessageSenderTest, getParameterValue_success_boolean)
+TEST_F(TelemetryBusmessageSenderTest, getParameterValue_doPopulate)
 {
     char* paramValue = NULL;
     t2_init((char*)"test_component");

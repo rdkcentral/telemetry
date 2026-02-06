@@ -545,10 +545,10 @@ static T2ERROR doPopulateEventMarkerList( )
     snprintf(deNameSpace[0], 124, "%s%s%s", T2_ROOT_PARAMETER, componentName, T2_EVENT_LIST_PARAM_SUFFIX);
     EVENT_DEBUG("rbus mode : Query marker list with data element = %s \n", deNameSpace[0]);
 	printf("############## function %s line %d\n",__func__,__LINE__);
-#if 0
     pthread_mutex_lock(&markerListMutex);
     EVENT_DEBUG("Lock markerListMutex & Clean up eventMarkerMap \n");
 	printf("############## function %s line %d\n",__func__,__LINE__);
+#if 0
     if(eventMarkerMap != NULL)
     {
 	printf("############## function %s line %d\n",__func__,__LINE__);

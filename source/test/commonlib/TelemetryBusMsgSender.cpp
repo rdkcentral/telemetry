@@ -452,6 +452,9 @@ TEST_F(TelemetryBusmessageSenderTest, getParameterValue_doPopulate)
         .Times(1)
         .WillOnce(Return(RBUS_ERROR_SUCCESS));
     printf("########### function %s line %d\n",__func__,__LINE__);
+    auto cb = getDoPopulateEventMarkerListCallback();
+    T2ERROR ret = cb();
+    EXPECT_EQ(ret, T2ERROR_SUCCESS);
 #if 0
     EXPECT_CALL(*g_rbusMock, rbusValue_GetType(_))
         .Times(1)

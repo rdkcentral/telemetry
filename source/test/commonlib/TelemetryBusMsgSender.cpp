@@ -283,7 +283,6 @@ TEST_F(TelemetryBusmessageSenderTest, t2_event_f_iscachingenabled_false)
     ret = t2_event_f("marker", 123.456);
     EXPECT_EQ(ret, T2ERROR_SUCCESS);
 }
-#if 1
 TEST_F(TelemetryBusmessageSenderTest, t2_event_d_iscachingenabled_true)
 {
     t2_init((char*)"sysint");
@@ -322,87 +321,6 @@ TEST_F(TelemetryBusmessageSenderTest, t2_event_d_iscachingenabled_true_1)
     filtered_event_send("13","marker"); 
     EXPECT_EQ(ret, T2ERROR_SUCCESS);
 }
-///add test case here
-#endif
-#if 0
-TEST_F(TelemetryBusmessageSenderTest, doPopulateEventMarkerList_ReturnsEarlyIfRbusDisabled) {
-    t2_init((char*)"test_component");
-
-    *test_get_isRbusEnabled_ptr() = false;
-
-    auto cb = getDoPopulateEventMarkerListCallback();
-    T2ERROR ret = cb();
-    EXPECT_EQ(ret, T2ERROR_SUCCESS); // Should return immediately
-    // Optionally, you could verify no calls/mocks for rbus_get, etc., are triggered,
-    // as the logic is skipped
-}
-#endif
-#if 0
-TEST_F(TelemetryBusmessageSenderTest, FilteredEventSend_RbusEnabled_RbusSetSuccess) {
-    t2_init((char*)"sysint");
-
-    // Simulate access calls (if they are used in the flow)
-    EXPECT_CALL(*g_systemMock, access(_,_))
-        .WillRepeatedly(Return(-1)); // Accept any number of calls
-    // Simulate successful rbus_checkStatus and rbus_open
-    EXPECT_CALL(*g_rbusMock, rbus_checkStatus())
-        .Times(1)
-        .WillOnce(Return(RBUS_ENABLED));
-    EXPECT_CALL(*g_rbusMock, rbus_open(_, _))
-        .Times(1)
-        .WillOnce([](rbusHandle_t* handle, const char* componentName) {
-            *handle = (rbusHandle_t)0xdeadbeef;
-            return RBUS_ERROR_SUCCESS;
-        });
-#if 0
-    EXPECT_CALL(*g_rbusMock,  rbusValue_Init(_))
-            .Times(2)
-            .WillOnce(Return((rbusValue_t)0xffffffff))
-            .WillOnce(Return((rbusValue_t)0xffffffff));
-    EXPECT_CALL(*g_rbusMock,  rbusValue_SetString(_, _))
-            .Times(1);
-    EXPECT_CALL(*g_rbusMock,  rbusProperty_Init(_,_,_))
-            .Times(1);
-    EXPECT_CALL(*g_rbusMock,  rbusValue_SetProperty (_, _))
-            .Times(1);
-    EXPECT_CALL(*g_rbusMock,  rbusValue_Release(_))
-            .Times(2);
-    EXPECT_CALL(*g_rbusMock,  rbus_set(_,_,_,_))
-            .Times(1)
-            .WillOnce(Return(RBUS_ERROR_SUCCESS));
-    EXPECT_CALL(*g_rbusMock,  rbusProperty_Release(_))
-            .Times(1);
-#endif
-//    ret = filtered_event_send((char*)"test_data", (char*)"Test_marker:");
-    // Call the function under test
-    int ret = filtered_event_send("dataval", "markerval");
-    EXPECT_EQ(ret, 0); // Success
-}
-#endif
-#if 0
-TEST_F(TelemetryBusmessageSenderTest, t2_event_d_iscachingenabled_true_2)
-{
-    t2_init((char*)"telemetry_client");
-
-    EXPECT_CALL(*g_systemMock, access(_,_))
-        .WillRepeatedly(Return(-1)); // Accept any number of calls
-    EXPECT_CALL(*g_rbusMock, rbus_getUint(_, _, _))
-        .Times(1)
-        .WillOnce([](rbusHandle_t handle, const char* name, uint32_t* value) {
-            *value = 1;
-            return RBUS_ERROR_SUCCESS; // <-- Simulate SUCCESS
-        });
-#if 1
-    *test_get_isT2Ready_ptr() = true;
-#endif
-    int ret = t2_event_d("marker", 13);
-
-    printf("################## ret = %d \n",ret);
-    printf("###### T2ERROR_SUCESS = %d\n",T2ERROR_SUCCESS);
-    *test_get_isRbusEnabled_ptr() = true;
-    EXPECT_EQ(ret, T2ERROR_SUCCESS);
-}
-#endif
 TEST_F(TelemetryBusmessageSenderTest, getParameterValue_success)
 {
     char* paramValue = NULL;
@@ -442,38 +360,7 @@ TEST_F(TelemetryBusmessageSenderTest, getParameterValue_success_boolean)
   
     EXPECT_EQ(T2ERROR_SUCCESS, getParamValue("Device.DeviceInfo.SerialNumber", &paramValue));
 }
-#if 0
-TEST_F(TelemetryBusmessageSenderTest, getParameterValue_doPopulate)
-{
-    char* paramValue = NULL;
-    rbusValue_t fake_value = (rbusValue_t)0xbeefbeef;
-    t2_init((char*)"test_component");
-   printf("###### function %s line %d\n",__func__,__LINE__);
-    EXPECT_CALL(*g_rbusMock, rbus_get(_, _, _))
-        .Times(1)
-        .WillOnce(Return(RBUS_ERROR_SUCCESS));
-    printf("########### function %s line %d\n",__func__,__LINE__);
-    auto cb = getDoPopulateEventMarkerListCallback();
-    T2ERROR ret = cb();
-    EXPECT_EQ(ret, T2ERROR_SUCCESS);
-#if 0
-    EXPECT_CALL(*g_rbusMock, rbusValue_GetType(_))
-        .Times(1)
-        .WillOnce(Return(RBUS_OBJECT));
-    printf("########### function %s line %d\n",__func__,__LINE__);
-     EXPECT_CALL(*g_rbusMock, rbusValue_GetObject(_))
-        .WillOnce(Return(nullptr));
-    printf("########### function %s line %d\n",__func__,__LINE__);
-    EXPECT_CALL(*g_rbusMock, rbusValue_Release(_))
-        .Times(1);
-    printf("########### function %s line %d\n",__func__,__LINE__);
-    auto cb = getDoPopulateEventMarkerListCallback();
-    T2ERROR ret = cb();
-    EXPECT_EQ(ret, T2ERROR_SUCCESS);
-#endif 
-    //EXPECT_EQ(T2ERROR_SUCCESS, getParamValue("Device.DeviceInfo.SerialNumber", &paramValue));
-}
-#endif
+
 TEST_F(TelemetryBusmessageSenderTest, getParameterValue_failure_boolean)
 {
     char* paramValue = NULL;
@@ -498,102 +385,14 @@ TEST_F(TelemetryBusmessageSenderTest, getParameterValue_failure_boolean)
 TEST_F(TelemetryBusmessageSenderTest, doPopulateEventMarkerList_ReturnsEarlyIfRbusDisabled) {
     t2_init((char*)"test_component");
 
-    *test_get_isRbusEnabled_ptr() = false;
-
-    auto cb = getDoPopulateEventMarkerListCallback();
-    T2ERROR ret = cb();
-    EXPECT_EQ(ret, T2ERROR_SUCCESS);
-   *test_get_isRbusEnabled_ptr() = true; 
-}
-#if 0
-TEST_F(TelemetryBusmessageSenderTest, doPopulateEventMarkerList_test2) {
-    t2_init((char*)"test_component");
-
     *test_get_isRbusEnabled_ptr() = true;
-    printf("############ function %s line %d\n",__func__,__LINE__);
+
     auto cb = getDoPopulateEventMarkerListCallback();
     T2ERROR ret = cb();
     EXPECT_EQ(ret, T2ERROR_SUCCESS);
-   *test_get_isRbusEnabled_ptr() = true;
+    
 }
 #endif
-#if 0
-TEST_F(TelemetryBusmessageSenderTest, doPopulateEventMarkerList_BusHandleFail) {
-t2_uninit();
-t2_init((char*)"test_component");
-
-EXPECT_CALL(*g_rbusMock, rbus_checkStatus())
-    .WillRepeatedly(Return(RBUS_ENABLED));
-
-EXPECT_CALL(*g_rbusMock, rbus_open(_, _))
-    .Times(1)
-    .WillOnce([](rbusHandle_t* handle, const char* componentName) {
-        *handle = nullptr;
-        return RBUS_ERROR_BUS_ERROR;
-    });
-    auto cb = getDoPopulateEventMarkerListCallback();
-    T2ERROR ret = cb();
-
-    EXPECT_EQ(ret, T2ERROR_FAILURE); // Should fail due to bus_handle/init failure
-
-}
-#endif
-#endif
-
-#if 0
-TEST_F(TelemetryBusmessageSenderTest, filtered_event_send_1)
-{
-    t2_init((char*)"telemetry_client");
-
-    EXPECT_CALL(*g_rbusMock,  rbusValue_Init(_))
-            .Times(2)
-            .WillOnce(Return((rbusValue_t)0xffffffff))
-            .WillOnce(Return((rbusValue_t)0xffffffff));
-    EXPECT_CALL(*g_rbusMock,  rbusValue_SetString(_, _))
-            .Times(1);
-    EXPECT_CALL(*g_rbusMock,  rbusProperty_Init(_,_,_))
-            .Times(1);
-    EXPECT_CALL(*g_rbusMock,  rbusValue_SetProperty (_, _))
-            .Times(1);
-    EXPECT_CALL(*g_rbusMock,  rbusValue_Release(_))
-            .Times(2);
-    EXPECT_CALL(*g_rbusMock,  rbus_set(_,_,_,_))
-            .Times(1)
-            .WillOnce(Return(RBUS_ERROR_SUCCESS));
-    EXPECT_CALL(*g_rbusMock,  rbusProperty_Release(_))
-            .Times(1);
-    int ret;
-//    ret = filtered_event_send((char*)"test_data", (char*)"Test_marker:");
-//    EXPECT_EQ(ret, 0);
-
-}
-#endif
-
-#if 0
-TEST_F(TelemetryBusmessageSenderTest, filtered_event_send_2)
-{
-    t2_init((char*)"sysint");
-        t2_init((char*)"sysint");
-    // Simulate access calls (if they are used in the flow)
-    EXPECT_CALL(*g_systemMock, access(_,_))
-        .WillRepeatedly(Return(-1)); // Accept any number of calls
-    // Simulate successful rbus_checkStatus and rbus_open
-    EXPECT_CALL(*g_rbusMock, rbus_checkStatus())
-        .Times(1)
-        .WillOnce(Return(RBUS_ENABLED));
-    EXPECT_CALL(*g_rbusMock, rbus_open(_, _))
-        .Times(1)
-        .WillOnce([](rbusHandle_t* handle, const char* componentName) {
-            *handle = (rbusHandle_t)0xdeadbeef;
-            return RBUS_ERROR_SUCCESS;
-        });
-
-    int ret = filtered_event_send((char*)"test_data", (char*)"Test_marker:");
-    EXPECT_EQ(ret, 0);
-}
-#endif
-
-// Positive test: Send string event with valid input
 
 TEST_F(TelemetryBusmessageSenderTest, SendStringEvent_Valid) {
     t2_init((char*)"test_component");

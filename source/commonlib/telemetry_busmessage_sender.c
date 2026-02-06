@@ -544,7 +544,7 @@ static T2ERROR doPopulateEventMarkerList( )
 	printf("############## function %s line %d\n",__func__,__LINE__);
     snprintf(deNameSpace[0], 124, "%s%s%s", T2_ROOT_PARAMETER, componentName, T2_EVENT_LIST_PARAM_SUFFIX);
     EVENT_DEBUG("rbus mode : Query marker list with data element = %s \n", deNameSpace[0]);
-
+#if 0
 	printf("############## function %s line %d\n",__func__,__LINE__);
     pthread_mutex_lock(&markerListMutex);
     EVENT_DEBUG("Lock markerListMutex & Clean up eventMarkerMap \n");
@@ -616,6 +616,7 @@ static T2ERROR doPopulateEventMarkerList( )
     EVENT_DEBUG("Unlock markerListMutex\n");
     pthread_mutex_unlock(&markerListMutex);
     rbusValue_Release(paramValue_t);
+#endif
     EVENT_DEBUG("%s --out\n", __FUNCTION__);
 	printf("############## function %s line %d\n",__func__,__LINE__);
     return status;

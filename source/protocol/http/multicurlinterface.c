@@ -809,8 +809,8 @@ T2ERROR http_pool_post(const char *url, const char *payload)
     configure_wan_interface(easy);
 #endif
 
-    // curl_easy_perform crashes without file output configuration. This can be removed once the root cause of the crash is identified and fixed. 
-    // For now, we will set up file output for POST requests to ensure stability. 
+    // curl_easy_perform crashes without file output configuration. This can be removed once the root cause of the crash is identified and fixed.
+    // For now, we will set up file output for POST requests to ensure stability.
     // Set up file output for POST requests
     int curl_output_fd = open("/tmp/curlOutput.txt", O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
     FILE *fp = NULL;

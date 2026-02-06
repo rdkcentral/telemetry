@@ -447,7 +447,7 @@ TEST_F(TelemetryBusmessageSenderTest, getParameterValue_doPopulate)
     char* paramValue = NULL;
     rbusValue_t fake_value = (rbusValue_t)0xbeefbeef;
     t2_init((char*)"test_component");
-
+   printf("###### function %s line %d\n",__func__,__LINE__);
     EXPECT_CALL(*g_rbusMock, rbus_get(_, _, _))
         .Times(1)
         .WillOnce(Return(RBUS_ERROR_SUCCESS));

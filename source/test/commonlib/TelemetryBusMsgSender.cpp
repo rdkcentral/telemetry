@@ -462,7 +462,7 @@ TEST_F(TelemetryBusmessageSenderTest, getParameterValue_failure_boolean)
     EXPECT_EQ(T2ERROR_SUCCESS, getParamValue("Device.DeviceInfo.SerialNumber", &paramValue));
 }
 
-#ifdef GTEST_ENABLE
+#if 1
 TEST_F(TelemetryBusmessageSenderTest, doPopulateEventMarkerList_ReturnsEarlyIfRbusDisabled) {
     t2_init((char*)"test_component");
 
@@ -474,7 +474,7 @@ TEST_F(TelemetryBusmessageSenderTest, doPopulateEventMarkerList_ReturnsEarlyIfRb
    *test_get_isRbusEnabled_ptr() = true; 
 }
 
-TEST_F(TelemetryBusmessageSenderTest, doPopulateEventMarkerList_ReturnsEarlyIfRbusDisabled) {
+TEST_F(TelemetryBusmessageSenderTest, doPopulateEventMarkerList_test2) {
     t2_init((char*)"test_component");
 
     *test_get_isRbusEnabled_ptr() = true;

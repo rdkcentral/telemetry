@@ -278,20 +278,9 @@ T2ERROR init_connection_pool()
         // HTTP version and SSL settings
         CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_PIPEWAIT, 0L);
         CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
+        //SSL automatically negotiates the highest SSL/TLS version supported by both client and server
         CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_SSLVERSION, CURL_SSLVERSION_DEFAULT);
         CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_SSL_VERIFYPEER, 1L);
-
-
-
-
-
-
-
-
-
-
-
-
 
 #ifdef LIBRDKCERTSEL_BUILD
         // Initialize per-entry certificate selectors
@@ -820,6 +809,8 @@ T2ERROR http_pool_post(const char *url, const char *payload)
     configure_wan_interface(easy);
 #endif
 
+    // curl_easy_perform crashes without file output configuration. This can be removed once the root cause of the crash is identified and fixed. 
+    // For now, we will set up file output for POST requests to ensure stability. 
     // Set up file output for POST requests
     int curl_output_fd = open("/tmp/curlOutput.txt", O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
     FILE *fp = NULL;

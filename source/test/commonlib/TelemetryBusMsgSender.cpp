@@ -445,6 +445,7 @@ TEST_F(TelemetryBusmessageSenderTest, getParameterValue_success_boolean)
 TEST_F(TelemetryBusmessageSenderTest, getParameterValue_doPopulate)
 {
     char* paramValue = NULL;
+    rbusValue_t fake_value = (rbusValue_t)0xbeefbeef;
     t2_init((char*)"test_component");
 
     EXPECT_CALL(*g_rbusMock, rbus_get(_, _, _))
@@ -453,7 +454,7 @@ TEST_F(TelemetryBusmessageSenderTest, getParameterValue_doPopulate)
     EXPECT_CALL(*g_rbusMock, rbusValue_GetType(_))
         .Times(1)
         .WillOnce(Return(RBUS_OBJECT));
-     EXPECT_CALL(*g_rbusMock, rbusValue_GetObject(RBUS_OBJECT))
+     EXPECT_CALL(*g_rbusMock, rbusValue_GetObject(_))
         .WillOnce(Return(nullptr));
     EXPECT_CALL(*g_rbusMock, rbusValue_Release(_))
         .Times(1);

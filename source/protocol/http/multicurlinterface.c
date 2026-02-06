@@ -532,7 +532,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
         // Use per-entry certificate selector from pool
         rdkcertselector_h handleCertSelector = pool_entries[idx].cert_selector;
         rdkcertselectorStatus_t xcGetCertStatus;
-
+        
         T2Info("%s: Using cert selector for entry %d\n", __func__, idx);
 
         do
@@ -858,16 +858,56 @@ T2ERROR http_pool_post(const char *url, const char *payload)
         T2Info("%s: state_red_enable: %d\n", __func__, state_red_enable);
 #endif
 
-        // Select the appropriate per-entry certificate selector from pool
+        // Lazy initialization: Initialize the appropriate selector if it's NULL
         if (state_red_enable)
         {
+            // RED recovery mode - use recovery cert selector
+            if (pool_entries[idx].rcvry_cert_selector == NULL)
+            {
+                T2Info("%s: Lazy initializing recovery cert selector for entry %d\n", __func__, idx);
+                pool_entries[idx].rcvry_cert_selector = rdkcertselector_new(NULL, NULL, "RCVRY");
+                if (pool_entries[idx].rcvry_cert_selector == NULL)
+                {
+                    T2Error("%s: Failed to lazy initialize recovery cert selector for entry %d\n", __func__, idx);
+                    release_pool_handle(idx);
+                    return T2ERROR_FAILURE;
+                }
+            }
             thisCertSel = pool_entries[idx].rcvry_cert_selector;
             T2Info("%s: Using recovery cert selector for entry %d\n", __func__, idx);
+            
+            // Clean up normal cert selector if it exists (state transition)
+            if (pool_entries[idx].cert_selector != NULL)
+            {
+                T2Info("%s: State transition detected, freeing normal cert selector for entry %d\n", __func__, idx);
+                rdkcertselector_free(&pool_entries[idx].cert_selector);
+                pool_entries[idx].cert_selector = NULL;
+            }
         }
         else
         {
+            // Normal mode - use normal cert selector
+            if (pool_entries[idx].cert_selector == NULL)
+            {
+                T2Info("%s: Lazy initializing normal cert selector for entry %d\n", __func__, idx);
+                pool_entries[idx].cert_selector = rdkcertselector_new(NULL, NULL, "MTLS");
+                if (pool_entries[idx].cert_selector == NULL)
+                {
+                    T2Error("%s: Failed to lazy initialize cert selector for entry %d\n", __func__, idx);
+                    release_pool_handle(idx);
+                    return T2ERROR_FAILURE;
+                }
+            }
             thisCertSel = pool_entries[idx].cert_selector;
             T2Info("%s: Using normal cert selector for entry %d\n", __func__, idx);
+            
+            // Clean up recovery cert selector if it exists (state transition)
+            if (pool_entries[idx].rcvry_cert_selector != NULL)
+            {
+                T2Info("%s: State transition detected, freeing recovery cert selector for entry %d\n", __func__, idx);
+                rdkcertselector_free(&pool_entries[idx].rcvry_cert_selector);
+                pool_entries[idx].rcvry_cert_selector = NULL;
+            }
         }
 
         do

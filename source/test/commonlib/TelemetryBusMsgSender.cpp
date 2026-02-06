@@ -474,6 +474,16 @@ TEST_F(TelemetryBusmessageSenderTest, doPopulateEventMarkerList_ReturnsEarlyIfRb
    *test_get_isRbusEnabled_ptr() = true; 
 }
 
+TEST_F(TelemetryBusmessageSenderTest, doPopulateEventMarkerList_ReturnsEarlyIfRbusDisabled) {
+    t2_init((char*)"test_component");
+
+    *test_get_isRbusEnabled_ptr() = true;
+    printf("############ function %s line %d\n",__func__,__LINE__);
+    auto cb = getDoPopulateEventMarkerListCallback();
+    T2ERROR ret = cb();
+    EXPECT_EQ(ret, T2ERROR_SUCCESS);
+   *test_get_isRbusEnabled_ptr() = true;
+}
 #if 0
 TEST_F(TelemetryBusmessageSenderTest, doPopulateEventMarkerList_BusHandleFail) {
 t2_uninit();

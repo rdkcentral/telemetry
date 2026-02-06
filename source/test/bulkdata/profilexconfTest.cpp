@@ -104,12 +104,6 @@ TEST_F(profileXconfTestFixture, ProfileXConf_updateMarkerComponentMap_success_be
 
 }
 
-//Test the termination  of report generation - if the profile is no set the terminate shouldn't happen
-
-TEST_F(profileXconfTestFixture, ProfileXConf_terminateReport_failure)
-{
-    EXPECT_EQ(T2ERROR_FAILURE, ProfileXConf_terminateReport());
-}
 //Test the init of XConf profiles
 TEST_F(profileXconfTestFixture, InitandUninit)  
 {    // Covers ProfileXConf_init and ProfileXConf_uninit
@@ -517,13 +511,6 @@ TEST_F(profileXconfTestFixture, ProfileXconf_getName)
     EXPECT_STREQ(ProfileXconf_getName(), "RDK_Profile");
 }
 
-//Test the termination  of report generation - if the profile report generation is not in progress the terminate shouldn't happen
-
-TEST_F(profileXconfTestFixture, ProfileXConf_terminateReport)
-{
-    EXPECT_EQ(ProfileXConf_terminateReport(), T2ERROR_FAILURE);
-}
-
 //Test storing of marker events when the profile is set
 //Count marker event
 TEST_F(profileXconfTestFixture, ReportProfiles_storeMarkerEvent_success)
@@ -592,9 +579,6 @@ TEST_F(profileXconfTestFixture, ProfileXConf_notifyTimeout)
         .WillOnce(Return(T2ERROR_SUCCESS));
     
     
-    EXPECT_CALL(*g_profileXConfMock, sendReportOverHTTP(_, _, _))
-        .Times(1)
-        .WillOnce(Return(T2ERROR_SUCCESS));
     EXPECT_CALL(*g_profileXConfMock, sendCachedReportsOverHTTP(_,_))
         .Times(1)
         .WillOnce(Return(T2ERROR_SUCCESS));

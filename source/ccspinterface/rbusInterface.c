@@ -1953,3 +1953,10 @@ bool rbusCheckMethodExists(const char* rbusMethodName)
     rbusObject_Release(outParams);
     return true ;
 }
+#ifdef GTEST_ENABLE
+typedef void (*rbusReloadConfFunc)(rbusHandle_t, rbusEvent_t const *, rbusEventSubscription_t *);
+rbusReloadConfFunc rbusReloadConfFuncCallback(void)
+{
+    return rbusReloadConf;
+}
+#endif

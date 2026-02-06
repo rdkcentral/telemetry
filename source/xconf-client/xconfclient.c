@@ -31,6 +31,7 @@
 
 #include <cjson/cJSON.h>
 
+#include "multicurlinterface.h"
 #include "t2log_wrapper.h"
 #include "reportprofiles.h"
 #include "profilexconf.h"
@@ -55,7 +56,6 @@
 #define RFC_RETRY_TIMEOUT 60
 #define XCONF_RETRY_TIMEOUT 180
 #define MAX_XCONF_RETRY_COUNT 5
-#define IFINTERFACE      "erouter0"
 #define XCONF_CONFIG_FILE  "DCMresponse.txt"
 #define PROCESS_CONFIG_COMPLETE_FLAG "/tmp/t2DcmComplete"
 #define HTTP_RESPONSE_FILE "/tmp/httpOutput.txt"
@@ -64,12 +64,6 @@
 
 extern sigset_t blocking_signal;
 
-#if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
-
-#if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
-static char waninterface[256];
-#endif
-#endif
 static const int MAX_URL_LEN = 1024;
 static const int MAX_URL_ARG_LEN = 128;
 static int xConfRetryCount = 0;
@@ -87,9 +81,6 @@ static pthread_mutex_t xcMutex;
 static pthread_mutex_t xcThreadMutex;
 static pthread_cond_t xcCond;
 static pthread_cond_t xcThreadCond;
-#ifdef LIBRDKCERTSEL_BUILD
-static rdkcertselector_h xcCertSelector = NULL;
-#endif
 #if defined(ENABLE_REMOTE_PROFILE_DOWNLOAD)
 static int retryCount = 0;
 #endif
@@ -529,81 +520,10 @@ error:
     return ret;
 }
 
-static size_t httpGetCallBack(void *response, size_t len, size_t nmemb,
-                              void *stream)
-{
-
-    size_t realsize = len * nmemb;
-    curlResponseData* httpResponse = (curlResponseData*) stream;
-
-    char *ptr = (char*) realloc(httpResponse->data,
-                                httpResponse->size + realsize + 1);
-    if (!ptr)
-    {
-        T2Error("%s:%u , T2:memory realloc failed\n", __func__, __LINE__);
-        return 0;
-    }
-    httpResponse->data = ptr;
-    memcpy(&(httpResponse->data[httpResponse->size]), response, realsize);
-    httpResponse->size += realsize;
-    httpResponse->data[httpResponse->size] = 0;
-
-    return realsize;
-}
-
-#ifdef LIBRDKCERTSEL_BUILD
-void xcCertSelectorFree()
-{
-    rdkcertselector_free(&xcCertSelector);
-    if(xcCertSelector == NULL)
-    {
-        T2Info("%s, T2:Cert selector memory free  \n", __func__);
-    }
-    else
-    {
-        T2Info("%s, T2:Cert selector memory free failed \n", __func__);
-    }
-}
-static void xcCertSelectorInit()
-{
-    if(xcCertSelector == NULL)
-    {
-        xcCertSelector = rdkcertselector_new( NULL, NULL, "MTLS" );
-        if(xcCertSelector == NULL)
-        {
-            T2Error("%s, T2:Cert selector initialization failed\n", __func__);
-        }
-        else
-        {
-            T2Info("%s, T2:Cert selector initialization successfully \n", __func__);
-        }
-    }
-}
-#endif
 T2ERROR doHttpGet(char* httpsUrl, char **data)
 {
-
-    T2Debug("%s ++in\n", __FUNCTION__);
-
     T2Info("%s with url %s \n", __FUNCTION__, httpsUrl);
-    CURL *curl;
-    CURLcode code = CURLE_OK;
-    long http_code = 0;
-    CURLcode curl_code = CURLE_OK;
-#ifdef LIBRDKCERTSEL_BUILD
-    rdkcertselectorStatus_t xcGetCertStatus;
-    char *pCertURI = NULL;
-#endif
-    char *pCertFile = NULL;
-    char *pPasswd = NULL;
-#ifdef LIBRDKCONFIG_BUILD
-    size_t sPasswdSize = 0;
-#endif
-    // char *pKeyType = "PEM" ;
-    bool mtls_enable = false;
-    pid_t childPid;
-    int sharedPipeFdStatus[2];
-    int sharedPipeFdDataLen[2];
+    T2ERROR ret;
 
     if(NULL == httpsUrl)
     {
@@ -611,373 +531,17 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
         return T2ERROR_FAILURE;
     }
 
-    if(pipe(sharedPipeFdStatus) != 0)
+    ret = http_pool_get(httpsUrl, data, true);
+    if(ret == T2ERROR_SUCCESS)
     {
-        T2Error("Failed to create pipe for status !!! exiting...\n");
-        T2Debug("%s --out\n", __FUNCTION__);
-        return T2ERROR_FAILURE;
-    }
-
-    if(pipe(sharedPipeFdDataLen) != 0)
-    {
-        T2Error("Failed to create pipe for data length!!! exiting...\n");
-        T2Debug("%s --out\n", __FUNCTION__);
-        return T2ERROR_FAILURE;
-    }
-#if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
-
-#if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
-    char *paramVal = NULL;
-    memset(waninterface, 0, sizeof(waninterface));
-    snprintf(waninterface, sizeof(waninterface), "%s", IFINTERFACE);
-
-    if(T2ERROR_SUCCESS == getParameterValue(TR181_DEVICE_CURRENT_WAN_IFNAME, &paramVal))
-    {
-        if(strlen(paramVal) > 0)
-        {
-            memset(waninterface, 0, sizeof(waninterface));
-            snprintf(waninterface, sizeof(waninterface), "%s", paramVal);
-            T2Info("TR181_DEVICE_CURRENT_WAN_IFNAME -- %s\n", waninterface);
-        }
-        free(paramVal);
-        paramVal = NULL;
+        T2Info("HTTP GET request completed successfully using connection pool\n");
     }
     else
     {
-        T2Error("Failed to get Value for %s\n", TR181_DEVICE_CURRENT_WAN_IFNAME);
+        T2Error("Failed to perform HTTP GET request using connection pool\n");
     }
-#endif
-#endif
-    mtls_enable = isMtlsEnabled();
-    // block the userdefined signal handlers before fork
-    pthread_sigmask(SIG_BLOCK, &blocking_signal, NULL);
-    if((childPid = fork()) < 0)
-    {
-        T2Error("Failed to fork !!! exiting...\n");
-        // Unblock the userdefined signal handlers
-        pthread_sigmask(SIG_UNBLOCK, &blocking_signal, NULL);
-        T2Debug("%s --out\n", __FUNCTION__);
-        return T2ERROR_FAILURE;
-    }
-
-    /**
-     * Openssl has growing RSS which gets cleaned up only with OPENSSL_cleanup .
-     * This cleanup is not thread safe and classified as run once per application life cycle.
-     * Forking the libcurl calls so that it executes and terminates to release memory per execution.
-     */
-    if(childPid == 0)
-    {
-
-        T2ERROR ret = T2ERROR_FAILURE;
-        curlResponseData* httpResponse = (curlResponseData *) malloc(sizeof(curlResponseData));
-        httpResponse->data = (char*)malloc(1);
-        httpResponse->data[0] = '\0'; //CID 282084 : Uninitialized scalar variable (UNINIT)
-        httpResponse->size = 0;
-
-        curl = curl_easy_init();
-
-        if(curl)
-        {
-
-            code = curl_easy_setopt(curl, CURLOPT_URL, httpsUrl);
-            if(code != CURLE_OK)
-            {
-                T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-            }
-            code = curl_easy_setopt(curl, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
-            if(code != CURLE_OK)
-            {
-                T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-            }
-            code = curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 30L);
-            if(code != CURLE_OK)
-            {
-                T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-            }
-            code = curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
-            if(code != CURLE_OK)
-            {
-                T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-            }
-            code = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, httpGetCallBack);
-            if(code != CURLE_OK)
-            {
-                T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-            }
-            code = curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *) httpResponse);
-            if(code != CURLE_OK)
-            {
-                T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-            }
-#if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
-
-#if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
-            code = curl_easy_setopt(curl, CURLOPT_INTERFACE, waninterface);
-            T2Info("TR181_DEVICE_CURRENT_WAN_IFNAME ---- %s\n", waninterface);
-            if(code != CURLE_OK)
-            {
-                T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-            }
-#else
-            code = curl_easy_setopt(curl, CURLOPT_INTERFACE, IFINTERFACE);
-            if(code != CURLE_OK)
-            {
-                T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-            }
-#endif
-
-#endif
-            if(mtls_enable == true)
-            {
-#ifdef LIBRDKCERTSEL_BUILD
-                do
-                {
-                    pCertFile = NULL;
-                    pPasswd = NULL;
-                    pCertURI = NULL;
-                    xcGetCertStatus = rdkcertselector_getCert(xcCertSelector, &pCertURI, &pPasswd);
-                    if(xcGetCertStatus != certselectorOk)
-                    {
-                        T2Error("%s, T2:Failed to retrieve the certificate.\n", __func__);
-                        xcCertSelectorFree();
-                        free(httpResponse->data);
-                        free(httpResponse);
-                        curl_easy_cleanup(curl);
-                        ret = T2ERROR_FAILURE;
-                        goto status_return;
-                    }
-                    else
-                    {
-                        // skip past file scheme in URI
-                        pCertFile = pCertURI;
-                        if ( strncmp( pCertFile, FILESCHEME, sizeof(FILESCHEME) - 1 ) == 0 )
-                        {
-                            pCertFile += (sizeof(FILESCHEME) - 1);
-                        }
-#else
-                if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pPasswd))
-                {
-#endif
-                        code = curl_easy_setopt(curl, CURLOPT_SSLCERTTYPE, "P12");
-                        if(code != CURLE_OK)
-                        {
-                            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-                        }
-                        code = curl_easy_setopt(curl, CURLOPT_SSLCERT, pCertFile);
-                        if(code != CURLE_OK)
-                        {
-                            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-                        }
-                        code = curl_easy_setopt(curl, CURLOPT_KEYPASSWD, pPasswd);
-                        if(code != CURLE_OK)
-                        {
-                            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-                        }
-                        /* disconnect if authentication fails */
-                        code = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
-                        if(code != CURLE_OK)
-                        {
-                            T2Error("%s : Curl set opts failed with error %s \n", __FUNCTION__, curl_easy_strerror(code));
-                        }
-                        curl_code = curl_easy_perform(curl);
-#ifdef LIBRDKCERTSEL_BUILD
-                        if(curl_code != CURLE_OK)
-                        {
-                            T2Error("%s: Failed to establish connection using xPKI certificate: %s, Curl failed : %d\n", __func__, pCertFile, curl_code);
-                        }
-                        else
-                        {
-                            T2Info("%s: Using xpki Certs connection certname : %s \n", __FUNCTION__, pCertFile);
-                        }
-                    }
-                }
-                while(rdkcertselector_setCurlStatus(xcCertSelector, curl_code, (const char*)httpsUrl) == TRY_ANOTHER);
-#else
-                    }
-                    else
-                    {
-                        free(httpResponse->data);
-                        free(httpResponse);
-                        curl_easy_cleanup(curl); //CID 189986:Resource leak
-                        T2Error("mTLS_get failure\n");
-                        ret = T2ERROR_FAILURE;
-                        goto status_return;
-                    }
-#endif
-            }
-            else
-            {
-                curl_code = curl_easy_perform(curl);
-            }
-            curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-
-            if(http_code == 200 && curl_code == CURLE_OK)
-            {
-                T2Info("%s:%d, T2:Telemetry XCONF communication success\n", __func__, __LINE__);
-                size_t len = strlen(httpResponse->data);
-
-                // Share data with parent
-                close(sharedPipeFdDataLen[0]);
-                write(sharedPipeFdDataLen[1], &len, sizeof(size_t));
-                close(sharedPipeFdDataLen[1]);
-
-                FILE *httpOutput = fopen(HTTP_RESPONSE_FILE, "w+");
-                if(httpOutput)
-                {
-                    T2Debug("Update config data in response file %s \n", HTTP_RESPONSE_FILE);
-                    fputs(httpResponse->data, httpOutput);
-                    fclose(httpOutput);
-                }
-                else
-                {
-                    T2Error("Unable to open %s file \n", HTTP_RESPONSE_FILE);
-                }
-
-                free(httpResponse->data);
-                free(httpResponse);
-#ifndef LIBRDKCERTSEL_BUILD
-                if(NULL != pCertFile)
-                {
-                    free(pCertFile);
-                }
-
-                if(NULL != pPasswd)
-                {
-#ifdef LIBRDKCONFIG_BUILD
-                    sPasswdSize = strlen(pPasswd);
-                    if (rdkconfig_free((unsigned char**)&pPasswd, sPasswdSize)  == RDKCONFIG_FAIL)
-                    {
-                        return T2ERROR_FAILURE;
-                    }
-#else
-                    free(pPasswd);
-#endif
-                }
-#endif
-                curl_easy_cleanup(curl);
-            }
-            else
-            {
-                T2Error("%s:%d, T2:Telemetry XCONF communication Failed with http code : %ld Curl code : %d \n", __func__, __LINE__, http_code,
-                        curl_code);
-                T2Error("%s : curl_easy_perform failed with error message %s from curl \n", __FUNCTION__, curl_easy_strerror(curl_code));
-                free(httpResponse->data);
-                free(httpResponse);
-#ifndef LIBRDKCERTSEL_BUILD
-                if(NULL != pCertFile)
-                {
-                    free(pCertFile);
-                }
-                if(NULL != pPasswd)
-                {
-#ifdef LIBRDKCONFIG_BUILD
-                    sPasswdSize = strlen(pPasswd);
-                    if (rdkconfig_free((unsigned char**)&pPasswd, sPasswdSize)  == RDKCONFIG_FAIL)
-                    {
-                        return T2ERROR_FAILURE;
-                    }
-#else
-                    free(pPasswd);
-#endif
-                }
-#endif
-                curl_easy_cleanup(curl);
-                if(http_code == 404)
-                {
-                    ret = T2ERROR_PROFILE_NOT_SET;
-                }
-                else
-                {
-                    ret = T2ERROR_FAILURE;
-                }
-                goto status_return ;
-            }
-        }
-        else
-        {
-            free(httpResponse->data);
-            free(httpResponse);
-            ret = T2ERROR_FAILURE;
-            goto status_return ;
-        }
-
-        ret = T2ERROR_SUCCESS ;
-status_return :
-
-        close(sharedPipeFdStatus[0]);
-        write(sharedPipeFdStatus[1], &ret, sizeof(T2ERROR));
-        close(sharedPipeFdStatus[1]);
-        exit(0);
-
-    }
-    else    // Parent
-    {
-        T2ERROR ret = T2ERROR_FAILURE;
-        // Use waitpid insted of wait
-        waitpid(childPid, NULL, 0);
-        // Unblock the userdefined signal handlers after wait
-        pthread_sigmask(SIG_UNBLOCK, &blocking_signal, NULL);
-        // Get the return status via IPC from child process
-        close(sharedPipeFdStatus[1]);
-        ssize_t readBytes = read(sharedPipeFdStatus[0], &ret, sizeof(T2ERROR));
-        if(readBytes == -1)
-        {
-            T2Error("Failed to read from pipe\n");
-            return T2ERROR_FAILURE;
-        }
-        close(sharedPipeFdStatus[0]);
-
-        // Get the datas via IPC from child process
-        if(ret == T2ERROR_SUCCESS)
-        {
-            size_t len = 0;
-            close(sharedPipeFdDataLen[1]);
-            readBytes = read(sharedPipeFdDataLen[0], &len, sizeof(size_t));
-            if(readBytes == -1)
-            {
-                T2Error("Failed to read from pipe\n");
-                return T2ERROR_FAILURE;
-            }
-            close(sharedPipeFdDataLen[0]);
-            *data = NULL;
-            if(len <= SIZE_MAX)
-            {
-                *data = (char*)malloc(len + 1);
-            }
-            if(*data == NULL)
-            {
-                T2Error("Unable to allocate memory for XCONF config data \n");
-                ret = T2ERROR_FAILURE;
-            }
-            else
-            {
-                if(len <= SIZE_MAX)
-                {
-                    memset(*data, '\0', len + 1);
-                }
-                FILE *httpOutput = fopen(HTTP_RESPONSE_FILE, "r+");
-                if(httpOutput)
-                {
-                    // Read the whole file content
-                    if(len <= SIZE_MAX)
-                    {
-                        readBytes = fread(*data, len, 1, httpOutput);
-                    }
-                    if(readBytes == -1)
-                    {
-                        T2Error("Failed to read from pipe\n");
-                        return T2ERROR_FAILURE;
-                    }
-                    T2Debug("Configuration obtained from http server : \n %s \n", *data);
-                    fclose(httpOutput);
-                }
-            }
-        }
-        T2Debug("%s --out\n", __FUNCTION__);
-        return ret;
-
-    }
-
+    T2Debug("%s --out\n", __FUNCTION__);
+    return ret;
 }
 
 #if defined(ENABLE_REMOTE_PROFILE_DOWNLOAD)
@@ -1510,9 +1074,6 @@ void uninitXConfClient()
         bexitDCMThread = false;
         pthread_join(dcmThread, NULL);
 #endif
-#ifdef LIBRDKCERTSEL_BUILD
-        xcCertSelectorFree();
-#endif
     }
     T2Debug("%s --out\n", __FUNCTION__);
     T2Info("Uninit XConf Client Successful\n");
@@ -1577,9 +1138,6 @@ T2ERROR initXConfClient()
     pthread_cond_init(&xcCond, NULL);
     pthread_cond_init(&xcThreadCond, NULL);
     isXconfInit = true ;
-#ifdef LIBRDKCERTSEL_BUILD
-    xcCertSelectorInit();
-#endif
     pthread_create(&xcrThread, NULL, getUpdatedConfigurationThread, NULL);
     //startXConfClient(); // Removing startXConfClient as getUpdatedConfigurationThread is created in this function itself
     T2Debug("%s --out\n", __FUNCTION__);

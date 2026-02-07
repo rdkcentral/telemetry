@@ -409,16 +409,16 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
         char filename[256] = {0};
         snprintf(filename, sizeof(filename), "/proc/%d/status", child_pid);
         T2Info("child filename : %s\n", filename);
-        FILE *fp = fopen(filename, "r");
-        if (fp == NULL) {
+        FILE *fp1 = fopen(filename, "r");
+        if (fp1 == NULL) {
             perror("fopen failed");
             return 1;
         }
         char line[1024] = {0};
-        while (fgets(line, sizeof(line), fp)) {
+        while (fgets(line, sizeof(line), fp1)) {
             T2Info("child proc data: %s\n", line);
         }
-        fclose(fp);
+        fclose(fp1);
         curl = curl_easy_init();
         if(curl)
         {

@@ -944,7 +944,10 @@ T2ERROR http_pool_post(const char *url, const char *payload)
                 CURL_SETOPT_CHECK_STR(easy, CURLOPT_SSLCERT, pCertFile);
                 CURL_SETOPT_CHECK_STR(easy, CURLOPT_KEYPASSWD, pCertPC);
                 CURL_SETOPT_CHECK(easy, CURLOPT_SSL_VERIFYPEER, 1L);
-
+#ifdef DEBUG_CURL_VERBOSE
+                CURL_SETOPT_CHECK(easy, CURLOPT_VERBOSE, 1L);
+                CURL_SETOPT_CHECK(easy, CURLOPT_STDERR, stderr);
+#endif
                 // Execute the request directly
                 curl_code = curl_easy_perform(easy);
 
@@ -1088,3 +1091,4 @@ size_t writeToFile(void *ptr, size_t size, size_t nmemb, void *stream)
     size_t written = fwrite(ptr, size, nmemb, (FILE *) stream);
     return written;
 }
+

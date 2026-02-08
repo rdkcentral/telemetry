@@ -948,7 +948,7 @@ T2ERROR http_pool_post(const char *url, const char *payload)
                 CURL_SETOPT_CHECK(easy, CURLOPT_VERBOSE, 1L);
                 CURL_SETOPT_CHECK(easy, CURLOPT_STDERR, stderr);
 #endif
-                CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_DNS_CACHE_TIMEOUT, 300L); // 5 min cache
+                CURL_SETOPT_CHECK(easy, CURLOPT_DNS_CACHE_TIMEOUT, 300L); // 5 min cache
                 // Execute the request directly
                 curl_code = curl_easy_perform(easy);
 
@@ -1092,5 +1092,6 @@ size_t writeToFile(void *ptr, size_t size, size_t nmemb, void *stream)
     size_t written = fwrite(ptr, size, nmemb, (FILE *) stream);
     return written;
 }
+
 
 

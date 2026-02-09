@@ -108,16 +108,6 @@ typedef struct _rdk_utils_params
     char iface_v4_ip[DEVICE_IP_MAX_LENGTH];
 } rdkParams_struct;
 
-/*
- * Structure to store the xconf response, this is to manage large responses
- * as curl parses large responses in chunks
- */
-typedef struct _curlResponseData
-{
-    char *data;
-    size_t size;
-} curlResponseData;
-
 T2ERROR getBuildType(char* buildType);
 
 T2ERROR appendRequestParams(CURLU *buf);

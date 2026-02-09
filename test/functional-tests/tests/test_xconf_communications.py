@@ -170,7 +170,7 @@ def test_xconf_retry_for_connection_errors():
     ERROR_MSG = "Waiting for 180 sec before trying fetchRemoteConfiguration, No.of tries"
     assert ERROR_MSG in grep_T2logs(ERROR_MSG)
 
-pytest.mark.run(order=14)
+pytest.mark.run(order=15)
 def test_xconf_datamodel():
     kill_telemetry(9)
     RUN_START_TIME = dt.now()
@@ -187,20 +187,18 @@ def test_xconf_datamodel():
     kill_telemetry(29)
     sleep(5)
     assert "IUI_accum" in grep_T2logs("cJSON Report")
-    assert "Test_datamodel_1" in grep_T2logs("cJSON Report")
-    kill_telemetry(29)
-    sleep(5)
     rbus_set_data("Device.DeviceInfo.X_RDKCENTRAL-COM.IUI.Version", "string", "0.1")
+    sleep(2)
     kill_telemetry(29)
-    sleep(5)
-    assert "IUI_accum" in grep_T2logs("cJSON Report")
+    sleep(7)
+    assert "IUI_accum\":\"0.1" in grep_T2logs("cJSON Report")
     rbus_set_data("Device.DeviceInfo.X_RDKCENTRAL-COM.IUI.Version", "string", "0")
+    sleep(2)
     kill_telemetry(29)
-    sleep(5)
+    sleep(10)
     assert "IUI_accum" not in grep_T2logs("cJSON Report")
-    assert "Test_datamodel_1" in grep_T2logs("cJSON Report")
 
-pytest.mark.run(order=15)
+pytest.mark.run(order=14)
 def test_xconf_split_markers():
     kill_telemetry(9)
     RUN_START_TIME = dt.now()

@@ -82,11 +82,11 @@
 //Timeout per profile for webconfig
 #define MAXTIMEOUT_PERPROFILE 30
 
-//#if defined(DROP_ROOT_PRIV)
+#if defined(DROP_ROOT_PRIV)
 #include "cap.h"
 
 static cap_user appcaps;
-//#endif
+#endif
 
 static BulkData bulkdata;
 static bool rpInitialized = false;
@@ -101,7 +101,7 @@ unsigned int profilemem = 0;
 bool previousLogCheck = false;
 
 
-//#if defined(DROP_ROOT_PRIV)
+#if defined(DROP_ROOT_PRIV)
 static void drop_root()
 {
     appcaps.caps = NULL;
@@ -114,7 +114,7 @@ static void drop_root()
         read_capability(&appcaps);
     }
 }
-//#endif
+#endif
 
 #if defined(FEATURE_SUPPORT_WEBCONFIG)
 uint32_t getTelemetryBlobVersion(char* subdoc)
@@ -477,10 +477,10 @@ T2ERROR initReportProfiles()
 #endif
 
 // Drop root before we are creating any folders/flags to avoid access issues
-//#if defined(DROP_ROOT_PRIV)
+#if defined(DROP_ROOT_PRIV)
     // Drop root privileges for Telemetry 2.0, If NonRootSupport RFC is true
-    drop_root();
-//#endif
+//    drop_root();
+#endif
 
 #if defined (PRIVACYMODES_CONTROL)
 // Define scope

@@ -368,6 +368,21 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
         return ret;
     }
 #endif
+    pid_t p_pid = getpid();
+        T2Info("parent PID: %d\n", p_pid);
+        char filename1[256] = {0};
+        snprintf(filename1, sizeof(filename1), "/proc/%d/status", p_pid);
+        T2Info("parent filename1 : %s\n", filename1);
+        FILE *fp2 = fopen(filename1, "r");
+        if (fp2 == NULL) {
+            perror("fopen failed");
+            return 1;
+        }
+        char line1[1024] = {0};
+        while (fgets(line1, sizeof(line1), fp2)) {
+            T2Info("parent proc data: %s\n", line1);
+        }
+        fclose(fp2);
     // Block the userdefined signal handlers before fork
     pthread_sigmask(SIG_BLOCK, &blocking_signal, NULL);
     if((childPid = fork()) < 0)

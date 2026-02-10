@@ -63,7 +63,7 @@
 
 //Global variables
 #define IFINTERFACE      "erouter0"
-#define DEFAULT_POOL_SIZE 2
+#define DEFAULT_POOL_SIZE 1
 #define MAX_ALLOWED_POOL_SIZE 5  // Maximum allowed pool size
 #define MIN_ALLOWED_POOL_SIZE 1  // Minimum allowed pool size
 #define HTTP_RESPONSE_FILE "/tmp/httpOutput.txt"
@@ -1088,3 +1088,4 @@ size_t writeToFile(void *ptr, size_t size, size_t nmemb, void *stream)
     size_t written = fwrite(ptr, size, nmemb, (FILE *) stream);
     return written;
 }
+

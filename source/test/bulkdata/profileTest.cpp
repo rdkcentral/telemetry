@@ -1400,7 +1400,7 @@ TEST_F(ProfileTest, ReportProfiles_ActivationTimeoutCb_XConfProfile) {
     EXPECT_CALL(*g_vectorMock, Vector_Size(_))
         .Times(::testing::AtMost(1))
         .WillRepeatedly(Return(0)); // Return 1 to indicate only one profile (no duplicates)
-    ReportProfiles_ActivationTimeoutCb(strdup("XConfProfile"));
+    ReportProfiles_ActivationTimeoutCb(strdup("RDK_Profile"));
 }
 
 TEST_F(ProfileTest, ReportProfiles_ActivationTimeoutCb_NonXConfProfile) {

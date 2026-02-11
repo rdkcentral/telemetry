@@ -1644,11 +1644,11 @@ TEST_F(ProfileTest, ProcessReportProfilesBlob_EmptyProfileArray) {
     // Should call deleteAllReportProfiles
     cJSON_Delete(root);
 }
-#endif
 TEST_F(ProfileTest, ReportProfilesUninit_SuccessInitState) {
     EXPECT_EQ(ReportProfiles_uninit(), T2ERROR_SUCCESS);
     // Could add checks for side-effects; e.g., profile list cleared, datamodel uninit called, etc.
 }
+#endif
 #if 1
 TEST_F(ProfileTest, reportOnDemandTest)
 {

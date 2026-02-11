@@ -1522,7 +1522,7 @@ printf("##### function %s line %d\n",__func__,__LINE__);
         const char* returnPartnerInfo = isWhoAmiEnabled() ? TR181_DEVICE_PARTNER_ID : TR181_DEVICE_PARTNER_NAME;
         if(T2ERROR_SUCCESS == getParameterValue(returnPartnerInfo, &paramValue))
         {
-printf("##### function %s line %d\n",__func__,__LINE__);	
+printf("##### function %s line %d paramValue : %s\n",__func__,__LINE__,paramValue);	
             if(paramValue != NULL && (strncasecmp(paramValue, "sky-uk", 6) == 0))
             {
 printf("##### function %s line %d\n",__func__,__LINE__);	

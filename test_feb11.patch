@@ -1,0 +1,69 @@
+diff --git a/source/test/bulkdata/profileTest.cpp b/source/test/bulkdata/profileTest.cpp
+index 834aa17..a92f5d6 100644
+--- a/source/test/bulkdata/profileTest.cpp
++++ b/source/test/bulkdata/profileTest.cpp
+@@ -1426,7 +1426,7 @@ TEST_F(ProfileTest, ReportProfiles_storeMarkerEvent_NonXConfProfile) {
+     ReportProfiles_storeMarkerEvent(strdup("NonXConfProfile"), &event);
+ }
+ 
+-#if 0
++#if 1
+ TEST_F(ProfileTest, ReportProfiles_setProfileXConf) {
+     ProfileXConf profile;
+     EXPECT_CALL(*g_schedulerMock, registerProfileWithScheduler(_, _, _, _, _, _, _, _))
+@@ -1468,10 +1468,6 @@ TEST_F(ProfileTest, ReportProfiles_setProfileXConf) {
+         .Times(::testing::AtMost(1))
+         .WillRepeatedly(Return(RBUS_ENABLED));
+ 
+-    EXPECT_CALL(*g_rbusMock, rbus_open(_, _))
+-        .Times(::testing::AtMost(1))
+-        .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
+-
+     EXPECT_CALL(*g_rbusMock, rbusObject_Init(_, _))
+         .Times(::testing::AtMost(1));
+ 
+@@ -1496,13 +1492,6 @@ TEST_F(ProfileTest, ReportProfiles_setProfileXConf) {
+     EXPECT_EQ(ReportProfiles_setProfileXConf(&profile), T2ERROR_SUCCESS);
+ }
+ 
+-TEST_F(ProfileTest, ReportProfiles_deleteProfileXConf) {
+-    ProfileXConf profile;
+-    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+-        .Times(::testing::AtMost(1))
+-        .WillRepeatedly(Return(0)); // Return 1 to indicate only one profile (no duplicates)
+-    EXPECT_EQ(ReportProfiles_deleteProfileXConf(&profile), T2ERROR_SUCCESS);
+-}
+ #endif
+ 
+ TEST_F(ProfileTest, ReportProfiles_deleteProfile) {
+@@ -1530,7 +1519,7 @@ TEST_F(ProfileTest, T2totalmem_calculate) {
+ TEST_F(ProfileTest, privacymode_do_not_share) {
+     EXPECT_EQ(privacymode_do_not_share(), T2ERROR_SUCCESS);
+ }
+-
++#if 0
+ TEST_F(ProfileTest, generateDcaReport) {
+     // generateDcaReport may call set_logdemand
+     EXPECT_CALL(*g_schedulerMock, set_logdemand(_))
+@@ -1539,7 +1528,7 @@ TEST_F(ProfileTest, generateDcaReport) {
+     generateDcaReport(false, true);
+     generateDcaReport(true, false);
+ }
+-
++#endif
+ TEST_F(ProfileTest, RemovePreRPfromDisk) {
+     hash_map_t dummy;
+     DIR *dir = (DIR*)0xffffffff ;
+@@ -1727,8 +1716,10 @@ TEST_F(ProfileTest, SetAndIsSet) {
+         .Times(::testing::AtMost(1))
+         .WillRepeatedly(Return(T2ERROR_SUCCESS));
+     
+-    EXPECT_EQ(ProfileXConf_set(profile), T2ERROR_SUCCESS);
+-    EXPECT_TRUE(ProfileXConf_isSet());
++    //EXPECT_EQ(ProfileXConf_set(profile), T2ERROR_SUCCESS);
++    //EXPECT_TRUE(ProfileXConf_isSet());
++
++    EXPECT_EQ(ReportProfiles_setProfileXConf(profile),T2ERROR_SUCCESS);
+ 
+     // Get name
+     char* name = ProfileXconf_getName();

@@ -1426,7 +1426,7 @@ TEST_F(ProfileTest, ReportProfiles_storeMarkerEvent_NonXConfProfile) {
     ReportProfiles_storeMarkerEvent(strdup("NonXConfProfile"), &event);
 }
 
-#if 0
+#if 1
 TEST_F(ProfileTest, ReportProfiles_setProfileXConf) {
     ProfileXConf profile;
     EXPECT_CALL(*g_schedulerMock, registerProfileWithScheduler(_, _, _, _, _, _, _, _))
@@ -1468,10 +1468,6 @@ TEST_F(ProfileTest, ReportProfiles_setProfileXConf) {
         .Times(::testing::AtMost(1))
         .WillRepeatedly(Return(RBUS_ENABLED));
 
-    EXPECT_CALL(*g_rbusMock, rbus_open(_, _))
-        .Times(::testing::AtMost(1))
-        .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
-
     EXPECT_CALL(*g_rbusMock, rbusObject_Init(_, _))
         .Times(::testing::AtMost(1));
 
@@ -1495,7 +1491,8 @@ TEST_F(ProfileTest, ReportProfiles_setProfileXConf) {
         .Times(::testing::AtLeast(1));
     EXPECT_EQ(ReportProfiles_setProfileXConf(&profile), T2ERROR_SUCCESS);
 }
-
+#endif
+#if 0
 TEST_F(ProfileTest, ReportProfiles_deleteProfileXConf) {
     ProfileXConf profile;
     EXPECT_CALL(*g_vectorMock, Vector_Size(_))

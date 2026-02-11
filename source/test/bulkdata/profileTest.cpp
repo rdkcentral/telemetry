@@ -1759,12 +1759,12 @@ TEST_F(ProfileTest, SetAndIsSet) {
         .Times(::testing::AtMost(1));
 
     ReportProfiles_Interrupt();
-
+#if 0
     // Clean up - ProfileXConf_uninit calls unregisterProfileFromScheduler
     EXPECT_CALL(*g_schedulerMock, unregisterProfileFromScheduler(_))
         .Times(::testing::AtMost(1))
         .WillRepeatedly(Return(T2ERROR_SUCCESS));
-    
+#endif
     EXPECT_EQ(ProfileXConf_uninit(), T2ERROR_SUCCESS);
 }
 

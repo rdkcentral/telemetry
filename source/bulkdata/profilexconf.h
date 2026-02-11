@@ -86,6 +86,5 @@ T2ERROR ReportProfiles_setProfileXConf(ProfileXConf *profile);
 
 T2ERROR ReportProfiles_deleteProfileXConf(ProfileXConf *profile);
 
-void ReportProfiles_ActivationTimeoutCb(char* profileName);
 
 #endif /* _PROFILE_H_ */

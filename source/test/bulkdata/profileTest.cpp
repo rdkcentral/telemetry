@@ -1622,7 +1622,7 @@ TEST_F(ProfileTest, ProcessMsgPackBlob_InvalidFormat) {
     EXPECT_EQ(ret, T2ERROR_INVALID_ARGS);
 }
 
-TEST_F(ProfilesTest, ProcessReportProfilesBlob_EmptyProfileArray) {
+TEST_F(ProfileTest, ProcessReportProfilesBlob_EmptyProfileArray) {
     cJSON *root = cJSON_CreateObject();
     cJSON *profiles = cJSON_CreateArray();
     cJSON_AddItemToObject(root, "profiles", profiles);
@@ -1630,7 +1630,7 @@ TEST_F(ProfilesTest, ProcessReportProfilesBlob_EmptyProfileArray) {
     // Should call deleteAllReportProfiles
     cJSON_Delete(root);
 }
-TEST_F(ReportProfilesTest, ReportProfilesUninit_SuccessInitState) {
+TEST_F(ProfileTest, ReportProfilesUninit_SuccessInitState) {
     EXPECT_EQ(ReportProfiles_uninit(), T2ERROR_SUCCESS);
     // Could add checks for side-effects; e.g., profile list cleared, datamodel uninit called, etc.
 }

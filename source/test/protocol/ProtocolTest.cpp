@@ -80,6 +80,15 @@ using ::testing::_;
 using ::testing::Return;
 using ::testing::StrEq;
 
+// Helper macro to prevent deadlock from mocked fwrite and fputs calls in the protocol code when GTest tries to log output, which can cause a deadlock if the logging functions are mocked without allowing real calls to them.
+// Helper macro to prevent deadlock from mocked fwrite and fputs calls in the protocol code when GTest tries to log output, which can cause a deadlock if the logging functions are mocked without allowing real calls to them.
+#define PREVENT_GTEST_LOGGING_DEADLOCK() \
+    EXPECT_CALL(*g_fileIOMock, fwrite(::testing::_, ::testing::_, ::testing::_, ::testing::_)) \
+        .Times(::testing::AnyNumber()) \
+        .WillRepeatedly(::testing::Invoke( \
+            [](const void* ptr, size_t size, size_t nitems, FILE* stream) { \
+                return ::fwrite(ptr, size, nitems, stream); \
+            }))
 
 class protocolTestFixture : public ::testing::Test {
 protected:
@@ -91,6 +100,46 @@ protected:
         g_rbusMock = new rbusMock();
         g_rdkconfigMock = new rdkconfigMock();
 
+        // Set default behaviors for curl functions to prevent them from being called
+        EXPECT_CALL(*g_fileIOMock, curl_easy_init())
+            .Times(::testing::AnyNumber())
+            .WillRepeatedly(::testing::Return(nullptr));
+        
+        EXPECT_CALL(*g_fileIOMock, curl_easy_perform(::testing::_))
+            .Times(::testing::AnyNumber())
+            .WillRepeatedly(::testing::Return(CURLE_FAILED_INIT));
+
+        EXPECT_CALL(*g_fileIOMock, curl_easy_cleanup(::testing::_))
+            .Times(::testing::AnyNumber());
+
+        EXPECT_CALL(*g_fileIOMock, curl_easy_setopt(::testing::_, ::testing::_, ::testing::_))
+            .Times(::testing::AnyNumber())
+            .WillRepeatedly(::testing::Return(CURLE_OK));
+
+        // Add curl_slist functions to prevent deadlock during pool initialization
+        EXPECT_CALL(*g_fileIOMock, curl_slist_append(::testing::_, ::testing::_))
+            .Times(::testing::AnyNumber())
+            .WillRepeatedly(::testing::Invoke([](struct curl_slist* list, const char* str) {
+                // Return a fake non-null pointer to simulate successful append
+                static int counter = 1;
+                return (struct curl_slist*)(uintptr_t)(0x2000 + counter++);
+            }));
+        
+        EXPECT_CALL(*g_fileIOMock, curl_slist_free_all(::testing::_))
+            .Times(::testing::AnyNumber());
+
+        EXPECT_CALL(*g_fileIOMock, fopen(::testing::_, ::testing::_))
+            .Times(::testing::AnyNumber())
+            .WillRepeatedly(::testing::Return((FILE*)nullptr))
+            .RetiresOnSaturation();
+        
+        EXPECT_CALL(*g_fileIOMock, fwrite(::testing::_, ::testing::_, ::testing::_, ::testing::_))
+            .Times(::testing::AnyNumber())
+            .WillRepeatedly(::testing::Invoke(
+                [](const void* ptr, size_t size, size_t nitems, FILE* stream) {
+                    return ::fwrite(ptr, size, nitems, stream);
+                }))
+            .RetiresOnSaturation();
     }
 
     void TearDown() override
@@ -109,20 +158,22 @@ protected:
     }
 };
 
-
-#if 0
 TEST(SENDREPORTOVERHTTP, 1_NULL_CHECK)
 {
     char *payload = "This is a payload string";
+    //PREVENT_GTEST_LOGGING_DEADLOCK();
     EXPECT_EQ(T2ERROR_FAILURE, sendReportOverHTTP(NULL, payload));
 }
 
 TEST(SENDREPORTOVERHTTP, 2_NULL_CHECK)
 {
     char *url = "https://test.com";
+    //PREVENT_GTEST_LOGGING_DEADLOCK();
     EXPECT_EQ(T2ERROR_FAILURE, sendReportOverHTTP(url, NULL));
 }
 
+
+#if 1
 TEST(SENDCACREPOVERHTTP, 1_NULL_CHECK)
 {
     Vector* reportlist;
@@ -188,15 +239,53 @@ TEST(SENDRBUSCACHEREPORTOVERRBUS, NULL_CHECK)
     Vector_Destroy(reportList, free);
 }
 
-#if 0
+TEST_F(protocolTestFixture, SENDREPORTOVERHTTP0)
+{
+    char* httpURL = "https://mockxconf:50051/dataLakeMock";
+    char* payload = strdup("This is a payload string");
+    //http_pool_cleanup(); // Ensure pool is cleaned up before test to prevent interference from previous tests
+    EXPECT_CALL(*g_fileIOMock, curl_easy_init())
+    .Times(::testing::AnyNumber())
+    .WillRepeatedly(::testing::Return(nullptr));
+    EXPECT_CALL(*m_xconfclientMock, isMtlsEnabled())
+    .Times(1)
+    .WillOnce(Return(0));
+    EXPECT_EQ(T2ERROR_FAILURE, sendReportOverHTTP(httpURL, payload));
+    free(payload);
+}
+
 TEST_F(protocolTestFixture, SENDREPORTOVERHTTP1)
 {
-      char* httpURL = "https://mockxconf:50051/dataLakeMock";
-      char* payload = strdup("This is a payload string");
-      EXPECT_CALL(*g_fileIOMock, pipe(_))
-              .Times(1)
-              .WillOnce(Return(-1));
-      EXPECT_EQ(T2ERROR_FAILURE, sendReportOverHTTP(httpURL, payload));
+    char* httpURL = "https://mockxconf:50051/dataLakeMock";
+    char* payload = strdup("This is a payload string");
+
+    EXPECT_CALL(*g_fileIOMock, curl_easy_init())
+    .Times(::testing::AnyNumber())
+    .WillRepeatedly(::testing::Invoke([]() {
+        // Return unique fake handles for each call
+        static int handle_counter = 1;
+        return (CURL*)(uintptr_t)(0x1000 + handle_counter++);
+    }));
+
+    EXPECT_CALL(*m_xconfclientMock, isMtlsEnabled())
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, curl_easy_perform(_))
+            .Times(1)
+            .WillOnce(Return(CURLE_OK));
+    EXPECT_CALL(*g_fileIOMock, curl_easy_getinfo_mock(_,_,_))
+            .Times(::testing::AtLeast(1))
+            .WillRepeatedly([](CURL* curl, CURLINFO info, void* response_code) {
+                if (info == CURLINFO_RESPONSE_CODE) {
+                    *(long*)response_code = 200;
+                }
+                return CURLE_OK;
+            });
+    
+    //Add curl_easy_cleanup expectation
+    EXPECT_CALL(*g_fileIOMock, curl_easy_cleanup(_))
+            .Times(::testing::AnyNumber());
+      EXPECT_EQ(T2ERROR_SUCCESS, sendReportOverHTTP(httpURL, payload));
       free(payload);
 }
 
@@ -204,10 +293,15 @@ TEST_F(protocolTestFixture, SENDREPORTOVERHTTP2)
 {
       char* httpURL = "https://mockxconf:50051/dataLakeMock";
       char* payload = strdup("This is a payload string");
-      char *cm = (char*)0xFFFFFFFF;
-      EXPECT_CALL(*g_fileIOMock, pipe(_))
-              .Times(1)
-              .WillOnce(Return(0));
+
+      EXPECT_CALL(*g_fileIOMock, curl_easy_init())
+      .Times(::testing::AnyNumber())
+      .WillRepeatedly(::testing::Invoke([]() {
+          // Return unique fake handles for each call
+          static int handle_counter = 1;
+          return (CURL*)(uintptr_t)(0x1000 + handle_counter++);
+      }));
+
       #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
       #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
       EXPECT_CALL(*m_xconfclientMock, getParameterValue(_,_))
@@ -226,10 +320,22 @@ TEST_F(protocolTestFixture, SENDREPORTOVERHTTP2)
              .Times(1)                                                                                                             
              .WillOnce(Return(RDKCONFIG_OK));                                                                                      
       #endif
-      EXPECT_CALL(*g_fileIOMock, fork())
-              .Times(1)
-              .WillOnce(Return(-1));
-      EXPECT_EQ(T2ERROR_FAILURE, sendReportOverHTTP(httpURL, payload));
+    EXPECT_CALL(*g_fileIOMock, curl_easy_perform(_))
+            .Times(1)
+            .WillOnce(Return(CURLE_OK));
+    EXPECT_CALL(*g_fileIOMock, curl_easy_getinfo_mock(_,_,_))
+            .Times(::testing::AtLeast(1))
+            .WillRepeatedly([](CURL* curl, CURLINFO info, void* response_code) {
+                if (info == CURLINFO_RESPONSE_CODE) {
+                    *(long*)response_code = 200;
+                }
+                return CURLE_OK;
+            });
+    
+    //Add curl_easy_cleanup expectation
+    EXPECT_CALL(*g_fileIOMock, curl_easy_cleanup(_))
+            .Times(::testing::AnyNumber());
+      EXPECT_EQ(T2ERROR_SUCCESS, sendReportOverHTTP(httpURL, payload));
       free(payload);
 }
 
@@ -239,9 +345,15 @@ TEST_F(protocolTestFixture, SENDREPORTOVERHTTP3)
       char* httpURL = "https://mockxconf:50051/dataLakeMock";
       char* payload = strdup("This is a payload string");
       char *cm = (char*)0xFFFFFFFF;
-      EXPECT_CALL(*g_fileIOMock, pipe(_))
-              .Times(1)
-              .WillOnce(Return(0));
+
+      EXPECT_CALL(*g_fileIOMock, curl_easy_init())
+      .Times(::testing::AnyNumber())
+      .WillRepeatedly(::testing::Invoke([]() {
+          // Return unique fake handles for each call
+          static int handle_counter = 1;
+          return (CURL*)(uintptr_t)(0x1000 + handle_counter++);
+      }));
+
       #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
       #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
       EXPECT_CALL(*m_xconfclientMock, getParameterValue(_,_))
@@ -260,17 +372,7 @@ TEST_F(protocolTestFixture, SENDREPORTOVERHTTP3)
              .Times(1)
              .WillOnce(Return(RDKCONFIG_OK));
       #endif
-      EXPECT_CALL(*g_fileIOMock, fork())
-              .Times(1)
-              .WillOnce(Return(1));
-      EXPECT_CALL(*g_fileIOMock, close(_))
-              .Times(2)
-              .WillOnce(Return(-1))
-              .WillOnce(Return(-1));
-      EXPECT_CALL(*g_fileIOMock, read(_,_,_))
-              .Times(1)
-              .WillOnce(Return(-1));
-      EXPECT_EQ(T2ERROR_SUCCESS, sendReportOverHTTP(httpURL, payload));
+      EXPECT_EQ(T2ERROR_FAILURE, sendReportOverHTTP(httpURL, payload));
       free(payload);
 }
 
@@ -282,9 +384,14 @@ TEST_F(protocolTestFixture, SENDCACHEDREPORTOVERHTTP)
       Vector_Create(&reportlist);
       Vector_PushBack(reportlist, payload);
       char *cm = (char*)0xFFFFFFFF;
-      EXPECT_CALL(*g_fileIOMock, pipe(_))
-              .Times(1)
-              .WillOnce(Return(0));
+
+      EXPECT_CALL(*g_fileIOMock, curl_easy_init())
+              .Times(::testing::AnyNumber())
+              .WillRepeatedly(::testing::Invoke([]() {
+                  // Return unique fake handles for each call
+                  static int handle_counter = 1;
+                  return (CURL*)(uintptr_t)(0x1000 + handle_counter++);
+              }));
       #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
       #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
       EXPECT_CALL(*m_xconfclientMock, getParameterValue(_,_))
@@ -303,20 +410,25 @@ TEST_F(protocolTestFixture, SENDCACHEDREPORTOVERHTTP)
              .Times(1)
              .WillOnce(Return(RDKCONFIG_OK));
       #endif
-      EXPECT_CALL(*g_fileIOMock, fork())
-              .Times(1)
-              .WillOnce(Return(1));
-      EXPECT_CALL(*g_fileIOMock, close(_))
-              .Times(2)
-              .WillOnce(Return(-1))
-              .WillOnce(Return(-1));
-      EXPECT_CALL(*g_fileIOMock, read(_,_,_))
-              .Times(1)
-              .WillOnce(Return(-1));
+      EXPECT_CALL(*g_fileIOMock, curl_easy_perform(_))
+      .Times(1)
+      .WillOnce(Return(CURLE_OK));
+    EXPECT_CALL(*g_fileIOMock, curl_easy_getinfo_mock(_,_,_))
+            .Times(::testing::AtLeast(1))
+            .WillRepeatedly([](CURL* curl, CURLINFO info, void* response_code) {
+                if (info == CURLINFO_RESPONSE_CODE) {
+                    *(long*)response_code = 200;
+                }
+                return CURLE_OK;
+            });
+    
+    //Add curl_easy_cleanup expectation
+    EXPECT_CALL(*g_fileIOMock, curl_easy_cleanup(_))
+            .Times(::testing::AnyNumber());
+    
       EXPECT_EQ(T2ERROR_SUCCESS, sendCachedReportsOverHTTP(httpURL, reportlist));
       Vector_Destroy(reportlist, free);
 }
-#endif
 
 TEST_F(protocolTestFixture, SENDREPORTSOVERRBUSMETHOD1)
 {
@@ -442,9 +554,11 @@ TEST_F(protocolTestFixture, sendReportOverHTTP_6)
       Vector_Create(&reportlist);
       Vector_PushBack(reportlist, payload);
       char *cm = (char*)0xFFFFFFFF;
-      EXPECT_CALL(*g_fileIOMock, pipe(_))
-              .Times(1)
-              .WillOnce(Return(0));
+
+      EXPECT_CALL(*g_fileIOMock, curl_easy_init())
+      .Times(::testing::AnyNumber())
+      .WillRepeatedly(::testing::Return(nullptr));
+      
       #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
       #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
       EXPECT_CALL(*m_xconfclientMock, getParameterValue(_,_))
@@ -458,42 +572,29 @@ TEST_F(protocolTestFixture, sendReportOverHTTP_6)
       #endif
       #endif
       EXPECT_CALL(*m_xconfclientMock, isMtlsEnabled())
-              .Times(1)
+      .Times(::testing::AnyNumber())
               .WillOnce(Return(true));
       EXPECT_CALL(*g_systemMock, access(_,_))
-             .Times(1)
+      .Times(::testing::AnyNumber())
              .WillOnce(Return(0));
       #ifdef LIBRDKCONFIG_BUILD
       EXPECT_CALL(*g_rdkconfigMock, rdkconfig_get(_,_,_))
              .Times(1)
              .WillOnce(Return(RDKCONFIG_OK));
       #endif
-      EXPECT_CALL(*g_fileIOMock, fork())
-              .Times(1)
-              .WillOnce(Return(1));
-      EXPECT_CALL(*g_fileIOMock, close(_))
-              .Times(2)
-              .WillOnce(Return(-1))
-              .WillOnce(Return(-1));
-      EXPECT_CALL(*g_fileIOMock, read(_,_,_))
-              .Times(1)
-              .WillOnce([](int fd, void *buf, size_t count) {
-                 childResponse* resp = (childResponse*)buf;
-                 resp->curlStatus = true;
-                 resp->curlResponse = CURLE_OK;
-                 resp->curlSetopCode = CURLE_OK;
-                 resp->http_code = 200;
-                 resp->lineNumber = 123; // Set to test value
-                 return sizeof(childResponse);
-              });
+
      #ifdef LIBRDKCONFIG_BUILD
       EXPECT_CALL(*g_rdkconfigMock, rdkconfig_free(_, _))
              .Times(1)
              .WillOnce(Return(RDKCONFIG_OK));
       #endif
+      EXPECT_CALL(*g_fileIOMock, curl_easy_perform(_))
+      .Times(1)
+      .WillOnce(Return(CURLE_OK));
       EXPECT_EQ(T2ERROR_SUCCESS, sendReportOverHTTP(httpURL, payload));
       Vector_Destroy(reportlist, free);
 }
+#endif
 
 TEST_F(protocolTestFixture, sendCachedReportsOverHTTP_FailureCase)
 {
@@ -507,18 +608,9 @@ TEST_F(protocolTestFixture, sendCachedReportsOverHTTP_FailureCase)
     Vector_PushBack(reportList, payload1);
     Vector_PushBack(reportList, payload2);
 
-    // Mock failure for sendReportOverHTTP on the first payload
-    EXPECT_CALL(*g_fileIOMock, pipe(_))
-        .Times(1)
-        .WillOnce(Return(0));
-
     EXPECT_CALL(*m_xconfclientMock, isMtlsEnabled())
         .Times(1)
         .WillOnce(Return(false));
-
-    EXPECT_CALL(*g_fileIOMock, fork())
-        .Times(1)
-        .WillOnce(Return(-1));
 
     // Ensure that the function returns a failure due to the mocked failure
     EXPECT_EQ(T2ERROR_FAILURE, sendCachedReportsOverHTTP(httpURL, reportList));
@@ -526,7 +618,6 @@ TEST_F(protocolTestFixture, sendCachedReportsOverHTTP_FailureCase)
     // Clean up
     Vector_Destroy(reportList, free);
 }
-#endif
 #ifdef GTEST_ENABLE
  // Unit test for static writeToFile via its function pointer
  TEST(CURLINTERFACE_STATIC, WriteToFile)

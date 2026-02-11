@@ -1735,7 +1735,11 @@ TEST_F(ProfileTest, SetAndIsSet) {
     ASSERT_NE(name, nullptr);
     EXPECT_STREQ(name, "TestProfile");
     free(name);
-   
+    
+    EXPECT_CALL(*g_schedulerMock, SendInterruptToTimeoutThread(_))
+        .Times(::testing::AtMost(1));
+
+    ReportProfiles_Interrupt();
 
     // Clean up - ProfileXConf_uninit calls unregisterProfileFromScheduler
     EXPECT_CALL(*g_schedulerMock, unregisterProfileFromScheduler(_))

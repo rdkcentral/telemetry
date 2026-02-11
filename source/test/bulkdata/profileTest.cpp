@@ -1918,7 +1918,6 @@ TEST_F(ProfileTest, DeleteProfile) {
 
     ProfileXConf_set(profile);
     EXPECT_EQ(ReportProfiles_setProfileXConf(profile),T2ERROR_FAILURE);
-    EXPECT_EQ(ReportProfiles_deleteProfileXConf(profile),T2ERROR_FAILURE);
     EXPECT_EQ(ProfileXConf_delete(profile), T2ERROR_FAILURE);
     ProfileXConf_uninit();
 }

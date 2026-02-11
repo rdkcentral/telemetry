@@ -1037,6 +1037,9 @@ T2ERROR ProfileXConf_terminateReport()
 
 }
 #if 1
+void test_set_reportThreadExits(bool value) {
+    reportThreadExits = value;
+}
 typedef char* (*getTimeStampFuncType)(void);
 
 getTimeStampFuncType getTimeStampFuncCallback(void)

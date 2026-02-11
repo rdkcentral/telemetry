@@ -1917,6 +1917,7 @@ TEST_F(ProfileTest, DeleteProfile) {
     profile->isUpdated = false;
 
     ProfileXConf_set(profile);
+    EXPECT_EQ(ReportProfiles_setProfileXConf(profile),T2ERROR_FAILURE);
     EXPECT_EQ(ProfileXConf_delete(profile), T2ERROR_FAILURE);
     ProfileXConf_uninit();
 }

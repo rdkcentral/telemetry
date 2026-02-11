@@ -348,6 +348,8 @@ TEST_F(TelemetryBusmessageSenderTest, getParameterValue_success_boolean)
         .Times(1);
   
     EXPECT_EQ(T2ERROR_SUCCESS, getParamValue("Device.DeviceInfo.SerialNumber", &paramValue));
+    ASSERT_STREQ("true", paramValue);
+    free(paramValue);
 }
 
 TEST_F(TelemetryBusmessageSenderTest, getParameterValue_failure_boolean)
@@ -368,6 +370,8 @@ TEST_F(TelemetryBusmessageSenderTest, getParameterValue_failure_boolean)
         .Times(1);
 
     EXPECT_EQ(T2ERROR_SUCCESS, getParamValue("Device.DeviceInfo.SerialNumber", &paramValue));
+    ASSERT_STREQ("false", paramValue);
+    free(paramValue);
 }
 
 #ifdef GTEST_ENABLE

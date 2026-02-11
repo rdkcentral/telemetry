@@ -45,7 +45,10 @@ extern "C" {
 #include "../mocks/rdklogMock.h"
 #include "SchedulerMock.h"
 #include "profilexconfMock.h"
-
+extern "C"
+{
+	void ReportProfiles_TimeoutCb(char* profileName, bool isClearSeekMap);
+}
 using namespace std;
 
 using ::testing::_;

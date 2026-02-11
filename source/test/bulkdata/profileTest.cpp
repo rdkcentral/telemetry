@@ -1614,8 +1614,26 @@ TEST_F(ProfileTest, ReportProfiles_uninit) {
     EXPECT_EQ(ReportProfiles_uninit(), T2ERROR_SUCCESS);
 }
 #endif
+TEST_F(ProfileTest, ProcessMsgPackBlob_InvalidFormat) {
+    struct __msgpack__ msg;
+    msg.msgpack_blob = nullptr;
+    msg.msgpack_blob_size = 0;
+    int ret = __ReportProfiles_ProcessReportProfilesMsgPackBlob(&msg, false);
+    EXPECT_EQ(ret, T2ERROR_INVALID_ARGS);
+}
 
-
+TEST_F(ProfilesTest, ProcessReportProfilesBlob_EmptyProfileArray) {
+    cJSON *root = cJSON_CreateObject();
+    cJSON *profiles = cJSON_CreateArray();
+    cJSON_AddItemToObject(root, "profiles", profiles);
+    ReportProfiles_ProcessReportProfilesBlob(root, false);
+    // Should call deleteAllReportProfiles
+    cJSON_Delete(root);
+}
+TEST_F(ReportProfilesTest, ReportProfilesUninit_SuccessInitState) {
+    EXPECT_EQ(ReportProfiles_uninit(), T2ERROR_SUCCESS);
+    // Could add checks for side-effects; e.g., profile list cleared, datamodel uninit called, etc.
+}
 #if 1
 TEST_F(ProfileTest, reportOnDemandTest)
 {

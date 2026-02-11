@@ -1480,6 +1480,7 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
 
 bool isMtlsEnabled(void)
 {
+printf("##### function %s line %d\n",__func__,__LINE__);	
 #ifdef ENABLE_MTLS
     T2Info("mTLS defaulted for telemetry\n");
     initT2MtlsEnable = true;
@@ -1493,46 +1494,67 @@ bool isMtlsEnabled(void)
     {
         if(T2ERROR_SUCCESS == getParameterValue(T2_MTLS_RFC, &paramValue))
         {
+printf("##### function %s line %d\n",__func__,__LINE__);	
             if(paramValue != NULL && (strncasecmp(paramValue, "true", 4) == 0))
             {
+printf("##### function %s line %d\n",__func__,__LINE__);	
                 T2Debug("mTLS support is Enabled\n");
                 isT2MtlsEnable = true;
+printf("##### function %s line %d\n",__func__,__LINE__);	
             }
+printf("##### function %s line %d\n",__func__,__LINE__);	
             initT2MtlsEnable = true;
             free(paramValue);
             paramValue = NULL;
+printf("##### function %s line %d\n",__func__,__LINE__);	
         }
         else
         {
+printf("##### function %s line %d\n",__func__,__LINE__);	
             T2Error("getParameterValue failed\n");
+printf("##### function %s line %d\n",__func__,__LINE__);	
         }
+printf("##### function %s line %d\n",__func__,__LINE__);	
     }
     if(isT2MtlsEnable != true)
     {
+printf("##### function %s line %d\n",__func__,__LINE__);	
         const char* returnPartnerInfo = isWhoAmiEnabled() ? TR181_DEVICE_PARTNER_ID : TR181_DEVICE_PARTNER_NAME;
         if(T2ERROR_SUCCESS == getParameterValue(returnPartnerInfo, &paramValue))
         {
+printf("##### function %s line %d\n",__func__,__LINE__);	
             if(paramValue != NULL && (strncasecmp(paramValue, "sky-uk", 6) == 0))
             {
+printf("##### function %s line %d\n",__func__,__LINE__);	
                 T2Debug("Enabling mTLS for sky-uk partner\n");
                 isT2MtlsEnable = true;
                 initT2MtlsEnable = true;
                 free(paramValue);
                 paramValue = NULL;
+printf("##### function %s line %d\n",__func__,__LINE__);	
             }
             else
             {
+printf("##### function %s line %d\n",__func__,__LINE__);	
                 if(paramValue != NULL)
                 {
+printf("##### function %s line %d\n",__func__,__LINE__);	
                     free(paramValue);
+printf("##### function %s line %d\n",__func__,__LINE__);	
                 }
+printf("##### function %s line %d\n",__func__,__LINE__);	
                 T2Error("getParameterValue partner id failed\n");
+printf("##### function %s line %d\n",__func__,__LINE__);	
             }
+printf("##### function %s line %d\n",__func__,__LINE__);	
         }
+printf("##### function %s line %d\n",__func__,__LINE__);	
     }
+printf("##### function %s line %d\n",__func__,__LINE__);	
     return isT2MtlsEnable;
 #else
     /* Enabling Mtls by default for RDKC */
+printf("##### function %s line %d\n",__func__,__LINE__);	
     return true;
 #endif
 #endif

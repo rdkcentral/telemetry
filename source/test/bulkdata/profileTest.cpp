@@ -1726,7 +1726,6 @@ TEST_F(ProfileTest, SetAndIsSet) {
     EXPECT_EQ(ProfileXConf_set(profile), T2ERROR_SUCCESS);
     EXPECT_TRUE(ProfileXConf_isSet());
     
-    generateDcaReport(true,true);
 
     // Get name
     char* name = ProfileXconf_getName();

@@ -1620,7 +1620,6 @@ TEST_F(ProfileTest, reportOnDemandTest)
 {
         reportOnDemandFunc func = reportOnDemandFuncCallback();
         ASSERT_NE(func,nullptr);
-        //func((void*)"UPLOAD");
         func((void*)"ABORT");
         func((void*)"FOO");
         func(nullptr);
@@ -1726,6 +1725,8 @@ TEST_F(ProfileTest, SetAndIsSet) {
     
     EXPECT_EQ(ProfileXConf_set(profile), T2ERROR_SUCCESS);
     EXPECT_TRUE(ProfileXConf_isSet());
+    
+    generateDcaReport(true,true);
 
     // Get name
     char* name = ProfileXconf_getName();

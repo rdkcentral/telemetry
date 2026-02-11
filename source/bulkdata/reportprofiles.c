@@ -237,47 +237,64 @@ void ReportProfiles_TimeoutCb(char* profileName, bool isClearSeekMap)
 void ReportProfiles_ActivationTimeoutCb(char* profileName)
 {
     T2Info("%s ++in\n", __FUNCTION__);
-
+    printf("####### function %s line %d\n",__func__,__LINE__); 
     bool isDeleteRequired = false;
     T2Debug("calling ProfileXConf_isNameEqual function form %s and line %d\n", __FUNCTION__, __LINE__);
 
+    printf("####### function %s line %d\n",__func__,__LINE__); 
     if(ProfileXConf_isNameEqual(profileName))
     {
+    printf("####### function %s line %d\n",__func__,__LINE__); 
         T2Error("ActivationTimeout received for Xconf profile. Ignoring!!!! \n");
     }
     else
     {
+    printf("####### function %s line %d\n",__func__,__LINE__); 
         if (T2ERROR_SUCCESS != disableProfile(profileName, &isDeleteRequired))
         {
+    printf("####### function %s line %d\n",__func__,__LINE__); 
             T2Error("Failed to disable profile after timeout: %s \n", profileName);
             return;
         }
 
+    printf("####### function %s line %d\n",__func__,__LINE__); 
         if (isDeleteRequired)
         {
+    printf("####### function %s line %d\n",__func__,__LINE__); 
             removeProfileFromDisk(REPORTPROFILES_PERSISTENCE_PATH, profileName);
         }
         if (T2ERROR_SUCCESS != deleteProfile(profileName))
         {
+    printf("####### function %s line %d\n",__func__,__LINE__); 
             T2Error("Failed to delete profile after timeout: %s \n", profileName);
         }
 
+    printf("####### function %s line %d\n",__func__,__LINE__); 
         T2ER_StopDispatchThread();
+    printf("####### function %s line %d\n",__func__,__LINE__); 
         clearT2MarkerComponentMap();
 
+    printf("####### function %s line %d\n",__func__,__LINE__); 
         if(ProfileXConf_isSet())
         {
+    printf("####### function %s line %d\n",__func__,__LINE__); 
             ProfileXConf_updateMarkerComponentMap();
         }
+    printf("####### function %s line %d\n",__func__,__LINE__); 
         updateMarkerComponentMap();
 
+    printf("####### function %s line %d\n",__func__,__LINE__); 
         /* Restart DispatchThread */
         if (ProfileXConf_isSet() || getProfileCount() > 0)
         {
+    printf("####### function %s line %d\n",__func__,__LINE__); 
             T2ER_StartDispatchThread();
+    printf("####### function %s line %d\n",__func__,__LINE__); 
         }
+    printf("####### function %s line %d\n",__func__,__LINE__); 
     }
 
+    printf("####### function %s line %d\n",__func__,__LINE__); 
     T2Info("%s --out\n", __FUNCTION__);
 }
 

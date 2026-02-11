@@ -1492,7 +1492,7 @@ TEST_F(ProfileTest, ReportProfiles_setProfileXConf) {
     EXPECT_EQ(ReportProfiles_setProfileXConf(&profile), T2ERROR_SUCCESS);
 }
 #endif
-#if 0
+#if 1
 TEST_F(ProfileTest, ReportProfiles_deleteProfileXConf) {
     ProfileXConf profile;
     EXPECT_CALL(*g_vectorMock, Vector_Size(_))

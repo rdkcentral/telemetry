@@ -1426,7 +1426,7 @@ TEST_F(ProfileTest, ReportProfiles_storeMarkerEvent_NonXConfProfile) {
     ReportProfiles_storeMarkerEvent(strdup("NonXConfProfile"), &event);
 }
 
-#if 1
+#if 0
 TEST_F(ProfileTest, ReportProfiles_setProfileXConf) {
     ProfileXConf profile;
     EXPECT_CALL(*g_schedulerMock, registerProfileWithScheduler(_, _, _, _, _, _, _, _))

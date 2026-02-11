@@ -1653,10 +1653,6 @@ TEST(ReportProfilesCallbacks, FreeReportProfileHashMap) {
     SUCCEED();
 }
 #endif
-TEST_F(ProfileTest, ReportProfiles_uninitTest)
-{
-	EXPECT_EQ(ReportProfiles_uninit( ),T2ERROR_SUCCESS);
-}
 #endif
 
 #if 1

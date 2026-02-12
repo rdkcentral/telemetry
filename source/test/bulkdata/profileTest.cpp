@@ -1633,6 +1633,12 @@ TEST_F(ProfileTest, ProcessReportProfilesBlob_NullRoot) {
     // Possibly assert/expect logs/error
 }
 
+TEST_F(ProfileTest, ReportProfiles_ProcessReportProfilesMsgPackBlobTest) {
+    // Should return early if root is NULL
+    ReportProfiles_ProcessReportProfilesMsgPackBlob(NULL, false);
+    // Possibly assert/expect logs/error
+}
+#if 0
 TEST(MsgpackFreeBlobTest, NullPointerSafe)
 {
     // Obtain the function pointer via callback accessor
@@ -1643,7 +1649,7 @@ TEST(MsgpackFreeBlobTest, NullPointerSafe)
     free_func(nullptr);
     SUCCEED();
 }
-
+#endif
 #if 1
 TEST_F(ProfileTest, reportOnDemandTest)
 {

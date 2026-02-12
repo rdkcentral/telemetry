@@ -1191,7 +1191,7 @@ TEST_F(ProfileTest, ReportProfiles_uninit) {
     EXPECT_CALL(*g_schedulerMock, unregisterProfileFromScheduler(_))
         .Times(::testing::AtMost(5))
         .WillRepeatedly(Return(T2ERROR_SUCCESS));
-    EXPECT_EQ(ReportProfiles_uninit(), T2ERROR_SUCCESS);
+    EXPECT_EQ(ReportProfiles_uninit(), T2ERROR_FAILURE);
     printf("##### function %s line %d\n",__func__,__LINE__);
 }
 

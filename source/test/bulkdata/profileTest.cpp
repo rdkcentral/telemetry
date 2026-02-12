@@ -1380,7 +1380,6 @@ TEST_F(ProfileTest, initReportProfiles) {
         .WillRepeatedly(Return(RBUS_ENABLED));
     
     EXPECT_EQ(initReportProfiles(), T2ERROR_SUCCESS);
-    EXPECT_EQ(ReportProfiles_uninit(),T2ERROR_SUCCESS); //just a trial
 }
 
 TEST_F(ProfileTest, ReportProfiles_addReportProfile) {

@@ -1628,17 +1628,19 @@ TEST_F(ProfileTest, ProcessMsgPackBlob_InvalidFormat) {
 
 TEST_F(ProfileTest, ReportProfiles_ProcessMsgPackProfilesRootNull) {
     // Arrange: make __ReportProfiles_ProcessReportProfilesMsgPackBlob see profiles_root as NULL
-    struct MsgPackData {
-        struct { void *data; } result;
-    } msgpack;
-    memset(&msgpack, 0, sizeof(msgpack)); // zero, so data==NULL
+    printf("inside ReportProfiles_ProcessMsgPackProfilesRootNull test case ; funcction : %s line : %d\n",__func__,__LINE__);
+    msgpack_unpacked result;
+    memset(&result, 0, sizeof(result)); // zero, so data==NULL
 
+    printf("inside ReportProfiles_ProcessMsgPackProfilesRootNull test case ; funcction : %s line : %d\n",__func__,__LINE__);
     EXPECT_CALL(*g_msgpackMock, msgpack_unpack_next(_, _, _, _))
         .WillOnce(Return(MSGPACK_UNPACK_SUCCESS));
 
+    printf("inside ReportProfiles_ProcessMsgPackProfilesRootNull test case ; funcction : %s line : %d\n",__func__,__LINE__);
     // Act
-    int rc = __ReportProfiles_ProcessReportProfilesMsgPackBlob(&msgpack, false);
+    int rc = __ReportProfiles_ProcessReportProfilesMsgPackBlob(&result, false);
 
+    printf("inside ReportProfiles_ProcessMsgPackProfilesRootNull test case ; funcction : %s line : %d\n",__func__,__LINE__);
     // Assert
     EXPECT_EQ(rc, T2ERROR_INVALID_ARGS);
 }

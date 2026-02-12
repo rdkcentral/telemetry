@@ -1621,6 +1621,7 @@ TEST_F(ProfileTest, ProcessMsgPackBlob_InvalidFormat) {
     int ret = __ReportProfiles_ProcessReportProfilesMsgPackBlob(&msg, false);
     EXPECT_EQ(ret, T2ERROR_INVALID_ARGS);
 }
+
 #if 0
 TEST_F(ProfileTest, ProcessReportProfilesMsgPackBlob_InvalidBlob) {
     // Provide an invalid msgpack_blob, expect error

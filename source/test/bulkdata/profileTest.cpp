@@ -1626,6 +1626,23 @@ TEST_F(ProfileTest, ProcessMsgPackBlob_InvalidFormat) {
     EXPECT_EQ(ret, T2ERROR_INVALID_ARGS);
 }
 
+TEST_F(ProfileTest, ReportProfiles_ProcessMsgPackProfilesRootNull) {
+    // Arrange: make __ReportProfiles_ProcessReportProfilesMsgPackBlob see profiles_root as NULL
+    struct MsgPackData {
+        struct { void *data; } result;
+    } msgpack;
+    memset(&msgpack, 0, sizeof(msgpack)); // zero, so data==NULL
+
+    EXPECT_CALL(*g_msgpackMock, msgpack_unpack_next(_, _, _, _))
+        .WillOnce(Return(MSGPACK_UNPACK_SUCCESS));
+
+    // Act
+    int rc = __ReportProfiles_ProcessReportProfilesMsgPackBlob(&msgpack, false);
+
+    // Assert
+    EXPECT_EQ(rc, T2ERROR_INVALID_ARGS);
+}
+
 #if 0
 TEST_F(ProfileTest, ProcessReportProfilesMsgPackBlob_InvalidBlob) {
     // Provide an invalid msgpack_blob, expect error

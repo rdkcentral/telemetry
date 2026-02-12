@@ -1012,4 +1012,3 @@ CollectAndReportXconfFuncType CollectAndReportXconfCallback(void) {
 ProfileXConf **_test_get_singleProfile_ptr() { return &singleProfile; }
 void _test_set_singleProfile(ProfileXConf *ptr) { singleProfile = ptr; }
 #endif
->>>>>>> a920113 (added unit test acses for profilexconf)

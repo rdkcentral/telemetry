@@ -22,9 +22,9 @@
 
 extern "C" T2ERROR __wrap_deleteProfile(const char* profileName)
 {
-    if (!g_profileXConfMock)
+    if (!g_profileMock)
         return T2ERROR_FAILURE;
-    return g_profileXConfMock->deleteProfile(profileName);
+    return g_profileMock->deleteProfile(profileName);
 }
 
 //protocol mock functions

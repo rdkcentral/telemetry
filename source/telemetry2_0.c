@@ -17,7 +17,7 @@
  * limitations under the License.
 */
 #include "telemetry2_0.h"
-
+#include "rdk_otlp_instrumentation.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -71,7 +71,9 @@ T2ERROR initTelemetry()
 {
     T2ERROR ret = T2ERROR_FAILURE;
     T2Debug("%s ++in\n", __FUNCTION__);
-
+    rdk_otlp_init("telemetry", "2.0.1");
+    rdk_otlp_metrics_init();
+    T2Info("Telemetry OTLP instrumentation initialized\n");
     initWhoamiSupport();
     if (init_connection_pool() != 0)
     {

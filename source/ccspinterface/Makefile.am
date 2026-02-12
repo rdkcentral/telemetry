@@ -22,7 +22,7 @@ lib_LTLIBRARIES = libccspinterface.la
 
 libccspinterface_la_SOURCES = busInterface.c rbusInterface.c
 libccspinterface_la_CFLAGS = $(GLIB_CFLAGS)
-libccspinterface_la_LDFLAGS = -shared -fPIC -lrbus $(GLIB_LIBS)
+libccspinterface_la_LDFLAGS = -shared -fPIC -lrbus $(GLIB_LIBS) -lrdk_otlp
 if ENABLE_CCSP_SUPPORT
 libccspinterface_la_LDFLAGS += -lccsp_common
 libccspinterface_la_SOURCES += ccspinterface.c
@@ -39,7 +39,8 @@ libccspinterface_la_CPPFLAGS = -fPIC $(CPPFLAGS) -I${PKG_CONFIG_SYSROOT_DIR}$(in
                                 -I${top_srcdir}/source/bulkdata \
                                 -I${top_srcdir}/source/reportgen \
                                 -I${top_srcdir}/source/utils \
-                                -I${top_srcdir}/source/dcautil 
+                                -I${top_srcdir}/source/dcautil \
+			        -I/mnt/L2_CONTAINER_SHARED_VOLUME/dtracing/rdk_otel_instrumentation/include	
 
 if IS_PRIVACYCONTROL_ENABLED
 libccspinterface_la_CFLAGS += $(PRIVACYCONTROL_FLAG)

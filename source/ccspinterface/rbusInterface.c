@@ -32,7 +32,7 @@
 #include "telemetry2_0.h"
 #include "t2log_wrapper.h"
 #include "profile.h"
-
+#include "rdk_otlp_instrumentation.h"
 #if defined(PRIVACYMODES_CONTROL)
 #include "rdkservices_privacyutils.h"
 #endif
@@ -160,9 +160,11 @@ T2ERROR getRbusParameterVal(const char* paramName, char **paramValue)
     }
 
     ret = rbus_get(t2bus_handle, paramName, &paramValue_t);
+    rdk_otlp_start_distributed_trace(paramName, "rbus_get_function");
     if(ret != RBUS_ERROR_SUCCESS)
     {
         T2Error("Unable to get %s\n", paramName);
+	rdk_otlp_finish_distributed_trace();
         return T2ERROR_FAILURE;
     }
     rbusValueType = rbusValue_GetType(paramValue_t);
@@ -205,6 +207,7 @@ T2ERROR getRbusParameterVal(const char* paramName, char **paramValue)
     *paramValue = stringValue;
     rbusValue_Release(paramValue_t);
     T2Debug("%s --out \n", __FUNCTION__);
+    rdk_otlp_finish_distributed_trace();
     return T2ERROR_SUCCESS;
 }
 
@@ -253,6 +256,7 @@ Vector* getRbusProfileParamValues(Vector *paramList, int execcount)
         if(paramNames[0] != NULL)
         {
             T2Debug("Calling rbus_getExt for %s \n", paramNames[0]);
+	    rdk_otlp_start_distributed_trace(paramNames[0], "rbus_getExt_function");
             if(RBUS_ERROR_SUCCESS != rbus_getExt(t2bus_handle, 1, (const char**)paramNames, &paramValCount, &rbusPropertyValues))
             {
                 T2Error("Failed to retrieve param : %s\n", paramNames[0]);
@@ -364,6 +368,7 @@ Vector* getRbusProfileParamValues(Vector *paramList, int execcount)
     }
 
     T2Debug("%s --Out\n", __FUNCTION__);
+    rdk_otlp_finish_distributed_trace();
     return profileValueList;
 }
 

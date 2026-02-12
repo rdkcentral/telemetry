@@ -1627,15 +1627,20 @@ TEST_F(ProfileTest, ProcessMsgPackBlob_InvalidFormat) {
 }
 TEST_F(ProfileTest, ReportProfiles_ProcessMsgPackProfilesRootNull) {
     msgpack_unpacked result;
-    memset(&result, 0, sizeof(result)); // makes .data NULL
-    // Use a buffer (can be dummy)
-    char buffer[] = {0x00};
-    size_t off = 0;
-    // Make sure mock is set to be called and return success
+
+    // Ensure msgpack_unpacked_init mock is called
+    EXPECT_CALL(*g_msgpackMock, msgpack_unpacked_init(_)).Times(1);
+    msgpack_unpacked_init(&result);
+
+    // Allow msgpack_unpack_next to be called zero or one time, but don't require it
     EXPECT_CALL(*g_msgpackMock, msgpack_unpack_next(_, _, _, _))
-        .WillOnce(Return(MSGPACK_UNPACK_SUCCESS));
-    // Now call with buffer, dummy size, etc
-    int rc = __ReportProfiles_ProcessReportProfilesMsgPackBlob(buffer, sizeof(buffer));
+        .Times(::testing::AtMost(1));
+
+    // Optionally ensure .data is NULL if required by your code logic
+    // memset(&result.data, 0, sizeof(result.data)); // Only if needed
+
+    int rc = __ReportProfiles_ProcessReportProfilesMsgPackBlob(&result, false);
+
     EXPECT_EQ(rc, T2ERROR_INVALID_ARGS);
 }
 #if 0

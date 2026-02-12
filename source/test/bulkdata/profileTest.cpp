@@ -1592,32 +1592,40 @@ TEST_F(ProfileTest, isMtlsEnabled) {
 }
 #endif
 
-#if 0
+#if 1
 TEST_F(ProfileTest, ReportProfiles_uninit) {
+	printf("##### function %s line %d\n",__func__,__LINE__);
     EXPECT_CALL(*g_vectorMock, Vector_Create(_))
         .Times(::testing::AtMost(3))  // 1 for local test configlist, 1 for global profileList, 1 for configList in loadReportProfilesFromDisk
         .WillRepeatedly(Return(T2ERROR_SUCCESS));
+	printf("##### function %s line %d\n",__func__,__LINE__);
     EXPECT_CALL(*g_vectorMock, Vector_PushBack(_, _))
         .Times(::testing::AtMost(1))
         .WillRepeatedly(Return(T2ERROR_SUCCESS));
+	printf("##### function %s line %d\n",__func__,__LINE__);
     EXPECT_CALL(*g_vectorMock, Vector_Size(_))
         .Times(::testing::AtMost(3))  // May be called multiple times - in deleteAllProfiles, etc.
         .WillRepeatedly(Return(0)); // Return 0 to indicate no profiles (avoid unregister calls)
+	printf("##### function %s line %d\n",__func__,__LINE__);
     EXPECT_CALL(*g_vectorMock, Vector_At(_, _))
         .Times(::testing::AtMost(2))  // May be called if profiles exist
         .WillRepeatedly(Return(nullptr));
     
+	printf("##### function %s line %d\n",__func__,__LINE__);
     // Scheduler mock expectations - uninitScheduler is definitely called
     EXPECT_CALL(*g_schedulerMock, uninitScheduler())
         .Times(::testing::AtMost(1));
     
+	printf("##### function %s line %d\n",__func__,__LINE__);
     // unregisterProfileFromScheduler may be called for each profile during deleteAllProfiles
     // Using AtMost to handle cases where profiles exist
     EXPECT_CALL(*g_schedulerMock, unregisterProfileFromScheduler(_))
         .Times(::testing::AtMost(5))  // Allow up to 5 calls in case profiles exist
         .WillRepeatedly(Return(T2ERROR_SUCCESS));
     
+	printf("##### function %s line %d\n",__func__,__LINE__);
     EXPECT_EQ(ReportProfiles_uninit(), T2ERROR_SUCCESS);
+	printf("##### function %s line %d\n",__func__,__LINE__);
 }
 #endif
 TEST_F(ProfileTest, ProcessMsgPackBlob_InvalidFormat) {

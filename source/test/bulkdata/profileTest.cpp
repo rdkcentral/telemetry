@@ -1638,6 +1638,30 @@ TEST_F(ProfileTest, ReportProfiles_ProcessReportProfilesMsgPackBlobTest) {
     ReportProfiles_ProcessReportProfilesMsgPackBlob(NULL, false);
     // Possibly assert/expect logs/error
 }
+
+TEST(MsgpackFreeBlobTest, ValidPointerFreed) {
+    __msgpack_free_blobFunc free_func = __msgpack_free_blobFuncCallback();
+    ASSERT_NE(free_func, nullptr);
+
+    // Allocate dummy struct __msgpack__
+    struct __msgpack__* blob = (struct __msgpack__*)malloc(sizeof(struct __msgpack__));
+    ASSERT_NE(blob, nullptr);
+
+    // Allocate dummy buffer
+    blob->msgpack_blob_size = 10;
+    blob->msgpack_blob = (char*)malloc(blob->msgpack_blob_size);
+    ASSERT_NE(blob->msgpack_blob, nullptr);
+
+    // Fill to mark as used
+    memset(blob->msgpack_blob, 0x5A, blob->msgpack_blob_size);
+
+    // Should free both blob->msgpack_blob and blob
+    free_func((void*)blob);
+
+    // No assertion for double free (but valgrind/sanitizer would catch it)
+    SUCCEED();
+}
+
 #if 0
 TEST(MsgpackFreeBlobTest, NullPointerSafe)
 {

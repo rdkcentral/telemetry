@@ -1169,6 +1169,32 @@ TEST_F(ProfileTest, UninitProfileList_Success) {
     EXPECT_EQ(uninitProfileList(), T2ERROR_SUCCESS);
 }
 
+// ... other TEST_F(ProfileTest, ...) cases
+
+// Place here:
+TEST_F(ProfileTest, ReportProfiles_uninit) {
+    printf("##### function %s line %d\n",__func__,__LINE__);
+    EXPECT_CALL(*g_vectorMock, Vector_Create(_))
+        .Times(::testing::AtMost(3))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_vectorMock, Vector_PushBack(_, _))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(::testing::AtMost(3))
+        .WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_vectorMock, Vector_At(_, _))
+        .Times(::testing::AtMost(2))
+        .WillRepeatedly(Return(nullptr));
+    EXPECT_CALL(*g_schedulerMock, uninitScheduler())
+        .Times(::testing::AtMost(1));
+    EXPECT_CALL(*g_schedulerMock, unregisterProfileFromScheduler(_))
+        .Times(::testing::AtMost(5))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_EQ(ReportProfiles_uninit(), T2ERROR_SUCCESS);
+    printf("##### function %s line %d\n",__func__,__LINE__);
+}
+
 // Test getProfileCount
 TEST_F(ProfileTest, GetProfileCount_NotInitialized) {
     EXPECT_CALL(*g_vectorMock, Vector_Size(_))
@@ -1592,7 +1618,7 @@ TEST_F(ProfileTest, isMtlsEnabled) {
 }
 #endif
 
-#if 1
+#if 0
 TEST_F(ProfileTest, ReportProfiles_uninit) {
 	printf("##### function %s line %d\n",__func__,__LINE__);
     EXPECT_CALL(*g_vectorMock, Vector_Create(_))

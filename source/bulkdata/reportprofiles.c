@@ -1575,3 +1575,11 @@ freeReportProfileHashMapFunc freeReportProfileHashMapFuncCallback(void)
 {
        return freeReportProfileHashMap;
 }
+
+typedef void (*__msgpack_free_blobFunc)(void*);
+
+// Function returning a function pointer to __msgpack_free_blob
+__msgpack_free_blobFunc __msgpack_free_blobFuncCallback(void)
+{
+    return __msgpack_free_blob; // returns pointer to our function
+}

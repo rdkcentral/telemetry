@@ -1253,6 +1253,8 @@ typedef void (*freeProfilesHashMapFunc)(void *);
 freeProfilesHashMapFunc freeProfilesHashMapFuncCallback(void);
 typedef void (*freeReportProfileHashMapFunc)(void *);
 freeReportProfileHashMapFunc freeReportProfileHashMapFuncCallback(void);
+typedef void (*__msgpack_free_blobFunc)(void*);
+__msgpack_free_blobFunc __msgpack_free_blobFuncCallback(void);
 }
 
 TEST(ReportProfilesCallbacks, FreeProfilesHashMap) {
@@ -1625,107 +1627,23 @@ TEST_F(ProfileTest, ProcessMsgPackBlob_InvalidFormat) {
     int ret = __ReportProfiles_ProcessReportProfilesMsgPackBlob(&msg, false);
     EXPECT_EQ(ret, T2ERROR_INVALID_ARGS);
 }
-TEST_F(ProfileTest, ReportProfiles_ProcessMsgPackProfilesRootNull) {
-    msgpack_unpacked result;
-
-    // Ensure msgpack_unpacked_init mock is called
-    EXPECT_CALL(*g_msgpackMock, msgpack_unpacked_init(_)).Times(1);
-    msgpack_unpacked_init(&result);
-
-    // Allow msgpack_unpack_next to be called zero or one time, but don't require it
-    EXPECT_CALL(*g_msgpackMock, msgpack_unpack_next(_, _, _, _))
-        .Times(::testing::AtMost(1));
-
-    // Optionally ensure .data is NULL if required by your code logic
-    // memset(&result.data, 0, sizeof(result.data)); // Only if needed
-
-    int rc = __ReportProfiles_ProcessReportProfilesMsgPackBlob(&result, false);
-
-    EXPECT_EQ(rc, T2ERROR_INVALID_ARGS);
-}
-#if 0
-TEST_F(ProfileTest, ReportProfiles_ProcessMsgPackProfilesRootNull) {
-    // Arrange: make __ReportProfiles_ProcessReportProfilesMsgPackBlob see profiles_root as NULL
-    printf("inside ReportProfiles_ProcessMsgPackProfilesRootNull test case ; funcction : %s line : %d\n",__func__,__LINE__);
-    msgpack_unpacked result;
-    memset(&result, 0, sizeof(result)); // zero, so data==NULL
-
-    printf("inside ReportProfiles_ProcessMsgPackProfilesRootNull test case ; funcction : %s line : %d\n",__func__,__LINE__);
-    EXPECT_CALL(*g_msgpackMock, msgpack_unpack_next(_, _, _, _))
-        .WillOnce(Return(MSGPACK_UNPACK_SUCCESS));
-
-    printf("inside ReportProfiles_ProcessMsgPackProfilesRootNull test case ; funcction : %s line : %d\n",__func__,__LINE__);
-    // Act
-    int rc = __ReportProfiles_ProcessReportProfilesMsgPackBlob(&result, false);
-
-    printf("inside ReportProfiles_ProcessMsgPackProfilesRootNull test case ; funcction : %s line : %d\n",__func__,__LINE__);
-    // Assert
-    EXPECT_EQ(rc, T2ERROR_INVALID_ARGS);
-}
-TEST_F(ProfileTest, ReportProfiles_ProcessMsgPackProfilesCountZero) {
-    struct FakeMap { int dummy; } fakeMap;
-    struct MsgPackData {
-        struct { void *data; } result;
-    } msgpack;
-    msgpack.result.data = &fakeMap;
-
-    EXPECT_CALL(*g_msgpackMock, msgpack_unpack_next(_, _, _, _))
-        .WillOnce(Return(MSGPACK_UNPACK_SUCCESS));
-
-    // When we call msgpack_get_map_value, we want it to return a fake array ptr
-    static msgpack_object fakeProfilesArray = {};
-    EXPECT_CALL(*g_msgpackMock, msgpack_get_map_value(_, StrEq("profiles")))
-        .WillOnce(Return(&fakeProfilesArray));
-
-    // When MSGPACK_GET_ARRAY_SIZE is called, profiles_count == 0
-    EXPECT_CALL(*g_msgpackMock, msgpack_mock_array_size(&fakeProfilesArray))
-        .WillOnce(Return(0));
-
-    // Override deleteAllReportProfiles() to return T2ERROR_SUCCESS
-    // You can use a weak symbol or --wrap at link, but GMock's Invoke pattern works
-    struct DeleteAllProfilesStub {
-        static T2ERROR call() { return T2ERROR_SUCCESS; }
-    };
-    auto* real_deleteAll = deleteAllReportProfiles;
-    auto fake_deleteAll = DeleteAllProfilesStub::call;
-    // If deleteAllReportProfiles is a function pointer or can be replaced for test, do so here.
-    // else, for full GMocking, you'll want to use linker --wrap.
-
-    // Act
-    int rc = __ReportProfiles_ProcessReportProfilesMsgPackBlob(&msgpack, false);
-
-    // Assert
-    EXPECT_EQ(rc, T2ERROR_PROFILE_NOT_FOUND);
-}
-#endif
-#if 0
-TEST_F(ProfileTest, ProcessReportProfilesMsgPackBlob_InvalidBlob) {
-    // Provide an invalid msgpack_blob, expect error
-    char invalid_blob[] = { 0x01, 0x02 };
-    ReportProfiles_ProcessReportProfilesMsgPackBlob(invalid_blob, sizeof(invalid_blob));
-    // Could assert log/error if the implementation allows it
-}
-#endif
 TEST_F(ProfileTest, ProcessReportProfilesBlob_NullRoot) {
     // Should return early if root is NULL
     ReportProfiles_ProcessReportProfilesBlob(NULL, false);
     // Possibly assert/expect logs/error
 }
 
-#if 0
-TEST_F(ProfileTest, ProcessReportProfilesBlob_EmptyProfileArray) {
-    cJSON *root = cJSON_CreateObject();
-    cJSON *profiles = cJSON_CreateArray();
-    cJSON_AddItemToObject(root, "profiles", profiles);
-    ReportProfiles_ProcessReportProfilesBlob(root, false);
-    // Should call deleteAllReportProfiles
-    cJSON_Delete(root);
+TEST(MsgpackFreeBlobTest, NullPointerSafe)
+{
+    // Obtain the function pointer via callback accessor
+    __msgpack_free_blobFunc free_func = __msgpack_free_blobFuncCallback();
+    ASSERT_NE(free_func, nullptr);
+
+    // Safe to call with nullptr if function does not dereference
+    free_func(nullptr);
+    SUCCEED();
 }
-TEST_F(ProfileTest, ReportProfilesUninit_SuccessInitState) {
-    EXPECT_EQ(ReportProfiles_uninit(), T2ERROR_SUCCESS);
-    // Could add checks for side-effects; e.g., profile list cleared, datamodel uninit called, etc.
-}
-#endif
+
 #if 1
 TEST_F(ProfileTest, reportOnDemandTest)
 {

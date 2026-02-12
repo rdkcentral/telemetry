@@ -1586,6 +1586,38 @@ TEST_F(ProfileTest, RemovePreRPfromDisk) {
     EXPECT_EQ(RemovePreRPfromDisk("/tmp", &dummy), T2ERROR_SUCCESS);
 }
 
+TEST_F(ProfileTest, RemovePreRPfromDisk_FailsIfDirNull) {
+    hash_map_t dummy;
+    // Mock opendir to return NULL to simulate failure
+    EXPECT_CALL(*g_fileIOMock, opendir(_))
+        .Times(1)
+        .WillOnce(Return(nullptr));
+    // readdir and closedir should NOT be called in this branch
+    EXPECT_EQ(RemovePreRPfromDisk("/tmp", &dummy), T2ERROR_FAILURE);
+}
+
+TEST_F(ProfileTest, RemovePreRPfromDisk_SkipsDotAndDotDot) {
+    hash_map_t dummy;
+    DIR *dir = (DIR*)0xabcdef;
+    // Create dirent for "." and ".."
+    struct dirent dotEntry, dotDotEntry, otherEntry;
+    strcpy(dotEntry.d_name, ".");
+    strcpy(dotDotEntry.d_name, "..");
+    strcpy(otherEntry.d_name, "profile1");
+    struct dirent* entries[] = { &dotEntry, &dotDotEntry, &otherEntry, nullptr };
+    int call = 0;
+
+    EXPECT_CALL(*g_fileIOMock, opendir(_)).WillOnce(Return(dir));
+    EXPECT_CALL(*g_fileIOMock, readdir(_))
+        .WillRepeatedly(Invoke([&](DIR*) {
+            return entries[call++];
+        }));
+    EXPECT_CALL(*g_fileIOMock, closedir(_)).WillOnce(Return(0));
+    // You might want to check removeProfileFromDisk is called if hash_map_get returns NULL for "profile1"
+
+    EXPECT_EQ(RemovePreRPfromDisk("/tmp", &dummy), T2ERROR_SUCCESS);
+}
+
 #if 1
 TEST_F(ProfileTest, deleteAllReportProfiles) {
     EXPECT_CALL(*g_vectorMock, Vector_Size(_))

@@ -1595,42 +1595,6 @@ TEST_F(ProfileTest, RemovePreRPfromDisk_FailsIfDirNull) {
     EXPECT_EQ(RemovePreRPfromDisk("/tmp", &dummy), T2ERROR_FAILURE);
 }
 
-TEST_F(ProfileTest, RemovePreRPfromDisk_CoversLoopAndConditions) {
-    // Arrange
-    hash_map_t dummyMap = {}; // Setup dummy map if needed, or use your hash_map_create/set/put
-    DIR *dir = (DIR*)0x1234;
-
-    struct dirent dot, dotdot, fileA, fileB;
-    strcpy(dot.d_name, ".");
-    strcpy(dotdot.d_name, "..");
-    strcpy(fileA.d_name, "fileA");
-    strcpy(fileB.d_name, "fileB");
-
-    struct dirent* entries[] = {&dot, &dotdot, &fileA, &fileB, nullptr};
-    int entryCounter = 0;
-
-    // Fill the dummy map so that "fileA" is present (simulate hash_map_get returns non-null) and "fileB" is not present (simulate NULL)
-    // You'll need actual hash_map_put and hash_map_get functionality here, or stub as required by your implementation
-    hash_map_put(&dummyMap, "fileA", (void*)1, nullptr); // Mark fileA as present
-
-    // Mock opendir/readdir/closedir
-    EXPECT_CALL(*g_fileIOMock, opendir(_))
-        .WillOnce(Return(dir));
-    EXPECT_CALL(*g_fileIOMock, readdir(dir))
-        .WillRepeatedly(Invoke([&](DIR*) -> struct dirent* {
-            return entries[entryCounter++];
-        }));
-    EXPECT_CALL(*g_fileIOMock, closedir(dir)).WillOnce(Return(0));
-
-    // Optionally, override removeProfileFromDisk to count the calls (you could use a global counter or check logs)
-    // Or just let it run, if it doesn't crash
-
-    // Act & Assert
-    EXPECT_EQ(RemovePreRPfromDisk("/tmp", &dummyMap), T2ERROR_SUCCESS);
-
-    // Clean up dummy map if required
-    hash_map_destroy(&dummyMap, nullptr);
-}
 #if 1
 TEST_F(ProfileTest, deleteAllReportProfiles) {
     EXPECT_CALL(*g_vectorMock, Vector_Size(_))

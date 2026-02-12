@@ -1192,7 +1192,7 @@ TEST_F(ProfileTest, ReportProfiles_uninit) {
         .Times(::testing::AtMost(5))
         .WillRepeatedly(Return(T2ERROR_SUCCESS));
 
-    *test_get_rpInitializeddd_ptr() = true;
+    *test_get_rpInitialized_ptr() = true;
     EXPECT_EQ(ReportProfiles_uninit(), T2ERROR_FAILURE);
     printf("##### function %s line %d\n",__func__,__LINE__);
 }

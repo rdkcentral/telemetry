@@ -1583,3 +1583,5 @@ __msgpack_free_blobFunc __msgpack_free_blobFuncCallback(void)
 {
     return __msgpack_free_blob; // returns pointer to our function
 }
+
+bool* test_get_rpInitialized_ptr(void) { return &rpInitialized; }

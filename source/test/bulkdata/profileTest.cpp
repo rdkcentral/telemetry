@@ -1191,6 +1191,8 @@ TEST_F(ProfileTest, ReportProfiles_uninit) {
     EXPECT_CALL(*g_schedulerMock, unregisterProfileFromScheduler(_))
         .Times(::testing::AtMost(5))
         .WillRepeatedly(Return(T2ERROR_SUCCESS));
+
+    *test_get_rpInitializeddd_ptr() = true;
     EXPECT_EQ(ReportProfiles_uninit(), T2ERROR_FAILURE);
     printf("##### function %s line %d\n",__func__,__LINE__);
 }
@@ -1281,6 +1283,7 @@ typedef void (*freeReportProfileHashMapFunc)(void *);
 freeReportProfileHashMapFunc freeReportProfileHashMapFuncCallback(void);
 typedef void (*__msgpack_free_blobFunc)(void*);
 __msgpack_free_blobFunc __msgpack_free_blobFuncCallback(void);
+bool* test_get_rpInitialized_ptr(void);
 }
 
 TEST(ReportProfilesCallbacks, FreeProfilesHashMap) {

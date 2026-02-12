@@ -20,6 +20,12 @@
 #include "vector.h"
 #include "test/bulkdata/profileMock.h"
 
+extern "C" T2ERROR __wrap_deleteProfile(const char* profileName)
+{
+    if (!g_profileXConfMock)
+        return T2ERROR_FAILURE;
+    return g_profileXConfMock->deleteProfile(profileName);
+}
 
 //protocol mock functions
 extern "C" T2ERROR __wrap_sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)

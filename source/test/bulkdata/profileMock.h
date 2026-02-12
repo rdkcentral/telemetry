@@ -28,6 +28,7 @@ public:
 
     MOCK_METHOD(T2ERROR, sendReportOverHTTP, (char *httpUrl, char *payload, pid_t* outForkedPid), ());
     MOCK_METHOD(T2ERROR, sendCachedReportsOverHTTP, (char *httpUrl, Vector *reportList), ());
+    MOCK_METHOD(T2ERROR, deleteProfile, (const char* profileName), ());
 };
 
 extern profileMock *g_profileMock;

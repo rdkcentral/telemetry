@@ -1735,6 +1735,7 @@ TEST_F(ProfileTest, ReportProfiles_deleteProfile) {
     EXPECT_CALL(*g_vectorMock, Vector_Size(_))
         .Times(::testing::AtMost(2))
         .WillRepeatedly(Return(0)); // Return 1 to indicate only one profile (no duplicates)
+    EXPECT_CALL(*g_profileMock, deleteProfile(_)).WillOnce(Return(T2ERROR_SUCCESS));
     //EXPECT_EQ(ReportProfiles_deleteProfile("testprofile"), T2ERROR_SUCCESS);
     EXPECT_EQ(ReportProfiles_deleteProfile("testprofile"), T2ERROR_FAILURE);
 }

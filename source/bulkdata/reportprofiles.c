@@ -376,6 +376,8 @@ T2ERROR ReportProfiles_deleteProfile(const char* profileName)
     }
     if(is_profile_enable == true)
     {
+	    printf("############# rosemary benny\n");
+#if 0
         T2ER_StopDispatchThread();
         clearT2MarkerComponentMap();
 
@@ -390,6 +392,7 @@ T2ERROR ReportProfiles_deleteProfile(const char* profileName)
         {
             T2ER_StartDispatchThread();
         }
+#endif
     }
 
     T2Debug("%s --out\n", __FUNCTION__);

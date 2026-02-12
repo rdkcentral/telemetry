@@ -1643,6 +1643,41 @@ TEST_F(ProfileTest, ReportProfiles_ProcessMsgPackProfilesRootNull) {
     EXPECT_EQ(rc, T2ERROR_INVALID_ARGS);
 }
 
+TEST_F(ProfileTest, ReportProfiles_ProcessMsgPackProfilesCountZero) {
+    struct FakeMap { int dummy; } fakeMap;
+    struct MsgPackData {
+        struct { void *data; } result;
+    } msgpack;
+    msgpack.result.data = &fakeMap;
+
+    EXPECT_CALL(*g_msgpackMock, msgpack_unpack_next(_, _, _, _))
+        .WillOnce(Return(MSGPACK_UNPACK_SUCCESS));
+
+    // When we call msgpack_get_map_value, we want it to return a fake array ptr
+    static msgpack_object fakeProfilesArray = {};
+    EXPECT_CALL(*g_msgpackMock, msgpack_get_map_value(_, StrEq("profiles")))
+        .WillOnce(Return(&fakeProfilesArray));
+
+    // When MSGPACK_GET_ARRAY_SIZE is called, profiles_count == 0
+    EXPECT_CALL(*g_msgpackMock, msgpack_mock_array_size(&fakeProfilesArray))
+        .WillOnce(Return(0));
+
+    // Override deleteAllReportProfiles() to return T2ERROR_SUCCESS
+    // You can use a weak symbol or --wrap at link, but GMock's Invoke pattern works
+    struct DeleteAllProfilesStub {
+        static T2ERROR call() { return T2ERROR_SUCCESS; }
+    };
+    auto* real_deleteAll = deleteAllReportProfiles;
+    auto fake_deleteAll = DeleteAllProfilesStub::call;
+    // If deleteAllReportProfiles is a function pointer or can be replaced for test, do so here.
+    // else, for full GMocking, you'll want to use linker --wrap.
+
+    // Act
+    int rc = __ReportProfiles_ProcessReportProfilesMsgPackBlob(&msgpack, false);
+
+    // Assert
+    EXPECT_EQ(rc, T2ERROR_PROFILE_NOT_FOUND);
+}
 #if 0
 TEST_F(ProfileTest, ProcessReportProfilesMsgPackBlob_InvalidBlob) {
     // Provide an invalid msgpack_blob, expect error

@@ -2,9 +2,9 @@
 
 MsgpackMock* g_msgpackMock = nullptr;
 
-#if 0
+#if 1
 // Wrapper for msgpack_unpacked_init
-extern "C" void msgpack_unpacked_init(msgpack_unpacked *result) {
+extern "C" void __wrap_msgpack_unpacked_init(msgpack_unpacked *result) {
     if (g_msgpackMock) return g_msgpackMock->msgpack_unpacked_init(result);
     // Real or stub implementation here if not mocked
     if (result) {
@@ -13,7 +13,7 @@ extern "C" void msgpack_unpacked_init(msgpack_unpacked *result) {
 }
 #endif
 // Wrapper for msgpack_unpack_next
-extern "C" __wrap_msgpack_unpack_return msgpack_unpack_next(msgpack_unpacked *result, const char *data, size_t len, size_t *off) {
+extern "C" msgpack_unpack_return __wrap_msgpack_unpack_next(msgpack_unpacked *result, const char *data, size_t len, size_t *off) {
     if (g_msgpackMock) return g_msgpackMock->msgpack_unpack_next(result, data, len, off);
     // Real or stub implementation if not mocked
     return MSGPACK_UNPACK_SUCCESS;
@@ -26,7 +26,7 @@ extern "C" void __wrap_msgpack_unpacked_destroy(msgpack_unpacked *result) {
 }
 #endif
 // Wrapper for msgpack_get_map_value
-extern "C" __wrap_msgpack_object* msgpack_get_map_value(const msgpack_object* map, const char* key) {
+extern "C" msgpack_object* __wrap_msgpack_get_map_value(const msgpack_object* map, const char* key) {
     if (g_msgpackMock) return g_msgpackMock->msgpack_get_map_value(map, key);
     // Real or stub implementation if not mocked
     return nullptr;
@@ -47,7 +47,7 @@ extern "C" char* __wrap_msgpack_strdup(const msgpack_object* obj) {
 }
 
 // Wrapper for msgpack_get_array_element
-extern "C" __wrap_msgpack_object* msgpack_get_array_element(const msgpack_object* array, int idx) {
+extern "C" msgpack_object* __wrap_msgpack_get_array_element(const msgpack_object* array, int idx) {
     if (g_msgpackMock) return g_msgpackMock->msgpack_get_array_element(array, idx);
     // Real or stub implementation if not mocked
     return nullptr;

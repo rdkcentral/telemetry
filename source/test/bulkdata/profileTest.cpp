@@ -41,7 +41,6 @@ extern bool initialized;
 
 sigset_t blocking_signal;
 hash_map_t *markerCompMap = NULL;
-bool* test_get_rpInitialized_ptr(void);
 } 
  
 FileMock *g_fileIOMock = NULL;
@@ -1193,7 +1192,6 @@ TEST_F(ProfileTest, ReportProfiles_uninit) {
         .Times(::testing::AtMost(5))
         .WillRepeatedly(Return(T2ERROR_SUCCESS));
 
-    *test_get_rpInitialized_ptr() = true;
     EXPECT_EQ(ReportProfiles_uninit(), T2ERROR_FAILURE);
     printf("##### function %s line %d\n",__func__,__LINE__);
 }

@@ -237,64 +237,46 @@ void ReportProfiles_TimeoutCb(char* profileName, bool isClearSeekMap)
 void ReportProfiles_ActivationTimeoutCb(char* profileName)
 {
     T2Info("%s ++in\n", __FUNCTION__);
-    printf("####### function %s line %d\n",__func__,__LINE__); 
     bool isDeleteRequired = false;
     T2Debug("calling ProfileXConf_isNameEqual function form %s and line %d\n", __FUNCTION__, __LINE__);
 
-    printf("####### function %s line %d\n",__func__,__LINE__); 
     if(ProfileXConf_isNameEqual(profileName))
     {
-    printf("####### function %s line %d\n",__func__,__LINE__); 
         T2Error("ActivationTimeout received for Xconf profile. Ignoring!!!! \n");
     }
     else
     {
-    printf("####### function %s line %d\n",__func__,__LINE__); 
         if (T2ERROR_SUCCESS != disableProfile(profileName, &isDeleteRequired))
         {
-    printf("####### function %s line %d\n",__func__,__LINE__); 
             T2Error("Failed to disable profile after timeout: %s \n", profileName);
             return;
         }
 
-    printf("####### function %s line %d\n",__func__,__LINE__); 
         if (isDeleteRequired)
         {
-    printf("####### function %s line %d\n",__func__,__LINE__); 
             removeProfileFromDisk(REPORTPROFILES_PERSISTENCE_PATH, profileName);
         }
         if (T2ERROR_SUCCESS != deleteProfile(profileName))
         {
-    printf("####### function %s line %d\n",__func__,__LINE__); 
             T2Error("Failed to delete profile after timeout: %s \n", profileName);
         }
 
-    printf("####### function %s line %d\n",__func__,__LINE__); 
         T2ER_StopDispatchThread();
-    printf("####### function %s line %d\n",__func__,__LINE__); 
         clearT2MarkerComponentMap();
 
-    printf("####### function %s line %d\n",__func__,__LINE__); 
         if(ProfileXConf_isSet())
         {
-    printf("####### function %s line %d\n",__func__,__LINE__); 
             ProfileXConf_updateMarkerComponentMap();
         }
-    printf("####### function %s line %d\n",__func__,__LINE__); 
         updateMarkerComponentMap();
 
-    printf("####### function %s line %d\n",__func__,__LINE__); 
         /* Restart DispatchThread */
         if (ProfileXConf_isSet() || getProfileCount() > 0)
         {
-    printf("####### function %s line %d\n",__func__,__LINE__); 
             T2ER_StartDispatchThread();
-    printf("####### function %s line %d\n",__func__,__LINE__); 
         }
-    printf("####### function %s line %d\n",__func__,__LINE__); 
     }
 
-    printf("####### function %s line %d\n",__func__,__LINE__); 
     T2Info("%s --out\n", __FUNCTION__);
 }
 
@@ -716,7 +698,6 @@ T2ERROR ReportProfiles_uninit( )
         T2Error("%s ReportProfiles is not initialized yet - ignoring\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
-#if 0
     rpInitialized = false;
     if(isRbusEnabled())
     {
@@ -751,7 +732,6 @@ T2ERROR ReportProfiles_uninit( )
     bulkdata.protocols = NULL ;
     free(bulkdata.encodingTypes);
     bulkdata.encodingTypes = NULL ;
-#endif
     T2Debug("%s --out\n", __FUNCTION__);
     T2Info("Uninit ReportProfiles Successful\n");
     return T2ERROR_SUCCESS;
@@ -1481,7 +1461,6 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
 
 bool isMtlsEnabled(void)
 {
-printf("##### function %s line %d\n",__func__,__LINE__);	
 #ifdef ENABLE_MTLS
     T2Info("mTLS defaulted for telemetry\n");
     initT2MtlsEnable = true;
@@ -1495,67 +1474,46 @@ printf("##### function %s line %d\n",__func__,__LINE__);
     {
         if(T2ERROR_SUCCESS == getParameterValue(T2_MTLS_RFC, &paramValue))
         {
-printf("##### function %s line %d\n",__func__,__LINE__);	
             if(paramValue != NULL && (strncasecmp(paramValue, "true", 4) == 0))
             {
-printf("##### function %s line %d\n",__func__,__LINE__);	
                 T2Debug("mTLS support is Enabled\n");
                 isT2MtlsEnable = true;
-printf("##### function %s line %d\n",__func__,__LINE__);	
             }
-printf("##### function %s line %d\n",__func__,__LINE__);	
             initT2MtlsEnable = true;
             free(paramValue);
             paramValue = NULL;
-printf("##### function %s line %d\n",__func__,__LINE__);	
         }
         else
         {
-printf("##### function %s line %d\n",__func__,__LINE__);	
             T2Error("getParameterValue failed\n");
-printf("##### function %s line %d\n",__func__,__LINE__);	
         }
-printf("##### function %s line %d\n",__func__,__LINE__);	
     }
     if(isT2MtlsEnable != true)
     {
-printf("##### function %s line %d\n",__func__,__LINE__);	
         const char* returnPartnerInfo = isWhoAmiEnabled() ? TR181_DEVICE_PARTNER_ID : TR181_DEVICE_PARTNER_NAME;
         if(T2ERROR_SUCCESS == getParameterValue(returnPartnerInfo, &paramValue))
         {
-printf("##### function %s line %d paramValue : %s\n",__func__,__LINE__,paramValue);	
             if(paramValue != NULL && (strncasecmp(paramValue, "sky-uk", 6) == 0))
             {
-printf("##### function %s line %d\n",__func__,__LINE__);	
                 T2Debug("Enabling mTLS for sky-uk partner\n");
                 isT2MtlsEnable = true;
                 initT2MtlsEnable = true;
                 free(paramValue);
                 paramValue = NULL;
-printf("##### function %s line %d\n",__func__,__LINE__);	
             }
             else
             {
-printf("##### function %s line %d\n",__func__,__LINE__);	
                 if(paramValue != NULL)
                 {
-printf("##### function %s line %d\n",__func__,__LINE__);	
                     free(paramValue);
-printf("##### function %s line %d\n",__func__,__LINE__);	
                 }
-printf("##### function %s line %d\n",__func__,__LINE__);	
                 T2Error("getParameterValue partner id failed\n");
-printf("##### function %s line %d\n",__func__,__LINE__);	
             }
-printf("##### function %s line %d\n",__func__,__LINE__);	
         }
-printf("##### function %s line %d\n",__func__,__LINE__);	
     }
-printf("##### function %s line %d\n",__func__,__LINE__);	
     return isT2MtlsEnable;
 #else
     /* Enabling Mtls by default for RDKC */
-printf("##### function %s line %d\n",__func__,__LINE__);	
     return true;
 #endif
 #endif
@@ -1585,7 +1543,4 @@ __msgpack_free_blobFunc __msgpack_free_blobFuncCallback(void)
     return __msgpack_free_blob; // returns pointer to our function
 }
 
-bool* test_get_rpInitialized_ptr(void) 
-{
-       	return &rpInitialized; 
-}
+

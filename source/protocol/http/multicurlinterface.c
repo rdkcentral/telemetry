@@ -844,7 +844,7 @@ T2ERROR http_pool_post(const char *url, const char *payload)
             // RED recovery mode - use recovery cert selector
             if (pool_entries[idx].rcvry_cert_selector == NULL)
             {
-                T2Info("Initializing recovery cert selector for this easy handle\n", __func__);
+                T2Info("Initializing recovery cert selector for this easy handle\n");
                 pool_entries[idx].rcvry_cert_selector = rdkcertselector_new(NULL, NULL, "RCVRY");
                 if (pool_entries[idx].rcvry_cert_selector == NULL)
                 {

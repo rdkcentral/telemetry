@@ -534,11 +534,11 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
     ret = http_pool_get(httpsUrl, data, true);
     if(ret == T2ERROR_SUCCESS)
     {
-        T2Info("HTTP GET request completed successfully using connection pool\n");
+        T2Debug("HTTP GET request completed successfully\n");
     }
     else
     {
-        T2Error("Failed to perform HTTP GET request using connection pool\n");
+        T2Error("Failed to perform HTTP GET request\n");
     }
     T2Debug("%s --out\n", __FUNCTION__);
     return ret;

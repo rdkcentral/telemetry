@@ -82,11 +82,11 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload)
 
     if(ret == T2ERROR_SUCCESS)
     {
-        T2Info("Report Sent Successfully over HTTP using connection pool\n");
+        T2Debug("Report Sent Successfully over HTTP\n");
     }
     else
     {
-        T2Error("Failed to send report using connection pool\n");
+        T2Error("Failed to send report\n");
     }
 
     T2Debug("%s --out\n", __FUNCTION__);

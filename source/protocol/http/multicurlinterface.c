@@ -134,7 +134,6 @@ static size_t httpGetCallBack(void *responseBuffer, size_t len, size_t nmemb,
     size_t realsize = len * nmemb;
     curlResponseData* response = (curlResponseData*) stream;
 
-    // FIX: Check for NULL stream to prevent crashes
     if (!response)
     {
         T2Error("httpGetCallBack: NULL stream parameter\n");
@@ -146,8 +145,6 @@ static size_t httpGetCallBack(void *responseBuffer, size_t len, size_t nmemb,
     if (!ptr)
     {
         T2Error("%s:%u , T2:memory realloc failed\n", __func__, __LINE__);
-        // On realloc failure, abort the transfer to avoid silently dropping data
-        // Return 0 to signal an error to curl
         return 0;
     }
     response->data = ptr;

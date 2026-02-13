@@ -37,7 +37,7 @@ AM_CFLAGS += -DCCSP_INC_no_asm_sigcontext_h
 
 ACLOCAL_AMFLAGS = -I m4
 
-bin_PROGRAMS = telemetry2_0
+bin_PROGRAMS = telemetry2_0 curl_leak_test
 
 telemetry2_0_SOURCES = telemetry2_0.c
 telemetry2_0_CFLAGS = -DFEATURE_SUPPORT_RDKLOG -D_FILE_OFFSET_BITS=64 -D_TIME_BITS=64
@@ -101,6 +101,44 @@ if IS_PRIVACYCONTROL_ENABLED
 telemetry2_0_CPPFLAGS += -I${top_srcdir}/source/privacycontrol
 telemetry2_0_LDADD += ${top_builddir}/source/privacycontrol/libt2thunder_privacycontrol.la
 endif
+
+# FIX: Add curl_leak_test binary configuration
+curl_leak_test_SOURCES = test/leak_detection/curl_leak_test.c
+curl_leak_test_CFLAGS = -DFEATURE_SUPPORT_RDKLOG -D_FILE_OFFSET_BITS=64 -D_TIME_BITS=64
+curl_leak_test_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \
+                                -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/dbus-1.0/include \
+                                -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ \
+                                -I${top_srcdir}/include \
+                                -I${top_srcdir}/source/protocol/http \
+                                -I${top_srcdir}/source/commonlib \
+                                -I${top_srcdir}/source/utils \
+                                -I${top_srcdir}/source/xconf-client
+
+curl_leak_test_LDFLAGS = -lcurl -lpthread
+
+# Add conditional flags for curl_leak_test based on telemetry configuration
+if IS_LIBRDKCERTSEL_ENABLED
+curl_leak_test_LDFLAGS += -lRdkCertSelector
+curl_leak_test_CFLAGS += $(LIBRDKCERTSEL_FLAG)
+curl_leak_test_CFLAGS += -DLIBRDKCERTSEL_BUILD
+endif
+
+if IS_LIBRDKCONFIG_ENABLED
+curl_leak_test_LDFLAGS += -lrdkconfig
+curl_leak_test_CFLAGS += $(LIBRDKCONFIG_FLAG)
+curl_leak_test_CFLAGS += -DLIBRDKCONFIG_BUILD
+endif
+
+if RDKLOGGER_ENABLE
+curl_leak_test_LDFLAGS += -lrdkloggers
+curl_leak_test_CFLAGS += -DRDK_LOGGER
+endif
+
+# Link against the http library that contains multicurlinterface.c
+curl_leak_test_LDADD = ${top_builddir}/source/protocol/http/libhttp.la \
+                       ${top_builddir}/source/utils/libt2utils.la \
+                       ${top_builddir}/source/xconf-client/libxconfclient.la \
+                       ${top_builddir}/source/bulkdata/libbulkdata.la
 
 gtest:
 	make -C test

@@ -41,6 +41,7 @@ extern bool initialized;
 
 sigset_t blocking_signal;
 hash_map_t *markerCompMap = NULL;
+bool* test_get_rpInitialized_ptr(void);
 } 
  
 FileMock *g_fileIOMock = NULL;
@@ -1283,7 +1284,6 @@ typedef void (*freeReportProfileHashMapFunc)(void *);
 freeReportProfileHashMapFunc freeReportProfileHashMapFuncCallback(void);
 typedef void (*__msgpack_free_blobFunc)(void*);
 __msgpack_free_blobFunc __msgpack_free_blobFuncCallback(void);
-bool* test_get_rpInitialized_ptr(void);
 }
 
 TEST(ReportProfilesCallbacks, FreeProfilesHashMap) {

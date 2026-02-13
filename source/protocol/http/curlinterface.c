@@ -96,7 +96,7 @@ static size_t writeToFile(void *ptr, size_t size, size_t nmemb, void *stream)
 static T2ERROR setHeader(CURL *curl, const char* destURL, struct curl_slist **headerList, childResponse *childCurlResponse)
 {
 
-    //T2Debug("%s ++in\n", __FUNCTION__);
+    T2Debug("%s ++in\n", __FUNCTION__);
     if(curl == NULL || destURL == NULL)
     {
         childCurlResponse->lineNumber = __LINE__;

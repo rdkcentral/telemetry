@@ -400,7 +400,7 @@ static void release_pool_handle(int idx)
         pool_entries[idx].handle_available = true;
         //Signal waiting threads to check for handle availablity
         pthread_cond_signal(&pool_cond);
-        T2Info("Released curl handle = %d (pool size: %d)\n", idx, pool_size);
+        T2Info("Released curl handle = %d\n", idx);
     }
     else
     {
@@ -659,7 +659,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
                     }
                     else
                     {
-                        T2Debug("Unable to associate stream with file descriptor for %s\n", HTTP_RESPONSE_FILE);
+                        T2Error("Unable to associate stream with file descriptor for %s\n", HTTP_RESPONSE_FILE);
                         close(fd);
                     }
                 }

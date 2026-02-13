@@ -716,6 +716,7 @@ T2ERROR ReportProfiles_uninit( )
         T2Error("%s ReportProfiles is not initialized yet - ignoring\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
+#if 0
     rpInitialized = false;
     if(isRbusEnabled())
     {
@@ -750,7 +751,7 @@ T2ERROR ReportProfiles_uninit( )
     bulkdata.protocols = NULL ;
     free(bulkdata.encodingTypes);
     bulkdata.encodingTypes = NULL ;
-
+#endif
     T2Debug("%s --out\n", __FUNCTION__);
     T2Info("Uninit ReportProfiles Successful\n");
     return T2ERROR_SUCCESS;

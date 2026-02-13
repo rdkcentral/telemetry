@@ -362,7 +362,7 @@ static T2ERROR acquire_pool_handle(CURL **easy, int *idx)
     }
 
     // Waits until a handle becomes available or the pool is being cleaned up
-    // exits if the pool has been cleanup in shutdown sequence
+    // exits if the pool has been cleaned up in shutdown sequence
     while(1)
     {
         if (!pool_initialized)
@@ -398,7 +398,7 @@ static void release_pool_handle(int idx)
     if (idx >= 0 && idx < pool_size)
     {
         pool_entries[idx].handle_available = true;
-        //Signal waiting threads to check for handle availablity
+        //Signal waiting threads to check for handle availability
         pthread_cond_signal(&pool_cond);
         T2Info("Released curl handle = %d\n", idx);
     }
@@ -848,7 +848,7 @@ T2ERROR http_pool_post(const char *url, const char *payload)
                 pool_entries[idx].rcvry_cert_selector = rdkcertselector_new(NULL, NULL, "RCVRY");
                 if (pool_entries[idx].rcvry_cert_selector == NULL)
                 {
-                    T2Error("Failed to initialize recovery cert selector for this easy handle\n", __func__);
+                    T2Error("Failed to initialize recovery cert selector for this easy handle\n");
                     release_pool_handle(idx);
                     if(fp)
                     {

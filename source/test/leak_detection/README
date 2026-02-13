@@ -1,0 +1,103 @@
+# Curl Memory Leak Test Application
+
+## Purpose
+This standalone application tests the multicurlinterface.c implementation to identify memory leaks.
+
+## Building
+
+### Basic build:
+```bash
+make clean
+make
+```
+
+### With mTLS support:
+```bash
+make clean
+make LIBRDKCERTSEL_BUILD=1
+```
+
+### With RDKB support:
+```bash
+make clean
+make ENABLE_RDKB_SUPPORT=1
+```
+
+## Running Tests
+
+### Run normally:
+```bash
+./curl_leak_test [iterations] [interval_seconds]
+
+# Examples:
+./curl_leak_test           # Run 100 iterations, 5 second intervals
+./curl_leak_test 50 2      # Run 50 iterations, 2 second intervals
+./curl_leak_test 0 10      # Run infinite iterations, 10 second intervals
+```
+
+### Run with Valgrind (memory leak detection):
+```bash
+make valgrind
+```
+
+### Run with Massif (memory profiling):
+```bash
+make massif
+```
+
+### Monitor memory in real-time:
+```bash
+# Terminal 1: Run the app
+./curl_leak_test 0 5
+
+# Terminal 2: Monitor memory
+chmod +x monitor_memory.sh
+./monitor_memory.sh
+```
+
+## Analyzing Results
+
+### Check for memory leaks with Valgrind:
+- Look for "definitely lost" and "indirectly lost" blocks
+- Check if memory usage grows over time
+
+### Analyze memory growth with Massif:
+```bash
+ms_print massif.out | less
+```
+- Look for steadily increasing memory allocations
+- Identify which functions are allocating the most memory
+
+### Check memory usage log:
+```bash
+cat memory_usage.log
+# Plot with gnuplot or Excel to visualize memory growth over time
+```
+
+## Expected Behavior
+
+### No Memory Leak:
+- VmRSS should stabilize after initial allocations
+- Valgrind should report "All heap blocks were freed"
+
+### Memory Leak Detected:
+- VmRSS continuously increases over iterations
+- Valgrind reports "definitely lost" or "still reachable" blocks
+- Massif shows increasing heap usage
+
+## Troubleshooting
+
+### Connection failures:
+- Check network connectivity
+- Verify URL is accessible: `curl -v https://httpbin.org/post`
+- Try with different test URLs
+
+### Build errors:
+- Ensure all dependencies are installed
+- Check include paths in Makefile
+- Verify libcurl is installed: `curl-config --version`
+
+## Notes
+- Uses httpbin.org for testing (requires internet)
+- For internal testing, replace TEST_URL with your own server
+- Pool size can be adjusted via T2_CONNECTION_POOL_SIZE environment variable

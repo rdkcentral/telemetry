@@ -138,8 +138,8 @@ void test_http_post(int iteration)
     // Create test payload
     char payload[512];
     snprintf(payload, sizeof(payload), 
-             "{\"iteration\":%d,\"timestamp\":%ld,\"test\":\"memory_leak_detection\"}",
-             iteration, time(NULL));
+             "{\"iteration\":%d,\"timestamp\":%lld,\"test\":\"memory_leak_detection\"}",
+             iteration, (long long)time(NULL));
 
     T2ERROR result = http_pool_post(TEST_URL, payload);
     

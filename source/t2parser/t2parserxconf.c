@@ -247,6 +247,8 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
 
     ProfileXConf *profile = (ProfileXConf *)malloc(sizeof(ProfileXConf));
     memset(profile, 0, sizeof(ProfileXConf));
+    pthread_mutex_init(&profile->reportInProgressMutex, NULL);
+    pthread_cond_init(&profile->reportInProgressCond, NULL);
 //    profile->id = strdup(jprofileID->valuestring);
     profile->name = strdup(jprofileName->valuestring);
     profile->reportingInterval = reportIntervalInSec;

@@ -1671,7 +1671,7 @@ TEST_F(ProfileTest, ProcessMsgPackBlob_InvalidFormat) {
     EXPECT_EQ(ret, T2ERROR_INVALID_ARGS);
 }
 
-TEST_F(ProfileTest, ProcessMsgPackBlob_InvalidFormat) {
+TEST_F(ProfileTest, ProcessMsgPackBlob_Test1) {
     struct __msgpack__ msg;
     char blob[] = { (char)0x80 };
     msg.msgpack_blob = blob;

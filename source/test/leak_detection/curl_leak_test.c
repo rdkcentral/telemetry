@@ -39,7 +39,16 @@ extern T2ERROR init_connection_pool(void);
 #define TEST_INTERVAL_SECONDS 5
 #define MAX_ITERATIONS 100  // 0 for infinite loop
 
-// FIX: Add memory tracking structure
+// FIX: Add structure to store iteration-wise memory statistics
+typedef struct
+{
+    int iteration;
+    long vmrss;
+    long vmsize;
+    long delta_vmrss;  // Change from previous iteration
+} iteration_memory_t;
+
+// FIX: Add memory tracking structure with iteration storage and pool init tracking
 typedef struct
 {
     long initial_vmrss;
@@ -48,6 +57,10 @@ typedef struct
     long peak_vmsize;
     long current_vmrss;
     long current_vmsize;
+    long pool_init_vmrss;     // FIX: Add pool initialization VmRSS tracking
+    long pool_init_vmsize;    // FIX: Add pool initialization VmSize tracking
+    iteration_memory_t iterations[1000];  // Store up to 1000 iterations
+    int iteration_count;
 } memory_stats_t;
 
 static memory_stats_t mem_stats = {0};
@@ -61,8 +74,8 @@ void signal_handler(int sig)
     keep_running = 0;
 }
 
-// FIX: Enhanced memory tracking function
-void update_memory_stats(void)
+// FIX: Enhanced memory tracking function that stores iteration data
+void update_memory_stats(int iteration)
 {
     FILE *fp = fopen("/proc/self/status", "r");
     if (!fp)
@@ -107,11 +120,32 @@ void update_memory_stats(void)
         mem_stats.peak_vmrss = vmrss;
         mem_stats.peak_vmsize = vmsize;
     }
+
+    // Store iteration data if we have an iteration number
+    if (iteration > 0 && mem_stats.iteration_count < 1000)
+    {
+        iteration_memory_t *current_iter = &mem_stats.iterations[mem_stats.iteration_count];
+        current_iter->iteration = iteration;
+        current_iter->vmrss = vmrss;
+        current_iter->vmsize = vmsize;
+
+        if (mem_stats.iteration_count > 0)
+        {
+            iteration_memory_t *previous_iter = &mem_stats.iterations[mem_stats.iteration_count - 1];
+            current_iter->delta_vmrss = vmrss - previous_iter->vmrss;
+        }
+        else
+        {
+            current_iter->delta_vmrss = 0;  // No delta for first iteration
+        }
+
+        mem_stats.iteration_count++;
+    }
 }
 
 void print_memory_usage(void)
 {
-    update_memory_stats();
+    update_memory_stats(0);  // Call without iteration tracking
     printf("VmSize: %8ld kB  |  VmRSS: %8ld kB\n",
            mem_stats.current_vmsize, mem_stats.current_vmrss);
 }
@@ -147,6 +181,177 @@ void print_memory_summary(void)
     }
 }
 
+// FIX: Add function to print memory delta for each iteration
+void print_memory_delta(int iteration)
+{
+    if (iteration == 1)
+    {
+        // First iteration - no previous data to compare
+        printf("Memory delta: N/A (first iteration)\n");
+        return;
+    }
+
+    long vmrss_delta = mem_stats.iterations[iteration - 1].delta_vmrss;
+
+    printf("Memory delta from previous iteration:\n");
+    printf("  VmRSS:  %+8ld kB", vmrss_delta);
+    if (vmrss_delta > 0)
+    {
+        printf(" (increased)");
+    }
+    else if (vmrss_delta < 0)
+    {
+        printf(" (decreased)");
+    }
+    else
+    {
+        printf(" (unchanged)");
+    }
+    printf("\n");
+
+    // Highlight significant VmRSS increases
+    if (vmrss_delta > 100)
+    {
+        printf("⚠️  WARNING: Significant VmRSS increase (%+ld kB) in this iteration!\n", vmrss_delta);
+    }
+}
+
+// FIX: Add function to print iteration-wise VmRSS statistics table including pool init
+void print_iteration_vmrss_table(void)
+{
+    if (mem_stats.iteration_count == 0)
+    {
+        printf("\nNo iteration data collected.\n");
+        return;
+    }
+
+    printf("\n=== VmRSS Statistics Per Iteration ===\n");
+    printf("┌─────────────┬─────────────┬─────────────┬─────────────┐\n");
+    printf("│ Iteration   │ VmRSS (kB)  │ Delta (kB)  │ Status      │\n");
+    printf("├─────────────┼─────────────┼─────────────┼─────────────┤\n");
+
+    // FIX: Add pool initialization row first
+    long pool_init_delta = mem_stats.pool_init_vmrss - mem_stats.initial_vmrss;
+    printf("│ Pool Init   │ %11ld │ %+11ld │ %-11s │\n",
+           mem_stats.pool_init_vmrss,
+           pool_init_delta,
+           "Pool Setup");
+
+    for (int i = 0; i < mem_stats.iteration_count; i++)
+    {
+        iteration_memory_t *iter = &mem_stats.iterations[i];
+
+        // Status based on delta
+        const char* status;
+        if (i == 0)
+        {
+            // FIX: For first iteration, compare against pool init instead of treating as baseline
+            long first_iter_delta = iter->vmrss - mem_stats.pool_init_vmrss;
+            iter->delta_vmrss = first_iter_delta;  // Update the stored delta
+
+            if (first_iter_delta > 100)
+            {
+                status = "⚠️  High Inc";
+            }
+            else if (first_iter_delta > 10)
+            {
+                status = "↗️  Increase";
+            }
+            else if (first_iter_delta < -10)
+            {
+                status = "↘️  Decrease";
+            }
+            else
+            {
+                status = "✓ Stable";
+            }
+        }
+        else if (iter->delta_vmrss > 100)
+        {
+            status = "⚠️  High Inc";
+        }
+        else if (iter->delta_vmrss > 10)
+        {
+            status = "↗️  Increase";
+        }
+        else if (iter->delta_vmrss < -10)
+        {
+            status = "↘️  Decrease";
+        }
+        else
+        {
+            status = "✓ Stable";
+        }
+
+        printf("│ %11d │ %11ld │ %+11ld │ %-11s │\n",
+               iter->iteration,
+               iter->vmrss,
+               iter->delta_vmrss,
+               status);
+    }
+
+    printf("└─────────────┴─────────────┴─────────────┴─────────────┘\n");
+
+    // FIX: Calculate statistics including pool init
+    long total_growth_from_init = mem_stats.iterations[mem_stats.iteration_count - 1].vmrss - mem_stats.initial_vmrss;
+    long request_only_growth = mem_stats.iterations[mem_stats.iteration_count - 1].vmrss - mem_stats.pool_init_vmrss;
+    long max_delta = 0, min_delta = 0;
+    int positive_deltas = 0, negative_deltas = 0, zero_deltas = 0;
+
+    for (int i = 1; i < mem_stats.iteration_count; i++)
+    {
+        long delta = mem_stats.iterations[i].delta_vmrss;
+        if (delta > max_delta)
+        {
+            max_delta = delta;
+        }
+        if (delta < min_delta)
+        {
+            min_delta = delta;
+        }
+        if (delta > 0)
+        {
+            positive_deltas++;
+        }
+        else if (delta < 0)
+        {
+            negative_deltas++;
+        }
+        else
+        {
+            zero_deltas++;
+        }
+    }
+
+    printf("\n=== VmRSS Analysis ===\n");
+    printf("Pool initialization cost:   %+ld kB\n", pool_init_delta);
+    printf("Total growth from start:    %+ld kB\n", total_growth_from_init);
+    printf("Growth from requests only:  %+ld kB\n", request_only_growth);
+    printf("Largest single increase:    %+ld kB\n", max_delta);
+    printf("Largest single decrease:    %+ld kB\n", min_delta);
+    printf("Iterations with increase:   %d\n", positive_deltas);
+    printf("Iterations with decrease:   %d\n", negative_deltas);
+    printf("Iterations stable:          %d\n", zero_deltas);
+
+    // Memory leak assessment
+    if (request_only_growth > 1000)
+    {
+        printf("\n🚨 MEMORY LEAK DETECTED: Request growth > 1MB\n");
+    }
+    else if (request_only_growth > 100)
+    {
+        printf("\n⚠️  POTENTIAL LEAK: Moderate request growth detected\n");
+    }
+    else if (positive_deltas > (mem_stats.iteration_count - 1) * 0.7)
+    {
+        printf("\n⚠️  POTENTIAL LEAK: Frequent memory increases\n");
+    }
+    else
+    {
+        printf("\n✅ MEMORY USAGE APPEARS STABLE\n");
+    }
+}
+
 void test_http_post(int iteration)
 {
     printf("\n[Iteration %d] Testing HTTP POST...\n", iteration);
@@ -160,7 +365,7 @@ void test_http_post(int iteration)
     T2ERROR result = http_pool_post(TEST_URL, payload);
 
     // FIX: Update memory stats after each request
-    update_memory_stats();
+    update_memory_stats(iteration);
 
     if (result == T2ERROR_SUCCESS)
     {
@@ -180,7 +385,7 @@ void test_http_get(int iteration)
     T2ERROR result = http_pool_get(TEST_GET_URL, &response_data, false);
 
     // FIX: Update memory stats after each request
-    update_memory_stats();
+    update_memory_stats(iteration);
 
     if (result == T2ERROR_SUCCESS)
     {
@@ -350,6 +555,10 @@ int main(int argc, char *argv[])
     printf("\nMemory usage after pool initialization:\n");
     print_memory_usage();
 
+    // FIX: Store pool initialization memory stats
+    mem_stats.pool_init_vmrss = mem_stats.current_vmrss;
+    mem_stats.pool_init_vmsize = mem_stats.current_vmsize;
+
     // Calculate memory used by pool initialization
     long pool_init_memory = mem_stats.current_vmrss - mem_stats.initial_vmrss;
     printf("Memory used by pool initialization: %+ld kB\n", pool_init_memory);
@@ -377,6 +586,9 @@ int main(int argc, char *argv[])
         printf("\n--- Memory Usage at iteration %d ---\n", iteration);
         print_memory_usage();
 
+        // Print memory delta for this iteration
+        print_memory_delta(iteration);
+
         // Sleep before next iteration
         if (keep_running && (max_iterations == 0 || iteration < max_iterations))
         {
@@ -390,6 +602,9 @@ int main(int argc, char *argv[])
 
     // FIX: Print detailed memory summary
     print_memory_summary();
+
+    // FIX: Print iteration-wise VmRSS statistics table
+    print_iteration_vmrss_table();
 
     printf("\nCleaning up connection pool...\n");
     http_pool_cleanup();

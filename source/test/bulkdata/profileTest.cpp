@@ -1672,10 +1672,13 @@ TEST_F(ProfileTest, ProcessMsgPackBlob_InvalidFormat) {
 }
 
 TEST_F(ProfileTest, ProcessMsgPackBlob_Test1) {
+   printf("##### test starts\n");	
     struct __msgpack__ msg;
     char blob[] = { (char)0x80 };
+    printf("initialiseing the value to blob and size\n");
     msg.msgpack_blob = blob;
     msg.msgpack_blob_size = 1;
+    printf("calling the function \n");
     int ret = __ReportProfiles_ProcessReportProfilesMsgPackBlob(&msg, true);
     EXPECT_EQ(ret, T2ERROR_INVALID_ARGS);
 }

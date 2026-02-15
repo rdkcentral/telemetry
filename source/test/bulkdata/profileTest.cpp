@@ -1676,7 +1676,7 @@ TEST_F(ProfileTest, ProcessMsgPackBlob_Test1) {
     char blob[] = { (char)0x80 };
     msg.msgpack_blob = blob;
     msg.msgpack_blob_size = 1;
-    int ret = __ReportProfiles_ProcessReportProfilesMsgPackBlob(&msg, false);
+    int ret = __ReportProfiles_ProcessReportProfilesMsgPackBlob(&msg, true);
     EXPECT_EQ(ret, T2ERROR_INVALID_ARGS);
 }
 

@@ -98,6 +98,58 @@ bool isStateRedEnabled(void)
 #endif
 #endif
 
+// FIX: Add single memory tracking function that can be called at any stage
+void log_memory_stage(const char* stage_name)
+{
+    static int baseline_vmrss = 0;
+    static int last_vmrss = 0;
+
+    // Get current memory stats
+    FILE *fp = fopen("/proc/self/status", "r");
+    if (!fp)
+    {
+        T2Error("Failed to open /proc/self/status for memory tracking at stage: %s\n", stage_name);
+        return;
+    }
+
+    char line[256];
+    int current_vmrss = 0, current_vmsize = 0;
+
+    while (fgets(line, sizeof(line), fp))
+    {
+        if (strncmp(line, "VmRSS:", 6) == 0)
+        {
+            sscanf(line + 6, "%d", &current_vmrss);
+        }
+        else if (strncmp(line, "VmSize:", 7) == 0)
+        {
+            sscanf(line + 7, "%d", &current_vmsize);
+        }
+    }
+    fclose(fp);
+
+    // Set baseline on first call
+    if (baseline_vmrss == 0)
+    {
+        baseline_vmrss = current_vmrss;
+        last_vmrss = current_vmrss;
+        T2Info("[MEMORY] %s - VmRSS: %d kB, VmSize: %d kB (BASELINE)\n",
+               stage_name, current_vmrss, current_vmsize);
+        return;
+    }
+
+    // Calculate deltas
+    int delta_from_baseline = current_vmrss - baseline_vmrss;
+    int delta_from_last = current_vmrss - last_vmrss;
+
+    // Log with stage name and deltas
+    T2Info("[MEMORY] %s - VmRSS: %d kB (+%d from baseline, %+d from last)\n",
+           stage_name, current_vmrss, delta_from_baseline, delta_from_last);
+
+    // Update last measurement
+    last_vmrss = current_vmrss;
+}
+
 // Helper function to read pool size from environment variable
 static int get_configured_pool_size(void)
 {
@@ -188,6 +240,7 @@ static void cleanup_curl_handles(void)
     }
 #endif
 
+    log_memory_stage("CERTSEL_CLEANED");
     if(pool_entries)
     {
         for(int i = 0; i < pool_size; i++)
@@ -201,7 +254,7 @@ static void cleanup_curl_handles(void)
         free(pool_entries);
         pool_entries = NULL;
     }
-
+    log_memory_stage("POOL_FREED");
     pool_size = 0;
 
     T2Debug("%s ++out\n", __FUNCTION__);
@@ -211,6 +264,7 @@ T2ERROR init_connection_pool()
 {
     T2Debug("%s ++in\n", __FUNCTION__);
 
+    log_memory_stage("POOL_INIT_START");
     pthread_mutex_lock(&pool_mutex);
 
     // Check if already initialized
@@ -345,6 +399,7 @@ T2ERROR init_connection_pool()
 
     pool_initialized = true;
     pthread_mutex_unlock(&pool_mutex);
+    log_memory_stage("POOL_INIT_COMPLETE");
     T2Debug("%s ++out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
@@ -465,7 +520,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
 
     CURL *easy;
     int idx = -1;
-
+    log_memory_stage("GET_REQUEST_START");
     T2ERROR ret = acquire_pool_handle(&easy, &idx);
     if(ret != T2ERROR_SUCCESS)
     {
@@ -519,6 +574,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
 #endif
     CURLcode curl_code = CURLE_OK;
 
+    log_memory_stage("GET_HANDLE_ACQUIRED");
     if(mtls_enable == true)
     {
 #ifdef LIBRDKCERTSEL_BUILD
@@ -617,6 +673,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
         curl_code = curl_easy_perform(easy);
     }
 
+    log_memory_stage("GET_AFTER_PERFORM");
     if (curl_code != CURLE_OK)
     {
         T2Error("curl_easy_perform failed: %s\n", curl_easy_strerror(curl_code));
@@ -662,7 +719,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
                 int fd = open(HTTP_RESPONSE_FILE, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
                 if (fd >= 0)
                 {
-                    FILE *httpOutput = fdopen(fd, "w+");
+                    FILE *httpOutput = fdopen(fd, "w");
                     if (httpOutput)
                     {
                         T2Debug("Update config data in response file %s \n", HTTP_RESPONSE_FILE);
@@ -761,6 +818,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
 
     release_pool_handle(idx);
 
+    log_memory_stage("GET_REQUEST_COMPLETE");
     T2Debug("%s ++out\n", __FUNCTION__);
     return result;
 }
@@ -780,7 +838,7 @@ T2ERROR http_pool_post(const char *url, const char *payload)
     // Acquire any available handle (with waiting)
     CURL *easy;
     int idx = -1;
-
+    log_memory_stage("POST_REQUEST_START");
     T2ERROR ret = acquire_pool_handle(&easy, &idx);
     if(ret != T2ERROR_SUCCESS)
     {
@@ -830,6 +888,7 @@ T2ERROR http_pool_post(const char *url, const char *payload)
         T2Error("Unable to open /tmp/curlOutput.txt for writing\n");
     }
 
+    log_memory_stage("POST_HANDLE_ACQUIRED");
     // Certificate handling - check if mTLS is enabled
     bool mtls_enable = isMtlsEnabled();
     char *pCertFile = NULL;
@@ -992,6 +1051,8 @@ T2ERROR http_pool_post(const char *url, const char *payload)
         T2Info("Attempting curl communication without mtls\n");
         curl_code = curl_easy_perform(easy);
     }
+
+    log_memory_stage("POST_AFTER_PERFORM");
     // Close output file
     if(fp)
     {
@@ -1044,6 +1105,7 @@ T2ERROR http_pool_post(const char *url, const char *payload)
     // cert selector object and are freed when rdkcertselector_free() is called
     release_pool_handle(idx);
 
+    log_memory_stage("POST_REQUEST_COMPLETE");
     T2Debug("%s ++out\n", __FUNCTION__);
     return result;
 }
@@ -1051,6 +1113,7 @@ T2ERROR http_pool_post(const char *url, const char *payload)
 T2ERROR http_pool_cleanup(void)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
+    log_memory_stage("CLEANUP_START");
     pthread_mutex_lock(&pool_mutex);
     if (!pool_initialized)
     {

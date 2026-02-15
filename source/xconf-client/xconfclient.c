@@ -274,7 +274,15 @@ static char *getTimezone ()
                     free(zoneValue);
                     zoneValue = NULL ;
                 }
-                zoneValue = strdup(zone);
+                if (zone != NULL && strlen(zone) > 0)
+                {
+                    zoneValue = strdup(zone);
+                }
+                else
+                {
+                    zoneValue = NULL;
+                    T2Warn("Warning: zone is NULL or empty, skipping\n");
+                }
             }
             fclose(file);
             free(zone);

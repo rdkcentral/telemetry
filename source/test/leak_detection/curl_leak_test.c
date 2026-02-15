@@ -40,7 +40,8 @@ extern T2ERROR init_connection_pool(void);
 #define MAX_ITERATIONS 100  // 0 for infinite loop
 
 // FIX: Add structure to store iteration-wise memory statistics (optimized)
-typedef struct {
+typedef struct
+{
     int iteration;
     int vmrss;        // Changed from long to int (sufficient for kB values)
     int vmsize;       // FIX: Add missing vmsize field
@@ -48,7 +49,8 @@ typedef struct {
 } iteration_memory_t;
 
 // FIX: Optimized memory tracking structure with smaller data types and array
-typedef struct {
+typedef struct
+{
     int initial_vmrss;    // Changed from long to int
     int initial_vmsize;   // Changed from long to int
     int peak_vmrss;       // Changed from long to int
@@ -217,65 +219,104 @@ void print_memory_delta(int iteration)
 // FIX: Optimized table function with ASCII characters and simplified output
 void print_iteration_vmrss_table(void)
 {
-    if (mem_stats.iteration_count == 0) {
+    if (mem_stats.iteration_count == 0)
+    {
         printf("\nNo iteration data collected.\n");
         return;
     }
-    
+
     printf("\n=== VmRSS Statistics Per Iteration ===\n");
     printf("+-------------+-------------+-------------+-------------+\n");
     printf("| Iteration   | VmRSS (kB)  | Delta (kB)  | Status      |\n");
     printf("+-------------+-------------+-------------+-------------+\n");
-    
+
     // Pool initialization row
     int pool_init_delta = mem_stats.pool_init_vmrss - mem_stats.initial_vmrss;
     printf("| Pool Init   | %11d | %+11d | %-11s |\n",
            mem_stats.pool_init_vmrss, pool_init_delta, "Pool Setup");
-    
-    for (int i = 0; i < mem_stats.iteration_count; i++) {
+
+    for (int i = 0; i < mem_stats.iteration_count; i++)
+    {
         iteration_memory_t *iter = &mem_stats.iterations[i];
-        
+
         // Status based on delta - simplified ASCII
         const char* status;
-        if (i == 0) {
+        if (i == 0)
+        {
             int first_iter_delta = iter->vmrss - mem_stats.pool_init_vmrss;
             iter->delta_vmrss = first_iter_delta;
-            
-            if (first_iter_delta > 100) status = "HIGH INC";
-            else if (first_iter_delta > 10) status = "INCREASE";
-            else if (first_iter_delta < -10) status = "DECREASE";
-            else status = "STABLE";
-        } else if (iter->delta_vmrss > 100) {
+
+            if (first_iter_delta > 100)
+            {
+                status = "HIGH INC";
+            }
+            else if (first_iter_delta > 10)
+            {
+                status = "INCREASE";
+            }
+            else if (first_iter_delta < -10)
+            {
+                status = "DECREASE";
+            }
+            else
+            {
+                status = "STABLE";
+            }
+        }
+        else if (iter->delta_vmrss > 100)
+        {
             status = "HIGH INC";
-        } else if (iter->delta_vmrss > 10) {
+        }
+        else if (iter->delta_vmrss > 10)
+        {
             status = "INCREASE";
-        } else if (iter->delta_vmrss < -10) {
+        }
+        else if (iter->delta_vmrss < -10)
+        {
             status = "DECREASE";
-        } else {
+        }
+        else
+        {
             status = "STABLE";
         }
-        
+
         printf("| %11d | %11d | %+11d | %-11s |\n",
                iter->iteration, iter->vmrss, iter->delta_vmrss, status);
     }
-    
+
     printf("+-------------+-------------+-------------+-------------+\n");
-    
+
     // Calculate statistics
     int total_growth = mem_stats.iterations[mem_stats.iteration_count - 1].vmrss - mem_stats.initial_vmrss;
     int request_growth = mem_stats.iterations[mem_stats.iteration_count - 1].vmrss - mem_stats.pool_init_vmrss;
     int max_delta = 0, min_delta = 0;
     int pos = 0, neg = 0, zero = 0;
-    
-    for (int i = 1; i < mem_stats.iteration_count; i++) {
+
+    for (int i = 1; i < mem_stats.iteration_count; i++)
+    {
         int delta = mem_stats.iterations[i].delta_vmrss;
-        if (delta > max_delta) max_delta = delta;
-        if (delta < min_delta) min_delta = delta;
-        if (delta > 0) pos++;
-        else if (delta < 0) neg++;
-        else zero++;
+        if (delta > max_delta)
+        {
+            max_delta = delta;
+        }
+        if (delta < min_delta)
+        {
+            min_delta = delta;
+        }
+        if (delta > 0)
+        {
+            pos++;
+        }
+        else if (delta < 0)
+        {
+            neg++;
+        }
+        else
+        {
+            zero++;
+        }
     }
-    
+
     printf("\n=== VmRSS Analysis ===\n");
     printf("Pool init cost:   %+d kB\n", pool_init_delta);
     printf("Total growth:     %+d kB\n", total_growth);
@@ -283,15 +324,22 @@ void print_iteration_vmrss_table(void)
     printf("Max increase:     %+d kB\n", max_delta);
     printf("Max decrease:     %+d kB\n", min_delta);
     printf("Inc/Dec/Stable:   %d/%d/%d\n", pos, neg, zero);
-    
+
     // Simplified leak assessment
-    if (request_growth > 1000) {
+    if (request_growth > 1000)
+    {
         printf("\nMEMORY LEAK DETECTED: Request growth > 1MB\n");
-    } else if (request_growth > 100) {
+    }
+    else if (request_growth > 100)
+    {
         printf("\nPOTENTIAL LEAK: Moderate request growth\n");
-    } else if (pos > (mem_stats.iteration_count - 1) * 0.7) {
+    }
+    else if (pos > (mem_stats.iteration_count - 1) * 0.7)
+    {
         printf("\nPOTENTIAL LEAK: Frequent increases\n");
-    } else {
+    }
+    else
+    {
         printf("\nMEMORY USAGE STABLE\n");
     }
 }
@@ -299,43 +347,56 @@ void print_iteration_vmrss_table(void)
 // FIX: Combined HTTP test function to reduce code duplication
 void test_http_request(int iteration, request_type_t type)
 {
-    printf("\n[Iteration %d] Testing HTTP %s...\n", iteration, 
+    printf("\n[Iteration %d] Testing HTTP %s...\n", iteration,
            (type == REQUEST_POST) ? "POST" : "GET");
 
     T2ERROR result;
     char *response_data = NULL;
-    
-    if (type == REQUEST_POST) {
+
+    if (type == REQUEST_POST)
+    {
         char payload[256];  // Reduced from 512
-        snprintf(payload, sizeof(payload), 
-                "{\"i\":%d,\"t\":%lld}", iteration, (long long)time(NULL));
+        snprintf(payload, sizeof(payload),
+                 "{\"i\":%d,\"t\":%lld}", iteration, (long long)time(NULL));
         result = http_pool_post(TEST_URL, payload);
-    } else {
+    }
+    else
+    {
         result = http_pool_get(TEST_GET_URL, &response_data, false);
     }
 
     update_memory_stats(iteration);
 
-    if (result == T2ERROR_SUCCESS) {
-        printf("[Iteration %d] %s request successful\n", iteration, 
+    if (result == T2ERROR_SUCCESS)
+    {
+        printf("[Iteration %d] %s request successful\n", iteration,
                (type == REQUEST_POST) ? "POST" : "GET");
-        if (response_data) {
+        if (response_data)
+        {
             printf("[Iteration %d] Response: %zu bytes\n", iteration, strlen(response_data));
             free(response_data);
         }
-    } else {
-        printf("[Iteration %d] %s failed: %d\n", iteration, 
+    }
+    else
+    {
+        printf("[Iteration %d] %s failed: %d\n", iteration,
                (type == REQUEST_POST) ? "POST" : "GET", result);
-        if (response_data) free(response_data);
+        if (response_data)
+        {
+            free(response_data);
+        }
     }
 }
 
 // FIX: Update test function to use combined HTTP function
 void run_test_request(int iteration, request_type_t request_type)
 {
-    if (request_type == REQUEST_ALTERNATE) {
+    if (request_type == REQUEST_ALTERNATE)
+    {
         test_http_request(iteration, (iteration % 2 == 0) ? REQUEST_POST : REQUEST_GET);
-    } else {
+    }
+    else
+    {
         test_http_request(iteration, request_type);
     }
 }

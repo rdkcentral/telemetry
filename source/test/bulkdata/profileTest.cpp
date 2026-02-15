@@ -1701,6 +1701,25 @@ TEST_F(ProfileTest, ProcessReportProfilesBlob_EmptyProfile_Normal) {
     cJSON_Delete(root);
 }
 
+TEST_F(ProfileTest, ProcessReportProfilesBlob_AddNewProfile) {
+    // New profile, triggers add logic and saveConfigToFile
+    cJSON *root = cJSON_CreateObject();
+    cJSON *profiles = cJSON_CreateArray();
+    cJSON_AddItemToObject(root, "profiles", profiles);
+    cJSON *profile = cJSON_CreateObject();
+    cJSON_AddStringToObject(profile, "name", "newprofile");
+    cJSON_AddStringToObject(profile, "hash", "newhash");
+    cJSON *value = cJSON_CreateObject();
+    cJSON_AddStringToObject(value, "param", "value");
+    cJSON_AddItemToObject(profile, "value", value);
+    cJSON_AddItemToArray(profiles, profile);
+
+    // Expect add and saveConfigToFile, can stub if needed
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_)).WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).WillRepeatedly(Return(T2ERROR_SUCCESS));
+    ReportProfiles_ProcessReportProfilesBlob(root, T2_RP);
+    cJSON_Delete(root);
+}
 TEST_F(ProfileTest, ReportProfiles_ProcessReportProfilesMsgPackBlobTest) {
     // Should return early if root is NULL
     ReportProfiles_ProcessReportProfilesMsgPackBlob(NULL, false);

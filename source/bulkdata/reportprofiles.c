@@ -900,7 +900,6 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
         return;
     }
      T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
-#if 0
     char* profileName = NULL;
     uint32_t profileIndex = 0;
 
@@ -908,6 +907,7 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
     hash_map_t *profileHashMap = getProfileHashMap();
     hash_map_t *receivedProfileHashMap = hash_map_create();
      T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
+#if 0
     // Rbus subscription of Tr181 datamodel events
     if(isRbusEnabled())
     {

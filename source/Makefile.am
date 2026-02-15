@@ -115,7 +115,7 @@ curl_leak_test_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.
                                 -I${top_srcdir}/source/utils \
                                 -I${top_srcdir}/source/xconf-client
 
-curl_leak_test_LDFLAGS = -lcurl -lpthread -Wl,--gc-sections -s -Wl,--as-needed
+curl_leak_test_LDFLAGS = -lcurl -lpthread -Wl,--gc-sections -Wl,--as-needed
 
 # Add conditional flags for curl_leak_test based on telemetry configuration
 if IS_LIBRDKCERTSEL_ENABLED

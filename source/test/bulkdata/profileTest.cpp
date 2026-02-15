@@ -1596,7 +1596,6 @@ TEST_F(ProfileTest, RemovePreRPfromDisk_FailsIfDirNull) {
     EXPECT_EQ(RemovePreRPfromDisk("/tmp", &dummy), T2ERROR_FAILURE);
 }
 
-#if 1
 TEST_F(ProfileTest, deleteAllReportProfiles) {
     EXPECT_CALL(*g_vectorMock, Vector_Size(_))
         .Times(::testing::AtMost(1))
@@ -1605,7 +1604,6 @@ TEST_F(ProfileTest, deleteAllReportProfiles) {
         .WillRepeatedly(Return(T2ERROR_SUCCESS));
     EXPECT_EQ(deleteAllReportProfiles(), T2ERROR_SUCCESS);
 }
-#endif
 
 #if 0
 TEST_F(ProfileTest, isMtlsEnabled) {
@@ -1755,6 +1753,72 @@ TEST(ReportProfilesCallbacks, FreeReportProfileHashMap) {
     cb(nullptr);
     SUCCEED();
 }
+
+TEST_F(ProfileTest, ReportProfiles_setProfileXConf) {
+    ProfileXConf profile;
+    EXPECT_CALL(*g_schedulerMock, registerProfileWithScheduler(_, _, _, _, _, _, _, _))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+
+    EXPECT_CALL(*g_rbusMock, rbus_checkStatus())
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(RBUS_ENABLED));
+
+    EXPECT_CALL(*g_rbusMock, rbus_registerLogHandler(_))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
+
+    EXPECT_CALL(*g_rbusMock, rbus_open(_, _))
+        .Times(::testing::AtMost(2))
+        .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
+
+    // Mock successful parameter retrieval
+    EXPECT_CALL(*g_rbusMock, rbus_get(_, _, _))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
+
+    EXPECT_CALL(*g_rbusMock, rbusValue_GetType(_))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(RBUS_STRING));
+
+    EXPECT_CALL(*g_rbusMock, rbusValue_ToString(_, _, _))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(strdup("test_value")));
+
+    EXPECT_CALL(*g_rbusMock, rbusValue_Release(_))
+        .Times(::testing::AtMost(1));
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(::testing::AtMost(2))
+        .WillRepeatedly(Return(0)); // Return 1 to indicate only one profile (no duplicates)
+
+    EXPECT_CALL(*g_rbusMock, rbus_checkStatus())
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(RBUS_ENABLED));
+
+    EXPECT_CALL(*g_rbusMock, rbusObject_Init(_, _))
+        .Times(::testing::AtMost(1));
+
+    EXPECT_CALL(*g_rbusMock, rbusValue_Init(_))
+        .Times(::testing::AtMost(1));
+
+    EXPECT_CALL(*g_rbusMock, rbusValue_SetString(_, _))
+        .Times(::testing::AtMost(1));
+
+    EXPECT_CALL(*g_rbusMock, rbusObject_SetValue(_, _, _))
+        .Times(::testing::AtMost(1));
+
+    EXPECT_CALL(*g_rbusMock, rbusValue_Release(_))
+        .Times(::testing::AtMost(1));
+
+    EXPECT_CALL(*g_rbusMock, rbusEvent_Publish(_,_))
+	.Times(::testing::AtMost(1))
+	.WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
+
+    EXPECT_CALL(*g_rbusMock, rbusObject_Release(_))
+        .Times(::testing::AtLeast(1));
+    EXPECT_EQ(ReportProfiles_setProfileXConf(&profile), T2ERROR_SUCCESS);
+}
+
 #endif
 #endif
 

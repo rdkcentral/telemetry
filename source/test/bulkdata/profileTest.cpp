@@ -1684,11 +1684,20 @@ TEST_F(ProfileTest, ProcessMsgPackBlob_Test1) {
 }
 #endif
 TEST_F(ProfileTest, ProcessReportProfilesBlob_EmptyProfile_T2_TEMP_RP) {
-    // empty array, rprofiletypes == T2_TEMP_RP (should log info and return)
     cJSON *root = cJSON_CreateObject();
     cJSON *profiles = cJSON_CreateArray();
     cJSON_AddItemToObject(root, "profiles", profiles);
     ReportProfiles_ProcessReportProfilesBlob(root, T2_TEMP_RP);
+    cJSON_Delete(root);
+}
+
+TEST_F(ProfileTest, ProcessReportProfilesBlob_EmptyProfile_Normal) {
+    cJSON *root = cJSON_CreateObject();
+    cJSON *profiles = cJSON_CreateArray();
+    cJSON_AddItemToObject(root, "profiles", profiles);
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_)).WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).WillRepeatedly(Return(T2ERROR_SUCCESS));
+    ReportProfiles_ProcessReportProfilesBlob(root, T2_RP); // normal, triggers deleteAllReportProfiles
     cJSON_Delete(root);
 }
 

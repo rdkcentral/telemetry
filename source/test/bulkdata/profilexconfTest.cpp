@@ -39,6 +39,8 @@ extern "C" {
 #include "t2common.h"
 
 }
+
+extern "C" void ReportProfiles_TimeoutCb(char *profileName, bool isXConfProfile) {}
 #include "../mocks/rbusMock.h"
 #include "../mocks/SystemMock.h"
 #include "../mocks/FileioMock.h"

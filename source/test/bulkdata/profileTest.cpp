@@ -1631,6 +1631,9 @@ TEST_F(ProfileTest, ReportProfiles_setProfileXConf) {
 	.Times(::testing::AtLeast(1));
 
     EXPECT_EQ(ReportProfiles_setProfileXConf(&profile), T2ERROR_SUCCESS);
+
+    printf("###### rose mary benny\n");
+     EXPECT_EQ(deleteAllReportProfiles(), T2ERROR_SUCCESS);
 }
 
 TEST_F(ProfileTest, RemovePreRPfromDisk_FailsIfDirNull) {

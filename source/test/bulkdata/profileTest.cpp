@@ -1586,6 +1586,53 @@ TEST_F(ProfileTest, RemovePreRPfromDisk) {
     EXPECT_EQ(RemovePreRPfromDisk("/tmp", &dummy), T2ERROR_SUCCESS);
 }
 
+TEST_F(ProfileTest, ReportProfiles_setProfileXConf) {
+    ProfileXConf profile;
+    EXPECT_CALL(*g_schedulerMock, registerProfileWithScheduler(_, _, _, _, _, _, _, _))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_vectorMock,Vector_Size(_))
+	 .WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_rbusMock, rbus_checkStatus())
+        .WillRepeatedly(Return(RBUS_ENABLED));
+
+    EXPECT_CALL(*g_rbusMock, rbus_registerLogHandler(_))
+        .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
+
+    EXPECT_CALL(*g_rbusMock, rbus_open(_, _))
+        .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
+
+    // Mock successful parameter retrieval
+    EXPECT_CALL(*g_rbusMock, rbus_get(_, _, _))
+        .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
+
+    EXPECT_CALL(*g_rbusMock, rbusValue_GetType(_))
+        .WillRepeatedly(Return(RBUS_STRING));
+
+    EXPECT_CALL(*g_rbusMock, rbusValue_ToString(_, _, _))
+        .WillRepeatedly(Return(strdup("test_value")));
+
+    EXPECT_CALL(*g_rbusMock, rbusValue_Init(_));
+
+    EXPECT_CALL(*g_rbusMock, rbusValue_SetString(_, _));
+
+    EXPECT_CALL(*g_rbusMock,rbusObject_Init(_,_));
+
+    EXPECT_CALL(*g_rbusMock, rbusObject_SetValue(_, _, _));
+
+     EXPECT_CALL(*g_rbusMock, rbusEvent_Publish(_,_))
+        .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
+
+    EXPECT_CALL(*g_rbusMock, rbusValue_Release(_))
+        .Times(::testing::Atleast(1));
+
+
+    EXPECT_CALL(*g_rbusMock, rbusObject_Release(_))
+	.Times(::testing::Atleast(1));
+
+    EXPECT_EQ(ReportProfiles_setProfileXConf(&profile), T2ERROR_SUCCESS);
+}
+
 TEST_F(ProfileTest, RemovePreRPfromDisk_FailsIfDirNull) {
     hash_map_t dummy;
     // Mock opendir to return NULL to simulate failure

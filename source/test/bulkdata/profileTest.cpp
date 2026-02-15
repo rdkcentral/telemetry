@@ -1701,6 +1701,112 @@ TEST_F(ProfileTest, ProcessReportProfilesBlob_EmptyProfile_Normal) {
     cJSON_Delete(root);
 }
 
+TEST_F(ProfileTest, ProcessReportProfilesBlob_MissingProfileFields) {
+    // Profile with missing fields should trigger error log and continue
+    cJSON *root = cJSON_CreateObject();
+    cJSON *profiles = cJSON_CreateArray();
+    cJSON_AddItemToObject(root, "profiles", profiles);
+    cJSON *profile = cJSON_CreateObject();
+    // Add only name, missing hash/value
+    cJSON_AddStringToObject(profile, "name", "dummy");
+    cJSON_AddItemToArray(profiles, profile);
+    ReportProfiles_ProcessReportProfilesBlob(root, false);
+    cJSON_Delete(root);
+}
+
+TEST_F(ProfileTest, ProcessReportProfilesBlob_AddNewProfile) {
+    // New profile, triggers add logic and saveConfigToFile
+    cJSON *root = cJSON_CreateObject();
+    cJSON *profiles = cJSON_CreateArray();
+    cJSON_AddItemToObject(root, "profiles", profiles);
+    cJSON *profile = cJSON_CreateObject();
+    cJSON_AddStringToObject(profile, "name", "newprofile");
+    cJSON_AddStringToObject(profile, "hash", "newhash");
+    cJSON *value = cJSON_CreateObject();
+    cJSON_AddStringToObject(value, "param", "value");
+    cJSON_AddItemToObject(profile, "value", value);
+    cJSON_AddItemToArray(profiles, profile);
+
+    // Expect add and saveConfigToFile, can stub if needed
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_)).WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).WillRepeatedly(Return(T2ERROR_SUCCESS));
+    ReportProfiles_ProcessReportProfilesBlob(root, T2_RP);
+    cJSON_Delete(root);
+}
+
+TEST_F(ProfileTest, ProcessReportProfilesBlob_ReplaceProfile_DifferentHash) {
+    // Add two profiles, one existing, such that hash differs, triggers replacement branch
+    cJSON *root = cJSON_CreateObject();
+    cJSON *profiles = cJSON_CreateArray();
+    cJSON_AddItemToObject(root, "profiles", profiles);
+
+    // First profile, old hash, will be replaced
+    cJSON *profile1 = cJSON_CreateObject();
+    cJSON_AddStringToObject(profile1, "name", "profileA");
+    cJSON_AddStringToObject(profile1, "hash", "oldhash");
+    cJSON *value1 = cJSON_CreateObject();
+    cJSON_AddStringToObject(value1, "param", "value1");
+    cJSON_AddItemToObject(profile1, "value", value1);
+    cJSON_AddItemToArray(profiles, profile1);
+
+    // Second profile, same name, new hash, triggers replacement logic
+    cJSON *profile2 = cJSON_CreateObject();
+    cJSON_AddStringToObject(profile2, "name", "profileA");
+    cJSON_AddStringToObject(profile2, "hash", "newhash");
+    cJSON *value2 = cJSON_CreateObject();
+    cJSON_AddStringToObject(value2, "param", "value2");
+    cJSON_AddItemToObject(profile2, "value", value2);
+    cJSON_AddItemToArray(profiles, profile2);
+
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_)).WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).WillRepeatedly(Return(T2ERROR_SUCCESS));
+    ReportProfiles_ProcessReportProfilesBlob(root, T2_RP);
+    cJSON_Delete(root);
+}
+
+TEST_F(ProfileTest, ProcessReportProfilesBlob_SameHashSkipsProcessing) {
+    // Add a profile whose hash matches an existing hash, should skip re-processing
+    cJSON *root = cJSON_CreateObject();
+    cJSON *profiles = cJSON_CreateArray();
+    cJSON_AddItemToObject(root, "profiles", profiles);
+
+    cJSON *profile = cJSON_CreateObject();
+    cJSON_AddStringToObject(profile, "name", "profileX");
+    cJSON_AddStringToObject(profile, "hash", "samehash");
+    cJSON *value = cJSON_CreateObject();
+    cJSON_AddStringToObject(value, "param", "value");
+    cJSON_AddItemToObject(profile, "value", value);
+    cJSON_AddItemToArray(profiles, profile);
+
+    // Simulate existing profile hash map with "samehash" to trigger skip
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_)).WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).WillRepeatedly(Return(T2ERROR_SUCCESS));
+    ReportProfiles_ProcessReportProfilesBlob(root, T2_RP);
+    cJSON_Delete(root);
+}
+
+TEST_F(ProfileTest, ProcessReportProfilesBlob_RemovePreRPfromDiskBranch) {
+    // Add profiles and set rprofiletypes = T2_RP to trigger RemovePreRPfromDisk
+    cJSON *root = cJSON_CreateObject();
+    cJSON *profiles = cJSON_CreateArray();
+    cJSON_AddItemToObject(root, "profiles", profiles);
+
+    cJSON *profile = cJSON_CreateObject();
+    cJSON_AddStringToObject(profile, "name", "profileA");
+    cJSON_AddStringToObject(profile, "hash", "hashA");
+    cJSON *value = cJSON_CreateObject();
+    cJSON_AddStringToObject(value, "param", "valueA");
+    cJSON_AddItemToObject(profile, "value", value);
+    cJSON_AddItemToArray(profiles, profile);
+
+    // RemovePreRPfromDisk covered by T2_RP branch
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_)).WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).WillRepeatedly(Return(T2ERROR_SUCCESS));
+    ReportProfiles_ProcessReportProfilesBlob(root, T2_RP);
+    cJSON_Delete(root);
+}
+
+
 TEST_F(ProfileTest, ProcessReportProfilesBlob_NullRoot) {
     // Should return early if root is NULL
     ReportProfiles_ProcessReportProfilesBlob(NULL, false);

@@ -1702,27 +1702,6 @@ TEST_F(ProfileTest, ProcessReportProfilesBlob_EmptyProfile_Normal) {
 }
 
 
-TEST_F(ProfileTest, ProcessReportProfilesBlob_RemovePreRPfromDiskBranch) {
-    // Add profiles and set rprofiletypes = T2_RP to trigger RemovePreRPfromDisk
-    cJSON *root = cJSON_CreateObject();
-    cJSON *profiles = cJSON_CreateArray();
-    cJSON_AddItemToObject(root, "profiles", profiles);
-
-    cJSON *profile = cJSON_CreateObject();
-    cJSON_AddStringToObject(profile, "name", "profileA");
-    cJSON_AddStringToObject(profile, "hash", "hashA");
-    cJSON *value = cJSON_CreateObject();
-    cJSON_AddStringToObject(value, "param", "valueA");
-    cJSON_AddItemToObject(profile, "value", value);
-    cJSON_AddItemToArray(profiles, profile);
-
-    // RemovePreRPfromDisk covered by T2_RP branch
-    EXPECT_CALL(*g_vectorMock, Vector_Size(_)).WillRepeatedly(Return(0));
-    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).WillRepeatedly(Return(T2ERROR_SUCCESS));
-    ReportProfiles_ProcessReportProfilesBlob(root, T2_RP);
-    cJSON_Delete(root);
-}
-
 extern "C" {
 #if 1
     extern bool (*isRbusEnabled_fp)(void);

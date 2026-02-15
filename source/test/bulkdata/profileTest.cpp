@@ -1718,13 +1718,13 @@ TEST_F(ProfileTest, ProcessReportProfilesBlob_AddNewProfile) {
     cJSON_AddItemToObject(profile, "value", value);
     cJSON_AddItemToArray(profiles, profile);
 
-    b*test_get_isRbusEnabled_Ptr() = false;
+    //*test_get_isRbusEnabled_Ptr() = false;
     // Expect add and saveConfigToFile, can stub if needed
     EXPECT_CALL(*g_vectorMock, Vector_Size(_)).WillRepeatedly(Return(0));
     EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).WillRepeatedly(Return(T2ERROR_SUCCESS));
     ReportProfiles_ProcessReportProfilesBlob(root, T2_RP);
 
-    *test_get_isRbusEnabled_Ptr() = true;
+    //*test_get_isRbusEnabled_Ptr() = true;
     cJSON_Delete(root);
 }
 TEST_F(ProfileTest, ReportProfiles_ProcessReportProfilesMsgPackBlobTest) {

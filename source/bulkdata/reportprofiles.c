@@ -910,6 +910,7 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
      T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
     // Rbus subscription of Tr181 datamodel events
     printf("###### isRbusEnabled %d\n",isRbusEnabled);
+#if 0
     if(isRbusEnabled())
     {
      T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
@@ -918,7 +919,6 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
     }
      T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
     // Populate profile hash map for current configuration
-#if 0
     for( profileIndex = 0; profileIndex < profiles_count; profileIndex++ )
     {
      T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);

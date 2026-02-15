@@ -1817,6 +1817,7 @@ TEST_F(ProfileTest, ReportProfiles_setProfileXConf) {
     EXPECT_CALL(*g_rbusMock, rbusObject_Release(_))
         .Times(::testing::AtLeast(1));
     EXPECT_EQ(ReportProfiles_setProfileXConf(&profile), T2ERROR_SUCCESS);
+    ReportProfiles_deleteProfileXConf(&profile);
 }
 
 #endif

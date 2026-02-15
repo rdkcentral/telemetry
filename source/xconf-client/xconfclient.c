@@ -281,7 +281,7 @@ static char *getTimezone ()
                 else
                 {
                     zoneValue = NULL;
-                    T2Warn("Warning: zone is NULL or empty, skipping\n");
+                    T2Warning("Warning: zone is NULL or empty, skipping\n");
                 }
             }
             fclose(file);

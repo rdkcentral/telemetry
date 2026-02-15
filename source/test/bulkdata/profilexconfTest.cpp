@@ -501,7 +501,7 @@ TEST_F(profileXconfTestFixture, profilexconf_name_equal_check)
 {
     EXPECT_EQ(ProfileXConf_isNameEqual("RDK_Profile"), true);
     //char profile[] = "RDK_Profile";
-    //ReportProfiles_TimeoutCb(profile, true);
+    ReportProfiles_TimeoutCb(profile, true);
     EXPECT_EQ(ProfileXConf_isNameEqual("Xione_Profile"), false); 
 }
 

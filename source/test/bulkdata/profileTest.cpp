@@ -1683,6 +1683,15 @@ TEST_F(ProfileTest, ProcessMsgPackBlob_Test1) {
     EXPECT_EQ(ret, T2ERROR_INVALID_ARGS);
 }
 #endif
+TEST_F(ProfileTest, ProcessReportProfilesBlob_EmptyProfile_T2_TEMP_RP) {
+    // empty array, rprofiletypes == T2_TEMP_RP (should log info and return)
+    cJSON *root = cJSON_CreateObject();
+    cJSON *profiles = cJSON_CreateArray();
+    cJSON_AddItemToObject(root, "profiles", profiles);
+    ReportProfiles_ProcessReportProfilesBlob(root, T2_TEMP_RP);
+    cJSON_Delete(root);
+}
+
 TEST_F(ProfileTest, ProcessReportProfilesBlob_NullRoot) {
     // Should return early if root is NULL
     ReportProfiles_ProcessReportProfilesBlob(NULL, false);

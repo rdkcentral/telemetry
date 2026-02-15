@@ -1759,7 +1759,6 @@ void* hash_map_remove(hash_map_t*, const char*) { return NULL; }
 
 // Add other stubs as needed for your codebase.
 }
-#endif
 TEST_F(ProfileTest, ProcessReportProfilesBlob_AddNewProfile) {
     // New profile, triggers add logic and saveConfigToFile
     cJSON *root = cJSON_CreateObject();
@@ -1780,6 +1779,7 @@ TEST_F(ProfileTest, ProcessReportProfilesBlob_AddNewProfile) {
     cJSON_Delete(root);
 }
 
+#endif
 TEST_F(ProfileTest, ProcessReportProfilesBlob_ReplaceProfile_DifferentHash) {
     // Add two profiles, one existing, such that hash differs, triggers replacement branch
     cJSON *root = cJSON_CreateObject();

@@ -1701,8 +1701,18 @@ TEST_F(ProfileTest, ProcessReportProfilesBlob_EmptyProfile_Normal) {
     cJSON_Delete(root);
 }
 
+extern "C" {
+#if 1
+    extern bool (*isRbusEnabled_fp)(void);
+#endif
+}
+
 TEST_F(ProfileTest, ProcessReportProfilesBlob_AddNewProfile) {
     // New profile, triggers add logic and saveConfigToFile
+ #if 1
+    auto origIsRbusEnabled = isRbusEnabled_fp;
+    isRbusEnabled_fp = []() { return false; };
+#endif
     cJSON *root = cJSON_CreateObject();
     cJSON *profiles = cJSON_CreateArray();
     cJSON_AddItemToObject(root, "profiles", profiles);

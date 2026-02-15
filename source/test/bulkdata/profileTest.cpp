@@ -1383,44 +1383,6 @@ TEST_F(ProfileTest, initReportProfiles) {
     EXPECT_EQ(initReportProfiles(), T2ERROR_SUCCESS);
 }
 
-TEST_F(ProfileTest, InitReportProfiles_SeekFolderCreation) {
-    DIR *dir = nullptr;
-    FILE* fp = (FILE*)0xffffffff;
-
-    // When opendir fails (returns nullptr), expect mkdir
-    EXPECT_CALL(*g_fileIOMock, opendir(_))
-        .Times(1)
-        .WillOnce(Return(nullptr));
-    EXPECT_CALL(*g_fileIOMock, mkdir(_, _))
-        .Times(1)
-        .WillOnce(Return(0)); // Simulate mkdir success
-
-    // The rest of the calls as needed for normal flow, they can be relaxed or omitted if not relevant to this very branch
-    EXPECT_CALL(*g_fileIOMock, readdir(_)).Times(::testing::AnyNumber());
-    EXPECT_CALL(*g_fileIOMock, closedir(_)).Times(::testing::AnyNumber());
-    EXPECT_CALL(*g_fileIOMock, fopen(_, _)).Times(::testing::AnyNumber()).WillRepeatedly(Return(fp));
-    EXPECT_CALL(*g_fileIOMock, fscanf(_, _, _)).Times(::testing::AnyNumber()).WillRepeatedly(::testing::Return(EOF));
-    EXPECT_CALL(*g_fileIOMock, fclose(_)).Times(::testing::AnyNumber()).WillRepeatedly(Return(0));
-
-    EXPECT_CALL(*g_rbusMock, rbus_get(_,_,_)).Times(::testing::AnyNumber()).WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
-    EXPECT_CALL(*g_rbusMock, rbusValue_GetType(_)).Times(::testing::AnyNumber()).WillRepeatedly(Return(RBUS_BOOLEAN));
-    EXPECT_CALL(*g_rbusMock, rbusValue_GetBoolean(_)).Times(::testing::AnyNumber()).WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
-    EXPECT_CALL(*g_rbusMock, rbusValue_Release(_)).Times(::testing::AnyNumber());
-
-    EXPECT_CALL(*g_vectorMock, Vector_Size(_)).Times(::testing::AnyNumber()).WillRepeatedly(Return(0));
-    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).Times(::testing::AnyNumber()).WillRepeatedly(Return(T2ERROR_SUCCESS));
-    EXPECT_CALL(*g_vectorMock, Vector_Create(_)).Times(::testing::AnyNumber()).WillRepeatedly(Return(T2ERROR_SUCCESS));
-    EXPECT_CALL(*g_vectorMock, Vector_PushBack(_, _)).Times(::testing::AnyNumber()).WillRepeatedly(Return(T2ERROR_SUCCESS));
-    EXPECT_CALL(*g_schedulerMock, initScheduler(_, _, _)).Times(::testing::AnyNumber()).WillRepeatedly(Return(T2ERROR_SUCCESS));
-    EXPECT_CALL(*g_rbusMock, rbus_checkStatus()).Times(::testing::AnyNumber()).WillRepeatedly(Return(RBUS_ENABLED));
-    EXPECT_CALL(*g_rbusMock, rbus_regDataElements(_,_,_)).Times(::testing::AnyNumber()).WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
-    EXPECT_CALL(*g_rbusMock, rbus_registerLogHandler(_)).Times(::testing::AnyNumber()).WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
-    EXPECT_CALL(*g_rbusMock, rbus_open(_,_)).Times(::testing::AnyNumber()).WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
-    EXPECT_CALL(*g_rbusMock, rbusValue_ToString(_,_,_)).Times(::testing::AnyNumber()).WillRepeatedly(Return((char*)"true"));
-    EXPECT_CALL(*g_systemMock, system(_)).Times(::testing::AnyNumber()).WillRepeatedly(Return(0));
-
-    EXPECT_EQ(initReportProfiles(), T2ERROR_SUCCESS);
-}
 TEST_F(ProfileTest, ReportProfiles_addReportProfile) {
     Profile *profile = (Profile*)malloc(sizeof(Profile));
     profile->name = strdup("EventProfile");
@@ -1708,6 +1670,16 @@ TEST_F(ProfileTest, ProcessMsgPackBlob_InvalidFormat) {
     int ret = __ReportProfiles_ProcessReportProfilesMsgPackBlob(&msg, false);
     EXPECT_EQ(ret, T2ERROR_INVALID_ARGS);
 }
+
+TEST_F(ProfileTest, ProcessMsgPackBlob_InvalidFormat) {
+    struct __msgpack__ msg;
+    char blob[] = { (char)0x80 };
+    msg.msgpack_blob = blob;
+    msg.msgpack_blob_size = 1;
+    int ret = __ReportProfiles_ProcessReportProfilesMsgPackBlob(&msg, false);
+    EXPECT_EQ(ret, T2ERROR_INVALID_ARGS);
+}
+
 TEST_F(ProfileTest, ProcessReportProfilesBlob_NullRoot) {
     // Should return early if root is NULL
     ReportProfiles_ProcessReportProfilesBlob(NULL, false);

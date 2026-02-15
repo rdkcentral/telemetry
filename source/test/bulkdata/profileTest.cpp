@@ -1715,6 +1715,51 @@ TEST_F(ProfileTest, ProcessReportProfilesBlob_MissingProfileFields) {
     cJSON_Delete(root);
 }
 #endif
+
+extern "C" {
+
+// Minimal stub to satisfy processConfiguration calls (simulate success and supply a Profile pointer)
+T2ERROR processConfiguration(char** config, char* name, char* hash, Profile** profile) {
+    static Profile dummy;
+    dummy.name = strdup("dummyProfile");
+    *profile = &dummy;
+    return T2ERROR_SUCCESS;
+}
+
+// Minimal stub to always succeed for saving
+int saveConfigToFile(const char*, const char*, char*) {
+    return 0; // Succeed
+}
+
+// Minimal stub for addReportProfile
+T2ERROR ReportProfiles_addReportProfile(Profile*) {
+    return T2ERROR_SUCCESS;
+}
+
+// Minimal stub for delete profile
+T2ERROR ReportProfiles_deleteProfile(const char*) {
+    return T2ERROR_SUCCESS;
+}
+
+// Minimal stub for getProfileHashMap
+hash_map_t* getProfileHashMap() {
+    // Return an empty hash map - dummy allocation is enough for the flow
+    hash_map_t* map = (hash_map_t*)malloc(sizeof(hash_map_t));
+    memset(map, 0, sizeof(hash_map_t));
+    return map;
+}
+
+// Minimal stub for hash_map_destroy
+void hash_map_destroy(hash_map_t* m, void(*free_cb)(void*)) {
+    if (m) free(m);
+}
+
+// hash_map_remove returns NULL (as if no profiles exist yet)
+char* hash_map_remove(hash_map_t*, const char*) { return NULL; }
+
+// Add other stubs as needed for your codebase.
+}
+
 TEST_F(ProfileTest, ProcessReportProfilesBlob_AddNewProfile) {
     // New profile, triggers add logic and saveConfigToFile
     cJSON *root = cJSON_CreateObject();

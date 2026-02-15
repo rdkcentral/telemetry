@@ -899,41 +899,55 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
         T2Debug("%s --out\n", __FUNCTION__);
         return;
     }
-
+     T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
     char* profileName = NULL;
     uint32_t profileIndex = 0;
 
+     T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
     hash_map_t *profileHashMap = getProfileHashMap();
     hash_map_t *receivedProfileHashMap = hash_map_create();
+     T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
     // Rbus subscription of Tr181 datamodel events
     if(isRbusEnabled())
     {
+     T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
         getMarkerCompRbusSub(false);
+     T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
     }
+     T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
     // Populate profile hash map for current configuration
     for( profileIndex = 0; profileIndex < profiles_count; profileIndex++ )
     {
+     T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
         cJSON* singleProfile = cJSON_GetArrayItem(profilesArray, profileIndex);
         if(singleProfile == NULL)
         {
+     T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
             T2Error("Incomplete profile information, unable to create profile for index %u \n", profileIndex);
             continue;
         }
 
+     T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
         cJSON* nameObj = cJSON_GetObjectItem(singleProfile, "name");
         cJSON* hashObj = cJSON_GetObjectItem(singleProfile, "hash");
         if(hashObj == NULL)
         {
+     T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
             hashObj = cJSON_GetObjectItem(singleProfile, "versionHash");
+     T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
         }
+     T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
         cJSON* profileObj = cJSON_GetObjectItem(singleProfile, "value");
 
+     T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
         if(nameObj == NULL || hashObj == NULL || profileObj == NULL || strcmp(nameObj->valuestring, "") == 0 || strcmp(hashObj->valuestring, "") == 0 )
         {
+     T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
             T2Error("Incomplete profile object information, unable to create profile\n");
             continue;
         }
 
+     T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
         ReportProfile *profileEntry = (ReportProfile *)malloc(sizeof(ReportProfile));
         profileName = strdup(nameObj->valuestring);
         profileEntry->hash = strdup(hashObj->valuestring);

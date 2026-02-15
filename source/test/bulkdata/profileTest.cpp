@@ -1715,7 +1715,7 @@ TEST_F(ProfileTest, ProcessReportProfilesBlob_MissingProfileFields) {
     cJSON_Delete(root);
 }
 #endif
-
+#if 0
 extern "C" {
 
 // Minimal stub to satisfy processConfiguration calls (simulate success and supply a Profile pointer)
@@ -1759,7 +1759,7 @@ void* hash_map_remove(hash_map_t*, const char*) { return NULL; }
 
 // Add other stubs as needed for your codebase.
 }
-
+#endif
 TEST_F(ProfileTest, ProcessReportProfilesBlob_AddNewProfile) {
     // New profile, triggers add logic and saveConfigToFile
     cJSON *root = cJSON_CreateObject();

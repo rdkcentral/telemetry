@@ -1624,11 +1624,11 @@ TEST_F(ProfileTest, ReportProfiles_setProfileXConf) {
         .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
 
     EXPECT_CALL(*g_rbusMock, rbusValue_Release(_))
-        .Times(::testing::Atleast(1));
+        .Times(::testing::AtLeast(1));
 
 
     EXPECT_CALL(*g_rbusMock, rbusObject_Release(_))
-	.Times(::testing::Atleast(1));
+	.Times(::testing::AtLeast(1));
 
     EXPECT_EQ(ReportProfiles_setProfileXConf(&profile), T2ERROR_SUCCESS);
 }

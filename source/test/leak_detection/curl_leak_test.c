@@ -22,6 +22,17 @@
 // The xconf-client library provides mTLS functions
 // The utils library provides logging functions
 
+// FIX: Add request type enumeration
+typedef enum
+{
+    REQUEST_POST = 1,
+    REQUEST_GET = 2,
+    REQUEST_ALTERNATE = 3
+} request_type_t;
+
+// FIX: Add forward declaration for init_connection_pool
+extern T2ERROR init_connection_pool(void);
+
 // Configuration
 #define TEST_URL "https://httpbin.org/post"
 #define TEST_GET_URL "https://httpbin.org/get"
@@ -29,7 +40,8 @@
 #define MAX_ITERATIONS 100  // 0 for infinite loop
 
 // FIX: Add memory tracking structure
-typedef struct {
+typedef struct
+{
     long initial_vmrss;
     long initial_vmsize;
     long peak_vmrss;
@@ -60,7 +72,7 @@ void update_memory_stats(void)
 
     char line[256];
     long vmrss = 0, vmsize = 0;
-    
+
     while (fgets(line, sizeof(line), fp))
     {
         if (strncmp(line, "VmRSS:", 6) == 0)
@@ -73,16 +85,20 @@ void update_memory_stats(void)
         }
     }
     fclose(fp);
-    
+
     mem_stats.current_vmrss = vmrss;
     mem_stats.current_vmsize = vmsize;
-    
+
     // Update peaks
     if (vmrss > mem_stats.peak_vmrss)
+    {
         mem_stats.peak_vmrss = vmrss;
+    }
     if (vmsize > mem_stats.peak_vmsize)
+    {
         mem_stats.peak_vmsize = vmsize;
-    
+    }
+
     // Set initial if first call
     if (mem_stats.initial_vmrss == 0)
     {
@@ -96,7 +112,7 @@ void update_memory_stats(void)
 void print_memory_usage(void)
 {
     update_memory_stats();
-    printf("VmSize: %8ld kB  |  VmRSS: %8ld kB\n", 
+    printf("VmSize: %8ld kB  |  VmRSS: %8ld kB\n",
            mem_stats.current_vmsize, mem_stats.current_vmrss);
 }
 
@@ -104,16 +120,16 @@ void print_memory_usage(void)
 void print_memory_summary(void)
 {
     printf("\n=== Memory Usage Summary ===\n");
-    printf("Initial - VmSize: %8ld kB  |  VmRSS: %8ld kB\n", 
+    printf("Initial - VmSize: %8ld kB  |  VmRSS: %8ld kB\n",
            mem_stats.initial_vmsize, mem_stats.initial_vmrss);
-    printf("Peak    - VmSize: %8ld kB  |  VmRSS: %8ld kB\n", 
+    printf("Peak    - VmSize: %8ld kB  |  VmRSS: %8ld kB\n",
            mem_stats.peak_vmsize, mem_stats.peak_vmrss);
-    printf("Final   - VmSize: %8ld kB  |  VmRSS: %8ld kB\n", 
+    printf("Final   - VmSize: %8ld kB  |  VmRSS: %8ld kB\n",
            mem_stats.current_vmsize, mem_stats.current_vmrss);
-    printf("Growth  - VmSize: %+8ld kB  |  VmRSS: %+8ld kB\n", 
+    printf("Growth  - VmSize: %+8ld kB  |  VmRSS: %+8ld kB\n",
            mem_stats.current_vmsize - mem_stats.initial_vmsize,
            mem_stats.current_vmrss - mem_stats.initial_vmrss);
-    
+
     // Detect potential leak
     long rss_growth = mem_stats.current_vmrss - mem_stats.initial_vmrss;
     if (rss_growth > 1024)  // More than 1MB growth
@@ -134,18 +150,18 @@ void print_memory_summary(void)
 void test_http_post(int iteration)
 {
     printf("\n[Iteration %d] Testing HTTP POST...\n", iteration);
-    
+
     // Create test payload
     char payload[512];
-    snprintf(payload, sizeof(payload), 
+    snprintf(payload, sizeof(payload),
              "{\"iteration\":%d,\"timestamp\":%lld,\"test\":\"memory_leak_detection\"}",
              iteration, (long long)time(NULL));
 
     T2ERROR result = http_pool_post(TEST_URL, payload);
-    
+
     // FIX: Update memory stats after each request
     update_memory_stats();
-    
+
     if (result == T2ERROR_SUCCESS)
     {
         printf("[Iteration %d] POST request successful\n", iteration);
@@ -159,13 +175,13 @@ void test_http_post(int iteration)
 void test_http_get(int iteration)
 {
     printf("\n[Iteration %d] Testing HTTP GET...\n", iteration);
-    
+
     char *response_data = NULL;
     T2ERROR result = http_pool_get(TEST_GET_URL, &response_data, false);
-    
+
     // FIX: Update memory stats after each request
     update_memory_stats();
-    
+
     if (result == T2ERROR_SUCCESS)
     {
         printf("[Iteration %d] GET request successful\n", iteration);
@@ -173,9 +189,9 @@ void test_http_get(int iteration)
         {
             printf("[Iteration %d] Response size: %zu bytes\n", iteration, strlen(response_data));
             // FIX: Show first 100 chars for debugging
-            printf("[Iteration %d] Response preview: %.100s%s\n", 
-                   iteration, 
-                   response_data, 
+            printf("[Iteration %d] Response preview: %.100s%s\n",
+                   iteration,
+                   response_data,
                    strlen(response_data) > 100 ? "..." : "");
             free(response_data);
             response_data = NULL;  // FIX: Set to NULL after free
@@ -197,22 +213,50 @@ void test_http_get(int iteration)
     }
 }
 
-void test_mixed_requests(int iteration)
+// FIX: Update test function to accept request type
+void run_test_request(int iteration, request_type_t request_type)
 {
-#if 0
-    // Alternate between GET and POST
-    if (iteration % 2 == 0)
+    switch (request_type)
     {
+    case REQUEST_POST:
         test_http_post(iteration);
-    }
-    else
-    {
+        break;
+    case REQUEST_GET:
         test_http_get(iteration);
+        break;
+    case REQUEST_ALTERNATE:
+        // Alternate between GET and POST
+        if (iteration % 2 == 0)
+        {
+            test_http_post(iteration);
+        }
+        else
+        {
+            test_http_get(iteration);
+        }
+        break;
+    default:
+        printf("[Iteration %d] ERROR: Unknown request type\n", iteration);
+        break;
     }
-#endif
-#if 1
-    test_http_post(iteration);
-#endif
+}
+
+// FIX: Add help function
+void print_usage(const char* program_name)
+{
+    printf("Usage: %s <iterations> <interval> <request_type>\n", program_name);
+    printf("\nParameters:\n");
+    printf("  iterations    - Number of iterations (0 for infinite)\n");
+    printf("  interval      - Interval between requests in seconds\n");
+    printf("  request_type  - Type of HTTP request:\n");
+    printf("                  1 = POST only\n");
+    printf("                  2 = GET only\n");
+    printf("                  3 = Alternate between POST and GET\n");
+    printf("\nExamples:\n");
+    printf("  %s 10 2 1     # 10 POST requests, 2 second intervals\n", program_name);
+    printf("  %s 20 5 2     # 20 GET requests, 5 second intervals\n", program_name);
+    printf("  %s 15 3 3     # 15 requests alternating POST/GET, 3 second intervals\n", program_name);
+    printf("  %s 0 10 3     # Infinite alternating requests, 10 second intervals\n", program_name);
 }
 
 int main(int argc, char *argv[])
@@ -228,29 +272,87 @@ int main(int argc, char *argv[])
     // Parse command line arguments
     int max_iterations = MAX_ITERATIONS;
     int interval = TEST_INTERVAL_SECONDS;
-    
+    request_type_t request_type = REQUEST_ALTERNATE;
+
     if (argc > 1)
     {
         max_iterations = atoi(argv[1]);
-        printf("Using max iterations: %d%s\n", 
+        printf("Using max iterations: %d%s\n",
                max_iterations, max_iterations == 0 ? " (infinite)" : "");
     }
-    
+
     if (argc > 2)
     {
         interval = atoi(argv[2]);
         printf("Using interval: %d seconds\n", interval);
     }
 
+    if (argc > 3)
+    {
+        int type = atoi(argv[3]);
+        if (type >= REQUEST_POST && type <= REQUEST_ALTERNATE)
+        {
+            request_type = (request_type_t)type;
+        }
+        else
+        {
+            printf("Invalid request type: %d\n", type);
+            print_usage(argv[0]);
+            return 1;
+        }
+    }
+
+    if (argc < 2)
+    {
+        print_usage(argv[0]);
+        return 1;
+    }
+
+    // Print request type information
+    const char* request_type_str;
+    switch (request_type)
+    {
+    case REQUEST_POST:
+        request_type_str = "POST only";
+        break;
+    case REQUEST_GET:
+        request_type_str = "GET only";
+        break;
+    case REQUEST_ALTERNATE:
+        request_type_str = "Alternating POST/GET";
+        break;
+    default:
+        request_type_str = "Unknown";
+        break;
+    }
+    printf("Using request type: %s\n", request_type_str);
+
     // FIX: Set environment variable for pool size with error checking
     if (setenv("T2_CONNECTION_POOL_SIZE", "2", 1) != 0)
     {
         printf("Warning: Failed to set T2_CONNECTION_POOL_SIZE environment variable\n");
     }
-    
-    // FIX: Remove init_connection_pool() call since it's static in multicurlinterface.c
-    // The pool will auto-initialize on first http_pool_get/post call
-    printf("\nConnection pool will initialize on first request...\n");
+
+    printf("\nInitial memory usage (before pool initialization):\n");
+    print_memory_usage();
+
+    // FIX: Explicitly initialize connection pool and print memory stats after
+    printf("\nInitializing connection pool...\n");
+    T2ERROR init_result = init_connection_pool();
+    if (init_result != T2ERROR_SUCCESS)
+    {
+        printf("ERROR: Failed to initialize connection pool (error: %d)\n", init_result);
+        return 1;
+    }
+    printf("Connection pool initialized successfully!\n");
+
+    // FIX: Print memory statistics after pool initialization
+    printf("\nMemory usage after pool initialization:\n");
+    print_memory_usage();
+
+    // Calculate memory used by pool initialization
+    long pool_init_memory = mem_stats.current_vmrss - mem_stats.initial_vmrss;
+    printf("Memory used by pool initialization: %+ld kB\n", pool_init_memory);
 
     printf("\nInitial memory usage:\n");
     print_memory_usage();
@@ -259,24 +361,21 @@ int main(int argc, char *argv[])
     while (keep_running && (max_iterations == 0 || iteration < max_iterations))
     {
         iteration++;
-        
+
         printf("\n========================================\n");
         printf("Iteration: %d", iteration);
-        if (max_iterations > 0) 
+        if (max_iterations > 0)
         {
             printf(" / %d", max_iterations);
         }
         printf("\n========================================\n");
 
         // Run the test
-        test_mixed_requests(iteration);
+        run_test_request(iteration, request_type);
 
-        // Print memory usage every 5 iterations  
-        if (iteration % 5 == 0)
-        {
-            printf("\n--- Memory Usage at iteration %d ---\n", iteration);
-            print_memory_usage();
-        }
+        // Print memory usage every iteration
+        printf("\n--- Memory Usage at iteration %d ---\n", iteration);
+        print_memory_usage();
 
         // Sleep before next iteration
         if (keep_running && (max_iterations == 0 || iteration < max_iterations))
@@ -288,14 +387,14 @@ int main(int argc, char *argv[])
 
     printf("\n\nFinal memory usage:\n");
     print_memory_usage();
-    
+
     // FIX: Print detailed memory summary
     print_memory_summary();
 
     printf("\nCleaning up connection pool...\n");
     http_pool_cleanup();
     printf("Cleanup complete\n");
-    
+
     // FIX: Check memory after cleanup
     printf("\nMemory after cleanup:\n");
     print_memory_usage();

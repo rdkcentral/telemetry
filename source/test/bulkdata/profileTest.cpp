@@ -1806,6 +1806,28 @@ TEST_F(ProfileTest, ProcessReportProfilesBlob_RemovePreRPfromDiskBranch) {
     cJSON_Delete(root);
 }
 
+TEST_F(ProfileTest, ProcessReportProfilesBlob_isRbusEnabledBranches) {
+    // Set up so isRbusEnabled returns true to hit unregisterDEforCompEventList, createComponentDataElements, publishEventsProfileUpdates, getMarkerCompRbusSub
+    auto origIsRbusEnabled = isRbusEnabled;
+    isRbusEnabled = []() { return true; };
+    cJSON *root = cJSON_CreateObject();
+    cJSON *profiles = cJSON_CreateArray();
+    cJSON_AddItemToObject(root, "profiles", profiles);
+    cJSON *profile = cJSON_CreateObject();
+    cJSON_AddStringToObject(profile, "name", "rbusProfile");
+    cJSON_AddStringToObject(profile, "hash", "rbusHash");
+    cJSON *value = cJSON_CreateObject();
+    cJSON_AddStringToObject(value, "param", "rbusValue");
+    cJSON_AddItemToObject(profile, "value", value);
+    cJSON_AddItemToArray(profiles, profile);
+
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_)).WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).WillRepeatedly(Return(T2ERROR_SUCCESS));
+    ReportProfiles_ProcessReportProfilesBlob(root, T2_RP);
+    cJSON_Delete(root);
+    // Restore original
+    isRbusEnabled = origIsRbusEnabled;
+}
 
 TEST_F(ProfileTest, ProcessReportProfilesBlob_NullRoot) {
     // Should return early if root is NULL

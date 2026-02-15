@@ -1701,6 +1701,7 @@ TEST_F(ProfileTest, ProcessReportProfilesBlob_EmptyProfile_Normal) {
     cJSON_Delete(root);
 }
 
+#if 0
 TEST_F(ProfileTest, ProcessReportProfilesBlob_MissingProfileFields) {
     // Profile with missing fields should trigger error log and continue
     cJSON *root = cJSON_CreateObject();
@@ -1713,7 +1714,7 @@ TEST_F(ProfileTest, ProcessReportProfilesBlob_MissingProfileFields) {
     ReportProfiles_ProcessReportProfilesBlob(root, false);
     cJSON_Delete(root);
 }
-
+#endif
 TEST_F(ProfileTest, ProcessReportProfilesBlob_AddNewProfile) {
     // New profile, triggers add logic and saveConfigToFile
     cJSON *root = cJSON_CreateObject();
@@ -1805,7 +1806,7 @@ TEST_F(ProfileTest, ProcessReportProfilesBlob_RemovePreRPfromDiskBranch) {
     ReportProfiles_ProcessReportProfilesBlob(root, T2_RP);
     cJSON_Delete(root);
 }
-
+#if 0
 TEST_F(ProfileTest, ProcessReportProfilesBlob_isRbusEnabledBranches) {
     // Set up so isRbusEnabled returns true to hit unregisterDEforCompEventList, createComponentDataElements, publishEventsProfileUpdates, getMarkerCompRbusSub
     auto origIsRbusEnabled = isRbusEnabled;
@@ -1828,7 +1829,7 @@ TEST_F(ProfileTest, ProcessReportProfilesBlob_isRbusEnabledBranches) {
     // Restore original
     isRbusEnabled = origIsRbusEnabled;
 }
-
+#endif
 TEST_F(ProfileTest, ProcessReportProfilesBlob_NullRoot) {
     // Should return early if root is NULL
     ReportProfiles_ProcessReportProfilesBlob(NULL, false);

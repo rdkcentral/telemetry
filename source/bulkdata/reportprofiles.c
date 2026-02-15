@@ -855,6 +855,7 @@ T2ERROR deleteAllReportProfiles()
     return T2ERROR_SUCCESS;
 }
 
+bool* test_get_isRbusEnabled_Ptr(void) { return &isRbusEnabled; }
 void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofiletypes)
 {
 
@@ -908,8 +909,8 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
     hash_map_t *receivedProfileHashMap = hash_map_create();
      T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
     // Rbus subscription of Tr181 datamodel events
-    //if(isRbusEnabled())
-    if(0)
+    printf("###### isRbusEnabled %d\n",isRbusEnabled);
+    if(isRbusEnabled())
     {
      T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
         getMarkerCompRbusSub(false);
@@ -1560,7 +1561,7 @@ __msgpack_free_blobFunc __msgpack_free_blobFuncCallback(void)
     return __msgpack_free_blob; // returns pointer to our function
 }
 
-#if 1
+#if 0
 bool (*isRbusEnabled_fp)(void) = isRbusEnabled;
 #define isRbusEnabled isRbusEnabled_fp
 #endif

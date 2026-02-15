@@ -1701,18 +1701,12 @@ TEST_F(ProfileTest, ProcessReportProfilesBlob_EmptyProfile_Normal) {
     cJSON_Delete(root);
 }
 
-extern "C" {
-#if 1
-    extern bool (*isRbusEnabled_fp)(void);
-#endif
+extern "C"
+{
+   bool* test_get_isRbusEnabled_Ptr(void);
 }
-
 TEST_F(ProfileTest, ProcessReportProfilesBlob_AddNewProfile) {
     // New profile, triggers add logic and saveConfigToFile
- #if 1
-    auto origIsRbusEnabled = isRbusEnabled_fp;
-    isRbusEnabled_fp = []() { return false; };
-#endif
     cJSON *root = cJSON_CreateObject();
     cJSON *profiles = cJSON_CreateArray();
     cJSON_AddItemToObject(root, "profiles", profiles);
@@ -1724,6 +1718,7 @@ TEST_F(ProfileTest, ProcessReportProfilesBlob_AddNewProfile) {
     cJSON_AddItemToObject(profile, "value", value);
     cJSON_AddItemToArray(profiles, profile);
 
+    *test_get_isRbusEnabled_Ptr() = false;
     // Expect add and saveConfigToFile, can stub if needed
     EXPECT_CALL(*g_vectorMock, Vector_Size(_)).WillRepeatedly(Return(0));
     EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).WillRepeatedly(Return(T2ERROR_SUCCESS));

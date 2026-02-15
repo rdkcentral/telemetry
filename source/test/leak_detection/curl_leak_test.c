@@ -39,27 +39,25 @@ extern T2ERROR init_connection_pool(void);
 #define TEST_INTERVAL_SECONDS 5
 #define MAX_ITERATIONS 100  // 0 for infinite loop
 
-// FIX: Add structure to store iteration-wise memory statistics
-typedef struct
-{
+// FIX: Add structure to store iteration-wise memory statistics (optimized)
+typedef struct {
     int iteration;
-    long vmrss;
-    long vmsize;
-    long delta_vmrss;  // Change from previous iteration
+    int vmrss;        // Changed from long to int (sufficient for kB values)
+    int vmsize;       // FIX: Add missing vmsize field
+    int delta_vmrss;  // Changed from long to int
 } iteration_memory_t;
 
-// FIX: Add memory tracking structure with iteration storage and pool init tracking
-typedef struct
-{
-    long initial_vmrss;
-    long initial_vmsize;
-    long peak_vmrss;
-    long peak_vmsize;
-    long current_vmrss;
-    long current_vmsize;
-    long pool_init_vmrss;     // FIX: Add pool initialization VmRSS tracking
-    long pool_init_vmsize;    // FIX: Add pool initialization VmSize tracking
-    iteration_memory_t iterations[1000];  // Store up to 1000 iterations
+// FIX: Optimized memory tracking structure with smaller data types and array
+typedef struct {
+    int initial_vmrss;    // Changed from long to int
+    int initial_vmsize;   // Changed from long to int
+    int peak_vmrss;       // Changed from long to int
+    int peak_vmsize;      // Changed from long to int
+    int current_vmrss;    // Changed from long to int
+    int current_vmsize;   // Changed from long to int
+    int pool_init_vmrss;  // Changed from long to int
+    int pool_init_vmsize; // Changed from long to int
+    iteration_memory_t iterations[100];  // Reduced from 1000 to 100
     int iteration_count;
 } memory_stats_t;
 
@@ -122,7 +120,7 @@ void update_memory_stats(int iteration)
     }
 
     // Store iteration data if we have an iteration number
-    if (iteration > 0 && mem_stats.iteration_count < 1000)
+    if (iteration > 0 && mem_stats.iteration_count < 100)
     {
         iteration_memory_t *current_iter = &mem_stats.iterations[mem_stats.iteration_count];
         current_iter->iteration = iteration;
@@ -146,7 +144,7 @@ void update_memory_stats(int iteration)
 void print_memory_usage(void)
 {
     update_memory_stats(0);  // Call without iteration tracking
-    printf("VmSize: %8ld kB  |  VmRSS: %8ld kB\n",
+    printf("VmSize: %8d kB  |  VmRSS: %8d kB\n",
            mem_stats.current_vmsize, mem_stats.current_vmrss);
 }
 
@@ -154,30 +152,30 @@ void print_memory_usage(void)
 void print_memory_summary(void)
 {
     printf("\n=== Memory Usage Summary ===\n");
-    printf("Initial - VmSize: %8ld kB  |  VmRSS: %8ld kB\n",
+    printf("Initial - VmSize: %8d kB  |  VmRSS: %8d kB\n",
            mem_stats.initial_vmsize, mem_stats.initial_vmrss);
-    printf("Peak    - VmSize: %8ld kB  |  VmRSS: %8ld kB\n",
+    printf("Peak    - VmSize: %8d kB  |  VmRSS: %8d kB\n",
            mem_stats.peak_vmsize, mem_stats.peak_vmrss);
-    printf("Final   - VmSize: %8ld kB  |  VmRSS: %8ld kB\n",
+    printf("Final   - VmSize: %8d kB  |  VmRSS: %8d kB\n",
            mem_stats.current_vmsize, mem_stats.current_vmrss);
-    printf("Growth  - VmSize: %+8ld kB  |  VmRSS: %+8ld kB\n",
+    printf("Growth  - VmSize: %+8d kB  |  VmRSS: %+8d kB\n",
            mem_stats.current_vmsize - mem_stats.initial_vmsize,
            mem_stats.current_vmrss - mem_stats.initial_vmrss);
 
     // Detect potential leak
-    long rss_growth = mem_stats.current_vmrss - mem_stats.initial_vmrss;
+    int rss_growth = mem_stats.current_vmrss - mem_stats.initial_vmrss;
     if (rss_growth > 1024)  // More than 1MB growth
     {
-        printf("\n⚠️  WARNING: Significant memory growth detected (%ld kB)\n", rss_growth);
+        printf("\nWARNING: Significant memory growth detected (%d kB)\n", rss_growth);
         printf("    This may indicate a memory leak!\n");
     }
     else if (rss_growth > 0)
     {
-        printf("\n✓ Memory usage appears stable (growth: %ld kB)\n", rss_growth);
+        printf("\nMemory usage appears stable (growth: %d kB)\n", rss_growth);
     }
     else
     {
-        printf("\n✓ Memory usage decreased (change: %ld kB)\n", rss_growth);
+        printf("\nMemory usage decreased (change: %d kB)\n", rss_growth);
     }
 }
 
@@ -191,10 +189,10 @@ void print_memory_delta(int iteration)
         return;
     }
 
-    long vmrss_delta = mem_stats.iterations[iteration - 1].delta_vmrss;
+    int vmrss_delta = mem_stats.iterations[iteration - 1].delta_vmrss;
 
     printf("Memory delta from previous iteration:\n");
-    printf("  VmRSS:  %+8ld kB", vmrss_delta);
+    printf("  VmRSS:  %+8d kB", vmrss_delta);
     if (vmrss_delta > 0)
     {
         printf(" (increased)");
@@ -212,237 +210,133 @@ void print_memory_delta(int iteration)
     // Highlight significant VmRSS increases
     if (vmrss_delta > 100)
     {
-        printf("⚠️  WARNING: Significant VmRSS increase (%+ld kB) in this iteration!\n", vmrss_delta);
+        printf("WARNING: Significant VmRSS increase (%+d kB) in this iteration!\n", vmrss_delta);
     }
 }
 
-// FIX: Add function to print iteration-wise VmRSS statistics table including pool init
+// FIX: Optimized table function with ASCII characters and simplified output
 void print_iteration_vmrss_table(void)
 {
-    if (mem_stats.iteration_count == 0)
-    {
+    if (mem_stats.iteration_count == 0) {
         printf("\nNo iteration data collected.\n");
         return;
     }
-
+    
     printf("\n=== VmRSS Statistics Per Iteration ===\n");
-    printf("┌─────────────┬─────────────┬─────────────┬─────────────┐\n");
-    printf("│ Iteration   │ VmRSS (kB)  │ Delta (kB)  │ Status      │\n");
-    printf("├─────────────┼─────────────┼─────────────┼─────────────┤\n");
-
-    // FIX: Add pool initialization row first
-    long pool_init_delta = mem_stats.pool_init_vmrss - mem_stats.initial_vmrss;
-    printf("│ Pool Init   │ %11ld │ %+11ld │ %-11s │\n",
-           mem_stats.pool_init_vmrss,
-           pool_init_delta,
-           "Pool Setup");
-
-    for (int i = 0; i < mem_stats.iteration_count; i++)
-    {
+    printf("+-------------+-------------+-------------+-------------+\n");
+    printf("| Iteration   | VmRSS (kB)  | Delta (kB)  | Status      |\n");
+    printf("+-------------+-------------+-------------+-------------+\n");
+    
+    // Pool initialization row
+    int pool_init_delta = mem_stats.pool_init_vmrss - mem_stats.initial_vmrss;
+    printf("| Pool Init   | %11d | %+11d | %-11s |\n",
+           mem_stats.pool_init_vmrss, pool_init_delta, "Pool Setup");
+    
+    for (int i = 0; i < mem_stats.iteration_count; i++) {
         iteration_memory_t *iter = &mem_stats.iterations[i];
-
-        // Status based on delta
+        
+        // Status based on delta - simplified ASCII
         const char* status;
-        if (i == 0)
-        {
-            // FIX: For first iteration, compare against pool init instead of treating as baseline
-            long first_iter_delta = iter->vmrss - mem_stats.pool_init_vmrss;
-            iter->delta_vmrss = first_iter_delta;  // Update the stored delta
-
-            if (first_iter_delta > 100)
-            {
-                status = "⚠️  High Inc";
-            }
-            else if (first_iter_delta > 10)
-            {
-                status = "↗️  Increase";
-            }
-            else if (first_iter_delta < -10)
-            {
-                status = "↘️  Decrease";
-            }
-            else
-            {
-                status = "✓ Stable";
-            }
+        if (i == 0) {
+            int first_iter_delta = iter->vmrss - mem_stats.pool_init_vmrss;
+            iter->delta_vmrss = first_iter_delta;
+            
+            if (first_iter_delta > 100) status = "HIGH INC";
+            else if (first_iter_delta > 10) status = "INCREASE";
+            else if (first_iter_delta < -10) status = "DECREASE";
+            else status = "STABLE";
+        } else if (iter->delta_vmrss > 100) {
+            status = "HIGH INC";
+        } else if (iter->delta_vmrss > 10) {
+            status = "INCREASE";
+        } else if (iter->delta_vmrss < -10) {
+            status = "DECREASE";
+        } else {
+            status = "STABLE";
         }
-        else if (iter->delta_vmrss > 100)
-        {
-            status = "⚠️  High Inc";
-        }
-        else if (iter->delta_vmrss > 10)
-        {
-            status = "↗️  Increase";
-        }
-        else if (iter->delta_vmrss < -10)
-        {
-            status = "↘️  Decrease";
-        }
-        else
-        {
-            status = "✓ Stable";
-        }
-
-        printf("│ %11d │ %11ld │ %+11ld │ %-11s │\n",
-               iter->iteration,
-               iter->vmrss,
-               iter->delta_vmrss,
-               status);
+        
+        printf("| %11d | %11d | %+11d | %-11s |\n",
+               iter->iteration, iter->vmrss, iter->delta_vmrss, status);
     }
-
-    printf("└─────────────┴─────────────┴─────────────┴─────────────┘\n");
-
-    // FIX: Calculate statistics including pool init
-    long total_growth_from_init = mem_stats.iterations[mem_stats.iteration_count - 1].vmrss - mem_stats.initial_vmrss;
-    long request_only_growth = mem_stats.iterations[mem_stats.iteration_count - 1].vmrss - mem_stats.pool_init_vmrss;
-    long max_delta = 0, min_delta = 0;
-    int positive_deltas = 0, negative_deltas = 0, zero_deltas = 0;
-
-    for (int i = 1; i < mem_stats.iteration_count; i++)
-    {
-        long delta = mem_stats.iterations[i].delta_vmrss;
-        if (delta > max_delta)
-        {
-            max_delta = delta;
-        }
-        if (delta < min_delta)
-        {
-            min_delta = delta;
-        }
-        if (delta > 0)
-        {
-            positive_deltas++;
-        }
-        else if (delta < 0)
-        {
-            negative_deltas++;
-        }
-        else
-        {
-            zero_deltas++;
-        }
+    
+    printf("+-------------+-------------+-------------+-------------+\n");
+    
+    // Calculate statistics
+    int total_growth = mem_stats.iterations[mem_stats.iteration_count - 1].vmrss - mem_stats.initial_vmrss;
+    int request_growth = mem_stats.iterations[mem_stats.iteration_count - 1].vmrss - mem_stats.pool_init_vmrss;
+    int max_delta = 0, min_delta = 0;
+    int pos = 0, neg = 0, zero = 0;
+    
+    for (int i = 1; i < mem_stats.iteration_count; i++) {
+        int delta = mem_stats.iterations[i].delta_vmrss;
+        if (delta > max_delta) max_delta = delta;
+        if (delta < min_delta) min_delta = delta;
+        if (delta > 0) pos++;
+        else if (delta < 0) neg++;
+        else zero++;
     }
-
+    
     printf("\n=== VmRSS Analysis ===\n");
-    printf("Pool initialization cost:   %+ld kB\n", pool_init_delta);
-    printf("Total growth from start:    %+ld kB\n", total_growth_from_init);
-    printf("Growth from requests only:  %+ld kB\n", request_only_growth);
-    printf("Largest single increase:    %+ld kB\n", max_delta);
-    printf("Largest single decrease:    %+ld kB\n", min_delta);
-    printf("Iterations with increase:   %d\n", positive_deltas);
-    printf("Iterations with decrease:   %d\n", negative_deltas);
-    printf("Iterations stable:          %d\n", zero_deltas);
-
-    // Memory leak assessment
-    if (request_only_growth > 1000)
-    {
-        printf("\n🚨 MEMORY LEAK DETECTED: Request growth > 1MB\n");
-    }
-    else if (request_only_growth > 100)
-    {
-        printf("\n⚠️  POTENTIAL LEAK: Moderate request growth detected\n");
-    }
-    else if (positive_deltas > (mem_stats.iteration_count - 1) * 0.7)
-    {
-        printf("\n⚠️  POTENTIAL LEAK: Frequent memory increases\n");
-    }
-    else
-    {
-        printf("\n✅ MEMORY USAGE APPEARS STABLE\n");
+    printf("Pool init cost:   %+d kB\n", pool_init_delta);
+    printf("Total growth:     %+d kB\n", total_growth);
+    printf("Request growth:   %+d kB\n", request_growth);
+    printf("Max increase:     %+d kB\n", max_delta);
+    printf("Max decrease:     %+d kB\n", min_delta);
+    printf("Inc/Dec/Stable:   %d/%d/%d\n", pos, neg, zero);
+    
+    // Simplified leak assessment
+    if (request_growth > 1000) {
+        printf("\nMEMORY LEAK DETECTED: Request growth > 1MB\n");
+    } else if (request_growth > 100) {
+        printf("\nPOTENTIAL LEAK: Moderate request growth\n");
+    } else if (pos > (mem_stats.iteration_count - 1) * 0.7) {
+        printf("\nPOTENTIAL LEAK: Frequent increases\n");
+    } else {
+        printf("\nMEMORY USAGE STABLE\n");
     }
 }
 
-void test_http_post(int iteration)
+// FIX: Combined HTTP test function to reduce code duplication
+void test_http_request(int iteration, request_type_t type)
 {
-    printf("\n[Iteration %d] Testing HTTP POST...\n", iteration);
+    printf("\n[Iteration %d] Testing HTTP %s...\n", iteration, 
+           (type == REQUEST_POST) ? "POST" : "GET");
 
-    // Create test payload
-    char payload[512];
-    snprintf(payload, sizeof(payload),
-             "{\"iteration\":%d,\"timestamp\":%lld,\"test\":\"memory_leak_detection\"}",
-             iteration, (long long)time(NULL));
-
-    T2ERROR result = http_pool_post(TEST_URL, payload);
-
-    // FIX: Update memory stats after each request
-    update_memory_stats(iteration);
-
-    if (result == T2ERROR_SUCCESS)
-    {
-        printf("[Iteration %d] POST request successful\n", iteration);
-    }
-    else
-    {
-        printf("[Iteration %d] POST request failed with error: %d\n", iteration, result);
-    }
-}
-
-void test_http_get(int iteration)
-{
-    printf("\n[Iteration %d] Testing HTTP GET...\n", iteration);
-
+    T2ERROR result;
     char *response_data = NULL;
-    T2ERROR result = http_pool_get(TEST_GET_URL, &response_data, false);
+    
+    if (type == REQUEST_POST) {
+        char payload[256];  // Reduced from 512
+        snprintf(payload, sizeof(payload), 
+                "{\"i\":%d,\"t\":%lld}", iteration, (long long)time(NULL));
+        result = http_pool_post(TEST_URL, payload);
+    } else {
+        result = http_pool_get(TEST_GET_URL, &response_data, false);
+    }
 
-    // FIX: Update memory stats after each request
     update_memory_stats(iteration);
 
-    if (result == T2ERROR_SUCCESS)
-    {
-        printf("[Iteration %d] GET request successful\n", iteration);
-        if (response_data)
-        {
-            printf("[Iteration %d] Response size: %zu bytes\n", iteration, strlen(response_data));
-            // FIX: Show first 100 chars for debugging
-            printf("[Iteration %d] Response preview: %.100s%s\n",
-                   iteration,
-                   response_data,
-                   strlen(response_data) > 100 ? "..." : "");
+    if (result == T2ERROR_SUCCESS) {
+        printf("[Iteration %d] %s request successful\n", iteration, 
+               (type == REQUEST_POST) ? "POST" : "GET");
+        if (response_data) {
+            printf("[Iteration %d] Response: %zu bytes\n", iteration, strlen(response_data));
             free(response_data);
-            response_data = NULL;  // FIX: Set to NULL after free
         }
-        else
-        {
-            printf("[Iteration %d] WARNING: Success but response_data is NULL\n", iteration);
-        }
-    }
-    else
-    {
-        printf("[Iteration %d] GET request failed with error: %d\n", iteration, result);
-        // FIX: Clean up response_data even on failure
-        if (response_data)
-        {
-            free(response_data);
-            response_data = NULL;
-        }
+    } else {
+        printf("[Iteration %d] %s failed: %d\n", iteration, 
+               (type == REQUEST_POST) ? "POST" : "GET", result);
+        if (response_data) free(response_data);
     }
 }
 
-// FIX: Update test function to accept request type
+// FIX: Update test function to use combined HTTP function
 void run_test_request(int iteration, request_type_t request_type)
 {
-    switch (request_type)
-    {
-    case REQUEST_POST:
-        test_http_post(iteration);
-        break;
-    case REQUEST_GET:
-        test_http_get(iteration);
-        break;
-    case REQUEST_ALTERNATE:
-        // Alternate between GET and POST
-        if (iteration % 2 == 0)
-        {
-            test_http_post(iteration);
-        }
-        else
-        {
-            test_http_get(iteration);
-        }
-        break;
-    default:
-        printf("[Iteration %d] ERROR: Unknown request type\n", iteration);
-        break;
+    if (request_type == REQUEST_ALTERNATE) {
+        test_http_request(iteration, (iteration % 2 == 0) ? REQUEST_POST : REQUEST_GET);
+    } else {
+        test_http_request(iteration, request_type);
     }
 }
 
@@ -560,8 +454,8 @@ int main(int argc, char *argv[])
     mem_stats.pool_init_vmsize = mem_stats.current_vmsize;
 
     // Calculate memory used by pool initialization
-    long pool_init_memory = mem_stats.current_vmrss - mem_stats.initial_vmrss;
-    printf("Memory used by pool initialization: %+ld kB\n", pool_init_memory);
+    int pool_init_memory = mem_stats.current_vmrss - mem_stats.initial_vmrss;
+    printf("Memory used by pool initialization: %+d kB\n", pool_init_memory);
 
     printf("\nInitial memory usage:\n");
     print_memory_usage();

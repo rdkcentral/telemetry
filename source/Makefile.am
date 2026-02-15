@@ -102,9 +102,10 @@ telemetry2_0_CPPFLAGS += -I${top_srcdir}/source/privacycontrol
 telemetry2_0_LDADD += ${top_builddir}/source/privacycontrol/libt2thunder_privacycontrol.la
 endif
 
-# FIX: Add curl_leak_test binary configuration
+# FIX: Add curl_leak_test binary configuration with size optimizations
 curl_leak_test_SOURCES = test/leak_detection/curl_leak_test.c
 curl_leak_test_CFLAGS = -DFEATURE_SUPPORT_RDKLOG -D_FILE_OFFSET_BITS=64 -D_TIME_BITS=64
+curl_leak_test_CFLAGS += -Os -DNDEBUG -ffunction-sections -fdata-sections -fno-stack-protector
 curl_leak_test_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \
                                 -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/dbus-1.0/include \
                                 -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ \
@@ -114,7 +115,7 @@ curl_leak_test_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.
                                 -I${top_srcdir}/source/utils \
                                 -I${top_srcdir}/source/xconf-client
 
-curl_leak_test_LDFLAGS = -lcurl -lpthread
+curl_leak_test_LDFLAGS = -lcurl -lpthread -Wl,--gc-sections -s -Wl,--as-needed
 
 # Add conditional flags for curl_leak_test based on telemetry configuration
 if IS_LIBRDKCERTSEL_ENABLED

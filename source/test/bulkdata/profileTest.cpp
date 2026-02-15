@@ -1755,7 +1755,7 @@ void hash_map_destroy(hash_map_t* m, void(*free_cb)(void*)) {
 }
 
 // hash_map_remove returns NULL (as if no profiles exist yet)
-char* hash_map_remove(hash_map_t*, const char*) { return NULL; }
+void* hash_map_remove(hash_map_t*, const char*) { return NULL; }
 
 // Add other stubs as needed for your codebase.
 }

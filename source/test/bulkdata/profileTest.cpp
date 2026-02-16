@@ -37,7 +37,7 @@ extern "C" {
 #include "profilexconf.h"
 #include "t2eventreceiver.h"
 #include "msgpack.h"
-
+#include <glib.h>
 extern bool initialized;
 
 sigset_t blocking_signal;
@@ -1675,17 +1675,25 @@ TEST_F(ProfileTest, ProcessMsgPackBlob_InvalidFormat) {
     int ret = __ReportProfiles_ProcessReportProfilesMsgPackBlob(&msg, false);
     EXPECT_EQ(ret, T2ERROR_INVALID_ARGS);
 }
-#if 0
+#if 1
 TEST_F(ProfileTest, ProcessMsgPackBlob_Test1) {
-   printf("##### test starts\n");	
-    struct __msgpack__ msg;
-    char blob[] = { (char)0x80 };
-    printf("initialiseing the value to blob and size\n");
-    msg.msgpack_blob = blob;
-    msg.msgpack_blob_size = 1;
-    printf("calling the function \n");
-    int ret = __ReportProfiles_ProcessReportProfilesMsgPackBlob(&msg, true);
-    EXPECT_EQ(ret, T2ERROR_INVALID_ARGS);
+   printf("##### test starts\n");
+   char *data = "3wAAAAGocHJvZmlsZXPdAAAAAd8AAAADpG5hbWWsUkRLQl9Qcm9maWxlpGhhc2ilSGFzaDKldmFsdWXfAAAADaROYW1lb...";
+// decode
+   gsize decodedDataLen = 0;
+   guchar *webConfigString = g_base64_decode(data, &decodedDataLen);
+
+// allocate and fill
+   struct __msgpack__ *msg = malloc(sizeof(struct __msgpack__));
+   msg->msgpack_blob = (char*)webConfigString;
+   msg->msgpack_blob_size = (int)decodedDataLen;
+
+// call target
+  int ret = __ReportProfiles_ProcessReportProfilesMsgPackBlob((void*)msg, false);
+
+// cleanup
+  free(msg);
+  g_free(webConfigString);
 }
 #endif
 TEST_F(ProfileTest, ProcessReportProfilesBlob_EmptyProfile_T2_TEMP_RP) {
@@ -1773,18 +1781,6 @@ TEST(MsgpackFreeBlobTest, ValidPointerFreed) {
     SUCCEED();
 }
 
-#if 0
-TEST(MsgpackFreeBlobTest, NullPointerSafe)
-{
-    // Obtain the function pointer via callback accessor
-    __msgpack_free_blobFunc free_func = __msgpack_free_blobFuncCallback();
-    ASSERT_NE(free_func, nullptr);
-
-    // Safe to call with nullptr if function does not dereference
-    free_func(nullptr);
-    SUCCEED();
-}
-#endif
 #if 1
 TEST_F(ProfileTest, reportOnDemandTest)
 {

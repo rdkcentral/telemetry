@@ -52,7 +52,8 @@ static bool reportThreadExits = false;
 static bool isAbortTriggered = false ;
 static bool isOnDemandReport = false ;
 
-#ifdef GTEST_ENABLE
+//#ifdef GTEST_ENABLE
+#if 0
 #define sendReportOverHTTP __wrap_sendReportOverHTTP
 #define sendCachedReportsOverHTTP __wrap_sendCachedReportsOverHTTP
 #endif

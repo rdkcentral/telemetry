@@ -280,6 +280,17 @@ TEST_F(ProfileTest, getMinThresholdDuration_Failure) {
 
 #endif
 
+#ifdef GTEST_ENABLE
+extern "C" {
+typedef void (*freeRequestURIparamFunc)(void *);
+freeRequestURIparamFunc freeRequestURIparamFuncCallback(void);
+}
+
+TEST_F(ProfileTest, FreeRequestURIparam_Null) {
+    freeRequestURIparamFunc freeFunc = freeRequestURIparamFuncCallback();
+    ASSERT_NE(freeFunc, nullptr);
+    freeFunc(nullptr);
+}
 
 #if 1
 //comment

@@ -51,7 +51,7 @@ rbusMock *g_rbusMock = NULL;
 rdkconfigMock *g_rdkconfigMock = nullptr;
 extern VectorMock *g_vectorMock;
 extern SchedulerMock *g_schedulerMock;
-extern reportprofilesMock *g_reportprofilesMock;
+//extern reportprofilesMock *g_reportprofilesMock;
 extern MsgpackMock *g_msgpackMock; 
 class ProfileTest : public ::testing::Test {
 protected:
@@ -64,7 +64,7 @@ protected:
 	g_vectorMock = new VectorMock();
 	g_schedulerMock = new SchedulerMock();
 	g_msgpackMock = new MsgpackMock();
-	g_reportprofilesMock = new reportprofilesMock();
+//	g_reportprofilesMock = new reportprofilesMock();
     }
     void TearDown() override 
     {
@@ -74,7 +74,7 @@ protected:
        delete g_rdkconfigMock;
        delete g_vectorMock;
        delete g_schedulerMock;
-       delete g_reportprofilesMock;
+  //     delete g_reportprofilesMock;
        delete g_msgpackMock;
 
         g_fileIOMock = nullptr;
@@ -83,7 +83,7 @@ protected:
 	g_rdkconfigMock = nullptr;
 	g_vectorMock = nullptr;
 	g_schedulerMock = nullptr;
-	g_reportprofilesMock = nullptr;
+//	g_reportprofilesMock = nullptr;
 	g_msgpackMock = nullptr;
     }
 };

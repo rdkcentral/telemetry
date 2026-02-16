@@ -31,4 +31,3 @@ extern "C" bool __wrap_isRbusEnabled()
     return g_reportprofilesMock->isRbusEnabled();
 }
 
-}

@@ -956,45 +956,57 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
         hash_map_put(receivedProfileHashMap, profileName, profileEntry, freeReportProfileHashMap);
 	printf("rosemarybenny\n");
     } // End of looping through report profiles
-#if 0
     // Delete profiles not present in the new profile list
+     T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
     char *profileNameKey = NULL;
     int count = hash_map_count(profileHashMap) - 1;
     const char *DirPath = NULL;
 
+     T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
     if (rprofiletypes == T2_RP)
     {
+     T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
         DirPath = REPORTPROFILES_PERSISTENCE_PATH;
+     T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
     }
     else if (rprofiletypes == T2_TEMP_RP)
     {
+     T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
         DirPath = SHORTLIVED_PROFILES_PATH;
+     T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
     }
 
     bool rm_flag = false;
     if(rprofiletypes == T2_RP)
     {
+     T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
 
         while(count >= 0)
         {
+     T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
             profileNameKey = hash_map_lookupKey(profileHashMap, count--);
             T2Debug("%s Map content from disk = %s \n", __FUNCTION__, profileNameKey);
             if(NULL == hash_map_get(receivedProfileHashMap, profileNameKey))
             {
+     T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
                 T2Debug("%s Profile %s not present in current config . Remove profile from disk \n", __FUNCTION__, profileNameKey);
                 removeProfileFromDisk(DirPath, profileNameKey);
                 T2Debug("%s Terminate profile %s \n", __FUNCTION__, profileNameKey);
                 ReportProfiles_deleteProfile(profileNameKey);
                 rm_flag = true;
             }
+     T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
         }
 
         if(T2ERROR_SUCCESS != RemovePreRPfromDisk(DirPath, receivedProfileHashMap))
         {
+     T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
             T2Error("Failed to remove previous report profile from the disk\n");
+     T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
         }
+     T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
     }
-
+#if 0
     if(isRbusEnabled())
     {
         unregisterDEforCompEventList();

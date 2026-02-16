@@ -17,6 +17,7 @@
 #include "test/mocks/rdkconfigMock.h"
 #include "test/mocks/VectorMock.h"
 #include "test/bulkdata/SchedulerMock.h"
+#include "test/bulkdata/t2markersMock.h"
 #include "test/mocks/MsgpackMock.h"
 
 using namespace std;
@@ -50,6 +51,7 @@ rbusMock *g_rbusMock = NULL;
 rdkconfigMock *g_rdkconfigMock = nullptr;
 extern VectorMock *g_vectorMock;
 extern SchedulerMock *g_schedulerMock;
+extern t2markersMock *g_t2markersMock; 
 extern MsgpackMock *g_msgpackMock; 
 class ProfileTest : public ::testing::Test {
 protected:
@@ -61,6 +63,7 @@ protected:
 	g_rdkconfigMock = new rdkconfigMock();
 	g_vectorMock = new VectorMock();
 	g_schedulerMock = new SchedulerMock();
+	g_t2markersMock = new t2markersMock();
 	g_msgpackMock = new MsgpackMock();
     }
     void TearDown() override 
@@ -72,6 +75,7 @@ protected:
        delete g_vectorMock;
        delete g_schedulerMock;
        delete g_msgpackMock;
+       delete t2markersMock;
 
         g_fileIOMock = nullptr;
         g_systemMock = nullptr;
@@ -80,6 +84,7 @@ protected:
 	g_vectorMock = nullptr;
 	g_schedulerMock = nullptr;
 	g_msgpackMock = nullptr;
+	t2markersMock = nullptr;
     }
 };
 #if 1

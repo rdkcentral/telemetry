@@ -981,6 +981,7 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
     {
      T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
 
+#if 0
         while(count >= 0)
         {
      T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
@@ -1004,6 +1005,7 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
             T2Error("Failed to remove previous report profile from the disk\n");
      T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
         }
+#endif
      T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
     }
 #if 0

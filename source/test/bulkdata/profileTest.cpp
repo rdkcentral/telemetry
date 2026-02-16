@@ -75,7 +75,7 @@ protected:
        delete g_vectorMock;
        delete g_schedulerMock;
        delete g_msgpackMock;
-       delete t2markersMock;
+       delete g_t2markersMock;
 
         g_fileIOMock = nullptr;
         g_systemMock = nullptr;
@@ -84,7 +84,7 @@ protected:
 	g_vectorMock = nullptr;
 	g_schedulerMock = nullptr;
 	g_msgpackMock = nullptr;
-	t2markersMock = nullptr;
+	g_t2markersMock = nullptr;
     }
 };
 #if 1

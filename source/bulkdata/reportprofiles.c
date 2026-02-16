@@ -981,12 +981,13 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
     {
      T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
 
-#if 0
+#if 1
         while(count >= 0)
         {
      T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
             profileNameKey = hash_map_lookupKey(profileHashMap, count--);
             T2Debug("%s Map content from disk = %s \n", __FUNCTION__, profileNameKey);
+#if 0
             if(NULL == hash_map_get(receivedProfileHashMap, profileNameKey))
             {
      T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
@@ -996,15 +997,17 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
                 ReportProfiles_deleteProfile(profileNameKey);
                 rm_flag = true;
             }
+#endif
      T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
         }
-
+#if 0
         if(T2ERROR_SUCCESS != RemovePreRPfromDisk(DirPath, receivedProfileHashMap))
         {
      T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
             T2Error("Failed to remove previous report profile from the disk\n");
      T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
         }
+#endif
 #endif
      T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
     }

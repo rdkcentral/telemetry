@@ -1207,6 +1207,8 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob, int msg
         T2Debug("%s --out\n", __FUNCTION__);
         return;
     }
+    printf("@@@@ functiom %s line %d\n",__func__,__LINE__);
+#if 0
     profiles_root = &result.data;
     if(profiles_root == NULL)
     {
@@ -1274,6 +1276,7 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob, int msg
     PushBlobRequest(execDataPf);
     T2Debug("PushBlobRequest complete\n");
     msgpack_unpacked_destroy(&result);
+#endif
 #endif
     T2Debug("%s --out\n", __FUNCTION__);
     return;

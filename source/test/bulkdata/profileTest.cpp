@@ -17,6 +17,7 @@
 #include "test/mocks/rdkconfigMock.h"
 #include "test/mocks/VectorMock.h"
 #include "test/bulkdata/SchedulerMock.h"
+#include "test/bulkdata/reportprofilesMock.h"
 #include "test/mocks/MsgpackMock.h"
 
 using namespace std;

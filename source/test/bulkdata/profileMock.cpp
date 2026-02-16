@@ -28,14 +28,14 @@ extern "C" T2ERROR __wrap_deleteProfile(const char* profileName)
 }
 
 //protocol mock functions
-extern "C" T2ERROR __wrap_sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
+extern "C" T2ERROR __wrap_sendReportOverHTTP(char *httpUrl, char *payload)
 { 
     if(!g_profileMock)
     {
         return T2ERROR_FAILURE;
     }
     // No mock function needed, just a stub
-    return g_profileMock->sendReportOverHTTP(httpUrl, payload, outForkedPid);
+    return g_profileMock->sendReportOverHTTP(httpUrl, payload);
 }
 
 extern "C" T2ERROR __wrap_sendCachedReportsOverHTTP(char *httpUrl, Vector *reportList)

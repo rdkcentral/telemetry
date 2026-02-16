@@ -287,39 +287,55 @@ T2ERROR profileWithNameExists(const char *profileName, bool *bProfileExists)
 
 void getMarkerCompRbusSub(bool subscription)
 {
+	printf("@@@@@@ function %s line %d\n",__func__,__LINE__);
     T2Debug("%s ++in\n", __FUNCTION__);
+	printf("@@@@@@ function %s line %d\n",__func__,__LINE__);
     Vector* eventMarkerListForComponent = NULL;
+	printf("@@@@@@ function %s line %d\n",__func__,__LINE__);
     getComponentMarkerList(T2REPORTCOMPONENT, (void**)&eventMarkerListForComponent);
+	printf("@@@@@@ function %s line %d\n",__func__,__LINE__);
     int length = Vector_Size(eventMarkerListForComponent);
+	printf("@@@@@@ function %s line %d\n",__func__,__LINE__);
     int i;
     if(length > 0)
     {
+	printf("@@@@@@ function %s line %d\n",__func__,__LINE__);
         for(i = 0; i < length; ++i )
         {
+	printf("@@@@@@ function %s line %d\n",__func__,__LINE__);
             char* markerName = (char *) Vector_At(eventMarkerListForComponent, i);
             if(markerName)
             {
+	printf("@@@@@@ function %s line %d\n",__func__,__LINE__);
                 int ret = T2RbusReportEventConsumer(markerName, subscription);
                 T2Debug("%d T2RbusEventReg with name = %s: subscription = %s ret %d \n", i, markerName, (subscription ? "Subscribe" : "Un-Subscribe"), ret);
             }
             else
             {
+	printf("@@@@@@ function %s line %d\n",__func__,__LINE__);
                 T2Error("Error while retrieving Marker Name at index : %d \n", i);
             }
         }
         if(eventMarkerListForComponent != NULL)
         {
+	printf("@@@@@@ function %s line %d\n",__func__,__LINE__);
             Vector_Destroy(eventMarkerListForComponent, free);
         }
+	printf("@@@@@@ function %s line %d\n",__func__,__LINE__);
     }
     //CID 255490: Resource leak (RESOURCE_LEAK)
     else
     {
+	printf("@@@@@@ function %s line %d\n",__func__,__LINE__);
         if(eventMarkerListForComponent != NULL)
         {
+	printf("@@@@@@ function %s line %d\n",__func__,__LINE__);
             Vector_Destroy(eventMarkerListForComponent, free);
+	printf("@@@@@@ function %s line %d\n",__func__,__LINE__);
         }
+	printf("@@@@@@ function %s line %d\n",__func__,__LINE__);
     }
+	printf("@@@@@@ function %s line %d\n",__func__,__LINE__);
     T2Debug("%s --out\n", __FUNCTION__);
 }
 

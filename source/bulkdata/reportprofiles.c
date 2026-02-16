@@ -855,7 +855,7 @@ T2ERROR deleteAllReportProfiles()
     return T2ERROR_SUCCESS;
 }
 
-bool* test_get_isRbusEnabled_Ptr(void) { return &isRbusEnabled; }
+//bool* test_get_isRbusEnabled_Ptr(void) { return &isRbusEnabled; }
 void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofiletypes)
 {
 
@@ -909,14 +909,15 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
     hash_map_t *receivedProfileHashMap = hash_map_create();
      T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
     // Rbus subscription of Tr181 datamodel events
-    printf("###### isRbusEnabled %d\n",isRbusEnabled);
-#if 0
+//    printf("###### isRbusEnabled %d\n",isRbusEnabled);
     if(isRbusEnabled())
     {
      T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
         getMarkerCompRbusSub(false);
      T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
     }
+    printf("rosemarybenny\n");
+#if 0
      T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
     // Populate profile hash map for current configuration
     for( profileIndex = 0; profileIndex < profiles_count; profileIndex++ )
@@ -1187,6 +1188,8 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob, int msg
 
     msgpack_unpacked_init(&result);
     ret = msgpack_unpack_next(&result, msgpack_blob, msgpack_blob_size, &off);
+    if(ret == MSGPACK_UNPACK_SUCCESS)
+	    printf("rosemary\n");
     if (ret != MSGPACK_UNPACK_SUCCESS)
     {
         T2Error("The data in the buf is invalid format.\n");
@@ -1204,7 +1207,6 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob, int msg
         T2Debug("%s --out\n", __FUNCTION__);
         return;
     }
-
     subdoc_name = msgpack_get_map_value(profiles_root, "subdoc_name");
     transaction_id = msgpack_get_map_value(profiles_root, "transaction_id");
     version = msgpack_get_map_value(profiles_root, "version");
@@ -1470,7 +1472,7 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
         publishEventsProfileUpdates();
         getMarkerCompRbusSub(true);
     }
-    msgpack_unpacked_destroy(&result);
+    //msgpack_unpacked_destroy(&result);
     hash_map_destroy(profileHashMap, freeProfilesHashMap);
     clearPersistenceFolder(CACHED_MESSAGE_PATH);
     T2Debug("%s --out\n", __FUNCTION__);

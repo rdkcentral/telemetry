@@ -18,7 +18,7 @@ extern "C" msgpack_unpack_return __wrap_msgpack_unpack_next(msgpack_unpacked *re
     // Real or stub implementation if not mocked
     return MSGPACK_UNPACK_SUCCESS;
 }
-#if 1
+#if 0
 // Wrapper for msgpack_unpacked_destroy
 extern "C" void __wrap_msgpack_unpacked_destroy(msgpack_unpacked *result) {
     if (g_msgpackMock) return g_msgpackMock->msgpack_unpacked_destroy(result);
@@ -59,3 +59,4 @@ extern "C" int __wrap_msgpack_mock_array_size(const msgpack_object* array) {
     // Real or stub implementation if not mocked
     return 0;
 }
+

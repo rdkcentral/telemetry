@@ -42,7 +42,8 @@ extern bool initialized;
 sigset_t blocking_signal;
 hash_map_t *markerCompMap = NULL;
 } 
- 
+
+
 FileMock *g_fileIOMock = NULL;
 SystemMock * g_systemMock = NULL;
 rdklogMock *m_rdklogMock = NULL;
@@ -1605,6 +1606,36 @@ TEST_F(ProfileTest, deleteAllReportProfiles) {
     EXPECT_EQ(deleteAllReportProfiles(), T2ERROR_SUCCESS);
 }
 
+TEST_F(ProfileTest, ReportProfiles_ProcessReportProfilesMsgPackBlob_NullRootTriggersEarlyReturn) {
+
+    msgpack_unpacked dummyResult;
+    memset(&dummyResult, 0, sizeof(dummyResult));
+    dummyResult.data.type = MSGPACK_OBJECT_NIL;
+    //dummyResult.data.via.array.size = 0;
+
+    // Set up behavior for msgpack_unpacked_init: fills dummyResult
+    ON_CALL(*g_msgpackMock, msgpack_unpacked_init(::testing::_))
+        .WillByDefault([&](msgpack_unpacked* res) {
+            if (res) { memset(res, 0, sizeof(*res)); res->data.type = MSGPACK_OBJECT_NIL; }
+        });
+
+    // Set up msgpack_unpack_next to return MSGPACK_UNPACK_SUCCESS
+    ON_CALL(*g_msgpackMock, msgpack_unpack_next(::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .WillByDefault(Return(MSGPACK_UNPACK_SUCCESS));
+
+
+    unsigned char dummyBlob[4] = {0x90, 0x91, 0x92, 0x93};
+    int dummySize = sizeof(dummyBlob);
+
+    EXPECT_CALL(*g_rbusMock, rbus_checkStatus())
+        .WillOnce(::testing::Return(RBUS_DISABLED));
+
+    // Should trigger the early NULL branch!
+    ReportProfiles_ProcessReportProfilesMsgPackBlob((char*)dummyBlob, dummySize);
+
+    // Clean up MsgpackMock for other tests
+}
+
 #if 0
 TEST_F(ProfileTest, isMtlsEnabled) {
     char status[8] = "true";
@@ -1701,10 +1732,7 @@ TEST_F(ProfileTest, ProcessReportProfilesBlob_EmptyProfile_Normal) {
     cJSON_Delete(root);
 }
 
-extern "C"
-{
-   bool* test_get_isRbusEnabled_Ptr(void);
-}
+#if 1
 TEST_F(ProfileTest, ProcessReportProfilesBlob_AddNewProfile) {
     // New profile, triggers add logic and saveConfigToFile
     cJSON *root = cJSON_CreateObject();
@@ -1718,21 +1746,46 @@ TEST_F(ProfileTest, ProcessReportProfilesBlob_AddNewProfile) {
     cJSON_AddItemToObject(profile, "value", value);
     cJSON_AddItemToArray(profiles, profile);
 
-    //*test_get_isRbusEnabled_Ptr() = false;
     // Expect add and saveConfigToFile, can stub if needed
     EXPECT_CALL(*g_vectorMock, Vector_Size(_)).WillRepeatedly(Return(0));
     EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).WillRepeatedly(Return(T2ERROR_SUCCESS));
     ReportProfiles_ProcessReportProfilesBlob(root, T2_RP);
 
-    //*test_get_isRbusEnabled_Ptr() = true;
     cJSON_Delete(root);
 }
+#endif
 TEST_F(ProfileTest, ReportProfiles_ProcessReportProfilesMsgPackBlobTest) {
     // Should return early if root is NULL
     ReportProfiles_ProcessReportProfilesMsgPackBlob(NULL, false);
     // Possibly assert/expect logs/error
 }
+#if 0
+TEST_F(ProfileTest, ReportProfiles_ProcessReportProfilesMsgPackBlob_NullRootTriggersEarlyReturn) {
 
+    msgpack_unpacked dummyResult;
+    memset(&dummyResult, 0, sizeof(dummyResult));
+    dummyResult.data.type = MSGPACK_OBJECT_NIL;
+    //dummyResult.data.via.array.size = 0;
+
+    // Set up behavior for msgpack_unpacked_init: fills dummyResult
+    ON_CALL(*g_msgpackMock, msgpack_unpacked_init(::testing::_))
+        .WillByDefault([&](msgpack_unpacked* res) {
+            if (res) { memset(res, 0, sizeof(*res)); res->data.type = MSGPACK_OBJECT_NIL; }
+        });
+
+    // Set up msgpack_unpack_next to return MSGPACK_UNPACK_SUCCESS
+    ON_CALL(*g_msgpackMock, msgpack_unpack_next(::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .WillByDefault(Return(MSGPACK_UNPACK_SUCCESS));
+
+    unsigned char dummyBlob[4] = {0x90, 0x91, 0x92, 0x93};
+    int dummySize = sizeof(dummyBlob);
+
+    // Should trigger the early NULL branch!
+    ReportProfiles_ProcessReportProfilesMsgPackBlob((char*)dummyBlob, dummySize);
+
+    // Clean up MsgpackMock for other tests
+}
+#endif
 TEST(MsgpackFreeBlobTest, ValidPointerFreed) {
     __msgpack_free_blobFunc free_func = __msgpack_free_blobFuncCallback();
     ASSERT_NE(free_func, nullptr);

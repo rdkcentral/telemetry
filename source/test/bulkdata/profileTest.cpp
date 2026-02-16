@@ -1714,10 +1714,9 @@ TEST_F(ProfileTest, ProcessReportProfilesBlob_AddNewProfile) {
     cJSON_AddItemToObject(profile, "value", value);
     cJSON_AddItemToArray(profiles, profile);
 
-    EXPECT_CALL(*g_rbusMock, rbus_checkStatus())
-        .Times(::testing::AtMost(5))
-        .WillRepeatedly(Return(RBUS_DISABLED));
-
+       EXPECT_CALL(*g_rbusMock, rbus_checkStatus())
+           .Times(::testing::AtMost(5))
+           .WillRepeatedly(Return(RBUS_ENABLED));
     // Expect add and saveConfigToFile, can stub if needed
     EXPECT_CALL(*g_vectorMock, Vector_Size(_)).WillRepeatedly(Return(0));
     EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).WillRepeatedly(Return(T2ERROR_SUCCESS));

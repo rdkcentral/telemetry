@@ -949,13 +949,11 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
         }
 
      T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
-#if 0
         ReportProfile *profileEntry = (ReportProfile *)malloc(sizeof(ReportProfile));
         profileName = strdup(nameObj->valuestring);
         profileEntry->hash = strdup(hashObj->valuestring);
         profileEntry->config = cJSON_PrintUnformatted(profileObj);
         hash_map_put(receivedProfileHashMap, profileName, profileEntry, freeReportProfileHashMap);
-#endif
 	printf("rosemarybenny\n");
     } // End of looping through report profiles
 #if 0

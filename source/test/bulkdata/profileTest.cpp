@@ -291,7 +291,7 @@ TEST_F(ProfileTest, FreeRequestURIparam_Null) {
     ASSERT_NE(freeFunc, nullptr);
     freeFunc(nullptr);
 }
-
+#endif
 #if 1
 //comment
 // ============================== t2markers.c =============================

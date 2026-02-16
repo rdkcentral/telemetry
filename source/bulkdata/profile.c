@@ -45,6 +45,11 @@
 
 #define MAX_LEN 256
 
+#ifdef GTEST_ENABLE
+#define sendReportOverHTTP __wrap_sendReportOverHTTP
+#define sendCachedReportsOverHTTP __wrap_sendCachedReportsOverHTTP
+#endif
+
 static bool initialized = false;
 static Vector *profileList;
 static pthread_mutex_t plMutex;
@@ -1858,4 +1863,36 @@ unsigned int getMinThresholdDuration(char *profileName)
     return minThresholdDuration;
 }
 
+#ifdef GTEST_ENABLE
+typedef void (*freeRequestURIparamFunc) (void *);
 
+freeRequestURIparamFunc freeRequestURIparamFuncCallback(void)
+{
+   return freeRequestURIparam;
+}
+
+typedef void (*freeReportProfileConfigFunc)(void *);
+freeReportProfileConfigFunc freeReportProfileConfigFuncCallback(void) {
+    return freeReportProfileConfig;
+}
+
+typedef void (*freeProfileFunc)(void *);
+freeProfileFunc freeProfileFuncCallback(void) {
+    return freeProfile;
+}
+
+typedef T2ERROR (*getProfileFunc)(const char*, Profile**);
+getProfileFunc getProfileFuncCallback(void) {
+    return getProfile;
+}
+
+typedef T2ERROR (*initJSONReportProfileFunc)(cJSON **, cJSON **, char *);
+initJSONReportProfileFunc initJSONReportProfileFuncCallback(void) {
+    return initJSONReportProfile;
+}
+
+typedef void* (*CollectAndReportFunc)(void*);
+CollectAndReportFunc getCollectAndReportFunc(void) {
+    return CollectAndReport;
+}
+#endif

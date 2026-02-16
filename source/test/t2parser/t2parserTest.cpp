@@ -402,6 +402,7 @@ TEST(PROCESSCONFIGURATION_MSGPACK, PARAMETER_NULL)
     webConfigString = g_base64_decode(data, &decodedDataLen);
     msgpack_unpacked_init(&result);
     ret = msgpack_unpack_next(&result, (char*)webConfigString, decodedDataLen, &off);
+     printf("msgpack_unpack_next() ret: %d\n", ret);
     msgpack_object *profiles_root =  &result.data;
     msgpack_object *profilesArray = msgpack_get_map_value(profiles_root, "profiles");
     msgpack_object *singleProfile = msgpack_get_array_element(profilesArray, 0);
@@ -421,6 +422,7 @@ TEST(PROCESSCONFIGURATION_MSGPACK, RI_ML_NULL)
     webConfigString = g_base64_decode(data, &decodedDataLen);
     msgpack_unpacked_init(&result);
     ret = msgpack_unpack_next(&result, (char*)webConfigString, decodedDataLen, &off);
+     printf("msgpack_unpack_next() ret: %d\n", ret);
     msgpack_object *profiles_root =  &result.data;
     msgpack_object *profilesArray = msgpack_get_map_value(profiles_root, "profiles");
     msgpack_object *singleProfile = msgpack_get_array_element(profilesArray, 0);
@@ -440,6 +442,7 @@ TEST(PROCESSCONFIGURATION_MSGPACK, TC_RI_MANDATORY)
     webConfigString = g_base64_decode(data, &decodedDataLen);
     msgpack_unpacked_init(&result);
     ret = msgpack_unpack_next(&result, (char*)webConfigString, decodedDataLen, &off);
+     printf("msgpack_unpack_next() ret: %d\n", ret);
     msgpack_object *profiles_root =  &result.data;
     msgpack_object *profilesArray = msgpack_get_map_value(profiles_root, "profiles");
     msgpack_object *singleProfile = msgpack_get_array_element(profilesArray, 0);
@@ -459,6 +462,7 @@ TEST(PROCESSCONFIGURATION_MSGPACK, HTTP_URL_NULL)
     webConfigString = g_base64_decode(data, &decodedDataLen);
     msgpack_unpacked_init(&result);
     ret = msgpack_unpack_next(&result, (char*)webConfigString, decodedDataLen, &off);
+     printf("msgpack_unpack_next() ret: %d\n", ret);
     msgpack_object *profiles_root =  &result.data;
     msgpack_object *profilesArray = msgpack_get_map_value(profiles_root, "profiles");
     msgpack_object *singleProfile = msgpack_get_array_element(profilesArray, 0);
@@ -477,6 +481,7 @@ TEST(PROCESSCONFIGURATION_MSGPACK, COMPRESSION_NULL)
     webConfigString = g_base64_decode(data, &decodedDataLen);
     msgpack_unpacked_init(&result);
     ret = msgpack_unpack_next(&result, (char*)webConfigString, decodedDataLen, &off);
+     printf("msgpack_unpack_next() ret: %d\n", ret);
     msgpack_object *profiles_root =  &result.data;
     msgpack_object *profilesArray = msgpack_get_map_value(profiles_root, "profiles");
     msgpack_object *singleProfile = msgpack_get_array_element(profilesArray, 0);
@@ -496,6 +501,7 @@ TEST(PROCESSCONFIGURATION_MSGPACK, METHOD_NULL)
     webConfigString = g_base64_decode(data, &decodedDataLen);
     msgpack_unpacked_init(&result);
     ret = msgpack_unpack_next(&result, (char*)webConfigString, decodedDataLen, &off);
+     printf("msgpack_unpack_next() ret: %d\n", ret);
     msgpack_object *profiles_root =  &result.data;
     msgpack_object *profilesArray = msgpack_get_map_value(profiles_root, "profiles");
     msgpack_object *singleProfile = msgpack_get_array_element(profilesArray, 0);
@@ -516,6 +522,7 @@ TEST(PROCESSCONFIGURATION_MSGPACK, RBUS_METHOD_PARAM_NULL)
     webConfigString = g_base64_decode(data, &decodedDataLen);
     msgpack_unpacked_init(&result);
     ret = msgpack_unpack_next(&result, (char*)webConfigString, decodedDataLen, &off);
+     printf("msgpack_unpack_next() ret: %d\n", ret);
     msgpack_object *profiles_root =  &result.data;
     msgpack_object *profilesArray = msgpack_get_map_value(profiles_root, "profiles");
     msgpack_object *singleProfile = msgpack_get_array_element(profilesArray, 0);
@@ -535,6 +542,7 @@ TEST(PROCESSCONFIGURATION_MSGPACK, METHOD_PARAM_NOT_PRESENT)
     webConfigString = g_base64_decode(data, &decodedDataLen);
     msgpack_unpacked_init(&result);
     ret = msgpack_unpack_next(&result, (char*)webConfigString, decodedDataLen, &off);
+     printf("msgpack_unpack_next() ret: %d\n", ret);
     msgpack_object *profiles_root =  &result.data;
     msgpack_object *profilesArray = msgpack_get_map_value(profiles_root, "profiles");
     msgpack_object *singleProfile = msgpack_get_array_element(profilesArray, 0);
@@ -554,6 +562,7 @@ TEST(PROCESSCONFIGURATION_MSGPACK, PROTOCOL_INVALID)
     webConfigString = g_base64_decode(data, &decodedDataLen);
     msgpack_unpacked_init(&result);
     ret = msgpack_unpack_next(&result, (char*)webConfigString, decodedDataLen, &off);
+     printf("msgpack_unpack_next() ret: %d\n", ret);
     msgpack_object *profiles_root =  &result.data;
     msgpack_object *profilesArray = msgpack_get_map_value(profiles_root, "profiles");
     msgpack_object *singleProfile = msgpack_get_array_element(profilesArray, 0);
@@ -573,6 +582,7 @@ TEST(PROCESSCONFIGURATION_MSGPACK, RI_GT_AT)
     webConfigString = g_base64_decode(data, &decodedDataLen);
     msgpack_unpacked_init(&result);
     ret = msgpack_unpack_next(&result, (char*)webConfigString, decodedDataLen, &off);
+     printf("msgpack_unpack_next() ret: %d\n", ret);
     msgpack_object *profiles_root =  &result.data;
     msgpack_object *profilesArray = msgpack_get_map_value(profiles_root, "profiles");
     msgpack_object *singleProfile = msgpack_get_array_element(profilesArray, 0);
@@ -592,6 +602,7 @@ TEST(PROCESSCONFIGURATION_MSGPACK, TC_NO_TYPE)
     webConfigString = g_base64_decode(data, &decodedDataLen);
     msgpack_unpacked_init(&result);
     ret = msgpack_unpack_next(&result, (char*)webConfigString, decodedDataLen, &off);
+     printf("msgpack_unpack_next() ret: %d\n", ret);
     msgpack_object *profiles_root =  &result.data;
     msgpack_object *profilesArray = msgpack_get_map_value(profiles_root, "profiles");
     msgpack_object *singleProfile = msgpack_get_array_element(profilesArray, 0);
@@ -611,6 +622,7 @@ TEST(PROCESSCONFIGURATION_MSGPACK, TC_OPERATOR_NULL)
     webConfigString = g_base64_decode(data, &decodedDataLen);
     msgpack_unpacked_init(&result);
     ret = msgpack_unpack_next(&result, (char*)webConfigString, decodedDataLen, &off);
+     printf("msgpack_unpack_next() ret: %d\n", ret);
     msgpack_object *profiles_root =  &result.data;
     msgpack_object *profilesArray = msgpack_get_map_value(profiles_root, "profiles");
     msgpack_object *singleProfile = msgpack_get_array_element(profilesArray, 0);
@@ -630,6 +642,7 @@ TEST(PROCESSCONFIGURATION_MSGPACK, TC_INVALID_TYPE)
     webConfigString = g_base64_decode(data, &decodedDataLen);
     msgpack_unpacked_init(&result);
     ret = msgpack_unpack_next(&result, (char*)webConfigString, decodedDataLen, &off);
+     printf("msgpack_unpack_next() ret: %d\n", ret);
     msgpack_object *profiles_root =  &result.data;
     msgpack_object *profilesArray = msgpack_get_map_value(profiles_root, "profiles");
     msgpack_object *singleProfile = msgpack_get_array_element(profilesArray, 0);
@@ -650,6 +663,7 @@ TEST(PROCESSCONFIGURATION_MSGPACK, TC_OPERATOR_INVALID)
     webConfigString = g_base64_decode(data, &decodedDataLen);
     msgpack_unpacked_init(&result);
     ret = msgpack_unpack_next(&result, (char*)webConfigString, decodedDataLen, &off);
+     printf("msgpack_unpack_next() ret: %d\n", ret);
     msgpack_object *profiles_root =  &result.data;
     msgpack_object *profilesArray = msgpack_get_map_value(profiles_root, "profiles");
     msgpack_object *singleProfile = msgpack_get_array_element(profilesArray, 0);
@@ -669,6 +683,7 @@ TEST(PROCESSCONFIGURATION_MSGPACK, TC_NO_THRESHOLD_FOR_OPERATOR)
     webConfigString = g_base64_decode(data, &decodedDataLen);
     msgpack_unpacked_init(&result);
     ret = msgpack_unpack_next(&result, (char*)webConfigString, decodedDataLen, &off);
+     printf("msgpack_unpack_next() ret: %d\n", ret);
     msgpack_object *profiles_root =  &result.data;
     msgpack_object *profilesArray = msgpack_get_map_value(profiles_root, "profiles");
     msgpack_object *singleProfile = msgpack_get_array_element(profilesArray, 0);
@@ -688,6 +703,7 @@ TEST(PROCESSCONFIGURATION_MSGPACK, TC_NO_REFERENCE)
     webConfigString = g_base64_decode(data, &decodedDataLen);
     msgpack_unpacked_init(&result);
     ret = msgpack_unpack_next(&result, (char*)webConfigString, decodedDataLen, &off);
+     printf("msgpack_unpack_next() ret: %d\n", ret);
     msgpack_object *profiles_root =  &result.data;
     msgpack_object *profilesArray = msgpack_get_map_value(profiles_root, "profiles");
     msgpack_object *singleProfile = msgpack_get_array_element(profilesArray, 0);
@@ -708,6 +724,7 @@ TEST(PROCESSCONFIGURATION_MSGPACK, TC_REFERENCE_EMPTY)
     webConfigString = g_base64_decode(data, &decodedDataLen);
     msgpack_unpacked_init(&result);
     ret = msgpack_unpack_next(&result, (char*)webConfigString, decodedDataLen, &off);
+     printf("msgpack_unpack_next() ret: %d\n", ret);
     msgpack_object *profiles_root =  &result.data;
     msgpack_object *profilesArray = msgpack_get_map_value(profiles_root, "profiles");
     msgpack_object *singleProfile = msgpack_get_array_element(profilesArray, 0);
@@ -727,6 +744,7 @@ TEST(PROCESSCONFIGURATION_MSGPACK, DATAMODEL_REF_MANDATORY)
     webConfigString = g_base64_decode(data, &decodedDataLen);
     msgpack_unpacked_init(&result);
     ret = msgpack_unpack_next(&result, (char*)webConfigString, decodedDataLen, &off);
+     printf("msgpack_unpack_next() ret: %d\n", ret);
     msgpack_object *profiles_root =  &result.data;
     msgpack_object *profilesArray = msgpack_get_map_value(profiles_root, "profiles");
     msgpack_object *singleProfile = msgpack_get_array_element(profilesArray, 0);
@@ -745,6 +763,7 @@ TEST(PROCESSCONFIGURATION_MSGPACK, REPORTFORMAT_NULL)
     webConfigString = g_base64_decode(data, &decodedDataLen);
     msgpack_unpacked_init(&result);
     ret = msgpack_unpack_next(&result, (char*)webConfigString, decodedDataLen, &off);
+     printf("msgpack_unpack_next() ret: %d\n", ret);
     msgpack_object *profiles_root =  &result.data;
     msgpack_object *profilesArray = msgpack_get_map_value(profiles_root, "profiles");
     msgpack_object *singleProfile = msgpack_get_array_element(profilesArray, 0);
@@ -763,6 +782,7 @@ TEST(PROCESSCONFIGURATION_MSGPACK, PARAMETER_TYPE_INVALID)
     webConfigString = g_base64_decode(data, &decodedDataLen);
     msgpack_unpacked_init(&result);
     ret = msgpack_unpack_next(&result, (char*)webConfigString, decodedDataLen, &off);
+     printf("msgpack_unpack_next() ret: %d\n", ret);
     msgpack_object *profiles_root =  &result.data;                                                                                 
     msgpack_object *profilesArray = msgpack_get_map_value(profiles_root, "profiles");                                              
     msgpack_object *singleProfile = msgpack_get_array_element(profilesArray, 0);                                                   
@@ -781,6 +801,7 @@ TEST(PROCESSCONFIGURATION_MSGPACK, WORKING_CASE)
     webConfigString = g_base64_decode(data, &decodedDataLen);
     msgpack_unpacked_init(&result);
     ret = msgpack_unpack_next(&result, (char*)webConfigString, decodedDataLen, &off);
+     printf("msgpack_unpack_next() ret: %d\n", ret);
     msgpack_object *profiles_root =  &result.data;
     msgpack_object *profilesArray = msgpack_get_map_value(profiles_root, "profiles");
     msgpack_object *singleProfile = msgpack_get_array_element(profilesArray, 0);

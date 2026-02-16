@@ -63,5 +63,5 @@ profile_gtest_bin_LDFLAGS += \
     -Wl,--wrap=msgpack_get_map_value \
     -Wl,--wrap=msgpack_get_array_element \
     -Wl,--wrap=msgpack_strcmp \
-    -Wl,--wrap=msgpack_strdup \
+    -Wl,--wrap=msgpack_strdup 
 #    -Wl,--wrap=isRbusEnabled

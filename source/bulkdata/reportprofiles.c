@@ -908,7 +908,7 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
     hash_map_t *receivedProfileHashMap = hash_map_create();
      T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
     // Rbus subscription of Tr181 datamodel events
-#if 0
+#if 0 blocking due to this
     if(isRbusEnabled())
     {
      T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
@@ -981,13 +981,12 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
     {
      T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
 
-#if 1
+
         while(count >= 0)
         {
      T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
             profileNameKey = hash_map_lookupKey(profileHashMap, count--);
             T2Debug("%s Map content from disk = %s \n", __FUNCTION__, profileNameKey);
-#if 0
             if(NULL == hash_map_get(receivedProfileHashMap, profileNameKey))
             {
      T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
@@ -997,10 +996,9 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
                 ReportProfiles_deleteProfile(profileNameKey);
                 rm_flag = true;
             }
-#endif
      T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
         }
-#if 0
+#if 1
         if(T2ERROR_SUCCESS != RemovePreRPfromDisk(DirPath, receivedProfileHashMap))
         {
      T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);

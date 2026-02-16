@@ -20,7 +20,7 @@
 #include "test/bulkdata/reportprofilesMock.h"
 
 
-
+reportprofilesMock* g_reportprofilesMock = nullptr;
 
 extern "C" bool __wrap_isRbusEnabled()
 {

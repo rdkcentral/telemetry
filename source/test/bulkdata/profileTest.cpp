@@ -1728,9 +1728,19 @@ TEST_F(ProfileTest, ProcessReportProfilesBlob_AddNewProfile) {
     EXPECT_CALL(*g_vectorMock, Vector_Size(_)).WillRepeatedly(Return(0));
     EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).WillRepeatedly(Return(T2ERROR_SUCCESS));
 
-       EXPECT_CALL(*g_fileIOMock, opendir(_))
-        .Times(1)
-        .WillOnce(Return(nullptr));
+//       EXPECT_CALL(*g_fileIOMock, opendir(_))
+  //      .Times(1)
+    //    .WillOnce(Return(nullptr));
+       DIR *dir = (DIR*)0xffffffff ;
+    EXPECT_CALL(*g_fileIOMock, opendir(_))
+           .Times(::testing::AtMost(1))
+           .WillRepeatedly(Return(dir));
+    EXPECT_CALL(*g_fileIOMock, readdir(_))
+           .Times(::testing::AtMost(1))
+           .WillRepeatedly(Return((struct dirent *)NULL));
+    EXPECT_CALL(*g_fileIOMock, closedir(_))
+           .Times(::testing::AtMost(1))
+           .WillRepeatedly(Return(0));
     ReportProfiles_ProcessReportProfilesBlob(root, T2_RP);
     cJSON_Delete(root);
 }

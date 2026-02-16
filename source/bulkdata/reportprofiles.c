@@ -1006,7 +1006,6 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
      T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
         }
 #endif
-#endif
      T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
     }
 #if 0

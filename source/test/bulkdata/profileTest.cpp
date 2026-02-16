@@ -1678,13 +1678,13 @@ TEST_F(ProfileTest, ProcessMsgPackBlob_InvalidFormat) {
 #if 1
 TEST_F(ProfileTest, ProcessMsgPackBlob_Test1) {
    printf("##### test starts\n");
-   char *data = "3wAAAAGocHJvZmlsZXPdAAAAAd8AAAADpG5hbWWsUkRLQl9Qcm9maWxlpGhhc2ilSGFzaDKldmFsdWXfAAAADaROYW1lb...";
+   const  char *data = "3wAAAAGocHJvZmlsZXPdAAAAAd8AAAADpG5hbWWsUkRLQl9Qcm9maWxlpGhhc2ilSGFzaDKldmFsdWXfAAAADaROYW1lb...";
 // decode
    gsize decodedDataLen = 0;
    guchar *webConfigString = g_base64_decode(data, &decodedDataLen);
 
 // allocate and fill
-   struct __msgpack__ *msg = malloc(sizeof(struct __msgpack__));
+   struct __msgpack__ *msg = (struct __msgpack__*)malloc(sizeof(struct __msgpack__));
    msg->msgpack_blob = (char*)webConfigString;
    msg->msgpack_blob_size = (int)decodedDataLen;
 

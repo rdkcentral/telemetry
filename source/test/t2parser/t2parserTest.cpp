@@ -362,6 +362,7 @@ TEST(PROCESSCONFIGURATION_MSGPACK, PROTOCOL_NULL)
     webConfigString = g_base64_decode(data, &decodedDataLen);
     msgpack_unpacked_init(&result);
     ret = msgpack_unpack_next(&result, (char*)webConfigString, decodedDataLen, &off);
+    printf("msgpack_unpack_next() ret: %d\n", ret);
     msgpack_object *profiles_root =  &result.data;
     msgpack_object *profilesArray = msgpack_get_map_value(profiles_root, "profiles");
     msgpack_object *singleProfile = msgpack_get_array_element(profilesArray, 0);
@@ -381,6 +382,7 @@ TEST(PROCESSCONFIGURATION_MSGPACK, ENCODING_NULL)
     webConfigString = g_base64_decode(data, &decodedDataLen);
     msgpack_unpacked_init(&result);
     ret = msgpack_unpack_next(&result, (char*)webConfigString, decodedDataLen, &off);
+    printf("msgpack_unpack_next() ret: %d\n", ret);
     msgpack_object *profiles_root =  &result.data;
     msgpack_object *profilesArray = msgpack_get_map_value(profiles_root, "profiles");
     msgpack_object *singleProfile = msgpack_get_array_element(profilesArray, 0);

@@ -1678,7 +1678,8 @@ TEST_F(ProfileTest, ProcessMsgPackBlob_InvalidFormat) {
 #if 1
 TEST_F(ProfileTest, ProcessMsgPackBlob_Test1) {
    printf("##### test starts\n");
-   const  char *data = "3wAAAAGocHJvZmlsZXPdAAAAAd8AAAADpG5hbWWsUkRLQl9Qcm9maWxlpGhhc2ilSGFzaDKldmFsdWXfAAAADaROYW1lb...";
+  // const  char *data = "3wAAAAGocHJvZmlsZXPdAAAAAd8AAAADpG5hbWWsUkRLQl9Qcm9maWxlpGhhc2ilSGFzaDKldmFsdWXfAAAADaROYW1lb...";
+  const char *data = "AQ==";
 // decode
    gsize decodedDataLen = 0;
    guchar *webConfigString = g_base64_decode(data, &decodedDataLen);

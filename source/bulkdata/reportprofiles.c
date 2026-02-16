@@ -928,7 +928,6 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
             T2Error("Incomplete profile information, unable to create profile for index %u \n", profileIndex);
             continue;
         }
-#if 0
      T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
         cJSON* nameObj = cJSON_GetObjectItem(singleProfile, "name");
         cJSON* hashObj = cJSON_GetObjectItem(singleProfile, "hash");
@@ -950,6 +949,7 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
         }
 
      T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
+#if 0
         ReportProfile *profileEntry = (ReportProfile *)malloc(sizeof(ReportProfile));
         profileName = strdup(nameObj->valuestring);
         profileEntry->hash = strdup(hashObj->valuestring);

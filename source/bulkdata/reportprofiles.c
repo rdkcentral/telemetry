@@ -915,6 +915,7 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
         getMarkerCompRbusSub(false);
      T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
     }
+#endif
      T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
     // Populate profile hash map for current configuration
     for( profileIndex = 0; profileIndex < profiles_count; profileIndex++ )
@@ -927,7 +928,7 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
             T2Error("Incomplete profile information, unable to create profile for index %u \n", profileIndex);
             continue;
         }
-
+#if 0
      T2Debug("function %s line %d\n", __FUNCTION__,__LINE__);
         cJSON* nameObj = cJSON_GetObjectItem(singleProfile, "name");
         cJSON* hashObj = cJSON_GetObjectItem(singleProfile, "hash");
@@ -954,9 +955,10 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
         profileEntry->hash = strdup(hashObj->valuestring);
         profileEntry->config = cJSON_PrintUnformatted(profileObj);
         hash_map_put(receivedProfileHashMap, profileName, profileEntry, freeReportProfileHashMap);
-
+#endif
+	printf("rosemarybenny\n");
     } // End of looping through report profiles
-
+#if 0
     // Delete profiles not present in the new profile list
     char *profileNameKey = NULL;
     int count = hash_map_count(profileHashMap) - 1;

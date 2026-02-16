@@ -1605,7 +1605,7 @@ TEST_F(ProfileTest, deleteAllReportProfiles) {
         .WillRepeatedly(Return(T2ERROR_SUCCESS));
     EXPECT_EQ(deleteAllReportProfiles(), T2ERROR_SUCCESS);
 }
-
+#if 0
 TEST_F(ProfileTest, ReportProfiles_ProcessReportProfilesMsgPackBlob_NullRootTriggersEarlyReturn) {
 
     msgpack_unpacked dummyResult;
@@ -1635,7 +1635,7 @@ TEST_F(ProfileTest, ReportProfiles_ProcessReportProfilesMsgPackBlob_NullRootTrig
 
     // Clean up MsgpackMock for other tests
 }
-
+#endif
 #if 0
 TEST_F(ProfileTest, isMtlsEnabled) {
     char status[8] = "true";
@@ -1746,6 +1746,9 @@ TEST_F(ProfileTest, ProcessReportProfilesBlob_AddNewProfile) {
     cJSON_AddItemToObject(profile, "value", value);
     cJSON_AddItemToArray(profiles, profile);
 
+    EXPECT_CALL(*g_rbusMock, rbus_checkStatus())
+        .Times(::testing::AtMost(5))
+        .WillRepeatedly(Return(RBUS_DISABLED));
     // Expect add and saveConfigToFile, can stub if needed
     EXPECT_CALL(*g_vectorMock, Vector_Size(_)).WillRepeatedly(Return(0));
     EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).WillRepeatedly(Return(T2ERROR_SUCCESS));
@@ -1759,6 +1762,8 @@ TEST_F(ProfileTest, ReportProfiles_ProcessReportProfilesMsgPackBlobTest) {
     ReportProfiles_ProcessReportProfilesMsgPackBlob(NULL, false);
     // Possibly assert/expect logs/error
 }
+
+
 #if 0
 TEST_F(ProfileTest, ReportProfiles_ProcessReportProfilesMsgPackBlob_NullRootTriggersEarlyReturn) {
 

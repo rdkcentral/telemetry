@@ -71,7 +71,6 @@ reportprofiles_gtest_bin_SOURCES = \
     ../mocks/rbusMock.cpp \
     ../mocks/rdkconfigMock.cpp \
     ../mocks/VectorMock.cpp \
-    ../mocks/MsgpackMock.cpp \
     SchedulerMock.cpp \
     ../../bulkdata/reportprofiles.c \
     reportprofilesTest.cpp \

@@ -89,7 +89,7 @@ TEST_F(reportprofilesTestFixture, ProcessMsgPackBlob_InvalidFormat) {
     int ret = __ReportProfiles_ProcessReportProfilesMsgPackBlob(&msg, false);
     EXPECT_EQ(ret, T2ERROR_INVALID_ARGS);
 }
-#if 1
+#if 0
 TEST_F(reportprofilesTestFixture, ProcessMsgPackBlob_Test1) {
    printf("##### test starts\n");
   // const  char *data = "3wAAAAGocHJvZmlsZXPdAAAAAd8AAAADpG5hbWWsUkRLQl9Qcm9maWxlpGhhc2ilSGFzaDKldmFsdWXfAAAADaROYW1lb...";

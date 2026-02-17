@@ -17,6 +17,7 @@
 */
 #include <stdbool.h>
 #include <cjson/cJSON.h>
+#include "vector.h"
 #include "test/bulkdata/reportprofileMock.h"
 
 

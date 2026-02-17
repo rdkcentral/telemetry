@@ -30,8 +30,10 @@
 
 #include "t2log_wrapper.h"
 #include "t2common.h"
+#ifndef LIBRDKCERTSELECTOR
 #ifdef LIBRDKCONFIG_BUILD
 #include "rdkconfig.h"
+#endif
 #endif
 
 

@@ -50,8 +50,10 @@
 #include "rdkcertselector.h"
 #define FILESCHEME "file://"
 #endif
+#ifndef LIBRDKCERTSELECTOR
 #ifdef LIBRDKCONFIG_BUILD
 #include "rdkconfig.h"
+#endif
 #endif
 #define RFC_RETRY_TIMEOUT 60
 #define XCONF_RETRY_TIMEOUT 180

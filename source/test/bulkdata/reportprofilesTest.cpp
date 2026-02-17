@@ -41,7 +41,8 @@ extern "C" {
 using namespace std;
 using ::testing::_;
 using ::testing::Return;
-
+using ::testing::StrEq;
+using ::testing::Invoke;
 // Create global mocks if you need them just like t2markersTest.cpp
 FileMock *g_fileIOMock = NULL;
 SystemMock * g_systemMock = NULL;

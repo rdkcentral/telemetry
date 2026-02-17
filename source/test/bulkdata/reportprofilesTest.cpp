@@ -117,6 +117,161 @@ TEST_F(reportprofilesTestFixture, T2totalmemCalculateApiWorks) {
     T2totalmem_calculate();
 }
 
+TEST_F(ProfileTest, ProcessMsgPackBlob_InvalidFormat) {
+    struct __msgpack__ msg;
+    msg.msgpack_blob = nullptr;
+    msg.msgpack_blob_size = 0;
+    int ret = __ReportProfiles_ProcessReportProfilesMsgPackBlob(&msg, false);
+    EXPECT_EQ(ret, T2ERROR_INVALID_ARGS);
+}
+#if 0
+TEST_F(ProfileTest, ProcessMsgPackBlob_Test1) {
+   printf("##### test starts\n");
+  // const  char *data = "3wAAAAGocHJvZmlsZXPdAAAAAd8AAAADpG5hbWWsUkRLQl9Qcm9maWxlpGhhc2ilSGFzaDKldmFsdWXfAAAADaROYW1lb...";
+  const char *data = "AQ==";
+// decode
+   gsize decodedDataLen = 0;
+   guchar *webConfigString = g_base64_decode(data, &decodedDataLen);
+
+// allocate and fill
+   struct __msgpack__ *msg = (struct __msgpack__*)malloc(sizeof(struct __msgpack__));
+   msg->msgpack_blob = (char*)webConfigString;
+   msg->msgpack_blob_size = (int)decodedDataLen;
+
+// call target
+  int ret = __ReportProfiles_ProcessReportProfilesMsgPackBlob((void*)msg, false);
+
+// cleanup
+  free(msg);
+  g_free(webConfigString);
+}
+#endif
+TEST_F(ProfileTest, ProcessReportProfilesBlob_EmptyProfile_T2_TEMP_RP) {
+    cJSON *root = cJSON_CreateObject();
+    cJSON *profiles = cJSON_CreateArray();
+    cJSON_AddItemToObject(root, "profiles", profiles);
+    ReportProfiles_ProcessReportProfilesBlob(root, T2_TEMP_RP);
+    cJSON_Delete(root);
+}
+
+TEST_F(ProfileTest, ProcessReportProfilesBlob_EmptyProfile_Normal) {
+    cJSON *root = cJSON_CreateObject();
+    cJSON *profiles = cJSON_CreateArray();
+    cJSON_AddItemToObject(root, "profiles", profiles);
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_)).WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).WillRepeatedly(Return(T2ERROR_SUCCESS));
+    ReportProfiles_ProcessReportProfilesBlob(root, T2_RP); // normal, triggers deleteAllReportProfiles
+    cJSON_Delete(root);
+}
+
+TEST_F(ProfileTest, ProcessReportProfilesBlob_AddNewProfile) {
+    // New profile, triggers add logic and saveConfigToFile
+    cJSON *root = cJSON_CreateObject();
+    cJSON *profiles = cJSON_CreateArray();
+    cJSON_AddItemToObject(root, "profiles", profiles);
+    cJSON *profile = cJSON_CreateObject();
+    cJSON_AddStringToObject(profile, "name", "newprofile");
+    cJSON_AddStringToObject(profile, "hash", "newhash");
+    cJSON *value = cJSON_CreateObject();
+    cJSON_AddStringToObject(value, "param", "value");
+    cJSON_AddItemToObject(profile, "value", value);
+    cJSON_AddItemToArray(profiles, profile);
+
+      EXPECT_CALL(*g_t2markersMock, isRbusEnabled())
+        .Times(1)
+        .WillOnce(Return(false));
+    // Expect add and saveConfigToFile, can stub if needed
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_)).WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).WillRepeatedly(Return(T2ERROR_SUCCESS));
+
+//       EXPECT_CALL(*g_fileIOMock, opendir(_))
+  //      .Times(1)
+    //    .WillOnce(Return(nullptr));
+       DIR *dir = (DIR*)0xffffffff ;
+    EXPECT_CALL(*g_fileIOMock, opendir(_))
+           .Times(::testing::AtMost(1))
+           .WillRepeatedly(Return(dir));
+    EXPECT_CALL(*g_fileIOMock, readdir(_))
+           .Times(::testing::AtMost(1))
+           .WillRepeatedly(Return((struct dirent *)NULL));
+    EXPECT_CALL(*g_fileIOMock, closedir(_))
+           .Times(::testing::AtMost(1))
+           .WillRepeatedly(Return(0));
+    ReportProfiles_ProcessReportProfilesBlob(root, T2_RP);
+    cJSON_Delete(root);
+}
+TEST_F(ProfileTest, ReportProfiles_ProcessReportProfilesMsgPackBlobTest) {
+    // Should return early if root is NULL
+    ReportProfiles_ProcessReportProfilesMsgPackBlob(NULL, false);
+    // Possibly assert/expect logs/error
+}
+#if 0
+TEST_F(ProfileTest, ProcessReportProfilesBlob_AddNewProfile) {
+
+    // New profile, triggers add logic and saveConfigToFile
+
+    cJSON *root = cJSON_CreateObject();
+
+    cJSON *profiles = cJSON_CreateArray();
+
+    cJSON_AddItemToObject(root, "profiles", profiles);
+
+    cJSON *profile = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(profile, "name", "newprofile");
+
+    cJSON_AddStringToObject(profile, "hash", "newhash");
+
+    cJSON *value = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(value, "param", "value");
+
+    cJSON_AddItemToObject(profile, "value", value);
+
+    cJSON_AddItemToArray(profiles, profile);
+
+    EXPECT_CALL(*g_t2markersMock, isRbusEnabled())
+        .Times(1)
+        .WillOnce(Return(false))
+    // Expect add and saveConfigToFile, can stub if needed
+
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_)).WillRepeatedly(Return(0));
+
+    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).WillRepeatedly(Return(T2ERROR_SUCCESS));
+
+//       EXPECT_CALL(*g_fileIOMock, opendir(_))
+
+  //      .Times(1)
+
+    //    .WillOnce(Return(nullptr));
+
+       DIR *dir = (DIR*)0xffffffff ;
+
+    EXPECT_CALL(*g_fileIOMock, opendir(_))
+
+           .Times(::testing::AtMost(1))
+
+           .WillRepeatedly(Return(dir));
+
+    EXPECT_CALL(*g_fileIOMock, readdir(_))
+
+           .Times(::testing::AtMost(1))
+
+           .WillRepeatedly(Return((struct dirent *)NULL));
+
+    EXPECT_CALL(*g_fileIOMock, closedir(_))
+
+           .Times(::testing::AtMost(1))
+
+           .WillRepeatedly(Return(0));
+
+    ReportProfiles_ProcessReportProfilesBlob(root, T2_RP);
+
+    cJSON_Delete(root);
+
+}
+#emdif
+
 #if 0
 // Example test for MsgPack blob processing
 TEST_F(reportprofilesTestFixture, MsgpackBlobValidInput) {

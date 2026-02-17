@@ -903,7 +903,7 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
     hash_map_t *profileHashMap = getProfileHashMap();
     hash_map_t *receivedProfileHashMap = hash_map_create();
     // Rbus subscription of Tr181 datamodel events
-    if(isRbusEnabled()!)
+    if(!(isRbusEnabled()))
     {
 	    printf("mock call satisfieddddddddddddd\n");
     }

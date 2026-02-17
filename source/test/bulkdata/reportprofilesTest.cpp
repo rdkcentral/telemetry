@@ -160,6 +160,8 @@ TEST_F(reportprofilesTestFixture, ProcessReportProfilesBlob_AddNewProfile) {
     EXPECT_CALL(*g_fileIOMock, closedir(_))
            .Times(::testing::AtMost(1))
            .WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_reportprofileMock, isRbusEnabled())
+        .WillRepeatedly(Return(false));
     ReportProfiles_ProcessReportProfilesBlob(root, T2_RP);
     cJSON_Delete(root);
 }

@@ -977,7 +977,6 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
             T2Error("Failed to remove previous report profile from the disk\n");
         }
     }
-#if 0
     if(isRbusEnabled())
     {
         unregisterDEforCompEventList();
@@ -1065,7 +1064,7 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
             }
         }
     }
-
+#if 0
     if (rm_flag)
     {
         removeProfileFromDisk(DirPath, MSGPACK_REPORTPROFILES_PERSISTENT_FILE);

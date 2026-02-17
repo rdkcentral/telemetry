@@ -46,6 +46,8 @@ public:
     MOCK_METHOD(void*, getRbusProfileParamValues, (void*, int));
     MOCK_METHOD(int, registerRbusT2EventListener, (void*));
     MOCK_METHOD(void, unregisterRbusT2EventListener, ());
+    MOCK_METHOD(T2ERROR, sendReportOverHTTP, (char *httpUrl, char *payload), ());
+    MOCK_METHOD(T2ERROR, sendCachedReportsOverHTTP, (char *httpUrl, Vector *reportList), ());
 };
 
 extern reportprofileMock *g_reportprofileMock;

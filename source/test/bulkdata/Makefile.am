@@ -79,7 +79,9 @@ profile_gtest_bin_LDFLAGS += \
     -Wl,--wrap=getRbusParameterVal \
     -Wl,--wrap=getRbusProfileParamValues \
     -Wl,--wrap=registerRbusT2EventListener \
-    -Wl,--wrap=unregisterRbusT2EventListener
+    -Wl,--wrap=unregisterRbusT2EventListener \
+     -Wl,--wrap=sendReportOverHTTP \
+     -Wl,--wrap=sendCachedReportsOverHTTP
 
 reportprofiles_gtest_bin_CFLAGS = -DGTEST_ENABLE
 
@@ -123,5 +125,6 @@ reportprofiles_gtest_bin_LDFLAGS += -Wl,--wrap=isRbusEnabled -Wl,--wrap=unregist
                                     -Wl,--wrap=getRbusParameterVal \
                                     -Wl,--wrap=getRbusProfileParamValues \
                                     -Wl,--wrap=registerRbusT2EventListener \
-                                    -Wl,--wrap=unregisterRbusT2EventListener
+                                    -Wl,--wrap=unregisterRbusT2EventListener \
+				    -Wl,--wrap=sendReportOverHTTP -Wl,--wrap=sendCachedReportsOverHTTP
 

@@ -1280,6 +1280,7 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
         T2Error("The data in the buf is invalid format.\n");
         return T2ERROR_INVALID_ARGS;
     }
+#if 0
     profiles_root = &result.data;
     if(profiles_root == NULL)
     {
@@ -1451,6 +1452,7 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
     msgpack_unpacked_destroy(&result);
     hash_map_destroy(profileHashMap, freeProfilesHashMap);
     clearPersistenceFolder(CACHED_MESSAGE_PATH);
+#endif
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }

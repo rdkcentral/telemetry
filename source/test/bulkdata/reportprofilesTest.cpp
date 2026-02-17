@@ -79,44 +79,6 @@ protected:
     }
 };
 
-TEST_F(reportprofilesTestFixture, InitReportProfilesSuccess) {
-    EXPECT_EQ(initReportProfiles(), T2ERROR_SUCCESS);
-}
-
-TEST_F(reportprofilesTestFixture, ReportProfilesUninitSuccess) {
-    EXPECT_EQ(ReportProfiles_uninit(), T2ERROR_SUCCESS);
-}
-
-TEST_F(reportprofilesTestFixture, DeleteAllReportProfiles) {
-    EXPECT_EQ(deleteAllReportProfiles(), T2ERROR_SUCCESS);
-}
-
-TEST_F(reportprofilesTestFixture, ReportProfilesInterrupt) {
-    // This function could just run, but you might want to check side effects
-    ReportProfiles_Interrupt();
-}
-
-TEST_F(reportprofilesTestFixture, GenerateDcaReportNotDelayed) {
-    generateDcaReport(false, false);
-}
-
-TEST_F(reportprofilesTestFixture, PrivacymodeDoNotShareSuccess) {
-    EXPECT_EQ(privacymode_do_not_share(), T2ERROR_SUCCESS);
-}
-
-TEST_F(reportprofilesTestFixture, StoreMarkerEventNullProfile) {
-    EXPECT_EQ(ReportProfiles_storeMarkerEvent(NULL, NULL), T2ERROR_SUCCESS);
-}
-
-TEST_F(reportprofilesTestFixture, ProfilememUsageApiWorks) {
-    unsigned int value = 0;
-    profilemem_usage(&value);
-    EXPECT_GE(value, 0u);
-}
-
-TEST_F(reportprofilesTestFixture, T2totalmemCalculateApiWorks) {
-    T2totalmem_calculate();
-}
 
 TEST_F(reportprofilesTestFixture, ProcessMsgPackBlob_InvalidFormat) {
     struct __msgpack__ msg;

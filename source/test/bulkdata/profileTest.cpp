@@ -124,6 +124,9 @@ TEST_F(ProfileTest, InitProfileList_Success) {
            .Times(::testing::AtMost(1))
            .WillRepeatedly(Return(0));
 
+    EXPECT_CALL(*g_profileMock, registerConditionalReportCallBack(::testing::_))
+    .Times(1);
+
     EXPECT_EQ(initProfileList(false), T2ERROR_SUCCESS);
     Vector_Destroy(configlist, free);
 }

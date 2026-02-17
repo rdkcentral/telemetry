@@ -903,12 +903,7 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
     hash_map_t *profileHashMap = getProfileHashMap();
     hash_map_t *receivedProfileHashMap = hash_map_create();
     // Rbus subscription of Tr181 datamodel events
-    if(!(isRbusEnabled()))
-    {
-	    printf("mock call satisfieddddddddddddd\n");
-    }
-#if 0
-    else(isRbusEnabled())
+    if(isRbusEnabled())
     {
         getMarkerCompRbusSub(false);
     }
@@ -982,7 +977,7 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
             T2Error("Failed to remove previous report profile from the disk\n");
         }
     }
-
+#if 0
     if(isRbusEnabled())
     {
         unregisterDEforCompEventList();
@@ -1088,7 +1083,6 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
     }
     hash_map_destroy(receivedProfileHashMap, freeReportProfileHashMap);
     hash_map_destroy(profileHashMap, freeProfilesHashMap);
-#endif
     T2Debug("%s --out\n", __FUNCTION__);
     return;
 }

@@ -178,7 +178,7 @@ TEST_F(reportprofilesTestFixture, ProcessReportProfilesBlob_AddNewProfile) {
     cJSON_AddItemToObject(profile, "value", value);
     cJSON_AddItemToArray(profiles, profile);
 
-      EXPECT_CALL(*g_t2markersMock, isRbusEnabled())
+      EXPECT_CALL(*g_reportprofileMock, isRbusEnabled())
         .Times(1)
         .WillOnce(Return(false));
     // Expect add and saveConfigToFile, can stub if needed

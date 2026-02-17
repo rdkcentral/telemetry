@@ -17,7 +17,7 @@
 #include "test/mocks/rdkconfigMock.h"
 #include "test/mocks/VectorMock.h"
 #include "test/bulkdata/SchedulerMock.h"
-
+#include "test/bulkdata/profileMock.h"
 using namespace std;
 
 using ::testing::_;
@@ -46,6 +46,7 @@ SystemMock * g_systemMock = NULL;
 rdklogMock *m_rdklogMock = NULL;
 rbusMock *g_rbusMock = NULL;
 rdkconfigMock *g_rdkconfigMock = nullptr;
+profileMock *g_profileMock = nullptr;
 extern VectorMock *g_vectorMock;
 extern SchedulerMock *g_schedulerMock;
 
@@ -59,6 +60,7 @@ protected:
 	g_rdkconfigMock = new rdkconfigMock();
 	g_vectorMock = new VectorMock();
 	g_schedulerMock = new SchedulerMock();
+	g_profileMock = new profileMock();
     }
     void TearDown() override 
     {
@@ -68,6 +70,7 @@ protected:
        delete g_rdkconfigMock;
        delete g_vectorMock;
        delete g_schedulerMock;
+       delete g_profileMock;
 
         g_fileIOMock = nullptr;
         g_systemMock = nullptr;
@@ -75,6 +78,7 @@ protected:
 	g_rdkconfigMock = nullptr;
 	g_vectorMock = nullptr;
 	g_schedulerMock = nullptr;
+	g_profileMock = nullptr;
     }
 };
 

@@ -27,7 +27,7 @@ class profileMock
 public:
 
     MOCK_METHOD(T2ERROR, sendReportOverHTTP, (char *httpUrl, char *payload), ());
-    MOCK_METHOD(T2ERROR, sendCachedReportsOverHTTP, (char *httpUrl), ());
+    MOCK_METHOD(T2ERROR, sendCachedReportsOverHTTP, (char *httpUrl, Vector *reportList), ());
     MOCK_METHOD(void, T2RbusReportEventConsumer, (const char*, const char*));
     MOCK_METHOD(int, rbusCheckMethodExists, (const char*, const char*, const char*));
     MOCK_METHOD(int, rbusT2ConsumerUnReg, (void*, void*));

@@ -87,7 +87,7 @@ TEST_F(reportprofilesTestFixture, ProcessMsgPackBlob_InvalidFormat) {
     int ret = __ReportProfiles_ProcessReportProfilesMsgPackBlob(&msg, false);
     EXPECT_EQ(ret, T2ERROR_INVALID_ARGS);
 }
-#if 0
+#if 1
 TEST_F(reportprofilesTestFixture, ProcessMsgPackBlob_Test1) {
    printf("##### test starts\n");
   // const  char *data = "3wAAAAGocHJvZmlsZXPdAAAAAd8AAAADpG5hbWWsUkRLQl9Qcm9maWxlpGhhc2ilSGFzaDKldmFsdWXfAAAADaROYW1lb...";
@@ -101,6 +101,9 @@ TEST_F(reportprofilesTestFixture, ProcessMsgPackBlob_Test1) {
    msg->msgpack_blob = (char*)webConfigString;
    msg->msgpack_blob_size = (int)decodedDataLen;
 
+      EXPECT_CALL(*g_reportprofileMock, isRbusEnabled())
+        .Times(1)
+        .WillOnce(Return(false))
 // call target
   int ret = __ReportProfiles_ProcessReportProfilesMsgPackBlob((void*)msg, false);
 

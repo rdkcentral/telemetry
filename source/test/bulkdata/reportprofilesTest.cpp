@@ -36,6 +36,7 @@ extern "C" {
 #include "test/mocks/rdkconfigMock.h"
 #include "test/mocks/VectorMock.h"
 #include "test/bulkdata/SchedulerMock.h"
+#include "reportprofileMock.h"
 
 using namespace std;
 using ::testing::_;
@@ -49,11 +50,12 @@ rbusMock *g_rbusMock = NULL;
 rdkconfigMock *g_rdkconfigMock = nullptr;
 extern VectorMock *g_vectorMock;
 extern SchedulerMock *g_schedulerMock;
-
+reportprofileMock* g_reportprofileMock = nullptr;
 // Test fixture for reportprofiles
 class reportprofilesTestFixture : public ::testing::Test {
 protected:
     void SetUp() override {
+	g_reportprofileMock = new reportprofileMock();    
         g_systemMock = new SystemMock();
         g_fileIOMock = new FileMock();
         m_rdklogMock = new rdklogMock();
@@ -61,11 +63,13 @@ protected:
         g_vectorMock = new VectorMock();
     }
     void TearDown() override {
+	delete g_reportprofileMock;    
         delete g_systemMock;
         delete g_fileIOMock;
         delete m_rdklogMock;
         delete g_rbusMock;
         delete g_vectorMock;
+	g_reportprofileMock = nullptr;
         g_systemMock = nullptr;
         g_fileIOMock = nullptr;
         m_rdklogMock = nullptr;

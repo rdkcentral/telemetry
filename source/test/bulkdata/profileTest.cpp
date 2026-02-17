@@ -1021,6 +1021,10 @@ TEST(ReportProfilesCallbacks, FreeReportProfileHashMap) {
 //comment
 //=================================== profilexconf.c ================================
 
+extern "C" {
+         void test_set_reportThreadExits(bool value);
+ }
+
 TEST_F(ProfileTest, InitAndUninit) {
     // Covers ProfileXConf_init and ProfileXConf_uninit
 #if 1
@@ -1052,7 +1056,7 @@ TEST_F(ProfileTest, InitAndUninit) {
 #endif
     EXPECT_EQ(ProfileXConf_init(false), T2ERROR_SUCCESS);
 }
-
+#if 0
 TEST_F(ProfileTest, SetAndIsSet) {
     // Covers ProfileXConf_set and ProfileXConf_isSet
     ProfileXConf* profile = (ProfileXConf*)malloc(sizeof(ProfileXConf));
@@ -1104,7 +1108,82 @@ TEST_F(ProfileTest, SetAndIsSet) {
     
     EXPECT_EQ(ProfileXConf_uninit(), T2ERROR_SUCCESS);
 }
+#endif
+TEST_F(ProfileTest, SetAndIsSet) {
+    // Covers ProfileXConf_set and ProfileXConf_isSet
+    ProfileXConf* profile = (ProfileXConf*)malloc(sizeof(ProfileXConf));
+    memset(profile, 0, sizeof(ProfileXConf));
+    profile->name = strdup("TestProfile");
+    profile->eMarkerList = nullptr;
+    profile->gMarkerList = nullptr;
+    profile->topMarkerList = nullptr;
+    profile->paramList = nullptr;
+    profile->cachedReportList = nullptr;
+    profile->protocol = strdup("HTTP");
+    profile->encodingType = strdup("JSON");
+#if 0
+    profile->t2HTTPDest = nullptr;
+    profile->grepSeekProfile = nullptr;
+    profile->reportInProgress = false;
+    profile->isUpdated = false;
+#endif
+    profile->jsonReportObj = nullptr;  // types now match
+    profile->checkPreviousSeek = true;
 
+    profile->t2HTTPDest = (T2HTTP *)malloc(sizeof(T2HTTP));
+    profile->t2HTTPDest->URL = strdup("https://mock1xconf:50051/dataLakeMockXconf");
+    profile->isUpdated = true;
+    GrepSeekProfile *gsProfile = (GrepSeekProfile *)malloc(sizeof(GrepSeekProfile));
+    if (gsProfile)
+    {
+         gsProfile->logFileSeekMap = hash_map_create();
+         gsProfile->execCounter = 0;
+    }
+    profile->grepSeekProfile = gsProfile;
+    //profile->grepSeekProfile = nullptr;
+    profile->reportInProgress = false;
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(::testing::AtMost(3))
+        .WillRepeatedly(Return(0)); // Return 1 to indicate one profile in the list
+    EXPECT_CALL(*g_vectorMock, Vector_At(_, 0))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return((void*)strdup("PROFILE_1")));
+    EXPECT_CALL(*g_vectorMock, Vector_Create(_))
+        .Times(::testing::AtMost(3))  // 1 for local test configlist, 1 for global profileList, 1 for configList in loadReportProfilesFromDisk
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_vectorMock, Vector_PushBack(_, _))
+        .Times(::testing::AtMost(3))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+
+    // Scheduler mock expectations - ProfileXConf_set calls registerProfileWithScheduler
+    EXPECT_CALL(*g_schedulerMock, registerProfileWithScheduler(_, _, _, _, _, _, _, _))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+
+    EXPECT_EQ(ProfileXConf_set(profile), T2ERROR_SUCCESS);
+    EXPECT_TRUE(ProfileXConf_isSet());
+
+
+    // Get name
+    char* name = ProfileXconf_getName();
+    ASSERT_NE(name, nullptr);
+    EXPECT_STREQ(name, "TestProfile");
+    free(name);
+
+   test_set_reportThreadExits(true);
+   generateDcaReport(false,true);
+    EXPECT_CALL(*g_schedulerMock, SendInterruptToTimeoutThread(_))
+        .Times(::testing::AtMost(1));
+
+    ReportProfiles_Interrupt();
+#if 0
+    // Clean up - ProfileXConf_uninit calls unregisterProfileFromScheduler
+    EXPECT_CALL(*g_schedulerMock, unregisterProfileFromScheduler(_))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+#endif
+    EXPECT_EQ(ProfileXConf_uninit(), T2ERROR_SUCCESS);
+}
 TEST_F(ProfileTest, IsNameEqual) {
     ProfileXConf* profile = (ProfileXConf*)malloc(sizeof(ProfileXConf));
     memset(profile, 0, sizeof(ProfileXConf));

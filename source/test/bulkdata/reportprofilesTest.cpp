@@ -110,6 +110,7 @@ TEST_F(reportprofilesTestFixture, T2totalmemCalculateApiWorks) {
     T2totalmem_calculate();
 }
 
+#if 0
 // Example test for MsgPack blob processing
 TEST_F(reportprofilesTestFixture, MsgpackBlobValidInput) {
     // Generate a valid msgpack blob, fill struct __msgpack__ and call the function
@@ -119,6 +120,6 @@ TEST_F(reportprofilesTestFixture, MsgpackBlobValidInput) {
     msg.msgpack_blob_size = /* assign size */;
     EXPECT_LE(__ReportProfiles_ProcessReportProfilesMsgPackBlob(&msg, false), T2ERROR_SUCCESS);
 }
-
+#endif
 // Add more tests for edge cases and negative scenarios as needed
 

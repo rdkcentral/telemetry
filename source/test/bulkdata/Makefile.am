@@ -67,13 +67,28 @@ reportprofiles_gtest_bin_SOURCES = \
     gtest_main.cpp \
     reportprofilesTest.cpp \
     ../../bulkdata/reportprofiles.c \
+    ../../bulkdata/xconfclient.c \
+    ../../bulkdata/t2collection.c \
+    ../../bulkdata/persistence.c \
+    ../../bulkdata/t2log_wrapper.c \
+    ../../bulkdata/profile.c \
+    ../../bulkdata/profilexconf.c \
+    ../../bulkdata/t2eventreceiver.c \
+    ../../bulkdata/scheduler.c \
+    ../../bulkdata/t2markers.c \
+    ../../bulkdata/datamodel.c \
+    ../../bulkdata/msgpack.c \
+    ../../bulkdata/busInterface.c \
+    ../../bulkdata/t2parser.c \
+    ../../bulkdata/t2MtlsUtils.c \
     ../mocks/SystemMock.cpp \
     ../mocks/FileioMock.cpp \
     ../mocks/rdklogMock.cpp \
     ../mocks/rbusMock.cpp \
     ../mocks/rdkconfigMock.cpp \
     ../mocks/VectorMock.cpp \
-    SchedulerMock.cpp ../../bulkdata/profile.c ../../bulkdata/profilexconf.c ../../utils/vector.c ../../utils/t2log_wrapper.c ../../utils/t2common.c ../../utils/t2collection.c ../../utils/persistence.c ../../bulkdata/t2markers.c ../../reportgen/reportgen.c ../../dcautil/legacyutils.c
+    ../mocks/MsgpackMock.cpp \
+    SchedulerMock.cpp
 
 reportprofiles_gtest_bin_LDFLAGS = \
     -L/usr/src/googletest/googletest/lib/.libs \
@@ -82,10 +97,5 @@ reportprofiles_gtest_bin_LDFLAGS = \
     -lcjson -lmsgpackc -lglib-2.0 \
     -lrt -lcurl
 
-reportprofiles_gtest_bin_LDFLAGS += \
-    -Wl,--wrap=msgpack_get_map_value \
-    -Wl,--wrap=msgpack_get_array_element \
-    -Wl,--wrap=msgpack_strcmp \
-    -Wl,--wrap=msgpack_strdup
 
 

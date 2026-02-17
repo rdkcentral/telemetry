@@ -29,23 +29,26 @@ extern "C" {
 #include "msgpack.h"
 }
 
-#include "../mocks/SystemMock.h"
-#include "../mocks/FileioMock.h"
-#include "../mocks/rdklogMock.h"
-#include "../mocks/rbusMock.h"
-#include "../mocks/VectorMock.h"
-#include "SchedulerMock.h"
+#include "test/mocks/SystemMock.h"
+#include "test/mocks/FileioMock.h"
+#include "test/mocks/rdklogMock.h"
+#include "test/mocks/rbusMock.h"
+#include "test/mocks/rdkconfigMock.h"
+#include "test/mocks/VectorMock.h"
+#include "test/bulkdata/SchedulerMock.h"
 
 using namespace std;
 using ::testing::_;
 using ::testing::Return;
 
 // Create global mocks if you need them just like t2markersTest.cpp
-SystemMock* g_systemMock = nullptr;
-FileMock* g_fileIOMock = nullptr;
-rdklogMock* m_rdklogMock = nullptr;
-rbusMock* g_rbusMock = nullptr;
-VectorMock* g_vectorMock = nullptr;
+FileMock *g_fileIOMock = NULL;
+SystemMock * g_systemMock = NULL;
+rdklogMock *m_rdklogMock = NULL;
+rbusMock *g_rbusMock = NULL;
+rdkconfigMock *g_rdkconfigMock = nullptr;
+extern VectorMock *g_vectorMock;
+extern SchedulerMock *g_schedulerMock;
 
 // Test fixture for reportprofiles
 class reportprofilesTestFixture : public ::testing::Test {

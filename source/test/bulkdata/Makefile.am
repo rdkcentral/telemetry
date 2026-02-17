@@ -66,6 +66,7 @@ reportprofiles_gtest_bin_CPPFLAGS = \
     -I$(PKG_CONFIG_SYSROOT_DIR)/usr/include/glib-2.0 \
     -I$(PKG_CONFIG_SYSROOT_DIR)/usr/lib/x86_64-linux-gnu/glib-2.0/include \
     -I$(PKG_CONFIG_SYSROOT_DIR)/usr/include/cjson \
+    -I../../../include \
     -I../../../source/bulkdata \
     -I../mocks \
     -I$(PKG_CONFIG_SYSROOT_DIR)/usr/include \

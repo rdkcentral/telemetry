@@ -23,7 +23,7 @@
 
 // Mock Method
 
-extern "C" bool isRbusEnabled()
+extern "C" bool __wrap_isRbusEnabled()
 {
     if (!g_reportprofileMock)
     {

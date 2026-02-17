@@ -84,5 +84,5 @@ reportprofiles_gtest_bin_LDFLAGS = \
     -lcjson -lmsgpackc -lglib-2.0 \
     -lrt -lcurl
 
-
+reportprofiles_gtest_bin_LDFLAGS += -Wl,--wrap=isRbusEnabled()
 

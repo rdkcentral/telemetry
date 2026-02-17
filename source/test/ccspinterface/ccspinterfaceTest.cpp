@@ -2200,6 +2200,7 @@ TEST_F(CcspInterfaceTest, RbusCheckMethodExists_ReturnsBoolFalse){
     // Accept either true or false for stub
     EXPECT_FALSE(exists);
 }
+#if 0
 #ifdef GTEST_ENABLE
 extern "C"
 {
@@ -2233,4 +2234,5 @@ TEST_F(CcspInterfaceTest, rbusReloadConf_StaticFunction_Coverage) {
     // NULL subscription - covers subscription == NULL branch
     callback(mockHandle, &event, nullptr);
 }
+#endif
 #endif

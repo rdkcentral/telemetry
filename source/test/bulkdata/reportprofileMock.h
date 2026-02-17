@@ -28,6 +28,24 @@ class reportprofileMock
 public:
 
     MOCK_METHOD(bool, isRbusEnabled, (), ());
+    MOCK_METHOD(void, unregisterDEforCompEventList, ());
+    MOCK_METHOD(void, publishEventsProfileUpdates, ());
+    MOCK_METHOD(void, setT2EventReceiveState, (int));
+    MOCK_METHOD(void, regDEforProfileDataModel, (void*));
+    MOCK_METHOD(void, regDEforCompEventList, ());
+    MOCK_METHOD(void, createComponentDataElements, ());
+    MOCK_METHOD(void, PushBlobRequest, (void*));
+    MOCK_METHOD(int, rbusMethodCaller, ());
+    MOCK_METHOD(int, rbusCheckMethodExists, (const char*, const char*, const char*));
+    MOCK_METHOD(void, T2RbusReportEventConsumer, (const char*, const char*));
+    MOCK_METHOD(int, rbusT2ConsumerUnReg, (void*, void*));
+    MOCK_METHOD(int, rbusT2ConsumerReg, (const char*, void*, void*));
+    MOCK_METHOD(void, registerConditionalReportCallBack, (void*));
+    MOCK_METHOD(void, publishReportUploadStatus, (const char*, int));
+    MOCK_METHOD(int, getRbusParameterVal, (const char*, char**));
+    MOCK_METHOD(void*, getRbusProfileParamValues, (void*, int));
+    MOCK_METHOD(int, registerRbusT2EventListener, (void*));
+    MOCK_METHOD(void, unregisterRbusT2EventListener, ());
 };
 
 extern reportprofileMock *g_reportprofileMock;

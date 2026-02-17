@@ -84,5 +84,22 @@ reportprofiles_gtest_bin_LDFLAGS = \
     -lcjson -lmsgpackc -lglib-2.0 \
     -lrt -lcurl
 
-reportprofiles_gtest_bin_LDFLAGS += -Wl,--wrap=isRbusEnabled
+reportprofiles_gtest_bin_LDFLAGS += -Wl,--wrap=isRbusEnabled -Wl,--wrap=unregisterDEforCompEventList \
+                                    -Wl,--wrap=publishEventsProfileUpdates \
+                                    -Wl,--wrap=setT2EventReceiveState \
+                                    -Wl,--wrap=regDEforProfileDataModel \
+                                    -Wl,--wrap=regDEforCompEventList \
+                                    -Wl,--wrap=createComponentDataElements \
+                                    -Wl,--wrap=PushBlobRequest \
+                                    -Wl,--wrap=rbusMethodCaller \
+                                    -Wl,--wrap=rbusCheckMethodExists \
+                                    -Wl,--wrap=T2RbusReportEventConsumer \
+                                    -Wl,--wrap=rbusT2ConsumerUnReg \
+                                    -Wl,--wrap=rbusT2ConsumerReg \
+                                    -Wl,--wrap=registerConditionalReportCallBack \
+                                    -Wl,--wrap=publishReportUploadStatus \
+                                    -Wl,--wrap=getRbusParameterVal \
+                                    -Wl,--wrap=getRbusProfileParamValues \
+                                    -Wl,--wrap=registerRbusT2EventListener \
+                                    -Wl,--wrap=unregisterRbusT2EventListener
 

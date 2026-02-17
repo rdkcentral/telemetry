@@ -1083,6 +1083,7 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
     }
     hash_map_destroy(receivedProfileHashMap, freeReportProfileHashMap);
     hash_map_destroy(profileHashMap, freeProfilesHashMap);
+#endif
     T2Debug("%s --out\n", __FUNCTION__);
     return;
 }

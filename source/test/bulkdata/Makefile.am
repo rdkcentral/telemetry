@@ -67,10 +67,10 @@ reportprofiles_gtest_bin_SOURCES = \
     gtest_main.cpp \
     reportprofilesTest.cpp \
     ../../bulkdata/reportprofiles.c \
-    ../../bulkdata/xconfclient.c \
     ../../bulkdata/t2collection.c \
     ../../bulkdata/persistence.c \
     ../../bulkdata/t2log_wrapper.c \
+    ../../dcautil/dcautil.c ../../dcautil/dca.c ../../dcautil/legacyutils.c ../../dcautil/dcaproc.c ../../xconf-client/xconfclient.c \
     ../../bulkdata/profile.c \
     ../../bulkdata/profilexconf.c \
     ../../bulkdata/t2eventreceiver.c \

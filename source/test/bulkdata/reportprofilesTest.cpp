@@ -271,7 +271,7 @@ TEST_F(reportprofilesTestFixture, ProcessReportProfilesBlob_AddNewProfile) {
     cJSON_Delete(root);
 
 }
-#emdif
+#endif
 
 #if 0
 // Example test for MsgPack blob processing

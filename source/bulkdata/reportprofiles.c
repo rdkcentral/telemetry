@@ -1064,7 +1064,6 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
             }
         }
     }
-#if 0
     if (rm_flag)
     {
         removeProfileFromDisk(DirPath, MSGPACK_REPORTPROFILES_PERSISTENT_FILE);
@@ -1082,7 +1081,6 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
     }
     hash_map_destroy(receivedProfileHashMap, freeReportProfileHashMap);
     hash_map_destroy(profileHashMap, freeProfilesHashMap);
-#endif
     T2Debug("%s --out\n", __FUNCTION__);
     return;
 }

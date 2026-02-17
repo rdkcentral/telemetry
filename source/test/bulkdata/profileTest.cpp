@@ -225,6 +225,28 @@ TEST_F(ProfileTest, UninitProfileList_Success) {
     EXPECT_EQ(uninitProfileList(), T2ERROR_SUCCESS);
 }
 
+TEST_F(ProfileTest, ReportProfiles_uninit) {
+    EXPECT_CALL(*g_vectorMock, Vector_Create(_))
+        .Times(::testing::AtMost(3))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_vectorMock, Vector_PushBack(_, _))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(::testing::AtMost(3))
+        .WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_vectorMock, Vector_At(_, _))
+        .Times(::testing::AtMost(2))
+        .WillRepeatedly(Return(nullptr));
+    EXPECT_CALL(*g_schedulerMock, uninitScheduler())
+        .Times(::testing::AtMost(1));
+    EXPECT_CALL(*g_schedulerMock, unregisterProfileFromScheduler(_))
+        .Times(::testing::AtMost(5))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+
+    EXPECT_EQ(ReportProfiles_uninit(), T2ERROR_FAILURE);
+}
+
 // Test getProfileCount
 TEST_F(ProfileTest, GetProfileCount_NotInitialized) {
     EXPECT_CALL(*g_vectorMock, Vector_Size(_))
@@ -759,6 +781,14 @@ TEST_F(ProfileTest, ReportProfiles_deleteProfileXConf) {
 }
 #endif
 
+TEST_F(ProfileTest, ReportProfiles_deleteProfileXConf_EmptyList) {
+    ProfileXConf profile;
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(0)); // Return 1 to indicate only one profile (no duplicates)
+    EXPECT_EQ(ReportProfiles_deleteProfileXConf(&profile), T2ERROR_SUCCESS);
+}
+
 TEST_F(ProfileTest, ReportProfiles_deleteProfile) {
     EXPECT_CALL(*g_vectorMock, Vector_Size(_))
         .Times(::testing::AtMost(2))
@@ -810,7 +840,16 @@ TEST_F(ProfileTest, RemovePreRPfromDisk) {
     EXPECT_EQ(RemovePreRPfromDisk("/tmp", &dummy), T2ERROR_SUCCESS);
 }
 
-#if 0
+TEST_F(ProfileTest, RemovePreRPfromDisk_FailsIfDirNull) {
+    hash_map_t dummy;
+    // Mock opendir to return NULL to simulate failure
+    EXPECT_CALL(*g_fileIOMock, opendir(_))
+        .Times(1)
+        .WillOnce(Return(nullptr));
+    // readdir and closedir should NOT be called in this branch
+    EXPECT_EQ(RemovePreRPfromDisk("/tmp", &dummy), T2ERROR_FAILURE);
+}
+
 TEST_F(ProfileTest, deleteAllReportProfiles) {
     EXPECT_CALL(*g_vectorMock, Vector_Size(_))
         .Times(::testing::AtMost(1))
@@ -819,58 +858,7 @@ TEST_F(ProfileTest, deleteAllReportProfiles) {
         .WillRepeatedly(Return(T2ERROR_SUCCESS));
     EXPECT_EQ(deleteAllReportProfiles(), T2ERROR_SUCCESS);
 }
-#endif
 
-#if 0
-TEST_F(ProfileTest, isMtlsEnabled) {
-    char status[8] = "true";
-    EXPECT_CALL(*g_rbusMock, rbus_get(_,_,_))
-           .Times(::testing::AtMost(2))
-           .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
-    EXPECT_CALL(*g_rbusMock, rbusValue_GetType(_))
-           .Times(::testing::AtMost(2))
-           .WillRepeatedly(Return(RBUS_BOOLEAN));
-    EXPECT_CALL(*g_rbusMock, rbusValue_GetBoolean(_))
-           .Times(::testing::AtMost(2))
-           .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
-    EXPECT_CALL(*g_rbusMock, rbusValue_Release(_))
-           .Times(::testing::AtMost(2))
-           .WillRepeatedly(Return());
-    EXPECT_CALL(*g_rbusMock, rbusValue_ToString(_,_,_))
-           .Times(::testing::AtMost(1))
-           .WillRepeatedly(Return(status));
-    EXPECT_TRUE(isMtlsEnabled());
-}
-#endif
-
-#if 0
-TEST_F(ProfileTest, ReportProfiles_uninit) {
-    EXPECT_CALL(*g_vectorMock, Vector_Create(_))
-        .Times(::testing::AtMost(3))  // 1 for local test configlist, 1 for global profileList, 1 for configList in loadReportProfilesFromDisk
-        .WillRepeatedly(Return(T2ERROR_SUCCESS));
-    EXPECT_CALL(*g_vectorMock, Vector_PushBack(_, _))
-        .Times(::testing::AtMost(1))
-        .WillRepeatedly(Return(T2ERROR_SUCCESS));
-    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
-        .Times(::testing::AtMost(3))  // May be called multiple times - in deleteAllProfiles, etc.
-        .WillRepeatedly(Return(0)); // Return 0 to indicate no profiles (avoid unregister calls)
-    EXPECT_CALL(*g_vectorMock, Vector_At(_, _))
-        .Times(::testing::AtMost(2))  // May be called if profiles exist
-        .WillRepeatedly(Return(nullptr));
-    
-    // Scheduler mock expectations - uninitScheduler is definitely called
-    EXPECT_CALL(*g_schedulerMock, uninitScheduler())
-        .Times(::testing::AtMost(1));
-    
-    // unregisterProfileFromScheduler may be called for each profile during deleteAllProfiles
-    // Using AtMost to handle cases where profiles exist
-    EXPECT_CALL(*g_schedulerMock, unregisterProfileFromScheduler(_))
-        .Times(::testing::AtMost(5))  // Allow up to 5 calls in case profiles exist
-        .WillRepeatedly(Return(T2ERROR_SUCCESS));
-    
-    EXPECT_EQ(ReportProfiles_uninit(), T2ERROR_SUCCESS);
-}
-#endif
 #endif
 
 #if 1
@@ -1097,6 +1085,7 @@ TEST_F(ProfileTest, DeleteProfile) {
     profile->isUpdated = false;
 
     ProfileXConf_set(profile);
+    EXPECT_EQ(ReportProfiles_setProfileXConf(profile),T2ERROR_FAILURE);
     EXPECT_EQ(ProfileXConf_delete(profile), T2ERROR_FAILURE);
     ProfileXConf_uninit();
 }

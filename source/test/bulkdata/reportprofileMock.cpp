@@ -25,7 +25,7 @@
 
 extern "C" bool isRbusEnabled()
 {
-    if (!g_reportprofile)
+    if (!g_reportprofileMock)
     {
         return false;
     }

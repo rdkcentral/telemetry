@@ -27,6 +27,8 @@ extern "C" {
 #include "t2collection.h"
 #include "t2log_wrapper.h"
 #include "msgpack.h"
+#include <glib.h>
+#include <glib/gi18n.h>
 }
 
 #include "test/mocks/SystemMock.h"

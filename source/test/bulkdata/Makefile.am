@@ -73,7 +73,7 @@ reportprofiles_gtest_bin_SOURCES = \
     ../mocks/rbusMock.cpp \
     ../mocks/rdkconfigMock.cpp \
     ../mocks/VectorMock.cpp \
-    SchedulerMock.cpp
+    SchedulerMock.cpp ../../bulkdata/profile.c ../../bulkdata/profilexconf.c ../../utils/vector.c ../../utils/t2log_wrapper.c ../../utils/t2common.c ../../utils/t2collection.c ../../utils/persistence.c ../../bulkdata/t2markers.c ../../reportgen/reportgen.c ../../dcautil/legacyutils.c
 
 reportprofiles_gtest_bin_LDFLAGS = \
     -L/usr/src/googletest/googletest/lib/.libs \

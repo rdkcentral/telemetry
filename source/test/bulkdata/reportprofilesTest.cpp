@@ -105,7 +105,7 @@ TEST_F(reportprofilesTestFixture, ProcessMsgPackBlob_Test1) {
 
       EXPECT_CALL(*g_reportprofileMock, isRbusEnabled())
         .Times(1)
-        .WillOnce(Return(false))
+        .WillOnce(Return(false));
 // call target
   int ret = __ReportProfiles_ProcessReportProfilesMsgPackBlob((void*)msg, false);
 

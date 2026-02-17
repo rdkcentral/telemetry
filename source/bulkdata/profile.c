@@ -1484,11 +1484,11 @@ T2ERROR initProfileList(bool checkPreviousSeek)
     pthread_mutex_lock(&plMutex);
     Vector_Create(&profileList);
     pthread_mutex_unlock(&plMutex);
-
+#if 0
     registerConditionalReportCallBack(&triggerReportOnCondtion);
 
     loadReportProfilesFromDisk(checkPreviousSeek);
-
+#endif
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }

@@ -225,6 +225,28 @@ TEST_F(ProfileTest, UninitProfileList_Success) {
     EXPECT_EQ(uninitProfileList(), T2ERROR_SUCCESS);
 }
 
+TEST_F(ProfileTest, ReportProfiles_uninit) {
+    EXPECT_CALL(*g_vectorMock, Vector_Create(_))
+        .Times(::testing::AtMost(3))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_vectorMock, Vector_PushBack(_, _))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(::testing::AtMost(3))
+        .WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_vectorMock, Vector_At(_, _))
+        .Times(::testing::AtMost(2))
+        .WillRepeatedly(Return(nullptr));
+    EXPECT_CALL(*g_schedulerMock, uninitScheduler())
+        .Times(::testing::AtMost(1));
+    EXPECT_CALL(*g_schedulerMock, unregisterProfileFromScheduler(_))
+        .Times(::testing::AtMost(5))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+
+    EXPECT_EQ(ReportProfiles_uninit(), T2ERROR_FAILURE);
+}
+
 // Test getProfileCount
 TEST_F(ProfileTest, GetProfileCount_NotInitialized) {
     EXPECT_CALL(*g_vectorMock, Vector_Size(_))
@@ -1156,6 +1178,7 @@ TEST_F(ProfileTest, DeleteProfile) {
     profile->isUpdated = false;
 
     ProfileXConf_set(profile);
+    EXPECT_EQ(ReportProfiles_setProfileXConf(profile),T2ERROR_FAILURE);
     EXPECT_EQ(ProfileXConf_delete(profile), T2ERROR_FAILURE);
     ProfileXConf_uninit();
 }

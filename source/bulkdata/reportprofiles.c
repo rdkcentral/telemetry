@@ -907,6 +907,7 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
     {
         getMarkerCompRbusSub(false);
     }
+
     // Populate profile hash map for current configuration
     for( profileIndex = 0; profileIndex < profiles_count; profileIndex++ )
     {
@@ -976,7 +977,6 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
             T2Error("Failed to remove previous report profile from the disk\n");
         }
     }
-
     if(isRbusEnabled())
     {
         unregisterDEforCompEventList();
@@ -1064,7 +1064,6 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
             }
         }
     }
-
     if (rm_flag)
     {
         removeProfileFromDisk(DirPath, MSGPACK_REPORTPROFILES_PERSISTENT_FILE);

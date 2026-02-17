@@ -34,7 +34,6 @@ extern "C" {
 #include "../mocks/rdklogMock.h"
 #include "../mocks/rbusMock.h"
 #include "../mocks/VectorMock.h"
-#include "../mocks/MsgpackMock.h"
 #include "SchedulerMock.h"
 
 using namespace std;

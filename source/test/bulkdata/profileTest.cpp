@@ -759,6 +759,14 @@ TEST_F(ProfileTest, ReportProfiles_deleteProfileXConf) {
 }
 #endif
 
+TEST_F(ProfileTest, ReportProfiles_deleteProfileXConf) {
+    ProfileXConf profile;
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(0)); // Return 1 to indicate only one profile (no duplicates)
+    EXPECT_EQ(ReportProfiles_deleteProfileXConf(&profile), T2ERROR_SUCCESS);
+}
+
 TEST_F(ProfileTest, ReportProfiles_deleteProfile) {
     EXPECT_CALL(*g_vectorMock, Vector_Size(_))
         .Times(::testing::AtMost(2))
@@ -808,6 +816,25 @@ TEST_F(ProfileTest, RemovePreRPfromDisk) {
            .WillRepeatedly(Return(0));
     //EXPECT_EQ(RemovePreRPfromDisk("/tmp", &dummy), T2ERROR_FAILURE);
     EXPECT_EQ(RemovePreRPfromDisk("/tmp", &dummy), T2ERROR_SUCCESS);
+}
+
+TEST_F(ProfileTest, RemovePreRPfromDisk_FailsIfDirNull) {
+    hash_map_t dummy;
+    // Mock opendir to return NULL to simulate failure
+    EXPECT_CALL(*g_fileIOMock, opendir(_))
+        .Times(1)
+        .WillOnce(Return(nullptr));
+    // readdir and closedir should NOT be called in this branch
+    EXPECT_EQ(RemovePreRPfromDisk("/tmp", &dummy), T2ERROR_FAILURE);
+}
+
+TEST_F(ProfileTest, deleteAllReportProfiles) {
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(0)); // Return 1 to indicate only one profile (no duplicates)
+    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_EQ(deleteAllReportProfiles(), T2ERROR_SUCCESS);
 }
 
 #if 0
@@ -871,6 +898,38 @@ TEST_F(ProfileTest, ReportProfiles_uninit) {
     EXPECT_EQ(ReportProfiles_uninit(), T2ERROR_SUCCESS);
 }
 #endif
+TEST_F(ProfileTest, ProcessMsgPackBlob_InvalidFormat) {
+    struct __msgpack__ msg;
+    msg.msgpack_blob = nullptr;
+    msg.msgpack_blob_size = 0;
+    int ret = __ReportProfiles_ProcessReportProfilesMsgPackBlob(&msg, false);
+    EXPECT_EQ(ret, T2ERROR_INVALID_ARGS);
+}
+
+TEST_F(ProfileTest, ProcessReportProfilesBlob_EmptyProfile_T2_TEMP_RP) {
+    cJSON *root = cJSON_CreateObject();
+    cJSON *profiles = cJSON_CreateArray();
+    cJSON_AddItemToObject(root, "profiles", profiles);
+    ReportProfiles_ProcessReportProfilesBlob(root, T2_TEMP_RP);
+    cJSON_Delete(root);
+}
+
+TEST_F(ProfileTest, ProcessReportProfilesBlob_EmptyProfile_Normal) {
+    cJSON *root = cJSON_CreateObject();
+    cJSON *profiles = cJSON_CreateArray();
+    cJSON_AddItemToObject(root, "profiles", profiles);
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_)).WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).WillRepeatedly(Return(T2ERROR_SUCCESS));
+    ReportProfiles_ProcessReportProfilesBlob(root, T2_RP); // normal, triggers deleteAllReportProfiles
+    cJSON_Delete(root);
+}
+
+TEST_F(ProfileTest, ReportProfiles_ProcessReportProfilesMsgPackBlobTest) {
+    // Should return early if root is NULL
+    ReportProfiles_ProcessReportProfilesMsgPackBlob(NULL, false);
+    // Possibly assert/expect logs/error
+}
+
 #endif
 
 #if 1

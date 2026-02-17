@@ -97,10 +97,10 @@ int __wrap_registerRbusT2EventListener(void* cb) {
 void __wrap_unregisterRbusT2EventListener(void) {
     if (g_reportprofileMock) g_reportprofileMock->unregisterRbusT2EventListener();
 }
-T2ERROR __wrap_sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
+T2ERROR __wrap_sendReportOverHTTP(char *httpUrl, char *payload)
 {
     if (g_reportprofileMock) {
-        return g_reportprofileMock->sendReportOverHTTP(httpUrl, payload, outForkedPid);
+        return g_reportprofileMock->sendReportOverHTTP(httpUrl, payload);
     }
     return T2ERROR_FAILURE;
 }

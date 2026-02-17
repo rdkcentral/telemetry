@@ -117,7 +117,7 @@ TEST_F(reportprofilesTestFixture, T2totalmemCalculateApiWorks) {
     T2totalmem_calculate();
 }
 
-TEST_F(ProfileTest, ProcessMsgPackBlob_InvalidFormat) {
+TEST_F(reportprofilesTestFixture, ProcessMsgPackBlob_InvalidFormat) {
     struct __msgpack__ msg;
     msg.msgpack_blob = nullptr;
     msg.msgpack_blob_size = 0;
@@ -125,7 +125,7 @@ TEST_F(ProfileTest, ProcessMsgPackBlob_InvalidFormat) {
     EXPECT_EQ(ret, T2ERROR_INVALID_ARGS);
 }
 #if 0
-TEST_F(ProfileTest, ProcessMsgPackBlob_Test1) {
+TEST_F(reportprofilesTestFixture, ProcessMsgPackBlob_Test1) {
    printf("##### test starts\n");
   // const  char *data = "3wAAAAGocHJvZmlsZXPdAAAAAd8AAAADpG5hbWWsUkRLQl9Qcm9maWxlpGhhc2ilSGFzaDKldmFsdWXfAAAADaROYW1lb...";
   const char *data = "AQ==";
@@ -146,7 +146,7 @@ TEST_F(ProfileTest, ProcessMsgPackBlob_Test1) {
   g_free(webConfigString);
 }
 #endif
-TEST_F(ProfileTest, ProcessReportProfilesBlob_EmptyProfile_T2_TEMP_RP) {
+TEST_F(reportprofilesTestFixture, ProcessReportProfilesBlob_EmptyProfile_T2_TEMP_RP) {
     cJSON *root = cJSON_CreateObject();
     cJSON *profiles = cJSON_CreateArray();
     cJSON_AddItemToObject(root, "profiles", profiles);
@@ -154,7 +154,7 @@ TEST_F(ProfileTest, ProcessReportProfilesBlob_EmptyProfile_T2_TEMP_RP) {
     cJSON_Delete(root);
 }
 
-TEST_F(ProfileTest, ProcessReportProfilesBlob_EmptyProfile_Normal) {
+TEST_F(reportprofilesTestFixture, ProcessReportProfilesBlob_EmptyProfile_Normal) {
     cJSON *root = cJSON_CreateObject();
     cJSON *profiles = cJSON_CreateArray();
     cJSON_AddItemToObject(root, "profiles", profiles);
@@ -164,7 +164,7 @@ TEST_F(ProfileTest, ProcessReportProfilesBlob_EmptyProfile_Normal) {
     cJSON_Delete(root);
 }
 
-TEST_F(ProfileTest, ProcessReportProfilesBlob_AddNewProfile) {
+TEST_F(reportprofilesTestFixture, ProcessReportProfilesBlob_AddNewProfile) {
     // New profile, triggers add logic and saveConfigToFile
     cJSON *root = cJSON_CreateObject();
     cJSON *profiles = cJSON_CreateArray();
@@ -200,13 +200,13 @@ TEST_F(ProfileTest, ProcessReportProfilesBlob_AddNewProfile) {
     ReportProfiles_ProcessReportProfilesBlob(root, T2_RP);
     cJSON_Delete(root);
 }
-TEST_F(ProfileTest, ReportProfiles_ProcessReportProfilesMsgPackBlobTest) {
+TEST_F(reportprofilesTestFixture, ReportProfiles_ProcessReportProfilesMsgPackBlobTest) {
     // Should return early if root is NULL
     ReportProfiles_ProcessReportProfilesMsgPackBlob(NULL, false);
     // Possibly assert/expect logs/error
 }
 #if 0
-TEST_F(ProfileTest, ProcessReportProfilesBlob_AddNewProfile) {
+TEST_F(reportprofilesTestFixture, ProcessReportProfilesBlob_AddNewProfile) {
 
     // New profile, triggers add logic and saveConfigToFile
 

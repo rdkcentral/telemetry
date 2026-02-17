@@ -27,7 +27,7 @@ AUTOMAKE_OPTIONS = subdir-objects
 
 ACLOCAL_AMFLAGS = -I m4
 
-bin_PROGRAMS = profile_gtest.bin datamodel_gtest.bin t2markers_gtest.bin profilexconf_gtest.bin
+bin_PROGRAMS = profile_gtest.bin datamodel_gtest.bin t2markers_gtest.bin profilexconf_gtest.bin reportprofiles_gtest.bin
 
 datamodel_gtest_bin_CPPFLAGS =  -I$(PKG_CONFIG_SYSROOT_DIR)/usr/include/gtest -I$(PKG_CONFIG_SYSROOT_DIR)/usr/include/glib-2.0 -I$(PKG_CONFIG_SYSROOT_DIR)/usr/lib/x86_64-linux-gnu/glib-2.0/include -I$(PKG_CONFIG_SYSROOT_DIR)/usr/local/lib -I$(PKG_CONFIG_SYSROOT_DIR)$(includedir)/gtest -I${top_srcdir}/gtest/include -I${top_srcdir}/source/include -I${top_srcdir}/source -I${top_srcdir}/source/test/mocks -I${top_srcdir}/source/test/rbus -I${top_srcdir}/source/test/rdk_logger -I${top_srcdir}/include -I${top_srcdir}/source/utils -I${top_srcdir}/source/privacycontrol -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/rbus -I${top_srcdir}/source/dcautil -I${top_srcdir}/source/ccspinterface -I${top_srcdir}/source/reportgen -I${top_srcdir}/source/xconf-client -I${top_srcdir}/source/protocol/http -I${top_srcdir}/source/protocol/rbusMethod -I${top_srcdir}/source/t2parser -I${top_srcdir}/source/bulkdata -I${top_srcdir}/source/scheduler -I${top_srcdir}/source/ccspinterface -I${PKG_CONFIG_SYSROOT_DIR}$(includedir) -I${PKG_CONFIG_SYSROOT_DIR}/usr/src/googletest/googlemock/include -I${RDK_PROJECT_ROOT_PATH}/$(GLIB_CFLAGS) -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/glib-2.0 -I${PKG_CONFIG_SYSROOT_DIR}$(libdir)/glib-2.0/include
 
@@ -58,4 +58,43 @@ profile_gtest_bin_CPPFLAGS = -I$(PKG_CONFIG_SYSROOT_DIR)/usr/include/gtest -I$(P
 profile_gtest_bin_SOURCES = gtest_main.cpp ../mocks/SystemMock.cpp ../mocks/FileioMock.cpp ../mocks/rdklogMock.cpp ../mocks/rbusMock.cpp ../mocks/rdkconfigMock.cpp ../mocks/VectorMock.cpp SchedulerMock.cpp ../../bulkdata/profile.c profileTest.cpp ../../utils/persistence.c ../../utils/t2common.c ../../utils/t2collection.c ../../utils/t2MtlsUtils.c ../../utils/t2log_wrapper.c ../../dcautil/dcautil.c ../../dcautil/dca.c ../../dcautil/legacyutils.c ../../dcautil/dcaproc.c ../../xconf-client/xconfclient.c ../../protocol/rbusMethod/rbusmethodinterface.c ../../privacycontrol/rdkservices_privacyutils.c ../../reportgen/reportgen.c ../../bulkdata/t2eventreceiver.c ../../bulkdata/t2markers.c ../../t2parser/t2parser.c ../../bulkdata/datamodel.c ../../t2parser/t2parserxconf.c ../../bulkdata/reportprofiles.c ../../bulkdata/profilexconf.c ../../ccspinterface/rbusInterface.c ../../ccspinterface/busInterface.c ../../protocol/http/curlinterface.c ../../protocol/http/multicurlinterface.c 
 
 profile_gtest_bin_LDFLAGS = -L/usr/src/googletest/googletest/lib/.libs  -lgcov -L/src/googletest/googlemock/lib -L/usr/src/googletest/googlemock/lib/.libs -L/usr/include/glib-2.0 -lgmock -lcjson -lcurl -lmsgpackc -lgtest -lgtest_main -lglib-2.0
+
+# Test binary for reportprofiles.c
+
+reportprofiles_gtest_bin_CPPFLAGS = \
+    -I$(PKG_CONFIG_SYSROOT_DIR)/usr/include/gtest \
+    -I$(PKG_CONFIG_SYSROOT_DIR)/usr/include/glib-2.0 \
+    -I$(PKG_CONFIG_SYSROOT_DIR)/usr/lib/x86_64-linux-gnu/glib-2.0/include \
+    -I$(PKG_CONFIG_SYSROOT_DIR)/usr/include/cjson \
+    -I../../../source/bulkdata \
+    -I../mocks \
+    -I$(PKG_CONFIG_SYSROOT_DIR)/usr/include \
+    -DPERSIST_LOG_MON_REF -fPIC -DPRIVACYMODES_CONTROL -DBULKDATA
+
+reportprofiles_gtest_bin_SOURCES = \
+    gtest_main.cpp \
+    reportprofilesTest.cpp \
+    ../../bulkdata/reportprofiles.c \
+    ../mocks/SystemMock.cpp \
+    ../mocks/FileioMock.cpp \
+    ../mocks/rdklogMock.cpp \
+    ../mocks/rbusMock.cpp \
+    ../mocks/rdkconfigMock.cpp \
+    ../mocks/VectorMock.cpp \
+    ../mocks/MsgpackMock.cpp \
+    SchedulerMock.cpp
+
+reportprofiles_gtest_bin_LDFLAGS = \
+    -L/usr/src/googletest/googletest/lib/.libs \
+    -L/usr/src/googletest/googlemock/lib/.libs \
+    -lgmock -lgtest -lpthread \
+    -lcjson -lmsgpackc -lglib-2.0 \
+    -lrt -lcurl
+
+reportprofiles_gtest_bin_LDFLAGS += \
+    -Wl,--wrap=msgpack_get_map_value \
+    -Wl,--wrap=msgpack_get_array_element \
+    -Wl,--wrap=msgpack_strcmp \
+    -Wl,--wrap=msgpack_strdup
+
 

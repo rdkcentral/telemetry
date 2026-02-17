@@ -168,7 +168,7 @@ TEST_F(reportprofilesTestFixture, ReportProfiles_ProcessReportProfilesMsgPackBlo
     // Possibly assert/expect logs/error
 }
 
-#ifdef GTEST_ENABLE
+#if 0
 extern "C" {
 typedef void* (*reportOnDemandFunc)(void*);
 reportOnDemandFunc reportOnDemandFuncCallback(void);

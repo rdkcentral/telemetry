@@ -1514,5 +1514,32 @@ bool isMtlsEnabled(void)
 #endif
 #endif
 }
+#ifdef GTEST_ENABLE
+typedef void* (*reportOnDemandFunc)(void*);
+reportOnDemandFunc reportOnDemandFuncCallback(void)
+{
+	return reportOnDemand;
+}
+typedef void (*freeProfilesHashMapFunc)(void *);
+freeProfilesHashMapFunc freeProfilesHashMapFuncCallback(void)
+{
+	return freeProfilesHashMap;
+}
+typedef void (*freeReportProfileHashMapFunc)(void *);
+freeReportProfileHashMapFunc freeReportProfileHashMapFuncCallback(void)	
+{
+       return freeReportProfileHashMap;
+}
+
+typedef void (*__msgpack_free_blobFunc)(void*);
+
+// Function returning a function pointer to __msgpack_free_blob
+__msgpack_free_blobFunc __msgpack_free_blobFuncCallback(void)
+{
+    return __msgpack_free_blob; // returns pointer to our function
+}
 
 
+bool (*isRbusEnabled_fp)(void) = isRbusEnabled;
+#define isRbusEnabled isRbusEnabled_fp
+#endif

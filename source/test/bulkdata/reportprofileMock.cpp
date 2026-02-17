@@ -99,16 +99,16 @@ void __wrap_unregisterRbusT2EventListener(void) {
 }
 T2ERROR __wrap_sendReportOverHTTP(char *httpUrl, char *payload, pid_t* outForkedPid)
 {
-    if (g_profileMock) {
-        return g_profileMock->sendReportOverHTTP(httpUrl, payload, outForkedPid);
+    if (g_reportprofileMock) {
+        return g_reportprofileMock->sendReportOverHTTP(httpUrl, payload, outForkedPid);
     }
     return T2ERROR_FAILURE;
 }
 
 T2ERROR __wrap_sendCachedReportsOverHTTP(char *httpUrl, Vector *reportList)
 {
-    if (g_profileMock) {
-        return g_profileMock->sendCachedReportsOverHTTP(httpUrl, reportList);
+    if (g_reportprofileMock) {
+        return g_reportprofileMock->sendCachedReportsOverHTTP(httpUrl, reportList);
     }
     return T2ERROR_FAILURE;
 }

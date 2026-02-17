@@ -74,7 +74,7 @@ reportprofiles_gtest_bin_SOURCES = \
     SchedulerMock.cpp \
     ../../bulkdata/reportprofiles.c \
     reportprofilesTest.cpp \
-     ../../utils/persistence.c ../../utils/t2common.c ../../utils/t2collection.c ../../utils/t2MtlsUtils.c ../../utils/t2log_wrapper.c ../../dcautil/dcautil.c ../../dcautil/dca.c ../../dcautil/legacyutils.c ../../dcautil/dcaproc.c ../../xconf-client/xconfclient.c ../../protocol/rbusMethod/rbusmethodinterface.c ../../privacycontrol/rdkservices_privacyutils.c ../../reportgen/reportgen.c ../../bulkdata/t2eventreceiver.c ../../bulkdata/t2markers.c ../../t2parser/t2parser.c ../../bulkdata/datamodel.c ../../t2parser/t2parserxconf.c ../../bulkdata/profile.c ../../bulkdata/profilexconf.c ../../ccspinterface/rbusInterface.c ../../ccspinterface/busInterface.c ../../protocol/http/curlinterface.c
+     ../../utils/persistence.c ../../utils/t2common.c ../../utils/t2collection.c ../../utils/t2MtlsUtils.c ../../utils/t2log_wrapper.c ../../dcautil/dcautil.c ../../dcautil/dca.c ../../dcautil/legacyutils.c ../../dcautil/dcaproc.c ../../xconf-client/xconfclient.c ../../protocol/rbusMethod/rbusmethodinterface.c ../../privacycontrol/rdkservices_privacyutils.c ../../reportgen/reportgen.c ../../bulkdata/t2eventreceiver.c ../../bulkdata/t2markers.c ../../t2parser/t2parser.c ../../bulkdata/datamodel.c ../../t2parser/t2parserxconf.c ../../bulkdata/profile.c ../../bulkdata/profilexconf.c ../../ccspinterface/rbusInterface.c ../../ccspinterface/busInterface.c ../../protocol/http/curlinterface.c ../../protocol/http/multicurlinterface.c
 
 reportprofiles_gtest_bin_LDFLAGS = \
     -L/usr/src/googletest/googletest/lib/.libs \

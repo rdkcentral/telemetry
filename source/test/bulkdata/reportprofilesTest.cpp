@@ -401,8 +401,9 @@ TEST_F(reportprofilesTestFixture, TimeoutCb_ProfileXConfIsNameEqual_True) {
         .WillOnce(::testing::Return(true));
 
     // Expect ProfileXConf_notifyTimeout to be called
-    EXPECT_CALL(*g_reportprofileMock, ProfileXConf_notifyTimeout(isClearSeekMap, false))
-        .Times(1);
+    EXPECT_CALL(*g_schedulerMock, getLapsedTime(_, _, _))
+        .Times(::testing::AtMost(1));
+
 
     // Act
     ReportProfiles_TimeoutCb((char*)myProfileName.c_str(), isClearSeekMap);

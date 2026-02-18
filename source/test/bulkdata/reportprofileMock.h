@@ -30,6 +30,7 @@ public:
     MOCK_METHOD(bool, isRbusEnabled, (), ());
     MOCK_METHOD(T2ERROR, sendReportOverHTTP, (char *httpUrl, char *payload), ());
     MOCK_METHOD(T2ERROR, sendCachedReportsOverHTTP, (char *httpUrl, Vector *reportList), ());
+    MOCK_METHOD(msgpack_unpack_return, msgpack_unpack_next, (msgpack_unpacked*, const char*, size_t, size_t*), ());
 };
 
 extern reportprofileMock *g_reportprofileMock;

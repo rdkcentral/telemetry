@@ -1343,7 +1343,8 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
         }
     }
     // Unregister the Component Event List
-    if(isRbusEnabled())
+    //if(isRbusEnabled())
+    if(0)
     {
         unregisterDEforCompEventList();
     }

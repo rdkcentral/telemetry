@@ -90,5 +90,5 @@ reportprofiles_gtest_bin_LDFLAGS = \
     -lcjson -lmsgpackc -lglib-2.0 \
     -lrt -lcurl
 
-reportprofiles_gtest_bin_LDFLAGS += -Wl,--wrap=isRbusEnabled -Wl,--wrap=sendReportOverHTTP -Wl,--wrap=sendCachedReportsOverHTTP -Wl,--wrap=ProfileXConf_isNameEqual -Wl,wrap=ProfileXConf_notifyTimeout 
+reportprofiles_gtest_bin_LDFLAGS += -Wl,--wrap=isRbusEnabled -Wl,--wrap=sendReportOverHTTP -Wl,--wrap=sendCachedReportsOverHTTP -Wl,--wrap=ProfileXConf_isNameEqual  
 

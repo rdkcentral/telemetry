@@ -650,7 +650,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
                 int fd = open(HTTP_RESPONSE_FILE, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
                 if (fd >= 0)
                 {
-                    FILE *httpOutput = fdopen(fd, "w+");
+                    FILE *httpOutput = fdopen(fd, "w");
                     if (httpOutput)
                     {
                         T2Debug("Update config data in response file %s \n", HTTP_RESPONSE_FILE);

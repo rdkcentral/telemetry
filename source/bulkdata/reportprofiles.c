@@ -1343,10 +1343,11 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
         }
     }
     // Unregister the Component Event List
-    if(*isRbusEnabled())
+    if(isRbusEnabled())
     {
         unregisterDEforCompEventList();
     }
+#if 0
     /* Populate profile hash map for current configuration */
     for( profileIndex = 0; profileIndex < profiles_count; profileIndex++ )
     {
@@ -1447,6 +1448,7 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
         publishEventsProfileUpdates();
         getMarkerCompRbusSub(true);
     }
+#endif
     msgpack_unpacked_destroy(&result);
     hash_map_destroy(profileHashMap, freeProfilesHashMap);
     clearPersistenceFolder(CACHED_MESSAGE_PATH);

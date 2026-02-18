@@ -1532,6 +1532,4 @@ freeReportProfileHashMapFunc freeReportProfileHashMapFuncCallback(void)
 {
        return freeReportProfileHashMap;
 }
-
-
 #endif

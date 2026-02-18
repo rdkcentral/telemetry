@@ -1347,7 +1347,7 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
     {
         unregisterDEforCompEventList();
     }
-
+#if 0
     /* Populate profile hash map for current configuration */
     for( profileIndex = 0; profileIndex < profiles_count; profileIndex++ )
     {
@@ -1376,7 +1376,6 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
         Profile *profile = NULL;
         profileName = msgpack_strdup(nameObj);
         existingProfileHash = hash_map_remove(profileHashMap, profileName);
-#if 0
         if(NULL == existingProfileHash)
         {
             if(T2ERROR_SUCCESS == processMsgPackConfiguration(singleProfile, &profile))

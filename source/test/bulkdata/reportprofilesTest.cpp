@@ -391,4 +391,19 @@ TEST_F(reportprofilesTestFixture, MsgpackBlobValidInput) {
 }
 #endif
 // Add more tests for edge cases and negative scenarios as needed
+TEST_F(reportprofilesTestFixture, TimeoutCb_ProfileXConfIsNameEqual_True) {
+    // Arrange
+    std::string myProfileName = "myProfile";
+    bool isClearSeekMap = true;
 
+    // Set up the mock: returns true
+    EXPECT_CALL(*g_reportprofileMock, ProfileXConf_isNameEqual(::testing::StrEq(myProfileName.c_str())))
+        .WillOnce(::testing::Return(true));
+
+    // Expect ProfileXConf_notifyTimeout to be called
+    EXPECT_CALL(*g_reportprofileMock, ProfileXConf_notifyTimeout(isClearSeekMap, false))
+        .Times(1);
+
+    // Act
+    ReportProfiles_TimeoutCb((char*)myProfileName.c_str(), isClearSeekMap);
+}

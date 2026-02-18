@@ -36,6 +36,26 @@ extern "C" bool __wrap_isRbusEnabled()
 
 
 extern "C" {
+bool __wrap_ProfileXConf_isNameEqual(char* profileName)
+{
+    if (g_reportprofileMock) {
+        return g_reportprofileMock->ProfileXConf_isNameEqual(profileName);
+    }
+    return false;
+}
+}
+
+extern "C" {
+void __wrap_ProfileXConf_notifyTimeout(bool isClearSeekMap, bool dummyFlag)
+{
+    if (g_reportprofileMock) {
+        g_reportprofileMock->ProfileXConf_notifyTimeout(isClearSeekMap, dummyFlag);
+        return;
+    }
+}
+}
+
+extern "C" {
 T2ERROR __wrap_sendReportOverHTTP(char *httpUrl, char *payload)
 {
     if (g_reportprofileMock) {

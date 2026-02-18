@@ -17,6 +17,7 @@
 #include "test/mocks/rdkconfigMock.h"
 #include "test/mocks/VectorMock.h"
 #include "test/bulkdata/SchedulerMock.h"
+#include "test/bulkdata/profileMock.h"
 
 using namespace std;
 
@@ -46,6 +47,7 @@ SystemMock * g_systemMock = NULL;
 rdklogMock *m_rdklogMock = NULL;
 rbusMock *g_rbusMock = NULL;
 rdkconfigMock *g_rdkconfigMock = nullptr;
+profileMock *g_profileMock = nullptr;
 extern VectorMock *g_vectorMock;
 extern SchedulerMock *g_schedulerMock;
 
@@ -59,6 +61,7 @@ protected:
 	g_rdkconfigMock = new rdkconfigMock();
 	g_vectorMock = new VectorMock();
 	g_schedulerMock = new SchedulerMock();
+	g_profileMock = new profileMock();
     }
     void TearDown() override 
     {
@@ -68,6 +71,7 @@ protected:
        delete g_rdkconfigMock;
        delete g_vectorMock;
        delete g_schedulerMock;
+       delete g_profileMock;
 
         g_fileIOMock = nullptr;
         g_systemMock = nullptr;
@@ -75,6 +79,7 @@ protected:
 	g_rdkconfigMock = nullptr;
 	g_vectorMock = nullptr;
 	g_schedulerMock = nullptr;
+	g_profileMock = nullptr;
     }
 };
 
@@ -276,6 +281,18 @@ TEST_F(ProfileTest, triggerReportOnCondtion) {
 TEST_F(ProfileTest, getMinThresholdDuration_Failure) {
     EXPECT_CALL(*g_vectorMock, Vector_Size(_)).Times(::testing::AtMost(1)).WillRepeatedly(Return(0));
     EXPECT_EQ(getMinThresholdDuration("profile1"), 0);
+}
+
+#ifdef GTEST_ENABLE
+extern "C" {
+typedef void (*freeRequestURIparamFunc)(void *);
+freeRequestURIparamFunc freeRequestURIparamFuncCallback(void);
+}
+
+TEST_F(ProfileTest, FreeRequestURIparam_Null) {
+    freeRequestURIparamFunc freeFunc = freeRequestURIparamFuncCallback();
+    ASSERT_NE(freeFunc, nullptr);
+    freeFunc(nullptr);
 }
 
 #endif

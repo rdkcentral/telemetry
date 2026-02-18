@@ -158,14 +158,12 @@ char* makeMsgpackWithOneProfile(const char* name, const char* hash, const char* 
 }
 
 TEST_F(reportprofilesTestFixture, ProcessMsgPackBlob_ProfileAdded) {
-    clearProfileHashMap();
 
     struct __msgpack__ msg;
     int blob_len;
     char* msgpack_blob = makeMsgpackWithOneProfile("profileA", "hashA", "valueA", &blob_len);
 
     // setup test struct
-    struct __msgpack__ msg;
     msg.msgpack_blob = msgpack_blob;
     msg.msgpack_blob_size = blob_len;
 

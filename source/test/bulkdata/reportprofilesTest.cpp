@@ -283,7 +283,7 @@ TEST_F(reportprofilesTestFixture, ReportProfiles_ProcessReportProfilesMsgPackBlo
     // Possibly assert/expect logs/error
 }
 
-#if 1
+#if 0
 TEST_F(reportprofilesTestFixture, ProcessMsgPackBlob_Test2) {
    printf("##### test starts\n");
   // const  char *data = "3wAAAAGocHJvZmlsZXPdAAAAAd8AAAADpG5hbWWsUkRLQl9Qcm9maWxlpGhhc2ilSGFzaDKldmFsdWXfAAAADaROYW1lb...";

@@ -20,16 +20,15 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-
 #include "telemetry2_0.h"
 
-class reportprofileMock
+class profileMock
 {
 public:
 
-    MOCK_METHOD(bool, isRbusEnabled, (), ());
     MOCK_METHOD(T2ERROR, sendReportOverHTTP, (char *httpUrl, char *payload), ());
     MOCK_METHOD(T2ERROR, sendCachedReportsOverHTTP, (char *httpUrl, Vector *reportList), ());
 };
 
-extern reportprofileMock *g_reportprofileMock;
+extern profileMock *g_profileMock;
+

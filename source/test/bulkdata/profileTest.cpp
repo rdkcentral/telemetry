@@ -17,7 +17,7 @@
 #include "test/mocks/rdkconfigMock.h"
 #include "test/mocks/VectorMock.h"
 #include "test/bulkdata/SchedulerMock.h"
-
+#include "test/bulkdata/profileMock.h"
 using namespace std;
 
 using ::testing::_;
@@ -46,6 +46,7 @@ SystemMock * g_systemMock = NULL;
 rdklogMock *m_rdklogMock = NULL;
 rbusMock *g_rbusMock = NULL;
 rdkconfigMock *g_rdkconfigMock = nullptr;
+profileMock *g_profileMock = nullptr;
 extern VectorMock *g_vectorMock;
 extern SchedulerMock *g_schedulerMock;
 
@@ -59,6 +60,7 @@ protected:
 	g_rdkconfigMock = new rdkconfigMock();
 	g_vectorMock = new VectorMock();
 	g_schedulerMock = new SchedulerMock();
+	g_profileMock = new profileMock();
     }
     void TearDown() override 
     {
@@ -68,6 +70,7 @@ protected:
        delete g_rdkconfigMock;
        delete g_vectorMock;
        delete g_schedulerMock;
+       delete g_profileMock;
 
         g_fileIOMock = nullptr;
         g_systemMock = nullptr;
@@ -75,6 +78,7 @@ protected:
 	g_rdkconfigMock = nullptr;
 	g_vectorMock = nullptr;
 	g_schedulerMock = nullptr;
+	g_profileMock = nullptr;
     }
 };
 
@@ -299,6 +303,19 @@ TEST_F(ProfileTest, getMinThresholdDuration_Failure) {
     EXPECT_CALL(*g_vectorMock, Vector_Size(_)).Times(::testing::AtMost(1)).WillRepeatedly(Return(0));
     EXPECT_EQ(getMinThresholdDuration("profile1"), 0);
 }
+
+#ifdef GTEST_ENABLE
+extern "C" {
+typedef void (*freeRequestURIparamFunc)(void *);
+freeRequestURIparamFunc freeRequestURIparamFuncCallback(void);
+}
+
+TEST_F(ProfileTest, FreeRequestURIparam_Null) {
+    freeRequestURIparamFunc freeFunc = freeRequestURIparamFuncCallback();
+    ASSERT_NE(freeFunc, nullptr);
+    freeFunc(nullptr);
+}
+#endif
 
 #endif
 
@@ -541,7 +558,33 @@ TEST_F(ProfileTest, ClearMarkerComponentMapShouldRemoveEntries) {
 //comment
 
 //================================ reportProfiles.c ====================================
+#ifdef GTEST_ENABLE
+extern "C" {	
+typedef void* (*reportOnDemandFunc)(void*);
+reportOnDemandFunc reportOnDemandFuncCallback(void);
+typedef void (*freeProfilesHashMapFunc)(void *);
+freeProfilesHashMapFunc freeProfilesHashMapFuncCallback(void);
+typedef void (*freeReportProfileHashMapFunc)(void *);
+freeReportProfileHashMapFunc freeReportProfileHashMapFuncCallback(void);
+typedef void (*__msgpack_free_blobFunc)(void*);
+__msgpack_free_blobFunc __msgpack_free_blobFuncCallback(void);
+}
 
+TEST(ReportProfilesCallbacks, FreeProfilesHashMap) {
+    auto cb = freeProfilesHashMapFuncCallback();
+    ASSERT_NE(cb, nullptr);
+
+    // Test with an actual element
+    hash_element_t* item = (hash_element_t*) std::malloc(sizeof(hash_element_t));
+    item->key = (char*) std::malloc(12);
+    std::strcpy(item->key, "testkey");
+    item->data = std::malloc(8);
+    cb(item);
+
+    // Test with nullptr
+    cb(nullptr);
+}
+#endif
 TEST_F(ProfileTest, initReportProfiles) {
     char status[8] = "true";
     DIR *dir = (DIR*)0xffffffff ;
@@ -952,12 +995,53 @@ TEST_F(ProfileTest, ReportProfiles_ProcessReportProfilesMsgPackBlobTest) {
     // Possibly assert/expect logs/error
 }
 
+#ifdef GTEST_ENABLE
+TEST_F(ProfileTest, reportOnDemandTest)
+{
+        reportOnDemandFunc func = reportOnDemandFuncCallback();
+        ASSERT_NE(func,nullptr);
+        func((void*)"ABORT");
+        func((void*)"FOO");
+        func(nullptr);
+}
+
+TEST(ReportProfilesCallbacks, FreeReportProfileHashMap) {
+    auto cb = freeReportProfileHashMapFuncCallback();
+    ASSERT_NE(cb, nullptr);
+
+    // Make an item with ReportProfile-like .data
+    hash_element_t* item = (hash_element_t*) std::malloc(sizeof(hash_element_t));
+    item->key = (char*) std::malloc(12);
+    std::strcpy(item->key, "profkey");
+    struct ReportProfile {
+        char* hash;
+        char* config;
+        void* hash_map_pad; // just to align with how your system might fill it, can be omitted
+    };
+    ReportProfile* rp = (ReportProfile*) std::malloc(sizeof(ReportProfile));
+    rp->hash = (char*) std::malloc(6);
+    std::strcpy(rp->hash, "hashV");
+    rp->config = (char*) std::malloc(8);
+    std::strcpy(rp->config, "cfgVal");
+    item->data = rp;
+
+    cb(item);
+
+    // Safe to call with nullptr
+    cb(nullptr);
+    SUCCEED();
+}
+#endif
 #endif
 
 #if 1
 //comment
 //=================================== profilexconf.c ================================
-
+#ifdef GTEST_ENABLE
+extern "C" {
+         void test_set_reportThreadExits(bool value);
+ }
+#endif
 TEST_F(ProfileTest, InitAndUninit) {
     // Covers ProfileXConf_init and ProfileXConf_uninit
 #if 1
@@ -989,7 +1073,7 @@ TEST_F(ProfileTest, InitAndUninit) {
 #endif
     EXPECT_EQ(ProfileXConf_init(false), T2ERROR_SUCCESS);
 }
-
+#if 0
 TEST_F(ProfileTest, SetAndIsSet) {
     // Covers ProfileXConf_set and ProfileXConf_isSet
     ProfileXConf* profile = (ProfileXConf*)malloc(sizeof(ProfileXConf));
@@ -1041,7 +1125,82 @@ TEST_F(ProfileTest, SetAndIsSet) {
     
     EXPECT_EQ(ProfileXConf_uninit(), T2ERROR_SUCCESS);
 }
+#endif
+TEST_F(ProfileTest, SetAndIsSet) {
+    // Covers ProfileXConf_set and ProfileXConf_isSet
+    ProfileXConf* profile = (ProfileXConf*)malloc(sizeof(ProfileXConf));
+    memset(profile, 0, sizeof(ProfileXConf));
+    profile->name = strdup("TestProfile");
+    profile->eMarkerList = nullptr;
+    profile->gMarkerList = nullptr;
+    profile->topMarkerList = nullptr;
+    profile->paramList = nullptr;
+    profile->cachedReportList = nullptr;
+    profile->protocol = strdup("HTTP");
+    profile->encodingType = strdup("JSON");
+#if 0
+    profile->t2HTTPDest = nullptr;
+    profile->grepSeekProfile = nullptr;
+    profile->reportInProgress = false;
+    profile->isUpdated = false;
+#endif
+    profile->jsonReportObj = nullptr;  // types now match
+    profile->checkPreviousSeek = true;
 
+    profile->t2HTTPDest = (T2HTTP *)malloc(sizeof(T2HTTP));
+    profile->t2HTTPDest->URL = strdup("https://mock1xconf:50051/dataLakeMockXconf");
+    profile->isUpdated = true;
+    GrepSeekProfile *gsProfile = (GrepSeekProfile *)malloc(sizeof(GrepSeekProfile));
+    if (gsProfile)
+    {
+         gsProfile->logFileSeekMap = hash_map_create();
+         gsProfile->execCounter = 0;
+    }
+    profile->grepSeekProfile = gsProfile;
+    //profile->grepSeekProfile = nullptr;
+    profile->reportInProgress = false;
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(::testing::AtMost(3))
+        .WillRepeatedly(Return(0)); // Return 1 to indicate one profile in the list
+    EXPECT_CALL(*g_vectorMock, Vector_At(_, 0))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return((void*)strdup("PROFILE_1")));
+    EXPECT_CALL(*g_vectorMock, Vector_Create(_))
+        .Times(::testing::AtMost(3))  // 1 for local test configlist, 1 for global profileList, 1 for configList in loadReportProfilesFromDisk
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_vectorMock, Vector_PushBack(_, _))
+        .Times(::testing::AtMost(3))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+
+    // Scheduler mock expectations - ProfileXConf_set calls registerProfileWithScheduler
+    EXPECT_CALL(*g_schedulerMock, registerProfileWithScheduler(_, _, _, _, _, _, _, _))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+
+    EXPECT_EQ(ProfileXConf_set(profile), T2ERROR_SUCCESS);
+    EXPECT_TRUE(ProfileXConf_isSet());
+
+
+    // Get name
+    char* name = ProfileXconf_getName();
+    ASSERT_NE(name, nullptr);
+    EXPECT_STREQ(name, "TestProfile");
+    free(name);
+
+   test_set_reportThreadExits(true);
+   generateDcaReport(false,true);
+    EXPECT_CALL(*g_schedulerMock, SendInterruptToTimeoutThread(_))
+        .Times(::testing::AtMost(1));
+
+    ReportProfiles_Interrupt();
+#if 0
+    // Clean up - ProfileXConf_uninit calls unregisterProfileFromScheduler
+    EXPECT_CALL(*g_schedulerMock, unregisterProfileFromScheduler(_))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+#endif
+    EXPECT_EQ(ProfileXConf_uninit(), T2ERROR_SUCCESS);
+}
 TEST_F(ProfileTest, IsNameEqual) {
     ProfileXConf* profile = (ProfileXConf*)malloc(sizeof(ProfileXConf));
     memset(profile, 0, sizeof(ProfileXConf));

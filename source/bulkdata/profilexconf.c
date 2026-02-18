@@ -986,4 +986,8 @@ T2ERROR ProfileXConf_storeMarkerEvent(T2Event *eventInfo)
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
-
+#ifdef GTEST_ENABLE
+void test_set_reportThreadExits(bool value) {
+    reportThreadExits = value;
+}
+#endif

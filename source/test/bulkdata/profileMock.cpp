@@ -18,35 +18,26 @@
 #include <stdbool.h>
 #include <cjson/cJSON.h>
 #include "vector.h"
-#include "test/bulkdata/reportprofileMock.h"
+#include "test/bulkdata/profileMock.h"
 
 
-
-// Mock Method
-
-extern "C" bool __wrap_isRbusEnabled()
-{
-    if (!g_reportprofileMock)
+//protocol mock functions
+extern "C" T2ERROR __wrap_sendReportOverHTTP(char *httpUrl, char *payload)
+{ 
+    if(!g_profileMock)
     {
-        return false;
+        return T2ERROR_FAILURE;
     }
-    return g_reportprofileMock->isRbusEnabled();
+    // No mock function needed, just a stub
+    return g_profileMock->sendReportOverHTTP(httpUrl, payload);
 }
 
-extern "C" {
-T2ERROR __wrap_sendReportOverHTTP(char *httpUrl, char *payload)
+extern "C" T2ERROR __wrap_sendCachedReportsOverHTTP(char *httpUrl, Vector *reportList)
 {
-    if (g_reportprofileMock) {
-        return g_reportprofileMock->sendReportOverHTTP(httpUrl, payload);
+    if(!g_profileMock)
+    {
+        return T2ERROR_FAILURE;
     }
-    return T2ERROR_FAILURE;
-}
-
-T2ERROR __wrap_sendCachedReportsOverHTTP(char *httpUrl, Vector *reportList)
-{
-    if (g_reportprofileMock) {
-        return g_reportprofileMock->sendCachedReportsOverHTTP(httpUrl, reportList);
-    }
-    return T2ERROR_FAILURE;
-}
+    // No mock function needed, just a stub
+    return g_profileMock->sendCachedReportsOverHTTP(httpUrl, reportList);
 }

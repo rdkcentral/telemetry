@@ -1314,7 +1314,7 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
     profileHashMap = getProfileHashMap();
 
     // Unregister the Component Subscriptions
-    if(*isRbusEnabled())
+    if(isRbusEnabled())
     {
         getMarkerCompRbusSub(false);
     }

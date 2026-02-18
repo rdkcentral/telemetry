@@ -112,8 +112,8 @@ TEST_F(reportprofilesTestFixture, ProcessMsgPackBlob_Test1) {
   ReportProfiles_ProcessReportProfilesMsgPackBlob(msg->msgpack_blob, msg->msgpack_blob_size);
   //EXPECT_EQ(ret, T2ERROR_PROFILE_NOT_FOUND);
 // cleanup
-  free(msg);
-  g_free(webConfigString);
+  //free(msg);
+  //g_free(webConfigString);
 }
 #endif
 char* makeMsgpackWithOneProfile(const char* name, const char* hash, const char* value, int* out_size) {

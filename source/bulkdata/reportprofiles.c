@@ -1292,6 +1292,7 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
     MSGPACK_GET_ARRAY_SIZE(profilesArray, profiles_count);
 
     T2Info("Number of report profiles in current configuration is %d \n", profiles_count);
+#if 0
     if(profiles_count == 0)
     {
         T2Debug("Empty report profiles in configuration. Delete all active profiles. \n");
@@ -1302,7 +1303,6 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
         T2Debug("%s --out\n", __FUNCTION__);
         return T2ERROR_PROFILE_NOT_FOUND;
     }
-#if 0
     hash_map_t *profileHashMap;
     int count;
     char *profileNameKey = NULL;

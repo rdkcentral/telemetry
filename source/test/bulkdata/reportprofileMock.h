@@ -20,7 +20,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-
+#include "reportprofiles.h"
 #include "telemetry2_0.h"
 
 

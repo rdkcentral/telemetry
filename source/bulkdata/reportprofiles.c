@@ -1288,7 +1288,6 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
         T2Debug("%s --out\n", __FUNCTION__);
         return T2ERROR_INVALID_ARGS;
     }
-#if 0
     profilesArray = msgpack_get_map_value(profiles_root, "profiles");
     MSGPACK_GET_ARRAY_SIZE(profilesArray, profiles_count);
 
@@ -1303,6 +1302,7 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
         T2Debug("%s --out\n", __FUNCTION__);
         return T2ERROR_PROFILE_NOT_FOUND;
     }
+#if 0
     hash_map_t *profileHashMap;
     int count;
     char *profileNameKey = NULL;

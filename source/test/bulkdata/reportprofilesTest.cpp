@@ -163,6 +163,52 @@ TEST_F(reportprofilesTestFixture, ProcessReportProfilesBlob_AddNewProfile) {
     ReportProfiles_ProcessReportProfilesBlob(root, T2_RP);
     cJSON_Delete(root);
 }
+
+    cJSON_Delete(root);
+}
+
+TEST_F(reportprofilesTestFixture, ProcessReportProfilesBlob_ReplaceProfile_DifferentHash) {
+    // Add two profiles, one existing, such that hash differs, triggers replacement branch
+    cJSON *root = cJSON_CreateObject();
+    cJSON *profiles = cJSON_CreateArray();
+    cJSON_AddItemToObject(root, "profiles", profiles);
+
+    // First profile, old hash, will be replaced
+    cJSON *profile1 = cJSON_CreateObject();
+    cJSON_AddStringToObject(profile1, "name", "profileA");
+    cJSON_AddStringToObject(profile1, "hash", "oldhash");
+    cJSON *value1 = cJSON_CreateObject();
+    cJSON_AddStringToObject(value1, "param", "value1");
+    cJSON_AddItemToObject(profile1, "value", value1);
+    cJSON_AddItemToArray(profiles, profile1);
+
+    // Second profile, same name, new hash, triggers replacement logic
+    cJSON *profile2 = cJSON_CreateObject();
+    cJSON_AddStringToObject(profile2, "name", "profileA");
+    cJSON_AddStringToObject(profile2, "hash", "newhash");
+    cJSON *value2 = cJSON_CreateObject();
+    cJSON_AddStringToObject(value2, "param", "value2");
+    cJSON_AddItemToObject(profile2, "value", value2);
+    cJSON_AddItemToArray(profiles, profile2);
+      EXPECT_CALL(*g_reportprofileMock, isRbusEnabled())
+     .WillRepeatedly(Return(false));
+
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_)).WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).WillRepeatedly(Return(T2ERROR_SUCCESS));
+          DIR *dir = (DIR*)0xffffffff ;
+    EXPECT_CALL(*g_fileIOMock, opendir(_))
+           .Times(::testing::AtMost(1))
+           .WillRepeatedly(Return(dir));
+    EXPECT_CALL(*g_fileIOMock, readdir(_))
+           .Times(::testing::AtMost(1))
+           .WillRepeatedly(Return((struct dirent *)NULL));
+    EXPECT_CALL(*g_fileIOMock, closedir(_))
+           .Times(::testing::AtMost(1))
+           .WillRepeatedly(Return(0));
+    ReportProfiles_ProcessReportProfilesBlob(root, T2_RP);
+    cJSON_Delete(root);
+}
+
 TEST_F(reportprofilesTestFixture, ReportProfiles_ProcessReportProfilesMsgPackBlobTest) {
     // Should return early if root is NULL
     ReportProfiles_ProcessReportProfilesMsgPackBlob(NULL, false);

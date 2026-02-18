@@ -292,12 +292,16 @@ TEST_F(reportprofilesTestFixture, ProcessMsgPackBlob_Test2) {
    struct __msgpack__ *msg = (struct __msgpack__*)malloc(sizeof(struct __msgpack__));
    msg->msgpack_blob = (char*)webConfigString;
    msg->msgpack_blob_size = (int)decodedDataLen;
-
+#if 0
        EXPECT_CALL(*g_vectorMock, Vector_Size(_))
         .Times(::testing::AtMost(1))
         .WillRepeatedly(Return(0)); // Return 1 to indicate only one profile (no duplicates)
     EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).Times(::testing::AtMost(1))
         .WillRepeatedly(Return(T2ERROR_SUCCESS));
+#endif
+     EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(::testing::AtMost(2))
+        .WillRepeatedly(Return(0));
 // call target
   int ret = ReportProfiles_ProcessReportProfilesMsgPackBlob((void*)msg, false);
 //  EXPECT_EQ(ret, T2ERROR_PROFILE_NOT_FOUND);

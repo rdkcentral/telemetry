@@ -164,8 +164,6 @@ TEST_F(reportprofilesTestFixture, ProcessReportProfilesBlob_AddNewProfile) {
     cJSON_Delete(root);
 }
 
-    cJSON_Delete(root);
-}
 
 TEST_F(reportprofilesTestFixture, ProcessReportProfilesBlob_ReplaceProfile_DifferentHash) {
     // Add two profiles, one existing, such that hash differs, triggers replacement branch

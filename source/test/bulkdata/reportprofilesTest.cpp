@@ -304,7 +304,7 @@ TEST_F(reportprofilesTestFixture, ProcessMsgPackBlob_Test2) {
         .WillRepeatedly(Return(T2ERROR_SUCCESS));
 #endif
 // call target
-  int ret = ReportProfiles_ProcessReportProfilesMsgPackBlob(msg->msgpack_blob, msg->msgpack_blob_size);
+  ReportProfiles_ProcessReportProfilesMsgPackBlob(msg->msgpack_blob, msg->msgpack_blob_size);
 //  EXPECT_EQ(ret, T2ERROR_PROFILE_NOT_FOUND);
 // cleanup
   free(msg);

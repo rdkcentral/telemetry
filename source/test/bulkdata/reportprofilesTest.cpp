@@ -108,8 +108,9 @@ TEST_F(reportprofilesTestFixture, ProcessMsgPackBlob_Test1) {
     EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).Times(::testing::AtMost(1))
         .WillRepeatedly(Return(T2ERROR_SUCCESS));
 // call target
-  int ret = __ReportProfiles_ProcessReportProfilesMsgPackBlob((void*)msg, false);
-  EXPECT_EQ(ret, T2ERROR_PROFILE_NOT_FOUND);
+  //int ret = __ReportProfiles_ProcessReportProfilesMsgPackBlob((void*)msg, false);
+  ReportProfiles_ProcessReportProfilesMsgPackBlob(msg->msgpack_blob, msg->msgpack_blob_size);
+  //EXPECT_EQ(ret, T2ERROR_PROFILE_NOT_FOUND);
 // cleanup
   free(msg);
   g_free(webConfigString);

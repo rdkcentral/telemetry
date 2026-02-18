@@ -88,9 +88,6 @@
 static cap_user appcaps;
 #endif
 
-#ifdef GTEST_ENABLE
-#define msgpack_unpack_next  __wrap_msgpack_unpack_next 
-#endif
 
 static BulkData bulkdata;
 static bool rpInitialized = false;

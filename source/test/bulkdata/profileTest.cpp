@@ -34,7 +34,8 @@ extern "C" {
 #include "profilexconf.h"
 #include "t2eventreceiver.h"
 #include "msgpack.h"
-#include <glib.h>	
+#include <glib.h>
+#include <glib/gi18n.h>
 
 extern bool initialized;
 

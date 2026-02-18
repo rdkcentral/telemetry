@@ -41,3 +41,9 @@ extern "C" T2ERROR __wrap_sendCachedReportsOverHTTP(char *httpUrl, Vector *repor
     // No mock function needed, just a stub
     return g_profileMock->sendCachedReportsOverHTTP(httpUrl, reportList);
 }
+
+extern "C" msgpack_unpack_return __wrap_msgpack_unpack_next(msgpack_unpacked *result, const char *data, size_t len, size_t *off) {
+    if (g_profileMockMock) return g_profileMock->msgpack_unpack_next(result, data, len, off);
+    // Real or stub implementation if not mocked
+    return MSGPACK_UNPACK_SUCCESS;
+}

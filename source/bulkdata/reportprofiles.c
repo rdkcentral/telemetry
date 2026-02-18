@@ -1302,7 +1302,7 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
         T2Debug("%s --out\n", __FUNCTION__);
         return T2ERROR_PROFILE_NOT_FOUND;
     }
-#if 0
+
     hash_map_t *profileHashMap;
     int count;
     char *profileNameKey = NULL;
@@ -1452,7 +1452,6 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
     msgpack_unpacked_destroy(&result);
     hash_map_destroy(profileHashMap, freeProfilesHashMap);
     clearPersistenceFolder(CACHED_MESSAGE_PATH);
-#endif
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }

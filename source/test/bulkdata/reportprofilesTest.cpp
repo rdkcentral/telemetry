@@ -278,6 +278,34 @@ TEST_F(reportprofilesTestFixture, ReportProfiles_ProcessReportProfilesMsgPackBlo
     ReportProfiles_ProcessReportProfilesMsgPackBlob(NULL, false);
     // Possibly assert/expect logs/error
 }
+
+#if 1
+TEST_F(reportprofilesTestFixture, ProcessMsgPackBlob_Test2) {
+   printf("##### test starts\n");
+  // const  char *data = "3wAAAAGocHJvZmlsZXPdAAAAAd8AAAADpG5hbWWsUkRLQl9Qcm9maWxlpGhhc2ilSGFzaDKldmFsdWXfAAAADaROYW1lb...";
+  const char *data = "AQ==";
+// decode
+   gsize decodedDataLen = 0;
+   guchar *webConfigString = g_base64_decode(data, &decodedDataLen);
+
+// allocate and fill
+   struct __msgpack__ *msg = (struct __msgpack__*)malloc(sizeof(struct __msgpack__));
+   msg->msgpack_blob = (char*)webConfigString;
+   msg->msgpack_blob_size = (int)decodedDataLen;
+
+       EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(0)); // Return 1 to indicate only one profile (no duplicates)
+    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+// call target
+  int ret = ReportProfiles_ProcessReportProfilesMsgPackBlob((void*)msg, false);
+//  EXPECT_EQ(ret, T2ERROR_PROFILE_NOT_FOUND);
+// cleanup
+  free(msg);
+  g_free(webConfigString);
+}
+#endi
 #if 0
 TEST_F(reportprofilesTestFixture, ProcessReportProfilesBlob_AddNewProfile) {
 

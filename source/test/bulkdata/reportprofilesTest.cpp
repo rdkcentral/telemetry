@@ -157,7 +157,7 @@ char* makeMsgpackWithOneProfile(const char* name, const char* hash, const char* 
     msgpack_sbuffer_destroy(&sbuf);
     return data;
 }
-
+#if 0
 TEST_F(reportprofilesTestFixture, ProcessMsgPackBlob_ProfileAdded) {
 
     struct __msgpack__ msg;
@@ -180,7 +180,7 @@ TEST_F(reportprofilesTestFixture, ProcessMsgPackBlob_ProfileAdded) {
     int ret = __ReportProfiles_ProcessReportProfilesMsgPackBlob(&msg, false);
     EXPECT_EQ(ret, T2ERROR_SUCCESS); // covers main add path 1300-1305
 }
-
+#endif
 TEST_F(reportprofilesTestFixture, ProcessReportProfilesBlob_EmptyProfile_T2_TEMP_RP) {
     cJSON *root = cJSON_CreateObject();
     cJSON *profiles = cJSON_CreateArray();

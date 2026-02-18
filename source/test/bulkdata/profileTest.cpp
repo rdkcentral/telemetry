@@ -296,7 +296,7 @@ TEST_F(ProfileTest, FreeRequestURIparam_Null) {
 }
 
 #endif
-
+#endif
 
 #if 1
 //comment

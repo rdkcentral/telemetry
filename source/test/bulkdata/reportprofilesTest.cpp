@@ -150,7 +150,7 @@ char* makeMsgpackWithOneProfile(const char* name, const char* hash, const char* 
 
     // Prepare output
     *out_size = sbuf.size;
-    char *data = malloc(sbuf.size);
+    char *data = (char*) malloc(sbuf.size);
     memcpy(data, sbuf.data, sbuf.size);
 
     msgpack_sbuffer_destroy(&sbuf);

@@ -45,9 +45,11 @@
 
 #define MAX_LEN 256
 
+#if 0
 #ifdef GTEST_ENABLE
 #define sendReportOverHTTP __wrap_sendReportOverHTTP
 #define sendCachedReportsOverHTTP __wrap_sendCachedReportsOverHTTP
+#endif
 #endif
 
 static bool initialized = false;

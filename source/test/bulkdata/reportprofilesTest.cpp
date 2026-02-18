@@ -102,6 +102,11 @@ TEST_F(reportprofilesTestFixture, ProcessMsgPackBlob_Test1) {
    msg->msgpack_blob = (char*)webConfigString;
    msg->msgpack_blob_size = (int)decodedDataLen;
 
+       EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(0)); // Return 1 to indicate only one profile (no duplicates)
+    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
 // call target
   int ret = __ReportProfiles_ProcessReportProfilesMsgPackBlob((void*)msg, false);
 

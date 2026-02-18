@@ -34,11 +34,6 @@ extern "C" bool __wrap_isRbusEnabled()
     return g_reportprofileMock->isRbusEnabled();
 }
 
-extern "C" msgpack_unpack_return __wrap_msgpack_unpack_next(msgpack_unpacked *result, const char *data, size_t len, size_t *off) {
-    if (g_reportprofileMock) return g_reportprofileMock->msgpack_unpack_next(result, data, len, off);
-    // Real or stub implementation if not mocked
-    return MSGPACK_UNPACK_SUCCESS;
-}
 
 extern "C" {
 T2ERROR __wrap_sendReportOverHTTP(char *httpUrl, char *payload)

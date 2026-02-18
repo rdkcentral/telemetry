@@ -22,13 +22,6 @@
 
 #include "telemetry2_0.h"
 
-typedef enum {
-    MSGPACK_UNPACK_SUCCESS    = 2,
-    MSGPACK_UNPACK_EXTRA_BYTES = 1,
-    MSGPACK_UNPACK_CONTINUE   = 0,
-    MSGPACK_UNPACK_PARSE_ERROR = -1,
-    MSGPACK_UNPACK_NOMEM_ERROR = -2
-} msgpack_unpack_return;
 
 class profileMock
 {
@@ -36,7 +29,6 @@ public:
 
     MOCK_METHOD(T2ERROR, sendReportOverHTTP, (char *httpUrl, char *payload), ());
     MOCK_METHOD(T2ERROR, sendCachedReportsOverHTTP, (char *httpUrl, Vector *reportList), ());
-    MOCK_METHOD(msgpack_unpack_return, msgpack_unpack_next, (msgpack_unpacked*, const char*, size_t, size_t*), ());
 };
 
 extern profileMock *g_profileMock;

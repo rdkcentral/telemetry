@@ -1275,6 +1275,7 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
 
     msgpack_unpacked_init(&result);
     ret = msgpack_unpack_next(&result, msgpack_blob, msgpack_blob_size, &off);
+     printf("msgpack_unpack_next() ret: %d\n", ret);
     if (ret != MSGPACK_UNPACK_SUCCESS)
     {
         T2Error("The data in the buf is invalid format.\n");
@@ -1287,7 +1288,7 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
         T2Debug("%s --out\n", __FUNCTION__);
         return T2ERROR_INVALID_ARGS;
     }
-
+#if 0
     profilesArray = msgpack_get_map_value(profiles_root, "profiles");
     MSGPACK_GET_ARRAY_SIZE(profilesArray, profiles_count);
 
@@ -1451,6 +1452,7 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
     msgpack_unpacked_destroy(&result);
     hash_map_destroy(profileHashMap, freeProfilesHashMap);
     clearPersistenceFolder(CACHED_MESSAGE_PATH);
+#endif
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }

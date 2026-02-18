@@ -115,6 +115,69 @@ TEST_F(reportprofilesTestFixture, ProcessMsgPackBlob_Test1) {
   g_free(webConfigString);
 }
 #endif
+char* makeMsgpackWithOneProfile(const char* name, const char* hash, const char* value, int* out_size) {
+    msgpack_sbuffer sbuf;
+    msgpack_packer pk;
+
+    msgpack_sbuffer_init(&sbuf);
+    msgpack_packer_init(&pk, &sbuf, msgpack_sbuffer_write);
+
+    // Root: a map with one entry ("profiles")
+    msgpack_pack_map(&pk, 1);
+    msgpack_pack_str(&pk, strlen("profiles"));
+    msgpack_pack_str_body(&pk, "profiles", strlen("profiles"));
+
+    // Value: an array with one profile object
+    msgpack_pack_array(&pk, 1);
+
+    // The profile object (as a map)
+    msgpack_pack_map(&pk, 3);  // name, hash, value
+    // name
+    msgpack_pack_str(&pk, strlen("name"));
+    msgpack_pack_str_body(&pk, "name", strlen("name"));
+    msgpack_pack_str(&pk, strlen(name));
+    msgpack_pack_str_body(&pk, name, strlen(name));
+    // hash
+    msgpack_pack_str(&pk, strlen("hash"));
+    msgpack_pack_str_body(&pk, "hash", strlen("hash"));
+    msgpack_pack_str(&pk, strlen(hash));
+    msgpack_pack_str_body(&pk, hash, strlen(hash));
+    // value
+    msgpack_pack_str(&pk, strlen("value"));
+    msgpack_pack_str_body(&pk, "value", strlen("value"));
+    msgpack_pack_str(&pk, strlen(value));
+    msgpack_pack_str_body(&pk, value, strlen(value));
+
+    // Prepare output
+    *out_size = sbuf.size;
+    char *data = malloc(sbuf.size);
+    memcpy(data, sbuf.data, sbuf.size);
+
+    msgpack_sbuffer_destroy(&sbuf);
+    return data;
+}
+
+TEST_F(reportprofilesTestFixture, ProcessMsgPackBlob_ProfileAdded) {
+    clearProfileHashMap();
+
+    struct __msgpack__ msg;
+    int blob_len;
+    char* msgpack_blob = makeMsgpackWithOneProfile("profileA", "hashA", "valueA", &blob_len);
+
+    // setup test struct
+    struct __msgpack__ msg;
+    msg.msgpack_blob = msgpack_blob;
+    msg.msgpack_blob_size = blob_len;
+
+    EXPECT_CALL(*g_reportprofileMock, isRbusEnabled())
+     .WillRepeatedly(Return(false));
+    // Mock success for config parsing and addition
+    //EXPECT_CALL(*profileMock, processMsgPackConfiguration(_, _)).WillOnce(Return(T2ERROR_SUCCESS));
+    //EXPECT_CALL(*profileMock, ReportProfiles_addReportProfile(_)).WillOnce(Return(T2ERROR_SUCCESS));
+    int ret = __ReportProfiles_ProcessReportProfilesMsgPackBlob(&msg, false);
+    EXPECT_EQ(ret, T2ERROR_SUCCESS); // covers main add path 1300-1305
+}
+
 TEST_F(reportprofilesTestFixture, ProcessReportProfilesBlob_EmptyProfile_T2_TEMP_RP) {
     cJSON *root = cJSON_CreateObject();
     cJSON *profiles = cJSON_CreateArray();

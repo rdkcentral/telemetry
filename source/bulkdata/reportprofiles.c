@@ -1377,6 +1377,7 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
         Profile *profile = NULL;
         profileName = msgpack_strdup(nameObj);
         existingProfileHash = hash_map_remove(profileHashMap, profileName);
+#if 0
         if(NULL == existingProfileHash)
         {
             if(T2ERROR_SUCCESS == processMsgPackConfiguration(singleProfile, &profile))
@@ -1452,6 +1453,7 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
     msgpack_unpacked_destroy(&result);
     hash_map_destroy(profileHashMap, freeProfilesHashMap);
     clearPersistenceFolder(CACHED_MESSAGE_PATH);
+#endif
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }

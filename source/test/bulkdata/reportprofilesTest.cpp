@@ -27,6 +27,8 @@ extern "C" {
 #include "t2collection.h"
 #include "t2log_wrapper.h"
 #include "msgpack.h"
+#include <glib.h>
+#include <glib/gi18n.h>
 }
 
 #include "test/mocks/SystemMock.h"
@@ -88,6 +90,24 @@ TEST_F(reportprofilesTestFixture, ProcessMsgPackBlob_InvalidFormat) {
     EXPECT_EQ(ret, T2ERROR_INVALID_ARGS);
 }
 
+TEST_F(reportprofilesTestFixture, ProcessMsgPackBlob_Test1) {
+   const char *data = "AQ==";
+   gsize decodedDataLen = 0;
+   guchar *webConfigString = g_base64_decode(data, &decodedDataLen);
+
+   struct __msgpack__ *msg = (struct __msgpack__*)malloc(sizeof(struct __msgpack__));
+   msg->msgpack_blob = (char*)webConfigString;
+   msg->msgpack_blob_size = (int)decodedDataLen;
+
+   EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(0)); 
+   EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+
+   ReportProfiles_ProcessReportProfilesMsgPackBlob(msg->msgpack_blob, msg->msgpack_blob_size);
+}
+
 TEST_F(reportprofilesTestFixture, ProcessReportProfilesBlob_EmptyProfile_T2_TEMP_RP) {
     cJSON *root = cJSON_CreateObject();
     cJSON *profiles = cJSON_CreateArray();
@@ -107,7 +127,6 @@ TEST_F(reportprofilesTestFixture, ProcessReportProfilesBlob_EmptyProfile_Normal)
 }
 
 TEST_F(reportprofilesTestFixture, ProcessReportProfilesBlob_AddNewProfile) {
-    // New profile, triggers add logic and saveConfigToFile
     cJSON *root = cJSON_CreateObject();
     cJSON *profiles = cJSON_CreateArray();
     cJSON_AddItemToObject(root, "profiles", profiles);
@@ -121,7 +140,6 @@ TEST_F(reportprofilesTestFixture, ProcessReportProfilesBlob_AddNewProfile) {
 
     EXPECT_CALL(*g_reportprofileMock, isRbusEnabled())
      .WillRepeatedly(Return(false));
-    // Expect add and saveConfigToFile, can stub if needed
     EXPECT_CALL(*g_vectorMock, Vector_Size(_)).WillRepeatedly(Return(0));
     EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).WillRepeatedly(Return(T2ERROR_SUCCESS));
 

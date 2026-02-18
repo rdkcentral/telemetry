@@ -19,6 +19,7 @@
 
 #include <stdbool.h>
 #include <cjson/cJSON.h>
+#include "vector.h"
 #include "test/bulkdata/reportprofileMock.h"
 
 
@@ -32,5 +33,23 @@ extern "C" bool __wrap_isRbusEnabled()
         return false;
     }
     return g_reportprofileMock->isRbusEnabled();
+}
+
+extern "C" {
+T2ERROR __wrap_sendReportOverHTTP(char *httpUrl, char *payload)
+{
+    if (g_reportprofileMock) {
+        return g_reportprofileMock->sendReportOverHTTP(httpUrl, payload);
+    }
+    return T2ERROR_FAILURE;
+}
+
+T2ERROR __wrap_sendCachedReportsOverHTTP(char *httpUrl, Vector *reportList)
+{
+    if (g_reportprofileMock) {
+        return g_reportprofileMock->sendCachedReportsOverHTTP(httpUrl, reportList);
+    }
+    return T2ERROR_FAILURE;
+}
 }
 

@@ -31,6 +31,8 @@ class reportprofileMock
 public:
 
     MOCK_METHOD(bool, isRbusEnabled, (), ());
+    MOCK_METHOD(T2ERROR, sendReportOverHTTP, (char *httpUrl, char *payload), ());
+    MOCK_METHOD(T2ERROR, sendCachedReportsOverHTTP, (char *httpUrl, Vector *reportList), ());
 };
 
 extern reportprofileMock *g_reportprofileMock;

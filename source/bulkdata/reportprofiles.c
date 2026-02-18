@@ -1342,7 +1342,7 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
             save_flag = true;
         }
     }
-
+#if 0
     // Unregister the Component Event List
     if(isRbusEnabled())
     {
@@ -1377,7 +1377,6 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
         Profile *profile = NULL;
         profileName = msgpack_strdup(nameObj);
         existingProfileHash = hash_map_remove(profileHashMap, profileName);
-#if 0
         if(NULL == existingProfileHash)
         {
             if(T2ERROR_SUCCESS == processMsgPackConfiguration(singleProfile, &profile))

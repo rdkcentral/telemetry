@@ -25,6 +25,19 @@ import time
 import re
 import signal
 from urllib.parse import unquote, quote, urlparse, parse_qsl
+import urllib3
+
+# Disable SSL warnings for test environment
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+# Certificate configuration - using P12 format requires pyOpenSSL
+# If not available, will fall back to PEM
+CERT_P12 = '/etc/pki/Test-RDK-root/Test-RDK-client-ICA/certs/rdkclient.p12'
+CERT_PEM = '/etc/pki/Test-RDK-root/Test-RDK-client-ICA/certs/rdkclient.pem'
+CERT_KEY = '/etc/pki/Test-RDK-root/Test-RDK-client-ICA/private/rdkclient.key'
+
+# Use PEM format for requests library
+CERT_PATH = (CERT_PEM, CERT_KEY) if os.path.exists(CERT_PEM) and os.path.exists(CERT_KEY) else None
 
 
 def run_telemetry():
@@ -75,15 +88,19 @@ def sigterm_telemetry(pid):
 
 
 def adminSupport_cache(save: bool = True):
-    if(requests.get(ADMIN_SUPPORT_SET, verify=False,params={ADMIN_CACHE_ARG: str(save).lower()})):
-        return True
-    return False
+    try:
+        response = requests.get(ADMIN_SUPPORT_SET, verify=False, cert=CERT_PATH, params={ADMIN_CACHE_ARG: str(save).lower()}, timeout=5)
+        return response.status_code == 200
+    except Exception as e:
+        print(f"adminSupport_cache error: {e}")
+        return False
 
 def adminSupport_requestData():
-    return_data = requests.get(ADMIN_SUPPORT_GET, verify=False,params={ADMIN_RQUEST_DATA: "true"})
     try:
+        return_data = requests.get(ADMIN_SUPPORT_GET, verify=False, cert=CERT_PATH, params={ADMIN_RQUEST_DATA: "true"}, timeout=5)
         return_json = return_data.json()
-    except:
+    except Exception as e:
+        print(f"adminSupport_requestData error: {e}")
         return_json = []
     return return_json
 
@@ -146,45 +163,37 @@ def check_Rbus_data():
     result = subprocess.run(RBUSCLI_GET_CMD+T2_TEMP_REPORT_PROFILE_PARAM, shell=True, capture_output=True, text=True)
     assert RBUS_EXCEPTION_STRING not in result.stdout
 
-def adminSupport_DLXconf_requestData():
-    return_data = requests.get(ADMIN_SUPPORT_URL, verify=False,params={ADMIN_RQUEST_DATA: "true"})
-    try:
-        return_json = return_data.json()
-    except:
-        return_json = []
-    return return_json
-
-def adminSupport_DLReport_requestData():
-    return_data = requests.get(ADMIN_SUPPORT_URL, verify=False,params={ADMIN_RQUEST_DATA: "true"})
-    try:
-        return_json = return_data.json()
-    except:
-        return_json = []
-    return return_json
-
 def adminSupport_DLXconf_cache(save:bool = True):
-    if(requests.get(DL_ADMIN_URL +"Xconf", verify=False,params={ADMIN_CACHE_ARG: str(save).lower()})):
-        return True
-    return False
+    try:
+        response = requests.get(DL_ADMIN_URL +"Xconf", verify=False, cert=CERT_PATH, params={ADMIN_CACHE_ARG: str(save).lower()}, timeout=5)
+        return response.status_code == 200
+    except Exception as e:
+        print(f"adminSupport_DLXconf_cache error: {e}")
+        return False
 
 def adminSupport_DLReport_cache(save:bool = True):
-    if(requests.get(DL_ADMIN_URL +"Report", verify=False,params={ADMIN_CACHE_ARG: str(save).lower()})):
-        return True
-    return False
+    try:
+        response = requests.get(DL_ADMIN_URL +"Report", verify=False, cert=CERT_PATH, params={ADMIN_CACHE_ARG: str(save).lower()}, timeout=5)
+        return response.status_code == 200
+    except Exception as e:
+        print(f"adminSupport_DLReport_cache error: {e}")
+        return False
 
 def adminSupport_DLXconf_requestData():
-    return_data = requests.get(DL_ADMIN_URL+"Xconf", verify=False,params={ADMIN_RQUEST_DATA: "true"})
     try:
+        return_data = requests.get(DL_ADMIN_URL+"Xconf", verify=False, cert=CERT_PATH, params={ADMIN_RQUEST_DATA: "true"}, timeout=5)
         return_json = return_data.json()
-    except:
+    except Exception as e:
+        print(f"adminSupport_DLXconf_requestData error: {e}")
         return_json = []
     return return_json
 
 def adminSupport_DLReport_requestData():
-    return_data = requests.get(DL_ADMIN_URL+"Report", verify=False,params={ADMIN_RQUEST_DATA: "true"})
     try:
+        return_data = requests.get(DL_ADMIN_URL+"Report", verify=False, cert=CERT_PATH, params={ADMIN_RQUEST_DATA: "true"}, timeout=5)
         return_json = return_data.json()
-    except:
+    except Exception as e:
+        print(f"adminSupport_DLReport_requestData error: {e}")
         return_json = []
     return return_json
 

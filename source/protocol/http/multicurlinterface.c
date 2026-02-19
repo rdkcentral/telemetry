@@ -272,7 +272,7 @@ T2ERROR init_connection_pool()
         CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_PIPEWAIT, 0L);
         CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
         //SSL automatically negotiates the highest SSL/TLS version supported by both client and server
-        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_SSLVERSION, CURL_SSLVERSION_DEFAULT);
+        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
         CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_SSL_VERIFYPEER, 1L);
 
 #ifdef LIBRDKCERTSEL_BUILD
@@ -467,7 +467,6 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
 
     // Clear any POST-specific settings so that the handle can be used for GET operations
     // curl_easy_perform ends up in crash when POST specific options are not cleared
-    CURL_SETOPT_CHECK(easy, CURLOPT_CUSTOMREQUEST, NULL);
     CURL_SETOPT_CHECK(easy, CURLOPT_POSTFIELDS, NULL);
     CURL_SETOPT_CHECK(easy, CURLOPT_POSTFIELDSIZE, 0L);
     CURL_SETOPT_CHECK(easy, CURLOPT_HTTPHEADER, NULL);
@@ -778,13 +777,12 @@ T2ERROR http_pool_post(const char *url, const char *payload)
     }
 
     // Clear any GET-specific settings from previous use
-    CURL_SETOPT_CHECK(easy, CURLOPT_HTTPGET, 0L);
     CURL_SETOPT_CHECK(easy, CURLOPT_WRITEFUNCTION, NULL);
     CURL_SETOPT_CHECK(easy, CURLOPT_WRITEDATA, NULL);
 
     // Configure request-specific options for POST
     CURL_SETOPT_CHECK_STR(easy, CURLOPT_URL, url);
-    CURL_SETOPT_CHECK_STR(easy, CURLOPT_CUSTOMREQUEST, "POST");
+    CURL_SETOPT_CHECK(easy, CURLOPT_POST, 1L);
     CURL_SETOPT_CHECK(easy, CURLOPT_HTTPHEADER, post_headers);
     CURL_SETOPT_CHECK_STR(easy, CURLOPT_POSTFIELDS, payload);
     CURL_SETOPT_CHECK(easy, CURLOPT_POSTFIELDSIZE, strlen(payload));

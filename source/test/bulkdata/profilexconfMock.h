@@ -39,7 +39,7 @@ public:
     MOCK_METHOD(T2ERROR, getGrepResults, (GrepSeekProfile **GSP, Vector *markerList, bool isClearSeekMap, bool check_rotated, char *customLogPath), ());
     MOCK_METHOD(void, dcaFlagReportCompleation, (), ());
     MOCK_METHOD(GrepSeekProfile *, createGrepSeekProfile, (int execCounter), ());
-    MOCK_METHOD(T2ERROR, sendReportOverHTTP, (char *httpUrl, char *payload, pid_t* outForkedPid), ());
+    MOCK_METHOD(T2ERROR, sendReportOverHTTP, (char *httpUrl, char *payload), ());
     MOCK_METHOD(T2ERROR, sendCachedReportsOverHTTP, (char *httpUrl, Vector *reportList), ());
     MOCK_METHOD(T2ERROR, saveSeekConfigtoFile, (char* profileName, GrepSeekProfile *ProfileSeekMap), ());
     MOCK_METHOD(T2ERROR, loadSavedSeekConfig, (char *profileName, GrepSeekProfile *ProfileSeekMap), ());

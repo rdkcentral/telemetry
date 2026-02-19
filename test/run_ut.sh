@@ -49,6 +49,7 @@ tests="
 ./source/test/bulkdata/datamodel_gtest.bin
 ./source/test/bulkdata/profilexconf_gtest.bin
 ./source/test/bulkdata/t2markers_gtest.bin
+./source/test/bulkdata/reportprofiles_gtest.bin
 ./source/test/reportgen/reportgen_gtest.bin
 ./source/test/scheduler/scheduler_gtest.bin
 ./source/test/t2parser/t2parser_gtest.bin
@@ -74,7 +75,7 @@ done
 if [ "$ENABLE_COV" = true ]; then
     echo "Generating coverage report"
     lcov --directory . --capture --output-file coverage.info
-    lcov --remove coverage.info "${PWD}/source/test/*" --output-file coverage.info
+    lcov --remove coverage.info "${PWD}/source/test/*" "${PWD}/source/xconf-client/*" --output-file coverage.info
 
     lcov --remove coverage.info "$HOME/usr/*" --output-file coverage.info
     lcov --remove coverage.info "/usr/*" --output-file coverage.info

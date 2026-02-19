@@ -45,6 +45,11 @@
 
 #define MAX_LEN 256
 
+#ifdef GTEST_ENABLE
+#define sendReportOverHTTP __wrap_sendReportOverHTTP
+#define sendCachedReportsOverHTTP __wrap_sendCachedReportsOverHTTP
+#endif
+
 static bool initialized = false;
 static Vector *profileList;
 static pthread_mutex_t plMutex;
@@ -567,7 +572,7 @@ static void* CollectAndReport(void* data)
                             if(n == ETIMEDOUT)
                             {
                                 T2Info("TIMEOUT for maxUploadLatency of profile %s\n", profile->name);
-                                ret = sendReportOverHTTP(httpUrl, jsonReport, NULL);
+                                ret = sendReportOverHTTP(httpUrl, jsonReport);
                             }
                             else
                             {
@@ -604,7 +609,7 @@ static void* CollectAndReport(void* data)
                         }
                         else
                         {
-                            ret = sendReportOverHTTP(httpUrl, jsonReport, NULL);
+                            ret = sendReportOverHTTP(httpUrl, jsonReport);
                         }
                     }
                     else

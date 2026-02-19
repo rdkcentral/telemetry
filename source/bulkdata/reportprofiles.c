@@ -433,8 +433,8 @@ static void* reportOnDemand(void *input)
     }
     else if(!strncmp(action, ON_DEMAND_ACTION_ABORT, MAX_PROFILENAMES_LENGTH))
     {
-        T2Info("Abort report on demand \n");
-        ProfileXConf_terminateReport();
+        T2Info("Abort report on demand\n");
+        T2Info("Abort of the on-demand report is no longer supported; fork-based report execution and termination have been removed\n");
     }
     else
     {
@@ -704,11 +704,6 @@ T2ERROR ReportProfiles_uninit( )
     {
         getMarkerCompRbusSub(false);    // remove Rbus subscription
     }
-#ifdef LIBRDKCERTSEL_BUILD
-    curlCertSelectorFree();
-#else
-    uninitMtls();
-#endif
     T2ER_Uninit();
     destroyT2MarkerComponentMap();
     uninitScheduler();
@@ -912,6 +907,7 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
     {
         getMarkerCompRbusSub(false);
     }
+
     // Populate profile hash map for current configuration
     for( profileIndex = 0; profileIndex < profiles_count; profileIndex++ )
     {
@@ -981,7 +977,6 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
             T2Error("Failed to remove previous report profile from the disk\n");
         }
     }
-
     if(isRbusEnabled())
     {
         unregisterDEforCompEventList();
@@ -1069,7 +1064,6 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
             }
         }
     }
-
     if (rm_flag)
     {
         removeProfileFromDisk(DirPath, MSGPACK_REPORTPROFILES_PERSISTENT_FILE);
@@ -1520,3 +1514,21 @@ bool isMtlsEnabled(void)
 #endif
 #endif
 }
+
+#ifdef GTEST_ENABLE
+typedef void* (*reportOnDemandFunc)(void*);
+reportOnDemandFunc reportOnDemandFuncCallback(void)
+{
+    return reportOnDemand;
+}
+typedef void (*freeProfilesHashMapFunc)(void *);
+freeProfilesHashMapFunc freeProfilesHashMapFuncCallback(void)
+{
+    return freeProfilesHashMap;
+}
+typedef void (*freeReportProfileHashMapFunc)(void *);
+freeReportProfileHashMapFunc freeReportProfileHashMapFuncCallback(void)
+{
+    return freeReportProfileHashMap;
+}
+#endif

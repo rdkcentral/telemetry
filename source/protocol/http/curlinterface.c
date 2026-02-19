@@ -42,7 +42,7 @@
 #include "rdkcertselector.h"
 #define FILESCHEME "file://"
 #endif
-#ifndef LIBRDKCERTSELECTOR
+#ifndef LIBRDKCERTSEL_BUILD
 #ifdef LIBRDKCONFIG_BUILD
 #include "rdkconfig.h"
 #endif

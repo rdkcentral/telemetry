@@ -33,6 +33,7 @@
 #include <ccsp/ccsp_base_api.h>
 #endif
 #include <rbus/rbus.h>
+#include "rdk_otlp_instrumentation.h"
 
 #include "telemetry_busmessage_sender.h"
 
@@ -269,10 +270,14 @@ static T2ERROR getRbusParameterVal(const char* paramName, char **paramValue)
         return T2ERROR_FAILURE;
     }
 
+    // Start distributed trace BEFORE rbus call
+    rdk_otlp_start_distributed_trace(paramName, "tele_rbus_get");
+    
     ret = rbus_get(bus_handle, paramName, &paramValue_t);
     if(ret != RBUS_ERROR_SUCCESS)
     {
         EVENT_ERROR("Unable to get %s\n", paramName);
+        rdk_otlp_finish_distributed_trace();
         return T2ERROR_FAILURE;
     }
     rbusValueType = rbusValue_GetType(paramValue_t);
@@ -294,6 +299,9 @@ static T2ERROR getRbusParameterVal(const char* paramName, char **paramValue)
     *paramValue = stringValue;
     rbusValue_Release(paramValue_t);
 
+    // Finish distributed trace
+    rdk_otlp_finish_distributed_trace();
+    
     return T2ERROR_SUCCESS;
 }
 
@@ -490,6 +498,10 @@ int filtered_event_send(const char* data, const char *markerName)
         rbusValue_SetProperty(value, objProperty);
 
         EVENT_DEBUG("rbus_set with param [%s] with %s and value [%s]\n", T2_EVENT_PARAM, markerName, data);
+        
+        // Start distributed trace for rbus_set
+        rdk_otlp_start_distributed_trace(T2_EVENT_PARAM, "tele_rbus_set");
+        
         ret = rbus_set(bus_handle, T2_EVENT_PARAM, value, &options);
         if(ret != RBUS_ERROR_SUCCESS)
         {
@@ -501,6 +513,10 @@ int filtered_event_send(const char* data, const char *markerName)
         {
             status = 0 ;
         }
+        
+        // Finish distributed trace
+        rdk_otlp_finish_distributed_trace();
+        
         // Release all rbus data structures
         rbusValue_Release(value);
         rbusProperty_Release(objProperty);
@@ -569,10 +585,14 @@ static T2ERROR doPopulateEventMarkerList( )
         eventMarkerMap = NULL;
     }
 
+    // Start distributed trace for rbus_get
+    rdk_otlp_start_distributed_trace(deNameSpace[0], "tele_rbus_get");
+    
     ret = rbus_get(bus_handle, deNameSpace[0], &paramValue_t);
     if(ret != RBUS_ERROR_SUCCESS)
     {
         EVENT_ERROR("rbus mode : No event list configured in profiles %s and return value %d\n", deNameSpace[0], ret);
+        rdk_otlp_finish_distributed_trace();
         pthread_mutex_unlock(&markerListMutex);
         EVENT_DEBUG("rbus mode : No event list configured in profiles %s and return value %d. Unlock markerListMutex\n", deNameSpace[0], ret);
         EVENT_DEBUG("%s --out\n", __FUNCTION__);
@@ -583,6 +603,7 @@ static T2ERROR doPopulateEventMarkerList( )
     if(type_t != RBUS_OBJECT)
     {
         EVENT_ERROR("rbus mode : Unexpected data object received for %s get query \n", deNameSpace[0]);
+        rdk_otlp_finish_distributed_trace();
         rbusValue_Release(paramValue_t);
         pthread_mutex_unlock(&markerListMutex);
         EVENT_DEBUG("Unlock markerListMutex\n");
@@ -614,6 +635,10 @@ static T2ERROR doPopulateEventMarkerList( )
     EVENT_DEBUG("Unlock markerListMutex\n");
     pthread_mutex_unlock(&markerListMutex);
     rbusValue_Release(paramValue_t);
+    
+    // Finish distributed trace
+    rdk_otlp_finish_distributed_trace();
+    
     EVENT_DEBUG("%s --out\n", __FUNCTION__);
     return status;
 

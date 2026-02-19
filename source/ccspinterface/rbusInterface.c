@@ -159,8 +159,10 @@ T2ERROR getRbusParameterVal(const char* paramName, char **paramValue)
         return T2ERROR_FAILURE;
     }
 
+    // Start distributed trace BEFORE rbus call
+    rdk_otlp_start_distributed_trace(paramName, "tele_rbus_get");
+    
     ret = rbus_get(t2bus_handle, paramName, &paramValue_t);
-    rdk_otlp_start_distributed_trace(paramName, "rbus_get_function");
     if(ret != RBUS_ERROR_SUCCESS)
     {
         T2Error("Unable to get %s\n", paramName);
@@ -256,7 +258,9 @@ Vector* getRbusProfileParamValues(Vector *paramList, int execcount)
         if(paramNames[0] != NULL)
         {
             T2Debug("Calling rbus_getExt for %s \n", paramNames[0]);
-	    rdk_otlp_start_distributed_trace(paramNames[0], "rbus_getExt_function");
+            // Start distributed trace BEFORE rbus call
+	    rdk_otlp_start_distributed_trace(paramNames[0], "tele_rbus_getExt");
+            
             if(RBUS_ERROR_SUCCESS != rbus_getExt(t2bus_handle, 1, (const char**)paramNames, &paramValCount, &rbusPropertyValues))
             {
                 T2Error("Failed to retrieve param : %s\n", paramNames[0]);

@@ -27,16 +27,15 @@ import signal
 from urllib.parse import unquote, quote, urlparse, parse_qsl
 import urllib3
 
-# Disable SSL warnings for test environment
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-# Certificate configuration - using P12 format requires pyOpenSSL
-# If not available, will fall back to PEM
-CERT_P12 = '/etc/pki/Test-RDK-root/Test-RDK-client-ICA/certs/rdkclient.p12'
+# Certificate configuration for mTLS and server verification
 CERT_PEM = '/etc/pki/Test-RDK-root/Test-RDK-client-ICA/certs/rdkclient.pem'
 CERT_KEY = '/etc/pki/Test-RDK-root/Test-RDK-client-ICA/private/rdkclient.key'
 
-# Use PEM format for requests library
+# CA certificate for server verification (mock server cert is added to system CA bundle)
+# Use system CA bundle (which includes the mock server certificate via update-ca-certificates)
+CA_BUNDLE = True  # Use system CA certificates
+
+# Client certificate path for mTLS authentication
 CERT_PATH = (CERT_PEM, CERT_KEY) if os.path.exists(CERT_PEM) and os.path.exists(CERT_KEY) else None
 
 
@@ -89,7 +88,7 @@ def sigterm_telemetry(pid):
 
 def adminSupport_cache(save: bool = True):
     try:
-        response = requests.get(ADMIN_SUPPORT_SET, verify=False, cert=CERT_PATH, params={ADMIN_CACHE_ARG: str(save).lower()}, timeout=5)
+        response = requests.get(ADMIN_SUPPORT_SET, verify=CA_BUNDLE, cert=CERT_PATH, params={ADMIN_CACHE_ARG: str(save).lower()}, timeout=5)
         return response.status_code == 200
     except Exception as e:
         print(f"adminSupport_cache error: {e}")
@@ -97,7 +96,7 @@ def adminSupport_cache(save: bool = True):
 
 def adminSupport_requestData():
     try:
-        return_data = requests.get(ADMIN_SUPPORT_GET, verify=False, cert=CERT_PATH, params={ADMIN_RQUEST_DATA: "true"}, timeout=5)
+        return_data = requests.get(ADMIN_SUPPORT_GET, verify=CA_BUNDLE, cert=CERT_PATH, params={ADMIN_RQUEST_DATA: "true"}, timeout=5)
         return_json = return_data.json()
     except Exception as e:
         print(f"adminSupport_requestData error: {e}")
@@ -165,7 +164,7 @@ def check_Rbus_data():
 
 def adminSupport_DLXconf_cache(save:bool = True):
     try:
-        response = requests.get(DL_ADMIN_URL +"Xconf", verify=False, cert=CERT_PATH, params={ADMIN_CACHE_ARG: str(save).lower()}, timeout=5)
+        response = requests.get(DL_ADMIN_URL +"Xconf", verify=CA_BUNDLE, cert=CERT_PATH, params={ADMIN_CACHE_ARG: str(save).lower()}, timeout=5)
         return response.status_code == 200
     except Exception as e:
         print(f"adminSupport_DLXconf_cache error: {e}")
@@ -173,7 +172,7 @@ def adminSupport_DLXconf_cache(save:bool = True):
 
 def adminSupport_DLReport_cache(save:bool = True):
     try:
-        response = requests.get(DL_ADMIN_URL +"Report", verify=False, cert=CERT_PATH, params={ADMIN_CACHE_ARG: str(save).lower()}, timeout=5)
+        response = requests.get(DL_ADMIN_URL +"Report", verify=CA_BUNDLE, cert=CERT_PATH, params={ADMIN_CACHE_ARG: str(save).lower()}, timeout=5)
         return response.status_code == 200
     except Exception as e:
         print(f"adminSupport_DLReport_cache error: {e}")
@@ -181,7 +180,7 @@ def adminSupport_DLReport_cache(save:bool = True):
 
 def adminSupport_DLXconf_requestData():
     try:
-        return_data = requests.get(DL_ADMIN_URL+"Xconf", verify=False, cert=CERT_PATH, params={ADMIN_RQUEST_DATA: "true"}, timeout=5)
+        return_data = requests.get(DL_ADMIN_URL+"Xconf", verify=CA_BUNDLE, cert=CERT_PATH, params={ADMIN_RQUEST_DATA: "true"}, timeout=5)
         return_json = return_data.json()
     except Exception as e:
         print(f"adminSupport_DLXconf_requestData error: {e}")
@@ -190,7 +189,7 @@ def adminSupport_DLXconf_requestData():
 
 def adminSupport_DLReport_requestData():
     try:
-        return_data = requests.get(DL_ADMIN_URL+"Report", verify=False, cert=CERT_PATH, params={ADMIN_RQUEST_DATA: "true"}, timeout=5)
+        return_data = requests.get(DL_ADMIN_URL+"Report", verify=CA_BUNDLE, cert=CERT_PATH, params={ADMIN_RQUEST_DATA: "true"}, timeout=5)
         return_json = return_data.json()
     except Exception as e:
         print(f"adminSupport_DLReport_requestData error: {e}")

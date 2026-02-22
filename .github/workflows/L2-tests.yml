@@ -51,7 +51,7 @@ jobs:
 
       - name: Start mock-xconf service
         run: |
-          docker run -d --name mockxconf -p 50050:50050 -p 50051:50051 -p 50052:50052 -v ${{ github.workspace }}:/mnt/L2_CONTAINER_SHARED_VOLUME ghcr.io/rdkcentral/docker-device-mgt-service-test/mockxconf:latest
+          docker run -d --name mockxconf -p 50050:50050 -p 50051:50051 -p 50052:50052 -e ENABLE_MTLS=true -v ${{ github.workspace }}:/mnt/L2_CONTAINER_SHARED_VOLUME ghcr.io/rdkcentral/docker-device-mgt-service-test/mockxconf:latest
       
       - name: Copy xconf-dcm-response2 json to mockxconf service
         run: |
@@ -59,7 +59,7 @@ jobs:
 
       - name: Start l2-container service
         run: |
-          docker run -d --name native-platform --link mockxconf -v ${{ github.workspace }}:/mnt/L2_CONTAINER_SHARED_VOLUME ghcr.io/rdkcentral/docker-device-mgt-service-test/native-platform:latest
+          docker run -d --name native-platform --link mockxconf -e ENABLE_MTLS=true -v ${{ github.workspace }}:/mnt/L2_CONTAINER_SHARED_VOLUME ghcr.io/rdkcentral/docker-device-mgt-service-test/native-platform:latest
 
       - name: Enter Inside Platform native container and run L2 Test
         run: |

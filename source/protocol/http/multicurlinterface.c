@@ -272,7 +272,7 @@ T2ERROR init_connection_pool()
         CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_PIPEWAIT, 0L);
         CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
         //SSL automatically negotiates the highest SSL/TLS version supported by both client and server
-        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
+        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_SSLVERSION, CURL_SSLVERSION_DEFAULT);
         CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_SSL_VERIFYPEER, 1L);
 
 #ifdef LIBRDKCERTSEL_BUILD

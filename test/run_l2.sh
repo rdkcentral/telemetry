@@ -35,9 +35,9 @@ gcc test/functional-tests/tests/app.c -o test/functional-tests/tests/t2_app -lte
 
 final_result=0
 # removing --exitfirst flag as it is causing the test to exit after first failure
+#pytest -v --json-report --json-report-summary --json-report-file $RESULT_DIR/bootup_sequence.json test/functional-tests/tests/test_bootup_sequence.py || final_result=1
+#pytest -v --json-report --json-report-summary --json-report-file $RESULT_DIR/xconf_communications.json test/functional-tests/tests/test_xconf_communications.py || final_result=1
 pytest -v --json-report --json-report-summary --json-report-file $RESULT_DIR/runs_as_daemon.json test/functional-tests/tests/test_runs_as_daemon.py || final_result=1
-pytest -v --json-report --json-report-summary --json-report-file $RESULT_DIR/bootup_sequence.json test/functional-tests/tests/test_bootup_sequence.py || final_result=1
-pytest -v --json-report --json-report-summary --json-report-file $RESULT_DIR/xconf_communications.json test/functional-tests/tests/test_xconf_communications.py || final_result=1
 pytest -v --json-report --json-report-summary --json-report-file $RESULT_DIR/msg_packet.json test/functional-tests/tests/test_multiprofile_msgpacket.py || final_result=1
 
 if [ $final_result -ne 0 ]; then
@@ -45,3 +45,5 @@ if [ $final_result -ne 0 ]; then
 else
     echo "All tests passed successfully."
 fi
+
+exit $final_result

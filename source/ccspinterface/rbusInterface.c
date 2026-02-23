@@ -1954,9 +1954,11 @@ bool rbusCheckMethodExists(const char* rbusMethodName)
     return true ;
 }
 #ifdef GTEST_ENABLE
+#ifdef DCMAGENT
 typedef void (*rbusReloadConfFunc)(rbusHandle_t, rbusEvent_t const *, rbusEventSubscription_t *);
 rbusReloadConfFunc rbusReloadConfFuncCallback(void)
 {
     return rbusReloadConf;
 }
+#endif
 #endif

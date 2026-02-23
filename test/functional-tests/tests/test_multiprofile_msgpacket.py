@@ -64,7 +64,7 @@ def test_without_namefield():
     sleep(10) 
 
     #Verify that profile is running
-    ERROR_MSG = "Incomplete profiles object information, unable to create profile"
+    ERROR_MSG = "Incomplete profile object information, unable to create profile"
     LOG_MSG = "Successfully enabled profile : \n"
     HASH_ERROR_MSG = "Hash value is null checking for versionHash value"
     assert ERROR_MSG in grep_T2logs(ERROR_MSG) #Without name field

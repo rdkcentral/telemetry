@@ -88,6 +88,7 @@ typedef struct
 static http_pool_entry_t *pool_entries = NULL;  // Dynamic array of pool entries
 static struct curl_slist *post_headers = NULL;  // Shared POST headers
 static int pool_size = 0;                       // Number of pool entries
+static int active_requests = 0;                 // Number of in-flight curl_easy_perform() calls
 
 #ifdef LIBRDKCERTSEL_BUILD
 #if defined(ENABLE_RED_RECOVERY_SUPPORT)
@@ -380,6 +381,7 @@ static T2ERROR acquire_pool_handle(CURL **easy, int *idx)
                 *idx = i;
                 pool_entries[i].handle_available = false;
                 *easy = pool_entries[i].easy_handle;
+                active_requests++;  // Track in-flight requests to prevent cleanup race
 
                 pthread_mutex_unlock(&pool_mutex);
                 return T2ERROR_SUCCESS;
@@ -398,9 +400,10 @@ static void release_pool_handle(int idx)
     if (idx >= 0 && idx < pool_size)
     {
         pool_entries[idx].handle_available = true;
-        //Signal waiting threads to check for handle availability
-        pthread_cond_signal(&pool_cond);
-        T2Info("Released curl handle = %d\n", idx);
+        active_requests--;  // Decrement in-flight count
+        // Broadcast to wake both waiting acquire threads AND cleanup waiting in http_pool_cleanup()
+        pthread_cond_broadcast(&pool_cond);
+        T2Info("Released curl handle = %d, active_requests = %d\n", idx, active_requests);
     }
     else
     {
@@ -1043,14 +1046,23 @@ T2ERROR http_pool_cleanup(void)
 
     T2Info("Cleaning up http pool resources\n");
 
+    // Wait for all in-flight curl_easy_perform() calls to complete before destroying handles.
+    // Without this wait, cleanup can call curl_easy_cleanup() while a thread is still inside
+    // curl_easy_perform(), corrupting the handle (0xc0dedbad) and causing SIGSEGV.
+    while (active_requests > 0)
+    {
+        T2Info("Waiting for %d active request(s) to complete before pool cleanup\n", active_requests);
+        pthread_cond_wait(&pool_cond, &pool_mutex);
+    }
+
     // Reset initialization flag
     pool_initialized = false;
 
-    // Signal any waiting threads to wake up
+    // Signal any waiting acquire threads to wake up and abort
     pthread_cond_broadcast(&pool_cond);
     pthread_mutex_unlock(&pool_mutex);
 
-    // Cleanup all curl handles and per-entry certificate selectors
+    // Now safe to cleanup - no in-flight requests
     cleanup_curl_handles();
 
 #ifndef LIBRDKCERTSEL_BUILD

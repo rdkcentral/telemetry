@@ -32,6 +32,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <signal.h>
+#include <time.h>
 #include "multicurlinterface.h"
 #include "busInterface.h"
 #include "t2log_wrapper.h"
@@ -67,11 +68,13 @@
 #define MAX_ALLOWED_POOL_SIZE 5  // Maximum allowed pool size
 #define MIN_ALLOWED_POOL_SIZE 1  // Minimum allowed pool size
 #define HTTP_RESPONSE_FILE "/tmp/httpOutput.txt"
+#define POOL_ACQUIRE_TIMEOUT_SEC  35
+#define POOL_ACQUIRE_RETRY_MS     100
 static bool pool_initialized = false;
+static bool pool_shutting_down = false;
 
-// Static initialization of mutex and condition variable to avoid race conditions
+// pool_mutex protects pool state and synchronizes access to pool entries
 static pthread_mutex_t pool_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t pool_cond = PTHREAD_COND_INITIALIZER;
 
 // Single pool entry structure
 typedef struct
@@ -88,7 +91,7 @@ typedef struct
 static http_pool_entry_t *pool_entries = NULL;  // Dynamic array of pool entries
 static struct curl_slist *post_headers = NULL;  // Shared POST headers
 static int pool_size = 0;                       // Number of pool entries
-static int active_requests = 0;                 // Number of curl handles in use
+static int active_requests = 0;                 // Number of in-flight curl_easy_perform() calls
 
 #ifdef LIBRDKCERTSEL_BUILD
 #if defined(ENABLE_RED_RECOVERY_SUPPORT)
@@ -349,48 +352,66 @@ T2ERROR init_connection_pool()
 
 static T2ERROR acquire_pool_handle(CURL **easy, int *idx)
 {
+    struct timespec start_time, current_time;
+    clock_gettime(CLOCK_MONOTONIC, &start_time);
+
     pthread_mutex_lock(&pool_mutex);
-    if (!pool_initialized)
+    bool need_init = !pool_initialized && !pool_shutting_down;
+    pthread_mutex_unlock(&pool_mutex);
+
+    if (need_init)
     {
-        pthread_mutex_unlock(&pool_mutex);
         T2ERROR ret = init_connection_pool();
         if(ret != T2ERROR_SUCCESS)
         {
             T2Error("Failed to initialize connection pool\n");
             return ret;
         }
-        pthread_mutex_lock(&pool_mutex);
     }
 
-    // Waits until a handle becomes available or the pool is being cleaned up
-    // exits if the pool has been cleaned up in shutdown sequence
+    // Poll for an available handle with a bounded timeout.
+    // If no handle is available within POOL_ACQUIRE_TIMEOUT_SEC, treat as upload failure.
     while(1)
     {
-        if (!pool_initialized)
+        pthread_mutex_lock(&pool_mutex);
+
+        if (pool_shutting_down || !pool_initialized)
         {
-            T2Info("Pool is being cleaned up, aborting handle acquisition\n");
             pthread_mutex_unlock(&pool_mutex);
+            T2Info("Pool is shutting down or not initialized, aborting handle acquisition\n");
             return T2ERROR_FAILURE;
         }
 
+        // Try to find an available handle
         for(int i = 0; i < pool_size; i++)
         {
             if(pool_entries[i].handle_available)
             {
-                T2Info("Available handle = %d (pool size: %d)\n", i, pool_size);
+                T2Info("Acquired handle = %d (pool size: %d)\n", i, pool_size);
                 *idx = i;
                 pool_entries[i].handle_available = false;
                 *easy = pool_entries[i].easy_handle;
                 active_requests++;
-
                 pthread_mutex_unlock(&pool_mutex);
                 return T2ERROR_SUCCESS;
             }
         }
 
-        T2Info("No curl handle available (pool size: %d), waiting for one to become free.\n", pool_size);
-        pthread_cond_wait(&pool_cond, &pool_mutex);
-        // After waking up, loop back to check pool_initialized status
+        pthread_mutex_unlock(&pool_mutex);
+
+        // Check elapsed time against timeout
+        clock_gettime(CLOCK_MONOTONIC, &current_time);
+        long elapsed_sec = current_time.tv_sec - start_time.tv_sec;
+
+        if (elapsed_sec >= POOL_ACQUIRE_TIMEOUT_SEC)
+        {
+            T2Error("Timeout waiting for available curl handle after %ld seconds, treating as upload failure\n", elapsed_sec);
+            return T2ERROR_FAILURE;
+        }
+
+        // Sleep briefly before retrying
+        T2Debug("No curl handle available (pool size: %d), retrying in %dms...\n", pool_size, POOL_ACQUIRE_RETRY_MS);
+        usleep(POOL_ACQUIRE_RETRY_MS * 1000);
     }
 }
 
@@ -401,9 +422,6 @@ static void release_pool_handle(int idx)
     {
         pool_entries[idx].handle_available = true;
         active_requests--;
-        // Wake both waiting acquire threads AND cleanup function
-        // in case they are waiting for handles to be released
-        pthread_cond_broadcast(&pool_cond);
         T2Info("Released curl handle = %d, active_requests = %d\n", idx, active_requests);
     }
     else
@@ -782,7 +800,7 @@ T2ERROR http_pool_post(const char *url, const char *payload)
 
     // Clear any GET-specific settings from previous use
     CURL_SETOPT_CHECK(easy, CURLOPT_WRITEFUNCTION, NULL);
-    CURL_SETOPT_CHECK(easy, CURLOPT_WRITEDATA, NULL);
+    CURL_SETOPT_CHECK(easy, CURLOPT_WRITEDATA, (void *)stdout);
 
     // Configure request-specific options for POST
     CURL_SETOPT_CHECK_STR(easy, CURLOPT_URL, url);
@@ -1047,19 +1065,46 @@ T2ERROR http_pool_cleanup(void)
 
     T2Info("Cleaning up http pool resources\n");
 
-    // Wait for for active_requests to drop to 0, which indicates all threads have completed
-    // their curl_easy_perform calls and released their handles back to the pool.
-    while (active_requests > 0)
+    // Signal all new acquire attempts to bail out immediately
+    pool_shutting_down = true;
+    pthread_mutex_unlock(&pool_mutex);
+
+    // Poll until all in-flight curl_easy_perform() calls complete.
+    // Max wait = POOL_ACQUIRE_TIMEOUT_SEC (curl timeout 30s + 5s buffer).
+    // Polling avoids the deadlock where cleanup holds mutex while waiting,
+    // and release_pool_handle also needs the mutex to decrement active_requests.
+    struct timespec start_time, current_time;
+    clock_gettime(CLOCK_MONOTONIC, &start_time);
+
+    while(1)
     {
-        T2Info("Waiting for %d active request(s) to complete before pool cleanup\n", active_requests);
-        pthread_cond_wait(&pool_cond, &pool_mutex);
+        pthread_mutex_lock(&pool_mutex);
+        int pending = active_requests;
+        pthread_mutex_unlock(&pool_mutex);
+
+        if (pending == 0)
+        {
+            T2Info("All active requests completed, proceeding with cleanup\n");
+            break;
+        }
+
+        clock_gettime(CLOCK_MONOTONIC, &current_time);
+        long elapsed_sec = current_time.tv_sec - start_time.tv_sec;
+
+        if (elapsed_sec >= POOL_ACQUIRE_TIMEOUT_SEC)
+        {
+            T2Error("Cleanup timeout after %ld seconds with %d request(s) still active, forcing cleanup\n",
+                    elapsed_sec, pending);
+            break;
+        }
+
+        T2Info("Waiting for %d active request(s) to complete before pool cleanup\n", pending);
+        usleep(POOL_ACQUIRE_RETRY_MS * 1000);
     }
 
-    // Reset initialization flag
+    pthread_mutex_lock(&pool_mutex);
     pool_initialized = false;
-
-    // Signal any waiting threads to wake up
-    pthread_cond_broadcast(&pool_cond);
+    pool_shutting_down = false;
     pthread_mutex_unlock(&pool_mutex);
 
     // Cleanup all curl handles and per-entry certificate selectors

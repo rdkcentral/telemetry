@@ -91,7 +91,7 @@ typedef struct
 static http_pool_entry_t *pool_entries = NULL;  // Dynamic array of pool entries
 static struct curl_slist *post_headers = NULL;  // Shared POST headers
 static int pool_size = 0;                       // Number of pool entries
-static int active_requests = 0;                 // Number of in-flight curl_easy_perform() calls
+static unsigned int active_requests = 0;        // Number of in-flight curl_easy_perform() calls
 
 #ifdef LIBRDKCERTSEL_BUILD
 #if defined(ENABLE_RED_RECOVERY_SUPPORT)
@@ -353,7 +353,11 @@ T2ERROR init_connection_pool()
 static T2ERROR acquire_pool_handle(CURL **easy, int *idx)
 {
     struct timespec start_time, current_time;
-    clock_gettime(CLOCK_MONOTONIC, &start_time);
+    if (clock_gettime(CLOCK_MONOTONIC, &start_time) != 0)
+    {
+        T2Error("clock_gettime failed for start_time: %s\n", strerror(errno));
+        return T2ERROR_FAILURE;
+    }
 
     pthread_mutex_lock(&pool_mutex);
     bool need_init = !pool_initialized && !pool_shutting_down;
@@ -391,6 +395,12 @@ static T2ERROR acquire_pool_handle(CURL **easy, int *idx)
                 *idx = i;
                 pool_entries[i].handle_available = false;
                 *easy = pool_entries[i].easy_handle;
+
+                // Guard against overflow
+                if (active_requests >= (unsigned int)pool_size)
+                {
+                    T2Error("Warning: active_requests (%u) >= pool_size (%d) before increment\n", active_requests, pool_size);
+                }
                 active_requests++;
                 pthread_mutex_unlock(&pool_mutex);
                 return T2ERROR_SUCCESS;
@@ -400,7 +410,11 @@ static T2ERROR acquire_pool_handle(CURL **easy, int *idx)
         pthread_mutex_unlock(&pool_mutex);
 
         // Check elapsed time against timeout
-        clock_gettime(CLOCK_MONOTONIC, &current_time);
+        if (clock_gettime(CLOCK_MONOTONIC, &current_time) != 0)
+        {
+            T2Error("clock_gettime failed for current_time: %s\n", strerror(errno));
+            return T2ERROR_FAILURE;
+        }
         long elapsed_sec = current_time.tv_sec - start_time.tv_sec;
 
         if (elapsed_sec >= POOL_ACQUIRE_TIMEOUT_SEC)
@@ -816,6 +830,7 @@ T2ERROR http_pool_post(const char *url, const char *payload)
     // curl_easy_perform crashes without file output configuration. This can be removed once the root cause of the crash is identified and fixed.
     // For now, we will set up file output for POST requests to ensure stability.
     // Set up file output for POST requests
+    // If file opens successfully, override the default stdout with the file pointer
     int curl_output_fd = open("/tmp/curlOutput.txt", O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
     FILE *fp = NULL;
     if (curl_output_fd >= 0)
@@ -828,13 +843,13 @@ T2ERROR http_pool_post(const char *url, const char *payload)
         }
         else
         {
-            T2Error("fdopen failed for /tmp/curlOutput.txt\n");
+            T2Error("fdopen failed for /tmp/curlOutput.txt, will use stdout as fallback\n");
             close(curl_output_fd);
         }
     }
     else
     {
-        T2Error("Unable to open /tmp/curlOutput.txt for writing\n");
+        T2Error("Unable to open /tmp/curlOutput.txt for writing, will use stdout as fallback\n");
     }
 
     // Certificate handling - check if mTLS is enabled
@@ -1074,12 +1089,16 @@ T2ERROR http_pool_cleanup(void)
     // Polling avoids the deadlock where cleanup holds mutex while waiting,
     // and release_pool_handle also needs the mutex to decrement active_requests.
     struct timespec start_time, current_time;
-    clock_gettime(CLOCK_MONOTONIC, &start_time);
+    if (clock_gettime(CLOCK_MONOTONIC, &start_time) != 0)
+    {
+        T2Error("clock_gettime failed for start_time: %s\n", strerror(errno));
+        return T2ERROR_FAILURE;
+    }
 
     while(1)
     {
         pthread_mutex_lock(&pool_mutex);
-        int pending = active_requests;
+        unsigned int pending = active_requests;
         pthread_mutex_unlock(&pool_mutex);
 
         if (pending == 0)
@@ -1088,17 +1107,21 @@ T2ERROR http_pool_cleanup(void)
             break;
         }
 
-        clock_gettime(CLOCK_MONOTONIC, &current_time);
+        if (clock_gettime(CLOCK_MONOTONIC, &current_time) != 0)
+        {
+            T2Error("clock_gettime failed for current_time: %s\n", strerror(errno));
+            return T2ERROR_FAILURE;
+        }
         long elapsed_sec = current_time.tv_sec - start_time.tv_sec;
 
         if (elapsed_sec >= POOL_ACQUIRE_TIMEOUT_SEC)
         {
-            T2Error("Cleanup timeout after %ld seconds with %d request(s) still active, forcing cleanup\n",
+            T2Error("Cleanup timeout after %ld seconds with %u request(s) still active, forcing cleanup\n",
                     elapsed_sec, pending);
             break;
         }
 
-        T2Info("Waiting for %d active request(s) to complete before pool cleanup\n", pending);
+        T2Info("Waiting for %u active request(s) to complete before pool cleanup\n", pending);
         usleep(POOL_ACQUIRE_RETRY_MS * 1000);
     }
 

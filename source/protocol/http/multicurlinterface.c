@@ -32,6 +32,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <signal.h>
+#include <time.h>
 #include "multicurlinterface.h"
 #include "busInterface.h"
 #include "t2log_wrapper.h"
@@ -63,15 +64,17 @@
 
 //Global variables
 #define IFINTERFACE      "erouter0"
-#define DEFAULT_POOL_SIZE 2
+#define DEFAULT_POOL_SIZE 1
 #define MAX_ALLOWED_POOL_SIZE 5  // Maximum allowed pool size
 #define MIN_ALLOWED_POOL_SIZE 1  // Minimum allowed pool size
 #define HTTP_RESPONSE_FILE "/tmp/httpOutput.txt"
+#define POOL_ACQUIRE_TIMEOUT_SEC  35
+#define POOL_ACQUIRE_RETRY_MS     100
 static bool pool_initialized = false;
+static bool pool_shutting_down = false;
 
-// Static initialization of mutex and condition variable to avoid race conditions
+// pool_mutex protects pool state and synchronizes access to pool entries
 static pthread_mutex_t pool_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t pool_cond = PTHREAD_COND_INITIALIZER;
 
 // Single pool entry structure
 typedef struct
@@ -88,6 +91,7 @@ typedef struct
 static http_pool_entry_t *pool_entries = NULL;  // Dynamic array of pool entries
 static struct curl_slist *post_headers = NULL;  // Shared POST headers
 static int pool_size = 0;                       // Number of pool entries
+static unsigned int active_requests = 0;        // Number of in-flight curl_easy_perform() calls
 
 #ifdef LIBRDKCERTSEL_BUILD
 #if defined(ENABLE_RED_RECOVERY_SUPPORT)
@@ -103,7 +107,8 @@ static int get_configured_pool_size(void)
 {
     int configured_size = DEFAULT_POOL_SIZE;
 
-    // Check environment variable T2_CONNECTION_POOL_SIZE
+    // Check environment variable T2_CONNECTION_POOL_SIZE to have the size
+    // of the connection pool based on the device type
     const char *env_size = getenv("T2_CONNECTION_POOL_SIZE");
     if (env_size != NULL)
     {
@@ -111,7 +116,7 @@ static int get_configured_pool_size(void)
         if (env_value >= MIN_ALLOWED_POOL_SIZE && env_value <= MAX_ALLOWED_POOL_SIZE)
         {
             configured_size = env_value;
-            T2Info("Using connection pool size from environment: %d\n", configured_size);
+            T2Info("Curl connection pool size set from environment: %d\n", configured_size);
         }
         else
         {
@@ -134,7 +139,6 @@ static size_t httpGetCallBack(void *responseBuffer, size_t len, size_t nmemb,
     size_t realsize = len * nmemb;
     curlResponseData* response = (curlResponseData*) stream;
 
-    // FIX: Check for NULL stream to prevent crashes
     if (!response)
     {
         T2Error("httpGetCallBack: NULL stream parameter\n");
@@ -146,8 +150,6 @@ static size_t httpGetCallBack(void *responseBuffer, size_t len, size_t nmemb,
     if (!ptr)
     {
         T2Error("%s:%u , T2:memory realloc failed\n", __func__, __LINE__);
-        // On realloc failure, abort the transfer to avoid silently dropping data
-        // Return 0 to signal an error to curl
         return 0;
     }
     response->data = ptr;
@@ -216,7 +218,6 @@ T2ERROR init_connection_pool()
 
     pthread_mutex_lock(&pool_mutex);
 
-    // Check if already initialized
     if(pool_initialized)
     {
         T2Info("Connection pool already initialized with size %d\n", pool_size);
@@ -224,15 +225,11 @@ T2ERROR init_connection_pool()
         return T2ERROR_SUCCESS;
     }
 
-    // Get configured pool size from environment variable
+    //Get configured pool size from environment variable for low end devices
     pool_size = get_configured_pool_size();
-
-    T2Info("Initializing connection pool with size: %d\n", pool_size);
-
-    // Allocate dynamic array of pool entries based on configured pool size
+    T2Debug("Initializing connection pool with size: %d\n", pool_size);
     pool_entries = (http_pool_entry_t *)calloc(pool_size, sizeof(http_pool_entry_t));
 
-    // Check if allocation succeeded
     if (!pool_entries)
     {
         T2Error("Failed to allocate memory for connection pool of size %d\n", pool_size);
@@ -241,14 +238,14 @@ T2ERROR init_connection_pool()
         return T2ERROR_FAILURE;
     }
 
-    // Pre-allocate easy handles and initialize pool entries
+    // Allocating easy handles and initialize pool entries
     for(int i = 0; i < pool_size; i++)
     {
         pool_entries[i].easy_handle = curl_easy_init();
         if(pool_entries[i].easy_handle == NULL)
         {
             T2Error("%s : Failed to initialize curl handle %d\n", __FUNCTION__, i);
-            // Cleanup previously initialized handles using helper function
+            // Cleanup previously initialized handles to prevent memory leak
             cleanup_curl_handles();
             pthread_mutex_unlock(&pool_mutex);
             return T2ERROR_FAILURE;
@@ -283,7 +280,7 @@ T2ERROR init_connection_pool()
         CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_SSL_VERIFYPEER, 1L);
 
 #ifdef LIBRDKCERTSEL_BUILD
-        // Initialize per-entry certificate selectors
+        // Initialize certificate selectors for each easy handle
         bool state_red_enable = false;
 #if defined(ENABLE_RED_RECOVERY_SUPPORT)
         state_red_enable = isStateRedEnabled();
@@ -291,7 +288,7 @@ T2ERROR init_connection_pool()
 
         if (state_red_enable)
         {
-            // Initialize recovery certificate selector for this entry
+            // Initialize recovery certificate selector while in state red
             pool_entries[i].rcvry_cert_selector = rdkcertselector_new(NULL, NULL, "RCVRY");
             if (pool_entries[i].rcvry_cert_selector == NULL)
             {
@@ -304,11 +301,11 @@ T2ERROR init_connection_pool()
             {
                 T2Info("%s: Initialized recovery cert selector for entry %d\n", __func__, i);
             }
-            pool_entries[i].cert_selector = NULL; // Not used in recovery mode
+            pool_entries[i].cert_selector = NULL;
         }
         else
         {
-            // Initialize normal certificate selector for this entry
+            // Initialize normal certificate selector while not in red state
             pool_entries[i].cert_selector = rdkcertselector_new(NULL, NULL, "MTLS");
             if (pool_entries[i].cert_selector == NULL)
             {
@@ -321,7 +318,7 @@ T2ERROR init_connection_pool()
             {
                 T2Info("%s: Initialized cert selector for entry %d\n", __func__, i);
             }
-            pool_entries[i].rcvry_cert_selector = NULL; // Not used in normal mode
+            pool_entries[i].rcvry_cert_selector = NULL;
         }
 #endif
     }
@@ -352,75 +349,103 @@ T2ERROR init_connection_pool()
     return T2ERROR_SUCCESS;
 }
 
-// Helper function to acquire any available handle with waiting
+
 static T2ERROR acquire_pool_handle(CURL **easy, int *idx)
 {
-    pthread_mutex_lock(&pool_mutex);
-    if (!pool_initialized)
+    struct timespec start_time, current_time;
+    if (clock_gettime(CLOCK_MONOTONIC, &start_time) != 0)
     {
-        pthread_mutex_unlock(&pool_mutex);
+        T2Error("clock_gettime failed for start_time: %s\n", strerror(errno));
+        return T2ERROR_FAILURE;
+    }
+
+    pthread_mutex_lock(&pool_mutex);
+    bool need_init = !pool_initialized && !pool_shutting_down;
+    pthread_mutex_unlock(&pool_mutex);
+
+    if (need_init)
+    {
         T2ERROR ret = init_connection_pool();
         if(ret != T2ERROR_SUCCESS)
         {
             T2Error("Failed to initialize connection pool\n");
             return ret;
         }
-        pthread_mutex_lock(&pool_mutex);
     }
 
-    // Waits until a handle becomes available or pool is being cleaned up
+    // Poll for an available handle with a bounded timeout.
+    // If no handle is available within POOL_ACQUIRE_TIMEOUT_SEC, treat as upload failure.
     while(1)
     {
-        // Check if pool is being shut down
-        if (!pool_initialized)
+        pthread_mutex_lock(&pool_mutex);
+
+        if (pool_shutting_down || !pool_initialized)
         {
-            T2Info("Pool is being cleaned up, aborting handle acquisition\n");
             pthread_mutex_unlock(&pool_mutex);
+            T2Info("Pool is shutting down or not initialized, aborting handle acquisition\n");
             return T2ERROR_FAILURE;
         }
 
-        // Find an available handle
+        // Try to find an available handle
         for(int i = 0; i < pool_size; i++)
         {
             if(pool_entries[i].handle_available)
             {
-                T2Info("acquire_pool_handle ; Available handle = %d (pool size: %d)\n", i, pool_size);
+                T2Info("Acquired handle = %d (pool size: %d)\n", i, pool_size);
                 *idx = i;
                 pool_entries[i].handle_available = false;
                 *easy = pool_entries[i].easy_handle;
 
+                // Guard against overflow
+                if (active_requests >= (unsigned int)pool_size)
+                {
+                    T2Error("Warning: active_requests (%u) >= pool_size (%d) before increment\n", active_requests, pool_size);
+                }
+                active_requests++;
                 pthread_mutex_unlock(&pool_mutex);
                 return T2ERROR_SUCCESS;
             }
         }
 
-        // No handle available, wait for one to become free
-        T2Info("No curl handle available (pool size: %d), waiting for one to become free...\n", pool_size);
-        pthread_cond_wait(&pool_cond, &pool_mutex);
-        // After waking up, loop back to check pool_initialized status
-        // This handles both spurious wakeups and shutdown signals
+        pthread_mutex_unlock(&pool_mutex);
+
+        // Check elapsed time against timeout
+        if (clock_gettime(CLOCK_MONOTONIC, &current_time) != 0)
+        {
+            T2Error("clock_gettime failed for current_time: %s\n", strerror(errno));
+            return T2ERROR_FAILURE;
+        }
+        long elapsed_sec = current_time.tv_sec - start_time.tv_sec;
+
+        if (elapsed_sec >= POOL_ACQUIRE_TIMEOUT_SEC)
+        {
+            T2Error("Timeout waiting for available curl handle after %ld seconds, treating as upload failure\n", elapsed_sec);
+            return T2ERROR_FAILURE;
+        }
+
+        // Sleep briefly before retrying
+        T2Debug("No curl handle available (pool size: %d), retrying in %dms...\n", pool_size, POOL_ACQUIRE_RETRY_MS);
+        usleep(POOL_ACQUIRE_RETRY_MS * 1000);
     }
 }
 
-// Helper function to release handle back to pool
 static void release_pool_handle(int idx)
 {
     pthread_mutex_lock(&pool_mutex);
     if (idx >= 0 && idx < pool_size)
     {
         pool_entries[idx].handle_available = true;
-        pthread_cond_signal(&pool_cond); // Signal waiting threads
-        T2Info("release_pool_handle ; Released handle = %d (pool size: %d)\n", idx, pool_size);
+        active_requests--;
+        T2Info("Released curl handle = %d, active_requests = %d\n", idx, active_requests);
     }
     else
     {
-        T2Error("release_pool_handle ; Invalid handle index = %d (pool size: %d)\n", idx, pool_size);
+        T2Error("Invalid curl handle index = %d (pool size: %d)\n", idx, pool_size);
     }
     pthread_mutex_unlock(&pool_mutex);
 }
 
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
-// Function to configure WAN interface for CURL handle
 static void configure_wan_interface(CURL *easy)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
@@ -453,7 +478,7 @@ static void configure_wan_interface(CURL *easy)
 }
 #endif
 
-// GET API - Updated to use shared pool
+
 T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_output)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
@@ -464,7 +489,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
         return T2ERROR_FAILURE;
     }
 
-    T2Info("%s ; GET url = %s\n", __FUNCTION__, url);
+    T2Info("GET url = %s\n", url);
 
     CURL *easy;
     int idx = -1;
@@ -477,12 +502,10 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
     }
 
     // Clear any POST-specific settings so that the handle can be used for GET operations
-    CURL_SETOPT_CHECK(easy, CURLOPT_CUSTOMREQUEST, NULL);
+    // curl_easy_perform ends up in crash when POST specific options are not cleared
     CURL_SETOPT_CHECK(easy, CURLOPT_POSTFIELDS, NULL);
     CURL_SETOPT_CHECK(easy, CURLOPT_POSTFIELDSIZE, 0L);
     CURL_SETOPT_CHECK(easy, CURLOPT_HTTPHEADER, NULL);
-
-    T2Debug("http_pool_get using handle %d\n", idx);
 
     // Allocate response buffer locally for GET requests only
     curlResponseData* response = (curlResponseData *) malloc(sizeof(curlResponseData));
@@ -565,7 +588,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
                 CURL_SETOPT_CHECK_STR(easy, CURLOPT_KEYPASSWD, pCertPC);
                 CURL_SETOPT_CHECK(easy, CURLOPT_SSL_VERIFYPEER, 1L);
 
-                // Execute the request directly
+                // Execute the request and retry incase of certificate related error
                 curl_code = curl_easy_perform(easy);
 
                 long http_code;
@@ -573,11 +596,11 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
 
                 if(curl_code != CURLE_OK || http_code != 200)
                 {
-                    T2Error("%s: Failed to establish connection using xPKI certificate: %s, Curl failed : %d (entry %d)\n", __func__, pCertFile, curl_code, idx);
+                    T2Error("%s: Failed to establish connection using xPKI certificate: %s, Curl failed : %d\n", __func__, pCertFile, curl_code);
                 }
                 else
                 {
-                    T2Info("%s: Using xpki Certs connection certname : %s (entry %d)\n", __FUNCTION__, pCertFile, idx);
+                    T2Info("%s: Using xpki Certs connection certname : %s \n", __FUNCTION__, pCertFile);
                 }
             }
         }
@@ -586,13 +609,11 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
         // Fallback to getMtlsCerts if certificate selector not available
         if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pCertPC))
         {
-            // Configure mTLS certificates
             CURL_SETOPT_CHECK_STR(easy, CURLOPT_SSLCERTTYPE, "P12");
             CURL_SETOPT_CHECK_STR(easy, CURLOPT_SSLCERT, pCertFile);
             CURL_SETOPT_CHECK_STR(easy, CURLOPT_KEYPASSWD, pCertPC);
             CURL_SETOPT_CHECK(easy, CURLOPT_SSL_VERIFYPEER, 1L);
 
-            // Execute the request
             curl_code = curl_easy_perform(easy);
         }
         else
@@ -610,13 +631,13 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
             return T2ERROR_FAILURE;
         }
 #endif
+        //reset the security options set to curl handle
         CURL_SETOPT_CHECK(easy, CURLOPT_SSLCERT, NULL);
         CURL_SETOPT_CHECK(easy, CURLOPT_KEYPASSWD, NULL);
     }
     else
     {
         T2Info("Attempting curl communication without mtls\n");
-        // Execute without mTLS
         curl_code = curl_easy_perform(easy);
     }
 
@@ -647,7 +668,6 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
 
     long http_code;
     curl_easy_getinfo(easy, CURLINFO_RESPONSE_CODE, &http_code);
-    T2Info("%s ; HTTP response code: %ld\n", __FUNCTION__, http_code);
 
     T2ERROR result = T2ERROR_FAILURE;
     if (http_code == 200)
@@ -665,7 +685,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
                 int fd = open(HTTP_RESPONSE_FILE, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
                 if (fd >= 0)
                 {
-                    FILE *httpOutput = fdopen(fd, "w+");
+                    FILE *httpOutput = fdopen(fd, "w");
                     if (httpOutput)
                     {
                         T2Debug("Update config data in response file %s \n", HTTP_RESPONSE_FILE);
@@ -684,7 +704,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
                 }
             }
 
-            // Copy response data
+            // Copy response data to return to the caller function
             if (response_data)
             {
                 *response_data = NULL;
@@ -739,6 +759,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
     }
 
     // Clean up certificates - only for non-LIBRDKCERTSEL_BUILD path
+    // In case of CertSelector, CertSelector will take care of freeing the certicates
 #ifndef LIBRDKCERTSEL_BUILD
     if(pCertFile != NULL)
     {
@@ -759,6 +780,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
         pCertPC = NULL;
     }
 #endif
+
     // Important Note: When using LIBRDKCERTSEL_BUILD, pCertURI and pCertPC are owned by the
     // cert selector object and are freed when rdkcertselector_free() is called
 
@@ -768,7 +790,6 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
     return result;
 }
 
-// POST API - Updated to use shared pool
 T2ERROR http_pool_post(const char *url, const char *payload)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
@@ -778,7 +799,7 @@ T2ERROR http_pool_post(const char *url, const char *payload)
         return T2ERROR_FAILURE;
     }
 
-    T2Info("%s ; POST url = %s\n", __FUNCTION__, url);
+    T2Info("POST url = %s\n", url);
 
     // Acquire any available handle (with waiting)
     CURL *easy;
@@ -791,16 +812,13 @@ T2ERROR http_pool_post(const char *url, const char *payload)
         return ret;
     }
 
-    T2Debug("http_pool_post using handle %d\n", idx);
-
     // Clear any GET-specific settings from previous use
-    CURL_SETOPT_CHECK(easy, CURLOPT_HTTPGET, 0L);
     CURL_SETOPT_CHECK(easy, CURLOPT_WRITEFUNCTION, NULL);
-    CURL_SETOPT_CHECK(easy, CURLOPT_WRITEDATA, NULL);
+    CURL_SETOPT_CHECK(easy, CURLOPT_WRITEDATA, (void *)stdout);
 
     // Configure request-specific options for POST
     CURL_SETOPT_CHECK_STR(easy, CURLOPT_URL, url);
-    CURL_SETOPT_CHECK_STR(easy, CURLOPT_CUSTOMREQUEST, "POST");
+    CURL_SETOPT_CHECK(easy, CURLOPT_POST, 1L);
     CURL_SETOPT_CHECK(easy, CURLOPT_HTTPHEADER, post_headers);
     CURL_SETOPT_CHECK_STR(easy, CURLOPT_POSTFIELDS, payload);
     CURL_SETOPT_CHECK(easy, CURLOPT_POSTFIELDSIZE, strlen(payload));
@@ -812,6 +830,7 @@ T2ERROR http_pool_post(const char *url, const char *payload)
     // curl_easy_perform crashes without file output configuration. This can be removed once the root cause of the crash is identified and fixed.
     // For now, we will set up file output for POST requests to ensure stability.
     // Set up file output for POST requests
+    // If file opens successfully, override the default stdout with the file pointer
     int curl_output_fd = open("/tmp/curlOutput.txt", O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
     FILE *fp = NULL;
     if (curl_output_fd >= 0)
@@ -824,13 +843,13 @@ T2ERROR http_pool_post(const char *url, const char *payload)
         }
         else
         {
-            T2Error("fdopen failed for /tmp/curlOutput.txt\n");
+            T2Error("fdopen failed for /tmp/curlOutput.txt, will use stdout as fallback\n");
             close(curl_output_fd);
         }
     }
     else
     {
-        T2Error("Unable to open /tmp/curlOutput.txt for writing\n");
+        T2Error("Unable to open /tmp/curlOutput.txt for writing, will use stdout as fallback\n");
     }
 
     // Certificate handling - check if mTLS is enabled
@@ -860,11 +879,11 @@ T2ERROR http_pool_post(const char *url, const char *payload)
             // RED recovery mode - use recovery cert selector
             if (pool_entries[idx].rcvry_cert_selector == NULL)
             {
-                T2Info("%s: Initializing recovery cert selector for entry %d\n", __func__, idx);
+                T2Info("Initializing recovery cert selector for this easy handle\n");
                 pool_entries[idx].rcvry_cert_selector = rdkcertselector_new(NULL, NULL, "RCVRY");
                 if (pool_entries[idx].rcvry_cert_selector == NULL)
                 {
-                    T2Error("%s: Failed to initialize recovery cert selector for entry %d\n", __func__, idx);
+                    T2Error("Failed to initialize recovery cert selector for this easy handle\n");
                     release_pool_handle(idx);
                     if(fp)
                     {
@@ -945,7 +964,6 @@ T2ERROR http_pool_post(const char *url, const char *payload)
                 CURL_SETOPT_CHECK_STR(easy, CURLOPT_KEYPASSWD, pCertPC);
                 CURL_SETOPT_CHECK(easy, CURLOPT_SSL_VERIFYPEER, 1L);
 
-                // Execute the request directly
                 curl_code = curl_easy_perform(easy);
 
                 long http_code;
@@ -972,7 +990,6 @@ T2ERROR http_pool_post(const char *url, const char *payload)
             CURL_SETOPT_CHECK_STR(easy, CURLOPT_KEYPASSWD, pCertPC);
             CURL_SETOPT_CHECK(easy, CURLOPT_SSL_VERIFYPEER, 1L);
 
-            // Execute the request
             curl_code = curl_easy_perform(easy);
         }
         else
@@ -991,7 +1008,6 @@ T2ERROR http_pool_post(const char *url, const char *payload)
     }
     else
     {
-        // Execute without mTLS
         T2Info("Attempting curl communication without mtls\n");
         curl_code = curl_easy_perform(easy);
     }
@@ -1005,16 +1021,16 @@ T2ERROR http_pool_post(const char *url, const char *payload)
     {
         long http_code;
         curl_easy_getinfo(easy, CURLINFO_RESPONSE_CODE, &http_code);
-        T2Debug("%s ; HTTP response code: %ld\n", __FUNCTION__, http_code);
+        T2Debug("HTTP response code: %ld\n", http_code);
 
         if (http_code == 200)
         {
             result = T2ERROR_SUCCESS;
-            T2Info("%s ; HTTP Request successful\n", __FUNCTION__);
+            T2Info("Report Sent Successfully over HTTP : %ld\n", http_code);
         }
         else
         {
-            T2Error("%s ; HTTP request failed with code: %ld\n", __FUNCTION__, http_code);
+            T2Error("HTTP request failed with code: %ld\n", http_code);
         }
     }
     else
@@ -1064,11 +1080,54 @@ T2ERROR http_pool_cleanup(void)
 
     T2Info("Cleaning up http pool resources\n");
 
-    // Reset initialization flag
-    pool_initialized = false;
+    // Signal all new acquire attempts to bail out immediately
+    pool_shutting_down = true;
+    pthread_mutex_unlock(&pool_mutex);
 
-    // Signal any waiting threads to wake up
-    pthread_cond_broadcast(&pool_cond);
+    // Poll until all in-flight curl_easy_perform() calls complete.
+    // Max wait = POOL_ACQUIRE_TIMEOUT_SEC (curl timeout 30s + 5s buffer).
+    // Polling avoids the deadlock where cleanup holds mutex while waiting,
+    // and release_pool_handle also needs the mutex to decrement active_requests.
+    struct timespec start_time, current_time;
+    if (clock_gettime(CLOCK_MONOTONIC, &start_time) != 0)
+    {
+        T2Error("clock_gettime failed for start_time: %s\n", strerror(errno));
+        return T2ERROR_FAILURE;
+    }
+
+    while(1)
+    {
+        pthread_mutex_lock(&pool_mutex);
+        unsigned int pending = active_requests;
+        pthread_mutex_unlock(&pool_mutex);
+
+        if (pending == 0)
+        {
+            T2Info("All active requests completed, proceeding with cleanup\n");
+            break;
+        }
+
+        if (clock_gettime(CLOCK_MONOTONIC, &current_time) != 0)
+        {
+            T2Error("clock_gettime failed for current_time: %s\n", strerror(errno));
+            return T2ERROR_FAILURE;
+        }
+        long elapsed_sec = current_time.tv_sec - start_time.tv_sec;
+
+        if (elapsed_sec >= POOL_ACQUIRE_TIMEOUT_SEC)
+        {
+            T2Error("Cleanup timeout after %ld seconds with %u request(s) still active, forcing cleanup\n",
+                    elapsed_sec, pending);
+            break;
+        }
+
+        T2Info("Waiting for %u active request(s) to complete before pool cleanup\n", pending);
+        usleep(POOL_ACQUIRE_RETRY_MS * 1000);
+    }
+
+    pthread_mutex_lock(&pool_mutex);
+    pool_initialized = false;
+    pool_shutting_down = false;
     pthread_mutex_unlock(&pool_mutex);
 
     // Cleanup all curl handles and per-entry certificate selectors

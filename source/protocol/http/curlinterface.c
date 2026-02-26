@@ -42,8 +42,10 @@
 #include "rdkcertselector.h"
 #define FILESCHEME "file://"
 #endif
+#ifndef LIBRDKCERTSEL_BUILD
 #ifdef LIBRDKCONFIG_BUILD
 #include "rdkconfig.h"
+#endif
 #endif
 #ifdef GTEST_ENABLE
 #define curl_easy_setopt curl_easy_setopt_mock
@@ -82,11 +84,11 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload)
 
     if(ret == T2ERROR_SUCCESS)
     {
-        T2Info("Report Sent Successfully over HTTP using connection pool\n");
+        T2Debug("Report Sent Successfully over HTTP\n");
     }
     else
     {
-        T2Error("Failed to send report using connection pool\n");
+        T2Error("Failed to send report\n");
     }
 
     T2Debug("%s --out\n", __FUNCTION__);

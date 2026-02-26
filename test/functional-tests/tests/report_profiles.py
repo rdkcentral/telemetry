@@ -1234,7 +1234,7 @@ data_with_split_markers = '''{
           "MaxUploadLatency": 10
         },
         "HTTP": {
-          "URL": "https://mockxconf:50051/dataLookeMock/",
+          "URL": "https://mockxconf:50051/dataLakeMockXconf/",
           "Compression": "None",
           "Method": "POST",
           "RequestURIParameter": [

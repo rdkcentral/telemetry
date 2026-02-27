@@ -49,13 +49,14 @@ typedef struct curl_slist* (*curl_slist_append_ptr) (struct curl_slist *list, co
 typedef CURL* (*curl_easy_init_ptr)();
 typedef CURLcode (*curl_easy_setopt_mock_ptr) (CURL *curl, CURLoption option, void* parameter);
 typedef CURLcode (*curl_easy_getinfo_mock_ptr) (CURL *curl, CURLINFO info, void* arg);
+typedef CURLcode (*curl_easy_getinfo_ptr) (CURL *curl, CURLINFO info, ...);
 typedef long (*ftell_ptr) (FILE *stream);
 typedef int (*fscanf_ptr) (FILE *, const char *, va_list);
 typedef pid_t (*fork_ptr) ();
 typedef ssize_t (*write_ptr) (int fd, const void *buf, size_t count);
 //typedef int (*stat_ptr) (const char *pathname, struct stat *statbuf);
 typedef int (*fprintf_ptr) (FILE* stream, const char* format, va_list args);
-//pedef CURLcode (*curl_easy_setopt_ptr) (CURL *curl, CURLoption option, parameter);
+typedef CURLcode (*curl_easy_setopt_ptr) (CURL *curl, CURLoption option, ...);
 typedef void (*curl_easy_cleanup_ptr) (CURL *handle);
 typedef void (*curl_slist_free_all_ptr) (struct curl_slist *list);
 typedef int (*munmap_ptr) (void *addr, size_t len);
@@ -102,7 +103,9 @@ curl_easy_setopt_mock_ptr curl_easy_setopt_mock_func = (curl_easy_setopt_mock_pt
 curl_easy_getinfo_mock_ptr curl_easy_getinfo_mock_func = (curl_easy_getinfo_mock_ptr) dlsym(RTLD_NEXT, "curl_easy_getinfo_mock");
 curl_easy_cleanup_ptr curl_easy_cleanup_func = (curl_easy_cleanup_ptr) dlsym(RTLD_NEXT, "curl_easy_cleanup");
 curl_slist_free_all_ptr curl_slist_free_all_func = (curl_slist_free_all_ptr) dlsym(RTLD_NEXT, "curl_slist_free_all");
-//curl_easy_setopt_ptr curl_easy_setopt_func = (curl_easy_setopt_ptr) dlsym(RTLD_NEXT, "curl_easy_setopt");
+curl_easy_setopt_ptr curl_easy_setopt_func = (curl_easy_setopt_ptr) dlsym(RTLD_NEXT, "curl_easy_setopt");
+curl_easy_getinfo_ptr curl_easy_getinfo_func = (curl_easy_getinfo_ptr) dlsym(RTLD_NEXT, "curl_easy_getinfo");
+
 munmap_ptr munmap_func = (munmap_ptr) dlsym(RTLD_NEXT, "munmap");
 mmap_ptr mmap_func = (mmap_ptr) dlsym(RTLD_NEXT, "mmap");
 mkstemp_ptr mkstemp_func = (mkstemp_ptr) dlsym(RTLD_NEXT, "mkstemp");
@@ -386,6 +389,34 @@ extern "C" CURLcode curl_easy_getinfo_mock(CURL *curl, CURLINFO info, void* arg)
     return g_fileIOMock->curl_easy_getinfo_mock(curl, info, arg);
 }   
 
+extern "C" CURLcode curl_easy_getinfo(CURL *curl, CURLINFO info, ...)
+{
+    if (g_fileIOMock != nullptr) {
+        va_list args;
+        va_start(args, info);
+        void* arg = va_arg(args, void*);
+        va_end(args);
+        return g_fileIOMock->curl_easy_getinfo_mock(curl, info, arg);
+    }
+    
+    // Fallback to real function
+    if (curl_easy_getinfo_func) {
+        va_list args;
+        va_start(args, info);
+        void* arg = va_arg(args, void*);
+        va_end(args);
+        
+        // Call real function with extracted argument
+        if (info == CURLINFO_RESPONSE_CODE) {
+            return curl_easy_getinfo_func(curl, info, (long*)arg);
+        } else {
+            return curl_easy_getinfo_func(curl, info, arg);
+        }
+    }
+    
+    return CURLE_FAILED_INIT;
+}
+
 extern "C" struct curl_slist *curl_slist_append(struct curl_slist *list, const char * string)
 {
     if (g_fileIOMock == nullptr){
@@ -459,6 +490,19 @@ extern "C" CURLcode curl_easy_setopt(CURL *curl, CURLoption option, ...)
     return result;
 }
 */
+
+extern "C" CURLcode curl_easy_setopt(CURL* handle, CURLoption option, ...) {
+    if (g_fileIOMock != nullptr) {
+        va_list args;
+        va_start(args, option);
+        void* param = va_arg(args, void*);
+        va_end(args);
+        return g_fileIOMock->curl_easy_setopt(handle, option, param);
+    }
+    return CURLE_FAILED_INIT;
+}
+
+
 extern "C" void curl_easy_cleanup(CURL *handle)
 {
     if (g_fileIOMock == nullptr){

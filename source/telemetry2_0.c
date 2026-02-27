@@ -136,8 +136,8 @@ static void terminate()
         http_pool_cleanup();
     }
     clock_gettime(CLOCK_MONOTONIC, &t2);
-    T2Info("=== [SHUTDOWN] telemetry2_0 shutdown complete, total=%ldms ===\n",
-           (t2.tv_sec - t_start.tv_sec) * 1000 + (t2.tv_nsec - t_start.tv_nsec) / 1000000);
+    T2Info("=== [SHUTDOWN] telemetry2_0 shutdown complete, total=%lldms ===\n",
+           (long long)(t2.tv_sec - t_start.tv_sec) * 1000 + (t2.tv_nsec - t_start.tv_nsec) / 1000000LL);
 
 }
 static void _print_stack_backtrace(void)

@@ -109,6 +109,10 @@ T2ERROR initTelemetry()
 
 static void terminate()
 {
+    struct timespec t2, t_start;
+    clock_gettime(CLOCK_MONOTONIC, &t_start);
+    T2Info("=== [SHUTDOWN] telemetry2_0 shutdown started ===\n");
+
     if(remove("/tmp/.t2ReadyToReceiveEvents") != 0)
     {
         printf("removing the file /tmp/.t2ReadyToReceiveEvents failed!\n");
@@ -131,6 +135,9 @@ static void terminate()
         ReportProfiles_uninit();
         http_pool_cleanup();
     }
+    clock_gettime(CLOCK_MONOTONIC, &t2);
+    T2Info("=== [SHUTDOWN] telemetry2_0 shutdown complete, total=%ldms ===\n",
+           (t2.tv_sec - t_start.tv_sec) * 1000 + (t2.tv_nsec - t_start.tv_nsec) / 1000000);
 
 }
 static void _print_stack_backtrace(void)

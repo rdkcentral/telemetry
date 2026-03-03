@@ -1,0 +1,255 @@
+name: Copilot Quality Checks
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/copilot-quality-checks.yml'
+      - 'source/**'
+      - 'include/**'
+      - 'configure.ac'
+      - 'Makefile.am'
+  pull_request:
+    paths:
+      - 'source/**'
+      - 'include/**'
+      - 'configure.ac'
+      - 'Makefile.am'
+
+permissions:
+  contents: read
+
+jobs:
+  static-analysis:
+    name: Static Analysis & Code Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            autoconf \
+            automake \
+            libtool \
+            pkg-config \
+            libdbus-1-dev \
+            cppcheck \
+            clang-tools \
+            shellcheck
+      
+      - name: Run static analysis
+        run: |
+          cppcheck --enable=all \
+                   --inconclusive \
+                   --suppress=missingIncludeSystem \
+                   --suppress=unmatchedSuppression \
+                   --error-exitcode=0 \
+                   --xml \
+                   --xml-version=2 \
+                   source/ 2> cppcheck-report.xml || true
+      
+      - name: Check shell scripts
+        run: |
+          find . -name "*.sh" -type f -exec shellcheck {} + || true
+      
+      - name: Upload static analysis results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: static-analysis-results
+          path: cppcheck-report.xml
+          retention-days: 7
+
+  memory-safety:
+    name: Memory Safety (Valgrind)
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            autoconf \
+            automake \
+            libtool \
+            pkg-config \
+            libdbus-1-dev \
+            valgrind \
+            libgtest-dev \
+            libgmock-dev
+      
+      - name: Setup Google Test
+        run: |
+          cd /usr/src/gtest
+          sudo cmake CMakeLists.txt
+          sudo make
+          sudo cp lib/*.a /usr/lib || sudo cp *.a /usr/lib
+      
+      - name: Configure and build
+        run: |
+          autoreconf -fi
+          ./configure --enable-gtest
+          make -j$(nproc)
+      
+      - name: Run tests
+        run: |
+          make check || true
+      
+      - name: Run memory leak tests
+        continue-on-error: true
+        run: |
+          if [ -d "source/test" ]; then
+            find source/test -type f -executable -name "*test*" 2>/dev/null | while read test_bin; do
+              echo "=== Memory testing: $test_bin ==="
+              valgrind --leak-check=full \
+                       --show-leak-kinds=all \
+                       --track-origins=yes \
+                       --error-exitcode=1 \
+                       --xml=yes \
+                       --xml-file="valgrind-$(basename $test_bin).xml" \
+                       "$test_bin" 2>&1 | tee "valgrind-$(basename $test_bin).log" || true
+            done
+          fi
+      
+      - name: Upload memory test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: memory-safety-results
+          path: |
+            valgrind-*.xml
+            valgrind-*.log
+          retention-days: 7
+
+  thread-safety:
+    name: Thread Safety (Helgrind)
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            autoconf \
+            automake \
+            libtool \
+            pkg-config \
+            libdbus-1-dev \
+            valgrind \
+            libgtest-dev \
+            libgmock-dev
+      
+      - name: Setup Google Test
+        run: |
+          cd /usr/src/gtest
+          sudo cmake CMakeLists.txt
+          sudo make
+          sudo cp lib/*.a /usr/lib || sudo cp *.a /usr/lib
+      
+      - name: Configure and build
+        run: |
+          autoreconf -fi
+          ./configure --enable-gtest
+          make -j$(nproc)
+      
+      - name: Run concurrency tests
+        continue-on-error: true
+        run: |
+          if [ -d "source/test" ]; then
+            find source/test -type f -executable -name "*test*" 2>/dev/null | while read test_bin; do
+              echo "=== Concurrency testing: $test_bin ==="
+              valgrind --tool=helgrind \
+                       --track-lockorders=yes \
+                       --error-exitcode=1 \
+                       --xml=yes \
+                       --xml-file="helgrind-$(basename $test_bin).xml" \
+                       "$test_bin" 2>&1 | tee "helgrind-$(basename $test_bin).log" || true
+            done
+          fi
+      
+      - name: Upload thread safety results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: thread-safety-results
+          path: |
+            helgrind-*.xml
+            helgrind-*.log
+          retention-days: 7
+
+  build-verification:
+    name: Build Verification
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            autoconf \
+            automake \
+            libtool \
+            pkg-config \
+            libdbus-1-dev \
+            libgtest-dev \
+            libgmock-dev
+      
+      - name: Run autoreconf
+        run: |
+          autoreconf -fi
+      
+      - name: Configure with tests enabled
+        run: |
+          ./configure --enable-gtest CFLAGS="-Wall -Wextra -Werror"
+      
+      - name: Build with strict warnings
+        run: |
+          make -j$(nproc)
+      
+      - name: Check build artifacts
+        run: |
+          if [ -f "telemetry2_0" ]; then
+            echo "=== Telemetry Binary Info ==="
+            ls -lh telemetry2_0
+            file telemetry2_0
+            size telemetry2_0
+          else
+            echo "Telemetry binary not found, checking build output..."
+            find . -name "telemetry*" -type f -executable
+          fi
+      
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: build-artifacts
+          path: |
+            telemetry2_0
+            **/*.so
+            **/*.a
+          retention-days: 7

@@ -44,3 +44,13 @@ All code changes must:
 - Include clear commit messages explaining why, not just what
 
 Refer to language-specific instruction files in `.github/instructions/` for detailed guidelines.
+
+## Available Skills
+
+Specialized skills for common development tasks:
+
+- **quality-checker**: Run comprehensive quality checks (static analysis, memory safety, thread safety, build verification) in the standard test container. Use when validating code changes or debugging before committing.
+- **memory-safety-analyzer**: Analyze C/C++ code for memory safety issues including leaks, use-after-free, buffer overflows, and provide fixes.
+- **thread-safety-analyzer**: Analyze C/C++ code for thread safety issues including race conditions, deadlocks, and improper synchronization.
+- **platform-portability-checker**: Verify C/C++ code is platform-independent and portable across embedded platforms.
+- **technical-documentation-writer**: Create and maintain comprehensive technical documentation for embedded systems projects.

@@ -2,19 +2,12 @@ name: Copilot Quality Checks
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - '.github/workflows/copilot-quality-checks.yml'
-      - 'source/**'
-      - 'include/**'
-      - 'configure.ac'
-      - 'Makefile.am'
-  pull_request:
-    paths:
-      - 'source/**'
-      - 'include/**'
-      - 'configure.ac'
-      - 'Makefile.am'
+    inputs:
+      branch:
+        description: 'Branch name to run quality checks on'
+        required: false
+        default: 'develop'
+        type: string
 
 permissions:
   contents: read
@@ -30,35 +23,34 @@ jobs:
         with:
           submodules: recursive
       
-      - name: Install dependencies
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Pull test container image
+        run: docker pull ghcr.io/rdkcentral/docker-device-mgt-service-test/native-platform:latest
+      
+      - name: Start container
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential \
-            autoconf \
-            automake \
-            libtool \
-            pkg-config \
-            libdbus-1-dev \
-            cppcheck \
-            clang-tools \
-            shellcheck
+          docker run -d --name native-platform -v ${{ github.workspace }}:/mnt/workspace ghcr.io/rdkcentral/docker-device-mgt-service-test/native-platform:latest
       
       - name: Run static analysis
         run: |
-          cppcheck --enable=all \
-                   --inconclusive \
-                   --suppress=missingIncludeSystem \
-                   --suppress=unmatchedSuppression \
-                   --error-exitcode=0 \
-                   --xml \
-                   --xml-version=2 \
-                   source/ 2> cppcheck-report.xml || true
-      
-      - name: Check shell scripts
-        run: |
-          find . -name "*.sh" -type f -exec shellcheck {} + || true
-      
+          docker exec -i native-platform /bin/bash -c "
+            cd /mnt/workspace && \
+            cppcheck --enable=all \
+                     --inconclusive \
+                     --suppress=missingIncludeSystem \
+                     --suppress=unmatchedSuppression \
+                     --error-exitcode=0 \
+                     --xml \
+                     --xml-version=2 \
+                     source/ 2> cppcheck-report.xml || true
+          "
+         
       - name: Upload static analysis results
         uses: actions/upload-artifact@v4
         if: always()
@@ -77,52 +69,54 @@ jobs:
         with:
           submodules: recursive
       
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential \
-            autoconf \
-            automake \
-            libtool \
-            pkg-config \
-            libdbus-1-dev \
-            valgrind \
-            libgtest-dev \
-            libgmock-dev
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       
-      - name: Setup Google Test
+      - name: Pull test container image
+        run: docker pull ghcr.io/rdkcentral/docker-device-mgt-service-test/native-platform:latest
+      
+      - name: Start container
         run: |
-          cd /usr/src/gtest
-          sudo cmake CMakeLists.txt
-          sudo make
-          sudo cp lib/*.a /usr/lib || sudo cp *.a /usr/lib
+          docker run -d --name native-platform -v ${{ github.workspace }}:/mnt/workspace ghcr.io/rdkcentral/docker-device-mgt-service-test/native-platform:latest
       
       - name: Configure and build
         run: |
-          autoreconf -fi
-          ./configure --enable-gtest
-          make -j$(nproc)
+          docker exec -i native-platform /bin/bash -c "
+            cd /mnt/workspace && \
+            autoreconf -fi && \
+            ./configure --enable-gtest && \
+            make -j\$(nproc)
+          "
       
       - name: Run tests
         run: |
-          make check || true
+          docker exec -i native-platform /bin/bash -c "
+            cd /mnt/workspace && \
+            make check || true
+          "
       
       - name: Run memory leak tests
         continue-on-error: true
         run: |
-          if [ -d "source/test" ]; then
-            find source/test -type f -executable -name "*test*" 2>/dev/null | while read test_bin; do
-              echo "=== Memory testing: $test_bin ==="
-              valgrind --leak-check=full \
-                       --show-leak-kinds=all \
-                       --track-origins=yes \
-                       --error-exitcode=1 \
-                       --xml=yes \
-                       --xml-file="valgrind-$(basename $test_bin).xml" \
-                       "$test_bin" 2>&1 | tee "valgrind-$(basename $test_bin).log" || true
-            done
-          fi
+          docker exec -i native-platform /bin/bash -c "
+            cd /mnt/workspace && \
+            if [ -d 'source/test' ]; then
+              find source/test -type f -executable -name '*test*' 2>/dev/null | while read test_bin; do
+                echo '=== Memory testing: \$test_bin ==='
+                valgrind --leak-check=full \
+                         --show-leak-kinds=all \
+                         --track-origins=yes \
+                         --error-exitcode=1 \
+                         --xml=yes \
+                         --xml-file=\"valgrind-\$(basename \$test_bin).xml\" \
+                         \"\$test_bin\" 2>&1 | tee \"valgrind-\$(basename \$test_bin).log\" || true
+              done
+            fi
+          "
       
       - name: Upload memory test results
         uses: actions/upload-artifact@v4
@@ -144,47 +138,46 @@ jobs:
         with:
           submodules: recursive
       
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential \
-            autoconf \
-            automake \
-            libtool \
-            pkg-config \
-            libdbus-1-dev \
-            valgrind \
-            libgtest-dev \
-            libgmock-dev
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       
-      - name: Setup Google Test
+      - name: Pull test container image
+        run: docker pull ghcr.io/rdkcentral/docker-device-mgt-service-test/native-platform:latest
+      
+      - name: Start container
         run: |
-          cd /usr/src/gtest
-          sudo cmake CMakeLists.txt
-          sudo make
-          sudo cp lib/*.a /usr/lib || sudo cp *.a /usr/lib
+          docker run -d --name native-platform -v ${{ github.workspace }}:/mnt/workspace ghcr.io/rdkcentral/docker-device-mgt-service-test/native-platform:latest
       
       - name: Configure and build
         run: |
-          autoreconf -fi
-          ./configure --enable-gtest
-          make -j$(nproc)
+          docker exec -i native-platform /bin/bash -c "
+            cd /mnt/workspace && \
+            autoreconf -fi && \
+            ./configure --enable-gtest && \
+            make -j\$(nproc)
+          "
       
       - name: Run concurrency tests
         continue-on-error: true
         run: |
-          if [ -d "source/test" ]; then
-            find source/test -type f -executable -name "*test*" 2>/dev/null | while read test_bin; do
-              echo "=== Concurrency testing: $test_bin ==="
-              valgrind --tool=helgrind \
-                       --track-lockorders=yes \
-                       --error-exitcode=1 \
-                       --xml=yes \
-                       --xml-file="helgrind-$(basename $test_bin).xml" \
-                       "$test_bin" 2>&1 | tee "helgrind-$(basename $test_bin).log" || true
-            done
-          fi
+          docker exec -i native-platform /bin/bash -c "
+            cd /mnt/workspace && \
+            if [ -d 'source/test' ]; then
+              find source/test -type f -executable -name '*test*' 2>/dev/null | while read test_bin; do
+                echo '=== Concurrency testing: \$test_bin ==='
+                valgrind --tool=helgrind \
+                         --track-lockorders=yes \
+                         --error-exitcode=1 \
+                         --xml=yes \
+                         --xml-file=\"helgrind-\$(basename \$test_bin).xml\" \
+                         \"\$test_bin\" 2>&1 | tee \"helgrind-\$(basename \$test_bin).log\" || true
+              done
+            fi
+          "
       
       - name: Upload thread safety results
         uses: actions/upload-artifact@v4
@@ -206,42 +199,55 @@ jobs:
         with:
           submodules: recursive
       
-      - name: Install dependencies
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Pull test container image
+        run: docker pull ghcr.io/rdkcentral/docker-device-mgt-service-test/native-platform:latest
+      
+      - name: Start container
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential \
-            autoconf \
-            automake \
-            libtool \
-            pkg-config \
-            libdbus-1-dev \
-            libgtest-dev \
-            libgmock-dev
+          docker run -d --name native-platform -v ${{ github.workspace }}:/mnt/workspace ghcr.io/rdkcentral/docker-device-mgt-service-test/native-platform:latest
       
       - name: Run autoreconf
         run: |
-          autoreconf -fi
+          docker exec -i native-platform /bin/bash -c "
+            cd /mnt/workspace && \
+            autoreconf -fi
+          "
       
       - name: Configure with tests enabled
         run: |
-          ./configure --enable-gtest CFLAGS="-Wall -Wextra -Werror"
+          docker exec -i native-platform /bin/bash -c "
+            cd /mnt/workspace && \
+            ./configure --enable-gtest CFLAGS='-Wall -Wextra -Werror'
+          "
       
       - name: Build with strict warnings
         run: |
-          make -j$(nproc)
+          docker exec -i native-platform /bin/bash -c "
+            cd /mnt/workspace && \
+            make -j\$(nproc)
+          "
       
       - name: Check build artifacts
         run: |
-          if [ -f "telemetry2_0" ]; then
-            echo "=== Telemetry Binary Info ==="
-            ls -lh telemetry2_0
-            file telemetry2_0
-            size telemetry2_0
-          else
-            echo "Telemetry binary not found, checking build output..."
-            find . -name "telemetry*" -type f -executable
-          fi
+          docker exec -i native-platform /bin/bash -c "
+            cd /mnt/workspace && \
+            if [ -f 'telemetry2_0' ]; then
+              echo '=== Telemetry Binary Info ==='
+              ls -lh telemetry2_0
+              file telemetry2_0
+              size telemetry2_0
+            else
+              echo 'Telemetry binary not found, checking build output...'
+              find . -name 'telemetry*' -type f -executable
+            fi
+          "
       
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4

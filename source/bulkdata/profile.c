@@ -582,7 +582,7 @@ static void* CollectAndReport(void* data)
                             if(n == ETIMEDOUT)
                             {
                                 T2Info("TIMEOUT for maxUploadLatency of profile %s\n", profile->name);
-                                ret = sendReportOverHTTP(httpUrl, jsonReport, NULL);
+                                ret = sendReportOverHTTP(httpUrl, jsonReport);
                             }
                             else
                             {
@@ -619,7 +619,7 @@ static void* CollectAndReport(void* data)
                         }
                         else
                         {
-                            ret = sendReportOverHTTP(httpUrl, jsonReport, NULL);
+                            ret = sendReportOverHTTP(httpUrl, jsonReport);
                         }
                     }
                     else

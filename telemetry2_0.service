@@ -24,8 +24,8 @@ Requires=network-online.target
 [Service]
 Type=forking
 ExecStart=/usr/bin/telemetry2_0
-ExecStop=/bin/sh -c 'echo "[SHUTDOWN] $(date +%%Y-%%m-%%dT%%H:%%M:%%S) telemetry2_0 stop initiated by systemd" >> /rdklogs/logs/telemetry2_0.txt.0 2>&1; date +%%s > /tmp/.t2_stop_start 2>/dev/null; /usr/bin/killall telemetry2_0'
-ExecStopPost=/bin/sh -c 'T_START=$(cat /tmp/.t2_stop_start 2>/dev/null); T_END=$(date +%%s); ELAPSED=$((T_END - ${T_START:-$T_END})); echo "[SHUTDOWN] $(date +%%Y-%%m-%%dT%%H:%%M:%%S) telemetry2_0 stop completed in ${ELAPSED}s" >> /rdklogs/logs/telemetry2_0.txt.0 2>&1; rm -f /tmp/.t2_stop_start; /bin/rm -rf /tmp/.t2ReadyToReceiveEvents /tmp/telemetry_initialized_bootup /tmp/.t2ConfigReady'
+ExecStop=/bin/sh -c 'echo "[SHUTDOWN] $(date +%%Y-%%m-%%dT%%H:%%M:%%S) telemetry2_0 stop initiated by systemd" >> /opt/logs/telemetry2_0.txt.0 2>&1; date +%%s > /tmp/.t2_stop_start 2>/dev/null; /usr/bin/killall telemetry2_0'
+ExecStopPost=/bin/sh -c 'T_START=$(cat /tmp/.t2_stop_start 2>/dev/null); T_END=$(date +%%s); ELAPSED=$((T_END - ${T_START:-$T_END})); echo "[SHUTDOWN] $(date +%%Y-%%m-%%dT%%H:%%M:%%S) telemetry2_0 stop completed in ${ELAPSED}s" >> /opt/logs/telemetry2_0.txt.0 2>&1; rm -f /tmp/.t2_stop_start; /bin/rm -rf /tmp/.t2ReadyToReceiveEvents /tmp/telemetry_initialized_bootup /tmp/.t2ConfigReady'
 Restart=always
 
 [Install]

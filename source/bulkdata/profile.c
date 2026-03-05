@@ -756,7 +756,7 @@ static void* CollectAndReport(void* data)
         clockReturn |= clock_gettime(CLOCK_MONOTONIC, &endTime);
         if(clockReturn)
         {
-            T2Warning("Error in Fetching the time Elapsed");
+            T2Warning("Failed to get time from clock_gettime()");
         }
         else
         {

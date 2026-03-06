@@ -19,15 +19,13 @@ Initialize the telemetry system.
 
 **Signature:**
 ```c
-int t2_init(const char* component_name);
+void t2_init(char *component);
 ```
 
 **Parameters:**
-- `component_name` - Mandatory name of the component, used for marker to component mapping in profiles. Must be a non-NULL string (max 255 characters).
+- `component` - Mandatory name of the component, used for marker to component mapping in profiles. Must be a non-NULL string.
 
-**Returns:**
-- `0` - Success
-- `<0` - Error (negative errno value)
+**Returns:** Nothing (`void`).
 
 **Thread Safety:** Not thread-safe. Must be called once during application startup before any other telemetry functions.
 
@@ -37,11 +35,8 @@ int t2_init(const char* component_name);
 #include <stdio.h>
 
 int main(void) {
-    // Initialize with default config
-    if (t2_init("MyComponent") != 0) {
-        fprintf(stderr, "Failed to initialize telemetry\n");
-        return -1;
-    }
+    // Initialize with component name (must not be NULL)
+    t2_init("MyComponent");
     
     // ... application code ...
     
@@ -79,9 +74,8 @@ void cleanup(void) {
 int main(void) {
     atexit(cleanup);
     
-    if (t2_init(NULL) != 0) {
-        return -1;
-    }
+    // component name must be a valid non-NULL string
+    t2_init("MyComponent");
     
     // Application runs...
     
@@ -97,20 +91,23 @@ Send a string event marker.
 
 **Signature:**
 ```c
-void t2_event_s(const char* marker_name, const char* value);
+T2ERROR t2_event_s(const char* marker, const char* value);
 ```
 
 **Parameters:**
-- `marker_name` - Event marker name (non-NULL, max 255 chars)
-- `value` - Event value string (non-NULL, max 4095 chars)
+- `marker` - Event marker name (non-NULL)
+- `value` - Event value string (non-NULL); empty string `""` and `"0"` are silently ignored
+
+**Returns:**
+- `T2ERROR_SUCCESS` - Event sent or queued
+- `T2ERROR_FAILURE` - Send failed or event filtered
 
 **Thread Safety:** Thread-safe. Can be called from any thread.
 
 **Notes:**
-- Queues the event for asynchronous processing
-- Returns immediately (non-blocking)
 - Event matched against active profile markers
-- Silently ignored if marker not in any active profile
+- Empty value (`""`) or value `"0"` is ignored without sending
+- Returns `T2ERROR_FAILURE` if `t2_init()` has not been called
 
 **Examples:**
 ```c
@@ -131,18 +128,25 @@ t2_event_s("Network_Error", msg);
 
 ### t2_event_d()
 
-Send a numeric (double) event marker.
+Send an integer or metric event marker.
 
 **Signature:**
 ```c
-void t2_event_d(const char* marker_name, int value);
+T2ERROR t2_event_d(const char* marker, int value);
 ```
 
 **Parameters:**
-- `marker_name` - Event marker name (non-NULL, max 255 chars)
-- `value` - Numeric value
+- `marker` - Event marker name (non-NULL)
+- `value` - Integer value; value `0` is silently ignored
+
+**Returns:**
+- `T2ERROR_SUCCESS` - Event sent or queued
+- `T2ERROR_FAILURE` - Send failed or event filtered
 
 **Thread Safety:** Thread-safe.
+
+**Notes:**
+- Value `0` is ignored without sending (by design)
 
 **Examples:**
 ```c
@@ -150,10 +154,10 @@ void t2_event_d(const char* marker_name, int value);
 t2_event_d("WIFI_RSSI", -65);
 
 // CPU usage percentage
-t2_event_d("CPU_Usage", 45);
+t2_event_d("SYS_ERROR_LOGUPLOAD_FAILED", 1);
 
 // Temperature reading
-t2_event_d("CPU_Temperature", 65);
+t2_event_d("SYS_INFO_NTP_SYNC_ERROR", 1);
 
 // Uptime in seconds
 t2_event_d("System_Uptime", 3600);
@@ -164,34 +168,33 @@ t2_event_d("Download_Speed", 125);
 
 ### t2_event_f()
 
-Send a formatted event marker (printf-style).
+Send a floating-point event marker.
 
 **Signature:**
 ```c
-void t2_event_f(const char* marker_name, double value);
+T2ERROR t2_event_f(const char* marker, double value);
 ```
 
 **Parameters:**
-- `marker_name` - Event marker name (non-NULL)
-- `value` - Numeric value   
+- `marker` - Event marker name (non-NULL)
+- `value` - Floating-point (double) value
 
+**Returns:**
+- `T2ERROR_SUCCESS` - Event sent or queued
+- `T2ERROR_FAILURE` - Send failed or event filtered
 
 **Thread Safety:** Thread-safe.
 
-**Notes:**
-- Maximum formatted string length: 4095 characters
-- Truncated if longer
-
 **Examples:**
 ```c
-// Multiple values in one event
-t2_event_f("Connection_Info", 123.45);
+// Latency measurement
+t2_event_f("Connection_Latency_ms", 123.45);
 
-// Error with details
-t2_event_f("Process_Crash", 678.90);
+// Memory usage as percentage
+t2_event_f("Memory_Usage_Pct", 67.8);
 
-// Performance metric
-t2_event_f("Query_Performance", 123.45);
+// Query performance in milliseconds
+t2_event_f("Query_Performance_ms", 45.2);
 ```
 
 
@@ -204,11 +207,8 @@ t2_event_f("Query_Performance", 123.45);
 #include <stdio.h>
 
 int main(void) {
-    // Initialize
-    if (t2_init("MyComponent") != 0) {
-        fprintf(stderr, "Telemetry unavailable\n");
-        // Continue without telemetry
-    }
+    // Initialize (returns void; component name must not be NULL)
+    t2_init("MyComponent");
     
     // Send boot event
     t2_event_s("Application_Start", "v1.0.0");
@@ -253,6 +253,7 @@ void handle_error(const char* component, int error_code) {
 void monitor_operation(const char* operation_name) {
     struct timespec start, end;
     double duration_ms;
+    char marker[128];
     
     clock_gettime(CLOCK_MONOTONIC, &start);
     
@@ -265,11 +266,10 @@ void monitor_operation(const char* operation_name) {
     duration_ms = (end.tv_sec - start.tv_sec) * 1000.0 +
                   (end.tv_nsec - start.tv_nsec) / 1000000.0;
     
-    // Report if slow
+    // Report if slow: use t2_event_f for floating-point values
     if (duration_ms > 100.0) {
-        t2_event_f("Slow_Operation", 
-                   "name=%s,duration_ms=%.2f",
-                   operation_name, duration_ms);
+        snprintf(marker, sizeof(marker), "%s_Duration_ms", operation_name);
+        t2_event_f(marker, duration_ms);
     }
 }
 ```
@@ -333,21 +333,20 @@ t2_event_s("Event", "The connection was established after 3 retries");
 Telemetry should never cause application failure:
 
 ```c
-// GOOD - Defensive
+// GOOD - Defensive guard before sending
 if (marker_name && value) {
     t2_event_s(marker_name, value);
 }
 
-// GOOD - Graceful degradation
-if (t2_init(config) != 0) {
-    syslog(LOG_WARNING, "Telemetry disabled");
+// GOOD - Check return value of event functions
+if (t2_event_s("Boot_Status", "up") != T2ERROR_SUCCESS) {
+    syslog(LOG_WARNING, "Telemetry event send failed");
     // Application continues
 }
 
-// AVOID - Fatal on telemetry failure
-if (t2_init(config) != 0) {
-    exit(1);  // Don't do this!
-}
+// NOTE: t2_init() returns void; it cannot fail with a return code.
+// Always pass a valid non-NULL component name.
+t2_init("MyComponent");
 ```
 
 ### 4. Resource Efficiency
@@ -376,7 +375,7 @@ while (1) {
 ```c
 // GOOD - Proper lifecycle
 void init_application(void) {
-    t2_init(NULL);
+    t2_init("MyComponent");  // Must pass valid non-NULL name
     // Other init...
 }
 
@@ -430,48 +429,49 @@ void app_lifecycle_monitoring(void) {
 
 ```c
 void health_check(void) {
-    // Memory check
+    // Memory check (integer KB value)
     long mem_free = get_free_memory_kb();
     if (mem_free < 1024) {  // Low memory
-        t2_event_d("Memory_Low", mem_free);
+        t2_event_d("Memory_Low_KB", (int)mem_free);
     }
     
-    // Disk check
+    // Disk check (integer MB value)
     long disk_free = get_free_disk_mb();
     if (disk_free < 100) {  // Low disk
-        t2_event_d("Disk_Low", disk_free);
+        t2_event_d("Disk_Low_MB", (int)disk_free);
     }
     
-    // CPU check
+    // CPU check (floating point - use t2_event_f for double)
     double cpu = get_cpu_usage();
     if (cpu > 90.0) {  // High CPU
-        t2_event_d("CPU_High", cpu);
+        t2_event_f("CPU_High_Pct", cpu);
     }
 }
 ```
 
 ## Error Codes
 
-For functions that return error codes:
+Event functions return `T2ERROR` (defined in `telemetry2_0.h`). `t2_init()` and `t2_uninit()` return `void`.
 
-| Code | Meaning |
-|------|---------|
-| `0` | Success |
-| `-EINVAL` | Invalid parameter (NULL pointer, etc.) |
-| `-ENOMEM` | Memory allocation failed |
-| `-ENOENT` | Resource not found |
-| `-EAGAIN` | Temporary failure, retry possible |
-| `-EBUSY` | Resource busy |
+| Code | Value | Meaning |
+|------|-------|---------|
+| `T2ERROR_SUCCESS` | `0` | Operation succeeded |
+| `T2ERROR_FAILURE` | `1` | Generic failure |
+| `T2ERROR_INVALID_ARGS` | — | NULL or invalid parameter passed |
+| `T2ERROR_MEMALLOC_FAILED` | — | Memory allocation failed |
+| `T2ERROR_COMPONENT_NULL` | — | `t2_init()` not called before event send |
+| `T2ERROR_INVALID_PROFILE` | — | Profile data is malformed |
+| `T2ERROR_PROFILE_NOT_FOUND` | — | Referenced profile does not exist |
 
 ## Thread Safety Summary
 
-| Function | Thread Safety |
-|----------|---------------|
-| `t2_init()` | ❌ Not thread-safe |
-| `t2_uninit()` | ❌ Not thread-safe |
-| `t2_event_s()` | ✅ Thread-safe |
-| `t2_event_d()` | ✅ Thread-safe |
-| `t2_event_f()` | ✅ Thread-safe |
+| Function | Return Type | Thread Safety |
+|----------|-------------|---------------|
+| `t2_init()` | `void` | ❌ Not thread-safe |
+| `t2_uninit()` | `void` | ❌ Not thread-safe |
+| `t2_event_s()` | `T2ERROR` | ✅ Thread-safe |
+| `t2_event_d()` | `T2ERROR` | ✅ Thread-safe |
+| `t2_event_f()` | `T2ERROR` | ✅ Thread-safe |
 
 ## See Also
 

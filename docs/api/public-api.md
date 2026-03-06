@@ -19,29 +19,22 @@ Initialize the telemetry system.
 
 **Signature:**
 ```c
-int t2_init(const char* component_name);
+void t2_init(char *component);
 ```
 
 **Parameters:**
-- `component_name` - Mandatory name of the component, used for marker to component mapping in profiles. Must be a non-NULL string (max 255 characters).
-
-**Returns:**
-- `0` - Success
-- `<0` - Error (negative errno value)
+- `component` - Name of the component, used for marker to component mapping in profiles. Must be a non-NULL string.
 
 **Thread Safety:** Not thread-safe. Must be called once during application startup before any other telemetry functions.
 
 **Example:**
 ```c
-#include "telemetry2_0.h"
+#include "telemetry_busmessage_sender.h"
 #include <stdio.h>
 
 int main(void) {
-    // Initialize with default config
-    if (t2_init("MyComponent") != 0) {
-        fprintf(stderr, "Failed to initialize telemetry\n");
-        return -1;
-    }
+    // Initialize with component name
+    t2_init("MyComponent");
     
     // ... application code ...
     

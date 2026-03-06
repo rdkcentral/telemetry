@@ -5,7 +5,7 @@ This repository contains the Telemetry 2.0 framework for RDK (Reference Design K
 ## Project Context
 
 - **Target Platform**: Embedded devices (STBs, gateways, IoT devices)
-- **Resource Constraints**: Limited memory (often <128MB RAM), limited CPU
+- **Resource Constraints**: Limited memory (often <512MB RAM), limited CPU
 - **Languages**: C (primary), C++ (tests), Shell scripts
 - **Build System**: Autotools (configure.ac, Makefile.am)
 - **Testing**: Google Test (gtest) and Google Mock (gmock)
@@ -23,7 +23,7 @@ This repository contains the Telemetry 2.0 framework for RDK (Reference Design K
 
 ## Architecture Principles
 
-- Use RAII patterns in C++ test code
+- Use RAII (Resource Acquisition Is Initialization) patterns in C++ test code
 - Prefer stack allocation over heap when possible
 - Use memory pools for frequent allocations
 - Create threads with explicit stack sizes to minimize memory usage

@@ -1,410 +1,291 @@
-# Telemetry Agentic Development System
+# Telemetry 2.0
 
-This directory contains the agentic-centric development setup for the Telemetry embedded systems project, designed to assist with C/C++/shell development on resource-constrained embedded devices.
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![C](https://img.shields.io/badge/Language-C-blue.svg)](https://en.wikipedia.org/wiki/C_(programming_language))
+[![Platform](https://img.shields.io/badge/Platform-Embedded%20Linux-orange.svg)](https://www.yoctoproject.org/)
+
+A lightweight, efficient telemetry framework for RDK (Reference Design Kit) embedded devices.
 
 ## Overview
 
-The agentic system provides specialized AI agents, skills, and instructions to help developers:
+Telemetry 2.0 provides real-time monitoring, event collection, and reporting capabilities optimized for resource-constrained embedded devices such as set-top boxes, gateways, and IoT devices.
 
-- **Write memory-safe code** for embedded devices with limited resources
-- **Refactor legacy code** without introducing regressions
-- **Maintain platform independence** across different architectures
-- **Prevent memory fragmentation** while optimizing performance
-- **Implement thread-safe code** with lightweight synchronization
-- **Avoid deadlocks** through proper lock ordering and timeouts
-- **Ensure zero regressions** through comprehensive testing
+### Key Features
 
-## Structure
+- ⚡ **Efficient**: Connection pooling and batch reporting
+- 🔒 **Secure**: mTLS support for encrypted communication
+- 📊 **Flexible**: Profile-based configuration (JSON/XConf)
+- 🔧 **Platform-Independent**: Multiple architecture support
 
-```
-.github/
-├── README.md                          # This file
-├── copilot-instructions.md            # Main project guidelines
-├── agents/                            # Specialized AI agents
-│   ├── embedded-c-expert.agent.md
-│   └── legacy-refactor-specialist.agent.md
-├── skills/                            # Reusable analysis skills
-│   ├── memory-safety-analyzer/
-│   │   └── SKILL.md
-│   ├── thread-safety-analyzer/
-│   │   └── SKILL.md
-│   └── platform-portability-checker/
-│       └── SKILL.md
-├── instructions/                      # Language-specific guidelines
-│   ├── c-embedded.instructions.md
-│   ├── cpp-testing.instructions.md
-│   ├── shell-scripts.instructions.md
-│   └── build-system.instructions.md
-└── workflows/                         # CI/CD automation
-    └── copilot-quality-checks.yml
+### Architecture Highlights
+
+```mermaid
+graph TB
+    A[Telemetry Events/Markers] --> B[Profile Matcher]
+    B --> C[Report Generator]
+    C --> D[HTTP Connection Pool]
+    D --> E[XConf Server / Data Collector]
+    F[XConf Client] -.->|Config| B
+    G[Scheduler] -.->|Triggers| C
 ```
 
-## Components
+## Quick Start
 
-### 1. Main Instructions
+### Prerequisites
 
-**[copilot-instructions.md](copilot-instructions.md)**
+- GCC 4.8+ or Clang 3.5+
+- pthread library
+- libcurl 7.65.0+
+- cJSON library
+- OpenSSL 1.1.1+ (for mTLS)
 
-- Project context and constraints
-- Critical requirements for embedded development
-- Architecture principles
-- Code review standards
+### Build
 
-### 2. Agents
+```bash
+# Clone repository
+git clone https://github.com/rdkcentral/telemetry.git
+cd telemetry
 
-#### **Embedded C Expert** ([embedded-c-expert.agent.md](agents/embedded-c-expert.agent.md))
+# Configure
+autoreconf -i
+./configure 
+
+# Build
+make
+
+# Install
+sudo make install
+```
+
+### Docker Development
+
+Refer to the provided Docker container for a consistent development environment:
+
+https://github.com/rdkcentral/docker-device-mgt-service-test
+
+
+See [Build Setup Guide](docs/integration/build-setup.md) for detailed build options.
+
+### Basic Usage
+
+```c
+#include "telemetry2_0.h"
+
+int main(void) {
+    // Initialize telemetry
+    if (t2_init() != 0) {
+        fprintf(stderr, "Failed to initialize telemetry\n");
+        return -1;
+    }
+    
+    // Send a marker event
+    t2_event_s("SYS_INFO_DeviceBootup", "Device started successfully");
+    
+    // Cleanup
+    t2_uninit();
+    return 0;
+}
+```
 
-Expert in embedded C development focusing on:
+Compile: `gcc -o myapp myapp.c -ltelemetry`
 
-- Memory management without garbage collection
-- Thread safety with lightweight synchronization
-- Resource optimization for constrained environments
-- Platform-independent code patterns
-- Memory leak detection and prevention
-- Deadlock prevention and race condition detection
+## Documentation
+
+📚 **[Complete Documentation](docs/README.md)**
 
-**Use when:**
+### Key Documents
+
+- **[Architecture Overview](docs/architecture/overview.md)** - System design and components
+- **[API Reference](docs/api/public-api.md)** - Public API documentation
+- **[Developer Guide](docs/integration/developer-guide.md)** - Getting started
+- **[Build Setup](docs/integration/build-setup.md)** - Build configuration
+- **[Testing Guide](docs/integration/testing.md)** - Test procedures
+
+### Component Documentation
+
+Individual component documentation is in [`source/docs/`](source/docs/):
 
-- Writing new C code
-- Reviewing memory-critical changes
-- Optimizing for embedded devices
-- Debugging memory issues
+- [Bulk Data System](source/docs/bulkdata/README.md) - Profile and marker management
+- [HTTP Protocol](source/docs/protocol/README.md) - Communication layer
+- [Scheduler](source/docs/scheduler/README.md) - Report scheduling
+- [XConf Client](source/docs/xconf-client/README.md) - Configuration retrieval
 
-#### **Legacy Refactor Specialist** ([legacy-refactor-specialist.agent.md](agents/legacy-refactor-specialist.agent.md))
+## Project Structure
 
-Specialist in safely refactoring legacy code while:
+```
+telemetry/
+├── source/              # Source code
+│   ├── bulkdata/       # Profile and marker management
+│   ├── protocol/       # HTTP/RBUS communication
+│   ├── scheduler/      # Report scheduling
+│   ├── xconf-client/   # Configuration retrieval
+│   ├── dcautil/        # Log marker utilities
+│   └── test/           # Unit tests (gtest/gmock)
+├── include/            # Public headers
+├── config/             # Configuration files
+├── docs/               # Documentation
+├── containers/         # Docker development environment
+└── test/               # Functional tests
+```
 
-- Maintaining zero regressions
-- Preserving API compatibility
-- Reducing memory footprint
-- Improving maintainability
+## Configuration
 
-**Use when:**
+### Profile Configuration
 
-- Refactoring existing code
-- Improving code quality
-- Reducing technical debt
-- Updating legacy implementations
+Telemetry uses JSON profiles to define what data to collect:
 
-### 3. Skills
+```json
+{
+  "Profile": "RDKB_BasicProfile",
+  "Version": "1.0.0",
+  "Protocol": "HTTP",
+  "EncodingType": "JSON",
+  "ReportingInterval": 300,
+  "Parameters": [
+    {
+      "type": "dataModel",
+      "name": "Device.DeviceInfo.Manufacturer"
+    },
+    {
+      "type": "event",
+      "eventName": "bootup_complete"
+    }
+  ]
+}
+```
 
-#### **Memory Safety Analyzer** ([skills/memory-safety-analyzer/SKILL.md](skills/memory-safety-analyzer/SKILL.md))
+See [Profile Configuration Guide](docs/integration/profile-configuration.md) for details.
 
-Systematic analysis of C/C++ code for:
+### Environment Variables
 
-- Memory leaks
-- Use-after-free errors
-- Buffer overflows
-- Double-free issues
-- Unchecked allocations
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `T2_ENABLE_DEBUG` | Enable debug logging | `0` |
+| `T2_PROFILE_PATH` | Default profile directory | `/etc/DefaultT2Profile.json` |
+| `T2_XCONF_URL` | XConf server URL | - |
+| `T2_REPORT_URL` | Report upload URL | - |
 
-**Usage:** `@memory-safety-analyzer analyze [file]`
+## Development
 
-#### **Thread Safety Analyzer** ([skills/thread-safety-analyzer/SKILL.md](skills/thread-safety-analyzer/SKILL.md))
+### Running Tests
 
-Analysis of concurrent code for:
+```bash
+# Unit tests
+make check
 
-- Race conditions
-- Deadlock potential
-- Lock ordering violations
-- Improper synchronization
-- Atomic usage issues
+# Functional tests
+cd test
+./run_ut.sh
 
-**Usage:** `@thread-safety-analyzer check [file]`
+# Code coverage
+./cov_build.sh
+```
 
-#### **Platform Portability Checker** ([skills/platform-portability-checker/SKILL.md](skills/platform-portability-checker/SKILL.md))
+### Development Container
 
-Verification of platform independence:
+Use the provided Docker container for consistent development:
+  https://github.com/rdkcentral/docker-device-mgt-service-test
 
-- Integer type portability
-- Endianness handling
-- Structure packing
-- Platform-specific syscalls
+```bash
+cd docker-device-mgt-service-test
+docker compose up -d
+```
 
-**Usage:** `@platform-portability-checker check [file]`
+A directory above the current directory is mounted as a volume in /mnt/L2_CONTAINER_SHARED_VOLUME .
+Login to the container as follows:
+```bash
+docker exec -it native-platform /bin/bash
+cd /mnt/L2_CONTAINER_SHARED_VOLUME/telemetry
+sh test/run_ut.sh
+```
 
-### 4. Language-Specific Instructions
+See [Docker Development Guide](containers/README.md) for more details.
 
-#### **C Embedded** ([instructions/c-embedded.instructions.md](instructions/c-embedded.instructions.md))
+## Platform Support
 
-Applies to: `**/*.c`, `**/*.h`
+Telemetry 2.0 is designed to be platform-independent and has been tested on:
 
-- Memory management best practices
-- Thread safety and concurrency patterns
-- Resource constraint optimization
-- Platform independence patterns
-- Error handling conventions
+- **RDK-B** (Broadband devices)
+- **RDK-V** (Video devices)
+- **Linux** (x86_64, ARM, ARM64)
+- **Yocto Project** builds
 
-#### **C++ Testing** ([instructions/cpp-testing.instructions.md](instructions/cpp-testing.instructions.md))
+See [Platform Porting Guide](docs/integration/platform-porting.md) for porting to new platforms.
 
-Applies to: `source/test/**/*.cpp`, `source/test/**/*.h`
-
-- Google Test/Mock patterns
-- Testing C code from C++
-- Memory leak testing
-- RAII( Resource Acquisition Is Initialization ) wrappers for C resources
-
-#### **Shell Scripts** ([instructions/shell-scripts.instructions.md](instructions/shell-scripts.instructions.md))
-Applies to: `**/*.sh`
-
-- POSIX compliance
-- Resource-aware scripting
-- Error handling
-- Platform independence
-
-#### **Build System** ([instructions/build-system.instructions.md](instructions/build-system.instructions.md))
-
-Applies to: `**/Makefile.am`, `**/configure.ac`
-
-- Autotools best practices
-- Cross-compilation support
-- Dependency management
-- Testing integration
-
-### 5. CI/CD Workflow
-
-**[workflows/copilot-quality-checks.yml](workflows/copilot-quality-checks.yml)**
-
-Automated quality checks:
-- Build verification with strict warnings
-- Unit test execution
-- Static analysis (cppcheck)
-- Memory leak detection (valgrind)
-- Thread safety checks (helgrind)
-- Shell script validation (shellcheck)
-
-**[workflows/copilot-setup-steps.yml](workflows/copilot-setup-steps.yml)**
-
-Automated quality checks:
-
-- Build verification
-- Unit test execution
-- Static analysis (cppcheck)
-- Memory leak detection (valgrind)
-- Shell script validation (shellcheck)
-
-## How to Use
-
-### For New Development
-
-1. **Start a new feature:**
-   ```
-   @workspace /new Create a new telemetry event handler for network statistics
-   ```
-   The system will automatically apply C embedded standards.
-
-2. **Use specific agent:**
-   ```
-   @embedded-c-expert Implement a memory pool for frequent event allocations
-   ```
-
-3. **Run analysis:**
-   ```
-   @memory-safety-analyzer Review source/telemetry/events.c for memory issues
-   ```
-
-4. **Thread safety implementation:**
-   ```
-   @embedded-c-expert Add thread-safe event queue with minimal locking
-   ```
-
-### For Refactoring
-
-1. **Invoke refactoring specialist:**
-   ```
-   @legacy-refactor-specialist Refactor source/protocol/http_client.c to reduce memory usage
-   ```
-
-2. **Check platform portability:**
-   ```
-   @platform-portability-checker Verify source/utils/endian.c is platform-independent
-   ```
-
-### For Code Review
-
-1. **Request comprehensive review:**
-   ```
-   @workspace Review this PR for memory safety and platform independence
-   ```
-
-2. **Specific analysis:**
-   ```
-   @memory-safety-analyzer Check for leaks in the error paths
-   ```
-
-## Best Practices
-
-### Memory Management
-
-✅ **DO:**
-- Check all `malloc()` return values
-- Use single exit point with cleanup labels
-- Free resources in reverse order of allocation
-- Run valgrind on all tests
-- Prefer stack allocation for small data
-
-❌ **DON'T:**
-- Assume `malloc()` always succeeds
-- Create memory leaks in error paths
-- Use unchecked `strcpy()` or `sprintf()`
-- Ignore compiler warnings
-- Mix different allocation strategies
-
-### Platform Independence
-
-✅ **DO:**
-- Use `stdint.h` types (`uint32_t`, etc.)
-- Handle endianness explicitly (`htonl`/`ntohl`)
-- Use `stdbool.h` for booleans
-- Test on multiple architectures
-- Use autoconf for platform detection
-
-❌ **DON'T:**
-- Assume pointer sizes
-- Use platform-specific headers without checks
-- Hard-code byte order
-- Use non-standard compiler extensions
-- Assume structure packing
-
-### Thread Safety
-
-✅ **DO:**
-- Create threads with explicit stack sizes (pthread_attr_setstacksize)
-- Use atomic operations for simple counters
-- Establish consistent lock ordering
-- Use timeouts with pthread_mutex_timedlock
-- Document thread safety of all functions
-- Prefer lock-free patterns when possible
-- Keep critical sections minimal
-
-❌ **DON'T:**
-- Create threads with default attributes (wastes memory)
-- Use heavy locks (rwlocks) for simple operations
-- Acquire locks in different orders (causes deadlocks)
-- Hold locks during expensive operations
-- Use reader-writer locks for counters
-- Create threads dynamically for each task
-- Ignore thread sanitizer warnings
-
-### Testing
-
-✅ **DO:**
-- Write tests for all new code
-- Test error paths
-- Run tests under valgrind
-- Use mocks for external dependencies
-- Aim for >80% coverage
-
-❌ **DON'T:**
-- Skip testing "simple" functions
-- Ignore memory leaks in tests
-- Test only happy paths
-- Commit code that fails tests
-- Remove tests to make builds pass
-
-## CI Integration
-
-The workflow runs automatically on:
-- Push to any branch
-- Pull requests
-- Manual trigger via workflow_dispatch
-
-### Workflow Steps
-
-1. **Build** - Compile with autotools
-2. **Test** - Run unit tests with gtest
-3. **Static Analysis** - cppcheck for code issues
-4. **Memory Check** - valgrind for leaks
-5. **Concurrency Check** - helgrind for race conditions and deadlocks
-6. **Shell Check** - shellcheck for scripts
-
-### Viewing Results
-
-Check the Actions tab in GitHub for:
-- Build logs
-- Test results
-- Static analysis warnings
-- Memory leak reports
-- Artifact downloads
-
-## Metrics and Goals
-
-### Code Quality Metrics
-
-- **Memory Leaks:** Zero tolerance (valgrind must pass)
-- **Race Conditions:** Zero data races (helgrind/thread sanitizer)
-- **Deadlocks:** No deadlock potential detected
-- **Test Coverage:** Minimum 80% for new code
-- **Static Analysis:** Zero critical/high severity issues
-- **Build Warnings:** Zero warnings with -Wall -Wextra
-- **Platform Support:** Linux (x86_64, ARM, MIPS)
-
-### Performance Targets
-Thread Stack Size:** 64KB per thread (not default 8MB)
-- **Binary Size:** Minimize code size
-- **CPU Usage:** <5% average on target devices
-- **Fragmentation:** <10% heap fragmentation after 24h
-- **Lock Contention:** <1% time spent waiting on locks
-- **CPU Usage:** <5% average on target devices
-- **Fragmentation:** <10% heap fragmentation after 24h
-
-## Troubleshooting
-
-### Agent Not Responding
-
-- Ensure agent filename ends with `.agent.md`
-- Check YAML frontmatter is valid
-- Verify agent is committed to repository
-
-### Instructions Not Applied
-
-- Check `applyTo` glob pattern matches your files
-- Ensure YAML frontmatter is properly formatted
-- Verify file is in workspace
-
-### Workflow Failing
-
-- Check dependencies are available
-- Verify configure.ac syntax
-- Review build logs in Actions tab
-- Test locally with same commands
-
-## Resources
-
-### Internal
-
-- [RDK Coding Standards](../CONTRIBUTING.md)
-- [Telemetry API Documentation](../include/telemetry2_0.h)
-- [Test Examples](../source/test/)
-
-### External
-
-- [Autotools Manual](https://www.gnu.org/software/automake/manual/)
-- [Valgrind Documentation](https://valgrind.org/docs/manual/)
-- [Google Test Guide](https://google.github.io/googletest/)
-- [Working Effectively with Legacy Code](https://www.oreilly.com/library/view/working-effectively-with/0131177052/)
 
 ## Contributing
 
-To improve the agentic system:
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-1. **Add new agents** - Create `.agent.md` in `agents/`
-2. **Add new skills** - Create `SKILL.md` in `skills/<name>/`
-3. **Extend instructions** - Update language files in `instructions/`
-4. **Improve workflow** - Enhance `workflows/copilot-setup-steps.yml`
+### Development Workflow
 
-Follow the patterns in existing files and test thoroughly.
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes
+4. Add tests for new functionality
+5. Ensure all L1 and L2 tests pass 
+6. Commit your changes (`git commit -m 'Add amazing feature'`)
+7. Push to the branch (`git push origin feature/amazing-feature`)
+8. Open a Pull Request
 
-## Support
+### Code Style
 
-For questions or issues:
-1. Check this README
-2. Review existing agents/skills
-3. Consult the awesome-copilot repository
-4. Ask in team channels
+- Follow existing C code style and ensure astyle formatting and checks pass with below commands 
+```bash
+          find . -name '*.c' -o -name '*.h' | xargs astyle --options=.astylerc
+          find . -name '*.orig' -type f -delete
+ ```
+
+- Use descriptive variable names
+- Document all public APIs
+- Add unit tests for new functions
+- Add functional tests for new features
+
+See [Coding Guidelines](.github/instructions/c-embedded.instructions.md) for details.
+
+## Troubleshooting
+
+### Common Issues
+
+**Q: Telemetry not sending reports**
+- Check network connectivity
+- Verify XConf URL configuration
+- Review logs in `/var/log/telemetry/`
+
+**Q: High memory usage**
+
+- Reduce number of active profiles
+- Decrease reporting intervals
+- Check for memory leaks with valgrind
+
+**Q: Build errors**
+
+- Ensure all dependencies installed
+- Check compiler version (GCC 4.8+)
+- Review build logs for missing libraries
+
+See [Troubleshooting Guide](docs/troubleshooting/common-errors.md) for more solutions.
+
+## License
+
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- RDK Management LLC
+- RDK Community Contributors
+- Open Source Community
+
+## Contact
+
+- **Repository**: https://github.com/rdkcentral/telemetry
+- **Issues**: https://github.com/rdkcentral/telemetry/issues
+- **RDK Central**: https://rdkcentral.com
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for version history and release notes.
 
 ---
 
-**Last Updated:** February 27, 2026  
-**Version:** 1.0.0  
-**Maintainers:** RDK Telemetry Team
+**Built for the RDK Community**

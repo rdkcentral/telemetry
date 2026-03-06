@@ -12,12 +12,10 @@ Telemetry 2.0 provides real-time monitoring, event collection, and reporting cap
 
 ### Key Features
 
-- 🚀 **Lightweight**: Minimal memory footprint (<1MB typical)
 - ⚡ **Efficient**: Connection pooling and batch reporting
 - 🔒 **Secure**: mTLS support for encrypted communication
 - 📊 **Flexible**: Profile-based configuration (JSON/XConf)
 - 🔧 **Platform-Independent**: Multiple architecture support
-- 🧵 **Thread-Safe**: Robust concurrent operation
 
 ### Architecture Highlights
 
@@ -49,13 +47,11 @@ git clone https://github.com/rdkcentral/telemetry.git
 cd telemetry
 
 # Configure
-./configure --prefix=/usr --enable-rbus
+autoreconf -i
+./configure 
 
 # Build
 make
-
-# Run tests
-make check
 
 # Install
 sudo make install
@@ -63,15 +59,10 @@ sudo make install
 
 ### Docker Development
 
-```bash
-# Build and start development container
-cd containers
-docker compose up -d
+Refer to the provided Docker container for a consistent development environment:
 
-# Run tests inside container
-docker compose exec telemetry bash
-./configure && make check
-```
+https://github.com/rdkcentral/docker-device-mgt-service-test
+
 
 See [Build Setup Guide](docs/integration/build-setup.md) for detailed build options.
 
@@ -170,7 +161,7 @@ See [Profile Configuration Guide](docs/integration/profile-configuration.md) for
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `T2_ENABLE_DEBUG` | Enable debug logging | `0` |
-| `T2_PROFILE_PATH` | Profile directory | `/etc/telemetry` |
+| `T2_PROFILE_PATH` | Default profile directory | `/etc/DefaultT2Profile.json` |
 | `T2_XCONF_URL` | XConf server URL | - |
 | `T2_REPORT_URL` | Report upload URL | - |
 
@@ -190,27 +181,22 @@ cd test
 ./cov_build.sh
 ```
 
-### Code Quality
-
-```bash
-# Static analysis
-cppcheck --enable=all source/
-
-# Memory leak check
-valgrind --leak-check=full ./test/telemetry_test
-
-# Thread safety check
-valgrind --tool=helgrind ./test/telemetry_test
-```
-
 ### Development Container
 
 Use the provided Docker container for consistent development:
+  https://github.com/rdkcentral/docker-device-mgt-service-test
 
 ```bash
-cd containers
+cd docker-device-mgt-service-test
 docker compose up -d
-docker compose exec telemetry bash
+```
+
+A directory above the current directory is mounted as a volume in /mnt/L2_CONTAINER_SHARED_VOLUME .
+Login to the container as follows:
+```bash
+docker exec -it native-platform /bin/bash
+cd /mnt/L2_CONTAINER_SHARED_VOLUME/telemetry
+sh test/run_ut.sh
 ```
 
 See [Docker Development Guide](containers/README.md) for more details.
@@ -226,18 +212,6 @@ Telemetry 2.0 is designed to be platform-independent and has been tested on:
 
 See [Platform Porting Guide](docs/integration/platform-porting.md) for porting to new platforms.
 
-## Performance
-
-Typical resource usage on embedded devices:
-
-| Metric | Value |
-|--------|-------|
-| Memory (RSS) | ~1.5 MB |
-| Threads | 3-5 |
-| CPU (idle) | <1% |
-| CPU (active reporting) | ~5% |
-
-See [Performance Tuning Guide](docs/troubleshooting/performance.md) for optimization.
 
 ## Contributing
 
@@ -249,18 +223,23 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Make your changes
 4. Add tests for new functionality
-5. Ensure all tests pass (`make check`)
+5. Ensure all L1 and L2 tests pass 
 6. Commit your changes (`git commit -m 'Add amazing feature'`)
 7. Push to the branch (`git push origin feature/amazing-feature`)
 8. Open a Pull Request
 
 ### Code Style
 
-- Follow existing C code style (K&R-like)
-- Maximum line length: 120 characters
+- Follow existing C code style and ensure astyle formatting and checks pass with below commands 
+```bash
+          find . -name '*.c' -o -name '*.h' | xargs astyle --options=.astylerc
+          find . -name '*.orig' -type f -delete
+ ```
+
 - Use descriptive variable names
 - Document all public APIs
 - Add unit tests for new functions
+- Add functional tests for new features
 
 See [Coding Guidelines](.github/instructions/c-embedded.instructions.md) for details.
 
@@ -274,11 +253,13 @@ See [Coding Guidelines](.github/instructions/c-embedded.instructions.md) for det
 - Review logs in `/var/log/telemetry/`
 
 **Q: High memory usage**
+
 - Reduce number of active profiles
 - Decrease reporting intervals
 - Check for memory leaks with valgrind
 
 **Q: Build errors**
+
 - Ensure all dependencies installed
 - Check compiler version (GCC 4.8+)
 - Review build logs for missing libraries

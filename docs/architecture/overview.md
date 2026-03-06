@@ -105,7 +105,7 @@ graph TB
 
 #### Event Receiver
 - **Purpose**: Queue and process incoming events
-- **Queue**: Lock-free ring buffer (1000 events)
+- **Queue**: Mutex/condition-variable-protected queue (200 events max, see `T2EVENTQUEUE_MAX_LIMIT`)
 - **Thread**: Dedicated event processing thread
 - **Files**: `source/bulkdata/t2eventreceiver.c`
 

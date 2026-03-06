@@ -10,7 +10,7 @@ This project reuses the existing dockers from https://github.com/rdkcentral/dock
 - [native-platform](https://github.com/rdkcentral/docker-device-mgt-service-test/pkgs/container/docker-device-mgt-service-test%2Fnative-platform)
 
 The application is built and tested inside the container using the existing build and test scripts.
-Contaier images are built and pushed to Docker Hub as part of the CI/CD pipeline for the project. Images are available at : 
+Container images are built and pushed to Docker Hub as part of the CI/CD pipeline for the project. Images are available at : 
 
 - [mockxconf](https://github.com/rdkcentral/docker-device-mgt-service-test/pkgs/container/docker-device-mgt-service-test%2Fmockxconf)
 

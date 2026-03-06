@@ -509,33 +509,6 @@ if (ret != 0) {
 }
 ```
 
-## Future Extensibility
-
-### Planned Enhancements
-
-1. **New Protocols**
-   - gRPC support
-   - MQTT support
-   - WebSocket streaming
-
-2. **Encoding Formats**
-   - Protocol Buffers (GPB)
-   - CBOR (Concise Binary Object Representation)
-   - MessagePack
-
-3. **Advanced Features**
-   - Real-time streaming
-   - Event correlation
-   - Anomaly detection
-   - Compression (gzip, zstd)
-
-### Extension Points
-
-- Protocol plugins (`source/protocol/`)
-- Encoding plugins (serializer interface)
-- Data source plugins (custom markers)
-- Transport plugins (custom delivery)
-
 ## See Also
 
 - [Component Documentation](../../source/docs/) - Detailed component docs

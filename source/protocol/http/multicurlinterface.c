@@ -252,32 +252,12 @@ T2ERROR init_connection_pool()
         }
         pool_entries[i].handle_available = true;
 
-        // Set common options for each handle that persist across requests
-        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_TIMEOUT, 30L);
-        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_CONNECTTIMEOUT, 10L);
-
-        // TCP keepalive settings
-        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_TCP_KEEPALIVE, 1L);
-        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_TCP_KEEPIDLE, 50L);
-        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_TCP_KEEPINTVL, 30L);
-
-#ifdef CURLOPT_TCP_KEEPCNT
-        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_TCP_KEEPCNT, 15L);
-#endif
-
-        // Connection reuse settings
-        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_FORBID_REUSE, 0L);
-        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_FRESH_CONNECT, 0L);
-
-        // Socket options
-        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_NOSIGNAL, 1L);
-
-        // HTTP version and SSL settings
-        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_PIPEWAIT, 0L);
-        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
-        //SSL automatically negotiates the highest SSL/TLS version supported by both client and server
-        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_SSLVERSION, CURL_SSLVERSION_DEFAULT);
-        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_SSL_VERIFYPEER, 1L);
+        // Common curl options are NOT set here anymore.
+        // They are set via configure_common_curl_options() before each
+        // curl_easy_perform(), and cleared via curl_easy_reset() after
+        // each operation in release_pool_handle(). This prevents memory
+        // leaks from internally duplicated strings accumulating across
+        // handle reuses.
 
 #ifdef LIBRDKCERTSEL_BUILD
         // Initialize certificate selectors for each easy handle
@@ -431,6 +411,18 @@ static T2ERROR acquire_pool_handle(CURL **easy, int *idx)
 
 static void release_pool_handle(int idx)
 {
+    // Reset the handle before releasing it back to the pool.
+    // curl_easy_reset() frees all internally duplicated strings (URL, certs, etc.)
+    // preventing memory leaks across reuses, while preserving:
+    //   - Live connections (connection cache)
+    //   - DNS cache
+    //   - Session ID cache
+    // So connection pooling benefits are fully retained.
+    if (idx >= 0 && idx < pool_size && pool_entries[idx].easy_handle)
+    {
+        curl_easy_reset(pool_entries[idx].easy_handle);
+    }
+
     pthread_mutex_lock(&pool_mutex);
     if (idx >= 0 && idx < pool_size)
     {
@@ -443,6 +435,39 @@ static void release_pool_handle(int idx)
         T2Error("Invalid curl handle index = %d (pool size: %d)\n", idx, pool_size);
     }
     pthread_mutex_unlock(&pool_mutex);
+}
+
+// Configure common curl options that must be set before each request.
+// Since curl_easy_reset() clears all options on the handle after each use,
+// these need to be re-applied before every curl_easy_perform().
+static void configure_common_curl_options(CURL *easy)
+{
+    // Timeout settings
+    CURL_SETOPT_CHECK(easy, CURLOPT_TIMEOUT, 30L);
+    CURL_SETOPT_CHECK(easy, CURLOPT_CONNECTTIMEOUT, 10L);
+
+    // TCP keepalive settings
+    CURL_SETOPT_CHECK(easy, CURLOPT_TCP_KEEPALIVE, 1L);
+    CURL_SETOPT_CHECK(easy, CURLOPT_TCP_KEEPIDLE, 50L);
+    CURL_SETOPT_CHECK(easy, CURLOPT_TCP_KEEPINTVL, 30L);
+
+#ifdef CURLOPT_TCP_KEEPCNT
+    CURL_SETOPT_CHECK(easy, CURLOPT_TCP_KEEPCNT, 15L);
+#endif
+
+    // Connection reuse settings
+    CURL_SETOPT_CHECK(easy, CURLOPT_FORBID_REUSE, 0L);
+    CURL_SETOPT_CHECK(easy, CURLOPT_FRESH_CONNECT, 0L);
+
+    // Socket options
+    CURL_SETOPT_CHECK(easy, CURLOPT_NOSIGNAL, 1L);
+
+    // HTTP version and SSL settings
+    CURL_SETOPT_CHECK(easy, CURLOPT_PIPEWAIT, 0L);
+    CURL_SETOPT_CHECK(easy, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
+    //SSL automatically negotiates the highest SSL/TLS version supported by both client and server
+    CURL_SETOPT_CHECK(easy, CURLOPT_SSLVERSION, CURL_SSLVERSION_DEFAULT);
+    CURL_SETOPT_CHECK(easy, CURLOPT_SSL_VERIFYPEER, 1L);
 }
 
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
@@ -501,11 +526,9 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
         return ret;
     }
 
-    // Clear any POST-specific settings so that the handle can be used for GET operations
-    // curl_easy_perform ends up in crash when POST specific options are not cleared
-    CURL_SETOPT_CHECK(easy, CURLOPT_POSTFIELDS, NULL);
-    CURL_SETOPT_CHECK(easy, CURLOPT_POSTFIELDSIZE, 0L);
-    CURL_SETOPT_CHECK(easy, CURLOPT_HTTPHEADER, NULL);
+    // Set all common curl options before this request.
+    // Handle was reset (curl_easy_reset) after last use, so all options are clean.
+    configure_common_curl_options(easy);
 
     // Allocate response buffer locally for GET requests only
     curlResponseData* response = (curlResponseData *) malloc(sizeof(curlResponseData));
@@ -812,9 +835,9 @@ T2ERROR http_pool_post(const char *url, const char *payload)
         return ret;
     }
 
-    // Clear any GET-specific settings from previous use
-    CURL_SETOPT_CHECK(easy, CURLOPT_WRITEFUNCTION, NULL);
-    CURL_SETOPT_CHECK(easy, CURLOPT_WRITEDATA, (void *)stdout);
+    // Set all common curl options before this request.
+    // Handle was reset (curl_easy_reset) after last use, so all options are clean.
+    configure_common_curl_options(easy);
 
     // Configure request-specific options for POST
     CURL_SETOPT_CHECK_STR(easy, CURLOPT_URL, url);

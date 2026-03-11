@@ -1,0 +1,24 @@
+=== 1. GDB Call Stack Analysis ===
+Running GDB dynamic analysis using gdb_batch_script.gdb...
+Setting 30-second timeout with 50 iterations...
+Setting T2_TEST_ITERATIONS=50 for this test...
+✅ GDB analysis completed normally
+=== Dynamic Analysis Summary ===
+Analysis completed at: Wed Mar 11 01:01:09 PM EDT 2026
+
+📁 Generated Files:
+-rw-r--r-- 1 root root    336 Mar 11 13:01 dynamic_analysis_results/dynamic_ssl_20260311_130038_analysis.log
+-rw-r--r-- 1 root root 492202 Mar 11 13:01 dynamic_analysis_results/dynamic_ssl_20260311_130038_gdb_trace.log
+
+📊 Quick Analysis:
+   === ALLOCATION ANALYSIS ===
+   EVP_CIPHER_fetch calls: 2
+   CRYPTO allocation calls: 6456
+   RAND_get0_primary calls: 2
+   === DEALLOCATION ANALYSIS ===
+   CRYPTO_free calls: 2242
+   EVP_CIPHER_free calls: 2
+   SSL_CTX_free calls: 2
+   === MEMORY LEAK ASSESSMENT ===
+   ⚠️  POTENTIAL LEAK: 4212 more allocations than deallocations
+

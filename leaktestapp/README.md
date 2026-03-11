@@ -1,6 +1,6 @@
 # Memory Verifier
 
-**Standalone tool to verify your curl/OpenSSL configuration has no memory leaks.**
+**Standalone tool to verify your curl/OpenSSL configuration to check  memory leaks.**
 
 ## Quick Start
 
@@ -60,13 +60,13 @@ See the source or run `./memory_verifier --help` for the full list of options an
 
 ✅ **Success (No Leaks):**
 ```
-��� FINAL VERIFICATION RESULT
+��� FINAL VERIFICATION RESULT
 Tests Run: <N>
 Passed: <N>
 Failed: 0
 
 ✅ VERDICT: NO MEMORY LEAKS DETECTED
-��� YOUR HTTP CLIENT IS PRODUCTION-READY!
+��� YOUR HTTP CLIENT IS PRODUCTION-READY!
 ```
 
 ⚠️ **Acceptable (Monitor):**
@@ -85,12 +85,6 @@ memory-verifier/           # <- You are here
 ├── Makefile              # Independent build system  
 └── README.md             # This file
 
-../leak_detection/         # <- Your main test suite (separate)
-├── curl_leak_test.c       # Main telemetry tests
-├── multicurlinterface.c   # Your fixed HTTP client
-└── Makefile              # Main test build system
-```
-
 
 ## Build & Run
 
@@ -103,14 +97,11 @@ make help      # Show detailed help
 
 # Run with custom options
 ./memory_verifier --pool                # Run connection pool test
-T2_CONNECTION_POOL_SIZE=3 ./memory_verifier --pool   # Pool size 3
+T2_CONNECTION_POOL_SIZE=2 ./memory_verifier --pool   # Pool size 3
 T2_TEST_ITERATIONS=100 ./memory_verifier --pool      # 100 iterations
 ./memory_verifier --valgrind-pool       # Valgrind pool analysis
 ./memory_verifier --valgrind-ssl        # Deep SSL/OpenSSL investigation
 
-# Automated Dynamic Analysis (GDB/SSL investigation)
-./run_dynamic_analysis.sh               # Run automated dynamic SSL/OpenSSL memory analysis
-./run_dynamic_analysis.sh --help        # Show script options and usage
 ```
 
 

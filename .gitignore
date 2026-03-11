@@ -34,3 +34,7 @@ source/**/Makefile
 source/**/Makefile.in
 source/**/*.deps/
 source/**/.libs/
+
+# Ignore logs directory
+logs/
+

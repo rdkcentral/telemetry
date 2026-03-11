@@ -22,6 +22,7 @@
 #include <string>
 #include <thread>
 #include <chrono>
+#include <future>
 extern "C" {
 //#include "profilexconf.h"
 #include "reportprofiles.h"
@@ -489,6 +490,78 @@ TEST_F(profileXconfTestFixture, ProfileXConf_set_for_second_profile)
     localProfile->isUpdated = false;
 
     EXPECT_EQ(ProfileXConf_set(localProfile), T2ERROR_FAILURE);   
+}
+
+// Regression test for circular deadlock:
+//   ProfileXConf_set (holds plMutex) → registerProfileWithScheduler (waits scMutex)
+//   unregisterProfileFromScheduler   (holds scMutex) → waits tMutex
+//   TimeoutThread callback           (holds tMutex ) → ProfileXConf_isNameEqual → waits plMutex
+//
+// The fix moves registerProfileWithScheduler to outside the plMutex critical
+// section, so a thread holding scMutex can never block ProfileXConf_set from
+// returning, and the cycle is broken.  We verify this by:
+//  1. Uniniting the existing xconf profile so ProfileXConf_set will accept a new one.
+//  2. Calling ProfileXConf_set on a fresh profile.
+//  3. Asserting it returns T2ERROR_SUCCESS within a bounded timeout (no deadlock).
+TEST_F(profileXconfTestFixture, ProfileXConf_set_releases_plMutex_before_scheduler_registration)
+{
+    // Uninit the profile installed by the fixture's InitandUninit predecessor
+    // so that singleProfile is NULL and ProfileXConf_set will proceed.
+    EXPECT_EQ(ProfileXConf_uninit(), T2ERROR_SUCCESS);
+
+    ProfileXConf *localProfile = (ProfileXConf*)malloc(sizeof(ProfileXConf));
+    memset(localProfile, 0, sizeof(ProfileXConf));
+    localProfile->name = strdup("LTE_Failover_xconf");
+    Vector_Create(&localProfile->eMarkerList);
+    localProfile->gMarkerList = nullptr;
+    localProfile->topMarkerList = nullptr;
+    localProfile->paramList = nullptr;
+    localProfile->cachedReportList = nullptr;
+    localProfile->protocol = strdup("HTTP");
+    localProfile->encodingType = strdup("JSON");
+    localProfile->t2HTTPDest = nullptr;
+    localProfile->grepSeekProfile = nullptr;
+    localProfile->reportInProgress = false;
+    localProfile->isUpdated = false;
+    localProfile->reportingInterval = 900;
+
+    // The mock for registerProfileWithScheduler must be called exactly once and
+    // must return success.  Prior to the fix, if plMutex were still held at the
+    // point registerProfileWithScheduler tries scMutex, a concurrent holder of
+    // scMutex (e.g. unregisterProfileFromScheduler) would deadlock.
+    EXPECT_CALL(*g_schedulerMock, registerProfileWithScheduler(
+        StrEq("LTE_Failover_xconf"), 900u, _, _, _, _, _, _))
+        .Times(1)
+        .WillOnce(Return(T2ERROR_SUCCESS));
+
+    // Run ProfileXConf_set in a separate thread so we can apply a join timeout.
+    // Use std::promise/future to avoid a dangling reference to 'result' if the
+    // worker deadlocks and is detached while still holding the reference.
+    std::promise<T2ERROR> promise;
+    std::future<T2ERROR> future = promise.get_future();
+    std::thread worker([localProfile, &promise]() {
+        promise.set_value(ProfileXConf_set(localProfile));
+    });
+    worker.detach(); // communicate only through the promise
+
+    // 500 ms is far more than enough for a lock-free path; a deadlock would
+    // never return, so we treat a wait_for timeout as a test failure.
+    auto status = future.wait_for(std::chrono::milliseconds(500));
+    EXPECT_EQ(status, std::future_status::ready)
+        << "ProfileXConf_set timed out — plMutex may still be held across "
+           "registerProfileWithScheduler (deadlock regression)";
+
+    T2ERROR result = (status == std::future_status::ready)
+                         ? future.get()
+                         : T2ERROR_FAILURE;
+    EXPECT_EQ(result, T2ERROR_SUCCESS)
+        << "ProfileXConf_set did not return T2ERROR_SUCCESS";
+
+    // Cleanup: uninit so later tests start from a clean state
+    EXPECT_CALL(*g_schedulerMock, unregisterProfileFromScheduler(_))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    ProfileXConf_uninit();
 }
 
 //Test of  ProfileXConf_isNameEqual function which compares the given profile name with existing profile name when the xconf profile is updated or changed

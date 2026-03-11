@@ -632,22 +632,42 @@ T2ERROR ProfileXConf_set(ProfileXConf *profile)
             eMarker = (EventMarker *)Vector_At(singleProfile->eMarkerList, emIndex);
             addT2EventMarker(eMarker->markerName, eMarker->compName, singleProfile->name, eMarker->skipFreq);
         }
-        if(registerProfileWithScheduler(singleProfile->name, singleProfile->reportingInterval, INFINITE_TIMEOUT, false, true, false, DEFAULT_FIRST_REPORT_INT, NULL) == T2ERROR_SUCCESS)
-        {
-            T2Info("Successfully set profile : %s\n", singleProfile->name);
-            ret = T2ERROR_SUCCESS;
-        }
-        else
-        {
-            T2Error("Unable to register profile : %s with Scheduler\n", singleProfile->name);
-        }
     }
     else
     {
         T2Error("XConf profile already added, can't have more then 1 profile\n");
+        pthread_mutex_unlock(&plMutex);
+        T2Debug("%s --out\n", __FUNCTION__);
+        return T2ERROR_FAILURE;
     }
 
+    /* Release plMutex before calling registerProfileWithScheduler.
+     *
+     * registerProfileWithScheduler acquires scMutex internally.  Holding
+     * plMutex while waiting for scMutex creates a circular lock dependency:
+     *
+     *   ProfileXConf_set          : plMutex → scMutex
+     *   TimeoutThread callback    : tMutex  → plMutex (via ProfileXConf_isNameEqual)
+     *   unregisterProfileFromScheduler: scMutex → tMutex
+     *
+     * singleProfile is now non-NULL, so any concurrent caller that reaches
+     * the if(!singleProfile) guard will hit the else branch immediately
+     * and return T2ERROR_FAILURE without touching singleProfile's fields.
+     * singleProfile->name is valid for the lifetime of singleProfile, which
+     * is not freed until ProfileXConf_uninit, so the pointer passed to
+     * registerProfileWithScheduler remains stable after the unlock.
+     */
     pthread_mutex_unlock(&plMutex);
+
+    if(registerProfileWithScheduler(singleProfile->name, singleProfile->reportingInterval, INFINITE_TIMEOUT, false, true, false, DEFAULT_FIRST_REPORT_INT, NULL) == T2ERROR_SUCCESS)
+    {
+        T2Info("Successfully set profile : %s\n", singleProfile->name);
+        ret = T2ERROR_SUCCESS;
+    }
+    else
+    {
+        T2Error("Unable to register profile : %s with Scheduler\n", singleProfile->name);
+    }
 
     T2Debug("%s --out\n", __FUNCTION__);
     return ret;

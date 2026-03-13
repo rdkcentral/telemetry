@@ -51,7 +51,7 @@ static void *process_rp_thread(void *data)
     (void) data;//To fix compiler warning
     cJSON *reportProfiles = NULL;
 
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
 
     while(!stopProcessing)
     {
@@ -59,7 +59,7 @@ static void *process_rp_thread(void *data)
         T2Info("%s: Waiting for event from tr-181 \n", __FUNCTION__);
         pthread_cond_wait(&rpCond, &rpMutex);
 
-        T2Debug("%s: Received wake up signal \n", __FUNCTION__);
+        T2Info("%s: Received wake up signal \n", __FUNCTION__);
         if(t2_queue_count(rpQueue) > 0)
         {
             reportProfiles = (cJSON *)t2_queue_pop(rpQueue);
@@ -72,7 +72,7 @@ static void *process_rp_thread(void *data)
         }
         pthread_mutex_unlock(&rpMutex);
     }
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return NULL;
 }
 
@@ -81,7 +81,7 @@ static void *process_tmprp_thread(void *data)
     (void) data;//To fix compiler warning
     cJSON *tmpReportProfiles = NULL;
 
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
 
     while(!stopProcessing)
     {
@@ -89,7 +89,7 @@ static void *process_tmprp_thread(void *data)
         T2Info("%s: Waiting for event from tr-181 \n", __FUNCTION__);
         pthread_cond_wait(&tmpRpCond, &tmpRpMutex);
 
-        T2Debug("%s: Received wake up signal \n", __FUNCTION__);
+        T2Info("%s: Received wake up signal \n", __FUNCTION__);
         if(t2_queue_count(tmpRpQueue) > 0)
         {
             tmpReportProfiles = (cJSON *)t2_queue_pop(tmpRpQueue);
@@ -102,7 +102,7 @@ static void *process_tmprp_thread(void *data)
         }
         pthread_mutex_unlock(&tmpRpMutex);
     }
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return NULL;
 }
 
@@ -182,7 +182,7 @@ T2ERROR datamodel_processProfile(char *JsonBlob, bool rprofiletypes)
  */
 void datamodel_getSavedJsonProfilesasString(char** SavedProfiles)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     size_t configIndex = 0;
     Vector *configList = NULL;
     Config *config = NULL;
@@ -196,7 +196,7 @@ void datamodel_getSavedJsonProfilesasString(char** SavedProfiles)
         for(; configIndex < Vector_Size(configList); configIndex++)
         {
             config = Vector_At(configList, configIndex);
-            T2Debug("Processing config with name : %s\n", config->name);
+            T2Info("Processing config with name : %s\n", config->name);
             cJSON *temparrayItem = cJSON_CreateObject();
             cJSON_AddStringToObject(temparrayItem, "name", config->name);
             cJSON *tempObject = cJSON_Parse(config->configData);
@@ -210,7 +210,7 @@ void datamodel_getSavedJsonProfilesasString(char** SavedProfiles)
         cJSON_Delete(jsonObj);
     }
     Vector_Destroy(configList, free);
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
 }
 
 /**
@@ -218,7 +218,7 @@ void datamodel_getSavedJsonProfilesasString(char** SavedProfiles)
  */
 int datamodel_getSavedMsgpackProfilesasString(char** SavedProfiles)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     //#if defined(FEATURE_SUPPORT_WEBCONFIG) get should work without the restriction of webconfig
     char filePath[REPORTPROFILES_FILE_PATH_SIZE] = {'\0'};
     snprintf(filePath, sizeof(filePath), "%s%s", REPORTPROFILES_PERSISTENCE_PATH, MSGPACK_REPORTPROFILES_PERSISTENT_FILE);
@@ -253,12 +253,12 @@ int datamodel_getSavedMsgpackProfilesasString(char** SavedProfiles)
             return 0;
         }
         fclose (fp);
-        T2Debug("%s --out\n", __FUNCTION__);
+        T2Info("%s --out\n", __FUNCTION__);
         *SavedProfiles = msgpack.msgpack_blob;
         return msgpack.msgpack_blob_size;
     }
     //#endif
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return 0;
 }
 
@@ -298,7 +298,7 @@ T2ERROR datamodel_MsgpackProcessProfile(char *str, int strSize)
 
 T2ERROR datamodel_init(void)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     rpQueue = t2_queue_create();
     if (rpQueue == NULL)
     {
@@ -332,13 +332,13 @@ T2ERROR datamodel_init(void)
     pthread_create(&rpMsgThread, NULL, process_msg_thread, (void *)NULL);
     pthread_create(&tmpRpThread, NULL, process_tmprp_thread, (void *)NULL);
 
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
 void datamodel_unInit(void)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
 
     pthread_mutex_lock(&rpMutex);
     stopProcessing = true;
@@ -357,5 +357,5 @@ void datamodel_unInit(void)
     pthread_mutex_destroy(&tmpRpMutex);
     pthread_cond_destroy(&tmpRpCond);
 
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
 }

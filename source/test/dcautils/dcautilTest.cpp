@@ -189,7 +189,7 @@ static time_t extractUnixTimestamp(const char* line_start, size_t line_length)
 
         if (line_length < fmt->required_length)
         {
-            T2Debug("%s: Line too short for %s format (need %zu chars)\n",
+            T2Info("%s: Line too short for %s format (need %zu chars)\n",
                     __FUNCTION__, fmt->name, fmt->required_length);
             continue;
         }
@@ -209,7 +209,7 @@ static time_t extractUnixTimestamp(const char* line_start, size_t line_length)
             time_t unix_timestamp = mktime(&tm_time);
             if (unix_timestamp != -1)
             {
-                T2Debug("%s: Successfully parsed %s timestamp: %s -> Unix: %ld\n",
+                T2Info("%s: Successfully parsed %s timestamp: %s -> Unix: %ld\n",
                         __FUNCTION__, fmt->name, timestamp_str, (long)unix_timestamp);
                 return unix_timestamp;
             }
@@ -221,7 +221,7 @@ static time_t extractUnixTimestamp(const char* line_start, size_t line_length)
         }
         else
         {
-            T2Debug("%s: %s strptime() failed for: %s\n", __FUNCTION__, fmt->name, timestamp_str);
+            T2Info("%s: %s strptime() failed for: %s\n", __FUNCTION__, fmt->name, timestamp_str);
         }
     }
 
@@ -230,7 +230,7 @@ static time_t extractUnixTimestamp(const char* line_start, size_t line_length)
     memcpy(debug_str, line_start, print_len);
     debug_str[print_len] = '\0';
 
-    T2Debug("%s: Timestamp does not match any supported formats. "
+    T2Info("%s: Timestamp does not match any supported formats. "
             "Supported: 'YYYY-MM-DDTHH:MM:SS.mmm', 'YYMMDD-HH:MM:SS'. "
             "Found at line start: '%s'\n", __FUNCTION__, debug_str);
 

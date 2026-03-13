@@ -135,7 +135,7 @@ static int get_configured_pool_size(void)
 static size_t httpGetCallBack(void *responseBuffer, size_t len, size_t nmemb,
                               void *stream)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     size_t realsize = len * nmemb;
     curlResponseData* response = (curlResponseData*) stream;
 
@@ -157,13 +157,13 @@ static size_t httpGetCallBack(void *responseBuffer, size_t len, size_t nmemb,
     response->size += realsize;
     response->data[response->size] = 0;
 
-    T2Debug("%s ++out\n", __FUNCTION__);
+    T2Info("%s ++out\n", __FUNCTION__);
     return realsize;
 }
 
 static void cleanup_curl_handles(void)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
 
     if(post_headers)
     {
@@ -209,12 +209,12 @@ static void cleanup_curl_handles(void)
 
     pool_size = 0;
 
-    T2Debug("%s ++out\n", __FUNCTION__);
+    T2Info("%s ++out\n", __FUNCTION__);
 }
 
 T2ERROR init_connection_pool()
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
 
     pthread_mutex_lock(&pool_mutex);
 
@@ -227,7 +227,7 @@ T2ERROR init_connection_pool()
 
     //Get configured pool size from environment variable for low end devices
     pool_size = get_configured_pool_size();
-    T2Debug("Initializing connection pool with size: %d\n", pool_size);
+    T2Info("Initializing connection pool with size: %d\n", pool_size);
     pool_entries = (http_pool_entry_t *)calloc(pool_size, sizeof(http_pool_entry_t));
 
     if (!pool_entries)
@@ -345,7 +345,7 @@ T2ERROR init_connection_pool()
 
     pool_initialized = true;
     pthread_mutex_unlock(&pool_mutex);
-    T2Debug("%s ++out\n", __FUNCTION__);
+    T2Info("%s ++out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
@@ -424,7 +424,7 @@ static T2ERROR acquire_pool_handle(CURL **easy, int *idx)
         }
 
         // Sleep briefly before retrying
-        T2Debug("No curl handle available (pool size: %d), retrying in %dms...\n", pool_size, POOL_ACQUIRE_RETRY_MS);
+        T2Info("No curl handle available (pool size: %d), retrying in %dms...\n", pool_size, POOL_ACQUIRE_RETRY_MS);
         usleep(POOL_ACQUIRE_RETRY_MS * 1000);
     }
 }
@@ -448,7 +448,7 @@ static void release_pool_handle(int idx)
 #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
 static void configure_wan_interface(CURL *easy)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
 #if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
     char *paramVal = NULL;
     char waninterface[256];
@@ -471,7 +471,7 @@ static void configure_wan_interface(CURL *easy)
     }
 
     CURL_SETOPT_CHECK_STR(easy, CURLOPT_INTERFACE, waninterface);
-    T2Debug("TR181_DEVICE_CURRENT_WAN_IFNAME ---- %s\n", waninterface);
+    T2Info("TR181_DEVICE_CURRENT_WAN_IFNAME ---- %s\n", waninterface);
 #else
     CURL_SETOPT_CHECK(easy, CURLOPT_INTERFACE, "erouter0");
 #endif
@@ -481,7 +481,7 @@ static void configure_wan_interface(CURL *easy)
 
 T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_output)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
 
     if (!url)
     {
@@ -551,7 +551,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
         rdkcertselector_h handleCertSelector = pool_entries[idx].cert_selector;
         rdkcertselectorStatus_t xcGetCertStatus;
 
-        T2Debug("%s: Using cert selector for entry %d\n", __func__, idx);
+        T2Info("%s: Using cert selector for entry %d\n", __func__, idx);
         do
         {
             pCertURI = NULL;
@@ -677,7 +677,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
 
         if (response->data)
         {
-            T2Debug("%s ; Response data size = %zu\n", __FUNCTION__, response->size);
+            T2Info("%s ; Response data size = %zu\n", __FUNCTION__, response->size);
 
             // Handle file output for GET requests
             if (enable_file_output)
@@ -688,7 +688,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
                     FILE *httpOutput = fdopen(fd, "w");
                     if (httpOutput)
                     {
-                        T2Debug("Update config data in response file %s \n", HTTP_RESPONSE_FILE);
+                        T2Info("Update config data in response file %s \n", HTTP_RESPONSE_FILE);
                         fputs(response->data, httpOutput);
                         fclose(httpOutput);
                     }
@@ -786,13 +786,13 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
 
     release_pool_handle(idx);
 
-    T2Debug("%s ++out\n", __FUNCTION__);
+    T2Info("%s ++out\n", __FUNCTION__);
     return result;
 }
 
 T2ERROR http_pool_post(const char *url, const char *payload)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     if (!url || !payload)
     {
         T2Error("Invalid URL or payload parameter\n");
@@ -1021,7 +1021,7 @@ T2ERROR http_pool_post(const char *url, const char *payload)
     {
         long http_code;
         curl_easy_getinfo(easy, CURLINFO_RESPONSE_CODE, &http_code);
-        T2Debug("HTTP response code: %ld\n", http_code);
+        T2Info("HTTP response code: %ld\n", http_code);
 
         if (http_code == 200)
         {
@@ -1063,13 +1063,13 @@ T2ERROR http_pool_post(const char *url, const char *payload)
     // cert selector object and are freed when rdkcertselector_free() is called
     release_pool_handle(idx);
 
-    T2Debug("%s ++out\n", __FUNCTION__);
+    T2Info("%s ++out\n", __FUNCTION__);
     return result;
 }
 
 T2ERROR http_pool_cleanup(void)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     pthread_mutex_lock(&pool_mutex);
     if (!pool_initialized)
     {
@@ -1137,7 +1137,7 @@ T2ERROR http_pool_cleanup(void)
     uninitMtls();
 #endif
 
-    T2Debug("%s ++out\n", __FUNCTION__);
+    T2Info("%s ++out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 

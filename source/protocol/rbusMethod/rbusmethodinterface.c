@@ -68,7 +68,7 @@ T2ERROR sendReportsOverRBUSMethod(char *methodName, Vector* inputParams, char* p
     {
         return T2ERROR_FAILURE;
     }
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     T2ERROR ret = T2ERROR_FAILURE;
     T2Info("methodName = %s payload = %s \n", methodName, payload);
 
@@ -149,7 +149,7 @@ T2ERROR sendReportsOverRBUSMethod(char *methodName, Vector* inputParams, char* p
     pthread_mutex_unlock(&rbusMethodMutex);
     rbusObject_Release(inParams);
 
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return ret;
 }
 
@@ -159,7 +159,7 @@ T2ERROR sendCachedReportsOverRBUSMethod(char *methodName, Vector* inputParams, V
     {
         return T2ERROR_FAILURE;
     }
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     while(Vector_Size(reportList) > 0)
     {
         char* payload = (char *) Vector_At(reportList, 0);
@@ -172,7 +172,7 @@ T2ERROR sendCachedReportsOverRBUSMethod(char *methodName, Vector* inputParams, V
         Vector_RemoveItem(reportList, payload, NULL);
         free(payload);
     }
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 

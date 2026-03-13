@@ -65,7 +65,7 @@ static char* dynamicPassPhrase = "";
 
 void initMtls()
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     // Prepare certs required for mTls commmunication
 #if !defined (MTLS_FROM_ENV)
     char UseHWBasedCert[8] = { '\0' };
@@ -84,15 +84,15 @@ void initMtls()
         T2Info("getDevicePropertyData() failed for UseSEBasedCert\n");
     }
 #endif
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
 
 }
 
 void uninitMtls()
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
 
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
 }
 
 /**
@@ -123,7 +123,7 @@ double get_system_uptime()
 T2ERROR getMtlsCerts(char **certName, char **phrase)
 {
     T2ERROR ret = T2ERROR_FAILURE;
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
 
     char buf[124];
     memset(buf, 0, sizeof(buf));
@@ -164,7 +164,7 @@ T2ERROR getMtlsCerts(char **certName, char **phrase)
     {
         T2Error("Certs not found\n");
     }
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return ret;
 }
 
@@ -174,7 +174,7 @@ T2ERROR getMtlsCerts(char **certName, char **phrase)
 
     T2ERROR ret = T2ERROR_FAILURE;
 
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
 
 #ifdef LIBRDKCONFIG_BUILD
     uint8_t *MtlsBuf = NULL;
@@ -185,7 +185,7 @@ T2ERROR getMtlsCerts(char **certName, char **phrase)
     if( certName == NULL || phrase == NULL )
     {
         T2Error("Input args are NULL \n");
-        T2Debug("%s --out\n", __FUNCTION__);
+        T2Info("%s --out\n", __FUNCTION__);
         return ret;
     }
 
@@ -234,7 +234,7 @@ T2ERROR getMtlsCerts(char **certName, char **phrase)
         T2Error("Certs not found\n");
     }
 
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return ret;
 }
 #endif

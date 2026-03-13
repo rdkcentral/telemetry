@@ -70,7 +70,7 @@ static pid_t DAEMONPID; //static varible store the Main Pid
 T2ERROR initTelemetry()
 {
     T2ERROR ret = T2ERROR_FAILURE;
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
 
     initWhoamiSupport();
     if (init_connection_pool() != 0)
@@ -84,7 +84,7 @@ T2ERROR initTelemetry()
         {
             ret = T2ERROR_SUCCESS;
             generateDcaReport(true, false);
-            T2Debug("%s --out\n", __FUNCTION__);
+            T2Info("%s --out\n", __FUNCTION__);
         }
         else
         {
@@ -102,7 +102,7 @@ T2ERROR initTelemetry()
 
     initcomplete = 1;
 
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return ret;
 }
 
@@ -200,7 +200,7 @@ void sig_handler(int sig, siginfo_t* info, void* uc)
             }
             else
             {
-                T2Debug("File is created\n");
+                T2Info("File is created\n");
                 close(fd);
             }
 #ifndef DEVICE_EXTENDER
@@ -276,7 +276,7 @@ static void t2DaemonMainModeInit( )
     act.sa_mask = blocking_signal; // block these signals while inside handler
 
     DAEMONPID = getpid(); // save the pid of the deamon
-    T2Debug("Telemetry 2.0 Process PID %d\n", (int)DAEMONPID); //Debug line
+    T2Info("Telemetry 2.0 Process PID %d\n", (int)DAEMONPID); //Debug line
 
     sigaction(SIGTERM, &act, NULL);
     sigaction(SIGUSR1, &act, NULL);

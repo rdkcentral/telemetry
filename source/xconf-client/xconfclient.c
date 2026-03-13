@@ -168,7 +168,7 @@ T2ERROR getBuildType(char* buildType)
 #if !defined(ENABLE_RDKB_SUPPORT)
 static char *getTimezone ()
 {
-    T2Debug("Retrieving the timezone value\n");
+    T2Info("Retrieving the timezone value\n");
     int count = 0, i = 0;
     FILE *file, *fp;
     char *zoneValue = NULL;
@@ -186,7 +186,7 @@ static char *getTimezone ()
             {
                 property = property + strlen("CPU_ARCH=");
                 CPU_ARCH = strdup(property);
-                T2Debug("CPU_ARCH=%s\n", CPU_ARCH);
+                T2Info("CPU_ARCH=%s\n", CPU_ARCH);
                 break;
             }
         }
@@ -197,10 +197,10 @@ static char *getTimezone ()
     {
         jsonpath = "/tmp/output.json";
     }
-    T2Debug("Reading Timezone value from %s file...\n", jsonpath);
+    T2Info("Reading Timezone value from %s file...\n", jsonpath);
     while ( zoneValue == NULL)
     {
-        T2Debug ("timezone retry:%d\n", count);
+        T2Info ("timezone retry:%d\n", count);
         file = fopen(jsonpath, "r");
         if (file)
         {
@@ -216,7 +216,7 @@ static char *getTimezone ()
                     fclose(file);
                     free(jsonDoc);
                     jsonDoc = NULL;
-                    T2Debug("Failed to read Timezone value from %s file...\n", jsonpath);
+                    T2Info("Failed to read Timezone value from %s file...\n", jsonpath);
                     continue;
                 }
             }
@@ -251,13 +251,13 @@ static char *getTimezone ()
         count++;
         if (count == 10)
         {
-            T2Debug("Timezone retry count reached the limit . Timezone data source is missing\n");
+            T2Info("Timezone retry count reached the limit . Timezone data source is missing\n");
             break;
         }
     }
     if ( zoneValue == NULL)
     {
-        T2Debug("Timezone value from %s is empty, Reading from  /opt/persistent/timeZoneDST file...\n", jsonpath);
+        T2Info("Timezone value from %s is empty, Reading from  /opt/persistent/timeZoneDST file...\n", jsonpath);
         file = fopen("/opt/persistent/timeZoneDST", "r");
         if (NULL != file)
         {
@@ -304,7 +304,7 @@ T2ERROR appendRequestParams(CURLU *uri)
 
     T2ERROR ret = T2ERROR_FAILURE;
     CURLUcode rc;
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     if(uri == NULL)
     {
         T2Error("URI is NULL for appendRequestParams\n");
@@ -526,7 +526,7 @@ error:
         free(tempBuf);
     }
 
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return ret;
 }
 
@@ -544,20 +544,20 @@ T2ERROR doHttpGet(char* httpsUrl, char **data)
     ret = http_pool_get(httpsUrl, data, true);
     if(ret == T2ERROR_SUCCESS)
     {
-        T2Debug("HTTP GET request completed successfully\n");
+        T2Info("HTTP GET request completed successfully\n");
     }
     else
     {
         T2Error("Failed to perform HTTP GET request\n");
     }
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return ret;
 }
 
 #if defined(ENABLE_REMOTE_PROFILE_DOWNLOAD)
 static char* getReportProfileConfigUrl()
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     FILE *fp = NULL;
     char buf[256] = {0};
     char *p = NULL;
@@ -566,7 +566,7 @@ static char* getReportProfileConfigUrl()
     if (fp)
     {
         fgets(buf, sizeof(buf), fp);
-        T2Debug("%s buf::%s\n", __FUNCTION__, buf);
+        T2Info("%s buf::%s\n", __FUNCTION__, buf);
         /*we need to remove the \n char in buf*/
         if ((p = strchr(buf, '\n')))
         {
@@ -575,13 +575,13 @@ static char* getReportProfileConfigUrl()
         url = strdup(buf);
         pclose(fp);
     }
-    T2Debug("%s ++out\n", __FUNCTION__);
+    T2Info("%s ++out\n", __FUNCTION__);
     return url;
 }
 
 static T2ERROR fetchRemoteReportProfileConfiguration(char **configData)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     T2ERROR ret = T2ERROR_FAILURE;
 
     char* remoteUrl = getReportProfileConfigUrl();
@@ -590,7 +590,7 @@ static T2ERROR fetchRemoteReportProfileConfiguration(char **configData)
     CURLU *requestURL = curl_url();
     if (NULL != requestURL)
     {
-        //T2Debug("%s remoteUrl::%s\n", __FUNCTION__, remoteUrl);
+        //T2Info("%s remoteUrl::%s\n", __FUNCTION__, remoteUrl);
         rc = curl_url_set(requestURL, CURLUPART_URL, configURL, 0);
         if(rc != CURLUE_OK)
         {
@@ -629,7 +629,7 @@ static T2ERROR fetchRemoteReportProfileConfiguration(char **configData)
     {
         free(remoteUrl);
     }
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
 
     return ret;
 }
@@ -637,7 +637,7 @@ static T2ERROR fetchRemoteReportProfileConfiguration(char **configData)
 static T2ERROR getRemoteReportProfile()
 {
 
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     T2ERROR ret = T2ERROR_FAILURE;
 
     char *configData = NULL;
@@ -652,7 +652,7 @@ static T2ERROR getRemoteReportProfile()
         ret = fetchRemoteReportProfileConfiguration(&configData);
         if (ret == T2ERROR_SUCCESS)
         {
-            T2Debug("%s Report Profile Data: %s\n", __FUNCTION__, configData);
+            T2Info("%s Report Profile Data: %s\n", __FUNCTION__, configData);
             cJSON *reportProfiles = NULL;
             reportProfiles = cJSON_Parse(configData);
             if (reportProfiles)
@@ -671,7 +671,7 @@ static T2ERROR getRemoteReportProfile()
         else if(ret == T2ERROR_PROFILE_NOT_SET)
         {
             T2Warning("XConf Telemetry report profile not set for this device.\n");
-            T2Debug("Empty report profiles in configuration. Delete all active profiles. \n");
+            T2Info("Empty report profiles in configuration. Delete all active profiles. \n");
             clearPersistenceFolder(REPORTPROFILES_PERSISTENCE_PATH);
             if(configData != NULL)
             {
@@ -720,7 +720,7 @@ static T2ERROR getRemoteReportProfile()
         }
     }
     fetchReportProfile = false;
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return ret;
 }
 #endif
@@ -729,7 +729,7 @@ T2ERROR fetchRemoteConfiguration(char *configURL, char **configData)
 {
     // Handles the https communications with the xconf server
     T2ERROR ret = T2ERROR_FAILURE;
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     if(configURL == NULL)
     {
         T2Error("configURL is NULL\n");
@@ -778,7 +778,7 @@ T2ERROR fetchRemoteConfiguration(char *configURL, char **configData)
     {
         T2Error("curl_url did not return a valid pointer\n");
     }
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return ret;
 }
 
@@ -786,7 +786,7 @@ T2ERROR getRemoteConfigURL(char **configURL)
 {
 
     T2ERROR ret = T2ERROR_FAILURE;
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
 
     char *paramVal = NULL;
     /**
@@ -850,7 +850,7 @@ T2ERROR getRemoteConfigURL(char **configURL)
         }
     }
     while (ret == T2ERROR_INVALID_RESPONSE && retryCount < 3);   // Recovery for any transient errors from TR181 provider
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return ret;
 }
 
@@ -859,7 +859,7 @@ static void* getUpdatedConfigurationThread(void *data)
     (void) data;
     T2ERROR configFetch = T2ERROR_FAILURE;
     T2ERROR urlFetchStatus;
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     struct timespec _ts;
     struct timespec _now;
     int n;
@@ -872,7 +872,7 @@ static void* getUpdatedConfigurationThread(void *data)
     stopFetchRemoteConfiguration = false ;
     do
     {
-        T2Debug("%s while Loop -- START \n", __FUNCTION__);
+        T2Info("%s while Loop -- START \n", __FUNCTION__);
 
         while(!stopFetchRemoteConfiguration && (urlFetchStatus = getRemoteConfigURL(&configURL)) != T2ERROR_SUCCESS)
         {
@@ -920,8 +920,8 @@ static void* getUpdatedConfigurationThread(void *data)
             if(ret == T2ERROR_SUCCESS)
             {
                 ProfileXConf *profile = 0;
-                T2Debug("Config received successfully from URL : %s\n", configURL);
-                T2Debug("Config received = %s\n", configData);
+                T2Info("Config received successfully from URL : %s\n", configURL);
+                T2Info("Config received = %s\n", configData);
 
                 if(T2ERROR_SUCCESS == processConfigurationXConf(configData, &profile))
                 {
@@ -930,13 +930,13 @@ static void* getUpdatedConfigurationThread(void *data)
                     {
                         T2Error("Unable to update an existing config file : %s\n", profile->name);
                     }
-                    T2Debug("Disable and Delete old profile %s\n", profile->name);
+                    T2Info("Disable and Delete old profile %s\n", profile->name);
                     if(T2ERROR_SUCCESS != ReportProfiles_deleteProfileXConf(profile))
                     {
                         T2Error("Unable to delete old profile of : %s\n", profile->name);
                     }
 
-                    T2Debug("Set new profile : %s\n", profile->name);
+                    T2Info("Set new profile : %s\n", profile->name);
                     if(T2ERROR_SUCCESS != ReportProfiles_setProfileXConf(profile))
                     {
                         T2Error("Failed to set profile : %s\n", profile->name);
@@ -1030,7 +1030,7 @@ static void* getUpdatedConfigurationThread(void *data)
 #if defined(ENABLE_REMOTE_PROFILE_DOWNLOAD)
         if(T2ERROR_SUCCESS == getParameterValue(T2_VERSION_DATAMODEL_PARAM, &t2Version) && strcmp(t2Version, "2") != 0)
         {
-            T2Debug("T2 Version = %s\n", t2Version);
+            T2Info("T2 Version = %s\n", t2Version);
             if(T2ERROR_SUCCESS == getRemoteReportProfile())
             {
                 T2Info("Successfully downloaded report profiles\n");
@@ -1042,20 +1042,20 @@ static void* getUpdatedConfigurationThread(void *data)
         }
 #endif
         stopFetchRemoteConfiguration = true;
-        T2Debug("%s while Loop -- END; wait for restart event\n", __FUNCTION__);
+        T2Info("%s while Loop -- END; wait for restart event\n", __FUNCTION__);
         pthread_cond_wait(&xcThreadCond, &xcThreadMutex);
     }
     while(isXconfInit);  //End of do while loop
 
     pthread_mutex_unlock(&xcThreadMutex);
     // pthread_detach(pthread_self()); commenting this line as thread will detached by stopXConfClient
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return NULL;
 }
 
 void uninitXConfClient()
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     if(!stopFetchRemoteConfiguration)
     {
         stopFetchRemoteConfiguration = true;
@@ -1067,7 +1067,7 @@ void uninitXConfClient()
     }
     else
     {
-        T2Debug("XConfClientThread is stopped already\n");
+        T2Info("XConfClientThread is stopped already\n");
     }
     if(isXconfInit)
     {
@@ -1085,7 +1085,7 @@ void uninitXConfClient()
         pthread_join(dcmThread, NULL);
 #endif
     }
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     T2Info("Uninit XConf Client Successful\n");
 }
 
@@ -1128,18 +1128,18 @@ static void* nofifyDCMThread(void *data)
 }
 T2ERROR startDCMClient()
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
 
     pthread_create(&dcmThread, NULL, nofifyDCMThread, NULL);
 
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 #endif
 
 T2ERROR initXConfClient()
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
 #ifdef DCMAGENT
     startDCMClient();
 #endif
@@ -1150,26 +1150,26 @@ T2ERROR initXConfClient()
     isXconfInit = true ;
     pthread_create(&xcrThread, NULL, getUpdatedConfigurationThread, NULL);
     //startXConfClient(); // Removing startXConfClient as getUpdatedConfigurationThread is created in this function itself
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     T2Info("Init Xconf Client Success\n");
     return T2ERROR_SUCCESS;
 }
 
 T2ERROR stopXConfClient()
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     //pthread_detach(xcrThread);
     pthread_mutex_lock(&xcMutex);
     stopFetchRemoteConfiguration = true;
     pthread_cond_signal(&xcCond);
     pthread_mutex_unlock(&xcMutex);
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
 T2ERROR startXConfClient()
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     if (isXconfInit)
     {
         //pthread_create(&xcrThread, NULL, getUpdatedConfigurationThread, NULL);
@@ -1185,6 +1185,6 @@ T2ERROR startXConfClient()
     {
         T2Info("getUpdatedConfigurationThread is still active ... Ignore xconf reload \n");
     }
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }

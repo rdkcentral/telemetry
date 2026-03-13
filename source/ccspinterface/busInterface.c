@@ -35,7 +35,7 @@ static bool isBusInit = false ;
 
 bool isRbusEnabled( )
 {
-    T2Debug("%s ++in \n", __FUNCTION__);
+    T2Info("%s ++in \n", __FUNCTION__);
     if(RBUS_ENABLED == rbus_checkStatus())
     {
         isRbus = true;
@@ -44,29 +44,29 @@ bool isRbusEnabled( )
     {
         isRbus = false;
     }
-    T2Debug("RBUS mode active status = %s \n", isRbus ? "true" : "false");
-    T2Debug("%s --out \n", __FUNCTION__);
+    T2Info("RBUS mode active status = %s \n", isRbus ? "true" : "false");
+    T2Info("%s --out \n", __FUNCTION__);
     return isRbus;
 }
 
 static bool busInit( )
 {
-    T2Debug("%s ++in \n", __FUNCTION__);
+    T2Info("%s ++in \n", __FUNCTION__);
     if(!isBusInit)
     {
         if (isRbusEnabled())
         {
-            T2Debug("%s --RBUS mode is active \n", __FUNCTION__);    //CID 158206:Unchecked return value
+            T2Info("%s --RBUS mode is active \n", __FUNCTION__);    //CID 158206:Unchecked return value
         }
         isBusInit = true;
     }
-    T2Debug("%s --out \n", __FUNCTION__);
+    T2Info("%s --out \n", __FUNCTION__);
     return isBusInit;
 }
 
 T2ERROR getParameterValue(const char* paramName, char **paramValue)
 {
-    T2Debug("%s ++in \n", __FUNCTION__);
+    T2Info("%s ++in \n", __FUNCTION__);
     T2ERROR ret = T2ERROR_FAILURE ;
     if(!isBusInit)
     {
@@ -84,13 +84,13 @@ T2ERROR getParameterValue(const char* paramName, char **paramValue)
     }
 #endif
 
-    T2Debug("%s --out \n", __FUNCTION__);
+    T2Info("%s --out \n", __FUNCTION__);
     return ret;
 }
 
 Vector* getProfileParameterValues(Vector *paramList, int count)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     Vector *profileValueList = NULL;
     if(!isBusInit)
     {
@@ -108,7 +108,7 @@ Vector* getProfileParameterValues(Vector *paramList, int count)
     }
 #endif
 
-    T2Debug("%s --Out\n", __FUNCTION__);
+    T2Info("%s --Out\n", __FUNCTION__);
     return profileValueList;
 }
 
@@ -118,7 +118,7 @@ Vector* getProfileParameterValues(Vector *paramList, int count)
 T2ERROR registerForTelemetryEvents(TelemetryEventCallback eventCB)
 {
     T2ERROR ret = T2ERROR_FAILURE;
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     if(!isBusInit)
     {
         busInit();
@@ -141,7 +141,7 @@ T2ERROR registerForTelemetryEvents(TelemetryEventCallback eventCB)
     }
 #endif
 
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return ret;
 }
 

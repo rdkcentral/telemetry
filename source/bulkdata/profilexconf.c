@@ -232,7 +232,7 @@ static void* CollectAndReportXconf(void* data)
         bool checkRotated = true;
 
         int count = profile->grepSeekProfile->execCounter;
-        T2Debug("CollectAndReportXconf count = %d\n", count);
+        T2Info("CollectAndReportXconf count = %d\n", count);
 
         struct timespec startTime;
         struct timespec endTime;
@@ -269,7 +269,7 @@ static void* CollectAndReportXconf(void* data)
                 customLogPath = PREVIOUS_LOGS_PATH;
                 profile->bClearSeekMap = true;
                 checkRotated = false;
-                T2Debug("Adding Previous Logs Header to JSON report\n");
+                T2Info("Adding Previous Logs Header to JSON report\n");
             }
 #endif
 
@@ -332,7 +332,7 @@ static void* CollectAndReportXconf(void* data)
             if(profile->isUpdated)
             {
                 T2Info("Profile is udpated, report is cached to send with updated Profile TIMEOUT\n");
-                T2Debug("Vector list size = %lu\n",  (unsigned long) Vector_Size(profile->cachedReportList));
+                T2Info("Vector list size = %lu\n",  (unsigned long) Vector_Size(profile->cachedReportList));
                 if(profile->cachedReportList != NULL && Vector_Size(profile->cachedReportList) >= MAX_CACHED_REPORTS)
                 {
                     while(Vector_Size(profile->cachedReportList) > MAX_CACHED_REPORTS)
@@ -355,7 +355,7 @@ static void* CollectAndReportXconf(void* data)
                 /* CID 187010: Dereference before null check */
                 free(jsonReport);
                 jsonReport = NULL;
-                T2Debug("%s --out\n", __FUNCTION__);
+                T2Info("%s --out\n", __FUNCTION__);
                 //pthread_mutex_unlock(&plMutex);
                 //return NULL;
                 goto reportXconfThreadEnd;
@@ -384,7 +384,7 @@ static void* CollectAndReportXconf(void* data)
                 }
                 else
                 {
-                    T2Debug("Abort upload is not yet set.\n");
+                    T2Info("Abort upload is not yet set.\n");
                     ret = sendReportOverHTTP(profile->t2HTTPDest->URL, jsonReport);
                 }
 
@@ -517,7 +517,7 @@ reportXconfThreadEnd :
 T2ERROR ProfileXConf_init(bool checkPreviousSeek)
 {
     (void) checkPreviousSeek; // To fix compiler warning
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     if(!initialized)
     {
         Vector *configList = NULL;
@@ -541,8 +541,8 @@ T2ERROR ProfileXConf_init(bool checkPreviousSeek)
         {
             config = Vector_At(configList, 0);
             ProfileXConf *profile = 0;
-            T2Debug("Processing config with name : %s\n", config->name);
-            T2Debug("Config Size = %lu\n", (unsigned long)strlen(config->configData));
+            T2Info("Processing config with name : %s\n", config->name);
+            T2Info("Config Size = %lu\n", (unsigned long)strlen(config->configData));
             if(T2ERROR_SUCCESS == processConfigurationXConf(config->configData, &profile))
             {
 #ifdef PERSIST_LOG_MON_REF
@@ -580,13 +580,13 @@ T2ERROR ProfileXConf_init(bool checkPreviousSeek)
         }
         Vector_Destroy(configList, freeConfig);
     }
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
 T2ERROR ProfileXConf_uninit()
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     if(!initialized || !singleProfile)
     {
         T2Info("profile list is not initialized yet, ignoring\n");
@@ -596,7 +596,7 @@ T2ERROR ProfileXConf_uninit()
 
     if(singleProfile->reportInProgress)
     {
-        T2Debug("Waiting for final report before uninit\n");
+        T2Info("Waiting for final report before uninit\n");
         pthread_mutex_lock(&plMutex);
         pthread_cond_signal(&reuseThread);
         pthread_mutex_unlock(&plMutex);
@@ -609,13 +609,13 @@ T2ERROR ProfileXConf_uninit()
     pthread_mutex_unlock(&plMutex);
 
     pthread_mutex_destroy(&plMutex);
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
 T2ERROR ProfileXConf_set(ProfileXConf *profile)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
 
     T2ERROR ret = T2ERROR_FAILURE;
 
@@ -649,13 +649,13 @@ T2ERROR ProfileXConf_set(ProfileXConf *profile)
 
     pthread_mutex_unlock(&plMutex);
 
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return ret;
 }
 
 void ProfileXConf_updateMarkerComponentMap()
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     if(!initialized)
     {
         T2Error("profile list is not initialized yet, ignoring\n");
@@ -677,7 +677,7 @@ void ProfileXConf_updateMarkerComponentMap()
         T2Error("Profile not found in %s\n", __FUNCTION__);
     }
     pthread_mutex_unlock(&plMutex);
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
 }
 
 bool ProfileXConf_isNameEqual(char* profileName)
@@ -689,7 +689,7 @@ bool ProfileXConf_isNameEqual(char* profileName)
         if(singleProfile && (singleProfile->name != NULL) && (profileName != NULL) && !strcmp(singleProfile->name, profileName)) //Adding NULL check to avoid strcmp crash
         {
             isName = true;
-            T2Debug("singleProfile->name = %s and profileName = %s and return %s\n", singleProfile->name, profileName, isName ? "true" : "false");
+            T2Info("singleProfile->name = %s and profileName = %s and return %s\n", singleProfile->name, profileName, isName ? "true" : "false");
 
         }
     }
@@ -699,13 +699,13 @@ bool ProfileXConf_isNameEqual(char* profileName)
 
 T2ERROR ProfileXConf_delete(ProfileXConf *profile)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     if(!initialized)
     {
         T2Error("profile list is not initialized yet, ignoring\n");
         return T2ERROR_FAILURE;
     }
-    T2Debug("calling ProfileXConf_isNameEqual function form %s and line %d\n", __FUNCTION__, __LINE__);
+    T2Info("calling ProfileXConf_isNameEqual function form %s and line %d\n", __FUNCTION__, __LINE__);
     bool isNameEqual = ProfileXConf_isNameEqual(profile->name);
 
     pthread_mutex_lock(&plMutex);
@@ -778,23 +778,23 @@ T2ERROR ProfileXConf_delete(ProfileXConf *profile)
         {
             EventMarker *eMarkerNew = NULL;
             eMarkerNew = (EventMarker *)Vector_At(profile->eMarkerList, j);
-            T2Debug("Check the New Event : %s index : %zu \n", eMarkerNew->markerName, j);
+            T2Info("Check the New Event : %s index : %zu \n", eMarkerNew->markerName, j);
             for (i = 0; i < Vector_Size(singleProfile->eMarkerList); i++)
             {
                 EventMarker *eMarkerCurrent = NULL;
                 eMarkerCurrent = (EventMarker *)Vector_At(singleProfile->eMarkerList, i);
-                T2Debug("Check the Old Event : %s index : %zu \n", eMarkerCurrent->markerName, i);
+                T2Info("Check the Old Event : %s index : %zu \n", eMarkerCurrent->markerName, i);
                 if((strcmp(eMarkerNew->markerName, eMarkerCurrent->markerName) == 0) && eMarkerNew->mType == eMarkerCurrent->mType)
                 {
-                    T2Debug("Event marker with name : %s type %d is in both profiles copy the value \n", eMarkerCurrent->markerName, eMarkerCurrent->mType);
+                    T2Info("Event marker with name : %s type %d is in both profiles copy the value \n", eMarkerCurrent->markerName, eMarkerCurrent->mType);
                     switch(eMarkerNew->mType)
                     {
                     case MTYPE_XCONF_COUNTER:
-                        T2Debug("Marker type MTYPE_XCONF_COUNTER and value : %d \n", eMarkerCurrent->u.count);
+                        T2Info("Marker type MTYPE_XCONF_COUNTER and value : %d \n", eMarkerCurrent->u.count);
                         eMarkerNew->u.count = eMarkerCurrent->u.count;
                         break;
                     case MTYPE_XCONF_ABSOLUTE:
-                        T2Debug("Marker type MTYPE_XCONF_ABSOLUTE and value : %s \n", eMarkerCurrent->u.markerValue);
+                        T2Info("Marker type MTYPE_XCONF_ABSOLUTE and value : %s \n", eMarkerCurrent->u.markerValue);
                         if (eMarkerCurrent->u.markerValue != NULL)
                         {
                             eMarkerNew->u.markerValue = strdup(eMarkerCurrent->u.markerValue);
@@ -802,7 +802,7 @@ T2ERROR ProfileXConf_delete(ProfileXConf *profile)
                         break;
                     case MTYPE_XCONF_ACCUMULATE:
                         count =  Vector_Size(eMarkerCurrent->u.accumulatedValues);
-                        T2Debug("Marker type MTYPE_XCONF_ACCUMULATE and count : %zu \n", count);
+                        T2Info("Marker type MTYPE_XCONF_ACCUMULATE and count : %zu \n", count);
                         if(eMarkerCurrent->u.accumulatedValues != NULL && count > 0)
                         {
                             size_t index = 0;
@@ -848,7 +848,7 @@ T2ERROR ProfileXConf_delete(ProfileXConf *profile)
     freeProfileXConf();
 
     pthread_mutex_unlock(&plMutex);
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
@@ -859,7 +859,7 @@ bool ProfileXConf_isSet()
 
     if(singleProfile != NULL)
     {
-        T2Debug("ProfileXConf is set\n");
+        T2Info("ProfileXConf is set\n");
         isSet = true;
     }
 
@@ -884,7 +884,7 @@ char* ProfileXconf_getName()
 
 void ProfileXConf_notifyTimeout(bool isClearSeekMap, bool isOnDemand)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
 
     int reportThreadStatus = 0 ;
     pthread_mutex_lock(&plMutex);
@@ -920,13 +920,13 @@ void ProfileXConf_notifyTimeout(bool isClearSeekMap, bool isOnDemand)
 
     pthread_mutex_unlock(&plMutex);
 
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
 }
 
 
 T2ERROR ProfileXConf_storeMarkerEvent(T2Event *eventInfo)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
 
     pthread_mutex_lock(&plMutex);
     if(!singleProfile)
@@ -954,23 +954,23 @@ T2ERROR ProfileXConf_storeMarkerEvent(T2Event *eventInfo)
         {
         case MTYPE_XCONF_COUNTER:
             lookupEvent->u.count++;
-            T2Debug("Increment marker count to : %d\n", lookupEvent->u.count);
+            T2Info("Increment marker count to : %d\n", lookupEvent->u.count);
             break;
 
         case MTYPE_XCONF_ACCUMULATE:
-            T2Debug("Marker type is ACCUMULATE Event Value : %s\n", eventInfo->value);
+            T2Info("Marker type is ACCUMULATE Event Value : %s\n", eventInfo->value);
             arraySize = Vector_Size(lookupEvent->u.accumulatedValues);
-            T2Debug("Current array size : %d \n", arraySize);
+            T2Info("Current array size : %d \n", arraySize);
             if( arraySize < MAX_ACCUMULATE)
             {
                 Vector_PushBack(lookupEvent->u.accumulatedValues, strdup(eventInfo->value));
-                T2Debug("Sucessfully added value into vector New Size : %d\n", ++arraySize);
+                T2Info("Sucessfully added value into vector New Size : %d\n", ++arraySize);
             }
             else if ( arraySize == MAX_ACCUMULATE )
             {
                 T2Warning("Max size of the array has been reached appending warning message : %s\n", MAX_ACCUMULATE_MSG);
                 Vector_PushBack(lookupEvent->u.accumulatedValues, strdup(MAX_ACCUMULATE_MSG));
-                T2Debug("Sucessfully added warning message into vector New Size : %d\n", ++arraySize);
+                T2Info("Sucessfully added warning message into vector New Size : %d\n", ++arraySize);
             }
             else
             {
@@ -985,7 +985,7 @@ T2ERROR ProfileXConf_storeMarkerEvent(T2Event *eventInfo)
                 free(lookupEvent->u.markerValue);
             }
             lookupEvent->u.markerValue = strdup(eventInfo->value);
-            T2Debug("New marker value saved : %s\n", lookupEvent->u.markerValue);
+            T2Info("New marker value saved : %s\n", lookupEvent->u.markerValue);
             break;
         }
     }
@@ -999,7 +999,7 @@ T2ERROR ProfileXConf_storeMarkerEvent(T2Event *eventInfo)
 
     pthread_mutex_unlock(&plMutex);
 
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 #ifdef GTEST_ENABLE

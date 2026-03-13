@@ -62,7 +62,6 @@ typedef enum
 #define T2Error(...)                   T2Log(RDK_LOG_ERROR, __VA_ARGS__)
 #define T2Info(...)                    T2Log(RDK_LOG_INFO, __VA_ARGS__)
 #define T2Warning(...)                 T2Log(RDK_LOG_WARN, __VA_ARGS__)
-#define T2Debug(...)                   T2Log(RDK_LOG_DEBUG, __VA_ARGS__)
 
 void LOGInit();
 

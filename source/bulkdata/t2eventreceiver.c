@@ -94,7 +94,7 @@ void freeT2Event(void *data)
 void T2ER_PushDataWithDelim(char* eventInfo, char* user_data)
 {
     (void) user_data; //To fic compiler warning.
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     int ret = 0;
 
     if(EREnabled)
@@ -110,7 +110,7 @@ void T2ER_PushDataWithDelim(char* eventInfo, char* user_data)
                 T2Error("%s pthread_mutex_lock for erMutex failed\n", __FUNCTION__);
                 return;
             }
-            T2Debug("Received eventInfo : %s\n", eventInfo);
+            T2Info("Received eventInfo : %s\n", eventInfo);
             char* token = strSplit(eventInfo, MESSAGE_DELIMITER);
             if(token != NULL)
             {
@@ -132,7 +132,7 @@ void T2ER_PushDataWithDelim(char* eventInfo, char* user_data)
                         }
                         else
                         {
-                            T2Debug("Adding eventName : %s eventValue : %s to t2event queue\n", event->name, event->value);
+                            T2Info("Adding eventName : %s eventValue : %s to t2event queue\n", event->name, event->value);
                             t2_queue_push(eQueue, (void *) event);
                             if(!stopDispatchThread)
                             {
@@ -168,12 +168,12 @@ void T2ER_PushDataWithDelim(char* eventInfo, char* user_data)
     {
         T2Warning("ER is not initialized, ignoring telemetry events for now\n");
     }
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
 }
 
 void T2ER_Push(char* eventName, char* eventValue)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     int ret = 0;
 
     if(EREnabled)
@@ -196,13 +196,13 @@ void T2ER_Push(char* eventName, char* eventValue)
             }
             else
             {
-                T2Debug("Received eventInfo : %s value : %s\n", eventName, (char* ) eventValue);
+                T2Info("Received eventInfo : %s value : %s\n", eventName, (char* ) eventValue);
                 T2Event *event = (T2Event *) malloc(sizeof(T2Event));
                 if(event != NULL)
                 {
                     event->name = strdup(eventName);
                     event->value = strdup(eventValue);
-                    T2Debug("Adding eventName : %s eventValue : %s to t2event queue\n", event->name, event->value);
+                    T2Info("Adding eventName : %s eventValue : %s to t2event queue\n", event->name, event->value);
                     t2_queue_push(eQueue, (void *) event);
                     if(!stopDispatchThread)
                     {
@@ -227,13 +227,13 @@ void T2ER_Push(char* eventName, char* eventValue)
     {
         T2Warning("ER is not initialized, ignoring telemetry events for now\n");
     }
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
 }
 
 void* T2ER_EventDispatchThread(void *arg)
 {
     (void) arg; // To avoid compiler warning
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     Vector *profileList = NULL;
     while(!stopDispatchThread)
     {
@@ -242,7 +242,7 @@ void* T2ER_EventDispatchThread(void *arg)
             T2Error("%s pthread_mutex_lock for erMutex failed\n", __FUNCTION__);
             return NULL;
         }
-        T2Debug("Checking for events in event queue , event count = %d\n", t2_queue_count(eQueue));
+        T2Info("Checking for events in event queue , event count = %d\n", t2_queue_count(eQueue));
         if(t2_queue_count(eQueue) > 0)
         {
             T2Event *event = (T2Event *)t2_queue_pop(eQueue);
@@ -263,24 +263,24 @@ void* T2ER_EventDispatchThread(void *arg)
             Vector_Create(&profileList);
             if(T2ERROR_SUCCESS == getMarkerProfileList(event->name, &profileList))
             {
-                T2Debug("Found matching profileIDs for event with markerName : %s value : %s\n", event->name, event->value);
+                T2Info("Found matching profileIDs for event with markerName : %s value : %s\n", event->name, event->value);
                 size_t index = 0;
                 for(; index < Vector_Size(profileList); index++)
                 {
-                    T2Debug("Storing in profile : %s\n", (char *)Vector_At(profileList, index));
+                    T2Info("Storing in profile : %s\n", (char *)Vector_At(profileList, index));
                     ReportProfiles_storeMarkerEvent((char *)Vector_At(profileList, index), event);
                 }
             }
             else
             {
-                T2Debug("No Matching Profiles for event with MarkerName : %s Value : %s - Ignoring\n", event->name, event->value);
+                T2Info("No Matching Profiles for event with MarkerName : %s Value : %s - Ignoring\n", event->name, event->value);
             }
             Vector_Destroy(profileList, free);
             freeT2Event(event);
         }
         else
         {
-            T2Debug("Event Queue size is 0, Waiting events from T2ER_Push\n");
+            T2Info("Event Queue size is 0, Waiting events from T2ER_Push\n");
             int ret = pthread_cond_wait(&erCond, &erMutex);
             if(ret != 0) // pthread cond wait failed return after unlock
             {
@@ -291,19 +291,19 @@ void* T2ER_EventDispatchThread(void *arg)
                 T2Error("%s pthread_mutex_unlock for erMutex failed\n", __FUNCTION__);
                 return NULL;
             }
-            T2Debug("Received signal from T2ER_Push\n");
+            T2Info("Received signal from T2ER_Push\n");
         }
     }
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return NULL;
 }
 
 T2ERROR T2ER_Init()
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     if(EREnabled)
     {
-        T2Debug("T2ER already initialized, ignoring\n");
+        T2Info("T2ER already initialized, ignoring\n");
         return T2ERROR_SUCCESS;
     }
     eQueue = t2_queue_create();
@@ -336,12 +336,12 @@ T2ERROR T2ER_Init()
 
     if(isRbusEnabled())
     {
-        T2Debug("Register event call back function T2ER_Push \n");
+        T2Info("Register event call back function T2ER_Push \n");
         registerForTelemetryEvents(T2ER_Push);
     }
     else
     {
-        T2Debug("Register event call back function T2ER_PushDataWithDelim \n");
+        T2Info("Register event call back function T2ER_PushDataWithDelim \n");
         registerForTelemetryEvents(T2ER_PushDataWithDelim);
     }
 
@@ -349,13 +349,13 @@ T2ERROR T2ER_Init()
     setT2EventReceiveState(T2_STATE_COMPONENT_READY);
     T2Info("T2 is now Ready to Recieve Events\n");
 
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
 T2ERROR T2ER_StartDispatchThread()
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
 
     if(pthread_mutex_lock(&sTDMutex) != 0)
     {
@@ -382,13 +382,13 @@ T2ERROR T2ER_StartDispatchThread()
         T2Error("%s pthread_mutex_unlock for sTDMutex failed\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
 static T2ERROR flushCacheFromFile(void)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     FILE *fp;
     char telemetry_data[255] = "";
     size_t data_len = 0 ;
@@ -404,7 +404,7 @@ static T2ERROR flushCacheFromFile(void)
                 telemetry_data[data_len - 1] = '\0' ;
             }
 
-            T2Debug("T2: Sending cache event : %s\n", telemetry_data);
+            T2Info("T2: Sending cache event : %s\n", telemetry_data);
             T2ER_PushDataWithDelim(telemetry_data, NULL);
             memset(telemetry_data, 0, sizeof(telemetry_data));
         }
@@ -416,16 +416,16 @@ static T2ERROR flushCacheFromFile(void)
     }
     else
     {
-        T2Debug("fopen failed for %s\n", T2_CACHE_FILE);
+        T2Info("fopen failed for %s\n", T2_CACHE_FILE);
     }
 
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
 T2ERROR T2ER_StopDispatchThread()
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     int ret = 0;
 
     if(pthread_mutex_lock(&sTDMutex) != 0)
@@ -486,16 +486,16 @@ T2ERROR T2ER_StopDispatchThread()
         T2Error("%s pthread_mutex_unlock for sTDMutex failed\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
 void T2ER_Uninit()
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     if(!EREnabled)
     {
-        T2Debug("T2ER isn't initialized, ignoring\n");
+        T2Info("T2ER isn't initialized, ignoring\n");
         return;
     }
     EREnabled = false;
@@ -551,8 +551,8 @@ void T2ER_Uninit()
             return;
         }
     }
-    T2Debug("T2ER Event Dispatch Thread successfully terminated\n");
+    T2Info("T2ER Event Dispatch Thread successfully terminated\n");
     t2_queue_destroy(eQueue, freeT2Event);
     eQueue = NULL;
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
 }

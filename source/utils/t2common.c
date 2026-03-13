@@ -248,7 +248,7 @@ bool getDevicePropertyData(const char *dev_prop_name, char *out_data, unsigned i
         T2Error("%s : buff size not in the range. size should be < %d\n", __FUNCTION__, MAX_DEVICE_PROP_BUFF_SIZE);
         return ret;
     }
-    T2Debug("%s : Trying device property data for %s and buf size=%u\n", __FUNCTION__, dev_prop_name, buff_size);
+    T2Info("%s : Trying device property data for %s and buf size=%u\n", __FUNCTION__, dev_prop_name, buff_size);
     fp = fopen(DEVICE_PROPERTIES_FILE, "r");
     if(fp == NULL)
     {
@@ -268,7 +268,7 @@ bool getDevicePropertyData(const char *dev_prop_name, char *out_data, unsigned i
             if(tmp != NULL)
             {
                 snprintf(out_data, buff_size, "%s", tmp + 1);
-                T2Debug("%s : %s=%s\n", __FUNCTION__, dev_prop_name, out_data);
+                T2Info("%s : %s=%s\n", __FUNCTION__, dev_prop_name, out_data);
                 ret = true;
                 break;
             }

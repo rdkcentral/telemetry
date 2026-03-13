@@ -83,7 +83,7 @@ static T2ERROR addParameter(ProfileXConf *profile, const char* name, const char*
     {
         char *splitSuffix = NULL;
         char *accumulateSuffix = NULL;
-        // T2Debug("Adding Event Marker :: Param/Marker Name : %s ref/pattern/Comp : %s skipFreq : %d\n", name, ref, skipFreq);
+        // T2Info("Adding Event Marker :: Param/Marker Name : %s ref/pattern/Comp : %s skipFreq : %d\n", name, ref, skipFreq);
         EventMarker *eMarker = (EventMarker *)malloc(sizeof(EventMarker));
         memset(eMarker, 0, sizeof(EventMarker));
         eMarker->markerName = strdup(name);
@@ -112,7 +112,7 @@ static T2ERROR addParameter(ProfileXConf *profile, const char* name, const char*
     }
     else if(skipFreq == -1 || strncmp(fileName, ALIAS_DATAMODEL, 5) == 0)
     {
-        // T2Debug("Adding TR-181 Parameter : %s\n", ref);
+        // T2Info("Adding TR-181 Parameter : %s\n", ref);
         Param *param = (Param *)malloc(sizeof(Param));
         memset(param, 0, sizeof(Param));
         param->name = strdup(name);
@@ -125,10 +125,10 @@ static T2ERROR addParameter(ProfileXConf *profile, const char* name, const char*
     {
         if(strncmp("top_log.txt", fileName, sizeof("top_log.txt")) == 0)
         {
-            T2Debug("This is a TopMarker name :%s and value: %s add it to topmarker list \n", name, ref);
+            T2Info("This is a TopMarker name :%s and value: %s add it to topmarker list \n", name, ref);
             char *splitSuffix = NULL;
             char *accumulateSuffix = NULL;
-            // T2Debug("Adding Grep Marker :: Param/Marker Name : %s ref/pattern/Comp : %s fileName : %s skipFreq : %d\n", name, ref, fileName, skipFreq);
+            // T2Info("Adding Grep Marker :: Param/Marker Name : %s ref/pattern/Comp : %s fileName : %s skipFreq : %d\n", name, ref, fileName, skipFreq);
             TopMarker *tMarker = (TopMarker *)malloc(sizeof(TopMarker));
             memset(tMarker, 0, sizeof(TopMarker));
             tMarker->markerName = strdup(name);
@@ -163,7 +163,7 @@ static T2ERROR addParameter(ProfileXConf *profile, const char* name, const char*
         {
             char *splitSuffix = NULL;
             char *accumulateSuffix = NULL;
-            // T2Debug("Adding Grep Marker :: Param/Marker Name : %s ref/pattern/Comp : %s fileName : %s skipFreq : %d\n", name, ref, fileName, skipFreq);
+            // T2Info("Adding Grep Marker :: Param/Marker Name : %s ref/pattern/Comp : %s fileName : %s skipFreq : %d\n", name, ref, fileName, skipFreq);
             GrepMarker *gMarker = (GrepMarker *)malloc(sizeof(GrepMarker));
             memset(gMarker, 0, sizeof(GrepMarker));
             gMarker->markerName = strdup(name);
@@ -200,11 +200,11 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
 {
     // configData is the raw data from curl http get request to xconf
 
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
 
     T2ERROR ret = T2ERROR_SUCCESS;
     int marker_count = 0;
-    T2Debug("config data = %s\n", configData);
+    T2Info("config data = %s\n", configData);
     cJSON *json_root = cJSON_Parse(configData);
     cJSON *telemetry_data = cJSON_GetObjectItem(json_root, "urn:settings:TelemetryProfile");
 
@@ -219,20 +219,20 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
         marker_count = cJSON_GetArraySize(profileData);
     }
 //    if(jprofileID)
-//        T2Debug("profile id = %s\n", jprofileID->valuestring);
+//        T2Info("profile id = %s\n", jprofileID->valuestring);
     if(jprofileName)
     {
-        T2Debug("profile name = %s\n", jprofileName->valuestring);
+        T2Info("profile name = %s\n", jprofileName->valuestring);
     }
     if(juploadUrl)
     {
-        T2Debug("upload url = %s\n", juploadUrl->valuestring);
+        T2Info("upload url = %s\n", juploadUrl->valuestring);
     }
     if(jschedule)
     {
-        T2Debug("schedule = %s\n", jschedule->valuestring);
+        T2Info("schedule = %s\n", jschedule->valuestring);
     }
-    T2Debug("marker count = %d\n", marker_count);
+    T2Info("marker count = %d\n", marker_count);
 //    if(jprofileID == NULL || jprofileName == NULL || juploadUrl == NULL || jschedule == NULL || profileData == NULL || marker_count == 0)
     if(jprofileName == NULL || juploadUrl == NULL || jschedule == NULL || profileData == NULL || marker_count == 0)
     {
@@ -380,6 +380,6 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
 
     *localProfile = profile;
 
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }

@@ -615,6 +615,9 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
             }
         }
         while(rdkcertselector_setCurlStatus(handleCertSelector, curl_code, (const char*)url) == TRY_ANOTHER);
+         // Clear OpenSSL per-thread error queue after every perform.
+        // Mirrors the same call in http_pool_get; see comment there for rationale.
+        ERR_clear_error();
 #else
         // Fallback to getMtlsCerts if certificate selector not available
         if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pCertPC))
@@ -1026,10 +1029,6 @@ T2ERROR http_pool_post(const char *url, const char *payload)
     {
         fclose(fp);
     }
-
-    // Clear OpenSSL per-thread error queue after every perform.
-    // Mirrors the same call in http_pool_get; see comment there for rationale.
-    ERR_clear_error();
 
     T2ERROR result = T2ERROR_FAILURE;
     if (curl_code == CURLE_OK)

@@ -33,6 +33,7 @@
 #include <sys/stat.h>
 #include <signal.h>
 #include <time.h>
+#include <openssl/err.h>
 #include "multicurlinterface.h"
 #include "busInterface.h"
 #include "t2log_wrapper.h"
@@ -278,6 +279,15 @@ T2ERROR init_connection_pool()
         //SSL automatically negotiates the highest SSL/TLS version supported by both client and server
         CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_SSLVERSION, CURL_SSLVERSION_DEFAULT);
         CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_SSL_VERIFYPEER, 1L);
+
+        // Memory-bounding options for long-running daemon.
+        // MAXCONNECTS=1: limits cached connections per handle to one entry
+        // without this the internal connection cache silently accumulates SSL
+        // session objects whenever the target IP or cert rotates.
+        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_MAXCONNECTS, 1L);
+        // SSL_SESSIONID_CACHE=0: disables the SSL session-ticket cache in the
+        // handle's SSL_CTX. 
+        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_SSL_SESSIONID_CACHE, 0L);
 
 #ifdef LIBRDKCERTSEL_BUILD
         // Initialize certificate selectors for each easy handle
@@ -1016,6 +1026,11 @@ T2ERROR http_pool_post(const char *url, const char *payload)
     {
         fclose(fp);
     }
+
+    // Clear OpenSSL per-thread error queue after every perform.
+    // Mirrors the same call in http_pool_get; see comment there for rationale.
+    ERR_clear_error();
+
     T2ERROR result = T2ERROR_FAILURE;
     if (curl_code == CURLE_OK)
     {

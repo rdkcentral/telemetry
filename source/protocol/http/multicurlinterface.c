@@ -33,6 +33,7 @@
 #include <sys/stat.h>
 #include <signal.h>
 #include <time.h>
+#include <openssl/err.h>
 #include "multicurlinterface.h"
 #include "busInterface.h"
 #include "t2log_wrapper.h"
@@ -278,6 +279,21 @@ T2ERROR init_connection_pool()
         //SSL automatically negotiates the highest SSL/TLS version supported by both client and server
         CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_SSLVERSION, CURL_SSLVERSION_DEFAULT);
         CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_SSL_VERIFYPEER, 1L);
+
+        // Memory-bounding options for long-running daemon.
+        // MAXCONNECTS=1: limits cached connections per handle to one entry
+        // without this the internal connection cache silently accumulates SSL
+        // session objects whenever the target IP or cert rotates.
+        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_MAXCONNECTS, 1L);
+        // SSL_SESSIONID_CACHE=0: disables the SSL session-ticket cache in the
+        // handle's SSL_CTX. 
+        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_SSL_SESSIONID_CACHE, 0L);
+
+        // Bound DNS cache lifetime to match server reset interval.
+        // Load balancer IPs rotate; without this limit, stale IP->hostname
+        // mappings accumulate in the handle's DNS cache alongside stale
+        // connection objects — same class of problem as MAXCONNECTS.
+        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_DNS_CACHE_TIMEOUT, 30L);
 
 #ifdef LIBRDKCERTSEL_BUILD
         // Initialize certificate selectors for each easy handle
@@ -662,6 +678,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
             free(pCertPC);
         }
 #endif
+        ERR_clear_error();
         release_pool_handle(idx);
         return T2ERROR_FAILURE;
     }
@@ -783,6 +800,13 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
 
     // Important Note: When using LIBRDKCERTSEL_BUILD, pCertURI and pCertPC are owned by the
     // cert selector object and are freed when rdkcertselector_free() is called
+
+    // Clear OpenSSL per-thread error queue.
+    // Every curl_easy_perform() may push records onto the per-thread ERR_STATE
+    // list on any TLS error (cert verify failure, connection reset, timeout).
+    // Without this call the list grows unboundedly over the daemon lifetime.
+    // ERR_clear_error() is thread-safe since OpenSSL 1.1.0.
+    ERR_clear_error();
 
     release_pool_handle(idx);
 

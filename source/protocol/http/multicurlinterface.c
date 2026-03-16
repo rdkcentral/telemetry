@@ -286,7 +286,7 @@ T2ERROR init_connection_pool()
         // session objects whenever the target IP or cert rotates.
         CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_MAXCONNECTS, 1L);
         // SSL_SESSIONID_CACHE=0: disables the SSL session-ticket cache in the
-        // handle's SSL_CTX. 
+        // handle's SSL_CTX.
         CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_SSL_SESSIONID_CACHE, 0L);
 
         // Bound DNS cache lifetime to match server reset interval.

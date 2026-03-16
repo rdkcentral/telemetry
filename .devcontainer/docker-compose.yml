@@ -1,0 +1,74 @@
+##########################################################################
+# If not stated otherwise in this file or this component's LICENSE
+# file the following copyright and licenses apply:
+#
+# Copyright 2024 RDK Management
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+##########################################################################
+
+# Docker Compose for the Telemetry 2.0 devcontainer environment.
+#
+# Services:
+#   native-platform  — build host / test runtime; used by VS Code as the
+#                      attached development container.
+#   mockxconf        — mock XConf server (HTTP + mTLS) reachable inside the
+#                      shared network at https://mockxconf:50050.
+#
+# Images come from:
+#   https://github.com/rdkcentral/docker-device-mgt-service-test
+#
+# ─── Apple Silicon (M1/M2/M3) note ───────────────────────────────────────────
+# The GHCR images are published as linux/amd64 only.  Running them under
+# Rosetta emulation is unreliable for this workload; instead build native
+# arm64 images from source:
+#
+#   git clone https://github.com/rdkcentral/docker-device-mgt-service-test
+#   cd docker-device-mgt-service-test
+#   docker build -t mockxconf:latest        -f Dockerfile.mockxconf .
+#   docker build -t native-platform:latest  -f Dockerfile.native-platform .
+#
+# The .devcontainer/check-arch.sh script (run automatically as
+# initializeCommand) detects Apple Silicon and prints these instructions
+# when the required local images are not yet present.
+# ─────────────────────────────────────────────────────────────────────────────
+
+version: '3.8'
+
+services:
+
+  native-platform:
+    image: ghcr.io/rdkcentral/docker-device-mgt-service-test/native-platform:latest
+    volumes:
+      # Mount the repo root into the canonical container path used by
+      # build_inside_container.sh and all test scripts.
+      - ..:/mnt/L2_CONTAINER_SHARED_VOLUME:cached
+    environment:
+      - ENABLE_MTLS=true
+    # Keep the container alive so VS Code can exec into it.
+    command: sleep infinity
+    depends_on:
+      - mockxconf
+
+  mockxconf:
+    image: ghcr.io/rdkcentral/docker-device-mgt-service-test/mockxconf:latest
+    ports:
+      # Expose mockxconf ports to the host for direct curl/debugging.
+      - "50050:50050"   # XConf config endpoint
+      - "50051:50051"   # Data lake endpoint
+      - "50052:50052"   # Additional mock endpoint
+    environment:
+      - ENABLE_MTLS=true
+    volumes:
+      # Shared volume lets mockxconf read certs placed by the build.
+      - ..:/mnt/L2_CONTAINER_SHARED_VOLUME:cached

@@ -1,0 +1,160 @@
+{
+    // ─────────────────────────────────────────────────────────────────────
+    // Telemetry 2.0 – Devcontainer
+    //
+    // Development environment that mirrors the CI L2 test environment:
+    //   • native-platform  – build host, test runtime (attached container)
+    //   • mockxconf        – mock XConf server (sidecar, same Docker network)
+    //
+    // After VS Code attaches the project is automatically built so
+    // IntelliSense resolves all headers and generated files immediately.
+    //
+    // Apple Silicon (arm64): the GHCR images are amd64-only; native arm64
+    // images must be built from source before opening this devcontainer.
+    // The initializeCommand below runs check-arch.sh which detects this
+    // situation and prints step-by-step build instructions.
+    // ─────────────────────────────────────────────────────────────────────
+
+    "name": "Telemetry 2.0 – Native Platform",
+
+    // Use Docker Compose so mockxconf starts alongside the dev container.
+    "dockerComposeFile": "docker-compose.yml",
+    "service": "native-platform",
+
+    // Must match the volume mount path used by build_inside_container.sh
+    // and all test scripts so relative paths like ./source resolve correctly.
+    "workspaceFolder": "/mnt/L2_CONTAINER_SHARED_VOLUME",
+
+    // ── Lifecycle commands ────────────────────────────────────────────────
+
+    // Runs on the HOST before Docker Compose starts. Checks host arch and,
+    // on Apple Silicon, verifies that native arm64 images have been built
+    // locally. Exits non-zero with build instructions if they haven't.
+    "initializeCommand": "sh .devcontainer/check-arch.sh",
+
+    // Run once when the container is first created.
+    // Performs a full build so IntelliSense resolves all symbols from the
+    // first launch (autotools generates headers used by other translation units).
+    "postCreateCommand": "sh build_inside_container.sh",
+
+    // Executed every time the container (re)starts — ensures runtime dirs
+    // expected by telemetry2_0 and pytest always exist.
+    "postStartCommand": "mkdir -p /opt/logs /opt/.t2persistentfolder && touch /etc/include.properties",
+
+    // ── Environment ───────────────────────────────────────────────────────
+
+    // Extend the image's LD_LIBRARY_PATH with the paths the CI pipeline
+    // exports before running tests (see L2-tests.yml and run_l2.sh).
+    "remoteEnv": {
+        "LD_LIBRARY_PATH": "${containerEnv:LD_LIBRARY_PATH}:/usr/lib/x86_64-linux-gnu:/lib/aarch64-linux-gnu:/usr/local/lib",
+        "ENABLE_MTLS": "true"
+    },
+
+    // ── Port forwarding ───────────────────────────────────────────────────
+
+    // Forward mockxconf ports so developers can reach the mock server from
+    // the host (e.g. curl https://localhost:50050 for manual inspection).
+    "forwardPorts": [50050, 50051, 50052],
+    "portsAttributes": {
+        "50050": { "label": "mockxconf – XConf config", "onAutoForward": "silent" },
+        "50051": { "label": "mockxconf – Data lake",    "onAutoForward": "silent" },
+        "50052": { "label": "mockxconf – Extra mock",   "onAutoForward": "silent" }
+    },
+
+    // ── VS Code customisation ─────────────────────────────────────────────
+    "customizations": {
+        "vscode": {
+
+            "extensions": [
+                // C/C++ language support and IntelliSense
+                "ms-vscode.cpptools",
+                "ms-vscode.cpptools-extension-pack",
+
+                // Makefile / Autotools support
+                "ms-vscode.makefile-tools",
+
+                // Python support for pytest-based L2 test suite
+                "ms-python.python",
+                "ms-python.pylance",
+
+                // Code formatting – project uses astyle (see L2-tests.yml)
+                // but clangd gives useful in-editor formatting feedback
+                "llvm-vs-code-extensions.vscode-clangd",
+
+                // Test explorer for unit test visibility
+                "hbenl.vscode-test-explorer"
+            ],
+
+            "settings": {
+
+                // ── C/C++ IntelliSense ─────────────────────────────────
+
+                // Mirrors the -I flags in build_inside_container.sh so
+                // IntelliSense finds every header without a compile_commands.json.
+                "C_Cpp.default.includePath": [
+                    "${workspaceFolder}/include",
+                    "${workspaceFolder}/source",
+                    "/usr/local/include",
+                    "/usr/local/include/rtmessage",
+                    "/usr/local/include/msgpack",
+                    "/usr/local/include/rbus",
+                    "/usr/include/glib-2.0",
+                    "/usr/lib/x86_64-linux-gnu/glib-2.0/include"
+                ],
+
+                // Mirrors the -D flags in build_inside_container.sh so
+                // preprocessor-guarded code is indexed correctly.
+                "C_Cpp.default.defines": [
+                    "FEATURE_SUPPORT_WEBCONFIG",
+                    "RDK_LOGGER",
+                    "PERSIST_LOG_MON_REF",
+                    "DCMAGENT",
+                    "ENABLE_MTLS"
+                ],
+
+                "C_Cpp.default.compilerPath": "/usr/bin/gcc",
+                "C_Cpp.default.cStandard": "c99",
+                "C_Cpp.default.cppStandard": "c++14",
+                "C_Cpp.default.intelliSenseMode": "linux-gcc-x64",
+
+                // Disable clangd's own IntelliSense when cpptools is active
+                // (clangd extension is still valuable for diagnostics/formatting).
+                "clangd.arguments": ["--header-insertion=never"],
+
+                // ── Terminal ───────────────────────────────────────────
+
+                // Make LD_LIBRARY_PATH available in every integrated terminal
+                // session so running `./source/test/.../*.bin` works without
+                // manually exporting the path.
+                "terminal.integrated.env.linux": {
+                    "LD_LIBRARY_PATH": "/usr/lib/x86_64-linux-gnu:/lib/aarch64-linux-gnu:/usr/local/lib"
+                },
+
+                // ── Python (pytest / L2 tests) ─────────────────────────
+                "python.defaultInterpreterPath": "/usr/bin/python3",
+                "python.testing.pytestEnabled": true,
+                "python.testing.pytestArgs": [
+                    "test/functional-tests/tests",
+                    "--json-report",
+                    "--json-report-summary"
+                ],
+
+                // ── File associations ──────────────────────────────────
+                "files.associations": {
+                    "*.h": "c",
+                    "Makefile.am": "makefile",
+                    "configure.ac": "shellscript"
+                },
+
+                // Exclude generated autotools cruft from the explorer.
+                "files.exclude": {
+                    "**/.deps": true,
+                    "**/.libs": true,
+                    "**/autom4te.cache": true,
+                    "**/*.lo": true,
+                    "**/*.la": true
+                }
+            }
+        }
+    }
+}

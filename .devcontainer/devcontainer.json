@@ -150,6 +150,9 @@
                 "files.exclude": {
                     "**/.deps": true,
                     "**/.libs": true,
+                    "**/Makefile.in": true,
+                    "**/Makefile": true,
+                    "**/config.*": true,
                     "**/autom4te.cache": true,
                     "**/*.lo": true,
                     "**/*.la": true

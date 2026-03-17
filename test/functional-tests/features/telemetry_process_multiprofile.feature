@@ -71,13 +71,13 @@ Feature: Telemetry multiprofile configuration and report generation
     Then the multiprofile should be enabled
     Then report should be generated after ReportingInterval
 
-  Scenario: Multiprofile configuration with event marker and use as count — marker report frequency
+  Scenario: Multiprofile configuration with event marker and use as count
     Given When the telemetry daemon is already running
     When a multiprofile is configured with event marker and use as count
     Then the multiprofile should be enabled
     Then generated report should contain the number of times the marker is reported
 
-  Scenario: Multiprofile configuration with event marker and use as count — event occurrence count
+  Scenario: Multiprofile configuration with event marker and use as count
     Given When the telemetry daemon is already running
     When a multiprofile is configured with event marker and use as count
     Then the multiprofile should be enabled

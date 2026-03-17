@@ -13,51 +13,104 @@ functions during normal operation.
 
 ### Component Diagram
 
+This diagram shows all six major subsystems and the call paths between them. Dashed arrows
+(⚠) mark paths where a callback fires **with a scheduler lock already held**, creating the
+circular dependency described in the [Deadlock Analysis](#deadlock-analysis) section.
+
 ```mermaid
 graph TB
-    subgraph "xconf-client"
-        XCT[getUpdatedConfigurationThread]
+    subgraph XC["xconf-client"]
+        XCT["getUpdatedConfigurationThread\nxcMutex / xcThreadMutex"]
         GRC[getRemoteConfigURL]
-        FRC[fetchRemoteConfiguration]
-        CURL[doHttpGet / libcurl]
-        PXP[processConfigurationXConf]
+        FRC["fetchRemoteConfiguration\nretry loop"]
     end
 
-    subgraph "t2parser"
-        PARSER[t2parserxconf\nprocessConfigurationXConf]
+    subgraph PARSER["t2parser"]
+        PRX[processConfigurationXConf]
     end
 
-    subgraph "bulkdata / reportprofiles"
-        RPS[ReportProfiles_setProfileXConf]
-        RPD[ReportProfiles_deleteProfileXConf]
-        PXC[ProfileXConf_set]
-        PXD[ProfileXConf_delete]
-        PXN[ProfileXConf_notifyTimeout]
-        COLL[CollectAndReportXconf\nthread]
-        SCH[Scheduler callbacks\nReportProfiles_TimeoutCb]
-        BD[BulkData struct\nrpMutex]
+    subgraph BD["bulkdata"]
+        RP["reportprofiles façade\nrpMutex"]
+        PXF["profilexconf singleton\nplMutex · reuseThread"]
+        PRF["profile list\nplMutex · per-profile locks"]
     end
 
-    subgraph "External"
-        XSRV[XConf Server\nhttps://]
-        BBUS[RBUS / CCSP\nbus interface]
+    subgraph TER["t2eventreceiver / t2markers"]
+        TM["t2markers\nt2MarkersMutex / t2CompListMutex"]
+        ER["t2eventreceiver\nsTDMutex · erMutex"]
     end
 
-    GRC -->|TR-181 param read| BBUS
+    subgraph SCH["scheduler"]
+        SCHED["profileList · scMutex"]
+        TTO["TimeoutThread (per profile)\ntMutex"]
+    end
+
+    subgraph RG["reportgen"]
+        ENC["encode* / prepareJSONReport\n(no locks — pure encoding)"]
+    end
+
+    subgraph CCSP["ccspinterface"]
+        BUS["busInterface / rbusInterface\nasyncMutex (RBUS-get only)"]
+    end
+
+    subgraph PROTO["protocol"]
+        HTTP["http pool\npool_mutex"]
+        RBUSM["rbus method\nrbusMethodMutex"]
+    end
+
+    subgraph EXT["External"]
+        XSRV["XConf Server (HTTPS)"]
+        BBUS["RBUS / CCSP bus"]
+        RSVR["Report Endpoint (HTTPS)"]
+    end
+
+    %% xconf-client internal flow
     XCT --> GRC
     XCT --> FRC
-    FRC --> CURL
-    CURL -->|HTTPS GET| XSRV
-    XSRV -->|JSON config| CURL
-    CURL -->|configData char*| XCT
-    XCT --> PARSER
-    PARSER -->|ProfileXConf*| XCT
-    XCT --> RPD
-    XCT --> RPS
-    RPS --> PXC
-    RPD --> PXD
-    PXN --> COLL
-    SCH --> PXN
+    XCT --> PRX
+
+    %% xconf-client → bulkdata façade
+    XCT ==>|"deleteProfileXConf\nsetProfileXConf"| RP
+
+    %% xconf-client → ccspinterface
+    GRC -->|"getParameterValue\n(RFC Config URL)"| BUS
+
+    %% xconf-client → external
+    FRC <-->|"HTTPS GET"| XSRV
+
+    %% bulkdata façade internal
+    RP --> PXF
+    RP --> PRF
+
+    %% bulkdata façade → scheduler
+    RP -->|"registerProfile / unregisterProfile"| SCHED
+    RP -->|"T2ER_StartDispatchThread"| ER
+    RP -->|"addT2EventMarker / clearMarkerMap"| TM
+    SCHED --> TTO
+
+    %% scheduler → bulkdata CALLBACKS (deadlock zone)
+    TTO -. "⚠ TimeoutNotificationCB\n(tMutex held)" .-> RP
+    TTO -. "⚠ notifySchedulerstartcb\n(tMutex held)" .-> RP
+
+    %% bulkdata → ccspinterface (from report threads)
+    PRF -->|"getProfileParameterValues"| BUS
+    PXF -->|"getProfileParameterValues"| BUS
+    RP -->|"createDataElements / unregisterDE"| BUS
+
+    %% bulkdata → reportgen (no lock risk)
+    PRF -->|"prepareJSONReport\nencodeGrepResultInJSON"| ENC
+    PXF -->|"prepareJSONReport\nencodeGrepResultInJSON"| ENC
+
+    %% bulkdata → protocol (from report threads, no lock risk)
+    PRF -->|"sendReportOverHTTP"| HTTP
+    PXF -->|"sendReportOverHTTP"| HTTP
+    PRF -->|"sendReportsOverRBUSMethod"| RBUSM
+    PXF -->|"sendReportsOverRBUSMethod"| RBUSM
+
+    %% protocol → external
+    HTTP <-->|"HTTPS POST"| RSVR
+    RBUSM <-->|"RBUS method call"| BBUS
+    BUS <-->|"RBUS / CCSP IPC"| BBUS
 ```
 
 ### Layers of Responsibility
@@ -68,7 +121,11 @@ graph TB
 | Configuration parse | `t2parser` | Converts raw JSON string into a `ProfileXConf*` struct |
 | Profile lifecycle | `bulkdata/reportprofiles` | Façade: delete-old → set-new, manages RBUS registration |
 | Profile state | `bulkdata/profilexconf` | Owns the singleton `ProfileXConf`, drives `CollectAndReportXconf` |
-| Reporting | `bulkdata/profile + reportgen` | Collect log grep / TR-181 values, encode JSON, send over HTTP |
+| Multi-profile state | `bulkdata/profile` | Owns the TR-181 profile list, drives per-profile `CollectAndReport` threads |
+| Timer dispatch | `scheduler` | Maintains per-profile `TimeoutThread`; fires callbacks into `reportprofiles` |
+| Encoding | `reportgen` | Stateless JSON encoder; no locks, called from report threads |
+| Bus abstraction | `ccspinterface` | Routes TR-181 get/set calls to RBUS or CCSP; minimal internal locking |
+| Transport | `protocol` | HTTP connection pool (`pool_mutex`) and async RBUS method sender |
 
 ## Data Structures
 
@@ -284,37 +341,98 @@ sequenceDiagram
 | Thread | Owner | Name | Created in | Purpose |
 |--------|-------|------|-----------|---------|
 | `xcrThread` | `xconf-client` | `getUpdatedConfigurationThread` | `initXConfClient()` | Fetch config from XConf server, deliver to bulkdata |
-| `reportThread` | `profilexconf.c` | `CollectAndReportXconf` | On each `ProfileXConf_notifyTimeout()` | Collect grep/TR-181 data, build JSON, send via HTTP |
-| `dcmThread` | `xconf-client` | `nofifyDCMThread` | `startDCMClient()` (DCMAGENT builds only) | Notify DCM agent after config is set |
+| `reportThread` | `profilexconf.c` | `CollectAndReportXconf` | On each `ProfileXConf_notifyTimeout()` | Collect grep/TR-181 data, build JSON, send via HTTP || `reportThread` (per profile) | `profile.c` | `CollectAndReport` | On each `Profile_notifyTimeout()` | Collect data and send for TR-181 multi-profile path |
+| `TimeoutThread` (per profile) | `scheduler.c` | `TimeoutThread` | `registerProfileWithScheduler()` | Per-profile timed wait; fires `TimeoutNotificationCB` and `notifySchedulerstartcb` |
+| Event dispatch | `t2eventreceiver.c` | (internal) | `T2ER_StartDispatchThread()` | Dequeues marker events and dispatches to profiles |
+| Datamodel workers (×3) | `datamodel.c` | (internal) | `initProfileTableFromConfiguration()` | Process JSON / msgpack profile-update queues || `dcmThread` | `xconf-client` | `nofifyDCMThread` | `startDCMClient()` (DCMAGENT builds only) | Notify DCM agent after config is set |
 
 ### Synchronization Primitives
 
 ```c
 /* xconf-client (xconfclient.c) */
-static pthread_mutex_t xcMutex;       // Guards fetch retry waits (xcCond)
-static pthread_mutex_t xcThreadMutex; // Guards the outer do-while loop (xcThreadCond)
-static pthread_cond_t  xcCond;        // Signalled to interrupt fetch retry sleep
-static pthread_cond_t  xcThreadCond;  // Signalled on stop/restart to wake outer loop
+static pthread_mutex_t xcMutex;              // Guards fetch retry waits (xcCond)
+static pthread_mutex_t xcThreadMutex;        // Guards the outer do-while loop (xcThreadCond)
+static pthread_cond_t  xcCond;               // Signalled to interrupt fetch retry sleep
+static pthread_cond_t  xcThreadCond;         // Signalled on stop/restart to wake outer loop
 
 /* bulkdata/reportprofiles (reportprofiles.c) */
-pthread_mutex_t rpMutex;              // Guards BulkData struct and profile list state
+pthread_mutex_t rpMutex;                     // Guards BulkData struct and profile list state
 
 /* bulkdata/profilexconf (profilexconf.c) */
-static pthread_mutex_t plMutex;       // Guards singleProfile pointer during report thread
-static pthread_cond_t  reuseThread;   // Allows report thread reuse between intervals
+static pthread_mutex_t plMutex;              // Guards singleProfile pointer during report thread
+static pthread_cond_t  reuseThread;          // Allows XConf report thread reuse between intervals
+
+/* bulkdata/profile.c — global */
+static pthread_mutex_t plMutex;              // Guards multi-profile profileList vector
+static pthread_mutex_t triggerConditionQueMutex; // Guards deferred trigger-condition queue
+
+/* bulkdata/profile.h — per Profile instance */
+pthread_mutex_t eventMutex;                  // Protects eMarkerList during encoding
+pthread_mutex_t reportMutex;                 // Guards max-upload-latency timedwait
+pthread_cond_t  reportcond;                  // Wakes report thread at upload deadline
+pthread_mutex_t reportInProgressMutex;       // Guards reportInProgress flag
+pthread_cond_t  reportInProgressCond;        // Wakes deleteProfile when report finishes
+pthread_mutex_t reuseThreadMutex;            // Per-profile thread-reuse loop guard
+pthread_cond_t  reuseThread;                 // Wakes reused CollectAndReport thread
+
+/* scheduler (scheduler.c) */
+static pthread_mutex_t scMutex;              // Protects global scheduler profileList
+/* scheduler (scheduler.h) — per SchedulerProfile */
+pthread_mutex_t tMutex;                      // Per-profile timer loop; held across callbacks
+pthread_cond_t  tCond;                       // Per-profile timed wait (CLOCK_MONOTONIC)
+
+/* t2markers (t2markers.c) */
+static pthread_mutex_t t2MarkersMutex;       // Protects markerCompMap hash
+static pthread_mutex_t t2CompListMutex;      // Protects componentList vector
+
+/* t2eventreceiver (t2eventreceiver.c) */
+static pthread_mutex_t erMutex;              // Protects event queue
+static pthread_cond_t  erCond;               // Wakes dispatch thread on new event
+static pthread_mutex_t sTDMutex;             // Serialises dispatch thread start/stop
+
+/* protocol/http (multicurlinterface.c) */
+static pthread_mutex_t pool_mutex;           // Guards CURL handle pool state
+
+/* protocol/rbus (rbusmethodinterface.c) */
+static pthread_mutex_t rbusMethodMutex;      // Blocks caller until async RBUS method ACK
+
+/* ccspinterface/rbusInterface.c */
+static pthread_mutex_t asyncMutex;           // RBUS async-get callback synchronisation
+
+/* bulkdata/datamodel.c */
+static pthread_mutex_t rpMutex;              // Protects JSON profile-update queue
+static pthread_mutex_t tmpRpMutex;           // Protects temp profile queue
+static pthread_mutex_t rpMsgMutex;           // Protects msgpack blob queue
 ```
 
 ### Lock Ordering
 
-To avoid deadlocks, acquire locks in this order when multiple are needed:
+Acquire locks in ranked order. **Never acquire a lower-ranked lock while holding a higher-ranked
+one from a different chain.** The XConf and scheduler chains must not interleave.
 
-1. `xcThreadMutex` (outer XConf fetch loop)
-2. `xcMutex` (inner XConf fetch retry)
-3. `rpMutex` (bulkdata profile list)
-4. `plMutex` (ProfileXConf singleton)
+| Rank | Lock | File | Guards |
+|------|------|------|--------|
+| 1 | `xcThreadMutex` | `xconfclient.c` | XConf thread lifecycle |
+| 2 | `xcMutex` | `xconfclient.c` | XConf fetch retry wait |
+| 3 | `rpMutex` | `reportprofiles.c` | BulkData struct, high-level profile state |
+| 4 | `scMutex` | `scheduler.c` | Scheduler profile list |
+| 5 | `plMutex` (profilexconf) | `profilexconf.c` | XConf singleton |
+| 6 | `plMutex` (profile) | `profile.c` | Multi-profile list |
+| 7 | `tMutex` | `scheduler.c` (per profile) | Per-profile timer loop |
+| 8 | Per-profile locks | `profile.h` | `eventMutex`, `reportMutex`, `reuseThreadMutex` |
+| 9 | `t2MarkersMutex` | `t2markers.c` | Marker component map |
+| 10 | `sTDMutex` | `t2eventreceiver.c` | Dispatch thread start/stop |
+| 11 | `pool_mutex` | `multicurlinterface.c` | HTTP connection pool |
+| 12 | `rbusMethodMutex` | `rbusmethodinterface.c` | Async RBUS method ACK |
 
-> **Note**: `xcMutex` and `plMutex` are never held simultaneously in the current code. `rpMutex` is
-> held briefly within the `reportprofiles` façade calls and released before `plMutex` is taken.
+> **Known violation**: `TimeoutThread` holds rank-7 (`tMutex`) and acquires rank-6 (`plMutex`)
+> via its callbacks. `profile.c::enableProfile` holds rank-6 (`plMutex`) and acquires rank-4
+> (`scMutex`) via `registerProfileWithScheduler`. Together with `unregisterProfileFromScheduler`
+> holding rank-4 while waiting on rank-7, this forms the three-thread deadlock cycle documented
+> in the [Deadlock Analysis](#deadlock-analysis) section below.
+>
+> `profilexconf.c::ProfileXConf_set` was already patched to release `plMutex` before calling
+> `registerProfileWithScheduler`. The equivalent fix has **not** been applied in `profile.c::enableProfile`.
 
 ### Thread Safety Guarantees
 
@@ -328,6 +446,113 @@ To avoid deadlocks, acquire locks in this order when multiple are needed:
 | `ReportProfiles_deleteProfileXConf()` | Thread-safe | Guards via `plMutex` |
 | `ProfileXConf_notifyTimeout()` | Thread-safe | Spawns/reuses `reportThread` under `plMutex` |
 | `ProfileXConf_isSet()` | Thread-safe (read) | No write path during steady state |
+
+## Deadlock Analysis
+
+### Lock Dependency Graph
+
+The graph below shows all inter-component lock acquisition paths. Red edges form the circular
+dependency that can produce a hard hang.
+
+```mermaid
+graph LR
+    PL6["plMutex\nprofile.c"]
+    SC4["scMutex\nscheduler.c"]
+    TM7["tMutex\nscheduler.c\n(per profile)"]
+    STD10["sTDMutex\nt2eventreceiver.c"]
+    T2M9["t2MarkersMutex\nt2markers.c"]
+    PM11["pool_mutex\nmulticurlinterface.c"]
+    RBM12["rbusMethodMutex\nrbusmethodinterface.c"]
+
+    PL6 -->|"enableProfile()\n→ registerProfileWithScheduler"| SC4
+    SC4 -->|"unregisterProfileFromScheduler()\n→ signal/join TimeoutThread"| TM7
+    TM7 -->|"⚠ TimeoutThread\n→ getMinThresholdDuration\n→ timeoutNotificationCb"| PL6
+    PL6 -->|"enableProfile()\n→ T2ER_StartDispatchThread"| STD10
+    PL6 -->|"enableProfile()\n→ addT2EventMarker"| T2M9
+```
+
+### Risk 1 — Three-Thread Deadlock Cycle (CRITICAL)
+
+**Files**: `profile.c::enableProfile` ↔ `scheduler.c::unregisterProfileFromScheduler` ↔
+`scheduler.c::TimeoutThread`
+
+```mermaid
+graph LR
+    A["Thread A\nenableProfile()"]
+    B["Thread B\nunregisterProfileFromScheduler()"]
+    C["Thread C\nTimeoutThread"]
+
+    A -->|"holds plMutex\nblocked on scMutex"| B
+    B -->|"holds scMutex\nblocked on tMutex"| C
+    C -->|"holds tMutex\nblocked on plMutex"| A
+```
+
+| Thread | Holds | Waiting For |
+|--------|-------|-------------|
+| A — `enableProfile()` | `plMutex` | `scMutex` (via `registerProfileWithScheduler`) |
+| B — `unregisterProfile()` | `scMutex` | `tMutex` (signal/join `TimeoutThread`) |
+| C — `TimeoutThread` | `tMutex` | `plMutex` (via `getMinThresholdDuration` / `timeoutNotificationCb`) |
+
+**Root cause**: `profilexconf.c::ProfileXConf_set` was patched to release `plMutex` before
+calling `registerProfileWithScheduler`. The equivalent fix has **not** been applied to
+`profile.c::enableProfile`, which also calls `registerProfileWithScheduler` and
+`T2ER_StartDispatchThread` while holding `plMutex`.
+
+**Fix**: In `profile.c::enableProfile`, copy the necessary profile pointer out of the list, release
+`plMutex`, then call `registerProfileWithScheduler()` and `T2ER_StartDispatchThread()`, mirroring
+the pattern already applied in `profilexconf.c::ProfileXConf_set`.
+
+---
+
+### Risk 2 — `deleteProfile` Holds `plMutex` Across `pthread_join` (HIGH)
+
+**File**: `profile.c::deleteProfile`
+
+`deleteProfile` acquires `plMutex` and then calls `pthread_join(reportThread)`, waiting for a
+`CollectAndReport` thread that may be executing a long-running operation (log grep, HTTP POST,
+rbus parameter fetch — potentially 10–60 seconds). Any other thread needing `plMutex` during
+that period blocks for the full report duration.
+
+Additionally, `CollectAndReport` can call `deleteProfile` on itself after repeated RBUS failures,
+creating a **self-join**: the joiner holds `plMutex` and blocks in `pthread_join`; the report
+thread blocks on `plMutex`, preventing it from exiting. POSIX defines calling `pthread_join` on
+oneself as undefined behaviour.
+
+**Fix**: Wait for the report thread to signal `reportInProgressCond` (already wired in the code),
+release `plMutex`, then call `pthread_join`. Set `reportThread = 0` under the lock before joining
+to prevent double-join.
+
+---
+
+### Risk 3 — Callbacks Fired While `tMutex` Is Held (MEDIUM)
+
+**File**: `scheduler.c::TimeoutThread`
+
+Both `timeoutNotificationCb` → `ReportProfiles_TimeoutCb` → `plMutex` and
+`notifySchedulerstartcb` → `isSchedulerStartedForProfile` → `plMutex` are invoked inside
+the `tMutex`-protected timer loop, enforcing the ordering `tMutex → plMutex`.
+This is directly opposite to `enableProfile`'s ordering (`plMutex → scMutex → tMutex`),
+forming the cycle in Risk 1.
+
+**Fix**: Copy required state from `SchedulerProfile` under `tMutex`, release `tMutex`, then invoke
+the callback; or route notifications through a separate lock-free dispatch queue.
+
+---
+
+### Risk 4 — `rbusMethodMutex` Orphaned on Async Callback Failure (LOW)
+
+**File**: `rbusmethodinterface.c::sendReportsOverRBUSMethod`
+
+The mutex is locked before the async RBUS method call. The `asyncMethodHandler` callback is
+expected to unlock it. If the callback is never invoked (rbus daemon disconnect, timeout), the
+retry loop performs up to 5 × 2-second `trylock` attempts and then calls `pthread_mutex_unlock`
+on a mutex it may no longer own if the callback raced and already unlocked it. This is undefined
+behaviour under POSIX.
+
+**Fix**: Replace the lock-as-completion-token pattern with a dedicated boolean flag protected by
+the mutex and signalled via a condition variable.
+
+---
 
 ## Memory Management
 

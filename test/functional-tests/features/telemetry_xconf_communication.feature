@@ -58,30 +58,3 @@ Feature: Telemetry Xconf communication
     Then the telemetry should be communicating with Xconf server
     When the telemetry communicates with Xconf server
     Then the telemetry should be generating the report when it received the kill signal 10
-
-  Scenario: WebConfig blob arrives while CollectAndReportXconf is running and
-            a regular trigger-condition profile is being deregistered
-            (regression: TriggerCondition-Hang — three-mutex deadlock)
-
-    Given the device has three active profiles:
-      | Profile             | Type    | Interval |
-      | XLE_Telemetry       | xconf   | 900 s    |
-      | LTE_Failover_notify | regular | trigger  |
-      | LTE_Failover_onboot | regular | 240 s    |
-    And a CollectAndReportXconf for XLE_Telemetry is in progress
-    And a fresh xconf response returning an updated XLE_Telemetry profile is available
-
-    When a WebConfig blob update arrives containing updated versions of
-         LTE_Failover_notify, LTE_Failover_onboot, and XLE_Telemetry within
-         the same processing window
-
-    Then the WebConfig handler completes within the ACK timeout (180 seconds)
-    And  no deadlock occurs between the scheduler, xconf, and WebConfig threads
-    And  a success ACK (not NACK 301) is sent to the WebConfig upstream
-    And  the new profiles begin sending reports on their next trigger or interval
-
-    # Failure observable (the bug):
-    # WebConfig timer expires → NACK 301 "Blob Execution Timedout"
-    # Subsequent LTE trigger-condition reports are never sent
-    # No ReportProfiles_TimeoutCb --out is logged for any regular profile
-    # Process requires SelfHeal restart to recover

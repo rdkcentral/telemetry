@@ -1,0 +1,165 @@
+"""Marker Discovery Tool — CLI entry point and orchestration."""
+
+import argparse
+import logging
+import sys
+
+from . import github_client, code_parser, script_parser, patch_parser, report_generator
+
+logger = logging.getLogger(__name__)
+
+
+def setup_logging(verbose=False):
+    level = logging.DEBUG if verbose else logging.INFO
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        stream=sys.stderr,
+    )
+
+
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(
+        description="Scan GitHub organizations for T2 telemetry marker instrumentation.",
+    )
+    parser.add_argument(
+        "--branch", default="develop",
+        help="Branch/tag to scan (default: develop)",
+    )
+    parser.add_argument(
+        "--org", action="append", dest="orgs", default=None,
+        help="GitHub organization to scan (repeatable, default: rdkcentral)",
+    )
+    parser.add_argument(
+        "--output", default=None,
+        help="Output file path for markdown report (default: stdout)",
+    )
+    parser.add_argument(
+        "--verbose", "-v", action="store_true",
+        help="Enable verbose/debug logging",
+    )
+    args = parser.parse_args(argv)
+    if args.orgs is None:
+        args.orgs = ["rdkcentral"]
+    return args
+
+
+def run_fast_path(org, branch, temp_dir):
+    """Fast path: use search API to find repos with markers, then clone only those."""
+    logger.info("Fast path: searching for marker repos in %s via Search API...", org)
+
+    matching_repos = github_client.search_all_markers_in_org(org)
+    if not matching_repos:
+        logger.warning("No repos with markers found in %s via search", org)
+        return [], 0
+
+    logger.info("Found %d repos with potential markers, cloning...", len(matching_repos))
+
+    # Get clone URLs for matching repos
+    all_repos = github_client.list_org_repos(org)
+    repo_names_to_clone = {r for r in matching_repos}
+    repos_to_clone = [r["name"] for r in all_repos if r["name"] in repo_names_to_clone]
+
+    cloned = github_client.clone_matching_repos(org, repos_to_clone, branch, temp_dir)
+    return cloned, len(all_repos)
+
+
+def run_full_path(org, branch, temp_dir):
+    """Full path: list all repos, clone all, scan locally."""
+    logger.info("Full path: listing all repos in %s...", org)
+
+    all_repos = github_client.list_org_repos(org)
+    repo_names = [r["name"] for r in all_repos]
+
+    logger.info("Cloning %d repos on branch %s...", len(repo_names), branch)
+    cloned = github_client.clone_matching_repos(org, repo_names, branch, temp_dir)
+    return cloned, len(all_repos)
+
+
+def scan_cloned_repos(cloned_repos):
+    """Run all scanners on cloned repos. Returns list of MarkerRecord."""
+    all_markers = []
+
+    for repo_info in cloned_repos:
+        repo_path = repo_info["path"]
+        repo_name = repo_info["name"]
+
+        logger.info("Scanning %s...", repo_name)
+
+        # C/C++ source scanning (tree-sitter)
+        try:
+            markers = code_parser.scan_repo(repo_path, repo_name)
+            all_markers.extend(markers)
+        except Exception as e:
+            logger.warning("Code parser failed for %s: %s", repo_name, e)
+
+        # Script scanning
+        try:
+            markers = script_parser.scan_repo_scripts(repo_path, repo_name)
+            all_markers.extend(markers)
+        except Exception as e:
+            logger.warning("Script parser failed for %s: %s", repo_name, e)
+
+        # Patch scanning
+        try:
+            markers = patch_parser.scan_repo_patches(repo_path, repo_name)
+            all_markers.extend(markers)
+        except Exception as e:
+            logger.warning("Patch parser failed for %s: %s", repo_name, e)
+
+    return all_markers
+
+
+def main(argv=None):
+    args = parse_args(argv)
+    setup_logging(args.verbose)
+
+    temp_dir = github_client.create_temp_dir()
+    logger.info("Using temp directory: %s", temp_dir)
+
+    try:
+        all_markers = []
+        total_repos_scanned = 0
+
+        for org in args.orgs:
+            # Choose strategy based on branch
+            if args.branch == "develop":
+                cloned, total_in_org = run_fast_path(org, args.branch, temp_dir)
+            else:
+                cloned, total_in_org = run_full_path(org, args.branch, temp_dir)
+
+            total_repos_scanned += total_in_org
+
+            # Scan cloned repos
+            markers = scan_cloned_repos(cloned)
+            all_markers.extend(markers)
+
+        # Generate report
+        report = report_generator.generate_report(
+            markers=all_markers,
+            branch=args.branch,
+            orgs=args.orgs,
+            components_scanned=total_repos_scanned,
+        )
+
+        # Output
+        if args.output:
+            with open(args.output, "w") as f:
+                f.write(report)
+            logger.info("Report written to %s", args.output)
+        else:
+            print(report)
+
+        logger.info("Done. Found %d markers total.", len(all_markers))
+        return 0
+
+    except Exception as e:
+        logger.error("Fatal error: %s", e, exc_info=True)
+        return 1
+
+    finally:
+        github_client.cleanup_temp_dir(temp_dir)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

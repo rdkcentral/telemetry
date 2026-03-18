@@ -295,6 +295,12 @@ T2ERROR init_connection_pool()
         // connection objects — same class of problem as MAXCONNECTS.
         CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_DNS_CACHE_TIMEOUT, 30L);
 
+        // Limit the receive buffer to 8KB
+        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_BUFFERSIZE, 8192L);
+
+        // Limit the send buffer to 8KB (Requires libcurl 7.62.0+)
+        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_UPLOAD_BUFFERSIZE, 8192L);
+
 #ifdef LIBRDKCERTSEL_BUILD
         // Initialize certificate selectors for each easy handle
         bool state_red_enable = false;

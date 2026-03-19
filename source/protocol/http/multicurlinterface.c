@@ -686,7 +686,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
         }
 #endif
         ERR_clear_error();
-        
+
         // Release all OpenSSL per-thread state (ERR stack, cached allocations).
         // Called at the end of the worker thread's HTTP operation to prevent
         // thread-local memory from accumulating across the daemon lifetime.
@@ -1102,7 +1102,7 @@ T2ERROR http_pool_post(const char *url, const char *payload)
 #endif
 
     // Release all OpenSSL per-thread state at the end of the worker thread's
-    // HTTP operation 
+    // HTTP operation
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
     OPENSSL_thread_stop();
 #else

@@ -34,6 +34,7 @@
 #include <signal.h>
 #include <time.h>
 #include <openssl/err.h>
+#include <openssl/crypto.h>
 #include "multicurlinterface.h"
 #include "busInterface.h"
 #include "t2log_wrapper.h"

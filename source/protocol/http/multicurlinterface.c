@@ -686,14 +686,16 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
         }
 #endif
         ERR_clear_error();
-#if 0
+        
         // Release all OpenSSL per-thread state (ERR stack, cached allocations).
         // Called at the end of the worker thread's HTTP operation to prevent
         // thread-local memory from accumulating across the daemon lifetime.
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
         OPENSSL_thread_stop();
-#endif
-        // 1.0.x way to clean up per-thread state
+#else
         ERR_remove_thread_state(NULL);
+#endif
         release_pool_handle(idx);
         return T2ERROR_FAILURE;
     }
@@ -1100,9 +1102,12 @@ T2ERROR http_pool_post(const char *url, const char *payload)
 #endif
 
     // Release all OpenSSL per-thread state at the end of the worker thread's
-    // HTTP operation (see http_pool_get for rationale)
+    // HTTP operation 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
     OPENSSL_thread_stop();
-
+#else
+    ERR_remove_thread_state(NULL);
+#endif
     // Note: When using LIBRDKCERTSEL_BUILD, pCertURI and pCertPC are owned by the
     // cert selector object and are freed when rdkcertselector_free() is called
     release_pool_handle(idx);

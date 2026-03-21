@@ -389,16 +389,21 @@ static void* CollectAndReportXconf(void* data)
                 }
 
 #ifdef PERSIST_LOG_MON_REF
-                if(profile->saveSeekConfig)
-                {
-                    saveSeekConfigtoFile(profile->name, profile->grepSeekProfile);
-                }
                 if(profile->checkPreviousSeek)
                 {
-                    T2Info("Previous Logs report is sent clear the previousSeek flag\n");
+                    /* Previous logs scan completed - delete old seekmap file regardless of send result
+                     * to prevent re-triggering on next boot. Next regular report will create fresh seekmap. */
+                    removeProfileFromDisk(SEEKFOLDER, profile->name);
+                    T2Info("Previous Logs scan completed, seekmap file removed\n");
                     profile->checkPreviousSeek = false;
                     customLogPath = NULL;
                     profile->bClearSeekMap = false;
+                }
+                else if(profile->saveSeekConfig)
+                {
+                    /* Regular report - save updated seekmap regardless of send result.
+                     * Cached reports need seekmap saved so next scan continues from new position. */
+                    saveSeekConfigtoFile(profile->name, profile->grepSeekProfile);
                 }
 #endif
 

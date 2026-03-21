@@ -497,19 +497,6 @@ static void* CollectAndReport(void* data)
                     //return NULL;
                     goto reportThreadEnd;
                 }
-#ifdef PERSIST_LOG_MON_REF
-                if(profile->saveSeekConfig)
-                {
-                    saveSeekConfigtoFile(profile->name, profile->grepSeekProfile);
-                }
-                if(profile->checkPreviousSeek)
-                {
-                    T2Info("Previous Logs report is sent clear the previousSeek flag\n");
-                    profile->checkPreviousSeek = false;
-                    customLogPath = NULL;
-                    profile->bClearSeekMap = false;
-                }
-#endif
                 long size = strlen(jsonReport);
                 T2Info("cJSON Report = %s\n", jsonReport);
                 cJSON *root = cJSON_Parse(jsonReport);
@@ -658,6 +645,26 @@ static void* CollectAndReport(void* data)
                             ret = sendReportsOverRBUSMethod(profile->t2RBUSDest->rbusMethodName, profile->t2RBUSDest->rbusMethodParamList, jsonReport);
                         }
                     }
+
+#ifdef PERSIST_LOG_MON_REF
+                    if(profile->checkPreviousSeek)
+                    {
+                        /* Previous logs scan completed - delete old seekmap file regardless of send result
+                         * to prevent re-triggering on next boot. Next regular report will create fresh seekmap. */
+                        removeProfileFromDisk(SEEKFOLDER, profile->name);
+                        T2Info("Previous Logs scan completed, seekmap file removed\n");
+                        profile->checkPreviousSeek = false;
+                        customLogPath = NULL;
+                        profile->bClearSeekMap = false;
+                    }
+                    else if(profile->saveSeekConfig)
+                    {
+                        /* Regular report - save updated seekmap regardless of send result.
+                         * Cached reports need seekmap saved so next scan continues from new position. */
+                        saveSeekConfigtoFile(profile->name, profile->grepSeekProfile);
+                    }
+#endif
+
                     if((ret == T2ERROR_FAILURE && strcmp(profile->protocol, "HTTP") == 0) || ret == T2ERROR_NO_RBUS_METHOD_PROVIDER)
                     {
                         T2Debug("Vector list size = %lu\n",  (unsigned long) Vector_Size(profile->cachedReportList));

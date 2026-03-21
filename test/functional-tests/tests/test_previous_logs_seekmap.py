@@ -19,7 +19,7 @@
 
 """
 Test suite for previous logs reporting and seekmap lifecycle management.
-Tests the fix for duplicate marker reporting bug (RDKEMW-XXXX).
+Validates behavior related to the duplicate marker reporting bug in previous logs handling.
 """
 
 import pytest
@@ -37,7 +37,7 @@ TEST_LOG_FILE = "/opt/logs/test_markers.log"
 TEST_PROFILE_NAME = "TestProfile_Seekmap"
 PERSISTENT_PATH = "/opt/.t2persistentfolder"
 LOG_PATH = "/opt/logs"
-CACHED_MESSAGE_PATH = "/tmp/t2reportprofiles"
+CACHED_MESSAGE_PATH = os.path.join(PERSISTENT_PATH, ".t2cachedmessages")
 
 
 class TestPreviousLogsSeekmap:

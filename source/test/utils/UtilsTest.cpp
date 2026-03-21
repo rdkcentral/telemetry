@@ -50,6 +50,7 @@ using namespace std;
 using ::testing::_;
 using ::testing::Return;
 using ::testing::StrEq;
+using ::testing::Invoke;
 
 //Testing t2MtlsUtils
 TEST(GET_CERTS, MTLS_UTILS_NULL)
@@ -770,6 +771,49 @@ TEST_F(utilsTestFixture, FETCHLOCALCONFIGS_FUNC4)
     Vector_Destroy(configlist, free);
 }
 
+TEST_F(utilsTestFixture, FETCHLOCALCONFIGS_EMPTY_FILE)
+{
+    const char* path = "/opt/.t2persistentFolder/";
+    DIR *dir = (DIR*)0xffffffff;
+    Vector* configlist = NULL;
+    Vector_Create(&configlist);
+    struct dirent *entry = NULL;
+    entry = (struct dirent *)malloc(sizeof(struct dirent));
+    entry->d_type = DT_REG;
+    std::strncpy(entry->d_name, "TestProfile.json", sizeof(entry->d_name) - 1);
+    entry->d_name[sizeof(entry->d_name) - 1] = '\0';
+    EXPECT_CALL(*g_fileIOMock, opendir(_))
+           .Times(1)
+           .WillOnce(Return(dir));
+    EXPECT_CALL(*g_fileIOMock, readdir(_))
+           .Times(2)
+           .WillOnce(Return(entry))
+           .WillOnce(Return((struct dirent *)NULL));
+    EXPECT_CALL(*g_fileIOMock, open(_,_))
+           .Times(1)
+           .WillOnce(Return(1));
+    EXPECT_CALL(*g_fileIOMock, fstat(_,_))
+           .Times(1)
+           .WillOnce(Invoke([](int /*fd*/, struct stat* buf) -> int {
+               memset(buf, 0, sizeof(struct stat));
+               buf->st_size = 0;
+               return 0;
+           }));
+    EXPECT_CALL(*g_fileIOMock, close(_))
+           .Times(1)
+           .WillOnce(Return(0));
+    EXPECT_CALL(*g_systemMock, unlink(_))
+           .Times(1)
+           .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, closedir(_))
+           .Times(1)
+           .WillOnce(Return(0));
+    ASSERT_EQ(T2ERROR_SUCCESS, fetchLocalConfigs(path, configlist));
+    EXPECT_EQ(0, (int)Vector_Size(configlist));
+    Vector_Destroy(configlist, free);
+    free(entry);
+}
+
 #if defined (MTLS_FROM_ENV)
 TEST(GetMtlsCertsTest, ReturnsDynamicCertsWhenEnvSet) {
     setenv("XPKI", "1", 1);
@@ -915,28 +959,44 @@ TEST_F(utilsTestFixture, SAVECONFITOFILE1)
             .WillOnce(Return(mockfp));
      ASSERT_EQ(T2ERROR_FAILURE, saveConfigToFile(filepath, profilename, config));
 }
-/*
-TEST_F(utilsTestFixture, SAVECONFITOFILE2)
+TEST_F(utilsTestFixture, SAVECONFITOFILE_FPRINTF_FAILURE)
 {
-     const char* filepath = "/nvram/.t2reportprofiles";
-     const char* profilename = "Profile_1";
-     const char* config = "This is a config string";
-     FILE* mockfp = (FILE *)0xffffffff;
-
+    const char* filepath = "/nvram/.t2reportprofiles/";
+    const char* profilename = "Profile_1";
+    const char* config = "This is a config string";
+    FILE* mockfp = (FILE *)0xffffffff;
     EXPECT_CALL(*g_fileIOMock, fopen(_,_))
-	.Times(1)
-        .WillOnce(Return(mockfp));
+           .Times(1)
+           .WillOnce(Return(mockfp));
     EXPECT_CALL(*g_fileIOMock, fprintf(_,_,_))
-        .Times(1)
-        .WillOnce(Return(-1));
+           .Times(1)
+           .WillOnce(Return(-1));
     EXPECT_CALL(*g_fileIOMock, fclose(_))
-	.Times(1)
-        .WillOnce(Return(0));
-
-    EXPECT_EQ(saveConfigToFile(filepath, profilename, config), T2ERROR_SUCCESS);
-
+           .Times(1)
+           .WillOnce(Return(0));
+    EXPECT_CALL(*g_systemMock, unlink(_))
+           .Times(1)
+           .WillOnce(Return(0));
+    ASSERT_EQ(T2ERROR_FAILURE, saveConfigToFile(filepath, profilename, config));
 }
-*/
+
+TEST_F(utilsTestFixture, SAVECONFITOFILE_SUCCESS)
+{
+    const char* filepath = "/nvram/.t2reportprofiles/";
+    const char* profilename = "Profile_1";
+    const char* config = "This is a config string";
+    FILE* mockfp = (FILE *)0xffffffff;
+    EXPECT_CALL(*g_fileIOMock, fopen(_,_))
+           .Times(1)
+           .WillOnce(Return(mockfp));
+    EXPECT_CALL(*g_fileIOMock, fprintf(_,_,_))
+           .Times(1)
+           .WillOnce(Return((int)strlen(config)));
+    EXPECT_CALL(*g_fileIOMock, fclose(_))
+           .Times(1)
+           .WillOnce(Return(0));
+    ASSERT_EQ(T2ERROR_SUCCESS, saveConfigToFile(filepath, profilename, config));
+}
 TEST_F(utilsTestFixture, getDevicePropertyData)
 {
 

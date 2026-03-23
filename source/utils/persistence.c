@@ -54,7 +54,7 @@ T2ERROR fetchLocalConfigs(const char* path, Vector *configList)
         return T2ERROR_INVALID_ARGS;
     }
     struct dirent *entry;
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     DIR *dir = opendir(path);
     if (dir == NULL)
     {
@@ -68,8 +68,8 @@ T2ERROR fetchLocalConfigs(const char* path, Vector *configList)
     }
     if(strcmp(path, SHORTLIVED_PROFILES_PATH) == 0)
     {
-        T2Debug("%s alreay created : \n", SHORTLIVED_PROFILES_PATH);
-        T2Debug("clearing short lived profile from the disk \n");
+        T2Info("%s alreay created : \n", SHORTLIVED_PROFILES_PATH);
+        T2Info("clearing short lived profile from the disk \n");
         clearPersistenceFolder(SHORTLIVED_PROFILES_PATH);
         if(closedir(dir) != 0)
         {
@@ -100,7 +100,7 @@ T2ERROR fetchLocalConfigs(const char* path, Vector *configList)
         }
 
         snprintf(absfilepath, sizeof(absfilepath), "%s%s", path, entry->d_name);
-        T2Debug("Config file : %s\n", absfilepath);
+        T2Info("Config file : %s\n", absfilepath);
         int fp = open(absfilepath, O_RDONLY);
         if(fp == -1)
         {
@@ -128,8 +128,8 @@ T2ERROR fetchLocalConfigs(const char* path, Vector *configList)
             close(fp);
             Vector_PushBack(configList, config);
 
-            T2Debug("Config data size = %lu\n", (unsigned long)strlen(config->configData));
-            T2Debug("Config data = %s\n", config->configData);
+            T2Info("Config data size = %lu\n", (unsigned long)strlen(config->configData));
+            T2Info("Config data = %s\n", config->configData);
         }
         else
         {
@@ -141,7 +141,7 @@ T2ERROR fetchLocalConfigs(const char* path, Vector *configList)
 
     T2Info("Returning %lu local configurations \n", (unsigned long)Vector_Size(configList));
     closedir(dir);
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
@@ -153,7 +153,7 @@ T2ERROR saveConfigToFile(const char* path, const char *profileName, const char* 
     }
     FILE *fp = NULL;
     char filePath[256] = {'\0'};
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
 
     if(strlen(profileName) > MAX_FILENAME_LENGTH)
     {
@@ -174,7 +174,7 @@ T2ERROR saveConfigToFile(const char* path, const char *profileName, const char* 
         T2Error("Unable to close file : %s\n", filePath);
         return T2ERROR_FAILURE;
     }
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
@@ -211,13 +211,13 @@ T2ERROR MsgPackSaveConfig(const char* path, const char *fileName, const char *ms
 void clearPersistenceFolder(const char* path)
 {
 
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     if(path == NULL)
     {
         return;
     }
 #ifdef LIBSYSWRAPPER_BUILD
-    T2Debug("Executing command : rm -f %s* \n", path);
+    T2Info("Executing command : rm -f %s* \n", path);
     if (v_secure_system("sh -c 'rm -rf %s*'", path) != 0)
     {
         T2Error("%s,%d:command failed\n", __FUNCTION__, __LINE__);
@@ -226,7 +226,7 @@ void clearPersistenceFolder(const char* path)
 #else
     char command[256] = {'\0'};
     snprintf(command, sizeof(command), "rm -f %s*", path);
-    T2Debug("Executing command : %s\n", command);
+    T2Info("Executing command : %s\n", command);
     if (system(command) != 0)
     {
         T2Error("%s,%d: %s command failed\n", __FUNCTION__, __LINE__, command);
@@ -234,7 +234,7 @@ void clearPersistenceFolder(const char* path)
     }
 #endif
 
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
 
 }
 
@@ -258,14 +258,14 @@ void removeProfileFromDisk(const char* path, const char* fileName)
     }
     free(str);
 
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
 }
 
 T2ERROR saveCachedReportToPersistenceFolder(const char *profileName, Vector *reportList)
 {
     T2ERROR ret = T2ERROR_FAILURE ;
 
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
 
     if( NULL == profileName || NULL == reportList )
     {
@@ -290,7 +290,7 @@ T2ERROR saveCachedReportToPersistenceFolder(const char *profileName, Vector *rep
         {
             T2Error("%s,%d: Failed to make directory : %s  \n", __FUNCTION__, __LINE__, CACHED_MESSAGE_PATH);
             pthread_mutex_unlock(&persistCachedReportMutex);
-            T2Debug("%s --out\n", __FUNCTION__);
+            T2Info("%s --out\n", __FUNCTION__);
             return T2ERROR_FAILURE;
         }
     }
@@ -306,7 +306,7 @@ T2ERROR saveCachedReportToPersistenceFolder(const char *profileName, Vector *rep
         // if absFilePath present, wipe it off
         int vectorSize = Vector_Size(reportList);
         int loop = 0 ;
-        T2Debug("Writing %d data to file %s \n", vectorSize, absFilePath);
+        T2Info("Writing %d data to file %s \n", vectorSize, absFilePath);
         if(vectorSize > 0)
         {
             char *payload = (char*) Vector_At(reportList, loop);
@@ -326,7 +326,7 @@ T2ERROR saveCachedReportToPersistenceFolder(const char *profileName, Vector *rep
     }
     // Release the mutex
     pthread_mutex_unlock(&persistCachedReportMutex);
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return ret;
 }
 
@@ -335,12 +335,12 @@ T2ERROR populateCachedReportList(const char *profileName, Vector *outReportList)
 {
     T2ERROR ret = T2ERROR_FAILURE ;
 
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
 
     if( NULL == profileName || NULL == outReportList )
     {
         T2Error("%s : %d Either of input arguments are NULL \n", __FUNCTION__, __LINE__);
-        T2Debug("%s --out\n", __FUNCTION__);
+        T2Info("%s --out\n", __FUNCTION__);
         return ret ;
     }
 
@@ -361,13 +361,13 @@ T2ERROR populateCachedReportList(const char *profileName, Vector *outReportList)
         T2Info("Reading data from file %s \n", absFilePath);
         while((linelength = getline(&payload, &dataLength, filePtr)) != -1)
         {
-            T2Debug("Payload Value = %s\n", payload);
+            T2Info("Payload Value = %s\n", payload);
             if (linelength < 2)
             {
                 continue;
             }
             Vector_PushBack(outReportList, (void *)strdup(payload));
-            T2Debug("vector size = %lu\n", (unsigned long )Vector_Size(outReportList));
+            T2Info("vector size = %lu\n", (unsigned long )Vector_Size(outReportList));
             if(payload)
             {
                 free(payload);
@@ -393,18 +393,18 @@ T2ERROR populateCachedReportList(const char *profileName, Vector *outReportList)
     }
     else
     {
-        T2Debug("Unable to open file %s. \n", absFilePath);
+        T2Info("Unable to open file %s. \n", absFilePath);
     }
     pthread_mutex_unlock(&persistCachedReportMutex);
 
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return ret;
 }
 
 //Privacy mode functions
 T2ERROR savePrivacyModeToPersistentFolder(char *data)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     clearPersistenceFolder(PRIVACYMODE_PATH);
     DIR *dir = opendir(PRIVACYMODE_PATH);
     FILE *fp = NULL;
@@ -446,13 +446,13 @@ T2ERROR savePrivacyModeToPersistentFolder(char *data)
         return T2ERROR_FAILURE;
     }
 
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
 T2ERROR getPrivacyModeFromPersistentFolder(char **privMode)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     FILE *fp = NULL;
     char filePath[256] = {'\0'};
     char data[20] = {'\0'};
@@ -472,7 +472,7 @@ T2ERROR getPrivacyModeFromPersistentFolder(char **privMode)
         T2Error("Unable to close file : %s\n", filePath);
         return T2ERROR_INTERNAL_ERROR;
     }
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 

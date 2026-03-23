@@ -43,7 +43,7 @@
 T2ERROR
 getGrepResults (GrepSeekProfile **GSP, Vector *markerList, bool isClearSeekMap, bool check_rotated, char *customLogPath)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     if(GSP == NULL || markerList == NULL )
     {
         T2Error("Invalid Args or Args are NULL\n");
@@ -58,14 +58,14 @@ getGrepResults (GrepSeekProfile **GSP, Vector *markerList, bool isClearSeekMap, 
         *GSP = createGrepSeekProfile(count);
     }
 
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
 // dcaFlagReportCompleation this function is used to create legacy DCA Flag DCADONEFLAG
 void dcaFlagReportCompleation()
 {
-    T2Debug("%s --in creating flag %s\n", __FUNCTION__, DCADONEFLAG);
+    T2Info("%s --in creating flag %s\n", __FUNCTION__, DCADONEFLAG);
     FILE *fileCheck = fopen(DCADONEFLAG, "w+");
     if (fileCheck == NULL )
     {
@@ -75,13 +75,13 @@ void dcaFlagReportCompleation()
     {
         fclose(fileCheck);
     }
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
 }
 
 # ifdef PERSIST_LOG_MON_REF
 T2ERROR saveSeekConfigtoFile(char* profileName, GrepSeekProfile *ProfileSeekMap)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     if(profileName == NULL)
     {
         T2Error("Profile Name is not available\n");
@@ -120,13 +120,30 @@ T2ERROR saveSeekConfigtoFile(char* profileName, GrepSeekProfile *ProfileSeekMap)
         free(jsonReport);
         return T2ERROR_FAILURE;
     }
-    T2Debug("%s --out\n", __FUNCTION__);
+    
+    // Use system call to cat and print the saved file contents
+    int len = strlen(profileName) + strlen(SEEKFOLDER) + 10;
+    char *catCmd = (char *)malloc(len);
+    snprintf(catCmd, len, "cat %s/%s", SEEKFOLDER, profileName);
+    FILE *fp = popen(catCmd, "r");
+    if(fp != NULL)
+    {
+        char buffer[4096];
+        while(fgets(buffer, sizeof(buffer), fp) != NULL)
+        {
+            T2Info("After saveconfigtofile Contents of %s/%s: %s", SEEKFOLDER, profileName, buffer);
+        }
+        pclose(fp);
+    }
+    free(catCmd);
+    
+    T2Info("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
 T2ERROR loadSavedSeekConfig(char *profileName, GrepSeekProfile *ProfileSeekMap)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
 
     if(profileName == NULL)
     {
@@ -188,18 +205,18 @@ T2ERROR loadSavedSeekConfig(char *profileName, GrepSeekProfile *ProfileSeekMap)
     free(data);
     free(seekFile);
     return T2ERROR_SUCCESS;
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
 }
 #endif
 
 bool firstBootStatus()
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     bool status = true;
     if(access(BOOTFLAG, F_OK) != -1)
     {
         status = false;
     }
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return status;
 }

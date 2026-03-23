@@ -41,7 +41,7 @@ void freeParamInfoSt(parameterInfoStruct_t **paramNamesSt, int paramNamesLength)
 
 static T2ERROR CCSPInterface_Init()
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     char *pCfg = CCSP_MSG_BUS_CFG;
     char *componentId = NULL;
 
@@ -59,7 +59,7 @@ static T2ERROR CCSPInterface_Init()
         T2Error("%s:%d, init failed\n", __func__, __LINE__);
         return T2ERROR_FAILURE;
     }
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
@@ -68,14 +68,14 @@ static int findDestComponent(char *paramName, char **destCompName, char **destPa
     int ret, size = 0;
     char dst_pathname_cr[256] = {0};
     componentStruct_t **ppComponents = NULL;
-    T2Debug("%s ++in for paramName : %s\n", __FUNCTION__, paramName);
+    T2Info("%s ++in for paramName : %s\n", __FUNCTION__, paramName);
     snprintf(dst_pathname_cr, sizeof(dst_pathname_cr), "eRT.%s", CCSP_DBUS_INTERFACE_CR);
     ret = CcspBaseIf_discComponentSupportingNamespace(bus_handle, dst_pathname_cr, paramName, "", &ppComponents, &size);
     if ( ret == CCSP_SUCCESS && size >= 1)
     {
         *destCompName = strdup(ppComponents[0]->componentName);
         *destPath = strdup(ppComponents[0]->dbusPath);
-        T2Debug("destCompName = %s destPath = %s \n", *destCompName, *destPath);
+        T2Info("destCompName = %s destPath = %s \n", *destCompName, *destPath);
     }
     else
     {
@@ -84,7 +84,7 @@ static int findDestComponent(char *paramName, char **destCompName, char **destPa
     }
     free_componentStruct_t(bus_handle, size, ppComponents);
 
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return ret;
 }
 
@@ -98,7 +98,7 @@ T2ERROR ccspGetParameterValues(const char **paramNames, const int paramNamesCoun
 {
     char *destCompName = NULL, *destCompPath = NULL;
     T2ERROR retErrCode = T2ERROR_FAILURE;
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     *valSize = 0 ;
     if(!bus_handle && T2ERROR_SUCCESS != CCSPInterface_Init())
     {
@@ -111,7 +111,7 @@ T2ERROR ccspGetParameterValues(const char **paramNames, const int paramNamesCoun
     }
     if(CCSP_SUCCESS == findDestComponent((char*)paramNames[0], &destCompName, &destCompPath))
     {
-        T2Debug("Calling CcspBaseIf_getParameterValues for : %s, paramCount : %d Destination name : %s and path %s\n", paramNames[0], paramNamesCount, destCompName, destCompPath);
+        T2Info("Calling CcspBaseIf_getParameterValues for : %s, paramCount : %d Destination name : %s and path %s\n", paramNames[0], paramNamesCount, destCompName, destCompPath);
         int ret = CcspBaseIf_getParameterValues(bus_handle, destCompName, destCompPath, (char**)paramNames, paramNamesCount, valSize, valStructs);
         if (ret != CCSP_SUCCESS)
         {
@@ -138,7 +138,7 @@ T2ERROR ccspGetParameterValues(const char **paramNames, const int paramNamesCoun
         destCompPath = NULL;
     }
 
-    T2Debug("%s --out \n", __FUNCTION__);
+    T2Info("%s --out \n", __FUNCTION__);
     return retErrCode;
 }
 
@@ -147,7 +147,7 @@ T2ERROR getParameterNames(const char *objName, parameterInfoStruct_t ***paramNam
 {
     T2ERROR ret = T2ERROR_FAILURE;
     char *destCompName = NULL, *destCompPath = NULL;
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
 
     if(!bus_handle && T2ERROR_SUCCESS != CCSPInterface_Init())
     {
@@ -183,7 +183,7 @@ T2ERROR getParameterNames(const char *objName, parameterInfoStruct_t ***paramNam
         free(destCompPath);
         destCompPath = NULL;
     }
-    T2Debug("%s --out \n", __FUNCTION__);
+    T2Info("%s --out \n", __FUNCTION__);
     return ret;
 }
 #endif
@@ -200,7 +200,7 @@ static void freeCCSPParamValueSt(parameterValStruct_t **valStructs, int valSize)
 
 T2ERROR getCCSPParamVal(const char* paramName, char **paramValue)
 {
-    T2Debug("%s ++in \n", __FUNCTION__);
+    T2Info("%s ++in \n", __FUNCTION__);
     parameterValStruct_t **valStructs = NULL;
     int valSize = 0;
     char *paramNames[1] = {NULL};
@@ -216,11 +216,11 @@ T2ERROR getCCSPParamVal(const char* paramName, char **paramValue)
         free(paramNames[0]);
         return T2ERROR_FAILURE;
     }
-    T2Debug("%s = %s\n", paramName, valStructs[0]->parameterValue);
+    T2Info("%s = %s\n", paramName, valStructs[0]->parameterValue);
     *paramValue = strdup(valStructs[0]->parameterValue);
     free(paramNames[0]);
     freeCCSPParamValueSt(valStructs, valSize);
-    T2Debug("%s --out \n", __FUNCTION__);
+    T2Info("%s --out \n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
@@ -231,7 +231,7 @@ Vector* getCCSPProfileParamValues(Vector *paramList, int execount)
     Vector *profileValueList = NULL;
     Vector_Create(&profileValueList);
 
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     if(!bus_handle && T2ERROR_SUCCESS != CCSPInterface_Init())
     {
         return profileValueList;
@@ -267,7 +267,7 @@ Vector* getCCSPProfileParamValues(Vector *paramList, int execount)
         }
         if(param->skipFreq > 0 && (execount % param->skipFreq + 1) != 0)
         {
-            T2Debug("Skipping parameter : %s as per skipFreq : %d\n", paramNames[0], param->skipFreq);
+            T2Info("Skipping parameter : %s as per skipFreq : %d\n", paramNames[0], param->skipFreq);
             free(paramNames[0]);
             profVals->paramValues = NULL;
             Vector_PushBack(profileValueList, profVals);
@@ -343,7 +343,7 @@ Vector* getCCSPProfileParamValues(Vector *paramList, int execount)
         free(paramNames);
     }
 
-    T2Debug("%s --Out\n", __FUNCTION__);
+    T2Info("%s --Out\n", __FUNCTION__);
     return profileValueList;
 }
 
@@ -351,7 +351,7 @@ Vector* getCCSPProfileParamValues(Vector *paramList, int execount)
 T2ERROR registerCcspT2EventListener(TelemetryEventCallback eventCB)
 {
     int ret;
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     if(!bus_handle && T2ERROR_SUCCESS != CCSPInterface_Init())
     {
         return T2ERROR_FAILURE;
@@ -369,7 +369,7 @@ T2ERROR registerCcspT2EventListener(TelemetryEventCallback eventCB)
     {
         T2Info("Registration with CCSP Bus successful, waiting for Telemetry Events from components...\n");
     }
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 

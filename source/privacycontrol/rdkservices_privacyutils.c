@@ -33,9 +33,9 @@
 
 T2ERROR setPrivacyMode(char* data)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     T2Warning("%s function is called at stub implementation please check the implementation \n ", __FUNCTION__);
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 
 }
@@ -47,10 +47,10 @@ T2ERROR setPrivacyMode(char* data)
 
 void getPrivacyMode(char** privMode)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     T2Warning("%s function is called at stub implementation please check the implementation returning SHARE \n ", __FUNCTION__);
     *privMode = strdup("SHARE");
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return;
 }
 

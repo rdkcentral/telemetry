@@ -120,7 +120,7 @@ static char * getProfileParameter(Profile * profile, const char *ref)
 
 static T2ERROR addhttpURIreqParameter(Profile *profile, const char* Hname, const char* Href)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     if(NULL == Hname || NULL == Href )
     {
         T2Error("Hname or Href is NULL\n");
@@ -154,13 +154,13 @@ static T2ERROR addhttpURIreqParameter(Profile *profile, const char* Hname, const
         value = NULL;
     }
     Vector_PushBack(profile->t2HTTPDest->RequestURIparamList, httpreqparam);
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
 static T2ERROR addRbusMethodParameter(Profile *profile, const char* name, const char* value)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     if(NULL == name || NULL == value )
     {
         return T2ERROR_SUCCESS ;
@@ -191,7 +191,7 @@ static T2ERROR addRbusMethodParameter(Profile *profile, const char* name, const 
         val = NULL;
     }
     Vector_PushBack(profile->t2RBUSDest->rbusMethodParamList, rbusMethodParam);
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
@@ -199,12 +199,12 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
                             const char* use, bool ReportEmpty, reportTimestampFormat reportTimestamp, bool trim, const char* regex)
 {
 
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     char* value = NULL;
 
     if(!(strcmp(ptype, "dataModel")))
     {
-        // T2Debug("Adding TR-181 Parameter : %s\n", ref);
+        // T2Info("Adding TR-181 Parameter : %s\n", ref);
 
         if (strstr(ref, "Profile.") == ref)          //Static parameters from profile configuration
         {
@@ -250,7 +250,7 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
     }
     else if(!(strcmp(ptype, "event")))
     {
-        // T2Debug("Adding Event Marker :: Param/Marker Name : %s ref/pattern/Comp : %s skipFreq : %d\n", name, ref, skipFreq);
+        // T2Info("Adding Event Marker :: Param/Marker Name : %s ref/pattern/Comp : %s skipFreq : %d\n", name, ref, skipFreq);
         EventMarker *eMarker = (EventMarker *) malloc(sizeof(EventMarker));
         if(eMarker == NULL)
         {
@@ -310,11 +310,11 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
     else    //Grep Marker
     {
 
-        // T2Debug("Adding Grep Marker :: Param/Marker Name : %s ref/pattern/Comp : %s fileName : %s skipFreq : %d\n", name, ref, fileName, skipFreq);
+        // T2Info("Adding Grep Marker :: Param/Marker Name : %s ref/pattern/Comp : %s fileName : %s skipFreq : %d\n", name, ref, fileName, skipFreq);
 
         if(fileName != NULL && strncmp("top_log.txt", fileName, sizeof("top_log.txt")) == 0)
         {
-            T2Debug("This is a TopMarker name :%s  and value: %s add it to topmarker list \n", name, ref);
+            T2Info("This is a TopMarker name :%s  and value: %s add it to topmarker list \n", name, ref);
             TopMarker *tMarker = (TopMarker *) malloc(sizeof(TopMarker));
             if(tMarker == NULL)
             {
@@ -436,7 +436,7 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
 
     profile->paramNumOfEntries++;
 
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
@@ -465,7 +465,7 @@ T2ERROR addMsgPckTriggerCondition(Profile *profile, msgpack_object *value_map)
         T2Error("%s NULL value returning \n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
 
     TriggerConditionArray = msgpack_get_map_value(value_map, "TriggerCondition");
     MSGPACK_GET_ARRAY_SIZE(TriggerConditionArray, TcArraySize);
@@ -491,7 +491,7 @@ T2ERROR addMsgPckTriggerCondition(Profile *profile, msgpack_object *value_map)
         if(triggerCondition == NULL)
         {
             T2Error("%s Error adding MsgPck Trigger Condition to profile %s \n", __FUNCTION__, profile->name);
-            T2Debug("%s ++out\n", __FUNCTION__);
+            T2Info("%s ++out\n", __FUNCTION__);
             return T2ERROR_FAILURE;
         }
 
@@ -507,7 +507,7 @@ T2ERROR addMsgPckTriggerCondition(Profile *profile, msgpack_object *value_map)
             /* CID 175341: Explicit null dereferenced */
             if(tcType == NULL)
             {
-                T2Debug("Null tcType %s ++out\n", __FUNCTION__);
+                T2Info("Null tcType %s ++out\n", __FUNCTION__);
                 free(triggerCondition);
                 return T2ERROR_FAILURE;
             }
@@ -523,7 +523,7 @@ T2ERROR addMsgPckTriggerCondition(Profile *profile, msgpack_object *value_map)
             /* CID 175346: Explicit null dereferenced */
             if(tcOperator == NULL)
             {
-                T2Debug("Null tcOperator %s ++out\n", __FUNCTION__);
+                T2Info("Null tcOperator %s ++out\n", __FUNCTION__);
                 free(triggerCondition);
                 return T2ERROR_FAILURE;
             }
@@ -538,7 +538,7 @@ T2ERROR addMsgPckTriggerCondition(Profile *profile, msgpack_object *value_map)
             /* CID 175347 : Explicit null dereferenced */
             if(tcReference == NULL)
             {
-                T2Debug("Null tcReference %s ++out\n", __FUNCTION__);
+                T2Info("Null tcReference %s ++out\n", __FUNCTION__);
                 free(triggerCondition);
                 return T2ERROR_FAILURE;
             }
@@ -550,7 +550,7 @@ T2ERROR addMsgPckTriggerCondition(Profile *profile, msgpack_object *value_map)
         {
             msgpack_print(tcThresholdInt, msgpack_get_obj_name(tcThresholdInt));
             MSGPACK_GET_NUMBER(tcThresholdInt, tcThreshold);
-            T2Debug("tcThreshold: %d\n", tcThreshold);
+            T2Info("tcThreshold: %d\n", tcThreshold);
         }
 
         tcMinThresholdDurationInt = msgpack_get_map_value(tcArrayMap, "minThresholdDuration");
@@ -558,7 +558,7 @@ T2ERROR addMsgPckTriggerCondition(Profile *profile, msgpack_object *value_map)
         {
             msgpack_print(tcMinThresholdDurationInt, msgpack_get_obj_name(tcMinThresholdDurationInt));
             MSGPACK_GET_NUMBER(tcMinThresholdDurationInt, tcMinThresholdDuration);
-            T2Debug("tcMinThresholdDuration: %d\n", tcMinThresholdDuration);
+            T2Info("tcMinThresholdDuration: %d\n", tcMinThresholdDuration);
         }
 
         tcReportbool = msgpack_get_map_value(tcArrayMap, "report");
@@ -566,10 +566,10 @@ T2ERROR addMsgPckTriggerCondition(Profile *profile, msgpack_object *value_map)
         {
             msgpack_print(tcReportbool, msgpack_get_obj_name(tcReportbool));
             MSGPACK_GET_NUMBER(tcReportbool, tcReport);
-            T2Debug("tcReport: %s\n", (tcReport ? "True" : "False"));
+            T2Info("tcReport: %s\n", (tcReport ? "True" : "False"));
         }
 
-        T2Debug("Adding MsgPck Trigger Condition:%s type %s operator %s \n", tcReference, tcType, tcOperator);
+        T2Info("Adding MsgPck Trigger Condition:%s type %s operator %s \n", tcReference, tcType, tcOperator);
 
         if(tcType)
         {
@@ -590,7 +590,7 @@ T2ERROR addMsgPckTriggerCondition(Profile *profile, msgpack_object *value_map)
         triggerCondition->report = tcReport;
 
         Vector_PushBack(profile->triggerConditionList, triggerCondition);
-        T2Debug("[[Added MsgPck Trigger Condition:%s]]\n", tcReference);
+        T2Info("[[Added MsgPck Trigger Condition:%s]]\n", tcReference);
 
         if(tcType)
         {
@@ -605,19 +605,19 @@ T2ERROR addMsgPckTriggerCondition(Profile *profile, msgpack_object *value_map)
             free(tcReference);
         }
     }
-    T2Debug("%s ++out\n", __FUNCTION__);
+    T2Info("%s ++out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
 T2ERROR addTriggerCondition(Profile *profile, cJSON *jprofileTriggerCondition)
 {
 
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     int triggerConditionIndex = 0;
     int triggerCondition_count = 0;
     if(jprofileTriggerCondition == NULL)
     {
-        T2Debug("%s ++out\n", __FUNCTION__);
+        T2Info("%s ++out\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
 
@@ -665,7 +665,7 @@ T2ERROR addTriggerCondition(Profile *profile, cJSON *jprofileTriggerCondition)
             {
                 tcReference = jTcSubItemReference->valuestring;
             }
-            T2Debug("Adding Trigger Condition:%s type %s operator %s \n", tcReference, tcType, tcOperator);
+            T2Info("Adding Trigger Condition:%s type %s operator %s \n", tcReference, tcType, tcOperator);
             TriggerCondition *triggerCondition = (TriggerCondition *) malloc(sizeof(TriggerCondition));
 
             if(triggerCondition == NULL)
@@ -698,18 +698,18 @@ T2ERROR addTriggerCondition(Profile *profile, cJSON *jprofileTriggerCondition)
             triggerCondition->isSubscribed = false;
             triggerCondition->report = tcReport;
             Vector_PushBack(profile->triggerConditionList, triggerCondition);
-            T2Debug("[[Added Trigger Condition:%s]]\n", tcReference);
+            T2Info("[[Added Trigger Condition:%s]]\n", tcReference);
         }
 
     }
 
-    T2Debug("%s ++out\n", __FUNCTION__);
+    T2Info("%s ++out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
 T2ERROR verifyTriggerCondition(cJSON *jprofileTriggerCondition)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     int triggerConditionIndex = 0;
     int triggerCondition_count = 0;
     int ret = T2ERROR_SUCCESS;
@@ -726,21 +726,21 @@ T2ERROR verifyTriggerCondition(cJSON *jprofileTriggerCondition)
             cJSON *jTcSubItemtype = cJSON_GetObjectItem(tcSubitem, "type");
             if(jTcSubItemtype == NULL)
             {
-                T2Debug("Null type %s ++out\n", __FUNCTION__);
+                T2Info("Null type %s ++out\n", __FUNCTION__);
                 return T2ERROR_FAILURE;
             }
 
             type = jTcSubItemtype->valuestring;
             if(strncmp(type, "dataModel", strlen("dataModel") + 1) != 0)
             {
-                T2Debug("Unexpected type %s ++out\n", __FUNCTION__);
+                T2Info("Unexpected type %s ++out\n", __FUNCTION__);
                 return T2ERROR_FAILURE;
             }
 
             cJSON *jTcSubItemOperator = cJSON_GetObjectItem(tcSubitem, "operator");
             if(jTcSubItemOperator == NULL)
             {
-                T2Debug("Null operator %s ++out\n", __FUNCTION__);
+                T2Info("Null operator %s ++out\n", __FUNCTION__);
                 return T2ERROR_FAILURE;
             }
 
@@ -748,7 +748,7 @@ T2ERROR verifyTriggerCondition(cJSON *jprofileTriggerCondition)
             if((strncmp(operator, "any", strlen("any") + 1) != 0) && (strncmp(operator, "lt", strlen("lt") + 1) != 0)
                     && (strncmp(operator, "gt", strlen("gt") + 1) != 0) && (strncmp(operator, "eq", strlen("eq") + 1) != 0))
             {
-                T2Debug("Unexpected operator %s ++out\n", __FUNCTION__);
+                T2Info("Unexpected operator %s ++out\n", __FUNCTION__);
                 return T2ERROR_FAILURE;
             }
 
@@ -757,7 +757,7 @@ T2ERROR verifyTriggerCondition(cJSON *jprofileTriggerCondition)
                 cJSON *jTcSubItemThreshold = cJSON_GetObjectItem(tcSubitem, "threshold");
                 if(jTcSubItemThreshold == NULL)
                 {
-                    T2Debug("Null threshold %s ++out\n", __FUNCTION__);
+                    T2Info("Null threshold %s ++out\n", __FUNCTION__);
                     return T2ERROR_FAILURE;
                 }
             }
@@ -765,20 +765,20 @@ T2ERROR verifyTriggerCondition(cJSON *jprofileTriggerCondition)
             cJSON *jTcSubItemReference = cJSON_GetObjectItem(tcSubitem, "reference");
             if(jTcSubItemReference == NULL)
             {
-                T2Debug("Null reference %s ++out\n", __FUNCTION__);
+                T2Info("Null reference %s ++out\n", __FUNCTION__);
                 return T2ERROR_FAILURE;
             }
 
             reference = jTcSubItemReference->valuestring;
             if(strlen(reference) == 0)
             {
-                T2Debug("Unexpected reference %s ++out\n", __FUNCTION__);
+                T2Info("Unexpected reference %s ++out\n", __FUNCTION__);
                 return T2ERROR_FAILURE;
             }
         }
     }
 
-    T2Debug("%s ++out\n", __FUNCTION__);
+    T2Info("%s ++out\n", __FUNCTION__);
     return ret;
 }
 
@@ -802,7 +802,7 @@ void time_param_Reporting_Adjustments_valid_set(Profile *profile, cJSON *jprofil
         if(jprofileActivationTimeout)
         {
             profile->activationTimeoutPeriod = jprofileActivationTimeout->valueint;
-            T2Debug("[[ profile->activationTimeout:%d]]\n", profile->activationTimeoutPeriod);
+            T2Info("[[ profile->activationTimeout:%d]]\n", profile->activationTimeoutPeriod);
         }
 
         if(jprofileTimeReference && jprofileReportingInterval)
@@ -815,7 +815,7 @@ void time_param_Reporting_Adjustments_valid_set(Profile *profile, cJSON *jprofil
             if(jprofileReportOnUpdate)
             {
                 profile->reportOnUpdate = (cJSON_IsTrue(jprofileReportOnUpdate) == 1);
-                T2Debug("[[profile->reportOnUpdate:%u]]\n",  profile->reportOnUpdate);
+                T2Info("[[profile->reportOnUpdate:%u]]\n",  profile->reportOnUpdate);
             }
             if((profile->timeRef == NULL) || strcmp(profile->timeRef, DEFAULT_TIME_REFERENCE) == 0)  //Property 'FirstReportingInterval' if present along with Timereference,  FirstReportingInterval shall be ignored
             {
@@ -823,7 +823,7 @@ void time_param_Reporting_Adjustments_valid_set(Profile *profile, cJSON *jprofil
                 {
                     int firstReportIntervalInSec = jprofilefirstReportingInterval->valueint;
                     profile->firstReportingInterval = firstReportIntervalInSec;
-                    T2Debug("[[profile->firstReportingInterval:%d]]\n",  profile->firstReportingInterval);
+                    T2Info("[[profile->firstReportingInterval:%d]]\n",  profile->firstReportingInterval);
                 }
             }
             if(profile->timeRef != NULL && strcmp(profile->timeRef, DEFAULT_TIME_REFERENCE) != 0)  //This value is only valid when TimeReference is different from the default.
@@ -832,7 +832,7 @@ void time_param_Reporting_Adjustments_valid_set(Profile *profile, cJSON *jprofil
                 {
                     int maxUploadLatencyInMilliSec = jprofilemaxUploadLatency->valueint;
                     profile->maxUploadLatency = maxUploadLatencyInMilliSec;
-                    T2Debug("[[profile->maxUploadLatency:%dms]]\n",  profile->maxUploadLatency);
+                    T2Info("[[profile->maxUploadLatency:%dms]]\n",  profile->maxUploadLatency);
                 }
             }
         }
@@ -914,13 +914,13 @@ T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, i
             {
                 trim =  cJSON_IsTrue(jpSubitemtrim);
             }
-            T2Debug("trimParam: %u\n", trim);
+            T2Info("trimParam: %u\n", trim);
             cJSON *jpSubitemregex = cJSON_GetObjectItem(pSubitem, "regex");
             if(jpSubitemregex)
             {
                 regex = jpSubitemregex->valuestring;
             }
-            T2Debug("regexParam: %s\n", regex);
+            T2Info("regexParam: %s\n", regex);
             if(!(strcmp(paramtype, "dataModel")))   /*Marker is TR181 param*/
             {
                 cJSON *jpSubitemname = cJSON_GetObjectItem(pSubitem, "name");
@@ -944,7 +944,7 @@ T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, i
                 if(jpMethod)
                 {
                     method = jpMethod->valuestring;
-                    T2Debug("Method property is present and the value is %s\n", method);
+                    T2Info("Method property is present and the value is %s\n", method);
                     if(!(strcmp(method, "subscribe")))
                     {
                         T2Info("Method is subscribe converting the parmeter to event type\n");
@@ -1045,7 +1045,7 @@ T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, i
                 continue;
             }
 
-            T2Debug("%s : reportTimestamp = %d\n", __FUNCTION__, rtformat);
+            T2Info("%s : reportTimestamp = %d\n", __FUNCTION__, rtformat);
             //CID 337454: Explicit null dereferenced (FORWARD_NULL) ;CID 337448: Explicit null dereferenced (FORWARD_NULL)
             if (content != NULL && header != NULL)
             {
@@ -1063,7 +1063,7 @@ T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, i
             }
             else
             {
-                T2Debug("[[Added parameter:%s]]\n", header);
+                T2Info("[[Added parameter:%s]]\n", header);
             }
             profileParamCount++;
         }
@@ -1098,7 +1098,7 @@ T2ERROR encodingSet(Profile* profile, cJSON *jprofileEncodingType, cJSON *jprofi
             profile->jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
         }
 
-        T2Debug("[[profile->jsonEncoding->reportFormat:%d]]\n", profile->jsonEncoding->reportFormat);
+        T2Info("[[profile->jsonEncoding->reportFormat:%d]]\n", profile->jsonEncoding->reportFormat);
         if(jprofileJSONReportTimestamp)
         {
             if(!(strcmp(jprofileJSONReportTimestamp->valuestring, "None")))
@@ -1117,7 +1117,7 @@ T2ERROR encodingSet(Profile* profile, cJSON *jprofileEncodingType, cJSON *jprofi
             {
                 profile->jsonEncoding->tsFormat = TIMESTAMP_NONE;
             }
-            T2Debug("[[profile->jsonEncoding->tsFormat:%d]]\n", profile->jsonEncoding->tsFormat);
+            T2Info("[[profile->jsonEncoding->tsFormat:%d]]\n", profile->jsonEncoding->tsFormat);
 
         }
     }
@@ -1138,9 +1138,9 @@ T2ERROR protocolSet (Profile *profile, cJSON *jprofileProtocol, cJSON *jprofileH
         profile->t2HTTPDest->Compression = COMP_NONE; /*in 1911_sprint default none*/
         profile->t2HTTPDest->Method = HTTP_POST; /*1911_sprint default to POST */
 
-        T2Debug("[[profile->t2HTTPDest->URL:%s]]\n", profile->t2HTTPDest->URL);
-        T2Debug("[[profile->t2HTTPDest->Compression:%d]]\n", profile->t2HTTPDest->Compression);
-        T2Debug("[[profile->t2HTTPDest->Method:%d]]\n", profile->t2HTTPDest->Method);
+        T2Info("[[profile->t2HTTPDest->URL:%s]]\n", profile->t2HTTPDest->URL);
+        T2Info("[[profile->t2HTTPDest->Compression:%d]]\n", profile->t2HTTPDest->Compression);
+        T2Info("[[profile->t2HTTPDest->Method:%d]]\n", profile->t2HTTPDest->Method);
 
         if(jprofileHTTPRequestURIParameter)
         {
@@ -1188,7 +1188,7 @@ T2ERROR protocolSet (Profile *profile, cJSON *jprofileProtocol, cJSON *jprofileH
                     }
                     else
                     {
-                        T2Debug("[[Added  request URIparameterReference: %s]]\n", href);
+                        T2Info("[[Added  request URIparameterReference: %s]]\n", href);
                     }
                     httpParamCount++;
                 }
@@ -1202,7 +1202,7 @@ T2ERROR protocolSet (Profile *profile, cJSON *jprofileProtocol, cJSON *jprofileH
     if((profile->t2RBUSDest) && (strcmp(jprofileProtocol->valuestring, "RBUS_METHOD") == 0))
     {
         profile->t2RBUSDest->rbusMethodName = strdup(jprofileRBUSMethodName->valuestring);
-        T2Debug("[[profile->t2RBUSDest->rbusMethodName:%s]]\n", profile->t2RBUSDest->rbusMethodName);
+        T2Info("[[profile->t2RBUSDest->rbusMethodName:%s]]\n", profile->t2RBUSDest->rbusMethodName);
 
         if(jprofileRBUSMethodParamArr)
         {
@@ -1239,7 +1239,7 @@ T2ERROR protocolSet (Profile *profile, cJSON *jprofileProtocol, cJSON *jprofileH
                     }
                     else
                     {
-                        T2Debug("[[Added  request URIparameterReference: %s]]\n", name);
+                        T2Info("[[Added  request URIparameterReference: %s]]\n", name);
                     }
                     rbusParamAdded++;
                 }
@@ -1254,7 +1254,7 @@ T2ERROR protocolSet (Profile *profile, cJSON *jprofileProtocol, cJSON *jprofileH
 
 T2ERROR processConfiguration(char** configData, char *profileName, char* profileHash, Profile **localProfile)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     //REPORTPROFILE CJson PARSING
     T2ERROR ret = T2ERROR_SUCCESS, retvalue = T2ERROR_SUCCESS;
     int ThisProfileParameter_count = 0;
@@ -1555,18 +1555,18 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     profile->encodingType = strdup(jprofileEncodingType->valuestring);
 
 
-    T2Debug("[[profile->name:%s]]\n", profile->name);
-    T2Debug("[[ profile->Description:%s]]\n", profile->Description);
-    T2Debug("[[profile->version:%s]]\n", profile->version);
-    T2Debug("[[profile->protocol:%s]]\n", profile->protocol);
-    T2Debug("[[profile->encodingType:%s]]\n", profile->encodingType);
-    T2Debug("[[profile->RootName:%s]]\n", profile->RootName);
-    T2Debug("[[profile->timeRef:%s]]\n", profile->timeRef);
-    T2Debug("[[ profile->activationTimeout:%d]]\n", profile->activationTimeoutPeriod);
+    T2Info("[[profile->name:%s]]\n", profile->name);
+    T2Info("[[ profile->Description:%s]]\n", profile->Description);
+    T2Info("[[profile->version:%s]]\n", profile->version);
+    T2Info("[[profile->protocol:%s]]\n", profile->protocol);
+    T2Info("[[profile->encodingType:%s]]\n", profile->encodingType);
+    T2Info("[[profile->RootName:%s]]\n", profile->RootName);
+    T2Info("[[profile->timeRef:%s]]\n", profile->timeRef);
+    T2Info("[[ profile->activationTimeout:%d]]\n", profile->activationTimeoutPeriod);
 
     if(profile->reportingInterval)
     {
-        T2Debug("[[ profile->reportingInterval:%d]]\n", profile->reportingInterval);
+        T2Info("[[ profile->reportingInterval:%d]]\n", profile->reportingInterval);
     }
 
     //Encoding Configuration
@@ -1595,9 +1595,9 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     if(jprofileTriggerCondition)
     {
         triggerCondition_count = cJSON_GetArraySize(jprofileTriggerCondition);
-        T2Debug("TC found in profile\n");
+        T2Info("TC found in profile\n");
     }
-    T2Debug("triggerCondition_count %d\n", triggerCondition_count);
+    T2Info("triggerCondition_count %d\n", triggerCondition_count);
     if(triggerCondition_count)
     {
         ret = addTriggerCondition(profile, jprofileTriggerCondition); //add
@@ -1611,7 +1611,7 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     cJSON_Delete(json_root);
     json_root = NULL;
     *localProfile = profile;
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return retvalue;
 
 }
@@ -1641,25 +1641,25 @@ void msgpack_print(msgpack_object *obj, char *obj_name)
         switch(obj->type)
         {
         case MSGPACK_OBJECT_BOOLEAN:
-            T2Debug("%s: %s\n", obj_name, obj->via.boolean ? "true" : "false");
+            T2Info("%s: %s\n", obj_name, obj->via.boolean ? "true" : "false");
             break;
         case MSGPACK_OBJECT_POSITIVE_INTEGER:
-            T2Debug("%s: %lu\n", obj_name, (unsigned long)obj->via.u64);
+            T2Info("%s: %lu\n", obj_name, (unsigned long)obj->via.u64);
             break;
         case MSGPACK_OBJECT_NEGATIVE_INTEGER:
-            T2Debug("%s: %ld\n", obj_name, (signed long)obj->via.i64);
+            T2Info("%s: %ld\n", obj_name, (signed long)obj->via.i64);
             break;
         case MSGPACK_OBJECT_FLOAT:
-            T2Debug("%s: %f\n", obj_name, obj->via.f64);
+            T2Info("%s: %f\n", obj_name, obj->via.f64);
             break;
         case MSGPACK_OBJECT_STR:
-            T2Debug("%s: %.*s\n", obj_name, obj->via.str.size, obj->via.str.ptr);
+            T2Info("%s: %.*s\n", obj_name, obj->via.str.size, obj->via.str.ptr);
             break;
         case MSGPACK_OBJECT_ARRAY:
-            T2Debug("%s size: %d\n", obj_name, obj->via.array.size);
+            T2Info("%s size: %d\n", obj_name, obj->via.array.size);
             break;
         case MSGPACK_OBJECT_MAP:
-            T2Debug("%s size: %d\n", obj_name, obj->via.map.size);
+            T2Info("%s size: %d\n", obj_name, obj->via.map.size);
             break;
         default:
             T2Info("%s->type is Invalid\n", obj_name);
@@ -1668,7 +1668,7 @@ void msgpack_print(msgpack_object *obj, char *obj_name)
     }
     else
     {
-        T2Debug("%s Object is NULL\n", obj_name);
+        T2Info("%s Object is NULL\n", obj_name);
     }
 }
 
@@ -1746,7 +1746,7 @@ T2ERROR verifyMsgPckTriggerCondition(msgpack_object *value_map)
         T2Error("%s NULL object returning failure\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
 
     TriggerConditionArray = msgpack_get_map_value(value_map, "TriggerCondition");
     MSGPACK_GET_ARRAY_SIZE(TriggerConditionArray, TcArraySize);
@@ -1762,7 +1762,7 @@ T2ERROR verifyMsgPckTriggerCondition(msgpack_object *value_map)
         tcTypeStr = msgpack_get_map_value(tcArrayMap, "type");
         if(tcTypeStr == NULL)
         {
-            T2Debug("Null type %s ++out\n", __FUNCTION__);
+            T2Info("Null type %s ++out\n", __FUNCTION__);
             ret = T2ERROR_FAILURE;
             goto error;
         }
@@ -1771,7 +1771,7 @@ T2ERROR verifyMsgPckTriggerCondition(msgpack_object *value_map)
         tcType = msgpack_strdup(tcTypeStr);
         if(strncmp(tcType, "dataModel", strlen("dataModel") + 1) != 0)
         {
-            T2Debug("Unexpected type %s ++out\n", __FUNCTION__);
+            T2Info("Unexpected type %s ++out\n", __FUNCTION__);
             ret = T2ERROR_FAILURE;
             goto error;
         }
@@ -1779,7 +1779,7 @@ T2ERROR verifyMsgPckTriggerCondition(msgpack_object *value_map)
         tcOperatorStr = msgpack_get_map_value(tcArrayMap, "operator");
         if(tcOperatorStr == NULL)
         {
-            T2Debug("Null operator %s ++out\n", __FUNCTION__);
+            T2Info("Null operator %s ++out\n", __FUNCTION__);
             ret = T2ERROR_FAILURE;
             goto error;
         }
@@ -1791,7 +1791,7 @@ T2ERROR verifyMsgPckTriggerCondition(msgpack_object *value_map)
                 (strncmp(tcOperator, "gt", strlen("gt") + 1) != 0) &&
                 (strncmp(tcOperator, "eq", strlen("eq") + 1) != 0))
         {
-            T2Debug("Unexpected operator %s ++out\n", __FUNCTION__);
+            T2Info("Unexpected operator %s ++out\n", __FUNCTION__);
             ret = T2ERROR_FAILURE;
             goto error;
         }
@@ -1801,7 +1801,7 @@ T2ERROR verifyMsgPckTriggerCondition(msgpack_object *value_map)
             tcThresholdInt = msgpack_get_map_value(tcArrayMap, "threshold");
             if(tcThresholdInt == NULL)
             {
-                T2Debug("Null threshold %s ++out\n", __FUNCTION__);
+                T2Info("Null threshold %s ++out\n", __FUNCTION__);
                 ret = T2ERROR_FAILURE;
                 goto error;
             }
@@ -1810,7 +1810,7 @@ T2ERROR verifyMsgPckTriggerCondition(msgpack_object *value_map)
         tcReferenceStr = msgpack_get_map_value(tcArrayMap, "reference");
         if(tcReferenceStr == NULL)
         {
-            T2Debug("Null reference %s ++out\n", __FUNCTION__);
+            T2Info("Null reference %s ++out\n", __FUNCTION__);
             ret = T2ERROR_FAILURE;
             goto error;
         }
@@ -1819,7 +1819,7 @@ T2ERROR verifyMsgPckTriggerCondition(msgpack_object *value_map)
         tcReference = msgpack_strdup(tcReferenceStr);
         if(strlen(tcReference) == 0)
         {
-            T2Debug("Unexpected reference %s ++out\n", __FUNCTION__);
+            T2Info("Unexpected reference %s ++out\n", __FUNCTION__);
             ret = T2ERROR_FAILURE;
             goto error;
         }
@@ -1847,7 +1847,7 @@ error:
         }
     }
 
-    T2Debug("%s ++out\n", __FUNCTION__);
+    T2Info("%s ++out\n", __FUNCTION__);
     return ret;
 }
 
@@ -1891,7 +1891,7 @@ T2ERROR time_param_MsgPackReporting_Adjustments_valid_set(Profile *profile, msgp
         {
             msgpack_print(ReportOnUpdate_boolean, msgpack_get_obj_name(ReportOnUpdate_boolean));
             MSGPACK_GET_NUMBER(ReportOnUpdate_boolean, profile->reportOnUpdate);
-            T2Debug("profile->reportingAdjust->reportOnUpdate: %u\n", profile->reportOnUpdate);
+            T2Info("profile->reportingAdjust->reportOnUpdate: %u\n", profile->reportOnUpdate);
         }
         if(profile->timeRef == NULL || strcmp(profile->timeRef, DEFAULT_TIME_REFERENCE) == 0)  //Property 'FirstReportingInterval' if present along with Timereference,  FirstReportingInterval shall be ignored
         {
@@ -1899,7 +1899,7 @@ T2ERROR time_param_MsgPackReporting_Adjustments_valid_set(Profile *profile, msgp
             {
                 msgpack_print(FirstReportInterval_u64, msgpack_get_obj_name(FirstReportInterval_u64));
                 MSGPACK_GET_NUMBER(FirstReportInterval_u64, profile->firstReportingInterval);
-                T2Debug("profile->reportingAdjust->firstReportingInterval: %d\n", profile->firstReportingInterval);
+                T2Info("profile->reportingAdjust->firstReportingInterval: %d\n", profile->firstReportingInterval);
             }
         }
         if(profile->timeRef != NULL && strcmp(profile->timeRef, DEFAULT_TIME_REFERENCE) != 0)  //This value is only valid when TimeReference is different from the default.
@@ -1908,7 +1908,7 @@ T2ERROR time_param_MsgPackReporting_Adjustments_valid_set(Profile *profile, msgp
             {
                 msgpack_print(MaxUploadLatency_u64, msgpack_get_obj_name(MaxUploadLatency_u64));
                 MSGPACK_GET_NUMBER(MaxUploadLatency_u64, profile->maxUploadLatency);
-                T2Debug("profile->reportingAdjust->maxUploadLatency: %dms\n", profile->maxUploadLatency);
+                T2Info("profile->reportingAdjust->maxUploadLatency: %dms\n", profile->maxUploadLatency);
             }
         }
     }
@@ -2008,19 +2008,19 @@ T2ERROR addParameterMsgpack_marker_config(Profile* profile, msgpack_object* valu
         Parameter_reportEmpty_boolean = msgpack_get_map_value(Parameter_array_map, "reportEmpty");
         msgpack_print(Parameter_reportEmpty_boolean, msgpack_get_obj_name(Parameter_reportEmpty_boolean));
         MSGPACK_GET_NUMBER(Parameter_reportEmpty_boolean, reportEmpty);
-        T2Debug("reportEmpty: %u\n", reportEmpty);
+        T2Info("reportEmpty: %u\n", reportEmpty);
 
         Parameter_trim_boolean = msgpack_get_map_value(Parameter_array_map, "trim");
         msgpack_print(Parameter_trim_boolean, msgpack_get_obj_name(Parameter_trim_boolean));
         MSGPACK_GET_NUMBER(Parameter_trim_boolean, trim);
-        T2Debug("trimParam: %u\n", trim);
+        T2Info("trimParam: %u\n", trim);
 
         Parameter_regex_str =  msgpack_get_map_value(Parameter_array_map, "regex");
         msgpack_print(Parameter_regex_str, msgpack_get_obj_name(Parameter_regex_str));
         if(Parameter_regex_str != NULL)
         {
             regex = msgpack_strdup(Parameter_regex_str);
-            T2Debug("regex param = %s\n", regex);
+            T2Info("regex param = %s\n", regex);
         }
 
         if(0 == msgpack_strcmp(Parameter_type_str, "dataModel"))
@@ -2064,7 +2064,7 @@ T2ERROR addParameterMsgpack_marker_config(Profile* profile, msgpack_object* valu
             Parameter_reportTimestamp_str = msgpack_get_map_value(Parameter_array_map, "reportTimestamp");
             if(method)
             {
-                T2Debug("Method property is present and the value is %s\n", method);
+                T2Info("Method property is present and the value is %s\n", method);
                 if(!(strcmp(method, "subscribe")))
                 {
                     T2Info("Method is subscribe converting the parameter to event type\n");
@@ -2160,7 +2160,7 @@ T2ERROR addParameterMsgpack_marker_config(Profile* profile, msgpack_object* valu
             continue;
         }
 
-        T2Debug("%s : reportTimestamp = %d\n", __FUNCTION__, rtformat);
+        T2Info("%s : reportTimestamp = %d\n", __FUNCTION__, rtformat);
         if(header != NULL && content != NULL)
         {
             ret = addParameter(profile, header, content, logfile, skipFrequency, firstSeekFromEOF, paramtype, use, reportEmpty, rtformat, trim, regex);
@@ -2205,7 +2205,7 @@ T2ERROR addParameterMsgpack_marker_config(Profile* profile, msgpack_object* valu
         }
         else
         {
-            T2Debug("Added parameter:%s \n", header);
+            T2Info("Added parameter:%s \n", header);
             profileParamCount++;
         }
         free(header);
@@ -2218,7 +2218,7 @@ T2ERROR addParameterMsgpack_marker_config(Profile* profile, msgpack_object* valu
     // GrepMarkerlist expects the list to be sorted based on logfile names
     Vector_Sort(profile->gMarkerList,  sizeof(GrepMarker*), compareLogFileNames);
 
-    T2Debug("Added parameter count:%d \n", profileParamCount);
+    T2Info("Added parameter count:%d \n", profileParamCount);
     return T2ERROR_SUCCESS;
 }
 
@@ -2343,7 +2343,7 @@ T2ERROR protocolSetMsgpack(Profile *profile, msgpack_object* value_map, msgpack_
                 }
                 else
                 {
-                    T2Debug("Added  request URIparameterReference: %s \n", href);
+                    T2Info("Added  request URIparameterReference: %s \n", href);
                     httpParamCount++;
                 }
 
@@ -2351,7 +2351,7 @@ T2ERROR protocolSetMsgpack(Profile *profile, msgpack_object* value_map, msgpack_
                 free(hname);
             }
         }
-        T2Debug("Added URI parameter count:%d \n", httpParamCount);
+        T2Info("Added URI parameter count:%d \n", httpParamCount);
     }
     if ( 0 == msgpack_strcmp(Protocol_str, "RBUS_METHOD") )
     {
@@ -2387,14 +2387,14 @@ T2ERROR protocolSetMsgpack(Profile *profile, msgpack_object* value_map, msgpack_
                 }
                 else
                 {
-                    T2Debug("Added  request URIparameterReference: %s \n", name);
+                    T2Info("Added  request URIparameterReference: %s \n", name);
                     rbusMethodParamCount++;
                 }
             }
             free(name);
             free(value);
         }
-        T2Debug("Added Rbus_method parameter count:%d \n", rbusMethodParamCount);
+        T2Info("Added Rbus_method parameter count:%d \n", rbusMethodParamCount);
     }
     return T2ERROR_SUCCESS;
 }
@@ -2423,7 +2423,7 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     msgpack_object *RbusMethod_map;
     int ret = 0;
 
-    T2Debug("%s --in\n", __FUNCTION__);
+    T2Info("%s --in\n", __FUNCTION__);
     Profile *profile = (Profile *) malloc(sizeof(Profile));
     if(profile == NULL)
     {
@@ -2549,12 +2549,12 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     DeleteOnTimout_boolean = msgpack_get_map_value(value_map, "DeleteOnTimeout");
     msgpack_print(DeleteOnTimout_boolean, msgpack_get_obj_name(DeleteOnTimeout_boolean));
     MSGPACK_GET_NUMBER(DeleteOnTimout_boolean, profile->deleteonTimeout);
-    T2Debug("profile->deleteonTimeout: %u\n", profile->deleteonTimeout);
+    T2Info("profile->deleteonTimeout: %u\n", profile->deleteonTimeout);
 
     GenerateNow_boolean = msgpack_get_map_value(value_map, "GenerateNow");
     msgpack_print(GenerateNow_boolean, msgpack_get_obj_name(GenerateNow_boolean));
     MSGPACK_GET_NUMBER(GenerateNow_boolean, profile->generateNow);
-    T2Debug("profile->generateNow: %u\n", profile->generateNow);
+    T2Info("profile->generateNow: %u\n", profile->generateNow);
 
     ActivationTimeout_u64 = msgpack_get_map_value(value_map, "ActivationTimeOut");
     msgpack_print(ActivationTimeout_u64, msgpack_get_obj_name(ActivationTimeout_u64));
@@ -2575,7 +2575,7 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     }
     if(profile->reportingInterval)
     {
-        T2Debug("profile->reportingInterval: %u\n", profile->reportingInterval);
+        T2Info("profile->reportingInterval: %u\n", profile->reportingInterval);
     }
     if(profile->reportingInterval > profile->activationTimeoutPeriod)  //When Reporting interval and activation time is not given in the profile it takes the max value INFINITE TIMEOUT or UINT_MAX
     {
@@ -2781,7 +2781,7 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     {
         profile->RootName = strdup("Report");
     }
-    T2Debug("profile->RootName: %s\n", profile->RootName);
+    T2Info("profile->RootName: %s\n", profile->RootName);
     //Protocol Configuration
     retval = protocolSetMsgpack(profile, value_map, Protocol_str); //Protocol Parameter
     if(retval != T2ERROR_SUCCESS)
@@ -2804,6 +2804,6 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     }
     addMsgPckTriggerCondition(profile, value_map);
     *profile_dp = profile;
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return retval;
 }

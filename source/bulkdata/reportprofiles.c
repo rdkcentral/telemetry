@@ -119,22 +119,22 @@ static void drop_root()
 #if defined(FEATURE_SUPPORT_WEBCONFIG)
 uint32_t getTelemetryBlobVersion(char* subdoc)
 {
-    T2Debug("Inside getTelemetryBlobVersion subdoc %s \n", subdoc);
+    T2Info("Inside getTelemetryBlobVersion subdoc %s \n", subdoc);
     uint32_t version = 0, ret = 0;
     FILE *file = NULL;
     file = fopen(WEBCONFIG_BLOB_VERSION,  "r+");
     if(file == NULL)
     {
-        T2Debug("Failed to read from /nvram/telemetry_webconfig_blob_version.txt \n");
+        T2Info("Failed to read from /nvram/telemetry_webconfig_blob_version.txt \n");
     }
     else
     {
         /* CID 157387: Unchecked return value from library */
         if ((ret = fscanf(file, "%u", &version)) != 1)
         {
-            T2Debug("Failed to read version from /nvram/telemetry_webconfig_blob_version.txt \n");
+            T2Info("Failed to read version from /nvram/telemetry_webconfig_blob_version.txt \n");
         }
-        T2Debug("Version of Telemetry blob is %u\n", version);
+        T2Info("Version of Telemetry blob is %u\n", version);
         fclose(file);
         return version;
     }
@@ -144,13 +144,13 @@ uint32_t getTelemetryBlobVersion(char* subdoc)
 
 int setTelemetryBlobVersion(char* subdoc, uint32_t version)
 {
-    T2Debug("Inside setTelemetryBlobVersion subdoc %s version %u \n", subdoc, version);
+    T2Info("Inside setTelemetryBlobVersion subdoc %s version %u \n", subdoc, version);
     FILE* file  = NULL;
     file = fopen(WEBCONFIG_BLOB_VERSION, "w+");
     if(file != NULL)
     {
         fprintf(file, "%u", version);
-        T2Debug("New Version of Telemetry blob is %u\n", version);
+        T2Info("New Version of Telemetry blob is %u\n", version);
         fclose(file);
         return 0;
     }
@@ -187,16 +187,16 @@ int tele_web_config_init()
 
     getVersion versionGet = getTelemetryBlobVersion;
     setVersion versionSet = setTelemetryBlobVersion;
-    T2Debug("Calling Call Back Function \n");
+    T2Info("Calling Call Back Function \n");
     register_sub_docs(blobData, SUBDOC_COUNT, versionGet, versionSet);
-    T2Debug("Called register_sub_docs Succussfully \n");
+    T2Info("Called register_sub_docs Succussfully \n");
     return 0;
 }
 #endif // CCSP_SUPPORT_ENABLED
 
 void ReportProfiles_Interrupt()
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
 
     // Interrupt the multi profile first as the DCADONE Flag is added from the xconf
     sendLogUploadInterruptToScheduler();
@@ -212,7 +212,7 @@ void ReportProfiles_Interrupt()
         }
     }
 
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
 }
 
 void ReportProfiles_TimeoutCb(char* profileName, bool isClearSeekMap)
@@ -222,12 +222,12 @@ void ReportProfiles_TimeoutCb(char* profileName, bool isClearSeekMap)
     T2Info("calling ProfileXConf_isNameEqual function form %s and line %d\n", __FUNCTION__, __LINE__);
     if(ProfileXConf_isNameEqual(profileName))
     {
-        T2Debug("isclearSeekmap = %s \n", isClearSeekMap ? "true" : "false");
+        T2Info("isclearSeekmap = %s \n", isClearSeekMap ? "true" : "false");
         ProfileXConf_notifyTimeout(isClearSeekMap, false);
     }
     else
     {
-        T2Debug("isclearSeekmap = %s \n", isClearSeekMap ? "true" : "false");
+        T2Info("isclearSeekmap = %s \n", isClearSeekMap ? "true" : "false");
         NotifyTimeout(profileName, isClearSeekMap);
     }
 
@@ -239,7 +239,7 @@ void ReportProfiles_ActivationTimeoutCb(char* profileName)
     T2Info("%s ++in\n", __FUNCTION__);
 
     bool isDeleteRequired = false;
-    T2Debug("calling ProfileXConf_isNameEqual function form %s and line %d\n", __FUNCTION__, __LINE__);
+    T2Info("calling ProfileXConf_isNameEqual function form %s and line %d\n", __FUNCTION__, __LINE__);
 
     if(ProfileXConf_isNameEqual(profileName))
     {
@@ -283,8 +283,8 @@ void ReportProfiles_ActivationTimeoutCb(char* profileName)
 
 T2ERROR ReportProfiles_storeMarkerEvent(char *profileName, T2Event *eventInfo)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
-    T2Debug("calling ProfileXConf_isNameEqual function form %s and line %d\n", __FUNCTION__, __LINE__);
+    T2Info("%s ++in\n", __FUNCTION__);
+    T2Info("calling ProfileXConf_isNameEqual function form %s and line %d\n", __FUNCTION__, __LINE__);
 
     if(ProfileXConf_isNameEqual(profileName))
     {
@@ -295,13 +295,13 @@ T2ERROR ReportProfiles_storeMarkerEvent(char *profileName, T2Event *eventInfo)
         Profile_storeMarkerEvent(profileName, eventInfo);
     }
 
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
 T2ERROR ReportProfiles_setProfileXConf(ProfileXConf *profile)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     if(T2ERROR_SUCCESS != ProfileXConf_set(profile))
     {
         T2Error("Failed to set XConf profile\n");
@@ -319,13 +319,13 @@ T2ERROR ReportProfiles_setProfileXConf(ProfileXConf *profile)
     }
     T2ER_StartDispatchThread();
 
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
 T2ERROR ReportProfiles_deleteProfileXConf(ProfileXConf *profile)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     if(ProfileXConf_isSet())
     {
         T2ER_StopDispatchThread();
@@ -336,13 +336,13 @@ T2ERROR ReportProfiles_deleteProfileXConf(ProfileXConf *profile)
 
         return ProfileXConf_delete(profile);
     }
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
 T2ERROR ReportProfiles_addReportProfile(Profile *profile)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
 
     if(T2ERROR_SUCCESS != addProfile(profile))
     {
@@ -357,7 +357,7 @@ T2ERROR ReportProfiles_addReportProfile(Profile *profile)
 
     T2ER_StartDispatchThread(); //Error case can be ignored as Dispatch thread may be running already
 
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
@@ -365,13 +365,13 @@ T2ERROR ReportProfiles_deleteProfile(const char* profileName)
 {
 
     bool is_profile_enable = false;
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     is_profile_enable = isProfileEnabled(profileName);
 
     if(T2ERROR_SUCCESS != deleteProfile(profileName))
     {
         T2Error("Failed to delete profile : %s\n", profileName);
-        T2Debug("%s --out\n", __FUNCTION__);
+        T2Info("%s --out\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
     if(is_profile_enable == true)
@@ -392,30 +392,30 @@ T2ERROR ReportProfiles_deleteProfile(const char* profileName)
         }
     }
 
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
 void profilemem_usage(unsigned int *value)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     *value = profilemem;
-    T2Debug("value is %u\n", *value);
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("value is %u\n", *value);
+    T2Info("%s --out\n", __FUNCTION__);
 }
 
 void T2totalmem_calculate()
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     getrusage(RUSAGE_SELF, &pusage);
     profilemem = (unsigned int)pusage.ru_maxrss;
-    T2Debug("T2 memory = %u\n", profilemem);
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("T2 memory = %u\n", profilemem);
+    T2Info("%s --out\n", __FUNCTION__);
 }
 
 static void* reportOnDemand(void *input)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
 
     char* action = (char*) input;
     if(!input)
@@ -424,7 +424,7 @@ static void* reportOnDemand(void *input)
         return NULL ;
     }
 
-    T2Debug("%s : action = %s \n", __FUNCTION__, action);
+    T2Info("%s : action = %s \n", __FUNCTION__, action);
     if(!strncmp(action, ON_DEMAND_ACTION_UPLOAD, MAX_PROFILENAMES_LENGTH))
     {
         T2Info("Upload XCONF report on demand \n");
@@ -442,12 +442,12 @@ static void* reportOnDemand(void *input)
     }
 
     return NULL;
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
 }
 
 T2ERROR privacymode_do_not_share ()
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
 #ifndef DEVICE_EXTENDER
     stopXConfClient();
     if(T2ERROR_SUCCESS == startXConfClient())
@@ -461,13 +461,13 @@ T2ERROR privacymode_do_not_share ()
     }
     return T2ERROR_SUCCESS;
 #endif
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
 T2ERROR initReportProfiles()
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     if(rpInitialized)
     {
         T2Error("%s ReportProfiles already initialized - ignoring\n", __FUNCTION__);
@@ -547,7 +547,7 @@ T2ERROR initReportProfiles()
 #endif
     t2Version = strdup("2.0.1"); // Setting the version to 2.0.1
     {
-        T2Debug("T2 Version = %s\n", t2Version);
+        T2Info("T2 Version = %s\n", t2Version);
         initProfileList(previousLogCheck);
         free(t2Version);
         // Init datamodel processing thread
@@ -557,7 +557,7 @@ T2ERROR initReportProfiles()
             if(isRbusEnabled())
 #endif
             {
-                T2Debug("Enabling datamodel for report profiles in RBUS mode \n");
+                T2Info("Enabling datamodel for report profiles in RBUS mode \n");
                 callBackHandlers *interfaceListForBus = NULL;
                 interfaceListForBus = (callBackHandlers*) malloc(sizeof(callBackHandlers));
                 if(interfaceListForBus)
@@ -583,7 +583,7 @@ T2ERROR initReportProfiles()
             else
             {
                 // Register TR-181 DM for T2.0
-                T2Debug("Enabling datamodel for report profiles in DBUS mode \n");
+                T2Info("Enabling datamodel for report profiles in DBUS mode \n");
                 if(0 != initTR181_dm())
                 {
                     T2Error("Unable to initialize TR181!!! \n");
@@ -600,14 +600,14 @@ T2ERROR initReportProfiles()
             }
             else
             {
-                T2Debug("tele_web_config_init Successful\n");
+                T2Info("tele_web_config_init Successful\n");
 
                 //Informing Webconfig about telemetry component crash
                 check_component_crash(TELEMETRY_INIT_FILE_BOOTUP);
 
                 //Touching TELEMETRY_INIT_FILE_BOOTUP during Bootup
                 system("touch /tmp/telemetry_initialized_bootup");
-                T2Debug(" %s Touched \n", TELEMETRY_INIT_FILE_BOOTUP);
+                T2Info(" %s Touched \n", TELEMETRY_INIT_FILE_BOOTUP);
             }
 #endif
             //Web Config Framework init ends
@@ -649,7 +649,7 @@ T2ERROR initReportProfiles()
     bootFlag = fopen(BOOTFLAG, "w+");
     if(bootFlag)
     {
-        T2Debug("%s Touched \n", BOOTFLAG);
+        T2Info("%s Touched \n", BOOTFLAG);
         fclose(bootFlag);
     }
     else
@@ -657,7 +657,7 @@ T2ERROR initReportProfiles()
         T2Error("Failed to create T2 bootflag %s \n", BOOTFLAG);
     }
 
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     T2Info("Init ReportProfiles Successful\n");
     return T2ERROR_SUCCESS;
 }
@@ -693,7 +693,7 @@ void generateDcaReport(bool isDelayed, bool isOnDemand)
 
 T2ERROR ReportProfiles_uninit( )
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     if(!rpInitialized)
     {
         T2Error("%s ReportProfiles is not initialized yet - ignoring\n", __FUNCTION__);
@@ -729,14 +729,14 @@ T2ERROR ReportProfiles_uninit( )
     free(bulkdata.encodingTypes);
     bulkdata.encodingTypes = NULL ;
 
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     T2Info("Uninit ReportProfiles Successful\n");
     return T2ERROR_SUCCESS;
 }
 
 T2ERROR RemovePreRPfromDisk(const char* path, hash_map_t *map)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     struct dirent *entry;
     DIR *dir = opendir(path);
     if (dir == NULL)
@@ -755,25 +755,25 @@ T2ERROR RemovePreRPfromDisk(const char* path, hash_map_t *map)
 
         if(NULL == hash_map_get(map, entry->d_name))
         {
-            T2Debug("%s : Removed %s report profile from the disk due to coming new report profile \n", __FUNCTION__, entry->d_name);
+            T2Info("%s : Removed %s report profile from the disk due to coming new report profile \n", __FUNCTION__, entry->d_name);
             removeProfileFromDisk(REPORTPROFILES_PERSISTENCE_PATH, entry->d_name);
         }
 
     }
     closedir(dir);
-    T2Debug("%s ++out\n", __FUNCTION__);
+    T2Info("%s ++out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
 static void freeProfilesHashMap(void *data)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     if(data != NULL)
     {
         hash_element_t *element = (hash_element_t *) data;
         if(element->key)
         {
-            T2Debug("Freeing hash entry element for Profiles object Name:%s\n", element->key);
+            T2Info("Freeing hash entry element for Profiles object Name:%s\n", element->key);
             free(element->key);
         }
         if (element->data)
@@ -782,25 +782,25 @@ static void freeProfilesHashMap(void *data)
         }
         free(element);
     }
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
 }
 
 static void freeReportProfileHashMap(void *data)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     if (data != NULL)
     {
         hash_element_t *element = (hash_element_t *) data;
 
         if (element->key)
         {
-            T2Debug("Freeing hash entry element for Profiles object Name:%s\n", element->key);
+            T2Info("Freeing hash entry element for Profiles object Name:%s\n", element->key);
             free(element->key);
         }
 
         if (element->data)
         {
-            T2Debug("Freeing element data\n");
+            T2Info("Freeing element data\n");
             ReportProfile *entry = (ReportProfile *)element->data;
 
             if (entry->hash)
@@ -819,12 +819,12 @@ static void freeReportProfileHashMap(void *data)
         free(element);
         element = NULL ;
     }
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
 }
 
 T2ERROR deleteAllReportProfiles()
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
 
     if (T2ERROR_SUCCESS != deleteAllProfiles(true))
     {
@@ -847,7 +847,7 @@ T2ERROR deleteAllReportProfiles()
         T2ER_StartDispatchThread();
     }
 
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
 
     return T2ERROR_SUCCESS;
 }
@@ -855,11 +855,11 @@ T2ERROR deleteAllReportProfiles()
 void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofiletypes)
 {
 
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     if(profiles_root == NULL)
     {
         T2Error("Profile profiles_root is null . Unable to ReportProfiles_ProcessReportProfilesBlob \n");
-        T2Debug("%s --out\n", __FUNCTION__);
+        T2Info("%s --out\n", __FUNCTION__);
         return;
     }
 #if defined(PRIVACYMODES_CONTROL)
@@ -887,13 +887,13 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
         }
         else
         {
-            T2Debug("Empty report profiles in configuration. Delete all active profiles. \n");
+            T2Info("Empty report profiles in configuration. Delete all active profiles. \n");
             if (T2ERROR_SUCCESS != deleteAllReportProfiles())
             {
                 T2Error("Failed to delete all profiles \n");
             }
         }
-        T2Debug("%s --out\n", __FUNCTION__);
+        T2Info("%s --out\n", __FUNCTION__);
         return;
     }
 
@@ -961,12 +961,12 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
         while(count >= 0)
         {
             profileNameKey = hash_map_lookupKey(profileHashMap, count--);
-            T2Debug("%s Map content from disk = %s \n", __FUNCTION__, profileNameKey);
+            T2Info("%s Map content from disk = %s \n", __FUNCTION__, profileNameKey);
             if(NULL == hash_map_get(receivedProfileHashMap, profileNameKey))
             {
-                T2Debug("%s Profile %s not present in current config . Remove profile from disk \n", __FUNCTION__, profileNameKey);
+                T2Info("%s Profile %s not present in current config . Remove profile from disk \n", __FUNCTION__, profileNameKey);
                 removeProfileFromDisk(DirPath, profileNameKey);
-                T2Debug("%s Terminate profile %s \n", __FUNCTION__, profileNameKey);
+                T2Info("%s Terminate profile %s \n", __FUNCTION__, profileNameKey);
                 ReportProfiles_deleteProfile(profileNameKey);
                 rm_flag = true;
             }
@@ -993,7 +993,7 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
 
             if(!strcmp(existingProfileHash, profileEntry->hash))
             {
-                T2Debug("%s Profile hash for %s is same as previous profile, ignore processing config\n", __FUNCTION__, profileName);
+                T2Info("%s Profile hash for %s is same as previous profile, ignore processing config\n", __FUNCTION__, profileName);
                 free(existingProfileHash);
                 continue;
             }
@@ -1036,7 +1036,7 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
         }
         else
         {
-            T2Debug("%s Previous entry for profile %s not found . Adding new profile.\n", __FUNCTION__, profileName);
+            T2Info("%s Previous entry for profile %s not found . Adding new profile.\n", __FUNCTION__, profileName);
             Profile *profile = 0;
 
             if(T2ERROR_SUCCESS == processConfiguration(&(profileEntry->config), profileName, profileEntry->hash, &profile))   //CHECK if process configuration should have locking mechanism
@@ -1081,7 +1081,7 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
     }
     hash_map_destroy(receivedProfileHashMap, freeReportProfileHashMap);
     hash_map_destroy(profileHashMap, freeProfilesHashMap);
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return;
 }
 
@@ -1126,11 +1126,11 @@ void msgpack_free_blob(void *exec_data)
 
 size_t calculateTimeout(size_t numOfEntries)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     int noOfProfilesInDevice = getProfileCount();
     size_t timeOut = (noOfProfilesInDevice + 1) * MAXTIMEOUT_PERPROFILE * (numOfEntries + 1);//adding +1 to protect from any value being 0
     T2Info("Timeout value for Webconfig is calculated with profile count : %d and maxtimeout per profile : %d is %zu \n", noOfProfilesInDevice, MAXTIMEOUT_PERPROFILE, timeOut);
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return timeOut;
 }
 
@@ -1152,7 +1152,7 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob, int msg
     msgpack->msgpack_blob = msgpack_blob;
     msgpack->msgpack_blob_size = msgpack_blob_size;
 
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     msgpack_unpacked result;
     size_t off = 0;
     msgpack_unpack_return ret;
@@ -1170,7 +1170,7 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob, int msg
         T2Error("The data in the buf is invalid format.\n");
         __msgpack_free_blob((void *)msgpack);
         msgpack_unpacked_destroy(&result);
-        T2Debug("%s --out\n", __FUNCTION__);
+        T2Info("%s --out\n", __FUNCTION__);
         return;
     }
     profiles_root = &result.data;
@@ -1179,7 +1179,7 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob, int msg
         T2Error("Profile profiles_root is null . Unable to ReportProfiles_ProcessReportProfilesBlob \n");
         __msgpack_free_blob((void *)msgpack);
         msgpack_unpacked_destroy(&result);
-        T2Debug("%s --out\n", __FUNCTION__);
+        T2Info("%s --out\n", __FUNCTION__);
         return;
     }
 
@@ -1201,7 +1201,7 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob, int msg
         __ReportProfiles_ProcessReportProfilesMsgPackBlob((void *)msgpack, false);
         __msgpack_free_blob((void *)msgpack);
         msgpack_unpacked_destroy(&result);
-        T2Debug("%s --out\n", __FUNCTION__);
+        T2Info("%s --out\n", __FUNCTION__);
         /* Return - further processing are only for webconfig framework which yet to be ported to generic layer from broadband */
         return;
     }
@@ -1211,7 +1211,7 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob, int msg
     execData *execDataPf = NULL;
     subdoc_version = (uint64_t)version->via.u64;
     transac_id = (uint16_t)transaction_id->via.u64;
-    T2Debug("subdocversion is %llu transac_id in integer is %u"
+    T2Info("subdocversion is %llu transac_id in integer is %u"
             " entry_count is %d \n", (long long unsigned int)subdoc_version, transac_id, entry_count);
 
     execDataPf = (execData*) malloc (sizeof(execData));
@@ -1220,7 +1220,7 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob, int msg
         T2Error("execData memory allocation failed\n");
         __msgpack_free_blob((void *)msgpack);
         msgpack_unpacked_destroy(&result);
-        T2Debug("%s --out\n", __FUNCTION__);
+        T2Info("%s --out\n", __FUNCTION__);
         return;
     }
     memset(execDataPf, 0, sizeof(execData));
@@ -1233,15 +1233,15 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob, int msg
     execDataPf->executeBlobRequest = Process_Telemetry_WebConfigRequest;
     execDataPf->rollbackFunc = NULL;
     execDataPf->freeResources = msgpack_free_blob;
-    T2Debug("subdocversion is %d transac_id in integer is %d entry_count is %lu subdoc_name is %s"
+    T2Info("subdocversion is %d transac_id in integer is %d entry_count is %lu subdoc_name is %s"
             " calcTimeout is %p\n", execDataPf->version, execDataPf->txid, (ulong) execDataPf->numOfEntries,
             execDataPf->subdoc_name, execDataPf->calcTimeout);
 
     PushBlobRequest(execDataPf);
-    T2Debug("PushBlobRequest complete\n");
+    T2Info("PushBlobRequest complete\n");
     msgpack_unpacked_destroy(&result);
 #endif
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return;
 }
 
@@ -1264,7 +1264,7 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
     char *msgpack_blob = ((struct __msgpack__ *)msgpack)->msgpack_blob;
     int msgpack_blob_size = ((struct __msgpack__ *)msgpack)->msgpack_blob_size;
 
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     msgpack_unpacked result;
     size_t off = 0;
     msgpack_unpack_return ret;
@@ -1284,7 +1284,7 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
     if(profiles_root == NULL)
     {
         T2Error("Profile profiles_root is null . Unable to ReportProfiles_ProcessReportProfilesBlob \n");
-        T2Debug("%s --out\n", __FUNCTION__);
+        T2Info("%s --out\n", __FUNCTION__);
         return T2ERROR_INVALID_ARGS;
     }
 
@@ -1294,12 +1294,12 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
     T2Info("Number of report profiles in current configuration is %d \n", profiles_count);
     if(profiles_count == 0)
     {
-        T2Debug("Empty report profiles in configuration. Delete all active profiles. \n");
+        T2Info("Empty report profiles in configuration. Delete all active profiles. \n");
         if (T2ERROR_SUCCESS != deleteAllReportProfiles())
         {
             T2Error("Failed to delete all profiles \n");
         }
-        T2Debug("%s --out\n", __FUNCTION__);
+        T2Info("%s --out\n", __FUNCTION__);
         return T2ERROR_PROFILE_NOT_FOUND;
     }
     hash_map_t *profileHashMap;
@@ -1361,7 +1361,7 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
         msgpack_object* hashObj = msgpack_get_map_value(singleProfile, "hash");
         if (hashObj == NULL)
         {
-            T2Debug("Hash value is null checking for versionHash value \n");
+            T2Info("Hash value is null checking for versionHash value \n");
             hashObj = msgpack_get_map_value(singleProfile, "versionHash");
         }
         msgpack_object* profileObj = msgpack_get_map_value(singleProfile, "value");
@@ -1434,10 +1434,10 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
     if (save_flag)
     {
         clearPersistenceFolder(REPORTPROFILES_PERSISTENCE_PATH);
-        T2Debug("Persistent folder is cleared\n");
+        T2Info("Persistent folder is cleared\n");
         MsgPackSaveConfig(REPORTPROFILES_PERSISTENCE_PATH, MSGPACK_REPORTPROFILES_PERSISTENT_FILE,
                           msgpack_blob, msgpack_blob_size);
-        T2Debug("%s is saved on disk \n", MSGPACK_REPORTPROFILES_PERSISTENT_FILE);
+        T2Info("%s is saved on disk \n", MSGPACK_REPORTPROFILES_PERSISTENT_FILE);
     }
     T2totalmem_calculate();
 
@@ -1451,7 +1451,7 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
     msgpack_unpacked_destroy(&result);
     hash_map_destroy(profileHashMap, freeProfilesHashMap);
     clearPersistenceFolder(CACHED_MESSAGE_PATH);
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
@@ -1472,7 +1472,7 @@ bool isMtlsEnabled(void)
         {
             if(paramValue != NULL && (strncasecmp(paramValue, "true", 4) == 0))
             {
-                T2Debug("mTLS support is Enabled\n");
+                T2Info("mTLS support is Enabled\n");
                 isT2MtlsEnable = true;
             }
             initT2MtlsEnable = true;
@@ -1491,7 +1491,7 @@ bool isMtlsEnabled(void)
         {
             if(paramValue != NULL && (strncasecmp(paramValue, "sky-uk", 6) == 0))
             {
-                T2Debug("Enabling mTLS for sky-uk partner\n");
+                T2Info("Enabling mTLS for sky-uk partner\n");
                 isT2MtlsEnable = true;
                 initT2MtlsEnable = true;
                 free(paramValue);

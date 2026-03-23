@@ -98,9 +98,6 @@ static const char *strnstr(const char *haystack, const char *needle, size_t len)
     {
         return NULL;
     }
-    if(strcmp(needle, "PreviousRebootInfo:") == 0 && strcmp(needle, "PreviousRebootReason:") == 0){
-       T2Info("strnstr: searching in haystack (len=%zu): %.*s\n", len, (int)len, haystack);
-    }
     size_t needle_len = strlen(needle);
     if (needle_len == 0)
     {
@@ -526,6 +523,7 @@ static int getCountPatternMatch(FileDescriptor* fileDescriptor, GrepMarker* mark
 
     // Using the union for efficient memory handling
     marker->u.count = count;
+    T2Info("Count Marker = %s value = %d\n", marker->markerName, count); 
     T2Info("%s --out\n", __FUNCTION__);
     return 0;
 }
@@ -636,7 +634,7 @@ static int getAbsolutePatternMatch(FileDescriptor* fileDescriptor, GrepMarker* m
     {
         marker->u.markerValue = result;
     }
-
+    T2Info("Absolute marker %s and  the value is %s\n", marker->markerName, result);
     T2Info("%s --out\n", __FUNCTION__);
     return 0;
 }

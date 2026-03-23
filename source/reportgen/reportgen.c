@@ -33,7 +33,7 @@
 static bool checkForEmptyString( char* valueString )
 {
     bool isEmpty = false ;
-    T2Debug("%s ++in \n", __FUNCTION__);
+    T2Info("%s ++in \n", __FUNCTION__);
 
     if(valueString)
     {
@@ -48,7 +48,7 @@ static bool checkForEmptyString( char* valueString )
     {
         isEmpty = true;
     }
-    T2Debug("%s --Out with return status as %s \n", __FUNCTION__, (isEmpty ? "true" : "false"));
+    T2Info("%s --Out with return status as %s \n", __FUNCTION__, (isEmpty ? "true" : "false"));
     return isEmpty;
 }
 
@@ -84,14 +84,14 @@ void freeParamValueSt(tr181ValStruct_t **valStructs, int valSize)
 
 void freeProfileValues(void *data)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     if(data != NULL)
     {
         profileValues *profVal = (profileValues *) data;
         freeParamValueSt(profVal->paramValues, profVal->paramValueCount);
         free(profVal);
     }
-    T2Debug("%s --Out\n", __FUNCTION__);
+    T2Info("%s --Out\n", __FUNCTION__);
 }
 
 // convert vector to json array it is responsbility of
@@ -128,7 +128,7 @@ T2ERROR destroyJSONReport(cJSON *jsonObj)
 
 void trimLeadingAndTrailingws(char* string)
 {
-    T2Debug("%s ++in \n", __FUNCTION__);
+    T2Info("%s ++in \n", __FUNCTION__);
     int i = 0, j = 0;
 
     for(i = 0; string[i] == ' ' || string[i] == '\t'; i++); // To find first non-space character in the string
@@ -149,7 +149,7 @@ void trimLeadingAndTrailingws(char* string)
 
     string[j + 1] = '\0';
 
-    T2Debug("%s --Out \n", __FUNCTION__);
+    T2Info("%s --Out \n", __FUNCTION__);
 
 }
 
@@ -181,7 +181,7 @@ static T2ERROR applyRegexToValue(char** inputValue, const char* regexPattern)
     }
     else
     {
-        T2Debug("regcomp() successful, returning value (%d)\n", rc);
+        T2Info("regcomp() successful, returning value (%d)\n", rc);
         rc = regexec(&regpattern, *inputValue, nmatch, pmatch, 0);
         if(rc != 0)
         {
@@ -198,7 +198,7 @@ static T2ERROR applyRegexToValue(char** inputValue, const char* regexPattern)
         }
         else
         {
-            T2Debug("regexec successful, Match is found %.*s\n",
+            T2Info("regexec successful, Match is found %.*s\n",
                     pmatch[0].rm_eo - pmatch[0].rm_so, &(*inputValue)[pmatch[0].rm_so]);
             sprintf(string, "%.*s", pmatch[0].rm_eo - pmatch[0].rm_so, &(*inputValue)[pmatch[0].rm_so]);
             free(*inputValue);
@@ -224,7 +224,7 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
         return T2ERROR_INVALID_ARGS;
     }
     size_t index = 0;
-    T2Debug("%s ++in \n", __FUNCTION__);
+    T2Info("%s ++in \n", __FUNCTION__);
     //printf("%ld %ld\n", Vector_Size(paramNameList), Vector_Size(paramValueList));
 
     for(; index < Vector_Size(paramNameList); index++)
@@ -238,7 +238,7 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
             continue ;
         }
         int paramValCount = ((profileValues *)Vector_At(paramValueList, index))->paramValueCount;
-        T2Debug("Parameter Name : %s valueCount = %d\n", param->name, paramValCount);
+        T2Info("Parameter Name : %s valueCount = %d\n", param->name, paramValCount);
         if(paramValCount == 0)
         {
             if(param->reportEmptyParam)
@@ -293,7 +293,7 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
                         }
                         else
                         {
-                            T2Debug("regcomp() successful, returning value (%d)\n", rc);
+                            T2Info("regcomp() successful, returning value (%d)\n", rc);
                             rc = regexec(&regpattern, paramValues[0]->parameterValue, nmatch, pmatch, 0);
                             if(rc != 0)
                             {
@@ -303,7 +303,7 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
                             }
                             else
                             {
-                                T2Debug("regexec successful, Match is found %.*s\n", pmatch[0].rm_eo - pmatch[0].rm_so, &paramValues[0]->parameterValue[pmatch[0].rm_so]);
+                                T2Info("regexec successful, Match is found %.*s\n", pmatch[0].rm_eo - pmatch[0].rm_so, &paramValues[0]->parameterValue[pmatch[0].rm_so]);
                                 sprintf(string, "%.*s", pmatch[0].rm_eo - pmatch[0].rm_so, &paramValues[0]->parameterValue[pmatch[0].rm_so]);
                                 free(paramValues[0]->parameterValue);
                                 paramValues[0]->parameterValue = strdup(string);
@@ -366,7 +366,7 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
                             }
                             else
                             {
-                                T2Debug("regcomp() successful, returning value (%d)\n", rc);
+                                T2Info("regcomp() successful, returning value (%d)\n", rc);
                                 rc = regexec(&regpattern, paramValues[valIndex]->parameterValue, nmatch, pmatch, 0);
                                 if(rc != 0)
                                 {
@@ -376,7 +376,7 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
                                 }
                                 else
                                 {
-                                    T2Debug("regexec successful, Match is found %.*s\n", pmatch[0].rm_eo - pmatch[0].rm_so, &paramValues[valIndex]->parameterValue[pmatch[0].rm_so]);
+                                    T2Info("regexec successful, Match is found %.*s\n", pmatch[0].rm_eo - pmatch[0].rm_so, &paramValues[valIndex]->parameterValue[pmatch[0].rm_so]);
                                     sprintf(string, "%.*s", pmatch[0].rm_eo - pmatch[0].rm_so, &paramValues[valIndex]->parameterValue[pmatch[0].rm_so]);
                                     free(paramValues[valIndex]->parameterValue);
                                     paramValues[valIndex]->parameterValue = strdup(string);
@@ -408,13 +408,13 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
             }
         }
     }
-    T2Debug("%s --Out \n", __FUNCTION__);
+    T2Info("%s --Out \n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
 T2ERROR encodeStaticParamsInJSON(cJSON *valArray, Vector *staticParamList)
 {
-    T2Debug("%s ++in \n", __FUNCTION__);
+    T2Info("%s ++in \n", __FUNCTION__);
     if(valArray == NULL || staticParamList == NULL)
     {
         T2Error("Invalid or NULL Arguments\n");
@@ -448,13 +448,13 @@ T2ERROR encodeStaticParamsInJSON(cJSON *valArray, Vector *staticParamList)
         }
     }
 
-    T2Debug("%s --Out \n", __FUNCTION__);
+    T2Info("%s --Out \n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
 T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepMarkerList)
 {
-    T2Debug("%s ++in \n", __FUNCTION__);
+    T2Info("%s ++in \n", __FUNCTION__);
     if(valArray == NULL || grepMarkerList == NULL)
     {
         T2Error("Invalid or NULL Arguments\n");
@@ -492,7 +492,7 @@ T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepMarkerList)
                     return T2ERROR_FAILURE;
                 }
                 cJSON_AddItemToArray(valArray, arrayItem);
-                T2Debug("Marker value for : %s is %d\n", grepMarker->markerName, grepMarker->u.count);
+                T2Info("Marker value for : %s is %d\n", grepMarker->markerName, grepMarker->u.count);
                 grepMarker->u.count = 0;
             }
             break;
@@ -530,7 +530,7 @@ T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepMarkerList)
                     }
                     else
                     {
-                        T2Debug("regcomp() successful, returning value (%d)\n", rc);
+                        T2Info("regcomp() successful, returning value (%d)\n", rc);
                         Vector_Create(&regaccumulateValues);
                         for(size_t i = 0; i < Vector_Size(grepMarker->u.accumulatedValues); i++)
                         {
@@ -553,7 +553,7 @@ T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepMarkerList)
                                 }
                                 else
                                 {
-                                    T2Debug("regexec successful, Match is found %.*s\n", pmatch[0].rm_eo - pmatch[0].rm_so, &stringValue[pmatch[0].rm_so]);
+                                    T2Info("regexec successful, Match is found %.*s\n", pmatch[0].rm_eo - pmatch[0].rm_so, &stringValue[pmatch[0].rm_so]);
                                     sprintf(string[i], "%.*s", pmatch[0].rm_eo - pmatch[0].rm_so, &stringValue[pmatch[0].rm_so]);
                                 }
                                 Vector_PushBack(regaccumulateValues, string[i]);
@@ -596,7 +596,7 @@ T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepMarkerList)
                         return T2ERROR_FAILURE;
                     }
                     convertVectorToJson(TimevectorToarray, grepMarker->accumulatedTimestamp);
-                    T2Debug("convertVectorToJson is successful for timestamps\n");
+                    T2Info("convertVectorToJson is successful for timestamps\n");
                     Vector_Clear(grepMarker->accumulatedTimestamp, freeAccumulatedParam);
                     cJSON_AddItemToObject(arrayItem, grepMarker->markerName_CT, TimevectorToarray);
                 }
@@ -605,7 +605,7 @@ T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepMarkerList)
                 char *temp = cJSON_Print(vectorToarray);
                 if(temp)
                 {
-                    T2Debug("Marker value Array for : %s is %s\n", grepMarker->markerName, temp);
+                    T2Info("Marker value Array for : %s is %s\n", grepMarker->markerName, temp);
                     free(temp);
                 }
                 if(regaccumulateValues != NULL)
@@ -646,19 +646,19 @@ T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepMarkerList)
                     return T2ERROR_FAILURE;
                 }
                 cJSON_AddItemToArray(valArray, arrayItem);
-                T2Debug("Marker value for : %s is %s\n", grepMarker->markerName, grepMarker->u.markerValue);
+                T2Info("Marker value for : %s is %s\n", grepMarker->markerName, grepMarker->u.markerValue);
                 free(grepMarker->u.markerValue);
                 grepMarker->u.markerValue = NULL;
             }
         }
     }
-    T2Debug("%s --Out \n", __FUNCTION__);
+    T2Info("%s --Out \n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
 T2ERROR encodeTopResultInJSON(cJSON *valArray, Vector *topMarkerList)
 {
-    T2Debug("%s ++in \n", __FUNCTION__);
+    T2Info("%s ++in \n", __FUNCTION__);
     if(valArray == NULL || topMarkerList == NULL)
     {
         T2Error("Invalid or NULL Arguments\n");
@@ -722,7 +722,7 @@ T2ERROR encodeTopResultInJSON(cJSON *valArray, Vector *topMarkerList)
             }
 
             cJSON_AddItemToArray(valArray, arrayItem);
-            T2Debug("Load average marker value for : %s is %s\n", topMarker->searchString, workingValue);
+            T2Info("Load average marker value for : %s is %s\n", topMarker->searchString, workingValue);
 
             // Clean up the working copy
             free(workingValue);
@@ -789,7 +789,7 @@ T2ERROR encodeTopResultInJSON(cJSON *valArray, Vector *topMarkerList)
             }
 
             cJSON_AddItemToArray(valArray, arrayItem);
-            T2Debug("CPU marker value for : %s is %s\n", cpuMarkerName, cpuWorkingValue);
+            T2Info("CPU marker value for : %s is %s\n", cpuMarkerName, cpuWorkingValue);
 
             // Clean up CPU processing resources
             free(cpuMarkerName);
@@ -854,7 +854,7 @@ T2ERROR encodeTopResultInJSON(cJSON *valArray, Vector *topMarkerList)
             }
 
             cJSON_AddItemToArray(valArray, arrayItem);
-            T2Debug("Memory marker value for : %s is %s\n", memMarkerName, memWorkingValue);
+            T2Info("Memory marker value for : %s is %s\n", memMarkerName, memWorkingValue);
 
             // Clean up Memory processing resources
             free(memMarkerName);
@@ -862,18 +862,18 @@ T2ERROR encodeTopResultInJSON(cJSON *valArray, Vector *topMarkerList)
         }
         else
         {
-            T2Debug("Top marker %s has no valid values to report (loadAverage=%p, cpuValue=%p, memValue=%p)\n",
+            T2Info("Top marker %s has no valid values to report (loadAverage=%p, cpuValue=%p, memValue=%p)\n",
                     topMarker->searchString ? topMarker->searchString : "unknown",
                     topMarker->loadAverage, topMarker->cpuValue, topMarker->memValue);
         }
     }
-    T2Debug("%s --Out \n", __FUNCTION__);
+    T2Info("%s --Out \n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
 T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
 {
-    T2Debug("%s ++in \n", __FUNCTION__);
+    T2Info("%s ++in \n", __FUNCTION__);
     if(valArray == NULL || eventMarkerList == NULL)
     {
         T2Error("Invalid or NULL Arguments\n");
@@ -915,7 +915,7 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
                     }
                     else
                     {
-                        T2Debug("regcomp() successful, returning value (%d)\n", rc);
+                        T2Info("regcomp() successful, returning value (%d)\n", rc);
                         rc = regexec(&regpattern, stringValue, nmatch, pmatch, 0);
                         if(rc != 0)
                         {
@@ -924,7 +924,7 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
                         }
                         else
                         {
-                            T2Debug("regexec successful, Match is found %.*s\n", pmatch[0].rm_eo - pmatch[0].rm_so, &stringValue[pmatch[0].rm_so]);
+                            T2Info("regexec successful, Match is found %.*s\n", pmatch[0].rm_eo - pmatch[0].rm_so, &stringValue[pmatch[0].rm_so]);
                             sprintf(string, "%.*s", pmatch[0].rm_eo - pmatch[0].rm_so, &stringValue[pmatch[0].rm_so]);
                             strncpy(stringValue, string, strlen(string) + 1);
                         }
@@ -961,7 +961,7 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
                     }
                 }
                 cJSON_AddItemToArray(valArray, arrayItem);
-                T2Debug("Marker value for : %s is %d\n", eventMarker->markerName, eventMarker->u.count);
+                T2Info("Marker value for : %s is %d\n", eventMarker->markerName, eventMarker->u.count);
                 eventMarker->u.count = 0;
             }
             break;
@@ -1007,7 +1007,7 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
                     }
                     else
                     {
-                        T2Debug("regcomp() successful, returning value (%d)\n", rc);
+                        T2Info("regcomp() successful, returning value (%d)\n", rc);
                         Vector_Create(&regaccumulateValues);
                         for(size_t i = 0; i < Vector_Size(eventMarker->u.accumulatedValues); i++)
                         {
@@ -1024,7 +1024,7 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
                             }
                             else
                             {
-                                T2Debug("regexec successful, Match is found %.*s\n", pmatch[0].rm_eo - pmatch[0].rm_so, &stringValue[pmatch[0].rm_so]);
+                                T2Info("regexec successful, Match is found %.*s\n", pmatch[0].rm_eo - pmatch[0].rm_so, &stringValue[pmatch[0].rm_so]);
                                 sprintf(string[i], "%.*s", pmatch[0].rm_eo - pmatch[0].rm_so, &stringValue[pmatch[0].rm_so]);
                             }
                             Vector_PushBack(regaccumulateValues, string[i]);
@@ -1042,7 +1042,7 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
                     convertVectorToJson(vectorToarray, eventMarker->u.accumulatedValues);
                 }
                 Vector_Clear(eventMarker->u.accumulatedValues, freeAccumulatedParam);
-                T2Debug("eventMarker->reportTimestampParam type is %d \n", eventMarker->reportTimestampParam);
+                T2Info("eventMarker->reportTimestampParam type is %d \n", eventMarker->reportTimestampParam);
 
                 if(eventMarker->alias)
                 {
@@ -1067,7 +1067,7 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
                         return T2ERROR_FAILURE;
                     }
                     convertVectorToJson(TimevectorToarray, eventMarker->accumulatedTimestamp);
-                    T2Debug("convertVectorToJson is successful\n");
+                    T2Info("convertVectorToJson is successful\n");
                     Vector_Clear(eventMarker->accumulatedTimestamp, freeAccumulatedParam);
                     cJSON_AddItemToObject(arrayItem, eventMarker->markerName_CT, TimevectorToarray);
                 }
@@ -1075,7 +1075,7 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
                 char *temp =  cJSON_Print(vectorToarray);
                 if(temp)
                 {
-                    T2Debug("Marker value Array for : %s is %s\n", eventMarker->markerName, temp);
+                    T2Info("Marker value Array for : %s is %s\n", eventMarker->markerName, temp);
                     free(temp);
                 }
                 if(regaccumulateValues != NULL)
@@ -1114,7 +1114,7 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
                     }
                     else
                     {
-                        T2Debug("regcomp() successful, returning value (%d)\n", rc);
+                        T2Info("regcomp() successful, returning value (%d)\n", rc);
                         rc = regexec(&regpattern, eventMarker->u.markerValue, nmatch, pmatch, 0);
                         if(rc != 0)
                         {
@@ -1124,7 +1124,7 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
                         }
                         else
                         {
-                            T2Debug("regexec successful, Match is found %.*s\n", pmatch[0].rm_eo - pmatch[0].rm_so, &eventMarker->u.markerValue[pmatch[0].rm_so]);
+                            T2Info("regexec successful, Match is found %.*s\n", pmatch[0].rm_eo - pmatch[0].rm_so, &eventMarker->u.markerValue[pmatch[0].rm_so]);
                             sprintf(string, "%.*s", pmatch[0].rm_eo - pmatch[0].rm_so, &eventMarker->u.markerValue[pmatch[0].rm_so]);
                             free(eventMarker->u.markerValue);
                             eventMarker->u.markerValue = strdup(string);
@@ -1160,13 +1160,13 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
                     }
                 }
                 cJSON_AddItemToArray(valArray, arrayItem);
-                T2Debug("Marker value for : %s is %s\n", eventMarker->markerName, eventMarker->u.markerValue);
+                T2Info("Marker value for : %s is %s\n", eventMarker->markerName, eventMarker->u.markerValue);
                 free(eventMarker->u.markerValue);
                 eventMarker->u.markerValue = NULL;
             }
         }
     }
-    T2Debug("%s --Out \n", __FUNCTION__);
+    T2Info("%s --Out \n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 
 }
@@ -1178,14 +1178,14 @@ T2ERROR prepareJSONReport(cJSON* jsonObj, char** reportBuff)
         T2Error("jsonObj is NULL\n");
         return T2ERROR_INVALID_ARGS;
     }
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     *reportBuff = cJSON_PrintUnformatted(jsonObj);
     if(*reportBuff == NULL)
     {
         T2Error("Failed to get unformatted json\n");
         return T2ERROR_FAILURE;
     }
-    T2Debug("%s --Out\n", __FUNCTION__);
+    T2Info("%s --Out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
@@ -1203,7 +1203,7 @@ char *prepareHttpUrl(T2HTTP *http)
         return NULL;
     }
     char *httpUrl = strdup(http->URL);
-    T2Debug("%s: Default URL: %s \n", __FUNCTION__, httpUrl);
+    T2Info("%s: Default URL: %s \n", __FUNCTION__, httpUrl);
 
     if (http->RequestURIparamList && http->RequestURIparamList->count)
     {
@@ -1280,7 +1280,7 @@ char *prepareHttpUrl(T2HTTP *http)
     }
 
     curl_easy_cleanup(curl);
-    T2Debug("%s: Modified URL: %s \n", __FUNCTION__, httpUrl);
+    T2Info("%s: Modified URL: %s \n", __FUNCTION__, httpUrl);
 
     return httpUrl;
 }

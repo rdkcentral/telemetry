@@ -40,7 +40,7 @@ static char* DEVICE_TYPE     = NULL;
 
 static void freeLogFileSeekMap(void *data)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     if (data)
     {
         hash_element_t *element = (hash_element_t *)data;
@@ -58,23 +58,23 @@ static void freeLogFileSeekMap(void *data)
         free(element);
         element = NULL;
     }
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
 }
 
 void freeGrepSeekProfile(GrepSeekProfile *gsProfile)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     if (gsProfile)
     {
         hash_map_destroy(gsProfile->logFileSeekMap, freeLogFileSeekMap);
         free(gsProfile);
     }
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
 }
 
 GrepSeekProfile *createGrepSeekProfile(int execCounter)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     GrepSeekProfile *gsProfile = (GrepSeekProfile *)malloc(sizeof(GrepSeekProfile));
     if (gsProfile)
     {
@@ -85,26 +85,26 @@ GrepSeekProfile *createGrepSeekProfile(int execCounter)
     {
         T2Error("Failed to allocate memory for GrepSeekProfile\n");
     }
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return gsProfile;
 }
 /* This is used to free the hash map for profile seek map but it is no more needed
 static void freeProfileSeekHashMap(void *data)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     if (data != NULL)
     {
         hash_element_t *element = (hash_element_t *) data;
 
         if (element->key)
         {
-            T2Debug("Freeing hash entry element for Profiles object Name:%s\n", element->key);
+            T2Info("Freeing hash entry element for Profiles object Name:%s\n", element->key);
             free(element->key);
         }
 
         if (element->data)
         {
-            T2Debug("Freeing GrepSeekProfile data\n");
+            T2Info("Freeing GrepSeekProfile data\n");
             GrepSeekProfile* gsProfile = (GrepSeekProfile *)element->data;
             freeGrepSeekProfile(gsProfile);
             gsProfile = NULL;
@@ -112,7 +112,7 @@ static void freeProfileSeekHashMap(void *data)
 
         free(element);
     }
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
 }
 */
 
@@ -130,24 +130,24 @@ static void freeProfileSeekHashMap(void *data)
  */
 int getLoadAvg(TopMarker* marker)
 {
-    T2Debug("%s ++in \n", __FUNCTION__);
+    T2Info("%s ++in \n", __FUNCTION__);
     FILE *fp;
     char str[LEN + 1];
     if(marker == NULL)
     {
-        T2Debug("marker is NULL\n");
+        T2Info("marker is NULL\n");
         return 0;
     }
 
     if(NULL == (fp = fopen("/proc/loadavg", "r")))
     {
-        T2Debug("Error in opening /proc/loadavg file");
+        T2Info("Error in opening /proc/loadavg file");
         return 0;
     }
 
     if(fread(str, 1, LEN, fp) != LEN)
     {
-        T2Debug("Error in reading loadavg");
+        T2Info("Error in reading loadavg");
         fclose(fp);
         return 0;
     }
@@ -162,7 +162,7 @@ int getLoadAvg(TopMarker* marker)
     }
     marker->loadAverage = strndup(str, LEN);
 
-    T2Debug("%s --out \n", __FUNCTION__);
+    T2Info("%s --out \n", __FUNCTION__);
     return 1;
 }
 
@@ -173,7 +173,7 @@ int getLoadAvg(TopMarker* marker)
  */
 void clearConfVal(void)
 {
-    T2Debug("%s ++in \n", __FUNCTION__);
+    T2Info("%s ++in \n", __FUNCTION__);
     if(PERSISTENT_PATH)
     {
         free(PERSISTENT_PATH);
@@ -188,7 +188,7 @@ void clearConfVal(void)
     {
         free(DEVICE_TYPE);
     }
-    T2Debug("%s --out \n", __FUNCTION__);
+    T2Info("%s --out \n", __FUNCTION__);
 }
 
 
@@ -201,7 +201,7 @@ void clearConfVal(void)
 void updateIncludeConfVal(char **logpath, char **perspath)
 {
 
-    T2Debug("%s ++in \n", __FUNCTION__);
+    T2Info("%s ++in \n", __FUNCTION__);
 
     FILE *file = fopen( INCLUDE_PROPERTIES, "r");
     if(NULL != file)
@@ -246,7 +246,7 @@ void updateIncludeConfVal(char **logpath, char **perspath)
     {
         *logpath = LOG_PATH;
     }
-    T2Debug("%s --out \n", __FUNCTION__);
+    T2Info("%s --out \n", __FUNCTION__);
 }
 
 /**
@@ -257,7 +257,7 @@ void updateIncludeConfVal(char **logpath, char **perspath)
  */
 void initProperties(char **logpath, char **perspath, long* pagesize)
 {
-    T2Debug("%s ++in \n", __FUNCTION__);
+    T2Info("%s ++in \n", __FUNCTION__);
 
     FILE *file = NULL;
 
@@ -286,5 +286,5 @@ void initProperties(char **logpath, char **perspath, long* pagesize)
 
     *pagesize = sysconf(_SC_PAGESIZE);
 
-    T2Debug("%s --out \n", __FUNCTION__);
+    T2Info("%s --out \n", __FUNCTION__);
 }

@@ -74,7 +74,7 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload)
 {
     T2ERROR ret = T2ERROR_FAILURE;
 
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     if(httpUrl == NULL || payload == NULL)
     {
         return ret;
@@ -84,14 +84,14 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload)
 
     if(ret == T2ERROR_SUCCESS)
     {
-        T2Debug("Report Sent Successfully over HTTP\n");
+        T2Info("Report Sent Successfully over HTTP\n");
     }
     else
     {
         T2Error("Failed to send report\n");
     }
 
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return ret;
 }
 

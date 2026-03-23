@@ -44,21 +44,21 @@ static ActivationTimeoutCB activationTimeoutCb;
 static Vector *profileList = NULL;
 static pthread_mutex_t scMutex;
 static bool sc_initialized = false;
-static bool islogdemand = true;
+static bool isretainSeekmap = true;
 
 static bool signalrecived_and_executing = true;
 static bool is_activation_time_out = false;
 
-bool get_logdemand ()
+bool get_retainseekmap ()
 {
-    T2Info(("get_logdemand ++in\n"));
-    return islogdemand;
+    T2Info(("get_retainseekmap ++in\n"));
+    return isretainSeekmap;
 }
 
-void set_logdemand (bool value)
+void set_retainseekmap (bool value)
 {
-    T2Info(("set_logdemand ++in\n"));
-    islogdemand = value;
+    T2Info(("set_retainseekmap ++in\n"));
+    isretainSeekmap = value;
 }
 
 void freeSchedulerProfile(void *data)
@@ -297,14 +297,14 @@ void* TimeoutThread(void *arg)
 
             if(minThresholdTime == 0)
             {
-                if (get_logdemand() == true)
+                if (get_retainseekmap() == true)
                 {
-                    timeoutNotificationCb(tProfile->name, false);
+                    timeoutNotificationCb(tProfile->name, false); // Passing clearseekvalue as false
                 }
                 else
                 {
-                    set_logdemand(true);
-                    timeoutNotificationCb(tProfile->name, true);
+                    set_retainseekmap(true); //After triggering LOG upload resetting the retainseekmap value to true so the next report generation doesn't affect
+                    timeoutNotificationCb(tProfile->name, true); //Passing clearseek value as true
                 }
                 if(tProfile->terminated)
                 {

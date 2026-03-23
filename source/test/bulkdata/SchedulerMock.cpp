@@ -85,22 +85,22 @@ T2ERROR SendInterruptToTimeoutThread(char* profileName)
     return T2ERROR_SUCCESS;
 }
 
-bool get_logdemand()
+bool get_retainseekmap()
 {
     if (g_schedulerMock)
     {
-        return g_schedulerMock->get_logdemand();
+        return g_schedulerMock->get_retainseekmap();
     }
     
     // Fallback implementation for when mock is not set
     return false;
 }
 
-void set_logdemand(bool value)
+void set_retainseekmap(bool value)
 {
     if (g_schedulerMock)
     {
-        g_schedulerMock->set_logdemand(value);
+        g_schedulerMock->set_retainseekmap(value);
         return;
     }
     

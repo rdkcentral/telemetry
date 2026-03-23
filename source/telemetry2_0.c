@@ -181,7 +181,7 @@ void sig_handler(int sig, siginfo_t* info, void* uc)
         else if ( sig == SIGUSR1 || sig == LOG_UPLOAD )
         {
             T2Info(("LOG_UPLOAD received!\n"));
-            set_logdemand(false);
+            set_retainseekmap(false);
             ReportProfiles_Interrupt();
         }
         else if (sig == LOG_UPLOAD_ONDEMAND || sig == SIGIO)

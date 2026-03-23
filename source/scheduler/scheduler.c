@@ -303,7 +303,7 @@ void* TimeoutThread(void *arg)
                 }
                 else
                 {
-		    set_logdemand(true);
+                    set_logdemand(true);
                     timeoutNotificationCb(tProfile->name, true);
                 }
                 if(tProfile->terminated)

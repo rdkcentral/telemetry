@@ -172,6 +172,7 @@ void sig_handler(int sig, siginfo_t* info, void* uc)
         if ( sig == SIGINT )
         {
             T2Info(("SIGINT received!\n"));
+	    set_logdemand(true);
 #ifndef DEVICE_EXTENDER
             uninitXConfClient();
 #endif
@@ -218,6 +219,7 @@ void sig_handler(int sig, siginfo_t* info, void* uc)
         }
         else if ( sig == SIGTERM || sig == SIGKILL )
         {
+	    set_logdemand(true);
             terminate();
             exit(0);
         }

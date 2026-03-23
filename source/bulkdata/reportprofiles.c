@@ -428,7 +428,6 @@ static void* reportOnDemand(void *input)
     if(!strncmp(action, ON_DEMAND_ACTION_UPLOAD, MAX_PROFILENAMES_LENGTH))
     {
         T2Info("Upload XCONF report on demand \n");
-        set_logdemand(true);
         generateDcaReport(false, true);
     }
     else if(!strncmp(action, ON_DEMAND_ACTION_ABORT, MAX_PROFILENAMES_LENGTH))

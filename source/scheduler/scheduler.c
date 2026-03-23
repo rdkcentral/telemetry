@@ -44,7 +44,7 @@ static ActivationTimeoutCB activationTimeoutCb;
 static Vector *profileList = NULL;
 static pthread_mutex_t scMutex;
 static bool sc_initialized = false;
-static bool islogdemand = false;
+static bool islogdemand = true;
 
 static bool signalrecived_and_executing = true;
 static bool is_activation_time_out = false;
@@ -299,11 +299,11 @@ void* TimeoutThread(void *arg)
             {
                 if (get_logdemand() == true)
                 {
-                    set_logdemand(false);
                     timeoutNotificationCb(tProfile->name, false);
                 }
                 else
                 {
+		    set_logdemand(true);
                     timeoutNotificationCb(tProfile->name, true);
                 }
                 if(tProfile->terminated)

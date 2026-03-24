@@ -98,6 +98,9 @@ static const char *strnstr(const char *haystack, const char *needle, size_t len)
     {
         return NULL;
     }
+    if(strcmp(needle, "PreviousRebootInfo:") == 0 && strcmp(needle, "PreviousRebootReason:") == 0){
+       T2Info("strnstr: searching in haystack (len=%zu): %.*s\n", len, (int)len, haystack);
+    }
     size_t needle_len = strlen(needle);
     if (needle_len == 0)
     {

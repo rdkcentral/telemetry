@@ -487,7 +487,7 @@ T2ERROR initReportProfiles()
 
     //Initialise the properties file RDK-58222
     T2InitProperties();
-    T2Info("InitProperties is successful\n");
+    T2Info("Initializing properties\n");
 
 #if defined (PRIVACYMODES_CONTROL)
 // Define scope

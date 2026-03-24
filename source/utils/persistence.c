@@ -112,6 +112,14 @@ T2ERROR fetchLocalConfigs(const char* path, Vector *configList)
         if(status == 0)
         {
             T2Info("Filename : %s Size : %ld\n", entry->d_name, (long int)filestat.st_size);
+            // Skip empty profile files
+            if(filestat.st_size == 0)
+            {
+                T2Warning("Skipping empty config file : %s\n", entry->d_name);
+                close(fp);
+                removeProfileFromDisk(path, entry->d_name);
+                continue;
+            }
 
             Config *config = (Config *)malloc(sizeof(Config));
             memset(config, 0, sizeof(Config));
@@ -168,7 +176,13 @@ T2ERROR saveConfigToFile(const char* path, const char *profileName, const char* 
         T2Error("Unable to write to file : %s\n", filePath);
         return T2ERROR_FAILURE;
     }
-    fprintf(fp, "%s", configuration);
+    if(fprintf(fp, "%s", configuration) < 0)
+    {
+        T2Error("Failed to write to file : %s\n", filePath);
+        fclose(fp);
+        removeProfileFromDisk(path, profileName);
+        return T2ERROR_FAILURE;
+    }
     if(fclose(fp) != 0)
     {
         T2Error("Unable to close file : %s\n", filePath);

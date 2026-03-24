@@ -60,8 +60,8 @@ T2ERROR unregisterProfileFromScheduler(const char* profileName);
 
 T2ERROR SendInterruptToTimeoutThread(char* profileName);
 
-bool get_logdemand();
+bool get_retainseekmap();
 
-void set_logdemand(bool value);
+void set_retainseekmap(bool value);
 
 #endif /* _SCHEDULER_H_ */

@@ -379,7 +379,7 @@ static int getLogSeekValue(hash_map_t *logSeekMap, const char *name, long *seek_
         T2Debug("logSeekMap is null .. Setting seek value to 0 \n");
         *seek_value = 0 ;
     }
-
+    T2Debug("seekvalue for file %s is %ld\n", name, *seek_value);
     T2Debug("%s --out \n", __FUNCTION__);
     return rc;
 }
@@ -524,6 +524,7 @@ static int getCountPatternMatch(FileDescriptor* fileDescriptor, GrepMarker* mark
 
     // Using the union for efficient memory handling
     marker->u.count = count;
+    T2Debug("Count Marker: Marker = %s Value %d\n", marker->markerName, marker->u.count);
     T2Debug("%s --out\n", __FUNCTION__);
     return 0;
 }
@@ -634,7 +635,7 @@ static int getAbsolutePatternMatch(FileDescriptor* fileDescriptor, GrepMarker* m
     {
         marker->u.markerValue = result;
     }
-
+    T2Debug("Absolute Marker: Marker = %s Value %s\n", marker->markerName, marker->u.markerValue);
     T2Debug("%s --out\n", __FUNCTION__);
     return 0;
 }

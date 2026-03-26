@@ -335,7 +335,23 @@ extern "C" int fprintf(FILE* stream, const char* format, ...) {
     return result;
 }
 
-/*extern "C" CURLcode curl_easy_setopt(CURL *curl, CURLoption option, parameter)
+/* Intercept the FORTIFY_SOURCE-hardened variant of fprintf */
+extern "C" int __fprintf_chk(FILE* stream, int /*flag*/, const char* format, ...) {
+    va_list args;
+    va_start(args, format);
+    int result = -1;
+
+    if (g_fileIOMock) {
+        result = g_fileIOMock->fprintf(stream, format, args);
+    }
+    else {
+        result = vfprintf(stream, format, args);
+    }
+    va_end(args);
+    return result;
+}
+/*
+extern "C" CURLcode curl_easy_setopt(CURL *curl, CURLoption option, ...)
 {
     va_list args;
     va_start(args, option);

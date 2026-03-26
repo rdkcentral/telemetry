@@ -292,7 +292,7 @@ static int getLogSeekValue(hash_map_t *logSeekMap, const char *name, long *seek_
         T2Debug("logSeekMap is null .. Setting seek value to 0 \n");
         *seek_value = 0 ;
     }
-
+    T2Debug("seekvalue for file %s is %ld\n", name, *seek_value);
     T2Debug("%s --out \n", __FUNCTION__);
     return rc;
 }

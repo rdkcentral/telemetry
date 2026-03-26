@@ -507,6 +507,14 @@ TEST_F(ProfileTest, ClearMarkerComponentMapShouldRemoveEntries) {
     
     EXPECT_EQ(Vector_Size(eventComponentList), 0);
     EXPECT_EQ(destroyT2MarkerComponentMap(), T2ERROR_SUCCESS);
+    // Reinitialize for subsequent tests that depend on marker component map
+    EXPECT_CALL(*g_vectorMock, Vector_Create(_))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_EQ(initT2MarkerComponentMap(), T2ERROR_SUCCESS);
 }
 
 #endif

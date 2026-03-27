@@ -180,19 +180,6 @@ graph TB
 | **Scalability** | Poor (1-3 profiles max) | Production-grade (15+ profiles) |
 | **Production Safety** | Service hangs, crashes | Graceful degradation under load |
 
----
-
-## Key Metrics
-
-### Performance Under Load (15+ Concurrent Profiles)
-
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| **Lock Contention** | High (>80% wait time) | Low (<10% wait time) | 8x reduction |
-| **Deadlock Frequency** | 2-3 per week | 0 | 100% eliminated |
-| **Report Success Rate** | 60-70% under load | 99%+ under load | 40% improvement |
-| **Pool Timeout Events** | N/A (infinite wait) | <1% of requests | Monitored |
-| **Profile Update Latency** | 5-30s (blocking) | <100ms (non-blocking) | 50-300x faster |
 
 ---
 
@@ -208,13 +195,13 @@ graph LR
     TSAN --> PASS
     LOAD --> PASS
     
-    PASS -->|Yes| DEPLOY[Deploy to<br/>Production]
+    PASS -->|Yes| DEPLOY[Deploy to<br/>Sprint Testing]
     PASS -->|No| FIX[Fix Issues]
     
     FIX --> CODE
     
-    DEPLOY --> MONITOR[Production<br/>Monitoring]
-    MONITOR --> METRICS[Metrics:<br/>Contention<br/>Timeouts<br/>Failures]
+    DEPLOY --> MONITOR[Sprint NG Build<br/>Monitoring]
+    MONITOR --> METRICS[Metrics:<br/>Contention<br/>Timeouts<br/>Crashes]
     
     style STATIC fill:#E6F3FF
     style TSAN fill:#FFF9E6
@@ -222,26 +209,3 @@ graph LR
 ```
 
 ---
-
-## Acceptance Criteria
-
-✅ **Report generation/connection deadlocks eliminated** - Zero deadlocks with lock hierarchy + timeout  
-✅ **Configuration client synchronization hardened** - Refcounting + fine-grained locks  
-✅ **Profile lifecycle race conditions resolved** - Atomic CAS flags + proper synchronization  
-✅ **ThreadSanitizer integration complete** - CI/CD automated race detection  
-✅ **Cyclomatic complexity reduced** - Refactored critical paths, simplified logic  
-✅ **Production-grade reliability verified** - Load tested: 15+ profiles, extended offline periods  
-
----
-
-## References
-
-- Detailed architecture: [thread-safety-hardening-diagram.md](./thread-safety-hardening-diagram.md)
-- Main implementation: [source/bulkdata/profile.c](../../source/bulkdata/profile.c)
-- Connection pool: [source/protocol/http/multicurlinterface.c](../../source/protocol/http/multicurlinterface.c)
-
----
-
-**Document Status:** Summary for stakeholder review  
-**Last Updated:** 2026-03-27  
-**Target Release:** Next sprint (hardening implementation)

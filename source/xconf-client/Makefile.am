@@ -41,3 +41,8 @@ libxconfclient_la_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus
                                 -I${top_srcdir}/source/protocol/http
 
 libxconfclient_la_DEPENDENCIES = ${top_builddir}/source/ccspinterface/libccspinterface.la ${top_builddir}/source/t2parser/libt2parser.la
+if IS_PRIVACYCONTROL_ENABLED
+libxconfclient_la_CFLAGS += $(PRIVACYCONTROL_FLAG)
+libxconfclient_la_CPPFLAGS += -I${top_srcdir}/source/privacycontrol
+libxconfclient_la_DEPENDENCIES += ${top_builddir}/source/privacycontrol/libt2thunder_privacycontrol.la
+endif

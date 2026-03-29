@@ -34,7 +34,7 @@ def _get_unique_components(markers):
     return {m.component for m in markers}
 
 
-def generate_report(markers, branch, orgs, components_scanned):
+def generate_report(markers, branch, orgs, components_scanned, unresolved_components=None):
     """Generate a markdown report from discovered markers.
 
     Args:
@@ -42,9 +42,12 @@ def generate_report(markers, branch, orgs, components_scanned):
         branch: branch name that was scanned
         orgs: list of organization names
         components_scanned: total number of repos scanned
+        unresolved_components: optional list of dicts with 'name', 'version', 'reason'
 
     Returns markdown string.
     """
+    if unresolved_components is None:
+        unresolved_components = []
     # Separate static and dynamic markers
     static_markers = [m for m in markers if m.source_type != "script_dynamic"]
     dynamic_markers = [m for m in markers if m.source_type == "script_dynamic"]
@@ -77,6 +80,8 @@ def generate_report(markers, branch, orgs, components_scanned):
     if sorted_dynamic:
         lines.append(f"- **Dynamic Markers**: {len(sorted_dynamic):,} (contain shell variables)")
     lines.append(f"- **Components Scanned**: {components_scanned}")
+    if unresolved_components:
+        lines.append(f"- **Unresolved Components**: {len(unresolved_components)} ⚠️")
     if duplicate_names:
         lines.append(f"- **Duplicate Markers**: {len(duplicate_names)} ⚠️")
     else:
@@ -119,5 +124,16 @@ def generate_report(markers, branch, orgs, components_scanned):
             for record in sorted(dup_records, key=lambda r: r.component.lower()):
                 lines.append(f"- {record.component}: {record.file_path}:{record.line} (`{record.api}`)")
             lines.append("")
+
+    # Unresolved Components section (only when using input file)
+    if unresolved_components:
+        lines.append("## Unresolved Components")
+        lines.append("Components from the input file that could not be scanned.")
+        lines.append("")
+        lines.append("| Component | Version | Reason |")
+        lines.append("|-----------|---------|--------|")
+        for comp in sorted(unresolved_components, key=lambda c: c['name'].lower()):
+            lines.append(f"| {comp['name']} | {comp['version']} | {comp['reason']} |")
+        lines.append("")
 
     return "\n".join(lines)

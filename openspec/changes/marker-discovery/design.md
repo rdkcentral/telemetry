@@ -67,7 +67,7 @@ class MarkerRecord:
     file_path: str         # "src/dcm.c" (relative to repo root)
     line: int              # 234
     api: str               # "t2_event_d" or "t2CountNotify→t2_event_d" or "t2ValNotify"
-    source_type: str       # "source" | "script" | "patch"
+    source_type: str       # "source" | "script" | "script_dynamic" | "patch"
 ```
 
 ## Module details
@@ -77,30 +77,35 @@ class MarkerRecord:
 **Arguments:**
 | Arg | Required | Default | Description |
 |-----|----------|---------|-------------|
-| `--branch` | No | `develop` | Branch/tag to scan |
-| `--org` | No | `rdkcentral` | GitHub org (repeatable) |
+| `--branch` | No | `main` | Branch/tag to scan (ignored with `--input-file`) |
+| `--org` | No | All 4 RDK orgs | GitHub org (repeatable) |
+| `--input-file` | No | None | Version manifest file (versions.txt format) |
 | `--output` | No | `stdout` | Output file path for markdown report |
+| `--verbose` / `-v` | No | off | Enable debug logging |
 
-**Flow:**
+**Flow (default mode — no input file):**
 1. Parse arguments
-2. Call `github_client` to enumerate and clone repos
-3. For each cloned repo, run `code_parser`, `script_parser`, and `patch_parser`
-4. Collect all `MarkerRecord` results
-5. Pass to `report_generator`
-6. Clean up cloned repos (temp directory)
-7. Exit 0 on success, non-zero on failure
+2. For each org, call `github_client.list_org_repos()` and clone all on `main` branch (fallback: specified → main → develop → default)
+3. For each cloned repo, run all three scanners
+4. Pass results + empty unresolved list to `report_generator`
+
+**Flow (input-file mode):**
+1. Parse version manifest via `component_file_parser.parse_component_file()` — extracts org, repo, commit SHA, branch from each line
+2. For each component, clone at exact commit SHA via `github_client.clone_components_from_file()` (fallback: commit → branch → default)
+3. Track unresolved components (clone failures)
+4. Pass results + unresolved list to `report_generator`
 
 ### github_client.py — GitHub API + cloning
 
-**Authentication:** Read credentials from `~/.netrc` for `github.com`.
+**Authentication:**
+- API calls: Read credentials from `~/.netrc` for `api.github.com` per-request via `_NetrcAuth` class (never stored in memory)
+- Git clones: Use `~/.gitconfig` per-org credential helpers for HTTPS clones (supports multiple GitHub accounts)
+
+**Default organizations:** `rdkcentral`, `rdk-e`, `rdk-common`, `rdk-gdcs`
 
 **Repo enumeration:**
 - `GET /orgs/{org}/repos` — paginated (100 per page)
 - Collect all repo names and clone URLs
-
-**Branch checking:**
-- `GET /repos/{org}/{repo}/branches/{branch}` — 200 = exists, 404 = not found
-- Fallback chain: specified → `develop` → `main` → skip
 
 **Search API (fast path):**
 - `GET /search/code?q=t2_event+org:{org}` — search for C/C++ API calls
@@ -109,10 +114,42 @@ class MarkerRecord:
 - Merge unique repo names from all search results
 - Rate limit: 10 req/min for code search — implement delay/retry
 
-**Cloning:**
-- `git clone --depth 1 --branch {branch} {url} {temp_dir}`
-- Use `~/.netrc` for auth (git respects this automatically)
+**Branch fallback (default mode):**
+- `clone_repo(org, repo, branch, target_dir)`: specified → main → develop → default branch
+
+**Commit-SHA cloning (input-file mode):**
+- `clone_components_from_file(components, temp_dir)`: for each component from the parser:
+  1. `_clone_at_commit(url, path, sha)`: `git init` → `git fetch --depth 1 origin <sha>` → `git checkout FETCH_HEAD`
+  2. Fallback: `_clone_at_branch(url, path, branch)` from the manifest
+  3. Fallback: `_clone_at_branch(url, path, None)` for default branch
+
+**Robust cleanup:**
+- `_force_rmtree()`: handles stubborn git-lfs directories via `onerror` handler with `chmod`
 - All clones into a temp directory, cleaned up on exit
+
+### component_file_parser.py — Version manifest parsing
+
+Parses `versions.txt` files listing GitHub repos with branches and commit SHAs.
+
+**Supported URL formats:**
+```
+https://github.com/rdkcentral/telemetry@develop : a1b2c3d4...
+https://github.com/rdkcentral/rbus.git@develop : e5f6a7b8...
+b'https://github.com/rdkcentral/meta-rdk-iot'@sha : sha
+ssh://github.com/rdk-e/rdkservices-cpc@ : 1dff01bd...
+ssh://github.com/rdk-e/airplay-application-cpc@ : 43c9d71147...
+b'ssh://git@github.com/rdk-e/meta-rdk-tools'@sha : sha
+```
+
+**Filtering:**
+- Only GitHub URLs (both HTTPS and SSH) are matched
+- Only repos from `DEFAULT_FILTER_ORGS` (4 RDK orgs) are included
+- Non-GitHub URLs (gerrit, kernel.org, tarballs) are skipped
+- Lines with `md5sum` checksums are skipped
+
+**SSH → HTTPS conversion:** All SSH URLs are converted to `https://github.com/{org}/{repo}.git` for clone compatibility with `.gitconfig` credential helpers.
+
+**Output:** List of `{name, org, commit, branch, url}`
 
 ### code_parser.py — tree-sitter AST scanning
 
@@ -187,20 +224,24 @@ t2CountNotify "MARKER_NAME" 1
 
 **Output sections:**
 1. Header with branch, org, generation timestamp
-2. Summary: total markers, components scanned, duplicate count
-3. Marker inventory table (sorted, duplicates flagged)
-4. Duplicate markers section (only if duplicates exist)
+2. Summary: total markers (static/dynamic split), components scanned, unresolved count, duplicate count
+3. Marker inventory table (static markers, sorted, duplicates flagged)
+4. Dynamic markers table (markers with shell variables)
+5. Duplicate markers section (if any)
+6. Unresolved components table (if input-file mode, components not found)
 
 ## Error handling
 
 | Scenario | Behavior |
 |----------|----------|
 | Repo clone fails | Log warning, skip repo, continue |
-| Branch not found, develop not found, main not found | Skip repo |
+| Commit SHA not fetchable | Fall back to branch, then default branch |
+| Component clone fails entirely | Add to unresolved list, continue |
 | File parse error (tree-sitter) | Log warning, skip file, continue |
 | GitHub API rate limit | Wait and retry with backoff |
 | No markers found in any repo | Generate report with zero counts |
 | Network failure mid-run | Fail with non-zero exit, clean up temp dirs |
+| Git LFS / stubborn directories | `_force_rmtree` with `chmod` + retry |
 
 ## Performance considerations
 

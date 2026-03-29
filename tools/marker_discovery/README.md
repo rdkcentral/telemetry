@@ -1,6 +1,6 @@
 # Marker Discovery Tool
 
-A command-line utility that scans repositories in GitHub organizations (e.g. `rdkcentral`) to identify all T2 telemetry marker instrumentations and generates a markdown inventory report.
+A command-line utility that scans repositories in GitHub organizations (`rdkcentral`, `rdk-e`, `rdk-common`, `rdk-gdcs`) to identify all T2 telemetry marker instrumentations and generates a markdown inventory report.
 
 ## Features
 
@@ -10,16 +10,29 @@ A command-line utility that scans repositories in GitHub organizations (e.g. `rd
 - **Dynamic marker tracking** — Markers containing shell variables (`$var`, `${var}`) are identified and listed separately; pure positional args like `$1` are resolved when possible
 - **Patch scanning** — Detects marker calls in `.patch` files (added lines only)
 - **Duplicate detection** — Flags markers that appear across multiple components
-- **Branch fallback** — Tries the requested branch, falls back to `develop`, then `main`, skips if none exist
+- **Version manifest input** — Accept a `versions.txt` file with exact commit SHAs for reproducible scans. Supports HTTPS and SSH GitHub URLs.
+- **Branch fallback** — Default mode: specified → main → develop → default branch
 
 ## Prerequisites
 
 - Python 3.10+
 - Git (for cloning repositories)
-- GitHub credentials in `~/.netrc`:
-  ```
-  machine github.com login <username> password <token>
-  ```
+- GitHub credentials:
+  - **API calls**: `~/.netrc` with a GitHub PAT:
+    ```
+    machine api.github.com
+      login <username>
+      password <token>
+    ```
+  - **Git clones**: `~/.gitconfig` per-org credential helpers (supports multiple accounts):
+    ```ini
+    [credential "https://github.com"]
+        helper = "!f() { echo username=DEFAULT_USER; echo password=DEFAULT_TOKEN; }; f"
+
+    [credential "https://github.com/rdkcentral"]
+        helper = "!f() { echo username=OTHER_USER; echo password=OTHER_TOKEN; }; f"
+    ```
+    Git uses the longest matching URL prefix, so the rdkcentral block overrides the default for that org. All other orgs use the default credential.
 
 ## Installation
 
@@ -42,36 +55,59 @@ python3 -m tools.marker_discovery [OPTIONS]
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--branch` | `develop` | Git branch or tag to scan |
-| `--org` | `rdkcentral` | GitHub organization to scan (repeatable) |
+| `--branch` | `main` | Git branch or tag to scan (ignored with `--input-file`) |
+| `--org` | All 4 RDK orgs | GitHub organization to scan (repeatable) |
+| `--input-file` | None | Version manifest file (`versions.txt` format) |
 | `--output` | stdout | Output file path for the markdown report |
 | `--verbose`, `-v` | off | Enable debug logging |
 
 ### Examples
 
 ```bash
-# Scan rdkcentral on develop branch, print report to stdout
+# Scan all 4 RDK orgs on main branch, print report to stdout
 python3 -m tools.marker_discovery
 
-# Scan multiple orgs on a release branch, save to file
+# Scan specific orgs on a release branch, save to file
 python3 -m tools.marker_discovery \
   --org rdkcentral \
   --org rdk-e \
   --branch release-1.0 \
   --output markers_report.md \
   --verbose
+
+# Scan from a version manifest file (exact commits)
+python3 -m tools.marker_discovery \
+  --input-file versions.txt \
+  --output markers_report.md
 ```
 
 ## How It Works
 
-### Scanning Strategy
+### Scanning Modes
 
-The tool uses two strategies depending on the target branch:
+**Default mode** (no `--input-file`):
+- Lists all repos in each org via GitHub API
+- Shallow clones each repo on the target branch (fallback: specified → main → develop → default)
+- Scans all cloned repos
 
-- **Fast path** (default `develop` branch) — Uses the GitHub Search API to find only repos containing marker patterns, then clones just those repos
-- **Full path** (other branches) — Lists all repos in the organization and clones each one, since the Search API only indexes the default branch
+**Input-file mode** (`--input-file versions.txt`):
+- Parses a version manifest listing GitHub repos with commit SHAs
+- Clones at exact commit SHA (fallback: commit → branch from file → default branch)
+- Only includes repos from the 4 default RDK orgs; skips non-GitHub URLs
 
-All clones are shallow (`--depth 1`) to minimize disk and network usage.
+### Version Manifest Format
+
+The `--input-file` accepts a `versions.txt` with one repo per line:
+
+```
+https://github.com/rdkcentral/telemetry@develop : a1b2c3d4e5f6...
+https://github.com/rdkcentral/rbus.git@develop : 4a25e92112e8...
+b'https://github.com/rdkcentral/meta-rdk-iot'@sha : sha
+ssh://github.com/rdk-e/rdkservices-cpc@ : 1dff01bd7714...
+b'ssh://git@github.com/rdk-e/meta-rdk-tools'@sha : sha
+```
+
+Supported URL schemes: `https://`, `http://`, `ssh://`, `ssh://git@`. SSH URLs are automatically converted to HTTPS for cloning. Non-GitHub URLs (gerrit, kernel.org, tarballs) and `md5sum` entries are skipped.
 
 ### Three-Pass C/C++ Scanning
 
@@ -111,29 +147,33 @@ Scans `.patch` files for added lines (`+` prefix) containing any of the five mar
 The generated markdown report includes:
 
 1. **Header** — Branch, organizations, generation timestamp
-2. **Summary** — Total markers, static/dynamic counts, components scanned, duplicate count
+2. **Summary** — Total markers, static/dynamic counts, components scanned, unresolved count, duplicate count
 3. **Marker Inventory** — Table of all static markers sorted by name, with component, file path, line number, and API
 4. **Dynamic Markers** — Separate table for markers containing shell variables (if any)
 5. **Duplicate Markers** — Markers appearing in multiple components, flagged with ⚠️ (if any)
+6. **Unresolved Components** — Components from the input file that could not be cloned (if any)
 
 ## Authentication
 
-The tool reads credentials from `~/.netrc` at request time for both the GitHub API and `git clone`. No credentials are extracted or stored in memory — they are injected directly into HTTP headers per-request. The `.netrc` file is used as-is regardless of file permissions.
+**GitHub API calls** use `~/.netrc` via a custom `_NetrcAuth` class. Credentials are read per-request and never stored in memory. The `.netrc` file is used as-is regardless of file permissions. Subdomain matching (`api.github.com` → `github.com`) is handled automatically.
+
+**Git clone operations** use `~/.gitconfig` credential helpers. Per-org helpers allow using different GitHub accounts for different organizations (e.g., one PAT for rdkcentral, another for rdk-e). Git uses longest-prefix URL matching, so a default `[credential "https://github.com"]` block covers all orgs, while specific blocks like `[credential "https://github.com/rdkcentral"]` override for that org.
 
 ## Directory Structure
 
 ```
 tools/marker_discovery/
-├── __init__.py          # MarkerRecord dataclass
-├── __main__.py          # Entry point
-├── marker_scanner.py    # CLI arguments and orchestration
-├── github_client.py     # GitHub API client and repo cloning
-├── code_parser.py       # tree-sitter C/C++ scanner
-├── script_parser.py     # Shell script scanner
-├── patch_parser.py      # Patch file scanner
-├── report_generator.py  # Markdown report output
-├── requirements.txt     # Python dependencies
-└── tests/               # Unit tests (pytest)
+├── __init__.py              # MarkerRecord dataclass
+├── __main__.py              # Entry point
+├── marker_scanner.py        # CLI arguments and orchestration
+├── github_client.py         # GitHub API client and repo cloning
+├── component_file_parser.py # Version manifest (versions.txt) parser
+├── code_parser.py           # tree-sitter C/C++ scanner
+├── script_parser.py         # Shell script scanner
+├── patch_parser.py          # Patch file scanner
+├── report_generator.py      # Markdown report output
+├── requirements.txt         # Python dependencies
+└── tests/                   # Unit tests (pytest)
 ```
 
 ## Running Tests

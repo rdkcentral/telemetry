@@ -5,6 +5,7 @@ import logging
 import sys
 
 from . import github_client, code_parser, script_parser, patch_parser, report_generator
+from . import component_file_parser
 
 logger = logging.getLogger(__name__)
 
@@ -23,12 +24,16 @@ def parse_args(argv=None):
         description="Scan GitHub organizations for T2 telemetry marker instrumentation.",
     )
     parser.add_argument(
-        "--branch", default="develop",
-        help="Branch/tag to scan (default: develop)",
+        "--branch", default="main",
+        help="Branch/tag to scan (default: main). Ignored when --input-file is used.",
     )
     parser.add_argument(
         "--org", action="append", dest="orgs", default=None,
-        help="GitHub organization to scan (repeatable, default: rdkcentral)",
+        help="GitHub organization to scan (repeatable, default: all 4 RDK orgs)",
+    )
+    parser.add_argument(
+        "--input-file",
+        help="Version manifest file (versions.txt format). Clones only listed GitHub repos at exact commits.",
     )
     parser.add_argument(
         "--output", default=None,
@@ -40,7 +45,7 @@ def parse_args(argv=None):
     )
     args = parser.parse_args(argv)
     if args.orgs is None:
-        args.orgs = ["rdkcentral"]
+        args.orgs = list(github_client.DEFAULT_ORGS)
     return args
 
 
@@ -110,6 +115,19 @@ def scan_cloned_repos(cloned_repos):
     return all_markers
 
 
+def run_input_file_path(input_file, temp_dir):
+    """Input-file path: parse version manifest, clone at exact commits."""
+    logger.info("Input-file path: reading components from %s", input_file)
+
+    components = component_file_parser.parse_component_file(input_file)
+    if not components:
+        logger.warning("No components found in %s", input_file)
+        return [], 0, []
+
+    cloned, unresolved = github_client.clone_components_from_file(components, temp_dir)
+    return cloned, len(components), unresolved
+
+
 def main(argv=None):
     args = parse_args(argv)
     setup_logging(args.verbose)
@@ -120,26 +138,38 @@ def main(argv=None):
     try:
         all_markers = []
         total_repos_scanned = 0
+        unresolved_components = []
 
-        for org in args.orgs:
-            # Choose strategy based on branch
-            if args.branch == "develop":
-                cloned, total_in_org = run_fast_path(org, args.branch, temp_dir)
-            else:
-                cloned, total_in_org = run_full_path(org, args.branch, temp_dir)
+        if args.input_file:
+            # Input-file mode: clone from version manifest
+            cloned, total_components, unresolved = run_input_file_path(
+                args.input_file, temp_dir
+            )
+            total_repos_scanned = total_components
+            unresolved_components = unresolved
 
-            total_repos_scanned += total_in_org
-
-            # Scan cloned repos
             markers = scan_cloned_repos(cloned)
             all_markers.extend(markers)
+
+            branch_display = f"per-component (from {args.input_file})"
+        else:
+            # Default mode: scan all repos in all orgs on main branch
+            for org in args.orgs:
+                cloned, total_in_org = run_full_path(org, args.branch, temp_dir)
+                total_repos_scanned += total_in_org
+
+                markers = scan_cloned_repos(cloned)
+                all_markers.extend(markers)
+
+            branch_display = args.branch
 
         # Generate report
         report = report_generator.generate_report(
             markers=all_markers,
-            branch=args.branch,
+            branch=branch_display,
             orgs=args.orgs,
             components_scanned=total_repos_scanned,
+            unresolved_components=unresolved_components,
         )
 
         # Output

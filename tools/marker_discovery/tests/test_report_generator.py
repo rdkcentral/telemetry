@@ -158,3 +158,31 @@ class TestReportGeneration:
         # since dynamic markers are excluded from duplicate detection
         dup_section = report.split("## Duplicate Markers")[1]
         assert "DYN_$x" not in dup_section
+
+    def test_unresolved_components_section(self):
+        markers = [_make_marker("A", "repo1")]
+        unresolved = [
+            {"name": "missing-repo", "version": "1.0.0-r0", "reason": "Not found in any organization"},
+            {"name": "broken-repo", "version": "2.0.0-r1", "reason": "Clone failed in rdkcentral"},
+        ]
+        report = generate_report(markers, "develop", ["rdkcentral"], 10, unresolved_components=unresolved)
+
+        assert "## Unresolved Components" in report
+        assert "missing-repo" in report
+        assert "broken-repo" in report
+        assert "Not found in any organization" in report
+
+    def test_no_unresolved_section_when_empty(self):
+        markers = [_make_marker("A", "repo1")]
+        report = generate_report(markers, "develop", ["rdkcentral"], 10)
+
+        assert "## Unresolved Components" not in report
+
+    def test_unresolved_count_in_summary(self):
+        markers = [_make_marker("A", "repo1")]
+        unresolved = [
+            {"name": "missing", "version": "1.0", "reason": "Not found"},
+        ]
+        report = generate_report(markers, "develop", ["rdkcentral"], 10, unresolved_components=unresolved)
+
+        assert "**Unresolved Components**: 1" in report

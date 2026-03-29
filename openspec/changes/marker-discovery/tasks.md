@@ -9,16 +9,21 @@
 
 - [x] **Task 2: GitHub client — repo enumeration**
   Implement `github_client.py` with:
-  - Read credentials from `~/.netrc`
+  - `_NetrcAuth` class that reads `~/.netrc` per-request without storing credentials
   - `list_org_repos(org)`: paginated `GET /orgs/{org}/repos`, return list of repo names + clone URLs
   - `search_code_in_org(org, query)`: paginated code search API, return set of repo names with matches
+  - `find_repo_org(name, orgs)`: discover which org a repo belongs to by checking all orgs
+  - `DEFAULT_ORGS`: `["rdkcentral", "rdk-e", "rdk-common", "rdk-gdcs"]`
   - Rate limit handling with backoff for search API (10 req/min)
 
 - [x] **Task 3: GitHub client — branch check and cloning**
   Add to `github_client.py`:
-  - `check_branch_exists(org, repo, branch)`: check via API, return bool
-  - `clone_repo(org, repo, branch, target_dir)`: shallow clone with fallback chain (specified → develop → main → skip)
-  - `clone_matching_repos(org, repos, branch, temp_dir)`: orchestrate cloning for a list of repos, return list of cloned repo paths with metadata
+  - `clone_repo(org, repo, branch, target_dir)`: shallow clone with fallback chain (specified → main → develop → default branch)
+  - `clone_matching_repos(org, repos, branch, temp_dir)`: orchestrate cloning for a list of repos
+  - `clone_components_from_file(components, temp_dir)`: clone from parsed version manifest at exact commit SHAs. Strategy: `_clone_at_commit` (git init + fetch --depth 1 + checkout FETCH_HEAD) → `_clone_at_branch` (branch from manifest) → `_clone_at_branch` (default branch). Returns (cloned, unresolved).
+  - `_clone_at_commit(url, path, sha)`: shallow clone at exact commit SHA
+  - `_clone_at_branch(url, path, branch)`: shallow clone at branch or default
+  - `_force_rmtree(path)`: robust directory cleanup handling git-lfs stubborn files
   - Temp directory management (create on start, cleanup on exit)
 
 - [x] **Task 4: Code parser — direct call extraction**
@@ -65,12 +70,12 @@
 
 - [x] **Task 9: CLI entry point and orchestration**
   Implement `marker_scanner.py`:
-  - Argument parsing: `--branch` (default: `develop`), `--org` (default: `rdkcentral`, repeatable), `--output` (default: stdout)
-  - Orchestration flow:
-    - If branch is `develop` or unset → fast path (search API then clone matches)
-    - If branch is other → full path (list all repos, clone all)
+  - Argument parsing: `--branch` (default: `main`), `--org` (default: all 4 RDK orgs, repeatable), `--input-file` (versions.txt), `--output` (default: stdout), `--verbose`/`-v`
+  - Two modes:
+    - Default mode (no input file): list all repos in all orgs, clone on `main` branch, scan
+    - Input-file mode: parse version manifest via `component_file_parser`, clone at exact commits via `clone_components_from_file`, track unresolved
   - For each cloned repo: run `code_parser.scan_repo()`, `script_parser.scan_repo_scripts()`, and `patch_parser.scan_repo_patches()`
-  - Collect all results, pass to `report_generator`
+  - Pass all results + unresolved list to `report_generator`
   - Cleanup temp directory
   - Exit 0 on success, non-zero on error
 
@@ -79,9 +84,10 @@
 - [x] **Task 10: Unit tests**
   Create `tools/marker_discovery/tests/`:
   - `test_code_parser.py`: test direct call extraction and wrapper resolution against sample C files
-  - `test_script_parser.py`: test `t2ValNotify`/`t2CountNotify` extraction from sample scripts
-  - `test_patch_parser.py`: test patch line filtering and marker extraction against sample .patch content (both C and script APIs)
-  - `test_report_generator.py`: test markdown output format, duplicate detection, sorting
+  - `test_script_parser.py`: test `t2ValNotify`/`t2CountNotify` extraction, dynamic marker detection, positional arg resolution
+  - `test_patch_parser.py`: test patch line filtering and marker extraction against sample .patch content
+  - `test_report_generator.py`: test markdown output format, duplicate detection, sorting, dynamic markers section, unresolved components section
+  - `test_component_file_parser.py`: test versions.txt parsing — HTTPS URLs, SSH URLs (with and without `git@`), byte-string prefix (`b'...'`), org filtering, commit/branch extraction, SSH-to-HTTPS URL conversion, gerrit/tarball skipping, custom filter_orgs, empty file
   - Sample fixtures: small `.c` files, scripts with known markers, `.patch` files with added lines
 
 - [x] **Task 11: Integration test with real repo**

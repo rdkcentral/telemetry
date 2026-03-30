@@ -1,5 +1,5 @@
 ---
-name: telemetry-issue-triage
+name: triage-logs
 description: >
   Triage any Telemetry 2.0 behavioral issue on RDK devices by correlating device
   log bundles with source code. Covers hangs, under-reporting, over-reporting,

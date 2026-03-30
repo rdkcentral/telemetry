@@ -627,12 +627,12 @@ rbusError_t t2PropertyDataSetHandler(rbusHandle_t handle, rbusProperty_t prop, r
         {
             T2Debug("Inside datamodel handler for privacymodes profile \n");
             char* data = rbusValue_ToString(paramValue_t, NULL, 0);
-            if((strcmp(data, "SHARE") != 0) && (strcmp(data, "DO_NOT_SHARE") != 0))
+            if(!data)
             {
-                T2Info("Unexpected privacy Mode value %s\n", data);
-                free(data);
+                T2Error("rbusValue_ToString failed for privacy mode parameter %s\n", paramName);
                 return RBUS_ERROR_INVALID_INPUT;
             }
+            if((strcmp(data, "SHARE") != 0) && (strcmp(data, "DO_NOT_SHARE") != 0))
             T2Debug("PrivacyMode data is %s\n", data);
             pthread_mutex_lock(&privacyModeMutex);
             if(privacyModeVal != NULL)

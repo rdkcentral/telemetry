@@ -632,7 +632,9 @@ rbusError_t t2PropertyDataSetHandler(rbusHandle_t handle, rbusProperty_t prop, r
                 return RBUS_ERROR_INVALID_INPUT;
             }
             if((strcmp(data, "SHARE") != 0) && (strcmp(data, "DO_NOT_SHARE") != 0))
-            T2Debug("PrivacyMode data is %s\n", data);
+            {
+                T2Debug("PrivacyMode data is %s\n", data);
+            }
             pthread_mutex_lock(&privacyModeMutex);
             if(privacyModeVal != NULL)
             {

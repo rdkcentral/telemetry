@@ -254,7 +254,7 @@ void clearPersistenceFolder(const char* path)
 
 void removeProfileFromDisk(const char* path, const char* fileName)
 {
-    if(path == NULL || path[0] == '\0'|| fileName == NULL)
+    if(path == NULL || path[0] == '\0' || fileName == NULL)
     {
         return;
     }

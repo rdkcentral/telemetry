@@ -239,7 +239,7 @@ void clearPersistenceFolder(const char* path)
     }
 #else
     char command[256] = {'\0'};
-    snprintf(command, sizeof(command), "rm -f %s*", path);
+    snprintf(command, sizeof(command), "rm -rf %s*", path);
     T2Debug("Executing command : %s\n", command);
     if (system(command) != 0)
     {

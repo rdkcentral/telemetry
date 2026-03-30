@@ -428,7 +428,6 @@ static void* privacyModeCallbackWorker(void *arg)
     return NULL;
 }
 #endif
-
 /**
  * Data set handler for event receiving datamodel
  * Data being set will be an rbusProperty object with -

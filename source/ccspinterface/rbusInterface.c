@@ -818,12 +818,12 @@ rbusError_t t2PropertyDataGetHandler(rbusHandle_t handle, rbusProperty_t propert
             if(data != NULL)
             {
                 T2Debug("Privacy mode fetched  from the persistent folder is %s\n", data);
-                rbusValue_SetString(value, data);
                 if(privacyModeVal == NULL)
                 {
                     privacyModeVal = data;
                     data = NULL;
                 }
+                rbusValue_SetString(value, privacyModeVal);
                 free(data);
             }
         }

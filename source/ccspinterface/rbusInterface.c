@@ -389,6 +389,11 @@ rbusError_t eventSubHandler(rbusHandle_t handle, rbusEventSubAction_t action, co
 static void* privacyModeCallbackWorker(void *arg)
 {
     char* mode = (char*)arg;
+    if(mode == NULL)
+    {
+        T2Error("%s called with NULL arg\n", __FUNCTION__);
+        return NULL;
+    }
     T2Debug("%s ++in mode=%s\n", __FUNCTION__, mode);
 
     if(strcmp(mode, "DO_NOT_SHARE") == 0)

@@ -663,13 +663,6 @@ static bool isCachingRequired( )
         return false ;
     }
 
-    // Fast-fail: check file marker before making rbus call to avoid blocking on timeout
-    if (access(T2_COMPONENT_READY, F_OK) != 0)
-    {
-        EVENT_DEBUG("T2 component not ready (marker file absent), caching event\n");
-        return true;
-    }
-
     // Always check for t2 is ready to accept events. Shutdown target can bring down t2 process at runtime
     uint32_t t2ReadyStatus;
     rbusError_t retVal = RBUS_ERROR_SUCCESS;

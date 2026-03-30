@@ -398,14 +398,29 @@ static void* privacyModeCallbackWorker(void *arg)
 
     if(strcmp(mode, "DO_NOT_SHARE") == 0)
     {
-        if(mprofilesDeleteCallBack() != T2ERROR_SUCCESS)
+        if(mprofilesDeleteCallBack != NULL)
         {
-            T2Error("mprofilesDeleteCallBack failed in privacy worker\n");
+            if(mprofilesDeleteCallBack() != T2ERROR_SUCCESS)
+            {
+                T2Error("mprofilesDeleteCallBack failed in privacy worker\n");
+            }
+        }
+        else
+        {
+            T2Debug("mprofilesDeleteCallBack not registered, skipping profile deletion\n");
         }
     }
-    if(privacyModesDoNotShareCallBack() != T2ERROR_SUCCESS)
+
+    if(privacyModesDoNotShareCallBack != NULL)
     {
-        T2Error("privacyModesDoNotShareCallBack failed in privacy worker\n");
+        if(privacyModesDoNotShareCallBack() != T2ERROR_SUCCESS)
+        {
+            T2Error("privacyModesDoNotShareCallBack failed in privacy worker\n");
+        }
+    }
+    else
+    {
+        T2Debug("privacyModesDoNotShareCallBack not registered, skipping DO_NOT_SHARE handling\n");
     }
 
     free(mode);

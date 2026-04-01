@@ -1184,7 +1184,7 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
             T2Error("Profile : %s failed to  unregister from scheduler\n", tempProfile->name);
         }
 
-        pthread_mutex_lock(&plMutex);
+        /* Release plMutex before pthread_join to avoid deadlock */
         if (tempProfile->threadExists)
         {
             pthread_mutex_lock(&tempProfile->reuseThreadMutex);
@@ -1193,6 +1193,9 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
             pthread_join(tempProfile->reportThread, NULL);
             tempProfile->threadExists = false;
         }
+
+        /* Re-acquire plMutex for profile cleanup */
+        pthread_mutex_lock(&plMutex);
         if(tempProfile->grepSeekProfile)
         {
             freeGrepSeekProfile(tempProfile->grepSeekProfile);
@@ -1284,6 +1287,14 @@ T2ERROR deleteProfile(const char *profileName)
     }
     pthread_mutex_unlock(&profile->reportInProgressMutex);
 
+    /* Release plMutex before pthread_join to avoid deadlock.
+     * pthread_join can block indefinitely if the CollectAndReport thread
+     * is stuck (e.g., waiting on rbusMethodMutex). Holding plMutex during
+     * pthread_join prevents other threads (timeout callbacks, other profile
+     * operations) from making progress, creating a deadlock.
+     */
+    pthread_mutex_unlock(&plMutex);
+
     if (profile->threadExists)
     {
         pthread_mutex_lock(&profile->reuseThreadMutex);
@@ -1292,6 +1303,9 @@ T2ERROR deleteProfile(const char *profileName)
         pthread_join(profile->reportThread, NULL);
         profile->threadExists = false;
     }
+
+    /* Re-acquire plMutex for profile cleanup operations */
+    pthread_mutex_lock(&plMutex);
 
     if(Vector_Size(profile->triggerConditionList) > 0)
     {

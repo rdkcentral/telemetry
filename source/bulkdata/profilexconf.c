@@ -806,12 +806,19 @@ T2ERROR ProfileXConf_delete(ProfileXConf *profile)
         }
     }
 
-    if(singleProfile->reportInProgress)
+    /* CRITICAL: Actually wait for report to complete before deletion.
+     * Without this wait, the profile could be deleted while CollectAndReportXconf is still running and accessing profile members,
+     * causing use-after-free crash when CollectAndReportXconf() was still
+     * accessing profile members during brief mutex holds (event encoding, etc).
+     */
+    pthread_mutex_lock(&plMutex);
+    while(singleProfile && singleProfile->reportInProgress)
     {
         T2Info("Waiting for CollectAndReportXconf to be complete : %s\n", singleProfile->name);
+        pthread_mutex_unlock(&plMutex);
+        usleep(10000);  // 10ms polling interval
+        pthread_mutex_lock(&plMutex);
     }
-
-    pthread_mutex_lock(&plMutex);
 
     profile->reportThread = singleProfile->reportThread;
 

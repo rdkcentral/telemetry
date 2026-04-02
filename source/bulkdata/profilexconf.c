@@ -812,9 +812,15 @@ T2ERROR ProfileXConf_delete(ProfileXConf *profile)
      * accessing profile members during brief mutex holds (event encoding, etc).
      */
     pthread_mutex_lock(&plMutex);
+    unsigned int waitIterations = 0;
+    const unsigned int LOG_INTERVAL = 3000;  // Log every 3000 iterations (30 seconds at 10ms per iteration)
     while(singleProfile && singleProfile->reportInProgress)
     {
-        T2Info("Waiting for CollectAndReportXconf to be complete : %s\n", singleProfile->name);
+        if(waitIterations % LOG_INTERVAL == 0)
+        {
+            T2Info("Waiting for CollectAndReportXconf to be complete : %s\n", singleProfile->name);
+        }
+        waitIterations++;
         pthread_mutex_unlock(&plMutex);
         usleep(10000);  // 10ms polling interval
         pthread_mutex_lock(&plMutex);

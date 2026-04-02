@@ -1101,7 +1101,7 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
         }
         else
         {
-            T2Error("Error opening rotated file. Start search in current file\n");
+            T2Debug("Error opening rotated file. Start search in current file\n");
             T2Debug("File size rounded to nearest page size used for offset read: %jd bytes\n", (intmax_t)offset_in_page_size_multiple);
             if(seek_value < sb.st_size)
             {

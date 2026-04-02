@@ -21,6 +21,7 @@
 #define _PROFILE_H_
 
 #include <stdbool.h>
+#include <stdatomic.h>
 #include <pthread.h>
 #include <cjson/cJSON.h>
 
@@ -44,7 +45,7 @@ typedef struct _Profile
     bool enable;
     bool isSchedulerstarted;
     bool isUpdated;
-    bool reportInProgress;
+    atomic_bool reportInProgress;        // Thread-safe atomic flag - no mutex needed for simple checks
     pthread_cond_t reportInProgressCond;
     pthread_mutex_t reportInProgressMutex;
     bool generateNow;

@@ -19,8 +19,12 @@
 # limitations under the License.
 ####################################################################################
 
+# ThreadSanitizer is always enabled for L2 tests to catch race conditions
+echo "ThreadSanitizer enabled - running with race condition detection"
+RESULT_DIR="/tmp/l2_test_report_tsan"
+export TSAN_OPTIONS="suppressions=./test/tsan.supp:halt_on_error=1:abort_on_error=1:detect_thread_leaks=1:report_bugs=1"
+
 export top_srcdir=`pwd`
-RESULT_DIR="/tmp/l2_test_report"
 mkdir -p "$RESULT_DIR"
 
 if ! grep -q "LOG_PATH=/opt/logs/" /etc/include.properties; then

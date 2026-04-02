@@ -257,10 +257,6 @@ static void* CollectAndReportXconf(void* data)
 
         /* CRITICAL: Release plMutex before potentially blocking operations.
          * Report generation involves:
-         * - D-Bus/RBUS calls (getProfileParameterValues) - can block for seconds
-         * - File I/O (getGrepResults, saveSeekConfigtoFile) - can block for seconds
-         * - Network I/O (sendReportOverHTTP) - can block for 30+ seconds!
-         * - Disk I/O (saveCachedReportToPersistenceFolder) - can block for seconds
          * 
          * Holding plMutex during these operations blocks ALL other XCONF profile
          * operations (timeouts, updates, deletions, marker events) system-wide,
@@ -330,10 +326,20 @@ static void* CollectAndReportXconf(void* data)
 
             dcaFlagReportCompleation();
 
-            if(profile->eMarkerList != NULL && Vector_Size(profile->eMarkerList) > 0)
+            /* CRITICAL: Re-acquire plMutex to safely access eMarkerList.
+             * External components can call t2_event_s() which modifies eMarkerList
+             * via ProfileXConf_storeMarkerEvent(). We must hold plMutex during
+             * event marker encoding to prevent race conditions.
+             * This is safe because encoding is quick (~milliseconds), unlike HTTP
+             * upload which can take 30+ seconds.
+             */
+            pthread_mutex_lock(&plMutex);
+            if(singleProfile == profile && profile->eMarkerList != NULL && Vector_Size(profile->eMarkerList) > 0)
             {
                 encodeEventMarkersInJSON(valArray, profile->eMarkerList);
             }
+            pthread_mutex_unlock(&plMutex);
+            
             profile->grepSeekProfile->execCounter += 1;
             T2Info("Xconf Profile Execution Count = %d\n", profile->grepSeekProfile->execCounter);
 

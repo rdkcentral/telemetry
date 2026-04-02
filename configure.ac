@@ -69,6 +69,27 @@ m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])],
 
 
 dnl **********************************
+dnl Thread Safety Analysis Support
+dnl **********************************
+AC_ARG_ENABLE([thread-sanitizer],
+              AS_HELP_STRING([--enable-thread-sanitizer],[enable ThreadSanitizer for race condition detection (default is no)]),
+              [
+                case "${enableval}" in
+                 yes) THREAD_SANITIZER_ENABLED=true
+                      T2_THREAD_SANITIZER_CFLAGS="-fsanitize=thread -g -O1"
+                      T2_THREAD_SANITIZER_LDFLAGS="-fsanitize=thread"
+                      AC_MSG_NOTICE([ThreadSanitizer enabled for race condition detection])
+                      ;;
+                  no) THREAD_SANITIZER_ENABLED=false ;;
+                   *) AC_MSG_ERROR([bad value ${enableval} for --enable-thread-sanitizer]) ;;
+                esac
+              ],
+              [THREAD_SANITIZER_ENABLED=false])
+AM_CONDITIONAL([WITH_THREAD_SANITIZER], [test x$THREAD_SANITIZER_ENABLED = xtrue])
+AC_SUBST([T2_THREAD_SANITIZER_CFLAGS])
+AC_SUBST([T2_THREAD_SANITIZER_LDFLAGS])
+
+dnl **********************************
 dnl checks for dependencies
 dnl **********************************
 AC_HEADER_STDC

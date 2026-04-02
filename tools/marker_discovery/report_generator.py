@@ -88,8 +88,23 @@ def generate_report(markers, branch, orgs, components_scanned, unresolved_compon
         lines.append(f"- **Duplicate Markers**: 0")
     lines.append("")
 
-    # Marker Inventory table (static markers only)
-    lines.append("## Marker Inventory")
+    # Unique Marker Inventory (one row per unique marker name, with components)
+    lines.append("## Unique Marker Inventory")
+    lines.append("| Marker Name | Components |")
+    lines.append("|-------------|------------|")
+
+    unique_marker_components = defaultdict(set)
+    for m in sorted_static:
+        unique_marker_components[m.marker_name].add(m.component)
+
+    for name in sorted(unique_marker_components.keys(), key=str.lower):
+        components = ", ".join(sorted(unique_marker_components[name], key=str.lower))
+        lines.append(f"| {name} | {components} |")
+
+    lines.append("")
+
+    # Detailed Marker Inventory table (static markers only)
+    lines.append("## Detailed Marker Inventory")
     lines.append("| Marker Name | Component | File Path | Line | API |")
     lines.append("|-------------|-----------|-----------|------|-----|")
 

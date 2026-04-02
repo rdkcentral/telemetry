@@ -32,6 +32,10 @@ def parse_args(argv=None):
         help="GitHub organization to scan (repeatable, default: all 4 RDK orgs)",
     )
     parser.add_argument(
+        "--repo",
+        help="Single repo name to scan (requires --org). Example: --org rdkcentral --repo telemetry",
+    )
+    parser.add_argument(
         "--input-file",
         help="Version manifest file (versions.txt format). Clones only listed GitHub repos at exact commits.",
     )
@@ -44,6 +48,8 @@ def parse_args(argv=None):
         help="Enable verbose/debug logging",
     )
     args = parser.parse_args(argv)
+    if args.repo and not args.orgs:
+        parser.error("--repo requires --org. Example: --org rdkcentral --repo telemetry")
     if args.orgs is None:
         args.orgs = list(github_client.DEFAULT_ORGS)
     return args
@@ -79,6 +85,17 @@ def run_full_path(org, branch, temp_dir):
     logger.info("Cloning %d repos on branch %s...", len(repo_names), branch)
     cloned = github_client.clone_matching_repos(org, repo_names, branch, temp_dir)
     return cloned, len(all_repos)
+
+
+def run_full_path_single(org, repo, branch, temp_dir):
+    """Clone and scan a single repo."""
+    logger.info("Single-repo mode: cloning %s/%s on branch %s...", org, repo, branch)
+    clone_path, actual_branch = github_client.clone_repo(org, repo, branch, temp_dir)
+    if clone_path:
+        cloned = [{"name": repo, "path": clone_path, "branch": actual_branch}]
+        return cloned, 1
+    logger.warning("Failed to clone %s/%s", org, repo)
+    return [], 0
 
 
 def scan_cloned_repos(cloned_repos):
@@ -152,6 +169,17 @@ def main(argv=None):
             all_markers.extend(markers)
 
             branch_display = f"per-component (from {args.input_file})"
+        elif args.repo:
+            # Single-repo mode: clone one repo from the specified org
+            org = args.orgs[0]
+            cloned, _ = run_full_path_single(org, args.repo, args.branch, temp_dir)
+            total_repos_scanned = 1
+
+            if cloned:
+                markers = scan_cloned_repos(cloned)
+                all_markers.extend(markers)
+
+            branch_display = args.branch
         else:
             # Default mode: scan all repos in all orgs on main branch
             for org in args.orgs:

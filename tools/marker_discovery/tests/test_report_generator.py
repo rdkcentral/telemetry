@@ -47,7 +47,8 @@ class TestReportGeneration:
         assert "**Organizations**: rdkcentral" in report
         assert "## Summary" in report
         assert "**Total Markers**: 1" in report
-        assert "## Marker Inventory" in report
+        assert "## Unique Marker Inventory" in report
+        assert "## Detailed Marker Inventory" in report
         assert "BOOT_TIME" in report
         assert "dcm-agent" in report
 

@@ -23,6 +23,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
+#include <stdatomic.h>
 
 #include "profile.h"
 #include "reportprofiles.h"

@@ -205,35 +205,35 @@ static T2ERROR initJSONReportXconf(cJSON** jsonObj, cJSON **valArray)
 static void* CollectAndReportXconf(void* data)
 {
     (void) data;// To fix compiler warning
-    
+
     /* Set reportThreadExits flag under mutex to prevent data race with
      * ProfileXConf_notifyTimeout which reads this flag under plMutex.
      */
     pthread_mutex_lock(&plMutex);
     reportThreadExits = true;
     pthread_mutex_unlock(&plMutex);
-    
+
     do
     {
         /* CRITICAL SECTION START: Acquire plMutex to check/access singleProfile */
         pthread_mutex_lock(&plMutex);
-        
+
         T2Info("%s while Loop -- START \n", __FUNCTION__);
         if(singleProfile == NULL)
         {
             T2Error("%s is called with empty profile, profile reload might be in-progress, skip the request\n", __FUNCTION__);
             goto reportXconfThreadEnd;
         }
-        
+
         ProfileXConf* profile = singleProfile;
-        
+
         /* Set reportInProgress flag to prevent concurrent report generation
          * and profile deletion while we're working. This must be done under
          * plMutex to prevent races with ProfileXConf_notifyTimeout() and
          * ProfileXConf_delete().
          */
         profile->reportInProgress = true;
-        
+
         Vector *profileParamVals = NULL;
         cJSON *valArray = NULL;
         char* jsonReport = NULL;
@@ -257,7 +257,7 @@ static void* CollectAndReportXconf(void* data)
 
         /* CRITICAL: Release plMutex before potentially blocking operations.
          * Report generation involves:
-         * 
+         *
          * Holding plMutex during these operations blocks ALL other XCONF profile
          * operations (timeouts, updates, deletions, marker events) system-wide,
          * causing the telemetry system to hang.
@@ -283,7 +283,8 @@ static void* CollectAndReportXconf(void* data)
                  * calls pthread_cond_wait which requires the mutex to be locked.
                  */
                 pthread_mutex_lock(&plMutex);
-                if(singleProfile == profile) {
+                if(singleProfile == profile)
+                {
                     profile->reportInProgress = false;
                 }
                 goto reportXconfThreadEnd;
@@ -341,7 +342,7 @@ static void* CollectAndReportXconf(void* data)
                 encodeEventMarkersInJSON(valArray, profile->eMarkerList);
             }
             pthread_mutex_unlock(&plMutex);
-            
+
             profile->grepSeekProfile->execCounter += 1;
             T2Info("Xconf Profile Execution Count = %d\n", profile->grepSeekProfile->execCounter);
 
@@ -366,7 +367,8 @@ static void* CollectAndReportXconf(void* data)
                  * calls pthread_cond_wait which requires the mutex to be locked.
                  */
                 pthread_mutex_lock(&plMutex);
-                if(singleProfile == profile) {
+                if(singleProfile == profile)
+                {
                     profile->reportInProgress = false;
                 }
                 goto reportXconfThreadEnd;
@@ -401,7 +403,8 @@ static void* CollectAndReportXconf(void* data)
                  * calls pthread_cond_wait which requires the mutex to be locked.
                  */
                 pthread_mutex_lock(&plMutex);
-                if(singleProfile == profile) {
+                if(singleProfile == profile)
+                {
                     profile->reportInProgress = false;
                 }
                 /* CID 187010: Dereference before null check */
@@ -555,7 +558,8 @@ static void* CollectAndReportXconf(void* data)
          * and hold it through the state update and into the cond_wait.
          */
         pthread_mutex_lock(&plMutex);
-        if(singleProfile == profile) {
+        if(singleProfile == profile)
+        {
             profile->reportInProgress = false;
         }
 reportXconfThreadEnd :
@@ -563,14 +567,15 @@ reportXconfThreadEnd :
         /* CRITICAL: Check wait condition in a loop to handle spurious wakeups.
          * pthread_cond_wait can wake up spuriously without an actual signal. We must verify the actual
          * condition (timeout notification pending) before proceeding.
-         * 
+         *
          * Wait while: profile exists AND no timeout pending AND not shutting down.
          * Exit loop when: timeout arrives (reportInProgress=true) OR shutdown (initialized=false).
-         * 
+         *
          * pthread_cond_wait atomically releases plMutex while waiting.
          * When signaled or spuriously woken, it re-acquires plMutex before returning.
          */
-        while(singleProfile && !singleProfile->reportInProgress && initialized) {
+        while(singleProfile && !singleProfile->reportInProgress && initialized)
+        {
             pthread_cond_wait(&reuseThread, &plMutex);
         }
         /* After cond_wait loop exits, we hold plMutex again. Release it before
@@ -579,14 +584,14 @@ reportXconfThreadEnd :
         pthread_mutex_unlock(&plMutex);
     }
     while(initialized);
-    
+
     /* Thread is exiting. We don't hold plMutex here, so acquire it to
      * update the reportThreadExits flag, then release it.
      */
     pthread_mutex_lock(&plMutex);
     reportThreadExits = false;
     pthread_mutex_unlock(&plMutex);
-    
+
     T2Info("%s --out exiting the CollectAndReportXconf thread \n", __FUNCTION__);
     return NULL;
 }
@@ -720,13 +725,13 @@ T2ERROR ProfileXConf_set(ProfileXConf *profile)
             eMarker = (EventMarker *)Vector_At(singleProfile->eMarkerList, emIndex);
             addT2EventMarker(eMarker->markerName, eMarker->compName, singleProfile->name, eMarker->skipFreq);
         }
-        
+
         /* Release plMutex before calling scheduler API to avoid potential
          * blocking while holding the mutex. Scheduler operations may involve
          * timer management and other operations that shouldn't block profile access.
          */
         pthread_mutex_unlock(&plMutex);
-        
+
         if(registerProfileWithScheduler(singleProfile->name, singleProfile->reportingInterval, INFINITE_TIMEOUT, false, true, false, DEFAULT_FIRST_REPORT_INT, NULL) == T2ERROR_SUCCESS)
         {
             T2Info("Successfully set profile : %s\n", singleProfile->name);
@@ -736,7 +741,7 @@ T2ERROR ProfileXConf_set(ProfileXConf *profile)
         {
             T2Error("Unable to register profile : %s with Scheduler\n", singleProfile->name);
         }
-        
+
         /* Note: We already released plMutex above, so no need to unlock again */
         pthread_mutex_lock(&plMutex);
     }
@@ -818,11 +823,12 @@ T2ERROR ProfileXConf_delete(ProfileXConf *profile)
      * another thread deletes/frees singleProfile after we release plMutex.
      */
     char profileNameCopy[256] = {0};
-    if(!isNameEqual && singleProfile && singleProfile->name) {
+    if(!isNameEqual && singleProfile && singleProfile->name)
+    {
         strncpy(profileNameCopy, singleProfile->name, sizeof(profileNameCopy) - 1);
     }
     pthread_mutex_unlock(&plMutex);
-    
+
     if(isNameEqual)
     {
         T2Info("Profile exists already, updating the config in file system\n");

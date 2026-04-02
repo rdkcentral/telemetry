@@ -337,7 +337,7 @@ static void* CollectAndReport(void* data)
     {
         T2Info("%s while Loop -- START \n", __FUNCTION__);
         pthread_mutex_lock(&profile->reportInProgressMutex);
-        profile->reportInProgress = true;
+        atomic_store(&profile->reportInProgress, true);  // Atomic store - thread-safe
         pthread_cond_signal(&profile->reportInProgressCond);
         pthread_mutex_unlock(&profile->reportInProgressMutex);
 
@@ -370,7 +370,7 @@ static void* CollectAndReport(void* data)
             {
                 T2Debug(" profile->triggerReportOnCondition is not set \n");
             }
-            profile->reportInProgress = false;
+            atomic_store(&profile->reportInProgress, false);
             //return NULL;
             goto reportThreadEnd;
         }
@@ -396,7 +396,7 @@ static void* CollectAndReport(void* data)
                 {
                     T2Debug(" profile->triggerReportOnCondition is not set \n");
                 }
-                profile->reportInProgress = false;
+                atomic_store(&profile->reportInProgress, false);
                 //return NULL;
                 goto reportThreadEnd;
             }
@@ -409,7 +409,7 @@ static void* CollectAndReport(void* data)
             if(T2ERROR_SUCCESS != initJSONReportProfile(&profile->jsonReportObj, &valArray, profile->RootName))
             {
                 T2Error("Failed to initialize JSON Report\n");
-                profile->reportInProgress = false;
+                atomic_store(&profile->reportInProgress, false);
                 //pthread_mutex_unlock(&profile->triggerCondMutex);
                 if(profile->triggerReportOnCondition)
                 {
@@ -479,7 +479,7 @@ static void* CollectAndReport(void* data)
                 if(ret != T2ERROR_SUCCESS)
                 {
                     T2Error("Unable to generate report for : %s\n", profile->name);
-                    profile->reportInProgress = false;
+                    atomic_store(&profile->reportInProgress, false);
                     if(profile->triggerReportOnCondition)
                     {
                         profile->triggerReportOnCondition = false ;
@@ -519,7 +519,7 @@ static void* CollectAndReport(void* data)
                     if(cJSON_GetArraySize(array) == 0)
                     {
                         T2Warning("Array size of Report is %d. Report is empty. Cannot send empty report\n", cJSON_GetArraySize(array));
-                        profile->reportInProgress = false;
+                        atomic_store(&profile->reportInProgress, false);
                         if(profile->triggerReportOnCondition)
                         {
                             T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
@@ -584,7 +584,7 @@ static void* CollectAndReport(void* data)
                                     free(httpUrl);
                                     httpUrl = NULL;
                                 }
-                                profile->reportInProgress = false;
+                                atomic_store(&profile->reportInProgress, false);
                                 if(profile->triggerReportOnCondition)
                                 {
                                     T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
@@ -630,7 +630,7 @@ static void* CollectAndReport(void* data)
                                 T2Error("Profile : %s pthread_cond_timedwait ERROR!!!\n", profile->name);
                                 pthread_mutex_unlock(&profile->reportMutex);
                                 pthread_cond_destroy(&profile->reportcond);
-                                profile->reportInProgress = false;
+                                atomic_store(&profile->reportInProgress, false);
                                 if(profile->triggerReportOnCondition)
                                 {
                                     T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
@@ -690,7 +690,7 @@ static void* CollectAndReport(void* data)
                             if(profile->SendErr > 3 && !(rbusCheckMethodExists(profile->t2RBUSDest->rbusMethodName)))   //to delete the profile in the next CollectAndReport or triggercondition
                             {
                                 T2Debug("RBUS_METHOD doesn't exists after 3 retries\n");
-                                profile->reportInProgress = false;
+                                atomic_store(&profile->reportInProgress, false);
                                 if(profile->triggerReportOnCondition)
                                 {
                                     profile->triggerReportOnCondition = false ;
@@ -769,7 +769,7 @@ static void* CollectAndReport(void* data)
             jsonReport = NULL;
         }
 
-        profile->reportInProgress = false;
+        atomic_store(&profile->reportInProgress, false);
         if(profile->triggerReportOnCondition)
         {
             T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
@@ -794,7 +794,7 @@ reportThreadEnd :
     while(profile->enable);
     T2Info("%s --out Exiting collect and report Thread\n", __FUNCTION__);
     pthread_mutex_lock(&profile->reportInProgressMutex);
-    profile->reportInProgress = false;
+    atomic_store(&profile->reportInProgress, false);
     pthread_mutex_unlock(&profile->reportInProgressMutex);
     profile->threadExists = false;
     pthread_mutex_unlock(&profile->reuseThreadMutex);
@@ -818,29 +818,33 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
 
     pthread_mutex_unlock(&plMutex);
     T2Info("%s: profile %s is in %s state\n", __FUNCTION__, profileName, profile->enable ? "Enabled" : "Disabled");
-    pthread_mutex_lock(&profile->reportInProgressMutex);
-    if(profile->enable && !profile->reportInProgress)
-    {
-        profile->reportInProgress = true;
-        profile->bClearSeekMap = isClearSeekMap;
-        /* To avoid previous report thread to go into zombie state, mark it detached. */
-        if (profile->threadExists)
-        {
-            T2Info("Signal Thread To restart\n");
+    
+    // ✅ THREAD SAFETY: Atomic compare-and-swap eliminates TOCTOU race condition
+    if(profile->enable) {
+        bool expected = false;
+        if(atomic_compare_exchange_strong(&profile->reportInProgress, &expected, true)) {
+            // Successfully acquired report generation rights atomically
+            profile->bClearSeekMap = isClearSeekMap;
+            /* To avoid previous report thread to go into zombie state, mark it detached. */
+            if (profile->threadExists)
+            {
+                T2Info("Signal Thread To restart\n");
             pthread_mutex_lock(&profile->reuseThreadMutex);
             pthread_cond_signal(&profile->reuseThread);
             pthread_mutex_unlock(&profile->reuseThreadMutex);
+            }
+            else
+            {
+                pthread_create(&profile->reportThread, NULL, CollectAndReport, (void*)profile);
+            }
         }
-        else
-        {
-            pthread_create(&profile->reportThread, NULL, CollectAndReport, (void*)profile);
+        else {
+            // CAS failed - another thread already set reportInProgress = true
+            T2Warning("Report generation already in progress - ignoring the request\n");
         }
+    } else {
+        T2Warning("Profile is disabled - ignoring the request\n");
     }
-    else
-    {
-        T2Warning("Either profile is disabled or report generation still in progress - ignoring the request\n");
-    }
-    pthread_mutex_unlock(&profile->reportInProgressMutex);
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
@@ -1045,6 +1049,8 @@ T2ERROR enableProfile(const char *profileName)
     else
     {
         profile->enable = true;
+        // Initialize atomic reportInProgress flag - safe concurrent access without mutex
+        atomic_init(&profile->reportInProgress, false);
         if(pthread_mutex_init(&profile->triggerCondMutex, NULL) != 0)
         {
             T2Error(" %s Mutex init has failed\n", __FUNCTION__);

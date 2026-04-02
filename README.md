@@ -165,6 +165,112 @@ See [Profile Configuration Guide](docs/integration/profile-configuration.md) for
 | `T2_XCONF_URL` | XConf server URL | - |
 | `T2_REPORT_URL` | Report upload URL | - |
 
+## Runtime Operations
+
+### Signal Handling
+
+The Telemetry 2.0 daemon responds to the following signals for runtime control:
+
+| Signal | Value | Purpose |
+|--------|-------|---------|
+| **SIGTERM** | 15 | Gracefully terminate the daemon, cleanup resources and exit |
+| **SIGINT** | 2 | Interrupt signal - uninitialize services, cleanup and exit |
+| **SIGUSR1** | 10 | Trigger log upload with seekmap reset |
+| **SIGUSR2** | 12 | Reload configuration from XConf server |
+| **LOG_UPLOAD** | 10 | Custom signal to trigger log upload and reset retain seekmap flag |
+| **EXEC_RELOAD** | 12 | Custom signal to reload XConf configuration and restart XConf client |
+| **LOG_UPLOAD_ONDEMAND** | 29 | Custom signal for on-demand log upload without seekmap reset |
+| **SIGIO** | - | I/O signal - repurposed for on-demand log upload |
+
+**Examples:**
+
+```bash
+# Gracefully stop telemetry
+kill -SIGTERM $(pidof telemetry2_0)
+
+# Trigger log upload
+kill -10 $(pidof telemetry2_0)
+
+# Reload configuration
+kill -12 $(pidof telemetry2_0)
+
+# On-demand log upload
+kill -29 $(pidof telemetry2_0)
+```
+
+**Notes:**
+- Custom signal values (10, 12, 29) are defined to avoid conflicts with standard system signals
+- Signals SIGUSR1, SIGUSR2, LOG_UPLOAD, EXEC_RELOAD, LOG_UPLOAD_ONDEMAND, and SIGIO are blocked during signal handler execution to prevent race conditions
+- Child processes ignore most signals except SIGCHLD, SIGPIPE, SIGALRM, and the log upload/reload signals
+
+### WebConfig/Profile Reload
+
+Telemetry 2.0 supports multiple mechanisms for dynamically reloading report profiles and configuration:
+
+#### 1. Signal-Based XConf Reload
+
+Trigger XConf configuration reload using signals:
+
+```bash
+# Using custom signal value
+kill -12 $(pidof telemetry2_0)
+```
+
+This stops the XConf client and restarts it to fetch updated configuration from the XConf server.
+
+#### 2. RBUS-Based Profile Updates
+
+For WebConfig integration, profiles can be set directly via RBUS (requires `rbuscli`):
+
+```bash
+# Load a temporary profile (JSON format)
+rbuscli setv "Device.X_RDKCENTRAL-COM_T2.Temp_ReportProfiles" string '{"profiles":[...]}'
+
+# Set permanent profiles
+rbuscli setv "Device.X_RDKCENTRAL-COM_T2.ReportProfiles" string '{"profiles":[...]}'
+
+# Set profiles in MessagePack binary format
+rbuscli setv "Device.X_RDKCENTRAL-COM_T2.ReportProfilesMsgPack" bytes <msgpack_data>
+
+# Clear all profiles
+rbuscli setv "Device.X_RDKCENTRAL-COM_T2.ReportProfiles" string '{"profiles":[]}'
+```
+
+#### 3. DCM Event-Based Reload
+
+Subscribe to DCM reload events via RBUS (typically used by WebConfig framework):
+
+```bash
+# Publish DCM reload event
+rbuscli publish Device.X_RDKCENTREL-COM.Reloadconfig
+```
+
+#### 4. Using Test Utilities
+
+The project includes a convenience script for testing profile updates:
+
+```bash
+# Load example profile
+./test/set_report_profile.sh example
+
+# Load DOCSIS reference profile
+./test/set_report_profile.sh docsis
+
+# Clear all profiles
+./test/set_report_profile.sh empty
+
+# Load custom JSON profile
+./test/set_report_profile.sh '{"profiles":[...]}'
+```
+
+**Available RBUS Parameters:**
+
+- `Device.X_RDKCENTRAL-COM_T2.ReportProfiles` - Persistent report profiles (JSON)
+- `Device.X_RDKCENTRAL-COM_T2.ReportProfilesMsgPack` - Persistent profiles (MessagePack binary)
+- `Device.X_RDKCENTRAL-COM_T2.Temp_ReportProfiles` - Temporary profiles (JSON)
+- `Device.X_RDKCENTRAL-COM_T2.UploadDCMReport` - Trigger on-demand report upload
+- `Device.X_RDKCENTRAL-COM_T2.AbortDCMReport` - Abort ongoing report upload
+
 ## Development
 
 ### Running Tests

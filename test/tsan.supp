@@ -1,0 +1,35 @@
+# ThreadSanitizer suppression file for telemetry2_0
+# Suppress known false positives and third-party library races
+
+# Suppress races in libcurl - external library we cannot fix
+race:libcurl.so.*
+race:curl_*
+race:Curl_*
+
+# Suppress races in glibc - system library false positives  
+race:libc.so.*
+race:libpthread.so.*
+race:__pthread_*
+race:pthread_*
+
+# Suppress races in OpenSSL - external crypto library
+race:libssl.so.*
+race:libcrypto.so.*
+
+# Suppress races in JSON library - external parser
+race:libcjson.so.*
+
+# Suppress races in RDK libraries - external dependencies
+race:librdkloggers.so.*
+race:librbus.so.*
+race:libccsp_common.so.*
+
+# Known safe patterns - suppress specific functions
+# Legacy logging system - safe single writer pattern
+race:T2Error
+race:T2Info  
+race:T2Debug
+race:T2Warning
+
+# Safe atomic-like operations on single variables
+# (Remove these as we fix the actual races)

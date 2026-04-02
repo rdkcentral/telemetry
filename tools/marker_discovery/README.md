@@ -36,6 +36,8 @@ A command-line utility that scans repositories in GitHub organizations (`rdkcent
 
 ## Installation
 
+Dependencies are **auto-installed** on first run if missing. To install manually:
+
 ```bash
 pip install -r tools/marker_discovery/requirements.txt
 ```

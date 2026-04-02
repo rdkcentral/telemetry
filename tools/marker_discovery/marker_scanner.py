@@ -174,7 +174,7 @@ def main(argv=None):
 
         # Output
         if args.output:
-            with open(args.output, "w") as f:
+            with open(args.output, "w", encoding="utf-8") as f:
                 f.write(report)
             logger.info("Report written to %s", args.output)
         else:

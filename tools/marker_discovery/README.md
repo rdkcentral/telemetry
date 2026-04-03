@@ -1,6 +1,6 @@
 # Marker Discovery Tool
 
-A command-line utility that scans repositories in GitHub organizations (`rdkcentral`, `rdk-e`, `rdk-common`, `rdk-gdcs`) to identify all T2 telemetry marker instrumentations and generates a markdown inventory report.
+A command-line utility that scans repositories in GitHub organizations to identify all T2 telemetry marker instrumentations and generates a markdown inventory report. By default scans the 4 RDK organizations (`rdkcentral`, `rdk-e`, `rdk-common`, `rdk-gdcs`).
 
 ## Features
 
@@ -10,8 +10,8 @@ A command-line utility that scans repositories in GitHub organizations (`rdkcent
 - **Dynamic marker tracking** — Markers containing shell variables (`$var`, `${var}`) are identified and listed separately; pure positional args like `$1` are resolved when possible
 - **Patch scanning** — Detects marker calls in `.patch` files (added lines only)
 - **Duplicate detection** — Flags markers that appear across multiple components
-- **Version manifest input** — Accept a `versions.txt` file with exact commit SHAs for reproducible scans. Supports HTTPS and SSH GitHub URLs.
-- **Branch fallback** — Default mode: specified → main → develop → default branch
+- **Version manifest input** — Accept a `versions.txt` file with exact commit SHAs for reproducible scans. Includes all GitHub repos regardless of org. Supports HTTPS and SSH GitHub URLs.
+- **Single attempt cloning** — No branch fallback retries; 5-minute timeout per clone
 
 ## Prerequisites
 
@@ -58,7 +58,8 @@ python3 -m tools.marker_discovery [OPTIONS]
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--branch` | `main` | Git branch or tag to scan (ignored with `--input-file`) |
-| `--org` | All 4 RDK orgs | GitHub organization to scan (repeatable) |
+| `--org` | All 4 RDK orgs | GitHub organization(s) to scan. Example: `--org rdkcentral rdk-e` |
+| `--repo` | None | One or more `org/repo` pairs to scan. Example: `--repo rdkcentral/telemetry rdk-e/rdkservices-cpc` |
 | `--input-file` | None | Version manifest file (`versions.txt` format) |
 | `--output` | stdout | Output file path for the markdown report |
 | `--verbose`, `-v` | off | Enable debug logging |
@@ -71,11 +72,15 @@ python3 -m tools.marker_discovery
 
 # Scan specific orgs on a release branch, save to file
 python3 -m tools.marker_discovery \
-  --org rdkcentral \
-  --org rdk-e \
+  --org rdkcentral rdk-e \
   --branch release-1.0 \
   --output markers_report.md \
   --verbose
+
+# Scan specific repos (org/repo format)
+python3 -m tools.marker_discovery \
+  --repo rdkcentral/telemetry rdk-e/rdkservices-cpc \
+  --output markers_report.md
 
 # Scan from a version manifest file (exact commits)
 python3 -m tools.marker_discovery \
@@ -89,13 +94,17 @@ python3 -m tools.marker_discovery \
 
 **Default mode** (no `--input-file`):
 - Lists all repos in each org via GitHub API
-- Shallow clones each repo on the target branch (fallback: specified → main → develop → default)
+- Shallow clones each repo on the target branch (single attempt, 5-minute timeout)
 - Scans all cloned repos
+
+**Repo mode** (`--repo org/repo`):
+- Clones one or more specific repos by `org/repo` pairs
+- Uses the `--branch` flag (default: `main`), single attempt
 
 **Input-file mode** (`--input-file versions.txt`):
 - Parses a version manifest listing GitHub repos with commit SHAs
-- Clones at exact commit SHA (fallback: commit → branch from file → default branch)
-- Only includes repos from the 4 default RDK orgs; skips non-GitHub URLs
+- Clones at exact commit SHA (single attempt, no fallback to branch)
+- Includes ALL GitHub repos in the file regardless of org; skips non-GitHub URLs
 
 ### Version Manifest Format
 
@@ -150,10 +159,11 @@ The generated markdown report includes:
 
 1. **Header** — Branch, organizations, generation timestamp
 2. **Summary** — Total markers, static/dynamic counts, components scanned, unresolved count, duplicate count
-3. **Marker Inventory** — Table of all static markers sorted by name, with component, file path, line number, and API
-4. **Dynamic Markers** — Separate table for markers containing shell variables (if any)
-5. **Duplicate Markers** — Markers appearing in multiple components, flagged with ⚠️ (if any)
-6. **Unresolved Components** — Components from the input file that could not be cloned (if any)
+3. **Unique Marker Inventory** — One row per unique marker name with the list of components it appears in
+4. **Detailed Marker Inventory** — Table of all static markers sorted by name, with component, file path, line number, and API
+5. **Dynamic Markers** — Separate table for markers containing shell variables (if any)
+6. **Duplicate Markers** — Markers appearing in multiple components, flagged with ⚠️ (if any)
+7. **Unresolved Components** — Components from the input file that could not be cloned (if any)
 
 ## Authentication
 

@@ -5,28 +5,29 @@
 ```
 ┌──────────────────────────────────────────────────────────────────┐
 │                      marker_scanner.py (CLI)                     │
-│  --branch <name> --org rdkcentral [--output report.md]           │
+│  --org | --repo org/repo | --input-file  [--branch] [--output]   │
 └──────────────────────────┬───────────────────────────────────────┘
                            │
-                           ▼
-┌──────────────────────────────────────────────────────────────────┐
-│                      github_client.py                            │
-│                                                                  │
-│  ┌────────────────────────────────────────────────────────────┐  │
-│  │  Branch = "develop" or unset        Branch = other         │  │
-│  │  ─────────────────────────          ───────────────        │  │
-│  │  1. Search API: "t2_event"          1. List all repos      │  │
-│  │     in org (default branch)            in org (paginated)  │  │
-│  │  2. Collect matching repos          2. For each repo:      │  │
-│  │  3. Shallow clone each:                shallow clone:      │  │
-│  │     branch → develop → main            branch → develop    │  │
-│  │     → skip                             → main → skip       │  │
-│  └────────────────────────────────────────────────────────────┘  │
-└──────────────────────────┬───────────────────────────────────────┘
-                           │ list of cloned repo paths
-                           ▼
-              ┌────────────┼────────────┐
-              ▼            ▼            ▼
+          ┌────────────────┼────────────────┐
+          ▼                ▼                ▼
+┌──────────────────┐ ┌──────────────┐ ┌──────────────────────────┐
+│  Default mode    │ │  Repo mode   │ │  Input-file mode         │
+│  (--org)         │ │  (--repo)    │ │  (--input-file)          │
+│                  │ │              │ │                          │
+│  1. List repos   │ │ Parse        │ │ component_file_parser.py │
+│     in org (API) │ │ org/repo     │ │ parse versions.txt       │
+│  2. Shallow clone│ │ pairs        │ │ all GitHub orgs included │
+│     on --branch  │ │ Clone each   │ │                          │
+│     (single try, │ │ on --branch  │ │ github_client.py         │
+│      5min timeout│ │ (single try) │ │ clone at exact commit    │
+│      no retry)   │ │              │ │ (single try, no fallback)│
+└────────┬─────────┘ └──────┬───────┘ └────────────┬─────────────┘
+         │                  │                      │
+         └──────────────────┼──────────────────────┘
+                            │ list of cloned repo paths
+                            ▼
+              ┌─────────────┼────────────┐
+              ▼             ▼            ▼
 ┌──────────────────┐ ┌──────────────┐ ┌──────────────────┐
 │ code_parser.py   │ │script_parser │ │ patch_parser.py  │
 │                  │ │          .py │ │                  │
@@ -49,7 +50,8 @@
 │  2. Detect duplicates (same marker name, different component)    │
 │  3. Generate markdown:                                           │
 │     - Summary stats                                              │
-│     - Marker inventory table (with ⚠️ on duplicates)             │
+│     - Unique marker inventory (marker + components list)         │
+│     - Detailed marker inventory table (with ⚠️ on duplicates)    │
 │     - Duplicate markers section                                  │
 │  4. Write to output file                                         │
 └──────────────────────────────────────────────────────────────────┘
@@ -78,20 +80,27 @@ class MarkerRecord:
 | Arg | Required | Default | Description |
 |-----|----------|---------|-------------|
 | `--branch` | No | `main` | Branch/tag to scan (ignored with `--input-file`) |
-| `--org` | No | All 4 RDK orgs | GitHub org (repeatable) |
+| `--org` | No | All 4 RDK orgs | GitHub org(s) to scan. Example: `--org rdkcentral rdk-e` |
+| `--repo` | No | None | One or more `org/repo` pairs. Example: `--repo rdkcentral/telemetry rdk-e/rdkservices-cpc` |
 | `--input-file` | No | None | Version manifest file (versions.txt format) |
 | `--output` | No | `stdout` | Output file path for markdown report |
 | `--verbose` / `-v` | No | off | Enable debug logging |
 
 **Flow (default mode — no input file):**
 1. Parse arguments
-2. For each org, call `github_client.list_org_repos()` and clone all on `main` branch (fallback: specified → main → develop → default)
+2. For each org, call `github_client.list_org_repos()` and clone all on target branch (single attempt, 5-minute timeout)
 3. For each cloned repo, run all three scanners
 4. Pass results + empty unresolved list to `report_generator`
 
+**Flow (repo mode — `--repo org/repo`):**
+1. Parse `org/repo` pairs from arguments
+2. Clone each repo on the target branch (single attempt)
+3. For each cloned repo, run all three scanners
+4. Pass results to `report_generator`
+
 **Flow (input-file mode):**
-1. Parse version manifest via `component_file_parser.parse_component_file()` — extracts org, repo, commit SHA, branch from each line
-2. For each component, clone at exact commit SHA via `github_client.clone_components_from_file()` (fallback: commit → branch → default)
+1. Parse version manifest via `component_file_parser.parse_component_file()` — extracts org, repo, commit SHA, branch from each line. All GitHub repos included regardless of org.
+2. For each component, clone at exact commit SHA via `github_client.clone_components_from_file()` (single attempt, no fallback)
 3. Track unresolved components (clone failures)
 4. Pass results + unresolved list to `report_generator`
 
@@ -115,13 +124,12 @@ class MarkerRecord:
 - Rate limit: 10 req/min for code search — implement delay/retry
 
 **Branch fallback (default mode):**
-- `clone_repo(org, repo, branch, target_dir)`: specified → main → develop → default branch
+- `clone_repo(org, repo, branch, target_dir)`: single attempt on specified branch, 5-minute timeout, no fallback retries
 
 **Commit-SHA cloning (input-file mode):**
 - `clone_components_from_file(components, temp_dir)`: for each component from the parser:
   1. `_clone_at_commit(url, path, sha)`: `git init` → `git fetch --depth 1 origin <sha>` → `git checkout FETCH_HEAD`
-  2. Fallback: `_clone_at_branch(url, path, branch)` from the manifest
-  3. Fallback: `_clone_at_branch(url, path, None)` for default branch
+  2. No fallback — if commit clone fails, component is marked unresolved
 
 **Robust cleanup:**
 - `_force_rmtree()`: handles stubborn git-lfs directories via `onerror` handler with `chmod`
@@ -143,7 +151,7 @@ b'ssh://git@github.com/rdk-e/meta-rdk-tools'@sha : sha
 
 **Filtering:**
 - Only GitHub URLs (both HTTPS and SSH) are matched
-- Only repos from `DEFAULT_FILTER_ORGS` (4 RDK orgs) are included
+- All GitHub repos are included regardless of org
 - Non-GitHub URLs (gerrit, kernel.org, tarballs) are skipped
 - Lines with `md5sum` checksums are skipped
 

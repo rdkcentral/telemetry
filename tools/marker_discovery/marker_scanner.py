@@ -28,12 +28,12 @@ def parse_args(argv=None):
         help="Branch/tag to scan (default: main). Ignored when --input-file is used.",
     )
     parser.add_argument(
-        "--org", action="append", dest="orgs", default=None,
-        help="GitHub organization to scan (repeatable, default: all 4 RDK orgs)",
+        "--org", nargs="+", dest="orgs", default=None,
+        help="GitHub organization(s) to scan (default: all 4 RDK orgs). Example: --org rdkcentral rdk-e",
     )
     parser.add_argument(
-        "--repo",
-        help="Single repo name to scan (requires --org). Example: --org rdkcentral --repo telemetry",
+        "--repo", nargs="+", metavar="ORG/REPO",
+        help="One or more org/repo pairs to scan. Example: --repo rdkcentral/telemetry rdk-e/rdkservices-cpc",
     )
     parser.add_argument(
         "--input-file",
@@ -48,8 +48,10 @@ def parse_args(argv=None):
         help="Enable verbose/debug logging",
     )
     args = parser.parse_args(argv)
-    if args.repo and not args.orgs:
-        parser.error("--repo requires --org. Example: --org rdkcentral --repo telemetry")
+    if args.repo:
+        for entry in args.repo:
+            if '/' not in entry:
+                parser.error(f"--repo requires org/repo format, got: {entry}")
     if args.orgs is None:
         args.orgs = list(github_client.DEFAULT_ORGS)
     return args
@@ -92,10 +94,9 @@ def run_full_path_single(org, repo, branch, temp_dir):
     logger.info("Single-repo mode: cloning %s/%s on branch %s...", org, repo, branch)
     clone_path, actual_branch = github_client.clone_repo(org, repo, branch, temp_dir)
     if clone_path:
-        cloned = [{"name": repo, "path": clone_path, "branch": actual_branch}]
-        return cloned, 1
+        return [{"name": repo, "path": clone_path, "branch": actual_branch, "org": org}]
     logger.warning("Failed to clone %s/%s", org, repo)
-    return [], 0
+    return []
 
 
 def scan_cloned_repos(cloned_repos):
@@ -137,6 +138,7 @@ def run_input_file_path(input_file, temp_dir):
     logger.info("Input-file path: reading components from %s", input_file)
 
     components = component_file_parser.parse_component_file(input_file)
+
     if not components:
         logger.warning("No components found in %s", input_file)
         return [], 0, []
@@ -170,10 +172,15 @@ def main(argv=None):
 
             branch_display = f"per-component (from {args.input_file})"
         elif args.repo:
-            # Single-repo mode: clone one repo from the specified org
-            org = args.orgs[0]
-            cloned, _ = run_full_path_single(org, args.repo, args.branch, temp_dir)
-            total_repos_scanned = 1
+            # Multi-repo mode: clone specified org/repo pairs
+            cloned = []
+            repo_orgs = set()
+            for entry in args.repo:
+                org, repo = entry.split('/', 1)
+                repo_orgs.add(org)
+                cloned.extend(run_full_path_single(org, repo, args.branch, temp_dir))
+            total_repos_scanned = len(args.repo)
+            args.orgs = sorted(repo_orgs)
 
             if cloned:
                 markers = scan_cloned_repos(cloned)

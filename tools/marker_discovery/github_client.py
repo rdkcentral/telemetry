@@ -260,41 +260,32 @@ def clone_repo_at_ref(org, repo, ref, target_dir):
 
 
 def clone_repo(org, repo, branch, target_dir):
-    """Shallow clone a repo with branch fallback chain: specified → main → develop → skip.
+    """Shallow clone a repo at the specified branch (no retries).
 
-    Returns (clone_path, actual_branch) on success, or (None, None) if all branches fail.
+    Returns (clone_path, actual_branch) on success, or (None, None) on failure.
     """
     clone_url = f"https://github.com/{org}/{repo}.git"
     clone_path = os.path.join(target_dir, repo)
 
-    fallback_branches = [branch]
-    if branch != "main":
-        fallback_branches.append("main")
-    if branch != "develop":
-        fallback_branches.append("develop")
-
-    for b in fallback_branches:
-        try:
-            result = subprocess.run(
-                ["git", "clone", "--depth", "1", "--branch", b, clone_url, clone_path],
-                capture_output=True,
-                text=True,
-                timeout=120,
-            )
-            if result.returncode == 0:
-                logger.info("Cloned %s/%s on branch %s", org, repo, b)
-                return clone_path, b
-            else:
-                logger.debug("Branch %s not found for %s/%s", b, org, repo)
-                # Clean up failed clone attempt
-                if os.path.exists(clone_path):
-                    _force_rmtree(clone_path)
-        except subprocess.TimeoutExpired:
-            logger.warning("Clone timeout for %s/%s on branch %s", org, repo, b)
+    try:
+        result = subprocess.run(
+            ["git", "clone", "--depth", "1", "--branch", branch, clone_url, clone_path],
+            capture_output=True,
+            text=True,
+            timeout=300,
+        )
+        if result.returncode == 0:
+            logger.info("Cloned %s/%s on branch %s", org, repo, branch)
+            return clone_path, branch
+        else:
+            logger.debug("Clone failed for %s/%s on branch %s", branch, org, repo)
             if os.path.exists(clone_path):
                 _force_rmtree(clone_path)
+    except subprocess.TimeoutExpired:
+        logger.warning("Clone timeout for %s/%s on branch %s", org, repo, branch)
+        if os.path.exists(clone_path):
+            _force_rmtree(clone_path)
 
-    logger.warning("Skipping %s/%s — no valid branch found", org, repo)
     return None, None
 
 
@@ -345,16 +336,7 @@ def clone_components_from_file(components, temp_dir):
 
         clone_path = os.path.join(temp_dir, name)
 
-        # Strategy 1: Try cloning at the exact commit SHA
         success = _clone_at_commit(clone_url, clone_path, commit)
-
-        # Strategy 2: Fall back to branch if commit clone failed
-        if not success and branch:
-            success = _clone_at_branch(clone_url, clone_path, branch)
-
-        # Strategy 3: Fall back to default branch
-        if not success:
-            success = _clone_at_branch(clone_url, clone_path, None)
 
         if success:
             cloned.append({
@@ -397,7 +379,7 @@ def _clone_at_commit(clone_url, clone_path, commit):
         # Fetch the specific commit (shallow)
         result = subprocess.run(
             ["git", "-C", clone_path, "fetch", "--depth", "1", "origin", commit],
-            capture_output=True, text=True, timeout=120,
+            capture_output=True, text=True, timeout=300,
         )
         if result.returncode != 0:
             logger.debug("Could not fetch commit %s from %s", commit[:12], clone_url)
@@ -408,7 +390,7 @@ def _clone_at_commit(clone_url, clone_path, commit):
         # Checkout the fetched commit
         result = subprocess.run(
             ["git", "-C", clone_path, "checkout", "FETCH_HEAD"],
-            capture_output=True, text=True, timeout=120,
+            capture_output=True, text=True, timeout=300,
         )
         if result.returncode == 0:
             logger.info("Cloned %s at commit %s", clone_url, commit[:12])
@@ -439,7 +421,7 @@ def _clone_at_branch(clone_url, clone_path, branch):
             cmd.extend(["--branch", branch])
         cmd.extend([clone_url, clone_path])
 
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
         if result.returncode == 0:
             logger.info("Cloned %s on branch %s", clone_url, branch or "default")
             return True

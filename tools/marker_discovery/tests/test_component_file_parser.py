@@ -31,10 +31,10 @@ ssh://gerrit.teamccp.com:29418/rdk/components/generic/fonts/generic@stable2 : d9
 
 
 class TestParseComponentFile:
-    def test_parses_github_rdk_repos(self, versions_file):
+    def test_parses_all_github_repos(self, versions_file):
         components = parse_component_file(str(versions_file))
         names = {c['name'] for c in components}
-        # Should include rdkcentral and rdk-e repos (both HTTPS and SSH)
+        # Should include ALL GitHub repos regardless of org
         assert "meta-rdk-iot" in names
         assert "rbus" in names
         assert "some-repo" in names
@@ -42,16 +42,10 @@ class TestParseComponentFile:
         assert "airplay-application-cpc" in names
         assert "meta-rdk-tools" in names
         assert "meta-cspc-security-release" in names
-
-    def test_filters_non_rdk_orgs(self, versions_file):
-        components = parse_component_file(str(versions_file))
-        names = {c['name'] for c in components}
-        # Comcast is not in the 4 RDK orgs
-        assert "libparodus" not in names
-        # ayourtch is not in the 4 RDK orgs
-        assert "nat46" not in names
-        # entos-xe via SSH is not in the 4 RDK orgs
-        assert "asanalytics" not in names
+        # Comcast, ayourtch, entos-xe repos also included
+        assert "libparodus" in names
+        assert "nat46" in names
+        assert "asanalytics" in names
 
     def test_skips_non_github_urls(self, versions_file):
         components = parse_component_file(str(versions_file))
@@ -106,20 +100,6 @@ class TestParseComponentFile:
         # b'...' format should still be parsed
         assert "meta-rdk-iot" in by_name
 
-    def test_custom_filter_orgs(self, versions_file):
-        # Only include Comcast repos
-        components = parse_component_file(str(versions_file), filter_orgs={"Comcast"})
-        names = {c['name'] for c in components}
-        assert "libparodus" in names
-        assert "rbus" not in names
-
-    def test_custom_filter_includes_ssh_orgs(self, versions_file):
-        # Only include entos-xe repos (SSH source)
-        components = parse_component_file(str(versions_file), filter_orgs={"entos-xe"})
-        names = {c['name'] for c in components}
-        assert "asanalytics" in names
-        assert len(components) == 1
-
     def test_empty_file(self, tmp_path):
         f = tmp_path / "empty.txt"
         f.write_text("")
@@ -140,4 +120,4 @@ b'ssh://git@github.com/rdk-e/meta-rdk-tools'@690b41b5 : 690b41b5ad8bc7a634ec9c50
         f = tmp_path / "versions.txt"
         f.write_text(content)
         components = parse_component_file(str(f))
-        assert len(components) == 5  # 3 rdkcentral + 2 rdk-e
+        assert len(components) == 6  # 3 rdkcentral + 1 Comcast + 2 rdk-e

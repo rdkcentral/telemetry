@@ -18,11 +18,10 @@
 
 - [x] **Task 3: GitHub client — branch check and cloning**
   Add to `github_client.py`:
-  - `clone_repo(org, repo, branch, target_dir)`: shallow clone with fallback chain (specified → main → develop → default branch)
+  - `clone_repo(org, repo, branch, target_dir)`: shallow clone on specified branch, single attempt, 5-minute timeout, no fallback retries
   - `clone_matching_repos(org, repos, branch, temp_dir)`: orchestrate cloning for a list of repos
-  - `clone_components_from_file(components, temp_dir)`: clone from parsed version manifest at exact commit SHAs. Strategy: `_clone_at_commit` (git init + fetch --depth 1 + checkout FETCH_HEAD) → `_clone_at_branch` (branch from manifest) → `_clone_at_branch` (default branch). Returns (cloned, unresolved).
-  - `_clone_at_commit(url, path, sha)`: shallow clone at exact commit SHA
-  - `_clone_at_branch(url, path, branch)`: shallow clone at branch or default
+  - `clone_components_from_file(components, temp_dir)`: clone from parsed version manifest at exact commit SHAs. Single attempt via `_clone_at_commit` (git init + fetch --depth 1 + checkout FETCH_HEAD). No fallback to branch. Returns (cloned, unresolved).
+  - `_clone_at_commit(url, path, sha)`: shallow clone at exact commit SHA, 5-minute timeout
   - `_force_rmtree(path)`: robust directory cleanup handling git-lfs stubborn files
   - Temp directory management (create on start, cleanup on exit)
 
@@ -63,16 +62,17 @@
   - `generate_report(markers, branch, orgs, components_scanned)`: produce markdown string
   - Sort markers alphabetically by name, then component
   - Detect duplicates (same marker name in different components)
-  - Format: header with metadata → summary stats → marker inventory table (⚠️ on duplicates) → duplicate markers section (if any)
+  - Format: header with metadata → summary stats → unique marker inventory (marker + components list) → detailed marker inventory table (⚠️ on duplicates) → dynamic markers section (if any) → duplicate markers section (if any)
   - Write to file or stdout
 
 ## CLI + integration
 
 - [x] **Task 9: CLI entry point and orchestration**
   Implement `marker_scanner.py`:
-  - Argument parsing: `--branch` (default: `main`), `--org` (default: all 4 RDK orgs, repeatable), `--input-file` (versions.txt), `--output` (default: stdout), `--verbose`/`-v`
-  - Two modes:
-    - Default mode (no input file): list all repos in all orgs, clone on `main` branch, scan
+  - Argument parsing: `--branch` (default: `main`), `--org` (default: all 4 RDK orgs, accepts multiple values), `--repo` (one or more `org/repo` pairs), `--input-file` (versions.txt), `--output` (default: stdout), `--verbose`/`-v`
+  - Three modes:
+    - Default mode (no input file, no repo): list all repos in all orgs, clone on target branch, scan
+    - Repo mode (`--repo`): clone specific `org/repo` pairs on target branch
     - Input-file mode: parse version manifest via `component_file_parser`, clone at exact commits via `clone_components_from_file`, track unresolved
   - For each cloned repo: run `code_parser.scan_repo()`, `script_parser.scan_repo_scripts()`, and `patch_parser.scan_repo_patches()`
   - Pass all results + unresolved list to `report_generator`
@@ -87,7 +87,7 @@
   - `test_script_parser.py`: test `t2ValNotify`/`t2CountNotify` extraction, dynamic marker detection, positional arg resolution
   - `test_patch_parser.py`: test patch line filtering and marker extraction against sample .patch content
   - `test_report_generator.py`: test markdown output format, duplicate detection, sorting, dynamic markers section, unresolved components section
-  - `test_component_file_parser.py`: test versions.txt parsing — HTTPS URLs, SSH URLs (with and without `git@`), byte-string prefix (`b'...'`), org filtering, commit/branch extraction, SSH-to-HTTPS URL conversion, gerrit/tarball skipping, custom filter_orgs, empty file
+  - `test_component_file_parser.py`: test versions.txt parsing — HTTPS URLs, SSH URLs (with and without `git@`), byte-string prefix (`b'...'`), commit/branch extraction, SSH-to-HTTPS URL conversion, gerrit/tarball skipping, empty file
   - Sample fixtures: small `.c` files, scripts with known markers, `.patch` files with added lines
 
 - [x] **Task 11: Integration test with real repo**

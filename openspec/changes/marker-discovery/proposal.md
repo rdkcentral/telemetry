@@ -4,9 +4,10 @@
 
 A Python CLI tool that scans repositories in the `rdkcentral`, `rdk-e`, `rdk-common`, and `rdk-gdcs` GitHub organizations to discover T2 telemetry marker instrumentation calls (`t2_event_s`, `t2_event_d`, `t2_event_f`, `t2ValNotify`, `t2CountNotify`), and generates a comprehensive markdown report of all markers found.
 
-Supports two modes:
+Supports three modes:
 1. **Default mode**: Scan the `main` branch of all repos in all 4 organizations
-2. **Input-file mode**: Accept a `versions.txt` manifest file listing GitHub repos with exact commit SHAs, clone at those commits, and scan
+2. **Repo mode**: Scan specific repos by `org/repo` pairs on a given branch
+3. **Input-file mode**: Accept a `versions.txt` manifest file listing GitHub repos with exact commit SHAs, clone at those commits, and scan
 
 ## Why
 
@@ -22,9 +23,9 @@ Supports two modes:
 - **Repo enumeration**: Dynamically list all repositories in 4 GitHub organizations (`rdkcentral`, `rdk-e`, `rdk-common`, `rdk-gdcs`) via the GitHub API
 - **Version manifest input**: Accept a `versions.txt` file (`--input-file`) listing GitHub repos with branches and commit SHAs in the format `URL@ref : commit_sha`. Supports HTTPS and SSH URLs. SSH URLs are converted to HTTPS for cloning.
 - **Branch strategy**:
-  - Default (no input file): scan `main` branch of all repos in all 4 orgs, fallback: specified → main → develop → default branch
-  - With input file: clone at exact commit SHA, fallback: commit → branch → default branch
-- **Org filtering**: Only repos from the 4 default RDK orgs are included from version manifest files. Non-RDK orgs, non-GitHub URLs (gerrit, kernel.org, tarballs), and md5sum entries are skipped.
+  - Default and repo modes: scan target branch (default `main`), single clone attempt with 5-minute timeout, no fallback retries
+  - With input file: clone at exact commit SHA, single attempt, no fallback
+- **All GitHub orgs in input file**: All GitHub repos listed in the version manifest are included regardless of org. Non-GitHub URLs (gerrit, kernel.org, tarballs) and md5sum entries are skipped.
 - **Unresolved component tracking**: Components that fail to clone are listed in a dedicated report section
 - **Source file scanning**: Parse `.c`, `.cpp`, `.h` files using tree-sitter C/C++ AST to extract `t2_event_s`, `t2_event_d`, `t2_event_f` calls
 - **Wrapper resolution (level 1)**: Detect functions that wrap `t2_event_*` calls with a variable argument, then resolve call sites to extract the actual marker name string literals
@@ -32,7 +33,7 @@ Supports two modes:
 - **Dynamic marker classification**: Markers containing shell variables (`$var`, `${var}`) are classified as "script_dynamic" and reported in a separate section. Pure positional args (`$1`) are resolved when possible by tracing shell function call sites.
 - **Patch file scanning**: Scan `.patch` files for added lines (`+` prefix) containing `t2_event_*`, `t2ValNotify`, and `t2CountNotify` calls
 - **Duplicate detection**: Identify markers with the same name appearing in different components
-- **Markdown report**: Generate a structured report with summary stats, full marker inventory table, dynamic markers section, duplicate marker section, and unresolved components section
+- **Markdown report**: Generate a structured report with summary stats, unique marker inventory, detailed marker inventory table, dynamic markers section, duplicate marker section, and unresolved components section
 - **Authentication**: Use `~/.netrc` credentials for GitHub API calls. Use `~/.gitconfig` per-org credential helpers for git clone operations (supports multiple GitHub accounts).
 
 ### Out of scope (v1)
@@ -66,7 +67,13 @@ Supports two modes:
 - **Unresolved Components**: 5 ⚠️
 - **Duplicate Markers**: 12 ⚠️
 
-## Marker Inventory
+## Unique Marker Inventory
+| Marker Name | Components |
+|-------------|------------|
+| BOOT_TIME | dcm-agent |
+| CPU_USAGE ⚠️ | telemetry, common_utilities |
+
+## Detailed Marker Inventory
 | Marker Name | Component | File Path | Line | API |
 |-------------|-----------|-----------|------|-----|
 | BOOT_TIME | dcm-agent | src/dcm.c | 234 | t2_event_d |

@@ -273,7 +273,7 @@ static void* CollectAndReportXconf(void* data)
         pthread_mutex_unlock(&plMutex);
         /* CRITICAL SECTION END - plMutex released, other threads can now proceed */
 
-        clock_gettime(CLOCK_MONOTONIC, &startTime);
+        clock_gettime(CLOCK_REALTIME, &startTime);
         if(profile->encodingType != NULL && !strcmp(profile->encodingType, "JSON"))
         {
             if(T2ERROR_SUCCESS != initJSONReportXconf(&profile->jsonReportObj, &valArray))

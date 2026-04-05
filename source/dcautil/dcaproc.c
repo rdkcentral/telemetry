@@ -287,6 +287,7 @@ int getProcPidStat(int pid, procinfo * pinfo)
     }
 
     sprintf(szFileName, "/proc/%u/stat", (unsigned) pid);
+    T2Info("szFileName = %s \n", szFileName);
     if((fd = open(szFileName, O_RDONLY)) == -1)
     {
         T2Info("Failed to open file in get process info");
@@ -312,6 +313,7 @@ int getProcPidStat(int pid, procinfo * pinfo)
     t = strchr(szStatStr, ')');
     strncpy(exName, s, t - s);
     exName[t - s] = '\0';
+    T2Info("s = %s \n", s);
 
     sscanf(t + 2, "%c %d %d %d %d %d %u %u %u %u %u %d %d %d %d %d %d %u %u %d %u %u %u %u %u %u %u %u %d %d %d %d %u",
            /*       1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33*/
@@ -373,6 +375,7 @@ int getMemInfo(procMemCpuInfo *pmInfo)
         T2Error("Invalid arguments or NULL arguments\n");
         return 0;
     }
+    T2Info(" pmInfo->total_instance = %d\n", pmInfo->total_instance);
     for( index = 0; index < (pmInfo->total_instance); index++ )
     {
         memset(&pinfo, 0, sizeof(procinfo));
@@ -380,7 +383,9 @@ int getMemInfo(procMemCpuInfo *pmInfo)
         {
             return 0;
         }
+        T2Info("Before: total_memory = %d\n", total_memory);
         total_memory += pinfo.rss;
+        T2Info("After: total_memory = %d\n", total_memory);
     }
 
     residentMemory = total_memory * pageSizeInKb;

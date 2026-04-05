@@ -643,9 +643,8 @@ int getCPUInfo(procMemCpuInfo *pInfo, char* filename)
     {
         T2Info("failed in closing pipe! ret %d\n", pclose_ret);
     }
-    return ret;
     T2Info("--out %s", __FUNCTION__);
-
+    return ret;
 }
 
 #else //ENABLE_RDKC_SUPPORT & ENABLE_RDKB_SUPPORT

@@ -865,9 +865,6 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
         pthread_mutex_unlock(&plMutex);
         return T2ERROR_FAILURE;
     }
-    // Lock per-profile mutex while still holding global lock for safe transition\
-    pthread_mutex_lock(&profile->profileMutex);
-    pthread_mutex_unlock(&plMutex);  // Release global lock - other profiles can now run in parallel
     
     if(!profile->enable)
     {

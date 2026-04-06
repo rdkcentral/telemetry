@@ -817,7 +817,7 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
         return ;
     }
 
-    // Lock per-profile mutex while still holding global lock for safe transition  
+    // Lock per-profile mutex while still holding global lock for safe transition
     pthread_mutex_lock(&profile->profileMutex);
     pthread_mutex_unlock(&plMutex);  // Release global lock - other profiles can now run in parallel
     

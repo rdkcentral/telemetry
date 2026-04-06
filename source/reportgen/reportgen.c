@@ -1267,8 +1267,16 @@ char *prepareHttpUrl(T2HTTP *http)
                 continue;
             }
             url_params = temp_params;
-            params_len += snprintf(url_params + params_len, new_params_len - params_len, "%s=%s&", httpParam->HttpName, httpParamVal);
-
+            // Check httpParamVal for NULL before passing to snprintf (curl_easy_escape can return NULL)
+            if(httpParamVal != NULL)
+            {
+                params_len += snprintf(url_params + params_len, new_params_len - params_len, "%s=%s&", httpParam->HttpName, httpParamVal);
+            }
+            else
+            {
+                // If escape failed, use empty string for this parameter
+                params_len += snprintf(url_params + params_len, new_params_len - params_len, "%s=&", httpParam->HttpName);
+            }
             curl_free(httpParamVal);
         }
 

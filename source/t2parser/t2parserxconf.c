@@ -246,9 +246,32 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
     T2Info("Received profile name : %s with interval of : %d secs and upload url : %s \n", jprofileName->valuestring, reportIntervalInSec, juploadUrl->valuestring);
 
     ProfileXConf *profile = (ProfileXConf *)malloc(sizeof(ProfileXConf));
+    if (profile == NULL)
+    {
+        T2Error("Failed to allocate memory for ProfileXConf\n");
+        cJSON_Delete(json_root);
+        return T2ERROR_FAILURE;
+    }
     memset(profile, 0, sizeof(ProfileXConf));
-    pthread_mutex_init(&profile->reportInProgressMutex, NULL);
-    pthread_cond_init(&profile->reportInProgressCond, NULL);
+
+    int pthreadRet = pthread_mutex_init(&profile->reportInProgressMutex, NULL);
+    if (pthreadRet != 0)
+    {
+        T2Error("pthread_mutex_init failed for ProfileXConf, ret = %d\n", pthreadRet);
+        free(profile);
+        cJSON_Delete(json_root);
+        return T2ERROR_FAILURE;
+    }
+
+    pthreadRet = pthread_cond_init(&profile->reportInProgressCond, NULL);
+    if (pthreadRet != 0)
+    {
+        T2Error("pthread_cond_init failed for ProfileXConf, ret = %d\n", pthreadRet);
+        pthread_mutex_destroy(&profile->reportInProgressMutex);
+        free(profile);
+        cJSON_Delete(json_root);
+        return T2ERROR_FAILURE;
+    }
 //    profile->id = strdup(jprofileID->valuestring);
     profile->name = strdup(jprofileName->valuestring);
     profile->reportingInterval = reportIntervalInSec;

@@ -633,7 +633,9 @@ static void* CollectAndReport(void* data)
                             timeout = profile->maxlatencyTime;
                             pthread_mutex_unlock(&profile->reuseThreadMutex);
                             pthread_mutex_lock(&profile->reportMutex);
-                            while (profile->enable && n != ETIMEDOUT)
+                            n = pthread_cond_timedwait(&profile->reportcond, &profile->reportMutex, &timeout);
+                            // Only retry on spurious wakeups (EINTR), not on success (0) or timeout
+                            while (n == EINTR && profile->enable)
                             {
                                 n = pthread_cond_timedwait(&profile->reportcond, &profile->reportMutex, &timeout);
                             }
@@ -700,7 +702,9 @@ static void* CollectAndReport(void* data)
                             timeout = profile->maxlatencyTime;
                             pthread_mutex_unlock(&profile->reuseThreadMutex);
                             pthread_mutex_lock(&profile->reportMutex);
-                            while (profile->enable && n != ETIMEDOUT)
+                            n = pthread_cond_timedwait(&profile->reportcond, &profile->reportMutex, &timeout);
+                            // Only retry on spurious wakeups (EINTR), not on success (0) or timeout
+                            while (n == EINTR && profile->enable)
                             {
                                 n = pthread_cond_timedwait(&profile->reportcond, &profile->reportMutex, &timeout);
                             }
@@ -718,6 +722,7 @@ static void* CollectAndReport(void* data)
                                 T2Error("Profile : %s pthread_cond_timedwait ERROR!!!\n", profile->name);
                                 pthread_mutex_unlock(&profile->reportMutex);
                                 pthread_cond_destroy(&profile->reportcond);
+                                pthread_mutex_destroy(&profile->reportMutex);
                                 pthread_mutex_lock(&profile->reuseThreadMutex);
                                 pthread_mutex_lock(&profile->reportInProgressMutex);
                                 profile->reportInProgress = false;

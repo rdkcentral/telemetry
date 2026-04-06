@@ -496,6 +496,7 @@ T2ERROR getPrivacyModeFromPersistentFolder(char **privMode)
         fclose(fp);
         return T2ERROR_FAILURE;
     }
+    data[filestat.st_size] = '\0';  // Ensure null termination before strdup
     *privMode = strdup(data);
     if(fclose(fp) != 0)
     {

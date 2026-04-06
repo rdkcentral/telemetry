@@ -869,7 +869,6 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
     if(!profile->enable)
     {
         T2Warning("Profile : %s is disabled, ignoring the event\n", profileName);
-        pthread_mutex_unlock(&profile->profileMutex);
         return T2ERROR_FAILURE;
     }
     size_t eventIndex = 0;
@@ -1006,12 +1005,10 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
     {
         T2Error("Event name : %s value : %s\n", eventInfo->name, eventInfo->value);
         T2Error("Event doens't match any marker information, shouldn't come here\n");
-        pthread_mutex_unlock(&profile->profileMutex);
         return T2ERROR_FAILURE;
     }
 
     T2Debug("%s --out\n", __FUNCTION__);
-    pthread_mutex_unlock(&profile->profileMutex);
     return T2ERROR_SUCCESS;
 }
 

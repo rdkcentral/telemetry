@@ -817,7 +817,9 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
         return ;
     }
 
-    pthread_mutex_unlock(&plMutex);
+    // Lock per-profile mutex while still holding global lock for safe transition
+    pthread_mutex_lock(&profile->profileMutex);
+    pthread_mutex_unlock(&plMutex);  // Release global lock - other profiles can now run in parallel
     T2Info("%s: profile %s is in %s state\n", __FUNCTION__, profileName, profile->enable ? "Enabled" : "Disabled");
     if(profile->enable)
     {
@@ -849,6 +851,7 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
     {
         T2Warning("Profile is disabled - ignoring the request\n");
     }
+    pthread_mutex_unlock(&profile->profileMutex);
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
@@ -865,10 +868,14 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
         pthread_mutex_unlock(&plMutex);
         return T2ERROR_FAILURE;
     }
-    pthread_mutex_unlock(&plMutex);
+    // Lock per-profile mutex while still holding global lock for safe transition\
+    pthread_mutex_lock(&profile->profileMutex);
+    pthread_mutex_unlock(&plMutex);  // Release global lock - other profiles can now run in parallel
+    
     if(!profile->enable)
     {
         T2Warning("Profile : %s is disabled, ignoring the event\n", profileName);
+        pthread_mutex_unlock(&profile->profileMutex);
         return T2ERROR_FAILURE;
     }
     size_t eventIndex = 0;
@@ -1005,10 +1012,12 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
     {
         T2Error("Event name : %s value : %s\n", eventInfo->name, eventInfo->value);
         T2Error("Event doens't match any marker information, shouldn't come here\n");
+        pthread_mutex_unlock(&profile->profileMutex);
         return T2ERROR_FAILURE;
     }
 
     T2Debug("%s --out\n", __FUNCTION__);
+    pthread_mutex_unlock(&profile->profileMutex);
     return T2ERROR_SUCCESS;
 }
 
@@ -1055,9 +1064,9 @@ T2ERROR enableProfile(const char *profileName)
         profile->enable = true;
         // Initialize atomic reportInProgress flag - safe concurrent access without mutex
         atomic_init(&profile->reportInProgress, false);
-        if(pthread_mutex_init(&profile->triggerCondMutex, NULL) != 0)
+        if(pthread_mutex_init(&profile->profileMutex, NULL) != 0)
         {
-            T2Error(" %s Mutex init has failed\n", __FUNCTION__);
+            T2Error(" %s Profile mutex init has failed\n", __FUNCTION__);
             pthread_mutex_unlock(&plMutex);
             return T2ERROR_FAILURE;
         }
@@ -1318,6 +1327,7 @@ T2ERROR deleteProfile(const char *profileName)
 
     pthread_mutex_destroy(&profile->reportInProgressMutex);
     pthread_cond_destroy(&profile->reportInProgressCond);
+    pthread_mutex_destroy(&profile->profileMutex);
 
     T2Info("removing profile : %s from profile list\n", profile->name);
 #ifdef PERSIST_LOG_MON_REF

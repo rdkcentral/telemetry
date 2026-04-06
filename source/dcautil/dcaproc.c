@@ -596,9 +596,9 @@ int getCPUInfo(procMemCpuInfo *pInfo, char* filename)
         else
         {
 #ifdef LIBSYSWRAPPER_BUILD
-            inFp = v_secure_popen("r", "top -n 1 | grep -i '%s'", pInfo->processName);
-#else
             inFp = v_secure_popen("r", "top -n 1 | { grep -i '%s' || grep -E '^[[:space:]]*%d[[:space:]]'; }", pInfo->processName, pInfo->pid[0]);
+#else
+            snprintf(command, CMD_LEN, "top -n 1 | { grep -i '%s' || grep -E '^[[:space:]]*%d[[:space:]]'; }", pInfo->processName, pInfo->pid[0]);
             inFp = popen(command, "r");
 #endif
         }

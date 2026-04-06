@@ -407,7 +407,7 @@ int getMemInfo(procMemCpuInfo *pmInfo)
         intStr = intStr / 1024;
     }
     snprintf(retMem, sizeof(retMem), "%d%c", intStr, (intValue >= 1024) ? 'm' : 'k');
-    T2Info("retMem = %d\n", retMem);
+    T2Info("retMem = %s\n", retMem);
 
     strncpy(pmInfo->memUse, retMem, sizeof(pmInfo->memUse) - 1);
     pmInfo->memUse[sizeof(pmInfo->memUse) - 1] = '\0';
@@ -660,8 +660,8 @@ int getCPUInfo(procMemCpuInfo *pInfo, char* filename)
 
     if(pclose_ret != 0)
     {
-        T2Info("pmInfo->memUse = %s\n", pmInfo->memUse);
-        T2Info("pmInfo->cpuUse = %s\n", pmInfo->cpuUse);
+        T2Info("pInfo->memUse = %s\n", pInfo->memUse);
+        T2Info("pInfo->cpuUse = %s\n", pInfo->cpuUse);
         T2Info("failed in closing pipe! ret %d\n", pclose_ret);
     }
     T2Info("--out %s", __FUNCTION__);

@@ -357,10 +357,10 @@ static void* CollectAndReport(void* data)
         int clockReturn = 0;
 
         T2ERROR ret = T2ERROR_FAILURE;
-        if( profile->name == NULL || profile->encodingType == NULL || profile->protocol == NULL )
+        if ( profile->name == NULL || profile->encodingType == NULL || profile->protocol == NULL )
         {
             T2Error("Incomplete profile parameters\n");
-            if(profile->triggerReportOnCondition)
+            if (profile->triggerReportOnCondition)
             {
                 T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
                 profile->triggerReportOnCondition = false ;
@@ -820,9 +820,9 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
     T2Info("%s: profile %s is in %s state\n", __FUNCTION__, profileName, profile->enable ? "Enabled" : "Disabled");
     
     // ✅ THREAD SAFETY: Atomic compare-and-swap eliminates TOCTOU race condition
-    if(profile->enable) {
+    if (profile->enable) {
         bool expected = false;
-        if(atomic_compare_exchange_strong(&profile->reportInProgress, &expected, true)) {
+        if (atomic_compare_exchange_strong(&profile->reportInProgress, &expected, true)) {
             // Successfully acquired report generation rights atomically
             profile->bClearSeekMap = isClearSeekMap;
             /* To avoid previous report thread to go into zombie state, mark it detached. */
@@ -1040,7 +1040,7 @@ T2ERROR enableProfile(const char *profileName)
         pthread_mutex_unlock(&plMutex);
         return T2ERROR_FAILURE;
     }
-    if(profile->enable)
+    if (profile->enable)
     {
         T2Info("Profile : %s is already enabled - ignoring duplicate request\n", profileName);
         pthread_mutex_unlock(&plMutex);
@@ -1051,19 +1051,19 @@ T2ERROR enableProfile(const char *profileName)
         profile->enable = true;
         // Initialize atomic reportInProgress flag - safe concurrent access without mutex
         atomic_init(&profile->reportInProgress, false);
-        if(pthread_mutex_init(&profile->triggerCondMutex, NULL) != 0)
+        if (pthread_mutex_init(&profile->triggerCondMutex, NULL) != 0)
         {
             T2Error(" %s Mutex init has failed\n", __FUNCTION__);
             pthread_mutex_unlock(&plMutex);
             return T2ERROR_FAILURE;
         }
-        if(pthread_mutex_init(&profile->reportInProgressMutex, NULL) != 0)
+        if (pthread_mutex_init(&profile->reportInProgressMutex, NULL) != 0)
         {
             T2Error(" %s Mutex init has failed\n", __FUNCTION__);
             pthread_mutex_unlock(&plMutex);
             return T2ERROR_FAILURE;
         }
-        if(pthread_cond_init(&profile->reportInProgressCond, NULL) != 0)
+        if (pthread_cond_init(&profile->reportInProgressCond, NULL) != 0)
         {
             T2Error(" %s Cond init has failed\n", __FUNCTION__);
             pthread_mutex_unlock(&plMutex);
@@ -1190,7 +1190,7 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
             T2Error("Profile : %s failed to  unregister from scheduler\n", tempProfile->name);
         }
 
-        /* Release plMutex before pthread_join to avoid deadlock */
+        pthread_mutex_lock(&plMutex);
         if (tempProfile->threadExists)
         {
             pthread_mutex_lock(&tempProfile->reuseThreadMutex);
@@ -1199,9 +1199,6 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
             pthread_join(tempProfile->reportThread, NULL);
             tempProfile->threadExists = false;
         }
-
-        /* Re-acquire plMutex for profile cleanup */
-        pthread_mutex_lock(&plMutex);
         if(tempProfile->grepSeekProfile)
         {
             freeGrepSeekProfile(tempProfile->grepSeekProfile);
@@ -1293,14 +1290,6 @@ T2ERROR deleteProfile(const char *profileName)
     }
     pthread_mutex_unlock(&profile->reportInProgressMutex);
 
-    /* Release plMutex before pthread_join to avoid deadlock.
-     * pthread_join can block indefinitely if the CollectAndReport thread
-     * is stuck (e.g., waiting on rbusMethodMutex). Holding plMutex during
-     * pthread_join prevents other threads (timeout callbacks, other profile
-     * operations) from making progress, creating a deadlock.
-     */
-    pthread_mutex_unlock(&plMutex);
-
     if (profile->threadExists)
     {
         pthread_mutex_lock(&profile->reuseThreadMutex);
@@ -1309,9 +1298,6 @@ T2ERROR deleteProfile(const char *profileName)
         pthread_join(profile->reportThread, NULL);
         profile->threadExists = false;
     }
-
-    /* Re-acquire plMutex for profile cleanup operations */
-    pthread_mutex_lock(&plMutex);
 
     if(Vector_Size(profile->triggerConditionList) > 0)
     {

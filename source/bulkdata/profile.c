@@ -818,6 +818,7 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
     }
 
     pthread_mutex_lock(&profile->profileMutex);
+    pthread_mutex_unlock(&plMutex);
     T2Info("%s: profile %s is in %s state\n", __FUNCTION__, profileName, profile->enable ? "Enabled" : "Disabled");
     if(profile->enable)
     {

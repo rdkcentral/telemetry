@@ -97,28 +97,39 @@ static void *process_tmprp_thread(void *data)
 
     while(shouldContinue)
     {
-        pthread_mutex_lock(&tmpRpMutex);
+        // Check stopProcessing without holding tmpRpMutex to avoid nested mutex acquisition
         pthread_mutex_lock(&rpMutex);
         shouldContinue = !stopProcessing;
         pthread_mutex_unlock(&rpMutex);
+
         if(!shouldContinue)
         {
-            pthread_mutex_unlock(&tmpRpMutex);
             break;
         }
+
+        pthread_mutex_lock(&tmpRpMutex);
         T2Info("%s: Waiting for event from tr-181 \n", __FUNCTION__);
-        while(t2_queue_count(tmpRpQueue) == 0 && shouldContinue)
+        while(t2_queue_count(tmpRpQueue) == 0)
         {
             pthread_cond_wait(&tmpRpCond, &tmpRpMutex);
+            // Re-check stopProcessing after wakeup (may be spurious or shutdown signal)
+            pthread_mutex_unlock(&tmpRpMutex);
             pthread_mutex_lock(&rpMutex);
             shouldContinue = !stopProcessing;
             pthread_mutex_unlock(&rpMutex);
+            if(!shouldContinue)
+            {
+                // Exit without re-acquiring tmpRpMutex
+                goto thread_exit;
+            }
+            pthread_mutex_lock(&tmpRpMutex);
         }
 
         T2Debug("%s: Received wake up signal \n", __FUNCTION__);
-        if(t2_queue_count(tmpRpQueue) > 0 && shouldContinue)
+        if(t2_queue_count(tmpRpQueue) > 0)
         {
             tmpReportProfiles = (cJSON *)t2_queue_pop(tmpRpQueue);
+            pthread_mutex_unlock(&tmpRpMutex);
             if (tmpReportProfiles)
             {
                 ReportProfiles_ProcessReportProfilesBlob(tmpReportProfiles, T2_TEMP_RP);
@@ -126,8 +137,12 @@ static void *process_tmprp_thread(void *data)
                 // Unused value tmpReportProfiles
             }
         }
-        pthread_mutex_unlock(&tmpRpMutex);
+        else
+        {
+            pthread_mutex_unlock(&tmpRpMutex);
+        }
     }
+thread_exit:
     T2Debug("%s --out\n", __FUNCTION__);
     return NULL;
 }
@@ -153,23 +168,35 @@ static void *process_msg_thread(void *data)
         }
 
         pthread_mutex_lock(&rpMsgMutex);
-        while(t2_queue_count(rpMsgPkgQueue) == 0 && shouldContinue)
+        while(t2_queue_count(rpMsgPkgQueue) == 0)
         {
             pthread_cond_wait(&msg_Cond, &rpMsgMutex);
+            // Re-check stopProcessing after wakeup (may be spurious or shutdown signal)
+            pthread_mutex_unlock(&rpMsgMutex);
             pthread_mutex_lock(&rpMutex);
             shouldContinue = !stopProcessing;
             pthread_mutex_unlock(&rpMutex);
+            if(!shouldContinue)
+            {
+                // Exit without re-acquiring rpMsgMutex
+                return NULL;
+            }
+            pthread_mutex_lock(&rpMsgMutex);
         }
-        if(t2_queue_count(rpMsgPkgQueue) > 0 && shouldContinue)
+        if(t2_queue_count(rpMsgPkgQueue) > 0)
         {
             msgpack = (struct __msgpack__ *)t2_queue_pop(rpMsgPkgQueue);
+            pthread_mutex_unlock(&rpMsgMutex);
             if (msgpack)
             {
                 ReportProfiles_ProcessReportProfilesMsgPackBlob(msgpack->msgpack_blob, msgpack->msgpack_blob_size);
                 free(msgpack);
             }
         }
-        pthread_mutex_unlock(&rpMsgMutex);
+        else
+        {
+            pthread_mutex_unlock(&rpMsgMutex);
+        }
     }
     return NULL;
 }
@@ -200,26 +227,40 @@ T2ERROR datamodel_processProfile(char *JsonBlob, bool rprofiletypes)
 
     T2Info("Number of report profiles in configuration is %d \n", cJSON_GetArraySize(profiles));
 
-    pthread_mutex_lock(&rpMutex);
-    if (!stopProcessing)
+    if(rprofiletypes == T2_RP)
     {
-        if(rprofiletypes == T2_RP)
+        pthread_mutex_lock(&rpMutex);
+        if (!stopProcessing)
         {
             t2_queue_push(rpQueue, (void *)rootObj);
             pthread_cond_signal(&rpCond);
         }
-        else if(rprofiletypes == T2_TEMP_RP)
+        else
+        {
+            T2Error("Datamodel not initialized, dropping request \n");
+            cJSON_Delete(rootObj);
+        }
+        pthread_mutex_unlock(&rpMutex);
+    }
+    else if(rprofiletypes == T2_TEMP_RP)
+    {
+        // Use tmpRpMutex for tmpRpQueue operations (consistent locking)
+        pthread_mutex_lock(&tmpRpMutex);
+        pthread_mutex_lock(&rpMutex);
+        bool isProcessing = !stopProcessing;
+        pthread_mutex_unlock(&rpMutex);
+        if (isProcessing)
         {
             t2_queue_push(tmpRpQueue, (void *)rootObj);
             pthread_cond_signal(&tmpRpCond);
         }
+        else
+        {
+            T2Error("Datamodel not initialized, dropping request \n");
+            cJSON_Delete(rootObj);
+        }
+        pthread_mutex_unlock(&tmpRpMutex);
     }
-    else
-    {
-        T2Error("Datamodel not initialized, dropping request \n");
-        cJSON_Delete(rootObj);
-    }
-    pthread_mutex_unlock(&rpMutex);
     return T2ERROR_SUCCESS;
 }
 
@@ -399,6 +440,9 @@ void datamodel_unInit(void)
     pthread_mutex_lock(&rpMsgMutex);
     pthread_cond_signal(&msg_Cond);
     pthread_mutex_unlock(&rpMsgMutex);
+    pthread_mutex_lock(&tmpRpMutex);
+    pthread_cond_signal(&tmpRpCond);
+    pthread_mutex_unlock(&tmpRpMutex);
     pthread_join(rpThread, NULL);
     pthread_mutex_destroy(&rpMutex);
     pthread_cond_destroy(&rpCond);

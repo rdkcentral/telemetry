@@ -28,6 +28,8 @@ m4/
 *.dirstamp
 .deps/
 .libs/
+source/telemetry2_0
+source/commonlib/telemetry2_0_client
 
 # Source subdirectory build files
 source/**/Makefile

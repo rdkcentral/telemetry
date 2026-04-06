@@ -1053,6 +1053,8 @@ T2ERROR enableProfile(const char *profileName)
     else
     {
         profile->enable = true;
+        // Initialize atomic reportInProgress flag - safe concurrent access without mutex
+        atomic_init(&profile->reportInProgress, false);
         if(pthread_mutex_init(&profile->triggerCondMutex, NULL) != 0)
         {
             T2Error(" %s Mutex init has failed\n", __FUNCTION__);
@@ -1192,7 +1194,8 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
             T2Error("Profile : %s failed to  unregister from scheduler\n", tempProfile->name);
         }
 
-        /* Release plMutex before pthread_join to avoid deadlock */
+        /* plMutex */
+        pthread_mutex_lock(&plMutex);
         if (tempProfile->threadExists)
         {
             pthread_mutex_lock(&tempProfile->reuseThreadMutex);
@@ -1202,8 +1205,6 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
             tempProfile->threadExists = false;
         }
 
-        /* Re-acquire plMutex for profile cleanup */
-        pthread_mutex_lock(&plMutex);
         if(tempProfile->grepSeekProfile)
         {
             freeGrepSeekProfile(tempProfile->grepSeekProfile);
@@ -1295,14 +1296,6 @@ T2ERROR deleteProfile(const char *profileName)
     }
     pthread_mutex_unlock(&profile->reportInProgressMutex);
 
-    /* Release plMutex before pthread_join to avoid deadlock.
-     * pthread_join can block indefinitely if the CollectAndReport thread
-     * is stuck (e.g., waiting on rbusMethodMutex). Holding plMutex during
-     * pthread_join prevents other threads (timeout callbacks, other profile
-     * operations) from making progress, creating a deadlock.
-     */
-    pthread_mutex_unlock(&plMutex);
-
     if (profile->threadExists)
     {
         pthread_mutex_lock(&profile->reuseThreadMutex);
@@ -1312,8 +1305,6 @@ T2ERROR deleteProfile(const char *profileName)
         profile->threadExists = false;
     }
 
-    /* Re-acquire plMutex for profile cleanup operations */
-    pthread_mutex_lock(&plMutex);
 
     if(Vector_Size(profile->triggerConditionList) > 0)
     {

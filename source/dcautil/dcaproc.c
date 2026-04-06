@@ -339,16 +339,27 @@ int getProcPidStat(int pid, procinfo * pinfo)
 int getProcInfo(procMemCpuInfo *pmInfo, char* filename)
 {
     T2Info("%s ++in \n", __FUNCTION__);
+    T2Info("INTIAL: \n");
+    T2Info("pmInfo->memUse = %s\n", pmInfo->memUse);
+    T2Info("pmInfo->cpuUse = %s\n", pmInfo->cpuUse);
     if(0 == getMemInfo(pmInfo))
     {
+        T2Info("FINAL: \n");
+        T2Info("pmInfo->memUse = %s\n", pmInfo->memUse);
+        T2Info("pmInfo->cpuUse = %s\n", pmInfo->cpuUse);
         return 0;
     }
 
     if(0 == getCPUInfo(pmInfo, filename))
     {
+        T2Info("FINAL: \n");
+        T2Info("pmInfo->memUse = %s\n", pmInfo->memUse);
+        T2Info("pmInfo->cpuUse = %s\n", pmInfo->cpuUse);
         return 0;
     }
-
+        T2Info("FINAL: \n");
+        T2Info("pmInfo->memUse = %s\n", pmInfo->memUse);
+        T2Info("pmInfo->cpuUse = %s\n", pmInfo->cpuUse);
     return 1;
 }
 
@@ -396,9 +407,11 @@ int getMemInfo(procMemCpuInfo *pmInfo)
         intStr = intStr / 1024;
     }
     snprintf(retMem, sizeof(retMem), "%d%c", intStr, (intValue >= 1024) ? 'm' : 'k');
+    T2Info("retMem = %d\n", retMem);
 
     strncpy(pmInfo->memUse, retMem, sizeof(pmInfo->memUse) - 1);
     pmInfo->memUse[sizeof(pmInfo->memUse) - 1] = '\0';
+    T2Info("pmInfo->memUse = %s\n", pmInfo->memUse);
     T2Info("%s --out \n", __FUNCTION__);
     return 1;
 }
@@ -592,7 +605,7 @@ int getCPUInfo(procMemCpuInfo *pInfo, char* filename)
     }
     else
     {
-        T2Info("%s ++in the savad temp log %s is available \n", __FUNCTION__, filename);
+        T2Info("%s ++in the saved temp log %s is available \n", __FUNCTION__, filename);
 #ifdef LIBSYSWRAPPER_BUILD
         inFp = v_secure_popen("r", "cat %s |grep -i '%s'", TOPTEMP, pInfo->processName);
 #else
@@ -610,12 +623,16 @@ int getCPUInfo(procMemCpuInfo *pInfo, char* filename)
     }
 
     //  2268 root      20   0  831m  66m  20m S   27 13.1 491:06.82 Receiver
+    T2Info("intial total_cpu_usage = %f\n", total_cpu_usage);
 #ifdef INTEL
+    
     while(fgets(top_op, 2048, inFp) != NULL)
     {
         if(sscanf(top_op, "%s %s %s %s %s %s %s %s", var1, var2, var3, var4, var5, var6, var7, var8) == 8)
         {
             total_cpu_usage += atof(var7);
+            T2Info("process cpu = %f\n", atof(var7));
+            T2Info("total_cpu_usage = %f\n", total_cpu_usage);
             ret = 1;
         }
     }
@@ -626,6 +643,8 @@ int getCPUInfo(procMemCpuInfo *pInfo, char* filename)
         if(sscanf(top_op, "%16s %16s %16s %16s %16s %16s %16s %512s %512s %512s", var1, var2, var3, var4, var5, var6, var7, var8, var9, var10) == 10)
         {
             total_cpu_usage += atof(var9);
+            T2Info("process cpu = %f\n", atof(var7));
+            T2Info("total_cpu_usage = %f\n", total_cpu_usage);
             ret = 1;
         }
     }
@@ -641,6 +660,8 @@ int getCPUInfo(procMemCpuInfo *pInfo, char* filename)
 
     if(pclose_ret != 0)
     {
+        T2Info("pmInfo->memUse = %s\n", pmInfo->memUse);
+        T2Info("pmInfo->cpuUse = %s\n", pmInfo->cpuUse);
         T2Info("failed in closing pipe! ret %d\n", pclose_ret);
     }
     T2Info("--out %s", __FUNCTION__);

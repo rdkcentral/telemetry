@@ -817,6 +817,7 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
         return ;
     }
 
+    pthread_mutex_unlock(&plMutex);
     T2Info("%s: profile %s is in %s state\n", __FUNCTION__, profileName, profile->enable ? "Enabled" : "Disabled");
     if(profile->enable)
     {
@@ -848,7 +849,6 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
     {
         T2Warning("Profile is disabled - ignoring the request\n");
     }
-    pthread_mutex_unlock(&profile->profileMutex);
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
@@ -865,7 +865,7 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
         pthread_mutex_unlock(&plMutex);
         return T2ERROR_FAILURE;
     }
-    
+    pthread_mutex_unlock(&plMutex);
     if(!profile->enable)
     {
         T2Warning("Profile : %s is disabled, ignoring the event\n", profileName);
@@ -1055,6 +1055,12 @@ T2ERROR enableProfile(const char *profileName)
         profile->enable = true;
         // Initialize atomic reportInProgress flag - safe concurrent access without mutex
         atomic_init(&profile->reportInProgress, false);
+        if(pthread_mutex_init(&profile->triggerCondMutex, NULL) != 0)
+        {
+            T2Error(" %s Mutex init has failed\n", __FUNCTION__);
+            pthread_mutex_unlock(&plMutex);
+            return T2ERROR_FAILURE;
+        }
         if(pthread_mutex_init(&profile->reportInProgressMutex, NULL) != 0)
         {
             T2Error(" %s Mutex init has failed\n", __FUNCTION__);
@@ -1312,7 +1318,6 @@ T2ERROR deleteProfile(const char *profileName)
 
     pthread_mutex_destroy(&profile->reportInProgressMutex);
     pthread_cond_destroy(&profile->reportInProgressCond);
-    pthread_mutex_destroy(&profile->profileMutex);
 
     T2Info("removing profile : %s from profile list\n", profile->name);
 #ifdef PERSIST_LOG_MON_REF
@@ -1340,6 +1345,7 @@ void sendLogUploadInterruptToScheduler()
             SendInterruptToTimeoutThread(tempProfile->name);
         }
     }
+    pthread_mutex_unlock(&plMutex);
     T2Debug("%s --out\n", __FUNCTION__);
 }
 

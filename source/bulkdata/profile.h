@@ -21,8 +21,8 @@
 #define _PROFILE_H_
 
 #include <stdbool.h>
-#include <pthread.h>
 #include <stdatomic.h>
+#include <pthread.h>
 #include <cjson/cJSON.h>
 
 #include "t2collection.h"
@@ -48,6 +48,7 @@ typedef struct _Profile
     atomic_bool reportInProgress;        // Thread-safe atomic flag - no mutex needed for simple checks
     pthread_cond_t reportInProgressCond;
     pthread_mutex_t reportInProgressMutex;
+    pthread_mutex_t profileMutex;        // Per-profile main lock - enables parallel profile operations
     bool generateNow;
     bool deleteonTimeout;
     bool bClearSeekMap;

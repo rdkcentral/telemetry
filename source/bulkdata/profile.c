@@ -1340,7 +1340,6 @@ void sendLogUploadInterruptToScheduler()
             SendInterruptToTimeoutThread(tempProfile->name);
         }
     }
-    pthread_mutex_unlock(&plMutex);
     T2Debug("%s --out\n", __FUNCTION__);
 }
 

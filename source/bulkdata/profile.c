@@ -819,29 +819,31 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
 
     pthread_mutex_unlock(&plMutex);
     T2Info("%s: profile %s is in %s state\n", __FUNCTION__, profileName, profile->enable ? "Enabled" : "Disabled");
-    pthread_mutex_lock(&profile->reportInProgressMutex);
-    if(profile->enable && !profile->reportInProgress)
-    {
-        profile->reportInProgress = true;
-        profile->bClearSeekMap = isClearSeekMap;
-        /* To avoid previous report thread to go into zombie state, mark it detached. */
-        if (profile->threadExists)
-        {
-            T2Info("Signal Thread To restart\n");
+    if (profile->enable) {
+        bool expected = false;
+        if (atomic_compare_exchange_strong(&profile->reportInProgress, &expected, true)) {
+            profile->bClearSeekMap = isClearSeekMap;
+            /* To avoid previous report thread to go into zombie state, mark it detached. */
+            if (profile->threadExists)
+            {
+                T2Info("Signal Thread To restart\n");
             pthread_mutex_lock(&profile->reuseThreadMutex);
             pthread_cond_signal(&profile->reuseThread);
             pthread_mutex_unlock(&profile->reuseThreadMutex);
+            }
+            else
+            {
+                pthread_create(&profile->reportThread, NULL, CollectAndReport, (void*)profile);
+            }
         }
-        else
-        {
-            pthread_create(&profile->reportThread, NULL, CollectAndReport, (void*)profile);
+        else {
+            T2Warning("Report generation already in progress - ignoring the request\n");
         }
     }
     else
     {
         T2Warning("Either profile is disabled or report generation still in progress - ignoring the request\n");
     }
-    pthread_mutex_unlock(&profile->reportInProgressMutex);
     T2Debug("%s --out\n", __FUNCTION__);
 }
 

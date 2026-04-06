@@ -16,7 +16,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
 */
-// Just a comment
 
 #include <stdbool.h>
 #include <malloc.h>
@@ -372,7 +371,7 @@ static void* CollectAndReport(void* data)
             {
                 T2Debug(" profile->triggerReportOnCondition is not set \n");
             }
-            profile->reportInProgress = false;
+            atomic_store(&profile->reportInProgress, false);
             //return NULL;
             goto reportThreadEnd;
         }
@@ -398,7 +397,7 @@ static void* CollectAndReport(void* data)
                 {
                     T2Debug(" profile->triggerReportOnCondition is not set \n");
                 }
-                profile->reportInProgress = false;
+                atomic_store(&profile->reportInProgress, false);
                 //return NULL;
                 goto reportThreadEnd;
             }
@@ -411,7 +410,7 @@ static void* CollectAndReport(void* data)
             if(T2ERROR_SUCCESS != initJSONReportProfile(&profile->jsonReportObj, &valArray, profile->RootName))
             {
                 T2Error("Failed to initialize JSON Report\n");
-                profile->reportInProgress = false;
+                atomic_store(&profile->reportInProgress, false);
                 //pthread_mutex_unlock(&profile->triggerCondMutex);
                 if(profile->triggerReportOnCondition)
                 {
@@ -481,7 +480,7 @@ static void* CollectAndReport(void* data)
                 if(ret != T2ERROR_SUCCESS)
                 {
                     T2Error("Unable to generate report for : %s\n", profile->name);
-                    profile->reportInProgress = false;
+                    atomic_store(&profile->reportInProgress, false);
                     if(profile->triggerReportOnCondition)
                     {
                         profile->triggerReportOnCondition = false ;
@@ -521,7 +520,7 @@ static void* CollectAndReport(void* data)
                     if(cJSON_GetArraySize(array) == 0)
                     {
                         T2Warning("Array size of Report is %d. Report is empty. Cannot send empty report\n", cJSON_GetArraySize(array));
-                        profile->reportInProgress = false;
+                        atomic_store(&profile->reportInProgress, false);
                         if(profile->triggerReportOnCondition)
                         {
                             T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
@@ -586,7 +585,7 @@ static void* CollectAndReport(void* data)
                                     free(httpUrl);
                                     httpUrl = NULL;
                                 }
-                                profile->reportInProgress = false;
+                                atomic_store(&profile->reportInProgress, false);
                                 if(profile->triggerReportOnCondition)
                                 {
                                     T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
@@ -632,7 +631,7 @@ static void* CollectAndReport(void* data)
                                 T2Error("Profile : %s pthread_cond_timedwait ERROR!!!\n", profile->name);
                                 pthread_mutex_unlock(&profile->reportMutex);
                                 pthread_cond_destroy(&profile->reportcond);
-                                profile->reportInProgress = false;
+                                atomic_store(&profile->reportInProgress, false);
                                 if(profile->triggerReportOnCondition)
                                 {
                                     T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
@@ -692,7 +691,7 @@ static void* CollectAndReport(void* data)
                             if(profile->SendErr > 3 && !(rbusCheckMethodExists(profile->t2RBUSDest->rbusMethodName)))   //to delete the profile in the next CollectAndReport or triggercondition
                             {
                                 T2Debug("RBUS_METHOD doesn't exists after 3 retries\n");
-                                profile->reportInProgress = false;
+                                atomic_store(&profile->reportInProgress, false);
                                 if(profile->triggerReportOnCondition)
                                 {
                                     profile->triggerReportOnCondition = false ;
@@ -771,7 +770,7 @@ static void* CollectAndReport(void* data)
             jsonReport = NULL;
         }
 
-        profile->reportInProgress = false;
+        atomic_store(&profile->reportInProgress, false);
         if(profile->triggerReportOnCondition)
         {
             T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
@@ -796,7 +795,7 @@ reportThreadEnd :
     while(profile->enable);
     T2Info("%s --out Exiting collect and report Thread\n", __FUNCTION__);
     pthread_mutex_lock(&profile->reportInProgressMutex);
-    profile->reportInProgress = false;
+    atomic_store(&profile->reportInProgress, false);
     pthread_mutex_unlock(&profile->reportInProgressMutex);
     profile->threadExists = false;
     pthread_mutex_unlock(&profile->reuseThreadMutex);

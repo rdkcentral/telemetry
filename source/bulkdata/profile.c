@@ -339,7 +339,7 @@ static void* CollectAndReport(void* data)
     {
         T2Info("%s while Loop -- START \n", __FUNCTION__);
         pthread_mutex_lock(&profile->reportInProgressMutex);
-        profile->reportInProgress = true;
+        atomic_store(&profile->reportInProgress, true);  // Atomic store - thread-safe
         pthread_cond_signal(&profile->reportInProgressCond);
         pthread_mutex_unlock(&profile->reportInProgressMutex);
 

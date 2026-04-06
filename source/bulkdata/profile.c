@@ -357,10 +357,10 @@ static void* CollectAndReport(void* data)
         int clockReturn = 0;
 
         T2ERROR ret = T2ERROR_FAILURE;
-        if ( profile->name == NULL || profile->encodingType == NULL || profile->protocol == NULL )
+        if( profile->name == NULL || profile->encodingType == NULL || profile->protocol == NULL )
         {
             T2Error("Incomplete profile parameters\n");
-            if (profile->triggerReportOnCondition)
+            if(profile->triggerReportOnCondition)
             {
                 T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
                 profile->triggerReportOnCondition = false ;
@@ -1040,7 +1040,7 @@ T2ERROR enableProfile(const char *profileName)
         pthread_mutex_unlock(&plMutex);
         return T2ERROR_FAILURE;
     }
-    if (profile->enable)
+    if(profile->enable)
     {
         T2Info("Profile : %s is already enabled - ignoring duplicate request\n", profileName);
         pthread_mutex_unlock(&plMutex);
@@ -1051,19 +1051,19 @@ T2ERROR enableProfile(const char *profileName)
         profile->enable = true;
         // Initialize atomic reportInProgress flag - safe concurrent access without mutex
         atomic_init(&profile->reportInProgress, false);
-        if (pthread_mutex_init(&profile->triggerCondMutex, NULL) != 0)
+        if(pthread_mutex_init(&profile->triggerCondMutex, NULL) != 0)
         {
             T2Error(" %s Mutex init has failed\n", __FUNCTION__);
             pthread_mutex_unlock(&plMutex);
             return T2ERROR_FAILURE;
         }
-        if (pthread_mutex_init(&profile->reportInProgressMutex, NULL) != 0)
+        if(pthread_mutex_init(&profile->reportInProgressMutex, NULL) != 0)
         {
             T2Error(" %s Mutex init has failed\n", __FUNCTION__);
             pthread_mutex_unlock(&plMutex);
             return T2ERROR_FAILURE;
         }
-        if (pthread_cond_init(&profile->reportInProgressCond, NULL) != 0)
+        if(pthread_cond_init(&profile->reportInProgressCond, NULL) != 0)
         {
             T2Error(" %s Cond init has failed\n", __FUNCTION__);
             pthread_mutex_unlock(&plMutex);

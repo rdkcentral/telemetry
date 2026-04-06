@@ -817,9 +817,6 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
         return ;
     }
 
-    // Lock per-profile mutex while still holding global lock for safe transition
-    pthread_mutex_lock(&profile->profileMutex);
-    pthread_mutex_unlock(&plMutex);  // Release global lock - other profiles can now run in parallel
     T2Info("%s: profile %s is in %s state\n", __FUNCTION__, profileName, profile->enable ? "Enabled" : "Disabled");
     if(profile->enable)
     {

@@ -631,12 +631,33 @@ static void* CollectAndReport(void* data)
                             pthread_mutex_lock(&profile->reuseThreadMutex);
                             profile->maxlatencyTime.tv_sec += maxuploadinSec;
                             timeout = profile->maxlatencyTime;
+                            // Snapshot enable state under proper lock (reuseThreadMutex guards thread state)
+                            // to avoid LOCK_EVASION (Coverity) when checking before wait
+                            bool shouldWait = profile->enable;
                             pthread_mutex_unlock(&profile->reuseThreadMutex);
                             n = EINTR; /* Initialize to enter the wait loop; condition is checked before first wait */
                             pthread_mutex_lock(&profile->reportMutex);
-                            while (n == EINTR)
+                            // Check wait condition before waiting (Coverity BAD_CHECK_OF_WAIT_COND)
+                            // If profile is disabled, skip the wait entirely
+                            if (shouldWait)
                             {
                                 n = pthread_cond_timedwait(&profile->reportcond, &profile->reportMutex, &timeout);
+                                // Only retry on spurious wakeups (EINTR) while still enabled
+                                // Re-check enable under lock for retry loop
+                                pthread_mutex_lock(&profile->reuseThreadMutex);
+                                shouldWait = profile->enable;
+                                pthread_mutex_unlock(&profile->reuseThreadMutex);
+                                while (n == EINTR && shouldWait)
+                                {
+                                    n = pthread_cond_timedwait(&profile->reportcond, &profile->reportMutex, &timeout);
+                                    pthread_mutex_lock(&profile->reuseThreadMutex);
+                                    shouldWait = profile->enable;
+                                    pthread_mutex_unlock(&profile->reuseThreadMutex);
+                                }
+                            }
+                            else
+                            {
+                                n = 0; // Treat as signaled (skip upload)
                             }
                             if(n == ETIMEDOUT)
                             {
@@ -699,12 +720,33 @@ static void* CollectAndReport(void* data)
                             pthread_mutex_lock(&profile->reuseThreadMutex);
                             profile->maxlatencyTime.tv_sec += maxuploadinSec;
                             timeout = profile->maxlatencyTime;
+                            // Snapshot enable state under proper lock (reuseThreadMutex guards thread state)
+                            // to avoid LOCK_EVASION (Coverity) when checking before wait
+                            bool shouldWait = profile->enable;
                             pthread_mutex_unlock(&profile->reuseThreadMutex);
                             n = EINTR; /* Initialize to enter the wait loop; condition is checked before first wait */
                             pthread_mutex_lock(&profile->reportMutex);
-                            while (n == EINTR)
+                            // Check wait condition before waiting (Coverity BAD_CHECK_OF_WAIT_COND)
+                            // If profile is disabled, skip the wait entirely
+                            if (shouldWait)
                             {
                                 n = pthread_cond_timedwait(&profile->reportcond, &profile->reportMutex, &timeout);
+                                // Only retry on spurious wakeups (EINTR) while still enabled
+                                // Re-check enable under lock for retry loop
+                                pthread_mutex_lock(&profile->reuseThreadMutex);
+                                shouldWait = profile->enable;
+                                pthread_mutex_unlock(&profile->reuseThreadMutex);
+                                while (n == EINTR && shouldWait)
+                                {
+                                    n = pthread_cond_timedwait(&profile->reportcond, &profile->reportMutex, &timeout);
+                                    pthread_mutex_lock(&profile->reuseThreadMutex);
+                                    shouldWait = profile->enable;
+                                    pthread_mutex_unlock(&profile->reuseThreadMutex);
+                                }
+                            }
+                            else
+                            {
+                                n = 0; // Treat as signaled (skip upload)
                             }
                             if(n == ETIMEDOUT)
                             {
@@ -930,15 +972,23 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
     }
 
     pthread_mutex_unlock(&plMutex);
-    T2Info("%s: profile %s is in %s state\n", __FUNCTION__, profileName, profile->enable ? "Enabled" : "Disabled");
+    
+    // Check profile->enable under lock to avoid LOCK_EVASION (Coverity)
+    // NotifyTimeout can be called concurrently with profile disable operations
+    pthread_mutex_lock(&plMutex);
+    bool isEnabled = profile->enable;
+    pthread_mutex_unlock(&plMutex);
+    
+    T2Info("%s: profile %s is in %s state\n", __FUNCTION__, profileName, isEnabled ? "Enabled" : "Disabled");
     pthread_mutex_lock(&profile->reportInProgressMutex);
-    if(profile->enable && !profile->reportInProgress)
+    if(isEnabled && !profile->reportInProgress)
     {
         profile->reportInProgress = true;
         profile->bClearSeekMap = isClearSeekMap;
         pthread_mutex_unlock(&profile->reportInProgressMutex);
 
-        /* Read threadExists under reuseThreadMutex for consistent lock protection */
+        // Check threadExists with proper lock (reuseThreadMutex, not reportInProgressMutex)
+        // to avoid LOCK_EVASION data race (Coverity CWE-543)
         pthread_mutex_lock(&profile->reuseThreadMutex);
         bool threadStillExists = profile->threadExists;
         pthread_mutex_unlock(&profile->reuseThreadMutex);
@@ -977,8 +1027,10 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
         pthread_mutex_unlock(&plMutex);
         return T2ERROR_FAILURE;
     }
+    // Check profile->enable under lock to avoid LOCK_EVASION (Coverity)
+    bool isEnabled = profile->enable;
     pthread_mutex_unlock(&plMutex);
-    if(!profile->enable)
+    if(!isEnabled)
     {
         T2Warning("Profile : %s is disabled, ignoring the event\n", profileName);
         return T2ERROR_FAILURE;
@@ -1306,14 +1358,20 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
 
         /* Release plMutex before pthread_join to avoid deadlock */
         pthread_mutex_lock(&tempProfile->reuseThreadMutex);
-        if (tempProfile->threadExists)
+        bool threadStillExists = tempProfile->threadExists;
+        if (threadStillExists)
         {
             tempProfile->restartRequested = true;
             pthread_cond_signal(&tempProfile->reuseThread);
             pthread_mutex_unlock(&tempProfile->reuseThreadMutex);
             pthread_join(tempProfile->reportThread, NULL);
-            pthread_mutex_lock(&tempProfile->reuseThreadMutex);
-            tempProfile->threadExists = false;
+            /* CollectAndReport thread sets threadExists=false before exiting (see line 913),
+             * so after pthread_join returns, threadExists is already false.
+             * No need to set it again - avoids LOCK_EVASION defect (Coverity CWE-543). */
+        }
+        else
+        {
+            pthread_mutex_unlock(&tempProfile->reuseThreadMutex);
         }
         pthread_mutex_unlock(&tempProfile->reuseThreadMutex);
 
@@ -1406,12 +1464,19 @@ T2ERROR deleteProfile(const char *profileName)
     // Avoid holding both reportInProgressMutex and reuseThreadMutex at the same time.
     // This prevents potential deadlocks when other code paths acquire these locks
     // in the opposite order.
+    // NOTE: Cannot check threadExists in the condition as it requires reuseThreadMutex,
+    // which would create a deadlock risk. Check it separately after the wait.
     pthread_mutex_lock(&profile->reportInProgressMutex);
     while (profile->reportInProgress)
     {
         pthread_cond_wait(&profile->reportInProgressCond, &profile->reportInProgressMutex);
     }
     pthread_mutex_unlock(&profile->reportInProgressMutex);
+
+    // Read threadExists with proper lock (reuseThreadMutex) to avoid LOCK_EVASION (Coverity CWE-543)
+    pthread_mutex_lock(&profile->reuseThreadMutex);
+    bool threadStillExists = profile->threadExists;
+    pthread_mutex_unlock(&profile->reuseThreadMutex);
 
     /* Release plMutex before pthread_join to avoid deadlock.
      * pthread_join can block indefinitely if the CollectAndReport thread
@@ -1430,8 +1495,9 @@ T2ERROR deleteProfile(const char *profileName)
         pthread_cond_signal(&profile->reuseThread);
         pthread_mutex_unlock(&profile->reuseThreadMutex);
         pthread_join(profile->reportThread, NULL);
-        pthread_mutex_lock(&profile->reuseThreadMutex);
-        profile->threadExists = false;
+        /* CollectAndReport thread sets threadExists=false before exiting (see line 913),
+         * so after pthread_join returns, threadExists is already false.
+         * No need to set it again - avoids LOCK_EVASION defect (Coverity CWE-543). */
     }
     pthread_mutex_unlock(&profile->reuseThreadMutex);
 

@@ -251,6 +251,17 @@ int getProcUsage(char *processName, TopMarker* marker, char* filename)
 
             return ret;
         }
+        /* getProcInfo failed — reset stale marker values */
+        if (marker->cpuValue)
+        {
+            free(marker->cpuValue);
+            marker->cpuValue = strdup("0.0");
+        }
+        if (marker->memValue)
+        {
+            free(marker->memValue);
+            marker->memValue = strdup("0");
+        }
         if(pid)
         {
             free(pid);
@@ -559,7 +570,7 @@ int getCPUInfo(procMemCpuInfo *pInfo, char* filename)
     }
     if((filename != NULL) && (access(filename, F_OK) != 0))
     {
-        T2Info("%s ++in the savad temp log %s is not available \n", __FUNCTION__, filename);
+        T2Info("%s ++in the saved temp log %s is not available \n", __FUNCTION__, filename);
         /* Check Whether -c option is supported */
 #ifdef LIBSYSWRAPPER_BUILD
         ret = v_secure_system(" top -c -n 1 2> /dev/null 1> /dev/null");
@@ -576,7 +587,7 @@ int getCPUInfo(procMemCpuInfo *pInfo, char* filename)
         if ( 1 == cmd_option )
         {
 #ifdef LIBSYSWRAPPER_BUILD
-            inFp = v_secure_popen("r", "top -n 1 -c | grep -v grep |grep -i '%s'", pInfo->processName);
+            inFp = v_secure_popen("r", "top -n 1 -c | grep -v grep | { grep -i '%s' || grep -E '^[[:space:]]*%d[[:space:]]'; }", pInfo->processName, pInfo->pid[0]);
 #else
             sprintf(command, "top -n 1 -c | grep -v grep |grep -i '%s'", pInfo->processName);
             inFp = popen(command, "r");
@@ -587,7 +598,7 @@ int getCPUInfo(procMemCpuInfo *pInfo, char* filename)
 #ifdef LIBSYSWRAPPER_BUILD
             inFp = v_secure_popen("r", "top -n 1 | grep -i '%s'", pInfo->processName);
 #else
-            sprintf(command, "top -n 1 | grep -i '%s'", pInfo->processName);
+            inFp = v_secure_popen("r", "top -n 1 | { grep -i '%s' || grep -E '^[[:space:]]*%d[[:space:]]'; }", pInfo->processName, pInfo->pid[0]);
             inFp = popen(command, "r");
 #endif
         }
@@ -595,7 +606,7 @@ int getCPUInfo(procMemCpuInfo *pInfo, char* filename)
         /* ps -C Receiver -o %cpu -o %mem */
         //sprintf(command, "ps -C '%s' -o %%cpu -o %%mem | sed 1d", pInfo->processName);
 #ifdef LIBSYSWRAPPER_BUILD
-        inFp = v_secure_popen("r", "top -b -n 1 %s | grep -v grep | grep -i '%s'", (cmd_option == 1) ? "-c" : "", pInfo->processName);
+        inFp = v_secure_popen("r", "top -b -n 1 %s | grep -v grep | { grep -i '%s' || grep -E '^[[:space:]]*%d[[:space:]]'; }", (cmd_option == 1) ? "-c" : "", pInfo->processName, pInfo->pid[0]);
 #else
         snprintf(command, CMD_LEN, "top -b -n 1 %s | grep -v grep | grep -i '%s'", (cmd_option == 1) ? "-c" : "", pInfo->processName);
         inFp = popen(command, "r");
@@ -607,9 +618,9 @@ int getCPUInfo(procMemCpuInfo *pInfo, char* filename)
     {
         T2Info("%s ++in the saved temp log %s is available \n", __FUNCTION__, filename);
 #ifdef LIBSYSWRAPPER_BUILD
-        inFp = v_secure_popen("r", "cat %s |grep -i '%s'", TOPTEMP, pInfo->processName);
+        inFp = v_secure_popen("r", "grep -i '%s' %s || grep -E '^[[:space:]]*%d[[:space:]]' %s", pInfo->processName, filename, pInfo->pid[0], filename);
 #else
-        snprintf(command, sizeof(command), "cat %s |grep -i '%s'", filename, pInfo->processName);
+        snprintf(command, sizeof(command), "grep -i '%s' %s || grep -E '^[[:space:]]*%d[[:space:]]' %s", pInfo->processName, filename, pInfo->pid[0], filename);
         inFp = popen(command, "r");
 #endif
         normalize = TOPITERATION;

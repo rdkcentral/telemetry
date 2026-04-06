@@ -1064,12 +1064,6 @@ T2ERROR enableProfile(const char *profileName)
         profile->enable = true;
         // Initialize atomic reportInProgress flag - safe concurrent access without mutex
         atomic_init(&profile->reportInProgress, false);
-        if(pthread_mutex_init(&profile->profileMutex, NULL) != 0)
-        {
-            T2Error(" %s Profile mutex init has failed\n", __FUNCTION__);
-            pthread_mutex_unlock(&plMutex);
-            return T2ERROR_FAILURE;
-        }
         if(pthread_mutex_init(&profile->reportInProgressMutex, NULL) != 0)
         {
             T2Error(" %s Mutex init has failed\n", __FUNCTION__);

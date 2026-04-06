@@ -120,9 +120,14 @@ class rdklogTestFixture : public ::testing::Test {
 };
 
 
-TEST(GET_LOGDEMAND, TEST1)
+TEST(GET_RETAINSEEKMAP, TEST1)
 {
-   EXPECT_EQ( false, get_logdemand());
+   EXPECT_EQ( true, get_retainseekmap());
+}
+
+TEST(SET_RETAINSEEKMAP, TEST1)
+{
+   set_retainseekmap(true);
 }
 
 TEST(GETLAPSEDTIME, T1_GT_T2)

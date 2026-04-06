@@ -624,18 +624,17 @@ static void* CollectAndReport(void* data)
                     if ( strcmp(profile->protocol, "HTTP") == 0 )
                     {
                         httpUrl = prepareHttpUrl(profile->t2HTTPDest); /* Append URL with http properties */
-                        if(profile->maxUploadLatency > 0)
-                        {
+                         if(profile->maxUploadLatency > 0)
+                         {
                             T2Info("waiting for %ld sec of macUploadLatency\n", (long) maxuploadinSec);
                             struct timespec timeout;
                             pthread_mutex_lock(&profile->reuseThreadMutex);
                             profile->maxlatencyTime.tv_sec += maxuploadinSec;
                             timeout = profile->maxlatencyTime;
                             pthread_mutex_unlock(&profile->reuseThreadMutex);
+                            n = EINTR; /* Initialize to enter the wait loop; condition is checked before first wait */
                             pthread_mutex_lock(&profile->reportMutex);
-                            n = pthread_cond_timedwait(&profile->reportcond, &profile->reportMutex, &timeout);
-                            // Only retry on spurious wakeups (EINTR), not on success (0) or timeout
-                            while (n == EINTR && profile->enable)
+                            while (n == EINTR)
                             {
                                 n = pthread_cond_timedwait(&profile->reportcond, &profile->reportMutex, &timeout);
                             }
@@ -701,10 +700,9 @@ static void* CollectAndReport(void* data)
                             profile->maxlatencyTime.tv_sec += maxuploadinSec;
                             timeout = profile->maxlatencyTime;
                             pthread_mutex_unlock(&profile->reuseThreadMutex);
+                            n = EINTR; /* Initialize to enter the wait loop; condition is checked before first wait */
                             pthread_mutex_lock(&profile->reportMutex);
-                            n = pthread_cond_timedwait(&profile->reportcond, &profile->reportMutex, &timeout);
-                            // Only retry on spurious wakeups (EINTR), not on success (0) or timeout
-                            while (n == EINTR && profile->enable)
+                            while (n == EINTR)
                             {
                                 n = pthread_cond_timedwait(&profile->reportcond, &profile->reportMutex, &timeout);
                             }
@@ -749,6 +747,7 @@ static void* CollectAndReport(void* data)
                             }
                             pthread_mutex_unlock(&profile->reportMutex);
                             pthread_cond_destroy(&profile->reportcond);
+                            pthread_mutex_destroy(&profile->reportMutex);
                         }
                         else
                         {
@@ -937,9 +936,12 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
     {
         profile->reportInProgress = true;
         profile->bClearSeekMap = isClearSeekMap;
-        // Copy threadExists while holding reportInProgressMutex to avoid holding both locks
-        bool threadStillExists = profile->threadExists;
         pthread_mutex_unlock(&profile->reportInProgressMutex);
+
+        /* Read threadExists under reuseThreadMutex for consistent lock protection */
+        pthread_mutex_lock(&profile->reuseThreadMutex);
+        bool threadStillExists = profile->threadExists;
+        pthread_mutex_unlock(&profile->reuseThreadMutex);
 
         /* To avoid previous report thread to go into zombie state, mark it detached. */
         if (threadStillExists)
@@ -1303,15 +1305,17 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
         }
 
         /* Release plMutex before pthread_join to avoid deadlock */
+        pthread_mutex_lock(&tempProfile->reuseThreadMutex);
         if (tempProfile->threadExists)
         {
-            pthread_mutex_lock(&tempProfile->reuseThreadMutex);
             tempProfile->restartRequested = true;
             pthread_cond_signal(&tempProfile->reuseThread);
             pthread_mutex_unlock(&tempProfile->reuseThreadMutex);
             pthread_join(tempProfile->reportThread, NULL);
+            pthread_mutex_lock(&tempProfile->reuseThreadMutex);
             tempProfile->threadExists = false;
         }
+        pthread_mutex_unlock(&tempProfile->reuseThreadMutex);
 
         /* Re-acquire plMutex for profile cleanup */
         pthread_mutex_lock(&plMutex);
@@ -1403,11 +1407,10 @@ T2ERROR deleteProfile(const char *profileName)
     // This prevents potential deadlocks when other code paths acquire these locks
     // in the opposite order.
     pthread_mutex_lock(&profile->reportInProgressMutex);
-    while (profile->reportInProgress && !profile->threadExists)
+    while (profile->reportInProgress)
     {
         pthread_cond_wait(&profile->reportInProgressCond, &profile->reportInProgressMutex);
     }
-    bool threadStillExists = profile->threadExists;
     pthread_mutex_unlock(&profile->reportInProgressMutex);
 
     /* Release plMutex before pthread_join to avoid deadlock.
@@ -1418,17 +1421,19 @@ T2ERROR deleteProfile(const char *profileName)
      */
     pthread_mutex_unlock(&plMutex);
 
+    /* Read and write threadExists consistently under reuseThreadMutex */
+    pthread_mutex_lock(&profile->reuseThreadMutex);
+    bool threadStillExists = profile->threadExists;
     if (threadStillExists)
     {
-        pthread_mutex_lock(&profile->reuseThreadMutex);
         profile->restartRequested = true;
         pthread_cond_signal(&profile->reuseThread);
         pthread_mutex_unlock(&profile->reuseThreadMutex);
         pthread_join(profile->reportThread, NULL);
         pthread_mutex_lock(&profile->reuseThreadMutex);
         profile->threadExists = false;
-        pthread_mutex_unlock(&profile->reuseThreadMutex);
     }
+    pthread_mutex_unlock(&profile->reuseThreadMutex);
 
     /* Re-acquire plMutex for profile cleanup operations */
     pthread_mutex_lock(&plMutex);

@@ -97,33 +97,9 @@ static void *process_tmprp_thread(void *data)
 
     while(shouldContinue)
     {
-        // Check stopProcessing without holding tmpRpMutex to avoid nested mutex acquisition
-        pthread_mutex_lock(&rpMutex);
-        shouldContinue = !stopProcessing;
-        pthread_mutex_unlock(&rpMutex);
-
-        if(!shouldContinue)
-        {
-            break;
-        }
-
         pthread_mutex_lock(&tmpRpMutex);
         T2Info("%s: Waiting for event from tr-181 \n", __FUNCTION__);
-        while(t2_queue_count(tmpRpQueue) == 0)
-        {
-            pthread_cond_wait(&tmpRpCond, &tmpRpMutex);
-            // Re-check stopProcessing after wakeup (may be spurious or shutdown signal)
-            pthread_mutex_unlock(&tmpRpMutex);
-            pthread_mutex_lock(&rpMutex);
-            shouldContinue = !stopProcessing;
-            pthread_mutex_unlock(&rpMutex);
-            if(!shouldContinue)
-            {
-                // Exit without re-acquiring tmpRpMutex
-                goto thread_exit;
-            }
-            pthread_mutex_lock(&tmpRpMutex);
-        }
+        pthread_cond_wait(&tmpRpCond, &tmpRpMutex);
 
         T2Debug("%s: Received wake up signal \n", __FUNCTION__);
         if(t2_queue_count(tmpRpQueue) > 0)
@@ -134,15 +110,16 @@ static void *process_tmprp_thread(void *data)
             {
                 ReportProfiles_ProcessReportProfilesBlob(tmpReportProfiles, T2_TEMP_RP);
                 cJSON_Delete(tmpReportProfiles);
-                // Unused value tmpReportProfiles
             }
         }
         else
         {
             pthread_mutex_unlock(&tmpRpMutex);
         }
+        pthread_mutex_lock(&rpMutex);
+        shouldContinue = !stopProcessing;
+        pthread_mutex_unlock(&rpMutex);
     }
-thread_exit:
     T2Debug("%s --out\n", __FUNCTION__);
     return NULL;
 }
@@ -155,34 +132,8 @@ static void *process_msg_thread(void *data)
 
     while(shouldContinue)
     {
-        // Check stopProcessing first without holding rpMsgMutex to avoid
-        // nested mutex acquisition which could lead to deadlock if another
-        // thread acquires these mutexes in opposite order (e.g., rpMutex then rpMsgMutex)
-        pthread_mutex_lock(&rpMutex);
-        shouldContinue = !stopProcessing;
-        pthread_mutex_unlock(&rpMutex);
-
-        if(!shouldContinue)
-        {
-            break;
-        }
-
         pthread_mutex_lock(&rpMsgMutex);
-        while(t2_queue_count(rpMsgPkgQueue) == 0)
-        {
-            pthread_cond_wait(&msg_Cond, &rpMsgMutex);
-            // Re-check stopProcessing after wakeup (may be spurious or shutdown signal)
-            pthread_mutex_unlock(&rpMsgMutex);
-            pthread_mutex_lock(&rpMutex);
-            shouldContinue = !stopProcessing;
-            pthread_mutex_unlock(&rpMutex);
-            if(!shouldContinue)
-            {
-                // Exit without re-acquiring rpMsgMutex
-                return NULL;
-            }
-            pthread_mutex_lock(&rpMsgMutex);
-        }
+        pthread_cond_wait(&msg_Cond, &rpMsgMutex);
         if(t2_queue_count(rpMsgPkgQueue) > 0)
         {
             msgpack = (struct __msgpack__ *)t2_queue_pop(rpMsgPkgQueue);
@@ -197,6 +148,9 @@ static void *process_msg_thread(void *data)
         {
             pthread_mutex_unlock(&rpMsgMutex);
         }
+        pthread_mutex_lock(&rpMutex);
+        shouldContinue = !stopProcessing;
+        pthread_mutex_unlock(&rpMutex);
     }
     return NULL;
 }
@@ -244,22 +198,22 @@ T2ERROR datamodel_processProfile(char *JsonBlob, bool rprofiletypes)
     }
     else if(rprofiletypes == T2_TEMP_RP)
     {
-        // Use tmpRpMutex for tmpRpQueue operations (consistent locking)
-        pthread_mutex_lock(&tmpRpMutex);
+        bool canProcess;
         pthread_mutex_lock(&rpMutex);
-        bool isProcessing = !stopProcessing;
+        canProcess = !stopProcessing;
         pthread_mutex_unlock(&rpMutex);
-        if (isProcessing)
+        if (canProcess)
         {
+            pthread_mutex_lock(&tmpRpMutex);
             t2_queue_push(tmpRpQueue, (void *)rootObj);
             pthread_cond_signal(&tmpRpCond);
+            pthread_mutex_unlock(&tmpRpMutex);
         }
         else
         {
             T2Error("Datamodel not initialized, dropping request \n");
             cJSON_Delete(rootObj);
         }
-        pthread_mutex_unlock(&tmpRpMutex);
     }
     return T2ERROR_SUCCESS;
 }
@@ -392,24 +346,6 @@ T2ERROR datamodel_MsgpackProcessProfile(char *str, int strSize)
 T2ERROR datamodel_init(void)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
-    rpQueue = t2_queue_create();
-    if (rpQueue == NULL)
-    {
-        T2Error("Failed to create report profile Queue\n");
-        return T2ERROR_FAILURE;
-    }
-    rpMsgPkgQueue = t2_queue_create();
-    if (rpMsgPkgQueue == NULL)
-    {
-        T2Error("Failed to create Msg Pck report profile Queue\n");
-        return T2ERROR_FAILURE;
-    }
-    tmpRpQueue = t2_queue_create();
-    if (tmpRpQueue == NULL)
-    {
-        T2Error("Failed to create report profile Queue\n");
-        return T2ERROR_FAILURE;
-    }
 
     pthread_mutex_init(&rpMutex, NULL);
     pthread_cond_init(&rpCond, NULL);
@@ -417,6 +353,31 @@ T2ERROR datamodel_init(void)
     pthread_cond_init(&msg_Cond, NULL);
     pthread_mutex_init(&tmpRpMutex, NULL);
     pthread_cond_init(&tmpRpCond, NULL);
+
+    pthread_mutex_lock(&rpMutex);
+    rpQueue = t2_queue_create();
+    pthread_mutex_unlock(&rpMutex);
+    if (rpQueue == NULL)
+    {
+        T2Error("Failed to create report profile Queue\n");
+        return T2ERROR_FAILURE;
+    }
+    pthread_mutex_lock(&rpMsgMutex);
+    rpMsgPkgQueue = t2_queue_create();
+    pthread_mutex_unlock(&rpMsgMutex);
+    if (rpMsgPkgQueue == NULL)
+    {
+        T2Error("Failed to create Msg Pck report profile Queue\n");
+        return T2ERROR_FAILURE;
+    }
+    pthread_mutex_lock(&tmpRpMutex);
+    tmpRpQueue = t2_queue_create();
+    pthread_mutex_unlock(&tmpRpMutex);
+    if (tmpRpQueue == NULL)
+    {
+        T2Error("Failed to create report profile Queue\n");
+        return T2ERROR_FAILURE;
+    }
 
     pthread_mutex_lock(&rpMutex);
     stopProcessing = false;

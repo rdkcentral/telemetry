@@ -484,7 +484,7 @@ T2ERROR getPrivacyModeFromPersistentFolder(char **privMode)
         fclose(fp);
         return T2ERROR_FAILURE;
     }
-    if (filestat.st_size < 0 || (size_t)filestat.st_size >= sizeof(data))
+    if (filestat.st_size < 0 || filestat.st_size >= (off_t)sizeof(data))
     {
         T2Error("File size %lld exceeds buffer capacity %zu for file : %s\n", (long long)filestat.st_size, sizeof(data) - 1, filePath);
         fclose(fp);

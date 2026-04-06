@@ -819,17 +819,7 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
 
     pthread_mutex_unlock(&plMutex);
     T2Info("%s: profile %s is in %s state\n", __FUNCTION__, profileName, profile->enable ? "Enabled" : "Disabled");
-    if (profile->enable) {
-        // DO SOMETHING
-        }
-        else {
-            T2Warning("Report generation already in progress - ignoring the request\n");
-        }
-    }
-    else
-    {
-        T2Warning("Either profile is disabled or report generation still in progress - ignoring the request\n");
-    }
+
     T2Debug("%s --out\n", __FUNCTION__);
 }
 

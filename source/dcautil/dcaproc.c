@@ -589,7 +589,7 @@ int getCPUInfo(procMemCpuInfo *pInfo, char* filename)
 #ifdef LIBSYSWRAPPER_BUILD
             inFp = v_secure_popen("r", "top -n 1 -c | grep -v grep | { grep -i '%s' || grep -E '^[[:space:]]*%d[[:space:]]'; }", pInfo->processName, pInfo->pid[0]);
 #else
-            sprintf(command, "top -n 1 -c | grep -v grep |grep -i '%s'", pInfo->processName);
+            snprintf(command, CMD_LEN, "top -n 1 -c | grep -v grep | { grep -i '%s' || grep -E '^[[:space:]]*%d[[:space:]]'; }", pInfo->processName, pInfo->pid[0]);
             inFp = popen(command, "r");
 #endif
         }
@@ -608,7 +608,7 @@ int getCPUInfo(procMemCpuInfo *pInfo, char* filename)
 #ifdef LIBSYSWRAPPER_BUILD
         inFp = v_secure_popen("r", "top -b -n 1 %s | grep -v grep | { grep -i '%s' || grep -E '^[[:space:]]*%d[[:space:]]'; }", (cmd_option == 1) ? "-c" : "", pInfo->processName, pInfo->pid[0]);
 #else
-        snprintf(command, CMD_LEN, "top -b -n 1 %s | grep -v grep | grep -i '%s'", (cmd_option == 1) ? "-c" : "", pInfo->processName);
+        snprintf(command, CMD_LEN, "top -b -n 1 %s | grep -v grep | { grep -i '%s' || grep -E '^[[:space:]]*%d[[:space:]]'; }", (cmd_option == 1) ? "-c" : "", pInfo->processName, pInfo->pid[0]);
         inFp = popen(command, "r");
 #endif
 

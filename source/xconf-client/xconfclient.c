@@ -862,6 +862,7 @@ static void* getUpdatedConfigurationThread(void *data)
     int n;
     char *configURL = NULL;
     char *configData = NULL;
+    bool shouldContinue = true;
 #if defined(ENABLE_REMOTE_PROFILE_DOWNLOAD)
     char *t2Version = NULL;
 #endif
@@ -888,6 +889,10 @@ static void* getUpdatedConfigurationThread(void *data)
                 break;
             }
 
+            // Release xcThreadMutex before long timed wait to avoid blocking shutdown/reload
+            // (prevents stopXConfClient/uninitXConfClient from being delayed by RFC_RETRY_TIMEOUT)
+            pthread_mutex_unlock(&xcThreadMutex);
+
             pthread_mutex_lock(&xcMutex);
             memset(&_ts, 0, sizeof(struct timespec));
             memset(&_now, 0, sizeof(struct timespec));
@@ -913,6 +918,9 @@ static void* getUpdatedConfigurationThread(void *data)
                 T2Error("ERROR inside startXConfClientThread for timedwait");
             }
             pthread_mutex_unlock(&xcMutex);
+
+            // Re-acquire xcThreadMutex to check stopFetchRemoteConfiguration
+            pthread_mutex_lock(&xcThreadMutex);
         }
         pthread_mutex_unlock(&xcThreadMutex);
 
@@ -1070,9 +1078,12 @@ static void* getUpdatedConfigurationThread(void *data)
         {
             pthread_cond_wait(&xcThreadCond, &xcThreadMutex);
         }
+        // Update shouldContinue under lock before using it in do-while condition
+        // to avoid data race (compiler optimizations/CPU caching issues)
+        shouldContinue = isXconfInit;
         pthread_mutex_unlock(&xcThreadMutex);
     }
-    while(isXconfInit);  //End of do while loop
+    while(shouldContinue);  //End of do while loop
 
     // pthread_detach(pthread_self()); commenting this line as thread will detached by stopXConfClient
     T2Debug("%s --out\n", __FUNCTION__);

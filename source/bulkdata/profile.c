@@ -54,6 +54,15 @@
 #define LOCK_LEVEL_REPORT_TRANSMIT  6
 #define LOCK_LEVEL_THREAD_MGMT      7
 
+static void validateLockOrdering(int currentLevel, int newLevel, const char* context)
+{
+    if(newLevel <= currentLevel)
+    {
+        T2Error("DEADLOCK RISK: Lock ordering violation in %s! Current level: %d, Trying to acquire level: %d\n", context, currentLevel, newLevel);
+        assert(0);
+    }
+}
+
 #ifdef GTEST_ENABLE
 #define sendReportOverHTTP __wrap_sendReportOverHTTP
 #define sendCachedReportsOverHTTP __wrap_sendCachedReportsOverHTTP

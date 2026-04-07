@@ -48,7 +48,7 @@ static void persistReportMethodInit( )
 
 T2ERROR fetchLocalConfigs(const char* path, Vector *configList)
 {
-    if(path == NULL || ((strcmp(path, SHORTLIVED_PROFILES_PATH) != 0) && configList == NULL))
+    if(path == NULL || path[0] == '\0' || ((strcmp(path, SHORTLIVED_PROFILES_PATH) != 0) && configList == NULL))
     {
         T2Error("Path is NULL or Configlist is NULL.. Invalid argument\n");
         return T2ERROR_INVALID_ARGS;
@@ -239,7 +239,7 @@ void clearPersistenceFolder(const char* path)
     }
 #else
     char command[256] = {'\0'};
-    snprintf(command, sizeof(command), "rm -f %s*", path);
+    snprintf(command, sizeof(command), "rm -rf %s*", path);
     T2Debug("Executing command : %s\n", command);
     if (system(command) != 0)
     {
@@ -254,7 +254,7 @@ void clearPersistenceFolder(const char* path)
 
 void removeProfileFromDisk(const char* path, const char* fileName)
 {
-    if(path == NULL || fileName == NULL)
+    if(path == NULL || path[0] == '\0' || fileName == NULL)
     {
         return;
     }

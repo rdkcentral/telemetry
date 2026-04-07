@@ -864,7 +864,7 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
     if(T2ERROR_SUCCESS != getProfile(profileName, &profile))
     {
         T2Error("Profile : %s not found\n", profileName);
-        pthread_mutex_unlock(&plMutex)
+        pthread_mutex_unlock(&plMutex);
         return T2ERROR_FAILURE;
     }
     pthread_mutex_lock(&profile->profileMutex);
@@ -1009,9 +1009,11 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
     {
         T2Error("Event name : %s value : %s\n", eventInfo->name, eventInfo->value);
         T2Error("Event doens't match any marker information, shouldn't come here\n");
+        pthread_mutex_unlock(&profile->profileMutex);
         return T2ERROR_FAILURE;
     }
 
+    pthread_mutex_unlock(&profile->profileMutex);
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
@@ -1059,6 +1061,12 @@ T2ERROR enableProfile(const char *profileName)
         profile->enable = true;
         // Initialize atomic reportInProgress flag - safe concurrent access without mutex
         atomic_init(&profile->reportInProgress, false);
+        if(pthread_mutex_init(&profile->profileMutex, NULL) != 0)
+        {
+            T2Error(" %s Profile mutex init has failed\n", __FUNCTION__);
+            pthread_mutex_unlock(&plMutex);
+            return T2ERROR_FAILURE;
+        }
         if(pthread_mutex_init(&profile->triggerCondMutex, NULL) != 0)
         {
             T2Error(" %s Mutex init has failed\n", __FUNCTION__);
@@ -1322,6 +1330,7 @@ T2ERROR deleteProfile(const char *profileName)
 
     pthread_mutex_destroy(&profile->reportInProgressMutex);
     pthread_cond_destroy(&profile->reportInProgressCond);
+    pthread_mutex_destroy(&profile->profileMutex);
 
     T2Info("removing profile : %s from profile list\n", profile->name);
 #ifdef PERSIST_LOG_MON_REF

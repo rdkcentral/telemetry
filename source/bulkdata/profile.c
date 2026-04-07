@@ -22,6 +22,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
+#include <assert.h>
 #include <stdatomic.h>
 
 #include "profile.h"
@@ -45,6 +46,45 @@
 #endif
 
 #define MAX_LEN 256
+
+#ifdef DEBUG_LOCK_ORDERING  
+#define LOCK_ACQUIRE(mutex, level, name) \
+    do { \
+        T2Debug("LOCK_ACQUIRE: %s (level %d)\n", name, level); \
+        pthread_mutex_lock(mutex); \
+    } while(0)
+    
+#define LOCK_RELEASE(mutex, level, name) \
+    do { \
+        T2Debug("LOCK_RELEASE: %s (level %d)\n", name, level); \
+        pthread_mutex_unlock(mutex); \
+    } while(0)
+#else
+#define LOCK_ACQUIRE(mutex, level, name) pthread_mutex_lock(mutex)
+#define LOCK_RELEASE(mutex, level, name) pthread_mutex_unlock(mutex)
+#endif
+
+#define LOCK_LEVEL_GLOBAL           1
+#define LOCK_LEVEL_PROFILE          2
+#define LOCK_LEVEL_TRIGGER_COND     3  
+#define LOCK_LEVEL_EVENT            4
+#define LOCK_LEVEL_REPORT_PROGRESS  5
+#define LOCK_LEVEL_REPORT_TRANSMIT  6
+#define LOCK_LEVEL_THREAD_MGMT      7
+
+#ifdef DEBUG_LOCK_ORDERING
+static void validateLockOrdering(int currentLevel, int newLevel, const char* context)
+{
+    if(newLevel <= currentLevel)
+    {
+        T2Error("DEADLOCK RISK: Lock ordering violation in %s! Current level: %d, Trying to acquire level: %d\n", 
+                context, currentLevel, newLevel);
+        assert(0);
+    }
+}
+#else
+#define validateLockOrdering(current, new, context)
+#endif
 
 #ifdef GTEST_ENABLE
 #define sendReportOverHTTP __wrap_sendReportOverHTTP
@@ -807,18 +847,19 @@ reportThreadEnd :
 void NotifyTimeout(const char* profileName, bool isClearSeekMap)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
-    pthread_mutex_lock(&plMutex);
+    LOCK_ACQUIRE(&plMutex, LOCK_LEVEL_GLOBAL, "plMutex");
 
     Profile *profile = NULL;
     if(T2ERROR_SUCCESS != getProfile(profileName, &profile))
     {
         T2Error("Profile : %s not found\n", profileName);
-        pthread_mutex_unlock(&plMutex);
+        LOCK_RELEASE(&plMutex, LOCK_LEVEL_GLOBAL, "plMutex");
         return ;
     }
 
-    pthread_mutex_lock(&profile->profileMutex);
-    pthread_mutex_unlock(&plMutex);
+    /* Lock hierarchy: plMutex -> profileMutex, then release plMutex for parallel execution */
+    LOCK_ACQUIRE(&profile->profileMutex, LOCK_LEVEL_PROFILE, "profileMutex");
+    LOCK_RELEASE(&plMutex, LOCK_LEVEL_GLOBAL, "plMutex");
     T2Info("%s: profile %s is in %s state\n", __FUNCTION__, profileName, profile->enable ? "Enabled" : "Disabled");
     if(profile->enable)
     {
@@ -850,7 +891,7 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
     {
         T2Warning("Profile is disabled - ignoring the request\n");
     }
-    pthread_mutex_unlock(&profile->profileMutex);
+    LOCK_RELEASE(&profile->profileMutex, LOCK_LEVEL_PROFILE, "profileMutex");
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
@@ -859,20 +900,21 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
 
-    pthread_mutex_lock(&plMutex);
+    LOCK_ACQUIRE(&plMutex, LOCK_LEVEL_GLOBAL, "plMutex");
     Profile *profile = NULL;
     if(T2ERROR_SUCCESS != getProfile(profileName, &profile))
     {
         T2Error("Profile : %s not found\n", profileName);
-        pthread_mutex_unlock(&plMutex);
+        LOCK_RELEASE(&plMutex, LOCK_LEVEL_GLOBAL, "plMutex");
         return T2ERROR_FAILURE;
     }
-    pthread_mutex_lock(&profile->profileMutex);
-    pthread_mutex_unlock(&plMutex);
+    /* Lock hierarchy: plMutex -> profileMutex, then release plMutex for parallel execution */
+    LOCK_ACQUIRE(&profile->profileMutex, LOCK_LEVEL_PROFILE, "profileMutex");
+    LOCK_RELEASE(&plMutex, LOCK_LEVEL_GLOBAL, "plMutex");
     if(!profile->enable)
     {
         T2Warning("Profile : %s is disabled, ignoring the event\n", profileName);
-        pthread_mutex_unlock(&profile->profileMutex);
+        LOCK_RELEASE(&profile->profileMutex, LOCK_LEVEL_PROFILE, "profileMutex");
         return T2ERROR_FAILURE;
     }
     size_t eventIndex = 0;
@@ -892,7 +934,8 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
         char buf[256] = {'\0'};
         char timebuf[256] = {'\0'};
         time_t timestamp = 0;
-        pthread_mutex_lock(&profile->eventMutex);
+        /* Lock hierarchy: profileMutex -> eventMutex for event data modification */
+        LOCK_ACQUIRE(&profile->eventMutex, LOCK_LEVEL_EVENT, "eventMutex");
         switch(lookupEvent->mType)
         {
         case MTYPE_COUNTER:
@@ -1003,17 +1046,17 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
             }
             break;
         }
-        pthread_mutex_unlock(&profile->eventMutex);
+        LOCK_RELEASE(&profile->eventMutex, LOCK_LEVEL_EVENT, "eventMutex");
     }
     else
     {
         T2Error("Event name : %s value : %s\n", eventInfo->name, eventInfo->value);
         T2Error("Event doens't match any marker information, shouldn't come here\n");
-        pthread_mutex_unlock(&profile->profileMutex);
+        LOCK_RELEASE(&profile->profileMutex, LOCK_LEVEL_PROFILE, "profileMutex");
         return T2ERROR_FAILURE;
     }
 
-    pthread_mutex_unlock(&profile->profileMutex);
+    LOCK_RELEASE(&profile->profileMutex, LOCK_LEVEL_PROFILE, "profileMutex");
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }

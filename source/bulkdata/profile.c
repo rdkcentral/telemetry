@@ -47,22 +47,8 @@
 
 #define MAX_LEN 256
 
-#ifdef DEBUG_LOCK_ORDERING  
-#define LOCK_ACQUIRE(mutex, level, name) \
-    do { \
-        T2Debug("LOCK_ACQUIRE: %s (level %d)\n", name, level); \
-        pthread_mutex_lock(mutex); \
-    } while(0)
-    
-#define LOCK_RELEASE(mutex, level, name) \
-    do { \
-        T2Debug("LOCK_RELEASE: %s (level %d)\n", name, level); \
-        pthread_mutex_unlock(mutex); \
-    } while(0)
-#else
 #define LOCK_ACQUIRE(mutex, level, name) pthread_mutex_lock(mutex)
 #define LOCK_RELEASE(mutex, level, name) pthread_mutex_unlock(mutex)
-#endif
 
 #define LOCK_LEVEL_GLOBAL           1
 #define LOCK_LEVEL_PROFILE          2

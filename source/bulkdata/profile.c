@@ -857,7 +857,6 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
         return ;
     }
 
-    /* Lock hierarchy: plMutex -> profileMutex, then release plMutex for parallel execution */
     LOCK_ACQUIRE(&profile->profileMutex, LOCK_LEVEL_PROFILE, "profileMutex");
     LOCK_RELEASE(&plMutex, LOCK_LEVEL_GLOBAL, "plMutex");
     T2Info("%s: profile %s is in %s state\n", __FUNCTION__, profileName, profile->enable ? "Enabled" : "Disabled");
@@ -908,7 +907,7 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
         LOCK_RELEASE(&plMutex, LOCK_LEVEL_GLOBAL, "plMutex");
         return T2ERROR_FAILURE;
     }
-    /* Lock hierarchy: plMutex -> profileMutex, then release plMutex for parallel execution */
+
     LOCK_ACQUIRE(&profile->profileMutex, LOCK_LEVEL_PROFILE, "profileMutex");
     LOCK_RELEASE(&plMutex, LOCK_LEVEL_GLOBAL, "plMutex");
     if(!profile->enable)
@@ -934,7 +933,7 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
         char buf[256] = {'\0'};
         char timebuf[256] = {'\0'};
         time_t timestamp = 0;
-        /* Lock hierarchy: profileMutex -> eventMutex for event data modification */
+
         LOCK_ACQUIRE(&profile->eventMutex, LOCK_LEVEL_EVENT, "eventMutex");
         switch(lookupEvent->mType)
         {

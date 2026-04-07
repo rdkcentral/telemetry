@@ -850,6 +850,7 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
     {
         T2Warning("Profile is disabled - ignoring the request\n");
     }
+    pthread_mutex_unlock(&profile->profileMutex);
     T2Debug("%s --out\n", __FUNCTION__);
 }
 

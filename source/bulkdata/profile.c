@@ -47,6 +47,12 @@
 #define MAX_LEN 256
 
 #define LOCK_LEVEL_GLOBAL           1
+#define LOCK_LEVEL_PROFILE          2
+#define LOCK_LEVEL_TRIGGER_COND     3
+#define LOCK_LEVEL_EVENT            4
+#define LOCK_LEVEL_REPORT_PROGRESS  5
+#define LOCK_LEVEL_REPORT_TRANSMIT  6
+#define LOCK_LEVEL_THREAD_MGMT      7
 
 #ifdef GTEST_ENABLE
 #define sendReportOverHTTP __wrap_sendReportOverHTTP

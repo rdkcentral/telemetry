@@ -42,6 +42,9 @@
 #include "persistence.h"
 #include "telemetry2_0.h"
 #include "busInterface.h"
+#if defined(PRIVACYMODES_CONTROL)
+#include "rdkservices_privacyutils.h"
+#endif
 #ifdef GTEST_ENABLE
 #define curl_easy_setopt curl_easy_setopt_mock
 #define curl_easy_getinfo curl_easy_getinfo_mock
@@ -500,22 +503,13 @@ T2ERROR appendRequestParams(CURLU *uri)
     rc = curl_url_set(uri, CURLUPART_QUERY, "version=2", CURLU_APPENDQUERY);
     T2_CURL_APPENDREQUEST_ERROR(rc);
 #if defined(PRIVACYMODES_CONTROL)
-    if(T2ERROR_SUCCESS == getParameterValue(PRIVACYMODES_RFC, &paramVal))
-    {
-        memset(tempBuf, 0, MAX_URL_ARG_LEN);
-        snprintf(tempBuf, MAX_URL_ARG_LEN, "privacyModes=%s", paramVal);
-        rc = curl_url_set(uri, CURLUPART_QUERY, tempBuf, CURLU_URLENCODE | CURLU_APPENDQUERY);
-        T2_CURL_APPENDREQUEST_ERROR(rc);
-        free(paramVal);
-        paramVal = NULL;
-    }
-    else
-    {
-        T2Error("Failed to get Value for %s\n", PRIVACYMODES_RFC);
-        ret = T2ERROR_FAILURE;
-        goto error;
-    }
-
+    getPrivacyMode(&paramVal);
+    memset(tempBuf, 0, MAX_URL_ARG_LEN);
+    snprintf(tempBuf, MAX_URL_ARG_LEN, "privacyModes=%s", paramVal);
+    rc = curl_url_set(uri, CURLUPART_QUERY, tempBuf, CURLU_URLENCODE | CURLU_APPENDQUERY);
+    T2_CURL_APPENDREQUEST_ERROR(rc);
+    free(paramVal);
+    paramVal = NULL;
 #endif
 error:
     if (NULL != tempBuf)

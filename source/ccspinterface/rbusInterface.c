@@ -61,6 +61,7 @@ static xconfPrivacyModesDoNotShareCallBack privacyModesDoNotShareCallBack;
 static ReportProfilesDeleteDNDCallBack mprofilesDeleteCallBack;
 #if defined(PRIVACYMODES_CONTROL)
 static char* privacyModeVal = NULL;
+static pthread_mutex_t privacyModeMutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
 static uint32_t t2ReadyStatus = T2_STATE_NOT_READY;
 static char* reportProfileVal = NULL ;
@@ -379,6 +380,54 @@ rbusError_t eventSubHandler(rbusHandle_t handle, rbusEventSubAction_t action, co
     return RBUS_ERROR_SUCCESS;
 }
 
+#if defined(PRIVACYMODES_CONTROL)
+/**
+ * Worker thread to handle privacy mode callbacks off the RBUS handler thread.
+ * Prevents RBUS handler starvation by moving heavy operations (profile deletion,
+ * XConf restart) to a detached thread.
+ */
+static void* privacyModeCallbackWorker(void *arg)
+{
+    char* mode = (char*)arg;
+    if(mode == NULL)
+    {
+        T2Error("%s called with NULL arg\n", __FUNCTION__);
+        return NULL;
+    }
+    T2Debug("%s ++in mode=%s\n", __FUNCTION__, mode);
+
+    if(strcmp(mode, "DO_NOT_SHARE") == 0)
+    {
+        if(mprofilesDeleteCallBack != NULL)
+        {
+            if(mprofilesDeleteCallBack() != T2ERROR_SUCCESS)
+            {
+                T2Error("mprofilesDeleteCallBack failed in privacy worker\n");
+            }
+        }
+        else
+        {
+            T2Debug("mprofilesDeleteCallBack not registered, skipping profile deletion\n");
+        }
+    }
+
+    if(privacyModesDoNotShareCallBack != NULL)
+    {
+        if(privacyModesDoNotShareCallBack() != T2ERROR_SUCCESS)
+        {
+            T2Error("privacyModesDoNotShareCallBack failed in privacy worker\n");
+        }
+    }
+    else
+    {
+        T2Debug("privacyModesDoNotShareCallBack not registered, skipping DO_NOT_SHARE handling\n");
+    }
+
+    free(mode);
+    T2Debug("%s --out\n", __FUNCTION__);
+    return NULL;
+}
+#endif
 /**
  * Data set handler for event receiving datamodel
  * Data being set will be an rbusProperty object with -
@@ -577,34 +626,38 @@ rbusError_t t2PropertyDataSetHandler(rbusHandle_t handle, rbusProperty_t prop, r
         {
             T2Debug("Inside datamodel handler for privacymodes profile \n");
             char* data = rbusValue_ToString(paramValue_t, NULL, 0);
+            if(!data)
+            {
+                T2Error("rbusValue_ToString failed for privacy mode parameter %s\n", paramName);
+                return RBUS_ERROR_INVALID_INPUT;
+            }
+            if((strcmp(data, "SHARE") != 0) && (strcmp(data, "DO_NOT_SHARE") != 0))
+            {
+                T2Debug("PrivacyMode data is %s\n", data);
+            }
+            pthread_mutex_lock(&privacyModeMutex);
             if(privacyModeVal != NULL)
             {
                 free(privacyModeVal);
                 privacyModeVal = NULL;
             }
-            if((strcmp(data, "SHARE") != 0) && (strcmp(data, "DO_NOT_SHARE") != 0))
+            privacyModeVal = strdup(data);
+            pthread_mutex_unlock(&privacyModeMutex);
+            if(T2ERROR_SUCCESS != setPrivacyMode(data))
             {
-                T2Info("Unexpected privacy Mode value %s\n", data);
                 free(data);
                 return RBUS_ERROR_INVALID_INPUT;
             }
-            privacyModeVal = strdup(data);
-            free(data);
-            T2Debug("PrivacyMode data is %s\n", privacyModeVal);
-            if(T2ERROR_SUCCESS != setPrivacyMode(privacyModeVal))
+            /* Dispatch heavy callbacks to a worker thread to avoid blocking the RBUS handler */
+            pthread_t privacyWorker;
+            if(pthread_create(&privacyWorker, NULL, privacyModeCallbackWorker, (void*)data) == 0)
             {
-                return RBUS_ERROR_INVALID_INPUT;
+                pthread_detach(privacyWorker);
             }
-            if(strcmp(privacyModeVal, "DO_NOT_SHARE") == 0)
+            else
             {
-                if(mprofilesDeleteCallBack()  != T2ERROR_SUCCESS)
-                {
-                    return RBUS_ERROR_INVALID_INPUT;
-                }
-            }
-            if(privacyModesDoNotShareCallBack() != T2ERROR_SUCCESS)
-            {
-                return RBUS_ERROR_INVALID_INPUT;
+                T2Error("Failed to create privacy mode callback worker thread\n");
+                free(data);
             }
         }
         else
@@ -751,6 +804,7 @@ rbusError_t t2PropertyDataGetHandler(rbusHandle_t handle, rbusProperty_t propert
     {
         rbusValue_t value;
         rbusValue_Init(&value);
+        pthread_mutex_lock(&privacyModeMutex);
         if(privacyModeVal != NULL)
         {
             rbusValue_SetString(value, privacyModeVal);
@@ -758,13 +812,22 @@ rbusError_t t2PropertyDataGetHandler(rbusHandle_t handle, rbusProperty_t propert
         else
         {
             char *data = NULL;
+            pthread_mutex_unlock(&privacyModeMutex);
             getPrivacyMode(&data);
+            pthread_mutex_lock(&privacyModeMutex);
             if(data != NULL)
             {
                 T2Debug("Privacy mode fetched  from the persistent folder is %s\n", data);
-                rbusValue_SetString(value, data);
+                if(privacyModeVal == NULL)
+                {
+                    privacyModeVal = data;
+                    data = NULL;
+                }
+                rbusValue_SetString(value, privacyModeVal);
+                free(data);
             }
         }
+        pthread_mutex_unlock(&privacyModeMutex);
         rbusProperty_SetValue(property, value);
         rbusValue_Release(value);
     }

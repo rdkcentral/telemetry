@@ -932,21 +932,24 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
     {
         profile->reportInProgress = true;
         profile->bClearSeekMap = isClearSeekMap;
-        // Copy threadExists while holding reportInProgressMutex to avoid holding both locks
-        bool threadStillExists = profile->threadExists;
         pthread_mutex_unlock(&profile->reportInProgressMutex);
 
-        /* To avoid previous report thread to go into zombie state, mark it detached. */
-        if (threadStillExists)
+        /* Read threadExists under reuseThreadMutex for proper synchronization.
+         * threadExists is written under reuseThreadMutex in CollectAndReport,
+         * so it must also be read under the same mutex to avoid a data race.
+         * Combine the read and the signal within the same lock to prevent a
+         * race between reading threadExists and signaling/creating the thread. */
+        pthread_mutex_lock(&profile->reuseThreadMutex);
+        if (profile->threadExists)
         {
             T2Info("Signal Thread To restart\n");
-            pthread_mutex_lock(&profile->reuseThreadMutex);
             profile->restartRequested = true;
             pthread_cond_signal(&profile->reuseThread);
             pthread_mutex_unlock(&profile->reuseThreadMutex);
         }
         else
         {
+            pthread_mutex_unlock(&profile->reuseThreadMutex);
             pthread_create(&profile->reportThread, NULL, CollectAndReport, (void*)profile);
         }
     }
@@ -1297,15 +1300,24 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
             T2Error("Profile : %s failed to  unregister from scheduler\n", tempProfile->name);
         }
 
-        /* Release plMutex before pthread_join to avoid deadlock */
-        if (tempProfile->threadExists)
+        /* Read threadExists under reuseThreadMutex: threadExists is written under
+         * reuseThreadMutex in CollectAndReport, so reads must use the same lock.
+         * The thread sets threadExists = false and then destroys reuseThreadMutex
+         * before returning, so reuseThreadMutex must not be accessed after join. */
+        pthread_mutex_lock(&tempProfile->reuseThreadMutex);
+        bool threadStillExists = tempProfile->threadExists;
+        if (threadStillExists)
         {
-            pthread_mutex_lock(&tempProfile->reuseThreadMutex);
             tempProfile->restartRequested = true;
             pthread_cond_signal(&tempProfile->reuseThread);
-            pthread_mutex_unlock(&tempProfile->reuseThreadMutex);
+        }
+        pthread_mutex_unlock(&tempProfile->reuseThreadMutex);
+
+        if (threadStillExists)
+        {
             pthread_join(tempProfile->reportThread, NULL);
-            tempProfile->threadExists = false;
+            /* Do not access reuseThreadMutex after join: the thread destroys it
+             * after setting threadExists = false (see CollectAndReport cleanup). */
         }
 
         /* Re-acquire plMutex for profile cleanup */
@@ -1394,16 +1406,24 @@ T2ERROR deleteProfile(const char *profileName)
     T2Info("Waiting for CollectAndReport to be complete : %s\n", profileName);
     pthread_mutex_lock(&plMutex);
 
-    // Avoid holding both reportInProgressMutex and reuseThreadMutex at the same time.
-    // This prevents potential deadlocks when other code paths acquire these locks
-    // in the opposite order.
+    // Wait for any in-progress report to finish under reportInProgressMutex.
+    // threadExists must NOT be read here — it is written under reuseThreadMutex
+    // in CollectAndReport, so mixing the two mutexes causes a data race (Coverity
+    // LOCK_EVASION).  Read threadExists separately under reuseThreadMutex below.
     pthread_mutex_lock(&profile->reportInProgressMutex);
-    while (profile->reportInProgress && !profile->threadExists)
+    while (profile->reportInProgress)
     {
         pthread_cond_wait(&profile->reportInProgressCond, &profile->reportInProgressMutex);
     }
-    bool threadStillExists = profile->threadExists;
     pthread_mutex_unlock(&profile->reportInProgressMutex);
+
+    /* Read threadExists under reuseThreadMutex: it is written under the same mutex
+     * in CollectAndReport.  The thread sets threadExists = false and then destroys
+     * reuseThreadMutex before returning, so reuseThreadMutex must not be used after
+     * pthread_join returns. */
+    pthread_mutex_lock(&profile->reuseThreadMutex);
+    bool threadStillExists = profile->threadExists;
+    pthread_mutex_unlock(&profile->reuseThreadMutex);
 
     /* Release plMutex before pthread_join to avoid deadlock.
      * pthread_join can block indefinitely if the CollectAndReport thread
@@ -1420,9 +1440,8 @@ T2ERROR deleteProfile(const char *profileName)
         pthread_cond_signal(&profile->reuseThread);
         pthread_mutex_unlock(&profile->reuseThreadMutex);
         pthread_join(profile->reportThread, NULL);
-        pthread_mutex_lock(&profile->reuseThreadMutex);
-        profile->threadExists = false;
-        pthread_mutex_unlock(&profile->reuseThreadMutex);
+        /* Do not access reuseThreadMutex after join: the thread destroys it
+         * after setting threadExists = false (see CollectAndReport cleanup). */
     }
 
     /* Re-acquire plMutex for profile cleanup operations */

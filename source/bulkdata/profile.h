@@ -34,6 +34,28 @@
 #include "reportgen.h"
 #include "legacyutils.h"
 
+/*
+ * LOCK ORDERING HIERARCHY - CRITICAL FOR DEADLOCK PREVENTION
+ * All code MUST acquire locks in this exact order to prevent deadlocks:
+ * 
+ * 1. plMutex                     (global profile list access)
+ * 2. profile->profileMutex       (per-profile main lock - enables parallel operations)  
+ * 3. profile->triggerCondMutex   (trigger condition processing)
+ * 4. profile->eventMutex         (event marker storage)
+ * 5. profile->reportInProgressMutex (report generation state)
+ * 6. profile->reportMutex        (report transmission)
+ * 7. profile->reuseThreadMutex   (thread lifecycle management)
+ *
+ * DEADLOCK PREVENTION RULES:
+ * - Never acquire locks in reverse order
+ * - Always release locks in reverse acquisition order  
+ * - Use lock timeouts for critical paths
+ * - Profile lookups: plMutex -> profileMutex -> release plMutex pattern
+ *
+ * DEBUGGING: Compile with -DDEBUG_LOCK_ORDERING to enable runtime validation
+ * that catches lock order violations during development and testing.
+ */
+
 typedef struct _JSONEncoding
 {
     JSONFormat reportFormat;

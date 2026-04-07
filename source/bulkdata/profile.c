@@ -46,19 +46,6 @@
 
 #define MAX_LEN 256
 
-#define LOCK_ACQUIRE(mutex, level, name) \
-    do { \
-        T2Debug("LOCK_ACQUIRE: %s (level %d)\n", name, level); \
-        pthread_mutex_lock(mutex); \
-    } while(0)
-    
-#define LOCK_RELEASE(mutex, level, name) \
-    do { \
-        T2Debug("LOCK_RELEASE: %s (level %d)\n", name, level); \
-        pthread_mutex_unlock(mutex); \
-    } while(0)
-
-
 #define LOCK_LEVEL_GLOBAL           1
 #define LOCK_LEVEL_PROFILE          2
 #define LOCK_LEVEL_TRIGGER_COND     3  
@@ -71,8 +58,7 @@ static void validateLockOrdering(int currentLevel, int newLevel, const char* con
 {
     if(newLevel <= currentLevel)
     {
-        T2Error("DEADLOCK RISK: Lock ordering violation in %s! Current level: %d, Trying to acquire level: %d\n", 
-                context, currentLevel, newLevel);
+        T2Error("DEADLOCK RISK: Lock ordering violation in %s! Current level: %d, Trying to acquire level: %d\n", context, currentLevel, newLevel);
         assert(0);
     }
 }

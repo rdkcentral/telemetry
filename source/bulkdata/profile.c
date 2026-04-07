@@ -864,13 +864,15 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
     if(T2ERROR_SUCCESS != getProfile(profileName, &profile))
     {
         T2Error("Profile : %s not found\n", profileName);
-        pthread_mutex_unlock(&plMutex);
+        pthread_mutex_unlock(&plMutex)
         return T2ERROR_FAILURE;
     }
+    pthread_mutex_lock(&profile->profileMutex);
     pthread_mutex_unlock(&plMutex);
     if(!profile->enable)
     {
         T2Warning("Profile : %s is disabled, ignoring the event\n", profileName);
+        pthread_mutex_unlock(&profile->profileMutex);
         return T2ERROR_FAILURE;
     }
     size_t eventIndex = 0;

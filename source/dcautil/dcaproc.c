@@ -251,17 +251,6 @@ int getProcUsage(char *processName, TopMarker* marker, char* filename)
 
             return ret;
         }
-        /* getProcInfo failed — reset stale marker values */
-        if (marker->cpuValue)
-        {
-            free(marker->cpuValue);
-            marker->cpuValue = strdup("0.0");
-        }
-        if (marker->memValue)
-        {
-            free(marker->memValue);
-            marker->memValue = strdup("0");
-        }
         if(pid)
         {
             free(pid);

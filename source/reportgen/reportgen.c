@@ -794,6 +794,8 @@ T2ERROR encodeTopResultInJSON(cJSON *valArray, Vector *topMarkerList)
             // Clean up CPU processing resources
             free(cpuMarkerName);
             free(cpuWorkingValue);
+            free(topMarker->cpuValue);
+            topMarker->cpuValue=NULL;
 
             // Process Memory Value
             arrayItem = cJSON_CreateObject();
@@ -859,6 +861,8 @@ T2ERROR encodeTopResultInJSON(cJSON *valArray, Vector *topMarkerList)
             // Clean up Memory processing resources
             free(memMarkerName);
             free(memWorkingValue);
+            free(topMarker->memValue);
+            topMarker->memValue=NULL;
         }
         else
         {

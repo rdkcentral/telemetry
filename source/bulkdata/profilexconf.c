@@ -149,6 +149,8 @@ static void freeProfileXConf()
         {
             freeGrepSeekProfile(singleProfile->grepSeekProfile);
         }
+        pthread_mutex_destroy(&singleProfile->reportInProgressMutex);
+        pthread_cond_destroy(&singleProfile->reportInProgressCond);
         free(singleProfile);
         singleProfile = NULL;
     }
@@ -685,14 +687,19 @@ T2ERROR ProfileXConf_uninit()
     }
     initialized = false;
 
-    if(singleProfile->reportInProgress)
+    pthread_mutex_lock(&singleProfile->reportInProgressMutex);
+    bool reportInProgress = singleProfile->reportInProgress;
+    pthread_mutex_unlock(&singleProfile->reportInProgressMutex);
+    if(reportInProgress)
     {
         T2Debug("Waiting for final report before uninit\n");
         pthread_mutex_lock(&plMutex);
         pthread_cond_signal(&reuseThread);
         pthread_mutex_unlock(&plMutex);
         pthread_join(singleProfile->reportThread, NULL);
+        pthread_mutex_lock(&singleProfile->reportInProgressMutex);
         singleProfile->reportInProgress = false ;
+        pthread_mutex_unlock(&singleProfile->reportInProgressMutex);
         T2Info("Final report is completed, releasing profile memory\n");
     }
     pthread_mutex_lock(&plMutex);
@@ -717,7 +724,9 @@ T2ERROR ProfileXConf_set(ProfileXConf *profile)
     if(!singleProfile)
     {
         singleProfile = profile;
+        pthread_mutex_lock(&singleProfile->reportInProgressMutex);
         singleProfile->reportInProgress = false ;
+        pthread_mutex_unlock(&singleProfile->reportInProgressMutex);
         size_t emIndex = 0;
         EventMarker *eMarker = NULL;
         for(; emIndex < Vector_Size(singleProfile->eMarkerList); emIndex++)
@@ -878,7 +887,9 @@ T2ERROR ProfileXConf_delete(ProfileXConf *profile)
     if(isNameEqual)
     {
         profile->bClearSeekMap = singleProfile->bClearSeekMap ;
+        pthread_mutex_lock(&profile->reportInProgressMutex);
         profile->reportInProgress = false ;
+        pthread_mutex_unlock(&profile->reportInProgressMutex);
         if(count > 0 && profile->cachedReportList != NULL)
         {
             T2Info("There are %zu cached reports in the profile \n", count);
@@ -1026,10 +1037,12 @@ void ProfileXConf_notifyTimeout(bool isClearSeekMap, bool isOnDemand)
         return ;
     }
     isOnDemandReport = isOnDemand;
+    pthread_mutex_lock(&singleProfile->reportInProgressMutex);
     if(!singleProfile->reportInProgress)
     {
         singleProfile->bClearSeekMap = isClearSeekMap;
         singleProfile->reportInProgress = true;
+        pthread_mutex_unlock(&singleProfile->reportInProgressMutex);
 
         if (reportThreadExits)
         {
@@ -1046,6 +1059,7 @@ void ProfileXConf_notifyTimeout(bool isClearSeekMap, bool isOnDemand)
     }
     else
     {
+        pthread_mutex_unlock(&singleProfile->reportInProgressMutex);
         T2Warning("Received profileTimeoutCb while previous callback is still in progress - ignoring the request\n");
     }
 

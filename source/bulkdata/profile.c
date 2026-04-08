@@ -22,6 +22,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
+#include <fcntl.h>
+#include <errno.h>
 
 #include "profile.h"
 #include "reportprofiles.h"
@@ -248,6 +250,42 @@ static T2ERROR initJSONReportProfile(cJSON** jsonObj, cJSON **valArray, char *ro
     return T2ERROR_SUCCESS;
 }
 
+static void calculateMaxUploadLatency(Profile *profile, time_t *maxuploadinmilliSec, time_t *maxuploadinSec)
+{
+    unsigned int random_value = 0;
+    // Ensure maxUploadLatency > 1 to avoid modulo by zero
+    if(profile->maxUploadLatency > 1)
+    {
+        int urandom = -1;
+        urandom = open("/dev/urandom", O_RDONLY);
+        if(urandom != -1 && read(urandom, &random_value, sizeof(random_value)) == sizeof(random_value))
+        {
+            *maxuploadinmilliSec = random_value % (profile->maxUploadLatency - 1);
+            if(close(urandom) == -1)
+            {
+                T2Error("Failed to close /dev/urandom: %s\n", strerror(errno));
+            }
+        }
+        else
+        {
+            if(urandom != -1)
+            {
+                if(close(urandom) == -1)
+                {
+                    T2Error("Failed to close /dev/urandom: %s\n", strerror(errno));
+                }
+            }
+            *maxuploadinmilliSec = (unsigned int)(time(0) % (profile->maxUploadLatency - 1));
+        }
+    }
+    else
+    {
+        // If maxUploadLatency is 1, set maxuploadinmilliSec to 0
+        *maxuploadinmilliSec = 0;
+    }
+    *maxuploadinSec = (*maxuploadinmilliSec + 1) / 1000;
+}
+
 T2ERROR profileWithNameExists(const char *profileName, bool *bProfileExists)
 {
     size_t profileIndex = 0;
@@ -331,6 +369,7 @@ static void* CollectAndReport(void* data)
     pthread_mutex_init(&profile->reuseThreadMutex, NULL);
     pthread_cond_init(&profile->reuseThread, NULL);
     pthread_mutex_lock(&profile->reuseThreadMutex);
+    profile->restartRequested = false;
     profile->threadExists = true;
     //GrepSeekProfile *GPF = profile->GrepSeekProfle;
     do
@@ -340,6 +379,7 @@ static void* CollectAndReport(void* data)
         profile->reportInProgress = true;
         pthread_cond_signal(&profile->reportInProgressCond);
         pthread_mutex_unlock(&profile->reportInProgressMutex);
+        pthread_mutex_unlock(&profile->reuseThreadMutex);
 
         int count = profile->grepSeekProfile->execCounter;
 
@@ -370,7 +410,12 @@ static void* CollectAndReport(void* data)
             {
                 T2Debug(" profile->triggerReportOnCondition is not set \n");
             }
+            pthread_mutex_lock(&profile->reuseThreadMutex);
+            pthread_mutex_lock(&profile->reportInProgressMutex);
             profile->reportInProgress = false;
+            pthread_cond_signal(&profile->reportInProgressCond);
+            pthread_mutex_unlock(&profile->reportInProgressMutex);
+            pthread_mutex_unlock(&profile->reuseThreadMutex);
             //return NULL;
             goto reportThreadEnd;
         }
@@ -396,7 +441,12 @@ static void* CollectAndReport(void* data)
                 {
                     T2Debug(" profile->triggerReportOnCondition is not set \n");
                 }
+                pthread_mutex_lock(&profile->reuseThreadMutex);
+                pthread_mutex_lock(&profile->reportInProgressMutex);
                 profile->reportInProgress = false;
+                pthread_cond_signal(&profile->reportInProgressCond);
+                pthread_mutex_unlock(&profile->reportInProgressMutex);
+                pthread_mutex_unlock(&profile->reuseThreadMutex);
                 //return NULL;
                 goto reportThreadEnd;
             }
@@ -409,7 +459,12 @@ static void* CollectAndReport(void* data)
             if(T2ERROR_SUCCESS != initJSONReportProfile(&profile->jsonReportObj, &valArray, profile->RootName))
             {
                 T2Error("Failed to initialize JSON Report\n");
+                pthread_mutex_lock(&profile->reuseThreadMutex);
+                pthread_mutex_lock(&profile->reportInProgressMutex);
                 profile->reportInProgress = false;
+                pthread_cond_signal(&profile->reportInProgressCond);
+                pthread_mutex_unlock(&profile->reportInProgressMutex);
+                pthread_mutex_unlock(&profile->reuseThreadMutex);
                 //pthread_mutex_unlock(&profile->triggerCondMutex);
                 if(profile->triggerReportOnCondition)
                 {
@@ -479,7 +534,12 @@ static void* CollectAndReport(void* data)
                 if(ret != T2ERROR_SUCCESS)
                 {
                     T2Error("Unable to generate report for : %s\n", profile->name);
+                    pthread_mutex_lock(&profile->reuseThreadMutex);
+                    pthread_mutex_lock(&profile->reportInProgressMutex);
                     profile->reportInProgress = false;
+                    pthread_cond_signal(&profile->reportInProgressCond);
+                    pthread_mutex_unlock(&profile->reportInProgressMutex);
+                    pthread_mutex_unlock(&profile->reuseThreadMutex);
                     if(profile->triggerReportOnCondition)
                     {
                         profile->triggerReportOnCondition = false ;
@@ -519,7 +579,12 @@ static void* CollectAndReport(void* data)
                     if(cJSON_GetArraySize(array) == 0)
                     {
                         T2Warning("Array size of Report is %d. Report is empty. Cannot send empty report\n", cJSON_GetArraySize(array));
+                        pthread_mutex_lock(&profile->reuseThreadMutex);
+                        pthread_mutex_lock(&profile->reportInProgressMutex);
                         profile->reportInProgress = false;
+                        pthread_cond_signal(&profile->reportInProgressCond);
+                        pthread_mutex_unlock(&profile->reportInProgressMutex);
+                        pthread_mutex_unlock(&profile->reuseThreadMutex);
                         if(profile->triggerReportOnCondition)
                         {
                             T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
@@ -548,14 +613,15 @@ static void* CollectAndReport(void* data)
                 }
                 if(profile->maxUploadLatency > 0)
                 {
+                    pthread_mutex_lock(&profile->reuseThreadMutex);
                     memset(&profile->maxlatencyTime, 0, sizeof(struct timespec));
                     memset(&profile->currentTime, 0, sizeof(struct timespec));
-                    pthread_cond_init(&profile->reportcond, NULL);
                     clock_gettime(CLOCK_REALTIME, &profile->currentTime);
                     profile->maxlatencyTime.tv_sec = profile->currentTime.tv_sec;
-                    srand(time(0)); // Initialise the random number generator
-                    maxuploadinmilliSec = rand() % (profile->maxUploadLatency - 1);
-                    maxuploadinSec =  (maxuploadinmilliSec + 1) / 1000;
+                    pthread_mutex_unlock(&profile->reuseThreadMutex);
+                    pthread_mutex_init(&profile->reportMutex, NULL);
+                    pthread_cond_init(&profile->reportcond, NULL);
+                    calculateMaxUploadLatency(profile, &maxuploadinmilliSec, &maxuploadinSec);
                 }
                 if( strcmp(profile->protocol, "HTTP") == 0 || strcmp(profile->protocol, "RBUS_METHOD") == 0 )
                 {
@@ -565,14 +631,25 @@ static void* CollectAndReport(void* data)
                         httpUrl = prepareHttpUrl(profile->t2HTTPDest); /* Append URL with http properties */
                         if(profile->maxUploadLatency > 0)
                         {
-                            pthread_mutex_lock(&profile->reportMutex);
                             T2Info("waiting for %ld sec of macUploadLatency\n", (long) maxuploadinSec);
+                            struct timespec timeout;
+                            pthread_mutex_lock(&profile->reuseThreadMutex);
                             profile->maxlatencyTime.tv_sec += maxuploadinSec;
-                            n = pthread_cond_timedwait(&profile->reportcond, &profile->reportMutex, &profile->maxlatencyTime);
+                            timeout = profile->maxlatencyTime;
+                            pthread_mutex_unlock(&profile->reuseThreadMutex);
+                            pthread_mutex_lock(&profile->reportMutex);
+                            while (profile->enable && n != ETIMEDOUT)
+                            {
+                                n = pthread_cond_timedwait(&profile->reportcond, &profile->reportMutex, &timeout);
+                            }
                             if(n == ETIMEDOUT)
                             {
                                 T2Info("TIMEOUT for maxUploadLatency of profile %s\n", profile->name);
                                 ret = sendReportOverHTTP(httpUrl, jsonReport);
+                            }
+                            else if(n == 0)
+                            {
+                                T2Info("Profile : %s signaled before timeout, skipping report upload\n", profile->name);
                             }
                             else
                             {
@@ -584,7 +661,12 @@ static void* CollectAndReport(void* data)
                                     free(httpUrl);
                                     httpUrl = NULL;
                                 }
+                                pthread_mutex_lock(&profile->reuseThreadMutex);
+                                pthread_mutex_lock(&profile->reportInProgressMutex);
                                 profile->reportInProgress = false;
+                                pthread_cond_signal(&profile->reportInProgressCond);
+                                pthread_mutex_unlock(&profile->reportInProgressMutex);
+                                pthread_mutex_unlock(&profile->reuseThreadMutex);
                                 if(profile->triggerReportOnCondition)
                                 {
                                     T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
@@ -606,6 +688,7 @@ static void* CollectAndReport(void* data)
                             }
                             pthread_mutex_unlock(&profile->reportMutex);
                             pthread_cond_destroy(&profile->reportcond);
+                            pthread_mutex_destroy(&profile->reportMutex);
                         }
                         else
                         {
@@ -616,21 +699,37 @@ static void* CollectAndReport(void* data)
                     {
                         if(profile->maxUploadLatency > 0 )
                         {
-                            pthread_mutex_lock(&profile->reportMutex);
                             T2Info("waiting for %ld sec of macUploadLatency\n", (long) maxuploadinSec);
+                            struct timespec timeout;
+                            pthread_mutex_lock(&profile->reuseThreadMutex);
                             profile->maxlatencyTime.tv_sec += maxuploadinSec;
-                            n = pthread_cond_timedwait(&profile->reportcond, &profile->reportMutex, &profile->maxlatencyTime);
+                            timeout = profile->maxlatencyTime;
+                            pthread_mutex_unlock(&profile->reuseThreadMutex);
+                            pthread_mutex_lock(&profile->reportMutex);
+                            while (profile->enable && n != ETIMEDOUT)
+                            {
+                                n = pthread_cond_timedwait(&profile->reportcond, &profile->reportMutex, &timeout);
+                            }
                             if(n == ETIMEDOUT)
                             {
                                 T2Info("TIMEOUT for maxUploadLatency of profile %s\n", profile->name);
                                 ret = sendReportsOverRBUSMethod(profile->t2RBUSDest->rbusMethodName, profile->t2RBUSDest->rbusMethodParamList, jsonReport);
+                            }
+                            else if(n == 0)
+                            {
+                                T2Info("Profile : %s signaled before timeout, skipping report upload\n", profile->name);
                             }
                             else
                             {
                                 T2Error("Profile : %s pthread_cond_timedwait ERROR!!!\n", profile->name);
                                 pthread_mutex_unlock(&profile->reportMutex);
                                 pthread_cond_destroy(&profile->reportcond);
+                                pthread_mutex_lock(&profile->reuseThreadMutex);
+                                pthread_mutex_lock(&profile->reportInProgressMutex);
                                 profile->reportInProgress = false;
+                                pthread_cond_signal(&profile->reportInProgressCond);
+                                pthread_mutex_unlock(&profile->reportInProgressMutex);
+                                pthread_mutex_unlock(&profile->reuseThreadMutex);
                                 if(profile->triggerReportOnCondition)
                                 {
                                     T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
@@ -690,7 +789,12 @@ static void* CollectAndReport(void* data)
                             if(profile->SendErr > 3 && !(rbusCheckMethodExists(profile->t2RBUSDest->rbusMethodName)))   //to delete the profile in the next CollectAndReport or triggercondition
                             {
                                 T2Debug("RBUS_METHOD doesn't exists after 3 retries\n");
+                                pthread_mutex_lock(&profile->reuseThreadMutex);
+                                pthread_mutex_lock(&profile->reportInProgressMutex);
                                 profile->reportInProgress = false;
+                                pthread_cond_signal(&profile->reportInProgressCond);
+                                pthread_mutex_unlock(&profile->reportInProgressMutex);
+                                pthread_mutex_unlock(&profile->reuseThreadMutex);
                                 if(profile->triggerReportOnCondition)
                                 {
                                     profile->triggerReportOnCondition = false ;
@@ -769,7 +873,12 @@ static void* CollectAndReport(void* data)
             jsonReport = NULL;
         }
 
+        pthread_mutex_lock(&profile->reuseThreadMutex);
+        pthread_mutex_lock(&profile->reportInProgressMutex);
         profile->reportInProgress = false;
+        pthread_cond_signal(&profile->reportInProgressCond);
+        pthread_mutex_unlock(&profile->reportInProgressMutex);
+        pthread_mutex_unlock(&profile->reuseThreadMutex);
         if(profile->triggerReportOnCondition)
         {
             T2Info(" Unlock trigger condition mutex and set report on condition to false \n");
@@ -789,13 +898,23 @@ static void* CollectAndReport(void* data)
 reportThreadEnd :
         T2Info("%s while Loop -- END; wait for restart event\n", __FUNCTION__);
         T2Info("%s --out\n", __FUNCTION__);
-        pthread_cond_wait(&profile->reuseThread, &profile->reuseThreadMutex);
+        pthread_mutex_lock(&profile->reuseThreadMutex);
+        while(profile->enable && !profile->restartRequested)
+        {
+            pthread_cond_wait(&profile->reuseThread, &profile->reuseThreadMutex);
+        }
+        profile->restartRequested = false;
     }
     while(profile->enable);
+    pthread_mutex_unlock(&profile->reuseThreadMutex);
     T2Info("%s --out Exiting collect and report Thread\n", __FUNCTION__);
+    pthread_mutex_lock(&profile->reuseThreadMutex);
     pthread_mutex_lock(&profile->reportInProgressMutex);
     profile->reportInProgress = false;
+    pthread_cond_signal(&profile->reportInProgressCond);
     pthread_mutex_unlock(&profile->reportInProgressMutex);
+    pthread_mutex_unlock(&profile->reuseThreadMutex);
+    pthread_mutex_lock(&profile->reuseThreadMutex);
     profile->threadExists = false;
     pthread_mutex_unlock(&profile->reuseThreadMutex);
     pthread_mutex_destroy(&profile->reuseThreadMutex);
@@ -823,27 +942,34 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
     {
         profile->reportInProgress = true;
         profile->bClearSeekMap = isClearSeekMap;
-        /* To avoid previous report thread to go into zombie state, mark it detached. */
+        pthread_mutex_unlock(&profile->reportInProgressMutex);
+
+        /* Read threadExists under reuseThreadMutex for proper synchronization.
+         * threadExists is written under reuseThreadMutex in CollectAndReport,
+         * so it must also be read under the same mutex to avoid a data race.
+         * Combine the read and the signal within the same lock to prevent a
+         * race between reading threadExists and signaling/creating the thread. */
+        pthread_mutex_lock(&profile->reuseThreadMutex);
         if (profile->threadExists)
         {
             T2Info("Signal Thread To restart\n");
-            pthread_mutex_lock(&profile->reuseThreadMutex);
+            profile->restartRequested = true;
             pthread_cond_signal(&profile->reuseThread);
             pthread_mutex_unlock(&profile->reuseThreadMutex);
         }
         else
         {
+            pthread_mutex_unlock(&profile->reuseThreadMutex);
             pthread_create(&profile->reportThread, NULL, CollectAndReport, (void*)profile);
         }
     }
     else
     {
         T2Warning("Either profile is disabled or report generation still in progress - ignoring the request\n");
+        pthread_mutex_unlock(&profile->reportInProgressMutex);
     }
-    pthread_mutex_unlock(&profile->reportInProgressMutex);
     T2Debug("%s --out\n", __FUNCTION__);
 }
-
 
 T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
 {
@@ -1184,14 +1310,24 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
             T2Error("Profile : %s failed to  unregister from scheduler\n", tempProfile->name);
         }
 
-        /* Release plMutex before pthread_join to avoid deadlock */
-        if (tempProfile->threadExists)
+        /* Read threadExists under reuseThreadMutex: threadExists is written under
+         * reuseThreadMutex in CollectAndReport, so reads must use the same lock.
+         * The thread sets threadExists = false and then destroys reuseThreadMutex
+         * before returning, so reuseThreadMutex must not be accessed after join. */
+        pthread_mutex_lock(&tempProfile->reuseThreadMutex);
+        bool threadStillExists = tempProfile->threadExists;
+        if (threadStillExists)
         {
-            pthread_mutex_lock(&tempProfile->reuseThreadMutex);
+            tempProfile->restartRequested = true;
             pthread_cond_signal(&tempProfile->reuseThread);
-            pthread_mutex_unlock(&tempProfile->reuseThreadMutex);
+        }
+        pthread_mutex_unlock(&tempProfile->reuseThreadMutex);
+
+        if (threadStillExists)
+        {
             pthread_join(tempProfile->reportThread, NULL);
-            tempProfile->threadExists = false;
+            /* Do not access reuseThreadMutex after join: the thread destroys it
+             * after setting threadExists = false (see CollectAndReport cleanup). */
         }
 
         /* Re-acquire plMutex for profile cleanup */
@@ -1280,12 +1416,24 @@ T2ERROR deleteProfile(const char *profileName)
     T2Info("Waiting for CollectAndReport to be complete : %s\n", profileName);
     pthread_mutex_lock(&plMutex);
 
+    // Wait for any in-progress report to finish under reportInProgressMutex.
+    // threadExists must NOT be read here — it is written under reuseThreadMutex
+    // in CollectAndReport, so mixing the two mutexes causes a data race (Coverity
+    // LOCK_EVASION).  Read threadExists separately under reuseThreadMutex below.
     pthread_mutex_lock(&profile->reportInProgressMutex);
-    while (profile->reportInProgress && !profile->threadExists)
+    while (profile->reportInProgress)
     {
         pthread_cond_wait(&profile->reportInProgressCond, &profile->reportInProgressMutex);
     }
     pthread_mutex_unlock(&profile->reportInProgressMutex);
+
+    /* Read threadExists under reuseThreadMutex: it is written under the same mutex
+     * in CollectAndReport.  The thread sets threadExists = false and then destroys
+     * reuseThreadMutex before returning, so reuseThreadMutex must not be used after
+     * pthread_join returns. */
+    pthread_mutex_lock(&profile->reuseThreadMutex);
+    bool threadStillExists = profile->threadExists;
+    pthread_mutex_unlock(&profile->reuseThreadMutex);
 
     /* Release plMutex before pthread_join to avoid deadlock.
      * pthread_join can block indefinitely if the CollectAndReport thread
@@ -1295,13 +1443,15 @@ T2ERROR deleteProfile(const char *profileName)
      */
     pthread_mutex_unlock(&plMutex);
 
-    if (profile->threadExists)
+    if (threadStillExists)
     {
         pthread_mutex_lock(&profile->reuseThreadMutex);
+        profile->restartRequested = true;
         pthread_cond_signal(&profile->reuseThread);
         pthread_mutex_unlock(&profile->reuseThreadMutex);
         pthread_join(profile->reportThread, NULL);
-        profile->threadExists = false;
+        /* Do not access reuseThreadMutex after join: the thread destroys it
+         * after setting threadExists = false (see CollectAndReport cleanup). */
     }
 
     /* Re-acquire plMutex for profile cleanup operations */
@@ -1834,6 +1984,7 @@ T2ERROR triggerReportOnCondtion(const char *referenceName, const char *reference
                             if(tempProfile->isSchedulerstarted)
                             {
                                 SendInterruptToTimeoutThread(tempProfilename);
+                                // triggerCondMutex will be unlocked by CollectAndReport after report generation
                             }
                             else
                             {

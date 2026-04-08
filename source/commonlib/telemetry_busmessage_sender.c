@@ -778,7 +778,7 @@ void t2_uninit(void)
 T2ERROR t2_event_s(const char* marker, const char* value)
 {
 
-    int ret;
+    int ret = -1;
     T2ERROR retStatus = T2ERROR_FAILURE ;
     EVENT_DEBUG("%s ++in\n", __FUNCTION__);
     char* strvalue = NULL;
@@ -805,13 +805,13 @@ T2ERROR t2_event_s(const char* marker, const char* value)
         return T2ERROR_SUCCESS;
     }
     strvalue = strdup(value);
-    if( strvalue[strlen(strvalue) - 1] == '\n' )
-    {
-        strvalue[strlen(strvalue) - 1] = '\0';
-    }
-    ret = report_or_cache_data(strvalue, marker);
     if(strvalue != NULL)
     {
+        if( strvalue[strlen(strvalue) - 1] == '\n' )
+        {
+            strvalue[strlen(strvalue) - 1] = '\0';
+        }
+        ret = report_or_cache_data(strvalue, marker);
         free(strvalue);
     }
     if(ret != -1)

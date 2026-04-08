@@ -294,6 +294,10 @@ def test_for_invalid_activation_timeout():
 @pytest.mark.run(order=8)
 def test_with_delete_on_timeout():
     #clear_T2logs()
+    # Clear both msgpack and JSON profiles from previous tests
+    rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_empty_profile))
+    rbus_set_data(T2_TEMP_REPORT_PROFILE_PARAM, "string", data_empty_profile)
+    sleep(2)
     RUN_START_TIME = dt.now()
     run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
     sleep(2)
@@ -319,7 +323,7 @@ def test_with_delete_on_timeout():
     assert "MODEL_NAME\":\"DOCKER" in grep_T2logs("rp_TR_AC66") # 243 - Include data from data source as TR181 Parameter with regex
     assert "TEST_EVENT_MARKER_2\":\"17" in grep_T2logs("rp_TR_AC66") # 242 - Include data from data source as T2 events with regex
     assert "rp_TR_AC66" in grep_T2logs(LOG_DELETE_PROFILE) # 232 -Support for Delete on Timeout of profiles
-    
+
     assert "temp_TR_AC66" in grep_T2logs(LOG_PROFILE_ENABLE)  # 301 - Profile setting and parsing in JSON format
     assert "temp_TR_AC66" in grep_T2logs(LOG_PROFILE_TIMEOUT) # 315 - Support for activation timeout of profiles
     assert "SYS_INFO_CrashPortalUpload_success\":\"200" in grep_T2logs("temp_TR_AC66") # 318 - Regex support for log grep patterns
@@ -345,7 +349,7 @@ def test_for_first_reporting_interval_Maxlatency():
     sleep(5)
     assert "PARAM_NULL" not in grep_T2logs(LOG_PROFILE_ENABLE)
     assert "NA_FRI" in grep_T2logs(LOG_PROFILE_ENABLE) #verify when timeref is not default first reporting inetrval is not accepted
-    
+
     assert "NA_MLU" in grep_T2logs(LOG_PROFILE_ENABLE)
     assert "NA_FRI" not in grep_T2logs("Waiting for 5 sec for next TIMEOUT for profile as firstreporting interval is given")
     sleep(10)

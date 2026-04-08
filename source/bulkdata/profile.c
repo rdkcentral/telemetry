@@ -413,6 +413,7 @@ static void* CollectAndReport(void* data)
             pthread_mutex_lock(&profile->reuseThreadMutex);
             pthread_mutex_lock(&profile->reportInProgressMutex);
             profile->reportInProgress = false;
+            pthread_cond_signal(&profile->reportInProgressCond);
             pthread_mutex_unlock(&profile->reportInProgressMutex);
             pthread_mutex_unlock(&profile->reuseThreadMutex);
             //return NULL;
@@ -443,6 +444,7 @@ static void* CollectAndReport(void* data)
                 pthread_mutex_lock(&profile->reuseThreadMutex);
                 pthread_mutex_lock(&profile->reportInProgressMutex);
                 profile->reportInProgress = false;
+                pthread_cond_signal(&profile->reportInProgressCond);
                 pthread_mutex_unlock(&profile->reportInProgressMutex);
                 pthread_mutex_unlock(&profile->reuseThreadMutex);
                 //return NULL;
@@ -460,6 +462,7 @@ static void* CollectAndReport(void* data)
                 pthread_mutex_lock(&profile->reuseThreadMutex);
                 pthread_mutex_lock(&profile->reportInProgressMutex);
                 profile->reportInProgress = false;
+                pthread_cond_signal(&profile->reportInProgressCond);
                 pthread_mutex_unlock(&profile->reportInProgressMutex);
                 pthread_mutex_unlock(&profile->reuseThreadMutex);
                 //pthread_mutex_unlock(&profile->triggerCondMutex);
@@ -534,6 +537,7 @@ static void* CollectAndReport(void* data)
                     pthread_mutex_lock(&profile->reuseThreadMutex);
                     pthread_mutex_lock(&profile->reportInProgressMutex);
                     profile->reportInProgress = false;
+                    pthread_cond_signal(&profile->reportInProgressCond);
                     pthread_mutex_unlock(&profile->reportInProgressMutex);
                     pthread_mutex_unlock(&profile->reuseThreadMutex);
                     if(profile->triggerReportOnCondition)
@@ -578,6 +582,7 @@ static void* CollectAndReport(void* data)
                         pthread_mutex_lock(&profile->reuseThreadMutex);
                         pthread_mutex_lock(&profile->reportInProgressMutex);
                         profile->reportInProgress = false;
+                        pthread_cond_signal(&profile->reportInProgressCond);
                         pthread_mutex_unlock(&profile->reportInProgressMutex);
                         pthread_mutex_unlock(&profile->reuseThreadMutex);
                         if(profile->triggerReportOnCondition)
@@ -659,6 +664,7 @@ static void* CollectAndReport(void* data)
                                 pthread_mutex_lock(&profile->reuseThreadMutex);
                                 pthread_mutex_lock(&profile->reportInProgressMutex);
                                 profile->reportInProgress = false;
+                                pthread_cond_signal(&profile->reportInProgressCond);
                                 pthread_mutex_unlock(&profile->reportInProgressMutex);
                                 pthread_mutex_unlock(&profile->reuseThreadMutex);
                                 if(profile->triggerReportOnCondition)
@@ -721,6 +727,7 @@ static void* CollectAndReport(void* data)
                                 pthread_mutex_lock(&profile->reuseThreadMutex);
                                 pthread_mutex_lock(&profile->reportInProgressMutex);
                                 profile->reportInProgress = false;
+                                pthread_cond_signal(&profile->reportInProgressCond);
                                 pthread_mutex_unlock(&profile->reportInProgressMutex);
                                 pthread_mutex_unlock(&profile->reuseThreadMutex);
                                 if(profile->triggerReportOnCondition)
@@ -785,6 +792,7 @@ static void* CollectAndReport(void* data)
                                 pthread_mutex_lock(&profile->reuseThreadMutex);
                                 pthread_mutex_lock(&profile->reportInProgressMutex);
                                 profile->reportInProgress = false;
+                                pthread_cond_signal(&profile->reportInProgressCond);
                                 pthread_mutex_unlock(&profile->reportInProgressMutex);
                                 pthread_mutex_unlock(&profile->reuseThreadMutex);
                                 if(profile->triggerReportOnCondition)
@@ -868,6 +876,7 @@ static void* CollectAndReport(void* data)
         pthread_mutex_lock(&profile->reuseThreadMutex);
         pthread_mutex_lock(&profile->reportInProgressMutex);
         profile->reportInProgress = false;
+        pthread_cond_signal(&profile->reportInProgressCond);
         pthread_mutex_unlock(&profile->reportInProgressMutex);
         pthread_mutex_unlock(&profile->reuseThreadMutex);
         if(profile->triggerReportOnCondition)
@@ -902,6 +911,7 @@ reportThreadEnd :
     pthread_mutex_lock(&profile->reuseThreadMutex);
     pthread_mutex_lock(&profile->reportInProgressMutex);
     profile->reportInProgress = false;
+    pthread_cond_signal(&profile->reportInProgressCond);
     pthread_mutex_unlock(&profile->reportInProgressMutex);
     pthread_mutex_unlock(&profile->reuseThreadMutex);
     pthread_mutex_lock(&profile->reuseThreadMutex);

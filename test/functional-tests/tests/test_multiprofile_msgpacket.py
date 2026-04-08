@@ -294,6 +294,10 @@ def test_for_invalid_activation_timeout():
 @pytest.mark.run(order=8)
 def test_with_delete_on_timeout():
     #clear_T2logs()
+    # Clear both msgpack and JSON profiles from previous tests
+    rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_empty_profile))
+    rbus_set_data(T2_TEMP_REPORT_PROFILE_PARAM, "string", data_empty_profile)
+    sleep(2)
     RUN_START_TIME = dt.now()
     run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
     sleep(2)

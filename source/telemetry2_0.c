@@ -31,6 +31,7 @@
 #include <pthread.h>
 #include <signal.h>
 #include <curl/curl.h>
+#include <time.h>
 #ifdef __GNUC__
 #ifndef _BUILD_ANDROID
 #ifdef __GLIBC__
@@ -109,9 +110,9 @@ T2ERROR initTelemetry()
 
 static void terminate()
 {
+    T2Info("%s ++in\n", __FUNCTION__);
     struct timespec t2, t_start;
     clock_gettime(CLOCK_MONOTONIC, &t_start);
-    T2Info("=== [SHUTDOWN] telemetry2_0 shutdown started ===\n");
 
     if(remove("/tmp/.t2ReadyToReceiveEvents") != 0)
     {
@@ -138,6 +139,7 @@ static void terminate()
     clock_gettime(CLOCK_MONOTONIC, &t2);
     T2Info("=== [SHUTDOWN] telemetry2_0 shutdown complete, total=%lldms ===\n",
            (long long)(t2.tv_sec - t_start.tv_sec) * 1000 + (t2.tv_nsec - t_start.tv_nsec) / 1000000LL);
+    T2Info("%s --out\n", __FUNCTION__);
 
 }
 static void _print_stack_backtrace(void)
@@ -172,6 +174,7 @@ static void _print_stack_backtrace(void)
 
 void sig_handler(int sig, siginfo_t* info, void* uc)
 {
+    T2Info("%s ++in\n", __FUNCTION__);
     if(DAEMONPID == getpid())
     {
         int fd;
@@ -224,6 +227,14 @@ void sig_handler(int sig, siginfo_t* info, void* uc)
         }
         else if ( sig == SIGTERM || sig == SIGKILL )
         {
+            if ( sig == SIGTERM )
+            {
+                T2Info(("SIGTERM received!\n"));
+            }
+            else
+            {
+                T2Info(("SIGKILL received!\n"));
+            }
             terminate();
             exit(0);
         }
@@ -248,6 +259,7 @@ void sig_handler(int sig, siginfo_t* info, void* uc)
             exit(0);
         }
     }
+    T2Info("%s --out\n", __FUNCTION__);
 }
 
 static void t2DaemonMainModeInit( )

@@ -227,20 +227,20 @@ int getProcUsage(char *processName, TopMarker* marker, char* filename)
 
         pInfo.total_instance = index;
         pInfo.pid = pid;
+        if (marker->cpuValue)
+        {
+            free(marker->cpuValue);
+            marker->cpuValue = NULL;
+        }
+        if (marker->memValue)
+        {
+            free(marker->memValue);
+            marker->memValue = NULL;
+        }
         if(0 != getProcInfo(&pInfo, filename))
         {
             T2Info("Process info - CPU: %s, Memory: %s \n", pInfo.cpuUse, pInfo.memUse);
-
-            if (marker->cpuValue)
-            {
-                free(marker->cpuValue);
-            }
             marker->cpuValue = strdup(pInfo.cpuUse);
-
-            if (marker->memValue)
-            {
-                free(marker->memValue);
-            }
             marker->memValue = strdup(pInfo.memUse);
 
             ret = 1;

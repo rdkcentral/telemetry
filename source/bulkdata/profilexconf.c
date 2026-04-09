@@ -679,7 +679,7 @@ T2ERROR ProfileXConf_init(bool checkPreviousSeek)
 
 T2ERROR ProfileXConf_uninit()
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     if(!initialized || !singleProfile)
     {
         T2Info("profile list is not initialized yet, ignoring\n");
@@ -692,7 +692,7 @@ T2ERROR ProfileXConf_uninit()
     pthread_mutex_unlock(&singleProfile->reportInProgressMutex);
     if(reportInProgress)
     {
-        T2Debug("Waiting for final report before uninit\n");
+        T2Info("Waiting for final report before uninit\n");
         pthread_mutex_lock(&plMutex);
         pthread_cond_signal(&reuseThread);
         pthread_mutex_unlock(&plMutex);
@@ -709,7 +709,7 @@ T2ERROR ProfileXConf_uninit()
     /* Destroy condition variable at module uninit, after all threads are stopped */
     pthread_cond_destroy(&reuseThread);
     pthread_mutex_destroy(&plMutex);
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 

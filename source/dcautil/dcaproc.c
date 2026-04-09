@@ -94,7 +94,8 @@ int getProcUsage(char *processName, TopMarker* marker, char* filename)
         pid_t *pid = NULL;
         pid_t *temp = NULL;
         memset(&pInfo, '\0', sizeof(procMemCpuInfo));
-        memcpy(pInfo.processName, processName, strlen(processName) + 1);
+        strncpy(pInfo.processName, processName, BUF_LEN - 1);
+        pInfo.processName[BUF_LEN - 1] = '\0';
 
         T2Info("Command for collecting process info : \n pidof %s", processName);
 #ifdef LIBSYSWRAPPER_BUILD

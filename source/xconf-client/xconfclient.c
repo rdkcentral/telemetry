@@ -1075,7 +1075,7 @@ static void* getUpdatedConfigurationThread(void *data)
 
 void uninitXConfClient()
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     pthread_mutex_lock(&xcThreadMutex);
     if(!stopFetchRemoteConfiguration)
     {
@@ -1090,7 +1090,7 @@ void uninitXConfClient()
     else
     {
         pthread_mutex_unlock(&xcThreadMutex);
-        T2Debug("XConfClientThread is stopped already\n");
+        T2Info("XConfClientThread is stopped already\n");
     }
     pthread_mutex_lock(&xcThreadMutex);
     if(isXconfInit)

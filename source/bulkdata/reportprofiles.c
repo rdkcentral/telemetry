@@ -428,7 +428,6 @@ static void* reportOnDemand(void *input)
     if(!strncmp(action, ON_DEMAND_ACTION_UPLOAD, MAX_PROFILENAMES_LENGTH))
     {
         T2Info("Upload XCONF report on demand \n");
-        set_logdemand(true);
         generateDcaReport(false, true);
     }
     else if(!strncmp(action, ON_DEMAND_ACTION_ABORT, MAX_PROFILENAMES_LENGTH))
@@ -485,6 +484,10 @@ T2ERROR initReportProfiles()
     // Drop root privileges for Telemetry 2.0, If NonRootSupport RFC is true
     drop_root();
 #endif
+
+    //Initialise the properties file RDK-58222
+    T2InitProperties();
+    T2Info("Initializing properties\n");
 
 #if defined (PRIVACYMODES_CONTROL)
 // Define scope
@@ -640,9 +643,6 @@ T2ERROR initReportProfiles()
 
     }
 
-    //Initialise the properties file RDK-58222
-    T2InitProperties();
-    T2Info("InitProperties is successful\n");
 
     // This indicates telemetry has started
     FILE* bootFlag = NULL ;
@@ -942,7 +942,20 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
 
     // Delete profiles not present in the new profile list
     char *profileNameKey = NULL;
-    int count = hash_map_count(profileHashMap) - 1;
+    uint32_t hashmap_count = hash_map_count(profileHashMap);
+    int count;
+    // Check for empty hashmap (count == 0) or error condition (UINT32_MAX).
+    // UINT32_MAX is the documented return value of hash_map_count when map is NULL.
+    // Setting count = -1 ensures the while(count >= 0) loop below will not execute.
+    if (hashmap_count == 0 || hashmap_count == UINT32_MAX)
+    {
+        count = -1;
+    }
+    else
+    {
+        count = (int)(hashmap_count - 1);
+    }
+
     const char *DirPath = NULL;
 
     if (rprofiletypes == T2_RP)
@@ -1303,6 +1316,7 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
         return T2ERROR_PROFILE_NOT_FOUND;
     }
     hash_map_t *profileHashMap;
+    uint32_t hashmap_count;
     int count;
     char *profileNameKey = NULL;
     int profileIndex;
@@ -1319,7 +1333,18 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
     }
 
     /* Delete profiles not present in the new profile list */
-    count = hash_map_count(profileHashMap) - 1;
+    hashmap_count = hash_map_count(profileHashMap);
+    // Check for empty hashmap (count == 0) or error condition (UINT32_MAX).
+    // UINT32_MAX is the documented return value of hash_map_count when map is NULL.
+    // Setting count = -1 ensures the while(count >= 0) loop below will not execute.
+    if (hashmap_count == 0 || hashmap_count == UINT32_MAX)
+    {
+        count = -1;
+    }
+    else
+    {
+        count = (int)(hashmap_count - 1);
+    }
     while(count >= 0)
     {
         profile_found_flag = false;

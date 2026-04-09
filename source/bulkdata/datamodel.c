@@ -50,17 +50,28 @@ static void *process_rp_thread(void *data)
 {
     (void) data;//To fix compiler warning
     cJSON *reportProfiles = NULL;
+    bool shouldContinue = true;
 
     T2Debug("%s ++in\n", __FUNCTION__);
 
-    while(!stopProcessing)
+    while(shouldContinue)
     {
         pthread_mutex_lock(&rpMutex);
+        shouldContinue = !stopProcessing;
+        if(!shouldContinue)
+        {
+            pthread_mutex_unlock(&rpMutex);
+            break;
+        }
         T2Info("%s: Waiting for event from tr-181 \n", __FUNCTION__);
-        pthread_cond_wait(&rpCond, &rpMutex);
+        while(t2_queue_count(rpQueue) == 0 && shouldContinue)
+        {
+            pthread_cond_wait(&rpCond, &rpMutex);
+            shouldContinue = !stopProcessing;
+        }
 
         T2Debug("%s: Received wake up signal \n", __FUNCTION__);
-        if(t2_queue_count(rpQueue) > 0)
+        if(t2_queue_count(rpQueue) > 0 &&  shouldContinue)
         {
             reportProfiles = (cJSON *)t2_queue_pop(rpQueue);
             if (reportProfiles)
@@ -80,17 +91,32 @@ static void *process_tmprp_thread(void *data)
 {
     (void) data;//To fix compiler warning
     cJSON *tmpReportProfiles = NULL;
+    bool shouldContinue = true;
 
     T2Debug("%s ++in\n", __FUNCTION__);
 
-    while(!stopProcessing)
+    while(shouldContinue)
     {
         pthread_mutex_lock(&tmpRpMutex);
+        pthread_mutex_lock(&rpMutex);
+        shouldContinue = !stopProcessing;
+        pthread_mutex_unlock(&rpMutex);
+        if(!shouldContinue)
+        {
+            pthread_mutex_unlock(&tmpRpMutex);
+            break;
+        }
         T2Info("%s: Waiting for event from tr-181 \n", __FUNCTION__);
-        pthread_cond_wait(&tmpRpCond, &tmpRpMutex);
+        while(t2_queue_count(tmpRpQueue) == 0 && shouldContinue)
+        {
+            pthread_cond_wait(&tmpRpCond, &tmpRpMutex);
+            pthread_mutex_lock(&rpMutex);
+            shouldContinue = !stopProcessing;
+            pthread_mutex_unlock(&rpMutex);
+        }
 
         T2Debug("%s: Received wake up signal \n", __FUNCTION__);
-        if(t2_queue_count(tmpRpQueue) > 0)
+        if(t2_queue_count(tmpRpQueue) > 0 && shouldContinue)
         {
             tmpReportProfiles = (cJSON *)t2_queue_pop(tmpRpQueue);
             if (tmpReportProfiles)
@@ -110,11 +136,31 @@ static void *process_msg_thread(void *data)
 {
     (void) data;//To fix compiler warning
     struct __msgpack__ *msgpack;
-    while(!stopProcessing)
+    bool shouldContinue = true;
+
+    while(shouldContinue)
     {
+        // Check stopProcessing first without holding rpMsgMutex to avoid
+        // nested mutex acquisition which could lead to deadlock if another
+        // thread acquires these mutexes in opposite order (e.g., rpMutex then rpMsgMutex)
+        pthread_mutex_lock(&rpMutex);
+        shouldContinue = !stopProcessing;
+        pthread_mutex_unlock(&rpMutex);
+
+        if(!shouldContinue)
+        {
+            break;
+        }
+
         pthread_mutex_lock(&rpMsgMutex);
-        pthread_cond_wait(&msg_Cond, &rpMsgMutex);
-        if(t2_queue_count(rpMsgPkgQueue) > 0)
+        while(t2_queue_count(rpMsgPkgQueue) == 0 && shouldContinue)
+        {
+            pthread_cond_wait(&msg_Cond, &rpMsgMutex);
+            pthread_mutex_lock(&rpMutex);
+            shouldContinue = !stopProcessing;
+            pthread_mutex_unlock(&rpMutex);
+        }
+        if(t2_queue_count(rpMsgPkgQueue) > 0 && shouldContinue)
         {
             msgpack = (struct __msgpack__ *)t2_queue_pop(rpMsgPkgQueue);
             if (msgpack)
@@ -274,18 +320,24 @@ T2ERROR datamodel_MsgpackProcessProfile(char *str, int strSize)
 
     msgpack->msgpack_blob = str;
     msgpack->msgpack_blob_size = strSize;
-    pthread_mutex_lock(&rpMsgMutex);
-    if (!stopProcessing)
-    {
-        t2_queue_push(rpMsgPkgQueue, (void *)msgpack);
-        pthread_cond_signal(&msg_Cond);
-    }
-    else
+
+    // Check stopProcessing without holding rpMsgMutex to avoid nested mutex
+    // acquisition which could lead to deadlock
+    pthread_mutex_lock(&rpMutex);
+    bool isProcessing = !stopProcessing;
+    pthread_mutex_unlock(&rpMutex);
+
+    if (!isProcessing)
     {
         free(msgpack->msgpack_blob);
         free(msgpack);
         T2Error("Datamodel not initialized, dropping request \n");
+        return T2ERROR_SUCCESS;
     }
+
+    pthread_mutex_lock(&rpMsgMutex);
+    t2_queue_push(rpMsgPkgQueue, (void *)msgpack);
+    pthread_cond_signal(&msg_Cond);
     pthread_mutex_unlock(&rpMsgMutex);
     return T2ERROR_SUCCESS;
 }

@@ -823,8 +823,8 @@ TEST_F(ProfileTest, privacymode_do_not_share) {
 }
 
 TEST_F(ProfileTest, generateDcaReport) {
-    // generateDcaReport may call set_logdemand
-    EXPECT_CALL(*g_schedulerMock, set_logdemand(_))
+    // generateDcaReport may call set_retainseekmap
+    EXPECT_CALL(*g_schedulerMock, set_retainseekmap(_))
         .Times(::testing::AtMost(2)); // Allow up to 2 calls
     
     generateDcaReport(false, true);

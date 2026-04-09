@@ -74,7 +74,7 @@
 
 int getProcUsage(char *processName, TopMarker* marker, char* filename)
 {
-    T2Info("%s ++in \n", __FUNCTION__);
+    T2Debug("%s ++in \n", __FUNCTION__);
     if(marker == NULL || processName == NULL)
     {
         T2Error("Invalid arguments for getProcUsage\n");
@@ -82,7 +82,7 @@ int getProcUsage(char *processName, TopMarker* marker, char* filename)
     }
     if(processName != NULL)
     {
-        T2Info("Process name is %s \n", processName);
+        T2Debug("Process name is %s \n", processName);
         procMemCpuInfo pInfo;
         char pidofCommand[PIDOF_SIZE];
 #if defined (ENABLE_PS_PROCESS_SEARCH)
@@ -97,7 +97,7 @@ int getProcUsage(char *processName, TopMarker* marker, char* filename)
         strncpy(pInfo.processName, processName, BUF_LEN - 1);
         pInfo.processName[BUF_LEN - 1] = '\0';
 
-        T2Info("Command for collecting process info : \n pidof %s", processName);
+        T2Debug("Command for collecting process info : \n pidof %s", processName);
 #ifdef LIBSYSWRAPPER_BUILD
         cmdPid = v_secure_popen("r", "pidof %s", processName);
 #else
@@ -106,7 +106,7 @@ int getProcUsage(char *processName, TopMarker* marker, char* filename)
 #endif
         if(!cmdPid)
         {
-            T2Info("Failed to execute %s", pidofCommand);
+            T2Debug("Failed to execute %s", pidofCommand);
             return 0;
         }
         pid = (int *) malloc(sizeof(pid_t));
@@ -119,7 +119,7 @@ int getProcUsage(char *processName, TopMarker* marker, char* filename)
 #endif
             if(pclose_ret != 0)
             {
-                T2Info("failed in closing pipe! ret %d\n", pclose_ret);
+                T2Debug("failed in closing pipe! ret %d\n", pclose_ret);
             }
             return 0;
         }
@@ -145,7 +145,7 @@ int getProcUsage(char *processName, TopMarker* marker, char* filename)
 #endif
                 if(pclose_ret != 0)
                 {
-                    T2Info("failed in closing pipe! ret %d\n", pclose_ret);
+                    T2Debug("failed in closing pipe! ret %d\n", pclose_ret);
                 }
                 return 0;
             }
@@ -160,7 +160,7 @@ int getProcUsage(char *processName, TopMarker* marker, char* filename)
 #endif
         if(pclose_ret != 0)
         {
-            T2Info("failed in closing pipe! ret %d\n", pclose_ret);
+            T2Debug("failed in closing pipe! ret %d\n", pclose_ret);
         }
 
 #if defined (ENABLE_PS_PROCESS_SEARCH)
@@ -239,7 +239,7 @@ int getProcUsage(char *processName, TopMarker* marker, char* filename)
         }
         if(0 != getProcInfo(&pInfo, filename))
         {
-            T2Info("Process info - CPU: %s, Memory: %s \n", pInfo.cpuUse, pInfo.memUse);
+            T2Debug("Process info - CPU: %s, Memory: %s \n", pInfo.cpuUse, pInfo.memUse);
             marker->cpuValue = strdup(pInfo.cpuUse);
             marker->memValue = strdup(pInfo.memUse);
 
@@ -257,7 +257,7 @@ int getProcUsage(char *processName, TopMarker* marker, char* filename)
             free(pid);
         }
     }
-    T2Info("%s --out \n", __FUNCTION__);
+    T2Debug("%s --out \n", __FUNCTION__);
     return 0;
 }
 
@@ -274,7 +274,7 @@ int getProcUsage(char *processName, TopMarker* marker, char* filename)
  */
 int getProcPidStat(int pid, procinfo * pinfo)
 {
-    T2Info("%s ++in \n", __FUNCTION__);
+    T2Debug("%s ++in \n", __FUNCTION__);
     char szFileName[CMD_LEN], szStatStr[2048], *s, *t;
     int ppid, fd, pgrp, session, tty, tpgid, counter, priority, starttime, signal, blocked, sigignore, sigcatch, j;
     char exName[CMD_LEN], state;
@@ -283,15 +283,14 @@ int getProcPidStat(int pid, procinfo * pinfo)
 
     if(NULL == pinfo)
     {
-        T2Info("Invalid input(pinfo=NULL) to get process info");
+        T2Debug("Invalid input(pinfo=NULL) to get process info");
         return 0;
     }
 
     sprintf(szFileName, "/proc/%u/stat", (unsigned) pid);
-    T2Info("szFileName = %s \n", szFileName);
     if((fd = open(szFileName, O_RDONLY)) == -1)
     {
-        T2Info("Failed to open file in get process info");
+        T2Debug("Failed to open file in get process info");
         return 0;
     }
 
@@ -314,7 +313,6 @@ int getProcPidStat(int pid, procinfo * pinfo)
     t = strchr(szStatStr, ')');
     strncpy(exName, s, t - s);
     exName[t - s] = '\0';
-    T2Info("s = %s \n", s);
 
     sscanf(t + 2, "%c %d %d %d %d %d %u %u %u %u %u %d %d %d %d %d %d %u %u %d %u %u %u %u %u %u %u %u %d %d %d %d %u",
            /*       1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33*/
@@ -325,7 +323,7 @@ int getProcPidStat(int pid, procinfo * pinfo)
 
     close(fd);
 
-    T2Info("%s --out \n", __FUNCTION__);
+    T2Debug("%s --out \n", __FUNCTION__);
 
     return 1;
 }
@@ -339,28 +337,17 @@ int getProcPidStat(int pid, procinfo * pinfo)
  */
 int getProcInfo(procMemCpuInfo *pmInfo, char* filename)
 {
-    T2Info("%s ++in \n", __FUNCTION__);
-    T2Info("INTIAL: \n");
-    T2Info("pmInfo->memUse = %s\n", pmInfo->memUse);
-    T2Info("pmInfo->cpuUse = %s\n", pmInfo->cpuUse);
+    T2Debug("%s ++in \n", __FUNCTION__);
     if(0 == getMemInfo(pmInfo))
     {
-        T2Info("FINAL: \n");
-        T2Info("pmInfo->memUse = %s\n", pmInfo->memUse);
-        T2Info("pmInfo->cpuUse = %s\n", pmInfo->cpuUse);
         return 0;
     }
 
     if(0 == getCPUInfo(pmInfo, filename))
     {
-        T2Info("FINAL: \n");
-        T2Info("pmInfo->memUse = %s\n", pmInfo->memUse);
-        T2Info("pmInfo->cpuUse = %s\n", pmInfo->cpuUse);
         return 0;
     }
-        T2Info("FINAL: \n");
-        T2Info("pmInfo->memUse = %s\n", pmInfo->memUse);
-        T2Info("pmInfo->cpuUse = %s\n", pmInfo->cpuUse);
+
     return 1;
 }
 
@@ -374,7 +361,7 @@ int getProcInfo(procMemCpuInfo *pmInfo, char* filename)
  */
 int getMemInfo(procMemCpuInfo *pmInfo)
 {
-    T2Info("%s ++in \n", __FUNCTION__);
+    T2Debug("%s ++in \n", __FUNCTION__);
     static char retMem[MEM_STRING_SIZE];
     int intStr = 0, intValue = 0;
     double residentMemory = 0.0;
@@ -387,7 +374,6 @@ int getMemInfo(procMemCpuInfo *pmInfo)
         T2Error("Invalid arguments or NULL arguments\n");
         return 0;
     }
-    T2Info(" pmInfo->total_instance = %d\n", pmInfo->total_instance);
     for( index = 0; index < (pmInfo->total_instance); index++ )
     {
         memset(&pinfo, 0, sizeof(procinfo));
@@ -395,9 +381,7 @@ int getMemInfo(procMemCpuInfo *pmInfo)
         {
             return 0;
         }
-        T2Info("Before: total_memory = %d\n", total_memory);
         total_memory += pinfo.rss;
-        T2Info("After: total_memory = %d\n", total_memory);
     }
 
     residentMemory = total_memory * pageSizeInKb;
@@ -408,12 +392,10 @@ int getMemInfo(procMemCpuInfo *pmInfo)
         intStr = intStr / 1024;
     }
     snprintf(retMem, sizeof(retMem), "%d%c", intStr, (intValue >= 1024) ? 'm' : 'k');
-    T2Info("retMem = %s\n", retMem);
 
     strncpy(pmInfo->memUse, retMem, sizeof(pmInfo->memUse) - 1);
     pmInfo->memUse[sizeof(pmInfo->memUse) - 1] = '\0';
-    T2Info("pmInfo->memUse = %s\n", pmInfo->memUse);
-    T2Info("%s --out \n", __FUNCTION__);
+    T2Debug("%s --out \n", __FUNCTION__);
     return 1;
 }
 
@@ -434,10 +416,10 @@ char* saveTopOutput(char* profilename)
         return retfile;
     }
 
-    T2Info("%s ++in \n", __FUNCTION__);
+    T2Debug("%s ++in \n", __FUNCTION__);
     if(access(filename, F_OK) == 0)
     {
-        T2Info("%s --out \n", __FUNCTION__);
+        T2Debug("%s --out \n", __FUNCTION__);
         removeTopOutput(strdup(retfile));
     }
     int ret = 0;
@@ -456,7 +438,7 @@ char* saveTopOutput(char* profilename)
     {
         cmd_option = 1;
     }
-    T2Info("top cmd -c arg status %d, ret value %d \n", cmd_option, ret);
+    T2Debug("top cmd -c arg status %d, ret value %d \n", cmd_option, ret);
 #ifdef INTEL
     /* Format Use:  `top n 1 | grep Receiver` */
     if ( 1 == cmd_option )
@@ -481,7 +463,7 @@ char* saveTopOutput(char* profilename)
 #endif
     if(ret == 0)
     {
-        T2Info("return value of system command to create %s is success with code\n", filename);
+        T2Debug("return value of system command to create %s is success with code\n", filename);
     }
     else
     {
@@ -492,14 +474,14 @@ char* saveTopOutput(char* profilename)
         }
         return NULL;
     }
-    T2Info("%s --out \n", __FUNCTION__);
+    T2Debug("%s --out \n", __FUNCTION__);
     return retfile;
 
 }
 
 void removeTopOutput(char* filename)
 {
-    T2Info("%s ++in \n", __FUNCTION__);
+    T2Debug("%s ++in \n", __FUNCTION__);
     if(filename != NULL)
     {
         int ret = 0;
@@ -512,14 +494,14 @@ void removeTopOutput(char* filename)
 #endif
         if(ret == 0)
         {
-            T2Info("return value of system command to remove %s is success with code %d \n", filename, ret);
+            T2Debug("return value of system command to remove %s is success with code %d \n", filename, ret);
         }
         else
         {
             T2Error("return value of system command to remove %s is not successful with code %d \n", filename, ret);
         }
         free(filename);
-        T2Info("%s --out \n", __FUNCTION__);
+        T2Debug("%s --out \n", __FUNCTION__);
         return;
     }
 }
@@ -560,7 +542,7 @@ int getCPUInfo(procMemCpuInfo *pInfo, char* filename)
     }
     if((filename != NULL) && (access(filename, F_OK) != 0))
     {
-        T2Info("%s ++in the saved temp log %s is not available \n", __FUNCTION__, filename);
+        T2Debug("%s ++in the savad temp log %s is not available \n", __FUNCTION__, filename);
         /* Check Whether -c option is supported */
 #ifdef LIBSYSWRAPPER_BUILD
         ret = v_secure_system(" top -c -n 1 2> /dev/null 1> /dev/null");
@@ -606,7 +588,7 @@ int getCPUInfo(procMemCpuInfo *pInfo, char* filename)
     }
     else
     {
-        T2Info("%s ++in the saved temp log %s is available \n", __FUNCTION__, filename);
+        T2Debug("%s ++in the savad temp log %s is available \n", __FUNCTION__, filename);
 #ifdef LIBSYSWRAPPER_BUILD
         inFp = v_secure_popen("r", "grep -i '%s' %s || grep -E '^[[:space:]]*%d[[:space:]]' %s", pInfo->processName, filename, pInfo->pid[0], filename);
 #else
@@ -619,21 +601,17 @@ int getCPUInfo(procMemCpuInfo *pInfo, char* filename)
 
     if(!(inFp))
     {
-        T2Info("failed in open v_scure_popen pipe! ret %d\n", pclose_ret);
+        T2Debug("failed in open v_scure_popen pipe! ret %d\n", pclose_ret);
         return 0;
     }
 
     //  2268 root      20   0  831m  66m  20m S   27 13.1 491:06.82 Receiver
-    T2Info("intial total_cpu_usage = %f\n", total_cpu_usage);
 #ifdef INTEL
-    
     while(fgets(top_op, 2048, inFp) != NULL)
     {
         if(sscanf(top_op, "%s %s %s %s %s %s %s %s", var1, var2, var3, var4, var5, var6, var7, var8) == 8)
         {
             total_cpu_usage += atof(var7);
-            T2Info("process cpu = %f\n", atof(var7));
-            T2Info("total_cpu_usage = %f\n", total_cpu_usage);
             ret = 1;
         }
     }
@@ -644,15 +622,13 @@ int getCPUInfo(procMemCpuInfo *pInfo, char* filename)
         if(sscanf(top_op, "%16s %16s %16s %16s %16s %16s %16s %512s %512s %512s", var1, var2, var3, var4, var5, var6, var7, var8, var9, var10) == 10)
         {
             total_cpu_usage += atof(var9);
-            T2Info("process cpu = %f\n", atof(var7));
-            T2Info("total_cpu_usage = %f\n", total_cpu_usage);
             ret = 1;
         }
     }
 #endif
 
     snprintf(pInfo->cpuUse, sizeof(pInfo->cpuUse), "%.1lf", (float)(total_cpu_usage / normalize));
-    T2Info("calculated CPU total value : %f Normalized value : %.1lf\n", total_cpu_usage, (float)(total_cpu_usage / normalize));
+    T2Debug("calculated CPU total value : %f Normalized value : %.1lf\n", total_cpu_usage, (float)(total_cpu_usage / normalize));
 #ifdef LIBSYSWRAPPER_BUILD
     pclose_ret = v_secure_pclose(inFp);
 #else
@@ -661,12 +637,11 @@ int getCPUInfo(procMemCpuInfo *pInfo, char* filename)
 
     if(pclose_ret != 0)
     {
-        T2Info("pInfo->memUse = %s\n", pInfo->memUse);
-        T2Info("pInfo->cpuUse = %s\n", pInfo->cpuUse);
-        T2Info("failed in closing pipe! ret %d\n", pclose_ret);
+        T2Debug("failed in closing pipe! ret %d\n", pclose_ret);
     }
-    T2Info("--out %s", __FUNCTION__);
+    T2Debug("--out %s", __FUNCTION__);
     return ret;
+
 }
 
 #else //ENABLE_RDKC_SUPPORT & ENABLE_RDKB_SUPPORT
@@ -696,7 +671,7 @@ int getTotalCpuTimes(int * totalTime)
                  &a[0], &a[1], &a[2], &a[3], &a[4], &a[5], &a[6], &a[7], &a[8], &a[9]);
     if(ret == -1)
     {
-        T2Info("%s --read error from /proc/stat \n", __FUNCTION__);
+        T2Debug("%s --read error from /proc/stat \n", __FUNCTION__);
     }
 
     fclose(fp);

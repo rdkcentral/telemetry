@@ -114,13 +114,13 @@ T2ERROR clearT2MarkerComponentMap()
 
 T2ERROR destroyT2MarkerComponentMap()
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
     pthread_mutex_lock(&t2MarkersMutex);
     hash_map_destroy(markerCompMap, freeT2Marker);
     markerCompMap = NULL;
     pthread_mutex_unlock(&t2MarkersMutex);
     pthread_mutex_destroy(&t2MarkersMutex);
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 

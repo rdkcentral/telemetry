@@ -271,11 +271,11 @@ void process_item(Queue* queue) {
 
 ## Pattern 10: Thread-Local Storage
 
-### ✅ CORRECT (C11 standard — preferred for portability)
+### ✅ CORRECT (C11 standard — use when the toolchain/runtime supports C11 TLS)
 ```c
-#include <threads.h>  /* C11 */
+#include <threads.h>  /* C11 threads API; availability varies by embedded toolchain */
 
-_Thread_local char error_buffer[256];  /* Portable: C11, GCC, Clang, MSVC */
+_Thread_local char error_buffer[256];  /* Standard C11 TLS, but not universally available on all embedded toolchains */
 
 void set_error(const char* msg) {
     strncpy(error_buffer, msg, sizeof(error_buffer) - 1);

@@ -264,9 +264,14 @@ static char *getTimezone ()
         {
             fseek(file, 0, SEEK_END);
             long numbytes = ftell(file);
-            if (numbytes <= 0)
+            if (numbytes < 0)
             {
-                T2Warning("Warning: timeZoneDST file is empty or unreadable (ftell returned %ld)\n", numbytes);
+                T2Warning("Warning: timeZoneDST file is unreadable (ftell returned %ld)\n", numbytes);
+                fclose(file);
+            }
+            else if (numbytes == 0 || numbytes > 256)
+            {
+                T2Warning("Warning: timeZoneDST file has unexpected size %ld, skipping\n", numbytes);
                 fclose(file);
             }
             else
@@ -299,7 +304,6 @@ static char *getTimezone ()
                         {
                             T2Warning("Warning: zone is empty, skipping\n");
                         }
-                        zone[0] = '\0';
                     }
                     fclose(file);
                     free(zone);

@@ -269,9 +269,9 @@ static char *getTimezone ()
                 T2Warning("Warning: timeZoneDST file is unreadable (ftell returned %ld)\n", numbytes);
                 fclose(file);
             }
-            else if (numbytes == 0 || numbytes > 256)
+            else if (numbytes == 0)
             {
-                T2Warning("Warning: timeZoneDST file has unexpected size %ld, skipping\n", numbytes);
+                T2Warning("Warning: timeZoneDST file is empty, skipping\n");
                 fclose(file);
             }
             else

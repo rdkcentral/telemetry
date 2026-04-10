@@ -138,9 +138,10 @@ Example Coverity section:
 
 ### Step 2: Get PR Diff
 
-Retrieve the complete diff for analysis:
-- Use `get_changed_files` for local checkout
-- Or fetch file contents via `aiw_fetchFile` for remote PRs
+Retrieve the complete diff for analysis using standard tools available in the review environment:
+- For a local checkout, use `git diff` against the target branch (for example, `git diff origin/main...HEAD`)
+- For a GitHub pull request, use `gh pr diff <PR_NUMBER_OR_URL>`
+- If neither is available, obtain the unified diff from the PR page and review the changed files directly
 - Parse diff hunks to identify:
   - Added lines (new functionality)
   - Removed lines (deleted code)
@@ -353,7 +354,7 @@ The REVIEW.md file is generated in:
 - **Active PR**: `reviews/PR-<number>-REVIEW.md`
 - **Quick review**: `REVIEW.md` (workspace root)
 
-Files are timestamped and git-ignored by default (added to `.gitignore` if not present).
+Files use the paths above and are git-ignored by default (added to `.gitignore` if not present). Any timestamp is recorded inside the report content rather than in the filename.
 
 ---
 

@@ -264,30 +264,47 @@ static char *getTimezone ()
         {
             fseek(file, 0, SEEK_END);
             long numbytes = ftell(file);
-            char *zone = (char*)malloc(sizeof(char) * (numbytes + 1));
-            fseek(file, 0, SEEK_SET);
-
-            char fmt[32];
-            snprintf(fmt, sizeof(fmt), "%%%lds", numbytes); //using numbytes as the length for reading the file
-
-            while (fscanf(file, fmt, zone) != EOF)
+            if (numbytes <= 0)
             {
-                if(zoneValue)
+                T2Warning("Warning: timeZoneDST file is empty or unreadable (ftell returned %ld)\n", numbytes);
+                fclose(file);
+            }
+            else
+            {
+                char *zone = (char*)malloc(sizeof(char) * (numbytes + 1));
+                if (zone == NULL)
                 {
-                    free(zoneValue);
-                }
-                if (zone != NULL && strlen(zone) > 0)
-                {
-                    zoneValue = strdup(zone);
+                    T2Error("Failed to allocate %ld bytes for timezone\n", numbytes + 1);
+                    fclose(file);
                 }
                 else
                 {
-                    zoneValue = NULL;
-                    T2Warning("Warning: zone is NULL or empty, skipping\n");
+                    zone[0] = '\0';
+                    fseek(file, 0, SEEK_SET);
+
+                    char fmt[32];
+                    snprintf(fmt, sizeof(fmt), "%%%lds", numbytes);
+
+                    while (fscanf(file, fmt, zone) == 1)
+                    {
+                        if (strlen(zone) > 0)
+                        {
+                            if(zoneValue)
+                            {
+                                free(zoneValue);
+                            }
+                            zoneValue = strdup(zone);
+                        }
+                        else
+                        {
+                            T2Warning("Warning: zone is empty, skipping\n");
+                        }
+                        zone[0] = '\0';
+                    }
+                    fclose(file);
+                    free(zone);
                 }
             }
-            fclose(file);
-            free(zone);
         }
 
     }

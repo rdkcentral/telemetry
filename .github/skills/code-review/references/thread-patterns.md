@@ -325,10 +325,13 @@ __thread char error_buffer[256];
 
 ## Pattern 11: Lock Timeout (Avoid Infinite Wait)
 
-### ✅ CORRECT
+### ✅ CORRECT (use `CLOCK_MONOTONIC` to avoid NTP/time-change disruption)
 ```c
 struct timespec timeout;
-clock_gettime(CLOCK_REALTIME, &timeout);
+/* CLOCK_MONOTONIC is preferred over CLOCK_REALTIME: it is not affected by
+ * NTP adjustments or manual clock changes, so the timeout is always
+ * relative to wall-clock elapsed time. */
+clock_gettime(CLOCK_MONOTONIC, &timeout);
 timeout.tv_sec += 5;  // 5 second timeout
 
 int ret = pthread_mutex_timedlock(&mutex, &timeout);
@@ -337,6 +340,15 @@ if (ret == ETIMEDOUT) {
     return ERR_TIMEOUT;
 }
 ```
+
+> **Note:** `pthread_mutex_timedlock` requires an *absolute* time based on
+> `CLOCK_REALTIME` per POSIX. To combine the monotonic elapsed measurement
+> with the required real-time absolute value, compute the delta from
+> `CLOCK_MONOTONIC` and add it to the current `CLOCK_REALTIME` value, or use
+> a platform-specific extension such as
+> `pthread_condattr_setclock(CLOCK_MONOTONIC)` with a condition variable.
+> On Linux (glibc ≥ 2.30) `pthread_mutex_clocklock` accepts `CLOCK_MONOTONIC`
+> directly and is the cleanest solution when available.
 
 ## Pattern 12: Volatile for Hardware Registers
 

@@ -222,7 +222,7 @@ For each file, apply domain-specific analysis using [reference checklists](./ref
 
 ### Step 5: Assess Regression Risk
 
-Calculate risk score based on:
+The risk level is determined **heuristically** based on the factors below. The weights are informational guidance for where to focus attention — there is no strict arithmetic formula. After evaluating each factor, assign the overall risk level that best reflects the combined picture.
 
 | Factor | Weight | Indicators |
 |--------|--------|-----------|
@@ -232,11 +232,13 @@ Calculate risk score based on:
 | **Safety** | 15% | Memory/thread safety issues identified |
 | **Testing** | 10% | Test coverage, CI status |
 
-**Risk Levels:**
+**Risk Levels** (choose the highest level whose criteria are met):
 - **LOW**: <10 files, single module, tests added, no safety concerns
 - **MEDIUM**: 10-30 files, 2-3 modules, or minor safety concerns
 - **HIGH**: >30 files, cross-module, or safety issues present
 - **CRITICAL**: Core scheduler/bus/report logic, no tests, or confirmed safety issues
+
+> **Note:** When factors point to different levels, escalate to the higher level. The weights indicate relative importance, not a numeric formula — a single confirmed memory-safety issue can elevate an otherwise LOW-scope change to HIGH.
 
 ### Step 6: Generate Visual Diff Summary
 

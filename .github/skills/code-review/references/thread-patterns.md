@@ -202,10 +202,10 @@ int get_value() {
 
 ### ✅ CORRECT (GCC Built-ins for embedded)
 ```c
-static volatile int counter = 0;
+static int counter = 0;
 
 void increment() {
-    __sync_fetch_and_add(&counter, 1);  // Atomic
+    __sync_fetch_and_add(&counter, 1);  // Thread-safe because the built-in is atomic
 }
 ```
 

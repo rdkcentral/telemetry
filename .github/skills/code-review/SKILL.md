@@ -1,7 +1,7 @@
 ---
 name: code-review
 description: 'Analyze GitHub PR changes for embedded C/C++ code and generate comprehensive REVIEW.md with visual diffs, impact assessment, and regression risk analysis. Use when: reviewing pull requests, analyzing code changes, identifying functional regressions, assessing memory/thread safety impact, validating embedded systems changes.'
-argument-hint: 'PR URL or number (e.g., #123 or https://github.com/rdkcentral/telemetry/pull/123)'
+argument-hint: 'PR URL or number, with an optional focus filter (e.g., "#123", "https://github.com/rdkcentral/telemetry/pull/123", or "#123 focus on thread safety"). Supported focus filters: "focus on memory safety", "focus on thread safety", "focus on api compatibility", "focus on error handling".'
 ---
 
 # Code Review for Embedded Systems
@@ -20,7 +20,10 @@ Invoke this skill when:
 - Preparing for code review meetings
 - Investigating functional issues introduced by recent changes
 
-**Invocation**: `@workspace /code-review <PR_URL>` or `@workspace /code-review #<PR_NUMBER>`
+**Invocation**: `@workspace /code-review <PR_URL_OR_NUMBER> [focus on <area>]`
+
+- `<PR_URL_OR_NUMBER>` — PR URL (e.g., `https://github.com/rdkcentral/telemetry/pull/123`) or short form (e.g., `#123`)
+- `[focus on <area>]` *(optional)* — restrict analysis depth to one area; accepted values: `thread safety`, `memory safety`, `api compatibility`, `error handling`
 
 ---
 
@@ -321,9 +324,17 @@ Prioritize action items:
 @workspace /code-review #42
 ```
 
-### Review with specific focus
+### Review with an optional focus filter
+
+Append `focus on <area>` to restrict the depth of analysis to one concern.
+Accepted focus values: `thread safety`, `memory safety`, `api compatibility`, `error handling`.
+
 ```
 @workspace /code-review #42 focus on thread safety
+```
+
+```
+@workspace /code-review #42 focus on memory safety
 ```
 
 **Note**: The skill generates Mermaid diagrams for change visualization. GitHub, VS Code, and most modern markdown viewers render these automatically.

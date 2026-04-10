@@ -271,9 +271,11 @@ void process_item(Queue* queue) {
 
 ## Pattern 10: Thread-Local Storage
 
-### ✅ CORRECT
+### ✅ CORRECT (C11 standard — preferred for portability)
 ```c
-__thread char error_buffer[256];  // Each thread has its own
+#include <threads.h>  /* C11 */
+
+_Thread_local char error_buffer[256];  /* Portable: C11, GCC, Clang, MSVC */
 
 void set_error(const char* msg) {
     strncpy(error_buffer, msg, sizeof(error_buffer) - 1);
@@ -281,8 +283,44 @@ void set_error(const char* msg) {
 }
 
 const char* get_error() {
-    return error_buffer;  // Thread-safe
+    return error_buffer;  /* Thread-safe */
 }
+```
+
+### ✅ CORRECT (POSIX — maximum portability for pre-C11 and embedded toolchains)
+```c
+#include <pthread.h>
+
+static pthread_key_t  error_key;
+static pthread_once_t key_once = PTHREAD_ONCE_INIT;
+
+static void make_key(void) {
+    pthread_key_create(&error_key, free);
+}
+
+void set_error(const char* msg) {
+    pthread_once(&key_once, make_key);
+    char* buf = pthread_getspecific(error_key);
+    if (!buf) {
+        buf = malloc(256);
+        if (!buf) return;
+        pthread_setspecific(error_key, buf);
+    }
+    strncpy(buf, msg, 255);
+    buf[255] = '\0';
+}
+
+const char* get_error() {
+    pthread_once(&key_once, make_key);
+    return pthread_getspecific(error_key);  /* Thread-safe */
+}
+```
+
+### ⚠️ COMPILER EXTENSION ONLY (`__thread`)
+```c
+/* __thread is a GCC/Clang extension — not standard C.
+ * Avoid in new code; prefer _Thread_local (C11) or pthread_key_t (POSIX). */
+__thread char error_buffer[256];
 ```
 
 ## Pattern 11: Lock Timeout (Avoid Infinite Wait)

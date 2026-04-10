@@ -98,16 +98,20 @@ The skill generates a markdown report with the following sections:
 
 ### Step 1: Fetch PR Metadata
 
-Use GitHub tools to retrieve:
-1. PR number, title, description
-2. Author and reviewers
-3. File change list with line counts
-4. Review comments (if any)
-5. Status checks (CI results)
+Retrieve PR metadata using the GitHub CLI or API:
 
+```bash
+# PR details (title, description, author, reviewers, CI status)
+gh pr view <PR_NUMBER_OR_URL> --json number,title,body,author,reviewRequests,statusCheckRollup
+
+# File change list with line counts
+gh pr view <PR_NUMBER_OR_URL> --json files
+
+# Existing review comments
+gh pr view <PR_NUMBER_OR_URL> --json reviews,comments
 ```
-Tools: github-pull-request_issue_fetch, github-pull-request_openPullRequest
-```
+
+If the GitHub CLI is unavailable, retrieve the same information via the GitHub REST API (`GET /repos/{owner}/{repo}/pulls/{pull_number}`, `/files`, `/comments`).
 
 **Check for Coverity Defects:**
 
@@ -353,7 +357,7 @@ After generating the REVIEW.md, suggest running quality checks:
 This will run:
 - Static analysis (cppcheck)
 - Memory safety (valgrind)
-- Thread safety (helgrind, TSan)
+- Thread safety (helgrind)
 - Build verification
 - Unit tests
 
@@ -365,7 +369,7 @@ The REVIEW.md file is generated in:
 - **Active PR**: `reviews/PR-<number>-REVIEW.md`
 - **Quick review**: `REVIEW.md` (workspace root)
 
-Files use the paths above and are git-ignored by default (added to `.gitignore` if not present). Any timestamp is recorded inside the report content rather than in the filename.
+The active PR report is written under `reviews/`, which is git-ignored by default. The quick review output uses `REVIEW.md` at the workspace root; if you do not want to commit that file, add it to `.gitignore` or remove it after review. Any timestamp is recorded inside the report content rather than in the filename.
 
 ---
 

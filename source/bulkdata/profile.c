@@ -1280,7 +1280,7 @@ T2ERROR disableProfile(const char *profileName, bool *isDeleteRequired)
 
 T2ERROR deleteAllProfiles(bool delFromDisk)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
 
     int count = 0;
     int profileIndex = 0;
@@ -1351,13 +1351,13 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
     }
 
     pthread_mutex_lock(&plMutex);
-    T2Debug("Deleting all profiles from the profileList\n");
+    T2Info("Deleting all profiles from the profileList\n");
     Vector_Destroy(profileList, freeProfile);
     profileList = NULL;
     Vector_Create(&profileList);
     pthread_mutex_unlock(&plMutex);
 
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
 
     return T2ERROR_SUCCESS;
 }
@@ -1704,7 +1704,7 @@ hash_map_t *getProfileHashMap()
 
 T2ERROR uninitProfileList()
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
 
     if(!initialized)
     {
@@ -1728,7 +1728,7 @@ T2ERROR uninitProfileList()
     pthread_mutex_destroy(&reportLock);
     pthread_mutex_destroy(&plMutex);
 
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 

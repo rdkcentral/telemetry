@@ -481,7 +481,7 @@ void uninitScheduler()
     size_t index = 0;
     SchedulerProfile *tProfile = NULL;
 
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
 
     if (!sc_initialized)
     {
@@ -523,7 +523,7 @@ void uninitScheduler()
     }
     //timeoutNotificationCb = NULL; Not Needed as we are in the shutdown sequence
 
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
 }
 
 T2ERROR registerProfileWithScheduler(const char* profileName, unsigned int timeInterval, unsigned int activationTimeout, bool deleteonTimeout, bool repeat, bool reportOnUpdate, unsigned int firstReportingInterval, char *timeRef)

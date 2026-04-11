@@ -390,7 +390,7 @@ T2ERROR datamodel_init(void)
 
 void datamodel_unInit(void)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Info("%s ++in\n", __FUNCTION__);
 
     pthread_mutex_lock(&rpMutex);
     stopProcessing = true;
@@ -409,5 +409,5 @@ void datamodel_unInit(void)
     pthread_mutex_destroy(&tmpRpMutex);
     pthread_cond_destroy(&tmpRpCond);
 
-    T2Debug("%s --out\n", __FUNCTION__);
+    T2Info("%s --out\n", __FUNCTION__);
 }

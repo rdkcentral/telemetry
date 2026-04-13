@@ -545,14 +545,14 @@ int getCPUInfo(procMemCpuInfo *pInfo, char* filename)
     if((filename != NULL) && (access(filename, F_OK) == 0))
     {
         /* TOPTEMP file is available - open directly in C, no shell spawning needed */
-        T2Debug("%s ++in the savad temp log %s is available \n", __FUNCTION__, filename);
+        T2Debug("%s ++in the saved temp log %s is available \n", __FUNCTION__, filename);
         inFp = fopen(filename, "r");
         normalize = TOPITERATION;
         read_from_file = 1;
     }
     else
     {
-        T2Debug("%s ++in the savad temp log %s is not available \n", __FUNCTION__, filename);
+        T2Debug("%s ++in the saved temp log %s is not available \n", __FUNCTION__, filename);
         /* Check Whether -c option is supported */
 #ifdef LIBSYSWRAPPER_BUILD
         ret = v_secure_system(" top -c -n 1 2> /dev/null 1> /dev/null");
@@ -565,8 +565,7 @@ int getCPUInfo(procMemCpuInfo *pInfo, char* filename)
         }
 
 #ifdef INTEL
-        /* Format Use:  `top n 1 | grep Receiver` */
-        /* Run top without shell grep; C-native filtering handles name match and PID fallback */
+        /* Format Use:  `top n 1 (-c)` */
 #ifdef LIBSYSWRAPPER_BUILD
         inFp = v_secure_popen("r", "top -n 1 %s", (cmd_option == 1) ? "-c" : "");
 #else
@@ -576,7 +575,6 @@ int getCPUInfo(procMemCpuInfo *pInfo, char* filename)
 #else
         /* ps -C Receiver -o %cpu -o %mem */
         //sprintf(command, "ps -C '%s' -o %%cpu -o %%mem | sed 1d", pInfo->processName);
-        /* Run top without shell grep; C-native filtering handles name match and PID fallback */
 #ifdef LIBSYSWRAPPER_BUILD
         inFp = v_secure_popen("r", "top -b -n 1 %s", (cmd_option == 1) ? "-c" : "");
 #else
@@ -597,7 +595,7 @@ int getCPUInfo(procMemCpuInfo *pInfo, char* filename)
 #ifdef INTEL
     while(fgets(top_op, 2048, inFp) != NULL)
     {
-        /* C-native filtering: match by process name (case-insensitive), PID as fallback */
+        /* match by process name (case-insensitive), PID as fallback */
         if(strcasestr(top_op, pInfo->processName) == NULL)
         {
             int line_pid = 0;
@@ -614,7 +612,7 @@ int getCPUInfo(procMemCpuInfo *pInfo, char* filename)
 #else
     while(fgets(top_op, 2048, inFp) != NULL)
     {
-        /* C-native filtering: match by process name (case-insensitive), PID as fallback */
+        /* match by process name (case-insensitive), PID as fallback */
         if(strcasestr(top_op, pInfo->processName) == NULL)
         {
             int line_pid = 0;

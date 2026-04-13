@@ -70,16 +70,22 @@ static int safe_acquire_global_lock(const char* lock_type, const char* func_name
     timeout.tv_sec += GLOBAL_LOCK_TIMEOUT_SEC;
     
     int result;
-    if (strcmp(lock_type, "read") == 0) {
+    if (strcmp(lock_type, "read") == 0)
+    {
         result = pthread_rwlock_timedrdlock(&plRwLock, &timeout);
-    } else {
+    }
+    else
+    {
         result = pthread_rwlock_timedwrlock(&plRwLock, &timeout);
     }
     
-    if (result == ETIMEDOUT) {
+    if (result == ETIMEDOUT)
+    {
         T2Error("DEADLOCK DETECTED: Global %s lock timeout in %s after %d seconds\n", lock_type, func_name, GLOBAL_LOCK_TIMEOUT_SEC);
         return -1;
-    } else if (result != 0) {
+    }
+    else if (result != 0)
+    {
         T2Error("Global %s lock failed in %s: %s\\n", lock_type, func_name, strerror(result));
         return -1;
     }
@@ -94,10 +100,13 @@ static int safe_acquire_profile_lock(pthread_mutex_t* mutex, const char* mutex_n
     timeout.tv_sec += PROFILE_LOCK_TIMEOUT_SEC;
     
     int result = pthread_mutex_timedlock(mutex, &timeout);
-    if (result == ETIMEDOUT) {
+    if (result == ETIMEDOUT)
+    {
         T2Error("DEADLOCK DETECTED: Profile %s lock timeout in %s after %d seconds\n", mutex_name, func_name, PROFILE_LOCK_TIMEOUT_SEC);
         return -1;
-    } else if (result != 0) {
+    }
+    else if (result != 0)
+    {
         T2Error("Profile %s lock failed in %s: %s\\n", mutex_name, func_name, strerror(result));
         return -1;
     }

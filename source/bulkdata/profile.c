@@ -62,16 +62,16 @@ static int safe_acquire_global_lock(const char* lock_type, const char* func_name
 
     if(result == ETIMEDOUT)
     {
-        T2Error("DEADLOCK DETECTED: Global %s lock timeout in %s after %d seconds\\n", 
+        T2Error("DEADLOCK DETECTED: Global %s lock timeout in %s after %d seconds\\n",
                 lock_type, func_name, GLOBAL_LOCK_TIMEOUT_SEC);
         return -1;
     }
-    else if (result != 0)
+    else if(result != 0)
     {
         T2Error("Global %s lock failed in %s: %s\\n", lock_type, func_name, strerror(result));
         return -1;
     }
-    
+
     return 0;
 }
 
@@ -84,7 +84,7 @@ static int safe_acquire_profile_lock(pthread_mutex_t* mutex, const char* mutex_n
     int result = pthread_mutex_timedlock(mutex, &timeout);
     if(result == ETIMEDOUT)
     {
-        T2Error("DEADLOCK DETECTED: Profile %s lock timeout in %s after %d seconds\\n", 
+        T2Error("DEADLOCK DETECTED: Profile %s lock timeout in %s after %d seconds\\n",
                 mutex_name, func_name, PROFILE_LOCK_TIMEOUT_SEC);
         return -1;
     }
@@ -93,7 +93,7 @@ static int safe_acquire_profile_lock(pthread_mutex_t* mutex, const char* mutex_n
         T2Error("Profile %s lock failed in %s: %s\\n", mutex_name, func_name, strerror(result));
         return -1;
     }
-    
+
     return 0;
 }
 
@@ -962,7 +962,7 @@ reportThreadEnd :
 void NotifyTimeout(const char* profileName, bool isClearSeekMap)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
-    
+
     if(safe_acquire_global_lock("read", __FUNCTION__) != 0)
     {
         T2Error("Failed to acquire global read lock in %s\n", __FUNCTION__);
@@ -978,9 +978,9 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
     }
 
     pthread_rwlock_unlock(&plRwLock);
-    
+
     T2Info("%s: profile %s is in %s state\n", __FUNCTION__, profileName, profile->enable ? "Enabled" : "Disabled");
-    
+
     if(safe_acquire_profile_lock(&profile->reportInProgressMutex, "reportInProgressMutex", __FUNCTION__) != 0)
     {
         return;
@@ -1025,7 +1025,7 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
     {
         return T2ERROR_FAILURE;
     }
-    
+
     Profile *profile = NULL;
     if(T2ERROR_SUCCESS != getProfile(profileName, &profile))
     {
@@ -1033,7 +1033,7 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
         pthread_rwlock_unlock(&plRwLock);
         return T2ERROR_FAILURE;
     }
-    
+
     pthread_rwlock_unlock(&plRwLock);
     if(!profile->enable)
     {
@@ -1243,13 +1243,14 @@ T2ERROR enableProfile(const char *profileName)
 
         size_t eMarkerCount = Vector_Size(profile->eMarkerList);
         char *profileNameCopy = strdup(profile->name);
-        
-        typedef struct {
+
+        typedef struct
+        {
             char *markerName;
             char *compName;
             int skipFreq;
         } marker_info_t;
-        
+
         marker_info_t *markerInfos = NULL;
         if(eMarkerCount > 0)
         {
@@ -1265,40 +1266,43 @@ T2ERROR enableProfile(const char *profileName)
                 }
             }
         }
-        
+
         int reportingInterval = profile->reportingInterval;
         int activationTimeoutPeriod = profile->activationTimeoutPeriod;
         bool deleteOnTimeout = profile->deleteonTimeout;
         bool reportOnUpdate = profile->reportOnUpdate;
         int firstReportingInterval = profile->firstReportingInterval;
         char *timeRefCopy = profile->timeRef ? strdup(profile->timeRef) : NULL;
-        
+
         pthread_rwlock_unlock(&plRwLock);
-        
-        
+
+
         if(markerInfos)
         {
             for(size_t i = 0; i < eMarkerCount; i++)
             {
                 if(markerInfos[i].markerName)
                 {
-                    addT2EventMarker(markerInfos[i].markerName, markerInfos[i].compName, 
-                                   profileNameCopy, markerInfos[i].skipFreq);
+                    addT2EventMarker(markerInfos[i].markerName, markerInfos[i].compName,
+                                     profileNameCopy, markerInfos[i].skipFreq);
                     free(markerInfos[i].markerName);
                     free(markerInfos[i].compName);
                 }
             }
             free(markerInfos);
         }
-        
-        
-        T2ERROR schedResult = registerProfileWithScheduler(profileNameCopy, reportingInterval, 
-                                                          activationTimeoutPeriod, deleteOnTimeout, 
-                                                          true, reportOnUpdate, firstReportingInterval, timeRefCopy);
-        
+
+
+        T2ERROR schedResult = registerProfileWithScheduler(profileNameCopy, reportingInterval,
+                              activationTimeoutPeriod, deleteOnTimeout,
+                              true, reportOnUpdate, firstReportingInterval, timeRefCopy);
+
         free(profileNameCopy);
-        if(timeRefCopy) free(timeRefCopy);
-        
+        if(timeRefCopy)
+        {
+            free(timeRefCopy);
+        }
+
         if(schedResult != T2ERROR_SUCCESS)
         {
             pthread_rwlock_wrlock(&plRwLock);

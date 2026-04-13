@@ -63,7 +63,8 @@ static queue_t *triggerConditionQueue = NULL;
 #define GLOBAL_LOCK_TIMEOUT_SEC 5
 #define PROFILE_LOCK_TIMEOUT_SEC 3
 
-static int safe_acquire_global_lock(const char* lock_type, const char* func_name) {
+static int safe_acquire_global_lock(const char* lock_type, const char* func_name)
+{
     struct timespec timeout;
     clock_gettime(CLOCK_REALTIME, &timeout);
     timeout.tv_sec += GLOBAL_LOCK_TIMEOUT_SEC;
@@ -86,7 +87,8 @@ static int safe_acquire_global_lock(const char* lock_type, const char* func_name
     return 0;
 }
 
-static int safe_acquire_profile_lock(pthread_mutex_t* mutex, const char* mutex_name, const char* func_name) {
+static int safe_acquire_profile_lock(pthread_mutex_t* mutex, const char* mutex_name, const char* func_name)
+{
     struct timespec timeout;
     clock_gettime(CLOCK_REALTIME, &timeout);
     timeout.tv_sec += PROFILE_LOCK_TIMEOUT_SEC;

@@ -809,6 +809,260 @@ TEST_F(dcaTestFixture, removeTopOutput1)
     removeTopOutput(filename);
 }
 
+//getCPUInfo tests - direct file read path (filename accessible)
+TEST_F(dcaTestFixture, getCPUInfo_DirectFileRead_NameMatch)
+{
+    procMemCpuInfo pInfo;
+    memset(&pInfo, 0, sizeof(procMemCpuInfo));
+    memcpy(pInfo.processName, "telemetry2_0", strlen("telemetry2_0") + 1);
+    pInfo.total_instance = 1;
+
+    EXPECT_CALL(*g_systemMock, access(_, _))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    FILE* fp = (FILE*)0xFFFFFFFF;
+    EXPECT_CALL(*g_fileIOMock, fopen(_, _))
+            .Times(1)
+            .WillOnce(Return(fp));
+
+    EXPECT_CALL(*g_fileIOMock, fgets(_, _, _))
+            .WillOnce([](char* buf, int size, FILE* stream) {
+                const char* test_line = "2268 root 20 0 831m 66m 20m S 27.0 1.3 491:06.82 telemetry2_0\n";
+                strncpy(buf, test_line, size - 1);
+                buf[size - 1] = '\0';
+                return buf;
+            })
+            .WillOnce(Return((char*)NULL));
+
+    EXPECT_CALL(*g_fileIOMock, fclose(_))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    EXPECT_EQ(1, getCPUInfo(&pInfo, "/tmp/test_top.txt"));
+}
+
+TEST_F(dcaTestFixture, getCPUInfo_DirectFileRead_CaseInsensitiveMatch)
+{
+    procMemCpuInfo pInfo;
+    memset(&pInfo, 0, sizeof(procMemCpuInfo));
+    memcpy(pInfo.processName, "telemetry2_0", strlen("telemetry2_0") + 1);
+    pInfo.total_instance = 1;
+
+    EXPECT_CALL(*g_systemMock, access(_, _))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    FILE* fp = (FILE*)0xFFFFFFFF;
+    EXPECT_CALL(*g_fileIOMock, fopen(_, _))
+            .Times(1)
+            .WillOnce(Return(fp));
+
+    EXPECT_CALL(*g_fileIOMock, fgets(_, _, _))
+            .WillOnce([](char* buf, int size, FILE* stream) {
+                const char* test_line = "2268 root 20 0 831m 66m 20m S 27.0 1.3 491:06.82 TELEMETRY2_0\n";
+                strncpy(buf, test_line, size - 1);
+                buf[size - 1] = '\0';
+                return buf;
+            })
+            .WillOnce(Return((char*)NULL));
+
+    EXPECT_CALL(*g_fileIOMock, fclose(_))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    EXPECT_EQ(1, getCPUInfo(&pInfo, "/tmp/test_top.txt"));
+}
+
+TEST_F(dcaTestFixture, getCPUInfo_DirectFileRead_PidFallback)
+{
+    procMemCpuInfo pInfo;
+    memset(&pInfo, 0, sizeof(procMemCpuInfo));
+    memcpy(pInfo.processName, "telemetry2_0", strlen("telemetry2_0") + 1);
+    pid_t pids[1] = {2268};
+    pInfo.pid = pids;
+    pInfo.total_instance = 1;
+
+    EXPECT_CALL(*g_systemMock, access(_, _))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    FILE* fp = (FILE*)0xFFFFFFFF;
+    EXPECT_CALL(*g_fileIOMock, fopen(_, _))
+            .Times(1)
+            .WillOnce(Return(fp));
+
+    EXPECT_CALL(*g_fileIOMock, fgets(_, _, _))
+            .WillOnce([](char* buf, int size, FILE* stream) {
+                const char* test_line = "2268 root 20 0 831m 66m 20m S 27.0 1.3 491:06.82 /usr/bin/foo\n";
+                strncpy(buf, test_line, size - 1);
+                buf[size - 1] = '\0';
+                return buf;
+            })
+            .WillOnce(Return((char*)NULL));
+
+    EXPECT_CALL(*g_fileIOMock, fclose(_))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    EXPECT_EQ(1, getCPUInfo(&pInfo, "/tmp/test_top.txt"));
+}
+
+//getCPUInfo tests - popen path (filename NULL or inaccessible)
+TEST_F(dcaTestFixture, getCPUInfo_Popen_NameMatch)
+{
+    procMemCpuInfo pInfo;
+    memset(&pInfo, 0, sizeof(procMemCpuInfo));
+    memcpy(pInfo.processName, "telemetry2_0", strlen("telemetry2_0") + 1);
+    pInfo.total_instance = 1;
+
+    #ifdef LIBSYSWRAPPER_BUILD
+    EXPECT_CALL(*g_systemMock, v_secure_system(_))
+            .Times(1)
+            .WillOnce(Return(0));
+    #else
+    EXPECT_CALL(*g_systemMock, system(_))
+            .Times(1)
+            .WillOnce(Return(0));
+    #endif
+
+    FILE* fp = (FILE*)0xFFFFFFFF;
+    #ifdef LIBSYSWRAPPER_BUILD
+    EXPECT_CALL(*g_fileIOMock, v_secure_popen(_, _))
+            .Times(1)
+            .WillOnce(Return(fp));
+    #else
+    EXPECT_CALL(*g_fileIOMock, popen(_, _))
+            .Times(1)
+            .WillOnce(Return(fp));
+    #endif
+
+    EXPECT_CALL(*g_fileIOMock, fgets(_, _, _))
+            .WillOnce([](char* buf, int size, FILE* stream) {
+                const char* test_line = "2268 root 20 0 831m 66m 20m S 27.0 1.3 491:06.82 telemetry2_0\n";
+                strncpy(buf, test_line, size - 1);
+                buf[size - 1] = '\0';
+                return buf;
+            })
+            .WillOnce(Return((char*)NULL));
+
+    #ifdef LIBSYSWRAPPER_BUILD
+    EXPECT_CALL(*g_fileIOMock, v_secure_pclose(_))
+            .Times(1)
+            .WillOnce(Return(0));
+    #else
+    EXPECT_CALL(*g_fileIOMock, pclose(_))
+            .Times(1)
+            .WillOnce(Return(0));
+    #endif
+
+    EXPECT_EQ(1, getCPUInfo(&pInfo, NULL));
+}
+
+TEST_F(dcaTestFixture, getCPUInfo_Popen_PidFallback)
+{
+    procMemCpuInfo pInfo;
+    memset(&pInfo, 0, sizeof(procMemCpuInfo));
+    memcpy(pInfo.processName, "telemetry2_0", strlen("telemetry2_0") + 1);
+    pid_t pids[1] = {2268};
+    pInfo.pid = pids;
+    pInfo.total_instance = 1;
+
+    #ifdef LIBSYSWRAPPER_BUILD
+    EXPECT_CALL(*g_systemMock, v_secure_system(_))
+            .Times(1)
+            .WillOnce(Return(0));
+    #else
+    EXPECT_CALL(*g_systemMock, system(_))
+            .Times(1)
+            .WillOnce(Return(0));
+    #endif
+
+    FILE* fp = (FILE*)0xFFFFFFFF;
+    #ifdef LIBSYSWRAPPER_BUILD
+    EXPECT_CALL(*g_fileIOMock, v_secure_popen(_, _))
+            .Times(1)
+            .WillOnce(Return(fp));
+    #else
+    EXPECT_CALL(*g_fileIOMock, popen(_, _))
+            .Times(1)
+            .WillOnce(Return(fp));
+    #endif
+
+    EXPECT_CALL(*g_fileIOMock, fgets(_, _, _))
+            .WillOnce([](char* buf, int size, FILE* stream) {
+                const char* test_line = "2268 root 20 0 831m 66m 20m S 27.0 1.3 491:06.82 /usr/bin/foo\n";
+                strncpy(buf, test_line, size - 1);
+                buf[size - 1] = '\0';
+                return buf;
+            })
+            .WillOnce(Return((char*)NULL));
+
+    #ifdef LIBSYSWRAPPER_BUILD
+    EXPECT_CALL(*g_fileIOMock, v_secure_pclose(_))
+            .Times(1)
+            .WillOnce(Return(0));
+    #else
+    EXPECT_CALL(*g_fileIOMock, pclose(_))
+            .Times(1)
+            .WillOnce(Return(0));
+    #endif
+
+    EXPECT_EQ(1, getCPUInfo(&pInfo, NULL));
+}
+
+TEST_F(dcaTestFixture, getCPUInfo_Popen_NoMatch)
+{
+    procMemCpuInfo pInfo;
+    memset(&pInfo, 0, sizeof(procMemCpuInfo));
+    memcpy(pInfo.processName, "telemetry2_0", strlen("telemetry2_0") + 1);
+    pid_t pids[1] = {9999};
+    pInfo.pid = pids;
+    pInfo.total_instance = 1;
+
+    #ifdef LIBSYSWRAPPER_BUILD
+    EXPECT_CALL(*g_systemMock, v_secure_system(_))
+            .Times(1)
+            .WillOnce(Return(0));
+    #else
+    EXPECT_CALL(*g_systemMock, system(_))
+            .Times(1)
+            .WillOnce(Return(0));
+    #endif
+
+    FILE* fp = (FILE*)0xFFFFFFFF;
+    #ifdef LIBSYSWRAPPER_BUILD
+    EXPECT_CALL(*g_fileIOMock, v_secure_popen(_, _))
+            .Times(1)
+            .WillOnce(Return(fp));
+    #else
+    EXPECT_CALL(*g_fileIOMock, popen(_, _))
+            .Times(1)
+            .WillOnce(Return(fp));
+    #endif
+
+    EXPECT_CALL(*g_fileIOMock, fgets(_, _, _))
+            .WillOnce([](char* buf, int size, FILE* stream) {
+                const char* test_line = "2268 root 20 0 831m 66m 20m S 27.0 1.3 491:06.82 /usr/bin/foo\n";
+                strncpy(buf, test_line, size - 1);
+                buf[size - 1] = '\0';
+                return buf;
+            })
+            .WillOnce(Return((char*)NULL));
+
+    #ifdef LIBSYSWRAPPER_BUILD
+    EXPECT_CALL(*g_fileIOMock, v_secure_pclose(_))
+            .Times(1)
+            .WillOnce(Return(0));
+    #else
+    EXPECT_CALL(*g_fileIOMock, pclose(_))
+            .Times(1)
+            .WillOnce(Return(0));
+    #endif
+
+    EXPECT_EQ(0, getCPUInfo(&pInfo, NULL));
+}
+
 #else
 TEST_F(dcaTestFixture, getTotalCpuTimes)
 {

@@ -64,7 +64,7 @@ static queue_t *triggerConditionQueue = NULL;
 #define PROFILE_LOCK_TIMEOUT_SEC 3
 
 static int safe_acquire_global_lock(const char* lock_type, const char* func_name)
-{   
+{
     return 0;
 }
 

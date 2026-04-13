@@ -29,6 +29,7 @@
  * @{
  **/
 
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -94,7 +95,8 @@ int getProcUsage(char *processName, TopMarker* marker, char* filename)
         pid_t *pid = NULL;
         pid_t *temp = NULL;
         memset(&pInfo, '\0', sizeof(procMemCpuInfo));
-        memcpy(pInfo.processName, processName, strlen(processName) + 1);
+        strncpy(pInfo.processName, processName, BUF_LEN - 1);
+        pInfo.processName[BUF_LEN - 1] = '\0';
 
         T2Debug("Command for collecting process info : \n pidof %s", processName);
 #ifdef LIBSYSWRAPPER_BUILD
@@ -226,20 +228,20 @@ int getProcUsage(char *processName, TopMarker* marker, char* filename)
 
         pInfo.total_instance = index;
         pInfo.pid = pid;
+        if (marker->cpuValue)
+        {
+            free(marker->cpuValue);
+            marker->cpuValue = NULL;
+        }
+        if (marker->memValue)
+        {
+            free(marker->memValue);
+            marker->memValue = NULL;
+        }
         if(0 != getProcInfo(&pInfo, filename))
         {
             T2Debug("Process info - CPU: %s, Memory: %s \n", pInfo.cpuUse, pInfo.memUse);
-
-            if (marker->cpuValue)
-            {
-                free(marker->cpuValue);
-            }
             marker->cpuValue = strdup(pInfo.cpuUse);
-
-            if (marker->memValue)
-            {
-                free(marker->memValue);
-            }
             marker->memValue = strdup(pInfo.memUse);
 
             ret = 1;
@@ -533,15 +535,24 @@ int getCPUInfo(procMemCpuInfo *pInfo, char* filename)
     char top_op[2048] = { '\0' };
     int cmd_option = 0;
     int normalize = 1;
+    int read_from_file = 0;
 
     if(pInfo == NULL)
     {
 
         return 0;
     }
-    if((filename != NULL) && (access(filename, F_OK) != 0))
+    if((filename != NULL) && (access(filename, F_OK) == 0))
     {
-        T2Debug("%s ++in the savad temp log %s is not available \n", __FUNCTION__, filename);
+        /* TOPTEMP file is available - open directly in C, no shell spawning needed */
+        T2Debug("%s ++in the saved temp log %s is available \n", __FUNCTION__, filename);
+        inFp = fopen(filename, "r");
+        normalize = TOPITERATION;
+        read_from_file = 1;
+    }
+    else
+    {
+        T2Debug("%s ++in the saved temp log %s is not available \n", __FUNCTION__, filename);
         /* Check Whether -c option is supported */
 #ifdef LIBSYSWRAPPER_BUILD
         ret = v_secure_system(" top -c -n 1 2> /dev/null 1> /dev/null");
@@ -554,53 +565,29 @@ int getCPUInfo(procMemCpuInfo *pInfo, char* filename)
         }
 
 #ifdef INTEL
-        /* Format Use:  `top n 1 | grep Receiver` */
-        if ( 1 == cmd_option )
-        {
+        /* Format Use:  `top n 1 (-c)` */
 #ifdef LIBSYSWRAPPER_BUILD
-            inFp = v_secure_popen("r", "top -n 1 -c | grep -v grep |grep -i '%s'", pInfo->processName);
+        inFp = v_secure_popen("r", "top -n 1 %s", (cmd_option == 1) ? "-c" : "");
 #else
-            sprintf(command, "top -n 1 -c | grep -v grep |grep -i '%s'", pInfo->processName);
-            inFp = popen(command, "r");
+        snprintf(command, CMD_LEN, "top -n 1 %s", (cmd_option == 1) ? "-c" : "");
+        inFp = popen(command, "r");
 #endif
-        }
-        else
-        {
-#ifdef LIBSYSWRAPPER_BUILD
-            inFp = v_secure_popen("r", "top -n 1 | grep -i '%s'", pInfo->processName);
-#else
-            sprintf(command, "top -n 1 | grep -i '%s'", pInfo->processName);
-            inFp = popen(command, "r");
-#endif
-        }
 #else
         /* ps -C Receiver -o %cpu -o %mem */
         //sprintf(command, "ps -C '%s' -o %%cpu -o %%mem | sed 1d", pInfo->processName);
 #ifdef LIBSYSWRAPPER_BUILD
-        inFp = v_secure_popen("r", "top -b -n 1 %s | grep -v grep | grep -i '%s'", (cmd_option == 1) ? "-c" : "", pInfo->processName);
+        inFp = v_secure_popen("r", "top -b -n 1 %s", (cmd_option == 1) ? "-c" : "");
 #else
-        snprintf(command, CMD_LEN, "top -b -n 1 %s | grep -v grep | grep -i '%s'", (cmd_option == 1) ? "-c" : "", pInfo->processName);
+        snprintf(command, CMD_LEN, "top -b -n 1 %s", (cmd_option == 1) ? "-c" : "");
         inFp = popen(command, "r");
 #endif
 
 #endif
-    }
-    else
-    {
-        T2Debug("%s ++in the savad temp log %s is available \n", __FUNCTION__, filename);
-#ifdef LIBSYSWRAPPER_BUILD
-        inFp = v_secure_popen("r", "cat %s |grep -i '%s'", TOPTEMP, pInfo->processName);
-#else
-        snprintf(command, sizeof(command), "cat %s |grep -i '%s'", filename, pInfo->processName);
-        inFp = popen(command, "r");
-#endif
-        normalize = TOPITERATION;
-
     }
 
     if(!(inFp))
     {
-        T2Debug("failed in open v_scure_popen pipe! ret %d\n", pclose_ret);
+        T2Debug("failed in open v_secure_popen pipe! ret %d\n", pclose_ret);
         return 0;
     }
 
@@ -608,6 +595,13 @@ int getCPUInfo(procMemCpuInfo *pInfo, char* filename)
 #ifdef INTEL
     while(fgets(top_op, 2048, inFp) != NULL)
     {
+        /* match by process name (case-insensitive), PID as fallback */
+        if(strcasestr(top_op, pInfo->processName) == NULL)
+        {
+            int line_pid = 0;
+            if(sscanf(top_op, "%d", &line_pid) != 1 || line_pid != pInfo->pid[0])
+                continue;
+        }
         if(sscanf(top_op, "%s %s %s %s %s %s %s %s", var1, var2, var3, var4, var5, var6, var7, var8) == 8)
         {
             total_cpu_usage += atof(var7);
@@ -618,6 +612,13 @@ int getCPUInfo(procMemCpuInfo *pInfo, char* filename)
 #else
     while(fgets(top_op, 2048, inFp) != NULL)
     {
+        /* match by process name (case-insensitive), PID as fallback */
+        if(strcasestr(top_op, pInfo->processName) == NULL)
+        {
+            int line_pid = 0;
+            if(sscanf(top_op, "%d", &line_pid) != 1 || line_pid != pInfo->pid[0])
+                continue;
+        }
         if(sscanf(top_op, "%16s %16s %16s %16s %16s %16s %16s %512s %512s %512s", var1, var2, var3, var4, var5, var6, var7, var8, var9, var10) == 10)
         {
             total_cpu_usage += atof(var9);
@@ -628,19 +629,24 @@ int getCPUInfo(procMemCpuInfo *pInfo, char* filename)
 
     snprintf(pInfo->cpuUse, sizeof(pInfo->cpuUse), "%.1lf", (float)(total_cpu_usage / normalize));
     T2Debug("calculated CPU total value : %f Normalized value : %.1lf\n", total_cpu_usage, (float)(total_cpu_usage / normalize));
-#ifdef LIBSYSWRAPPER_BUILD
-    pclose_ret = v_secure_pclose(inFp);
-#else
-    pclose_ret = pclose(inFp);
-#endif
-
-    if(pclose_ret != 0)
+    if(read_from_file)
     {
-        T2Debug("failed in closing pipe! ret %d\n", pclose_ret);
+        fclose(inFp);
     }
-    return ret;
+    else
+    {
+#ifdef LIBSYSWRAPPER_BUILD
+        pclose_ret = v_secure_pclose(inFp);
+#else
+        pclose_ret = pclose(inFp);
+#endif
+        if(pclose_ret != 0)
+        {
+            T2Debug("failed in closing pipe! ret %d\n", pclose_ret);
+        }
+    }
     T2Debug("--out %s", __FUNCTION__);
-
+    return ret;
 }
 
 #else //ENABLE_RDKC_SUPPORT & ENABLE_RDKB_SUPPORT

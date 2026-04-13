@@ -45,6 +45,42 @@
 #include "rdkservices_privacyutils.h"
 #endif
 
+/*
+ * =============================================================================
+ * DEADLOCK PREVENTION GUIDELINES
+ * =============================================================================
+ *
+ * Lock Hierarchy (strict ordering to prevent deadlocks):
+ * 1. Global locks: plRwLock (profile list), reportLock, triggerConditionQueMutex
+ * 2. Per-profile locks: reuseThreadMutex, reportInProgressMutex, eventMutex, triggerCondMutex
+ *
+ * CRITICAL RULES:
+ * - Always acquire locks in hierarchy order (global first, then per-profile)
+ * - Never call external functions while holding global locks
+ * - Release global locks before acquiring per-profile locks when possible
+ * - Use timeouts for lock operations to detect potential deadlocks
+ * - Copy data needed for external calls before releasing global locks
+ *
+ * Per-Profile Lock Ordering:
+ * 1. reuseThreadMutex (thread lifecycle)
+ * 2. reportInProgressMutex (report state)
+ * 3. eventMutex (event processing)
+ * 4. triggerCondMutex (trigger conditions)
+ *
+ * Safe Patterns:
+ * ✅ pthread_rwlock_rdlock(&plRwLock) → getProfile() → pthread_rwlock_unlock(&plRwLock) → profile locks
+ * ✅ Copy data while holding global lock → Release global lock → External calls
+ * ✅ Per-profile locks in defined order only
+ *
+ * Dangerous Patterns:
+ * ❌ External function calls while holding global locks
+ * ❌ Acquiring global lock while holding per-profile locks
+ * ❌ Per-profile locks acquired in different orders
+ * ❌ Long-running operations while holding multiple locks
+ *
+ * =============================================================================
+ */
+
 #define MAX_LEN 256
 
 #ifdef GTEST_ENABLE
@@ -60,17 +96,23 @@ static pthread_mutex_t reportLock;
 static pthread_mutex_t triggerConditionQueMutex = PTHREAD_MUTEX_INITIALIZER;
 static queue_t *triggerConditionQueue = NULL;
 
-#define GLOBAL_LOCK_TIMEOUT_SEC 5
-#define PROFILE_LOCK_TIMEOUT_SEC 3
+/* DEADLOCK DETECTION: Timeout values for lock operations */
+#define GLOBAL_LOCK_TIMEOUT_SEC 5    /* Timeout for global locks */
+#define PROFILE_LOCK_TIMEOUT_SEC 3   /* Timeout for per-profile locks */
 
-static int safe_acquire_global_lock(const char* lock_type, const char* func_name)
-{
+/**
+ * Safe global lock acquisition with timeout for deadlock detection
+ * @param lock_type: "read" or "write"  
+ * @param func_name: Name of calling function for logging
+ * @return: 0 on success, -1 on timeout (potential deadlock)
+ */
+static int safe_acquire_global_lock(const char* lock_type, const char* func_name)\n{
     struct timespec timeout;
     clock_gettime(CLOCK_REALTIME, &timeout);
     timeout.tv_sec += GLOBAL_LOCK_TIMEOUT_SEC;
-    
+
     int result;
-    if(strcmp(lock_type, "read") == 0)
+    if (strcmp(lock_type, "read") == 0)
     {
         result = pthread_rwlock_timedrdlock(&plRwLock, &timeout);
     }
@@ -78,17 +120,48 @@ static int safe_acquire_global_lock(const char* lock_type, const char* func_name
     {
         result = pthread_rwlock_timedwrlock(&plRwLock, &timeout);
     }
-    
-    if(result == ETIMEDOUT)
+
+    if (result == ETIMEDOUT)
     {
-        T2Error("DEADLOCK DETECTED: Global %s lock timeout in %s after %d seconds\\n", lock_type, func_name, GLOBAL_LOCK_TIMEOUT_SEC);
+        T2Error("DEADLOCK DETECTED: Global %s lock timeout in %s after %d seconds\\n", 
+                lock_type, func_name, GLOBAL_LOCK_TIMEOUT_SEC);
         return -1;
     }
-    else if(result != 0)
+    else if (result != 0)
     {
         T2Error("Global %s lock failed in %s: %s\\n", lock_type, func_name, strerror(result));
         return -1;
     }
+    
+    return 0;
+}
+
+/**
+ * Safe per-profile lock acquisition with timeout
+ * @param mutex: Profile mutex to acquire
+ * @param mutex_name: Name for logging
+ * @param func_name: Name of calling function
+ * @return: 0 on success, -1 on timeout
+ */
+static int safe_acquire_profile_lock(pthread_mutex_t* mutex, const char* mutex_name, const char* func_name)
+{
+    struct timespec timeout;
+    clock_gettime(CLOCK_REALTIME, &timeout);
+    timeout.tv_sec += PROFILE_LOCK_TIMEOUT_SEC;
+
+    int result = pthread_mutex_timedlock(mutex, &timeout);
+    if (result == ETIMEDOUT)
+    {
+        T2Error("DEADLOCK DETECTED: Profile %s lock timeout in %s after %d seconds\\n", 
+                mutex_name, func_name, PROFILE_LOCK_TIMEOUT_SEC);
+        return -1;
+    }
+    else if (result != 0)
+    {
+        T2Error("Profile %s lock failed in %s: %s\\n", mutex_name, func_name, strerror(result));
+        return -1;
+    }
+    
     return 0;
 }
 
@@ -957,7 +1030,13 @@ reportThreadEnd :
 void NotifyTimeout(const char* profileName, bool isClearSeekMap)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
-    pthread_rwlock_rdlock(&plRwLock);
+    
+    /* DEADLOCK PREVENTION: Use safe global lock acquisition */
+    if (safe_acquire_global_lock("read", __FUNCTION__) != 0)
+    {
+        T2Error("Failed to acquire global read lock in %s\n", __FUNCTION__);
+        return;
+    }
 
     Profile *profile = NULL;
     if(T2ERROR_SUCCESS != getProfile(profileName, &profile))
@@ -967,21 +1046,28 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
         return ;
     }
 
+    /* DEADLOCK PREVENTION: Release global lock before acquiring per-profile locks */
     pthread_rwlock_unlock(&plRwLock);
+    
     T2Info("%s: profile %s is in %s state\n", __FUNCTION__, profileName, profile->enable ? "Enabled" : "Disabled");
-    pthread_mutex_lock(&profile->reportInProgressMutex);
+    
+    /* Safe per-profile lock acquisition */
+    if (safe_acquire_profile_lock(&profile->reportInProgressMutex, "reportInProgressMutex", __FUNCTION__) != 0)
+    {
+        return;
+    }
     if(profile->enable && !profile->reportInProgress)
     {
         profile->reportInProgress = true;
         profile->bClearSeekMap = isClearSeekMap;
         pthread_mutex_unlock(&profile->reportInProgressMutex);
 
-        /* Read threadExists under reuseThreadMutex for proper synchronization.
-         * threadExists is written under reuseThreadMutex in CollectAndReport,
-         * so it must also be read under the same mutex to avoid a data race.
-         * Combine the read and the signal within the same lock to prevent a
-         * race between reading threadExists and signaling/creating the thread. */
-        pthread_mutex_lock(&profile->reuseThreadMutex);
+        /* DEADLOCK PREVENTION: Proper lock ordering for thread synchronization */
+        if (safe_acquire_profile_lock(&profile->reuseThreadMutex, "reuseThreadMutex", __FUNCTION__) != 0)
+        {
+            pthread_mutex_unlock(&profile->reportInProgressMutex);
+            return;
+        }
         if (profile->threadExists)
         {
             T2Info("Signal Thread To restart\n");
@@ -1007,7 +1093,12 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
 
-    pthread_rwlock_rdlock(&plRwLock);
+    /* DEADLOCK PREVENTION: Use safe global lock acquisition */
+    if (safe_acquire_global_lock("read", __FUNCTION__) != 0)
+    {
+        return T2ERROR_FAILURE;
+    }
+    
     Profile *profile = NULL;
     if(T2ERROR_SUCCESS != getProfile(profileName, &profile))
     {
@@ -1015,6 +1106,8 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
         pthread_rwlock_unlock(&plRwLock);
         return T2ERROR_FAILURE;
     }
+    
+    /* DEADLOCK PREVENTION: Release global lock before per-profile operations */
     pthread_rwlock_unlock(&plRwLock);
     if(!profile->enable)
     {
@@ -1202,6 +1295,8 @@ T2ERROR enableProfile(const char *profileName)
     }
     else
     {
+        /* DEADLOCK PREVENTION: Initialize profile locks first, then release global
+         * lock before calling external functions to avoid lock ordering deadlocks */
         profile->enable = true;
         if(pthread_mutex_init(&profile->triggerCondMutex, NULL) != 0)
         {
@@ -1222,23 +1317,87 @@ T2ERROR enableProfile(const char *profileName)
             return T2ERROR_FAILURE;
         }
 
-        size_t emIndex = 0;
-        EventMarker *eMarker = NULL;
-        for(; emIndex < Vector_Size(profile->eMarkerList); emIndex++)
+        /* DEADLOCK PREVENTION: Copy necessary data while holding lock, then release
+         * before calling external functions to prevent deadlock scenarios */
+        size_t eMarkerCount = Vector_Size(profile->eMarkerList);
+        char *profileNameCopy = strdup(profile->name);
+        
+        /* Prepare external call parameters while holding lock */
+        typedef struct {
+            char *markerName;
+            char *compName;
+            int skipFreq;
+        } marker_info_t;
+        
+        marker_info_t *markerInfos = NULL;
+        if (eMarkerCount > 0)
         {
-            eMarker = (EventMarker *)Vector_At(profile->eMarkerList, emIndex);
-            addT2EventMarker(eMarker->markerName, eMarker->compName, profile->name, eMarker->skipFreq);
+            markerInfos = malloc(eMarkerCount * sizeof(marker_info_t));
+            if (markerInfos)
+            {
+                for(size_t emIndex = 0; emIndex < eMarkerCount; emIndex++)
+                {
+                    EventMarker *eMarker = (EventMarker *)Vector_At(profile->eMarkerList, emIndex);
+                    markerInfos[emIndex].markerName = strdup(eMarker->markerName);
+                    markerInfos[emIndex].compName = strdup(eMarker->compName);
+                    markerInfos[emIndex].skipFreq = eMarker->skipFreq;
+                }
+            }
         }
-        if(registerProfileWithScheduler(profile->name, profile->reportingInterval, profile->activationTimeoutPeriod, profile->deleteonTimeout, true, profile->reportOnUpdate, profile->firstReportingInterval, profile->timeRef) != T2ERROR_SUCCESS)
+        
+        /* Copy scheduler parameters */
+        int reportingInterval = profile->reportingInterval;
+        int activationTimeoutPeriod = profile->activationTimeoutPeriod;
+        bool deleteOnTimeout = profile->deleteonTimeout;
+        bool reportOnUpdate = profile->reportOnUpdate;
+        int firstReportingInterval = profile->firstReportingInterval;
+        char *timeRefCopy = profile->timeRef ? strdup(profile->timeRef) : NULL;
+        
+        /* CRITICAL: Release global lock before external function calls */
+        pthread_rwlock_unlock(&plRwLock);
+        
+        /* Now make external calls without holding any global locks */
+        if (markerInfos)
         {
-            profile->enable = false;
-            T2Error("Unable to register profile : %s with Scheduler\n", profileName);
+            for(size_t i = 0; i < eMarkerCount; i++)
+            {
+                if (markerInfos[i].markerName)
+                {
+                    addT2EventMarker(markerInfos[i].markerName, markerInfos[i].compName, 
+                                   profileNameCopy, markerInfos[i].skipFreq);
+                    free(markerInfos[i].markerName);
+                    free(markerInfos[i].compName);
+                }
+            }
+            free(markerInfos);
+        }
+        
+        /* Register with scheduler without holding global lock */
+        T2ERROR schedResult = registerProfileWithScheduler(profileNameCopy, reportingInterval, 
+                                                          activationTimeoutPeriod, deleteOnTimeout, 
+                                                          true, reportOnUpdate, firstReportingInterval, timeRefCopy);
+        
+        /* Clean up copied data */
+        free(profileNameCopy);
+        if (timeRefCopy) free(timeRefCopy);
+        
+        if(schedResult != T2ERROR_SUCCESS)
+        {
+            /* Re-acquire lock to clean up on failure */
+            pthread_rwlock_wrlock(&plRwLock);
+            Profile *failedProfile = NULL;
+            if(T2ERROR_SUCCESS == getProfile(profileName, &failedProfile))
+            {
+                failedProfile->enable = false;
+            }
             pthread_rwlock_unlock(&plRwLock);
+            T2Error("Unable to register profile : %s with Scheduler\n", profileName);
             return T2ERROR_FAILURE;
         }
         T2ER_StartDispatchThread();
 
         T2Info("Successfully enabled profile : %s\n", profileName);
+        return T2ERROR_SUCCESS;  /* Already released lock above */
     }
     T2Debug("%s --out\n", __FUNCTION__);
     pthread_rwlock_unlock(&plRwLock);
@@ -2065,3 +2224,5 @@ unsigned int getMinThresholdDuration(char *profileName)
     T2Debug("%s --out\n", __FUNCTION__);
     return minThresholdDuration;
 }
+
+

@@ -45,41 +45,6 @@
 #include "rdkservices_privacyutils.h"
 #endif
 
-/* =============================================================================
- * DEADLOCK PREVENTION GUIDELINES
- * =============================================================================
- * 
- * Lock Hierarchy (strict ordering to prevent deadlocks):
- * 1. Global locks: plRwLock (profile list), reportLock, triggerConditionQueMutex
- * 2. Per-profile locks: reuseThreadMutex, reportInProgressMutex, eventMutex, triggerCondMutex
- * 
- * CRITICAL RULES:
- * - Always acquire locks in hierarchy order (global first, then per-profile)
- * - Never call external functions while holding global locks
- * - Release global locks before acquiring per-profile locks when possible
- * - Use timeouts for lock operations to detect potential deadlocks
- * - Copy data needed for external calls before releasing global locks
- * 
- * Per-Profile Lock Ordering:
- * 1. reuseThreadMutex (thread lifecycle)      
- * 2. reportInProgressMutex (report state)
- * 3. eventMutex (event processing)
- * 4. triggerCondMutex (trigger conditions)
- * 
- * Safe Patterns:
- * ✅ pthread_rwlock_rdlock(&plRwLock) → getProfile() → pthread_rwlock_unlock(&plRwLock) → profile locks
- * ✅ Copy data while holding global lock → Release global lock → External calls
- * ✅ Per-profile locks in defined order only
- * 
- * Dangerous Patterns:
- * ❌ External function calls while holding global locks
- * ❌ Acquiring global lock while holding per-profile locks  
- * ❌ Per-profile locks acquired in different orders
- * ❌ Long-running operations while holding multiple locks
- * 
- * =============================================================================
- */
-
 #define MAX_LEN 256
 
 #ifdef GTEST_ENABLE
@@ -101,7 +66,7 @@ static queue_t *triggerConditionQueue = NULL;
 
 /**
  * Safe global lock acquisition with timeout for deadlock detection
- * @param lock_type: "read" or "write"  
+ * @param lock_type: "read" or "write"
  * @param func_name: Name of calling function for logging
  * @return: 0 on success, -1 on timeout (potential deadlock)
  */
@@ -132,8 +97,8 @@ static int safe_acquire_global_lock(const char* lock_type, const char* func_name
 /**
  * Safe per-profile lock acquisition with timeout
  * @param mutex: Profile mutex to acquire
- * @param mutex_name: Name for logging  
- * @param func_name: Name of calling function 
+ * @param mutex_name: Name for logging
+ * @param func_name: Name of calling function
  * @return: 0 on success, -1 on timeout
  */
 static int safe_acquire_profile_lock(pthread_mutex_t* mutex, const char* mutex_name, const char* func_name) {

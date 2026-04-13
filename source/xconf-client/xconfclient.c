@@ -266,12 +266,12 @@ static char *getTimezone ()
             long numbytes = ftell(file);
             if (numbytes < 0)
             {
-                T2Warning("Warning: timeZoneDST file is unreadable (ftell returned %ld)\n", numbytes);
+                T2Warning("timeZoneDST file is unreadable (ftell returned %ld)\n", numbytes);
                 fclose(file);
             }
             else if (numbytes == 0)
             {
-                T2Warning("Warning: timeZoneDST file is empty, skipping\n");
+                T2Warning("timeZoneDST file is empty, skipping\n");
                 fclose(file);
             }
             else

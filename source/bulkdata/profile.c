@@ -60,6 +60,9 @@ static pthread_mutex_t reportLock;
 static pthread_mutex_t triggerConditionQueMutex = PTHREAD_MUTEX_INITIALIZER;
 static queue_t *triggerConditionQueue = NULL;
 
+#define GLOBAL_LOCK_TIMEOUT_SEC 5
+#define PROFILE_LOCK_TIMEOUT_SEC 3
+
 typedef struct __triggerConditionObj__
 {
     char referenceName[MAX_LEN];

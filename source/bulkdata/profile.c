@@ -55,7 +55,7 @@
 #include <stdatomic.h>
 
 static atomic_bool initialized = ATOMIC_VAR_INIT(false);
-static pthread_once_t init_once = PTHREAD_ONCE_INIT;
+static pthread_mutex_t init_mutex = PTHREAD_MUTEX_INITIALIZER;
 static Vector *profileList;
 static pthread_rwlock_t plRwLock;
 static pthread_mutex_t reportLock;
@@ -1399,9 +1399,9 @@ T2ERROR enableProfile(const char *profileName)
 
         T2ERROR schedResult = registerProfileWithScheduler(profileNameCopy, reportingInterval,
                               activationTimeoutPeriod, deleteOnTimeout,
-                              true, reportOnUpdate, firstReportingInterval, timeRefCopy);
+                              true, reportOnUpdate, firstReportingInterval, profile->timeRef);
 
-        // Clean up allocated memory
+        // Clean up allocated memory - timeRefCopy freed here since scheduler uses profile->timeRef
         if(markerInfos)
         {
             for(size_t i = 0; i < eMarkerCount; i++)
@@ -1810,7 +1810,7 @@ T2ERROR deleteProfile(const char *profileName)
     bool threadStillExists = profile->threadExists;
     pthread_mutex_unlock(&profile->reuseThreadMutex);
 
-    /* Release plMutex before pthread_join to avoid deadlock.
+    /* Release plRwLock before pthread_join to avoid deadlock.
      * pthread_join can block indefinitely if the CollectAndReport thread
      * is stuck (e.g., waiting on rbusMethodMutex). Holding plRwLock during
      * pthread_join prevents other threads (timeout callbacks, other profile
@@ -1820,11 +1820,19 @@ T2ERROR deleteProfile(const char *profileName)
 
     if (threadStillExists)
     {
+        /* Hold reuseThreadMutex across check and signal to prevent race with thread destruction */
         pthread_mutex_lock(&profile->reuseThreadMutex);
-        profile->restartRequested = true;
-        pthread_cond_signal(&profile->reuseThread);
-        pthread_mutex_unlock(&profile->reuseThreadMutex);
-        pthread_join(profile->reportThread, NULL);
+        if (profile->threadExists) /* Re-verify while holding mutex */
+        {
+            profile->restartRequested = true;
+            pthread_cond_signal(&profile->reuseThread);
+            pthread_mutex_unlock(&profile->reuseThreadMutex);
+            pthread_join(profile->reportThread, NULL);
+        }
+        else
+        {
+            pthread_mutex_unlock(&profile->reuseThreadMutex);
+        }
     }
 
     pthread_rwlock_wrlock(&plRwLock);
@@ -2044,19 +2052,36 @@ static void loadReportProfilesFromDisk(bool checkPreviousSeek)
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
-/* One-time initialization function for pthread_once */
-static void init_profile_list_once(void)
+T2ERROR initProfileList(bool checkPreviousSeek)
 {
+    T2Debug("%s ++in\n", __FUNCTION__);
+
+    /* Use mutex-protected re-initializable scheme instead of pthread_once */
+    pthread_mutex_lock(&init_mutex);
+
+    /* Check if already initialized */
+    if (atomic_load(&initialized))
+    {
+        pthread_mutex_unlock(&init_mutex);
+        T2Debug("Profile list already initialized\n");
+        loadReportProfilesFromDisk(checkPreviousSeek);
+        T2Debug("%s --out\n", __FUNCTION__);
+        return T2ERROR_SUCCESS;
+    }
+
+    /* Initialize locks and data structures */
     if(pthread_rwlock_init(&plRwLock, NULL) != 0)
     {
-        T2Error("rwlock init has failed in one-time init\n");
-        return;
+        T2Error("rwlock init failed in initProfileList\n");
+        pthread_mutex_unlock(&init_mutex);
+        return T2ERROR_FAILURE;
     }
     if(pthread_mutex_init(&reportLock, NULL) != 0 )
     {
-        T2Error("mutex init has failed in one-time init\n");
+        T2Error("mutex init failed in initProfileList\n");
         pthread_rwlock_destroy(&plRwLock);
-        return;
+        pthread_mutex_unlock(&init_mutex);
+        return T2ERROR_FAILURE;
     }
 
     pthread_rwlock_wrlock(&plRwLock);
@@ -2065,21 +2090,7 @@ static void init_profile_list_once(void)
 
     /* Set initialized atomically after successful initialization */
     atomic_store(&initialized, true);
-}
-
-T2ERROR initProfileList(bool checkPreviousSeek)
-{
-    T2Debug("%s ++in\n", __FUNCTION__);
-
-    /* Use pthread_once for thread-safe one-time initialization */
-    pthread_once(&init_once, init_profile_list_once);
-
-    /* Check if initialization was successful */
-    if (!atomic_load(&initialized))
-    {
-        T2Error("Profile list initialization failed\n");
-        return T2ERROR_FAILURE;
-    }
+    pthread_mutex_unlock(&init_mutex);
 
     registerConditionalReportCallBack(&triggerReportOnCondtion);
 
@@ -2132,13 +2143,18 @@ T2ERROR uninitProfileList()
 {
     T2Debug("%s ++in\n", __FUNCTION__);
 
-    if(!initialized)
+    pthread_mutex_lock(&init_mutex);
+
+    if(!atomic_load(&initialized))
     {
+        pthread_mutex_unlock(&init_mutex);
         T2Info("profile list is not initialized yet, ignoring\n");
         return T2ERROR_SUCCESS;
     }
 
-    initialized = false;
+    atomic_store(&initialized, false);
+    pthread_mutex_unlock(&init_mutex);
+
     deleteAllProfiles(false); // avoid removing multiProfiles from Disc
 
     if(!pthread_mutex_trylock(&triggerConditionQueMutex))

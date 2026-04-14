@@ -1378,6 +1378,7 @@ T2ERROR enableProfile(const char *profileName)
     }
     pthread_rwlock_wrlock(&plRwLock);
     Profile *profile = NULL;
+    char *timeRefCopy = NULL;
     if(T2ERROR_SUCCESS != getProfile(profileName, &profile))
     {
         T2Error("Profile : %s not found\n", profileName);
@@ -1457,7 +1458,7 @@ T2ERROR enableProfile(const char *profileName)
         bool deleteOnTimeout = profile->deleteonTimeout;
         bool reportOnUpdate = profile->reportOnUpdate;
         int firstReportingInterval = profile->firstReportingInterval;
-        char *timeRefCopy = profile->timeRef ? strdup(profile->timeRef) : NULL;
+        timeRefCopy = profile->timeRef ? strdup(profile->timeRef) : NULL;
 
         /* Keep profile->enable = true while holding lock to make enabling atomic.
          * This prevents concurrent disable/delete operations from interfering.

@@ -22,6 +22,7 @@
 
 #include <stdbool.h>
 #include <pthread.h>
+#include <stdatomic.h>
 #include <cjson/cJSON.h>
 
 #include "t2collection.h"
@@ -41,10 +42,13 @@ typedef struct _JSONEncoding
 
 typedef struct _Profile
 {
-    bool enable;
+    /* Lock hierarchy: always acquire plRwLock before this lock to prevent deadlock */
+    pthread_mutex_t lock;        /* Per-profile lock for fine-grained locking */
+
+    atomic_bool enable;          /* Atomic for lock-free reads */
     bool isSchedulerstarted;
     bool isUpdated;
-    bool reportInProgress;
+    atomic_bool reportInProgress; /* Atomic for lock-free reads */
     pthread_cond_t reportInProgressCond;
     pthread_mutex_t reportInProgressMutex;
     bool generateNow;
@@ -92,7 +96,7 @@ typedef struct _Profile
     pthread_cond_t reuseThread;
     pthread_mutex_t reuseThreadMutex;
     bool restartRequested;
-    bool threadExists;
+    atomic_bool threadExists;    /* Atomic for lock-free reads */
     GrepSeekProfile *grepSeekProfile; // To store GrepConfig
 } Profile;
 

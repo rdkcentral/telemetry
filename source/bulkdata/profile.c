@@ -54,7 +54,7 @@
 
 static bool initialized = false;
 static Vector *profileList;
-/* 
+/*
  * Lock hierarchy (acquire in this order to prevent deadlock):
  * 1. plRwLock - protects profileList access
  * 2. profile->lock - protects individual profile operations
@@ -117,10 +117,10 @@ static void freeProfile(void *data)
     if(data != NULL)
     {
         Profile *profile = (Profile *)data;
-        
+
         /* Cleanup per-profile locks first */
         cleanupProfileLocks(profile);
-        
+
         if(profile->name)
         {
             free(profile->name);
@@ -224,26 +224,33 @@ static void freeProfile(void *data)
 /* Initialize per-profile locks and atomic variables */
 static T2ERROR initProfileLocks(Profile *profile)
 {
-    if(!profile) return T2ERROR_FAILURE;
-    
+    if(!profile)
+    {
+        return T2ERROR_FAILURE;
+    }
+
     /* Initialize per-profile lock */
-    if(pthread_mutex_init(&profile->lock, NULL) != 0) {
+    if(pthread_mutex_init(&profile->lock, NULL) != 0)
+    {
         T2Error("Failed to initialize profile lock\n");
         return T2ERROR_FAILURE;
     }
-    
+
     /* Initialize atomic variables */
     atomic_store(&profile->enable, false);
     atomic_store(&profile->reportInProgress, false);
     atomic_store(&profile->threadExists, false);
-    
+
     return T2ERROR_SUCCESS;
 }
 
 /* Cleanup per-profile locks */
 static void cleanupProfileLocks(Profile *profile)
 {
-    if(!profile) return;
+    if(!profile)
+    {
+        return;
+    }
     pthread_mutex_destroy(&profile->lock);
 }
 
@@ -252,16 +259,16 @@ static T2ERROR getProfile(const char *profileName, Profile **profile)
     size_t profileIndex = 0;
     Profile *tempProfile = NULL;
     T2Debug("%s ++in\n", __FUNCTION__);
-    
+
     if(profileName == NULL)
     {
         T2Error("profileName is null\n");
         return T2ERROR_FAILURE;
     }
-    
+
     /* Use read lock for parallel profile lookups */
     pthread_rwlock_rdlock(&plRwLock);
-    
+
     for(; profileIndex < Vector_Size(profileList); profileIndex++)
     {
         tempProfile = (Profile *)Vector_At(profileList, profileIndex);
@@ -273,7 +280,7 @@ static T2ERROR getProfile(const char *profileName, Profile **profile)
             return T2ERROR_SUCCESS;
         }
     }
-    
+
     pthread_rwlock_unlock(&plRwLock);
     T2Error("Profile with Name : %s not found\n", profileName);
     return T2ERROR_PROFILE_NOT_FOUND;
@@ -1181,19 +1188,19 @@ T2ERROR addProfile(Profile *profile)
         T2Error("profile list is not initialized yet, ignoring\n");
         return T2ERROR_FAILURE;
     }
-    
+
     /* Initialize per-profile locks before adding to list */
     if(initProfileLocks(profile) != T2ERROR_SUCCESS)
     {
         T2Error("Failed to initialize profile locks\n");
         return T2ERROR_FAILURE;
     }
-    
+
     /* Use write lock for adding profile to list */
     pthread_rwlock_wrlock(&plRwLock);
     Vector_PushBack(profileList, profile);
     pthread_rwlock_unlock(&plRwLock);
-    
+
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
@@ -1206,7 +1213,7 @@ T2ERROR enableProfile(const char *profileName)
         T2Error("profile list is not initialized yet, ignoring\n");
         return T2ERROR_FAILURE;
     }
-    
+
     /* Step 1: Find profile using fine-grained lookup (getProfile uses read lock internally) */
     Profile *profile = NULL;
     if(T2ERROR_SUCCESS != getProfile(profileName, &profile))
@@ -1214,10 +1221,10 @@ T2ERROR enableProfile(const char *profileName)
         T2Error("Profile : %s not found\n", profileName);
         return T2ERROR_FAILURE;
     }
-    
+
     /* Step 2: Lock individual profile for operations */
     pthread_mutex_lock(&profile->lock);
-    
+
     /* Check if already enabled using atomic read */
     if(atomic_load(&profile->enable))
     {
@@ -1225,7 +1232,7 @@ T2ERROR enableProfile(const char *profileName)
         pthread_mutex_unlock(&profile->lock);
         return T2ERROR_SUCCESS;
     }
-    
+
     /* Initialize thread synchronization objects if needed */
     if(pthread_mutex_init(&profile->triggerCondMutex, NULL) != 0)
     {
@@ -1248,11 +1255,11 @@ T2ERROR enableProfile(const char *profileName)
         pthread_mutex_unlock(&profile->lock);
         return T2ERROR_FAILURE;
     }
-    
+
     /* Set enabled atomically */
     atomic_store(&profile->enable, true);
     pthread_mutex_unlock(&profile->lock);
-    
+
     /* Step 3: Register event markers (no global lock needed) */
     size_t emIndex = 0;
     EventMarker *eMarker = NULL;
@@ -1261,18 +1268,18 @@ T2ERROR enableProfile(const char *profileName)
         eMarker = (EventMarker *)Vector_At(profile->eMarkerList, emIndex);
         addT2EventMarker(eMarker->markerName, eMarker->compName, profile->name, eMarker->skipFreq);
     }
-    
+
     /* Step 4: Register with scheduler */
-    if(registerProfileWithScheduler(profile->name, profile->reportingInterval, 
-                                  profile->activationTimeoutPeriod, profile->deleteonTimeout, 
-                                  true, profile->reportOnUpdate, profile->firstReportingInterval, 
-                                  profile->timeRef) != T2ERROR_SUCCESS)
+    if(registerProfileWithScheduler(profile->name, profile->reportingInterval,
+                                    profile->activationTimeoutPeriod, profile->deleteonTimeout,
+                                    true, profile->reportOnUpdate, profile->firstReportingInterval,
+                                    profile->timeRef) != T2ERROR_SUCCESS)
     {
         atomic_store(&profile->enable, false);
         T2Error("Unable to register profile : %s with Scheduler\n", profileName);
         return T2ERROR_FAILURE;
     }
-    
+
     T2ER_StartDispatchThread();
     T2Info("Successfully enabled profile : %s\n", profileName);
     T2Debug("%s --out\n", __FUNCTION__);
@@ -1292,7 +1299,7 @@ void updateMarkerComponentMap()
     for(; profileIndex < Vector_Size(profileList); profileIndex++)
     {
         tempProfile = (Profile *)Vector_At(profileList, profileIndex);
-        
+
         /* Use atomic read for enable flag (no per-profile lock needed) */
         if(atomic_load(&tempProfile->enable))
         {

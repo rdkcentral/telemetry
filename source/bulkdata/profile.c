@@ -1364,7 +1364,7 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
 
-    int count = 0;
+    size_t count = 0;
     size_t profileIndex = 0;
     Profile *tempProfile = NULL;
 

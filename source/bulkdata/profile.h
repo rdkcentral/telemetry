@@ -42,7 +42,7 @@ typedef struct _JSONEncoding
 
 typedef struct _Profile
 {
-    bool enable;
+    atomic bool enable;
     bool isSchedulerstarted;
     bool isUpdated;
     bool reportInProgress;

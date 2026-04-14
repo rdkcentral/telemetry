@@ -21,6 +21,7 @@
 #define _PROFILE_H_
 
 #include <stdbool.h>
+#include <stdatomic.h>
 #include <pthread.h>
 #include <cjson/cJSON.h>
 
@@ -92,7 +93,7 @@ typedef struct _Profile
     pthread_cond_t reuseThread;
     pthread_mutex_t reuseThreadMutex;
     bool restartRequested;
-    bool threadExists;
+    atomic_bool threadExists;
     GrepSeekProfile *grepSeekProfile; // To store GrepConfig
 } Profile;
 

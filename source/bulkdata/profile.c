@@ -1730,16 +1730,8 @@ T2ERROR initProfileList(bool checkPreviousSeek)
         return T2ERROR_SUCCESS;
     }
     initialized = true;
-    if(pthread_rwlock_init(&plRwLock, NULL) != 0)
-    {
-        T2Error("%s mutex init has failed\n", __FUNCTION__);
-        return T2ERROR_FAILURE;
-    }
-    if(pthread_mutex_init(&reportLock, NULL) != 0 )
-    {
-        T2Error("%s mutex init has failed\n", __FUNCTION__);
-        return T2ERROR_FAILURE;
-    }
+
+    /* Locks are already statically initialized with PTHREAD_*_INITIALIZER */
 
     /* Use write lock to initialize empty profileList */
     pthread_rwlock_wrlock(&plRwLock);

@@ -422,11 +422,9 @@ static void* CollectAndReport(void* data)
         return NULL;
     }
     Profile* profile = (Profile *)data;
-    pthread_mutex_init(&profile->reuseThreadMutex, NULL);
-    pthread_cond_init(&profile->reuseThread, NULL);
     pthread_mutex_lock(&profile->reuseThreadMutex);
     profile->restartRequested = false;
-    profile->threadExists = true;
+    atomic_store(&profile->threadExists, true);
     //GrepSeekProfile *GPF = profile->GrepSeekProfle;
     do
     {
@@ -971,10 +969,8 @@ reportThreadEnd :
     pthread_mutex_unlock(&profile->reportInProgressMutex);
     pthread_mutex_unlock(&profile->reuseThreadMutex);
     pthread_mutex_lock(&profile->reuseThreadMutex);
-    profile->threadExists = false;
+    atomic_store(&profile->threadExists, false);
     pthread_mutex_unlock(&profile->reuseThreadMutex);
-    pthread_mutex_destroy(&profile->reuseThreadMutex);
-    pthread_cond_destroy(&profile->reuseThread);
     return NULL;
 }
 
@@ -1256,6 +1252,27 @@ T2ERROR enableProfile(const char *profileName)
         T2Error(" %s reportInProgressCond init has failed\n", __FUNCTION__);
         pthread_mutex_destroy(&profile->triggerCondMutex);
         pthread_mutex_destroy(&profile->reportInProgressMutex);
+        pthread_mutex_unlock(&profile->lock);
+        return T2ERROR_FAILURE;
+    }
+
+    /* Initialize thread reuse synchronization objects */
+    if(pthread_mutex_init(&profile->reuseThreadMutex, NULL) != 0)
+    {
+        T2Error(" %s reuseThreadMutex init has failed\n", __FUNCTION__);
+        pthread_mutex_destroy(&profile->triggerCondMutex);
+        pthread_mutex_destroy(&profile->reportInProgressMutex);
+        pthread_cond_destroy(&profile->reportInProgressCond);
+        pthread_mutex_unlock(&profile->lock);
+        return T2ERROR_FAILURE;
+    }
+    if(pthread_cond_init(&profile->reuseThread, NULL) != 0)
+    {
+        T2Error(" %s reuseThread init has failed\n", __FUNCTION__);
+        pthread_mutex_destroy(&profile->triggerCondMutex);
+        pthread_mutex_destroy(&profile->reportInProgressMutex);
+        pthread_cond_destroy(&profile->reportInProgressCond);
+        pthread_mutex_destroy(&profile->reuseThreadMutex);
         pthread_mutex_unlock(&profile->lock);
         return T2ERROR_FAILURE;
     }
@@ -1557,6 +1574,8 @@ T2ERROR deleteProfile(const char *profileName)
 
     pthread_mutex_destroy(&profile->reportInProgressMutex);
     pthread_cond_destroy(&profile->reportInProgressCond);
+    pthread_mutex_destroy(&profile->reuseThreadMutex);
+    pthread_cond_destroy(&profile->reuseThread);
 
     /* Remove profile from list using write lock */
     pthread_rwlock_wrlock(&plRwLock);

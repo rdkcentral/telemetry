@@ -1365,7 +1365,7 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
     T2Debug("%s ++in\n", __FUNCTION__);
 
     int count = 0;
-    int profileIndex = 0;
+    size_t profileIndex = 0;
     Profile *tempProfile = NULL;
 
     /* Use read lock to get count snapshot */
@@ -1439,12 +1439,13 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
         removeProfileFromDisk(REPORTPROFILES_PERSISTENCE_PATH, MSGPACK_REPORTPROFILES_PERSISTENT_FILE);
     }
 
-    pthread_mutex_lock(&plMutex);
+    /* Use write lock for profile list modification */
+    pthread_rwlock_wrlock(&plRwLock);
     T2Debug("Deleting all profiles from the profileList\n");
     Vector_Destroy(profileList, freeProfile);
     profileList = NULL;
     Vector_Create(&profileList);
-    pthread_mutex_unlock(&plMutex);
+    pthread_rwlock_unlock(&plRwLock);
 
     T2Debug("%s --out\n", __FUNCTION__);
 
@@ -1541,8 +1542,7 @@ T2ERROR deleteProfile(const char *profileName)
          * after setting threadExists = false (see CollectAndReport cleanup). */
     }
 
-    /* Re-acquire plMutex for profile cleanup operations */
-    pthread_mutex_lock(&plMutex);
+    /* No global lock needed for per-profile cleanup operations in fine-grained design */
 
     /* Cleanup resources before removing from list */
     if(Vector_Size(profile->triggerConditionList) > 0)
@@ -1586,7 +1586,7 @@ void sendLogUploadInterruptToScheduler()
             SendInterruptToTimeoutThread(tempProfile->name);
         }
     }
-    pthread_mutex_unlock(&plMutex);
+    pthread_rwlock_unlock(&plRwLock);
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
@@ -1763,9 +1763,10 @@ int getProfileCount()
         T2Info("profile list isn't initialized\n");
         return count;
     }
-    pthread_mutex_lock(&plMutex);
+    /* Use read lock for profile list size check */
+    pthread_rwlock_rdlock(&plRwLock);
     count = Vector_Size(profileList);
-    pthread_mutex_unlock(&plMutex);
+    pthread_rwlock_unlock(&plRwLock);
 
     T2Debug("%s --out\n", __FUNCTION__);
     return count;
@@ -1778,7 +1779,8 @@ hash_map_t *getProfileHashMap()
     Profile *tempProfile = NULL;
     T2Debug("%s ++in\n", __FUNCTION__);
 
-    pthread_mutex_lock(&plMutex);
+    /* Use read lock for profile list iteration */
+    pthread_rwlock_rdlock(&plRwLock);
     profileHashMap = hash_map_create();
     for(; profileIndex < Vector_Size(profileList); profileIndex++)
     {
@@ -1787,7 +1789,7 @@ hash_map_t *getProfileHashMap()
         char *profileHash = strdup(tempProfile->hash);
         hash_map_put(profileHashMap, profileName, profileHash, free);
     }
-    pthread_mutex_unlock(&plMutex);
+    pthread_rwlock_unlock(&plRwLock);
 
     T2Debug("%s --out\n", __FUNCTION__);
     return profileHashMap;
@@ -1837,7 +1839,8 @@ T2ERROR registerTriggerConditionConsumer()
 
     while(retry_count <= MAX_RETRY_COUNT)
     {
-        pthread_mutex_lock(&plMutex);
+        /* Use read lock for profile list iteration */
+        pthread_rwlock_rdlock(&plRwLock);
         profileIndex = 0;
         for(; profileIndex < Vector_Size(profileList); profileIndex++)
         {
@@ -1853,7 +1856,7 @@ T2ERROR registerTriggerConditionConsumer()
             }
 
         }
-        pthread_mutex_unlock(&plMutex);
+        pthread_rwlock_unlock(&plRwLock);
         if(retry == 1)
         {
             if(retry_count >= MAX_RETRY_COUNT)
@@ -1877,23 +1880,20 @@ T2ERROR registerTriggerConditionConsumer()
 
 void NotifySchedulerstart(char* profileName, bool isschedulerstarted)
 {
-    size_t profileIndex = 0;
-    Profile *tempProfile = NULL;
-    pthread_mutex_lock(&plMutex);
-    T2Debug("plMutex is locked  %s\n", __FUNCTION__);
-    for(; profileIndex < Vector_Size(profileList); profileIndex++)
+    /* Use fine-grained lookup instead of global lock */
+    Profile *profile = NULL;
+    if(T2ERROR_SUCCESS != getProfile(profileName, &profile))
     {
-        tempProfile = (Profile *)Vector_At(profileList, profileIndex);
-        if(tempProfile != NULL)
-        {
-            if(strncmp(tempProfile->name, profileName, strlen(profileName) + 1) == 0)
-            {
-                tempProfile->isSchedulerstarted = isschedulerstarted;
-            }
-        }
+        T2Error("Profile : %s not found\n", profileName);
+        return;
     }
-    pthread_mutex_unlock(&plMutex);
-    T2Debug("plMutex is unlocked  %s\n", __FUNCTION__);
+
+    /* Lock individual profile for state update */
+    pthread_mutex_lock(&profile->lock);
+    profile->isSchedulerstarted = isschedulerstarted;
+    pthread_mutex_unlock(&profile->lock);
+
+    T2Debug("Updated scheduler state for profile %s\n", profileName);
     return;
 }
 
@@ -2045,7 +2045,8 @@ T2ERROR triggerReportOnCondtion(const char *referenceName, const char *reference
     size_t j, profileIndex = 0;
     Profile *tempProfile = NULL;
 
-    pthread_mutex_lock(&plMutex);
+    /* Use read lock for profile list iteration */
+    pthread_rwlock_rdlock(&plRwLock);
     for(; profileIndex < Vector_Size(profileList); profileIndex++)
     {
         tempProfile = (Profile *)Vector_At(profileList, profileIndex);
@@ -2067,9 +2068,9 @@ T2ERROR triggerReportOnCondtion(const char *referenceName, const char *reference
 
                             char *tempProfilename = strdup(tempProfile->name); //RDKB-42640
 
-                            // plmutex should be unlocked before sending interrupt for report generation
-                            T2Debug("%s : Release lock on &plMutex\n ", __FUNCTION__);
-                            pthread_mutex_unlock(&plMutex);
+                            // plRwLock should be unlocked before sending interrupt for report generation
+                            T2Debug("%s : Release lock on &plRwLock\n ", __FUNCTION__);
+                            pthread_rwlock_unlock(&plRwLock);
                             T2Info("Triggering report on condition for %s with %s operator, %d threshold\n", triggerCondition->reference,
                                    triggerCondition->oprator, triggerCondition->threshold);
                             if(tempProfile->isSchedulerstarted)
@@ -2090,8 +2091,8 @@ T2ERROR triggerReportOnCondtion(const char *referenceName, const char *reference
                         else
                         {
                             T2Info("Report generation will take place by popping up from the que by callback function \n");
-                            T2Debug("%s : Release lock on &plMutex\n ", __FUNCTION__);
-                            pthread_mutex_unlock(&plMutex);
+                            T2Debug("%s : Release lock on &plRwLock\n ", __FUNCTION__);
+                            pthread_rwlock_unlock(&plRwLock);
                             return T2ERROR_SUCCESS;
                         }
                     }
@@ -2099,7 +2100,7 @@ T2ERROR triggerReportOnCondtion(const char *referenceName, const char *reference
             }
         }
     }
-    pthread_mutex_unlock(&plMutex);
+    pthread_rwlock_unlock(&plRwLock);
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
@@ -2109,18 +2110,22 @@ unsigned int getMinThresholdDuration(char *profileName)
     unsigned int minThresholdDuration = 0;
     Profile *get_profile = NULL;
     T2Debug("%s --in\n", __FUNCTION__);
-    pthread_mutex_lock(&plMutex);
+
+    /* Use fine-grained lookup instead of global lock */
     if(T2ERROR_SUCCESS != getProfile(profileName, &get_profile))
     {
         T2Error("Profile : %s not found\n", profileName);
         T2Debug("%s --out\n", __FUNCTION__);
-        pthread_mutex_unlock(&plMutex);
         return 0;
     }
+
+    /* Lock individual profile for accessing minThresholdDuration */
+    pthread_mutex_lock(&get_profile->lock);
     minThresholdDuration = get_profile->minThresholdDuration;
     get_profile->minThresholdDuration = 0; // reinit the value
+    pthread_mutex_unlock(&get_profile->lock);
+
     T2Debug("minThresholdDuration = %u \n", minThresholdDuration);
-    pthread_mutex_unlock(&plMutex);
     T2Debug("%s --out\n", __FUNCTION__);
     return minThresholdDuration;
 }

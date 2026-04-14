@@ -274,12 +274,27 @@ static void freeProfile(void *data)
             profile->jsonReportObj = NULL;
         }
 
-        /* Destroy all pthread objects - they are guaranteed to be initialized by addProfile() */
-        pthread_mutex_destroy(&profile->reuseThreadMutex);
-        pthread_cond_destroy(&profile->reuseThread);
-        pthread_mutex_destroy(&profile->reportInProgressMutex);
-        pthread_cond_destroy(&profile->reportInProgressCond);
-        pthread_mutex_destroy(&profile->triggerCondMutex);
+        /* Destroy only pthread objects that were successfully initialized */
+        if(profile->initialized_objects & PTHREAD_TRIGGERCOND_MUTEX_INIT)
+        {
+            pthread_mutex_destroy(&profile->triggerCondMutex);
+        }
+        if(profile->initialized_objects & PTHREAD_REPORTPROGRESS_COND_INIT)
+        {
+            pthread_cond_destroy(&profile->reportInProgressCond);
+        }
+        if(profile->initialized_objects & PTHREAD_REPORTPROGRESS_MUTEX_INIT)
+        {
+            pthread_mutex_destroy(&profile->reportInProgressMutex);
+        }
+        if(profile->initialized_objects & PTHREAD_REUSETHREAD_COND_INIT)
+        {
+            pthread_cond_destroy(&profile->reuseThread);
+        }
+        if(profile->initialized_objects & PTHREAD_REUSETHREAD_MUTEX_INIT)
+        {
+            pthread_mutex_destroy(&profile->reuseThreadMutex);
+        }
 
         free(profile);
     }
@@ -301,6 +316,12 @@ static T2ERROR getProfile(const char *profileName, Profile **profile)
         tempProfile = (Profile *)Vector_At(profileList, profileIndex);
         if(strcmp(tempProfile->name, profileName) == 0)
         {
+            /* Don't return profiles marked for deletion - prevents use-after-free races */
+            if(tempProfile->marked_for_deletion)
+            {
+                T2Error("Profile with Name : %s is being deleted\n", profileName);
+                return T2ERROR_PROFILE_NOT_FOUND;
+            }
             *profile = tempProfile;
             T2Debug("%s --out\n", __FUNCTION__);
             return T2ERROR_SUCCESS;
@@ -1278,48 +1299,62 @@ T2ERROR addProfile(Profile *profile)
         return T2ERROR_FAILURE;
     }
 
-    /* Initialize ALL pthread objects at profile add time - regardless of how profile was created.
-     * This ensures freeProfile() can always safely destroy all pthread objects. */
+    /* Initialize ALL pthread objects at profile add time - track each successful init */
+    profile->initialized_objects = 0;
+
     if(pthread_mutex_init(&profile->reuseThreadMutex, NULL) != 0)
     {
         T2Error("Failed to initialize reuseThreadMutex\n");
         return T2ERROR_FAILURE;
     }
+    profile->initialized_objects |= PTHREAD_REUSETHREAD_MUTEX_INIT;
 
     if(pthread_cond_init(&profile->reuseThread, NULL) != 0)
     {
         T2Error("Failed to initialize reuseThread condition variable\n");
+        /* Clean up already initialized objects */
         pthread_mutex_destroy(&profile->reuseThreadMutex);
+        profile->initialized_objects = 0;
         return T2ERROR_FAILURE;
     }
+    profile->initialized_objects |= PTHREAD_REUSETHREAD_COND_INIT;
 
     if(pthread_mutex_init(&profile->reportInProgressMutex, NULL) != 0)
     {
         T2Error("Failed to initialize reportInProgressMutex\n");
-        pthread_mutex_destroy(&profile->reuseThreadMutex);
+        /* Clean up already initialized objects */
         pthread_cond_destroy(&profile->reuseThread);
+        pthread_mutex_destroy(&profile->reuseThreadMutex);
+        profile->initialized_objects = 0;
         return T2ERROR_FAILURE;
     }
+    profile->initialized_objects |= PTHREAD_REPORTPROGRESS_MUTEX_INIT;
 
     if(pthread_cond_init(&profile->reportInProgressCond, NULL) != 0)
     {
         T2Error("Failed to initialize reportInProgressCond\n");
-        pthread_mutex_destroy(&profile->reuseThreadMutex);
-        pthread_cond_destroy(&profile->reuseThread);
+        /* Clean up already initialized objects */
         pthread_mutex_destroy(&profile->reportInProgressMutex);
+        pthread_cond_destroy(&profile->reuseThread);
+        pthread_mutex_destroy(&profile->reuseThreadMutex);
+        profile->initialized_objects = 0;
         return T2ERROR_FAILURE;
     }
+    profile->initialized_objects |= PTHREAD_REPORTPROGRESS_COND_INIT;
 
     /* Initialize triggerCondMutex here too - move from enableProfile() to ensure all mutexes exist */
     if(pthread_mutex_init(&profile->triggerCondMutex, NULL) != 0)
     {
         T2Error("Failed to initialize triggerCondMutex\n");
-        pthread_mutex_destroy(&profile->reuseThreadMutex);
-        pthread_cond_destroy(&profile->reuseThread);
-        pthread_mutex_destroy(&profile->reportInProgressMutex);
+        /* Clean up already initialized objects */
         pthread_cond_destroy(&profile->reportInProgressCond);
+        pthread_mutex_destroy(&profile->reportInProgressMutex);
+        pthread_cond_destroy(&profile->reuseThread);
+        pthread_mutex_destroy(&profile->reuseThreadMutex);
+        profile->initialized_objects = 0;
         return T2ERROR_FAILURE;
     }
+    profile->initialized_objects |= PTHREAD_TRIGGERCOND_MUTEX_INIT;
 
     /* Initialize atomic thread state */
     atomic_store(&profile->threadExists, false);
@@ -1687,6 +1722,20 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
     count = Vector_Size(profileList);
     if(count > 0)
     {
+        /* Don't remove profiles from list yet - mark them for deletion instead.
+         * This prevents use-after-free races with other threads that might
+         * already hold profile pointers after releasing locks. */
+        for(int i = 0; i < count; i++)
+        {
+            Profile *tempProfile = (Profile *)Vector_At(profileList, i);
+            if(tempProfile)
+            {
+                tempProfile->marked_for_deletion = true;
+                atomic_store(&tempProfile->enable, false);
+                tempProfile->isSchedulerstarted = false;
+            }
+        }
+
         profileCopies = malloc(count * sizeof(Profile*));
         if(!profileCopies)
         {
@@ -1695,14 +1744,11 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
             return T2ERROR_FAILURE;
         }
 
-        /* Move all profiles from list to temporary array to prevent other threads from accessing them */
+        /* Copy profile pointers for safe iteration outside lock */
         for(int i = 0; i < count; i++)
         {
             profileCopies[i] = (Profile *)Vector_At(profileList, i);
         }
-
-        /* Clear the list so no other thread can access these profiles - use no-op cleanup */
-        Vector_Clear(profileList, no_op_cleanup);
     }
     pthread_rwlock_unlock(&plRwLock);
 
@@ -1715,11 +1761,11 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
             continue;    /* Skip NULL profiles */
         }
 
-        /* Disable profile first */
-        pthread_rwlock_wrlock(&plRwLock);
-        atomic_store(&tempProfile->enable, false);
-        tempProfile->isSchedulerstarted = false;
-        pthread_rwlock_unlock(&plRwLock);
+        /* Skip profiles not marked for deletion (safety check) */
+        if(!tempProfile->marked_for_deletion)
+        {
+            continue;
+        }
 
         if(T2ERROR_SUCCESS != unregisterProfileFromScheduler(tempProfile->name))
         {
@@ -1762,18 +1808,19 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
         /* Free the profile since it's no longer in the vector */
         freeProfile(tempProfile);
     }
-    if(delFromDisk == true)
-    {
-        removeProfileFromDisk(REPORTPROFILES_PERSISTENCE_PATH, MSGPACK_REPORTPROFILES_PERSISTENT_FILE);
-    }
 
+    /* Now safely clear the list and recreate it */
     pthread_rwlock_wrlock(&plRwLock);
-    T2Debug("Deleting all profiles from the profileList\n");
-    /* Vector was already cleared and profiles freed in loop above */
+    Vector_Clear(profileList, no_op_cleanup); // Profiles already freed above
     Vector_Destroy(profileList, no_op_cleanup);
     profileList = NULL;
     Vector_Create(&profileList);
     pthread_rwlock_unlock(&plRwLock);
+
+    if(delFromDisk == true)
+    {
+        removeProfileFromDisk(REPORTPROFILES_PERSISTENCE_PATH, MSGPACK_REPORTPROFILES_PERSISTENT_FILE);
+    }
 
     /* Clean up allocated profile copies array */
     if(profileCopies)
@@ -1819,6 +1866,14 @@ T2ERROR deleteProfile(const char *profileName)
     if(T2ERROR_SUCCESS != getProfile(profileName, &profile))
     {
         T2Error("Profile : %s not found\n", profileName);
+        pthread_rwlock_unlock(&plRwLock);
+        return T2ERROR_FAILURE;
+    }
+
+    /* Additional safety check for concurrent deletion in deleteProfile */
+    if(profile->marked_for_deletion)
+    {
+        T2Error("Profile : %s is being deleted\n", profileName);
         pthread_rwlock_unlock(&plRwLock);
         return T2ERROR_FAILURE;
     }

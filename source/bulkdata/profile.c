@@ -1500,6 +1500,7 @@ T2ERROR enableProfile(const char *profileName)
         if(timeRefCopy)
         {
             free(timeRefCopy);
+            timeRefCopy = NULL; // Prevent double-free
         }
 
         if(schedResult != T2ERROR_SUCCESS)
@@ -1533,20 +1534,14 @@ T2ERROR enableProfile(const char *profileName)
             }
             /* Note: Event markers are cleaned up when profile is disabled/deleted */
 
-            if(timeRefCopy)
-            {
-                free(timeRefCopy);
-            }
+            // timeRefCopy already freed above - no need to free again
             return T2ERROR_FAILURE;
         }
         pthread_rwlock_unlock(&plRwLock);
 
         T2ER_StartDispatchThread();
 
-        if(timeRefCopy)
-        {
-            free(timeRefCopy);
-        }
+        // timeRefCopy already freed above - no need to free again
         T2Info("Successfully enabled profile : %s\n", profileName);
         return T2ERROR_SUCCESS;
 
@@ -1562,10 +1557,7 @@ cleanup_and_fail:
             free(markerInfos);
         }
         free(profileNameCopy);
-        if(timeRefCopy)
-        {
-            free(timeRefCopy);
-        }
+        // timeRefCopy already freed above or never allocated - no need to free again
         atomic_store(&profile->enable, false);
         /* Note: triggerCondMutex will be destroyed in freeProfile() - NOT here */
         pthread_rwlock_unlock(&plRwLock);
@@ -1894,6 +1886,9 @@ T2ERROR deleteProfile(const char *profileName)
         return T2ERROR_FAILURE;
     }
 
+    /* Mark profile for deletion to prevent concurrent access */
+    profile->marked_for_deletion = true;
+
     if(atomic_load(&profile->enable))
     {
         atomic_store(&profile->enable, false);
@@ -1902,14 +1897,50 @@ T2ERROR deleteProfile(const char *profileName)
     {
         profile->isSchedulerstarted = false;
     }
+
+    /* Mark profile for deletion to prevent concurrent access */
+    profile->marked_for_deletion = true;
+
+    if(atomic_load(&profile->enable))
+    {
+        atomic_store(&profile->enable, false);
+    }
+    if(profile->isSchedulerstarted)
+    {
+        profile->isSchedulerstarted = false;
+    }
+
+    /* Remove from profileList first to prevent other threads from finding it,
+     * but don't call freeProfile yet - we need to do thread cleanup first */
+    size_t profileIndex = 0;
+    bool found = false;
+    for(size_t i = 0; i < Vector_Size(profileList); i++)
+    {
+        Profile *p = (Profile*)Vector_At(profileList, i);
+        if(p == profile)
+        {
+            Vector_RemoveItemAtIndex(profileList, i);
+            found = true;
+            break;
+        }
+    }
+
+    if(!found)
+    {
+        T2Error("Profile %s not found in list during deletion\n", profileName);
+        pthread_rwlock_unlock(&plRwLock);
+        return T2ERROR_FAILURE;
+    }
+
+    T2Info("removing profile : %s from profile list\n", profile->name);
     pthread_rwlock_unlock(&plRwLock);
+
     if(T2ERROR_SUCCESS != unregisterProfileFromScheduler(profileName))
     {
         T2Info("Profile : %s already removed from scheduler\n", profileName);
     }
 
     T2Info("Waiting for CollectAndReport to be complete : %s\n", profileName);
-    pthread_rwlock_rdlock(&plRwLock);
 
     // Wait for any in-progress report to finish under reportInProgressMutex.
     // threadExists must NOT be read here — it is written under reuseThreadMutex
@@ -1929,14 +1960,6 @@ T2ERROR deleteProfile(const char *profileName)
     bool threadStillExists = atomic_load(&profile->threadExists);
     pthread_mutex_unlock(&profile->reuseThreadMutex);
 
-    /* Release plRwLock before pthread_join to avoid deadlock.
-     * pthread_join can block indefinitely if the CollectAndReport thread
-     * is stuck (e.g., waiting on rbusMethodMutex). Holding plRwLock during
-     * pthread_join prevents other threads (timeout callbacks, other profile
-     * operations) from making progress, creating a deadlock.
-     */
-    pthread_rwlock_unlock(&plRwLock);
-
     if (threadStillExists)
     {
         /* Hold reuseThreadMutex across check and signal to prevent race with thread destruction */
@@ -1954,8 +1977,7 @@ T2ERROR deleteProfile(const char *profileName)
         }
     }
 
-    pthread_rwlock_wrlock(&plRwLock);
-
+    /* Now safe to clean up profile resources */
     if(Vector_Size(profile->triggerConditionList) > 0)
     {
         rbusT2ConsumerUnReg(profile->triggerConditionList);
@@ -1967,16 +1989,13 @@ T2ERROR deleteProfile(const char *profileName)
         profile->grepSeekProfile = NULL;
     }
 
-    pthread_mutex_destroy(&profile->reportInProgressMutex);
-    pthread_cond_destroy(&profile->reportInProgressCond);
-
-    T2Info("removing profile : %s from profile list\n", profile->name);
 #ifdef PERSIST_LOG_MON_REF
-    removeProfileFromDisk(SEEKFOLDER, profile->name);
+    removeProfileFromDisk(SEEKFOLDER, profileName);
 #endif
-    Vector_RemoveItem(profileList, profile, freeProfile);
 
-    pthread_rwlock_unlock(&plRwLock);
+    /* Manually free the profile since we removed it from Vector without calling freeProfile */
+    freeProfile(profile);
+
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }

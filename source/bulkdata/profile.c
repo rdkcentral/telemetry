@@ -65,6 +65,10 @@ static pthread_mutex_t reportLock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t triggerConditionQueMutex = PTHREAD_MUTEX_INITIALIZER;
 static queue_t *triggerConditionQueue = NULL;
 
+/* Forward declarations */
+static T2ERROR initProfileLocks(Profile *profile);
+static void cleanupProfileLocks(Profile *profile);
+
 typedef struct __triggerConditionObj__
 {
     char referenceName[MAX_LEN];
@@ -352,19 +356,21 @@ T2ERROR profileWithNameExists(const char *profileName, bool *bProfileExists)
         *bProfileExists = false;
         return T2ERROR_FAILURE;
     }
-    pthread_mutex_lock(&plMutex);
+
+    /* Use read lock for parallel profile lookup */
+    pthread_rwlock_rdlock(&plRwLock);
     for(; profileIndex < Vector_Size(profileList); profileIndex++)
     {
         tempProfile = (Profile *)Vector_At(profileList, profileIndex);
         if(strcmp(tempProfile->name, profileName) == 0)
         {
             *bProfileExists = true;
-            pthread_mutex_unlock(&plMutex);
+            pthread_rwlock_unlock(&plRwLock);
             return T2ERROR_SUCCESS;
         }
     }
     *bProfileExists = false;
-    pthread_mutex_unlock(&plMutex);
+    pthread_rwlock_unlock(&plRwLock);
     T2Error("Profile with Name : %s not found\n", profileName);
     return T2ERROR_PROFILE_NOT_FOUND;
 }
@@ -975,22 +981,20 @@ reportThreadEnd :
 void NotifyTimeout(const char* profileName, bool isClearSeekMap)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
-    pthread_mutex_lock(&plMutex);
 
+    /* Use fine-grained lookup instead of global lock */
     Profile *profile = NULL;
     if(T2ERROR_SUCCESS != getProfile(profileName, &profile))
     {
         T2Error("Profile : %s not found\n", profileName);
-        pthread_mutex_unlock(&plMutex);
-        return ;
+        return;
     }
 
-    pthread_mutex_unlock(&plMutex);
-    T2Info("%s: profile %s is in %s state\n", __FUNCTION__, profileName, profile->enable ? "Enabled" : "Disabled");
+    T2Info("%s: profile %s is in %s state\n", __FUNCTION__, profileName, atomic_load(&profile->enable) ? "Enabled" : "Disabled");
     pthread_mutex_lock(&profile->reportInProgressMutex);
-    if(profile->enable && !profile->reportInProgress)
+    if(atomic_load(&profile->enable) && !atomic_load(&profile->reportInProgress))
     {
-        profile->reportInProgress = true;
+        atomic_store(&profile->reportInProgress, true);
         profile->bClearSeekMap = isClearSeekMap;
         pthread_mutex_unlock(&profile->reportInProgressMutex);
 
@@ -1025,16 +1029,16 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
 
-    pthread_mutex_lock(&plMutex);
+    /* Use fine-grained lookup instead of global lock */
     Profile *profile = NULL;
     if(T2ERROR_SUCCESS != getProfile(profileName, &profile))
     {
         T2Error("Profile : %s not found\n", profileName);
-        pthread_mutex_unlock(&plMutex);
         return T2ERROR_FAILURE;
     }
-    pthread_mutex_unlock(&plMutex);
-    if(!profile->enable)
+
+    /* Use atomic read for enable check */
+    if(!atomic_load(&profile->enable))
     {
         T2Warning("Profile : %s is disabled, ignoring the event\n", profileName);
         return T2ERROR_FAILURE;
@@ -1327,14 +1331,16 @@ T2ERROR disableProfile(const char *profileName, bool *isDeleteRequired)
         return T2ERROR_FAILURE;
     }
 
-    pthread_mutex_lock(&plMutex);
+    /* Use fine-grained lookup */
     Profile *profile = NULL;
     if(T2ERROR_SUCCESS != getProfile(profileName, &profile))
     {
         T2Error("Profile : %s not found\n", profileName);
-        pthread_mutex_unlock(&plMutex);
         return T2ERROR_FAILURE;
     }
+
+    /* Lock individual profile for operations */
+    pthread_mutex_lock(&profile->lock);
 
     if (profile->generateNow)
     {
@@ -1342,13 +1348,13 @@ T2ERROR disableProfile(const char *profileName, bool *isDeleteRequired)
     }
     else
     {
-        profile->enable = false;
+        atomic_store(&profile->enable, false);
     }
 #ifdef PERSIST_LOG_MON_REF
     removeProfileFromDisk(SEEKFOLDER, profile->name);
 #endif
     profile->isSchedulerstarted = false;
-    pthread_mutex_unlock(&plMutex);
+    pthread_mutex_unlock(&profile->lock);
     T2Debug("%s --out\n", __FUNCTION__);
 
     return T2ERROR_SUCCESS;
@@ -1362,24 +1368,33 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
     int profileIndex = 0;
     Profile *tempProfile = NULL;
 
-    pthread_mutex_lock(&plMutex);
+    /* Use read lock to get count snapshot */
+    pthread_rwlock_rdlock(&plRwLock);
     if(profileList == NULL)
     {
         T2Error("profile list is not initialized yet or profileList is empty, ignoring\n");
-        pthread_mutex_unlock(&plMutex);
+        pthread_rwlock_unlock(&plRwLock);
         return T2ERROR_FAILURE;
     }
 
     count = Vector_Size(profileList);
-    pthread_mutex_unlock(&plMutex);
+    pthread_rwlock_unlock(&plRwLock);
 
     for(; profileIndex < count; profileIndex++)
     {
-        pthread_mutex_lock(&plMutex);
+        /* Get profile with read lock */
+        pthread_rwlock_rdlock(&plRwLock);
+        if(profileIndex >= Vector_Size(profileList))
+        {
+            pthread_rwlock_unlock(&plRwLock);
+            break; /* Vector shrunk during iteration */
+        }
         tempProfile = (Profile *)Vector_At(profileList, profileIndex);
-        tempProfile->enable = false;
+        pthread_rwlock_unlock(&plRwLock);
+
+        /* Use atomic operations for profile state */
+        atomic_store(&tempProfile->enable, false);
         tempProfile->isSchedulerstarted = false;
-        pthread_mutex_unlock(&plMutex);
 
         if(T2ERROR_SUCCESS != unregisterProfileFromScheduler(tempProfile->name))
         {
@@ -1391,7 +1406,7 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
          * The thread sets threadExists = false and then destroys reuseThreadMutex
          * before returning, so reuseThreadMutex must not be accessed after join. */
         pthread_mutex_lock(&tempProfile->reuseThreadMutex);
-        bool threadStillExists = tempProfile->threadExists;
+        bool threadStillExists = atomic_load(&tempProfile->threadExists);
         if (threadStillExists)
         {
             tempProfile->restartRequested = true;
@@ -1406,13 +1421,11 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
              * after setting threadExists = false (see CollectAndReport cleanup). */
         }
 
-        /* Re-acquire plMutex for profile cleanup */
-        pthread_mutex_lock(&plMutex);
+        /* No global lock needed for per-profile cleanup */
         if(tempProfile->grepSeekProfile)
         {
             freeGrepSeekProfile(tempProfile->grepSeekProfile);
         }
-        pthread_mutex_unlock(&plMutex);
         if(delFromDisk == true)
         {
             removeProfileFromDisk(REPORTPROFILES_PERSISTENCE_PATH, tempProfile->name);
@@ -1442,17 +1455,18 @@ bool isProfileEnabled(const char *profileName)
 {
     bool is_profile_enable = false;
     Profile *get_profile = NULL;
-    pthread_mutex_lock(&plMutex);
+
+    /* Use fine-grained lookup */
     if(T2ERROR_SUCCESS != getProfile(profileName, &get_profile))
     {
         T2Error("Profile : %s not found\n", profileName);
         T2Debug("%s --out\n", __FUNCTION__);
-        pthread_mutex_unlock(&plMutex);
         return false;
     }
-    is_profile_enable = get_profile->enable;
+
+    /* Use atomic read for enable flag */
+    is_profile_enable = atomic_load(&get_profile->enable);
     T2Debug("is_profile_enable = %d \n", is_profile_enable);
-    pthread_mutex_unlock(&plMutex);
     return is_profile_enable;
 }
 
@@ -1467,37 +1481,38 @@ T2ERROR deleteProfile(const char *profileName)
     }
 
     Profile *profile = NULL;
-    pthread_mutex_lock(&plMutex);
+
+    /* Use fine-grained lookup */
     if(T2ERROR_SUCCESS != getProfile(profileName, &profile))
     {
         T2Error("Profile : %s not found\n", profileName);
-        pthread_mutex_unlock(&plMutex);
         return T2ERROR_FAILURE;
     }
 
-    if(profile->enable)
-    {
-        profile->enable = false;
-    }
+    /* Lock individual profile and disable it atomically */
+    pthread_mutex_lock(&profile->lock);
+    atomic_store(&profile->enable, false);
     if(profile->isSchedulerstarted)
     {
         profile->isSchedulerstarted = false;
     }
-    pthread_mutex_unlock(&plMutex);
+    pthread_mutex_unlock(&profile->lock);
+
     if(T2ERROR_SUCCESS != unregisterProfileFromScheduler(profileName))
     {
         T2Info("Profile : %s already removed from scheduler\n", profileName);
     }
 
     T2Info("Waiting for CollectAndReport to be complete : %s\n", profileName);
-    pthread_mutex_lock(&plMutex);
+
+    /* No global lock needed for thread synchronization */
 
     // Wait for any in-progress report to finish under reportInProgressMutex.
     // threadExists must NOT be read here — it is written under reuseThreadMutex
     // in CollectAndReport, so mixing the two mutexes causes a data race (Coverity
     // LOCK_EVASION).  Read threadExists separately under reuseThreadMutex below.
     pthread_mutex_lock(&profile->reportInProgressMutex);
-    while (profile->reportInProgress)
+    while (atomic_load(&profile->reportInProgress))
     {
         pthread_cond_wait(&profile->reportInProgressCond, &profile->reportInProgressMutex);
     }
@@ -1508,16 +1523,12 @@ T2ERROR deleteProfile(const char *profileName)
      * reuseThreadMutex before returning, so reuseThreadMutex must not be used after
      * pthread_join returns. */
     pthread_mutex_lock(&profile->reuseThreadMutex);
-    bool threadStillExists = profile->threadExists;
+    bool threadStillExists = atomic_load(&profile->threadExists);
     pthread_mutex_unlock(&profile->reuseThreadMutex);
 
-    /* Release plMutex before pthread_join to avoid deadlock.
+    /* No global lock held during pthread_join to avoid deadlock.
      * pthread_join can block indefinitely if the CollectAndReport thread
-     * is stuck (e.g., waiting on rbusMethodMutex). Holding plMutex during
-     * pthread_join prevents other threads (timeout callbacks, other profile
-     * operations) from making progress, creating a deadlock.
-     */
-    pthread_mutex_unlock(&plMutex);
+     * is stuck (e.g., waiting on rbusMethodMutex). */
 
     if (threadStillExists)
     {
@@ -1533,6 +1544,7 @@ T2ERROR deleteProfile(const char *profileName)
     /* Re-acquire plMutex for profile cleanup operations */
     pthread_mutex_lock(&plMutex);
 
+    /* Cleanup resources before removing from list */
     if(Vector_Size(profile->triggerConditionList) > 0)
     {
         rbusT2ConsumerUnReg(profile->triggerConditionList);
@@ -1546,13 +1558,14 @@ T2ERROR deleteProfile(const char *profileName)
     pthread_mutex_destroy(&profile->reportInProgressMutex);
     pthread_cond_destroy(&profile->reportInProgressCond);
 
+    /* Remove profile from list using write lock */
+    pthread_rwlock_wrlock(&plRwLock);
     T2Info("removing profile : %s from profile list\n", profile->name);
 #ifdef PERSIST_LOG_MON_REF
     removeProfileFromDisk(SEEKFOLDER, profile->name);
 #endif
     Vector_RemoveItem(profileList, profile, freeProfile);
-
-    pthread_mutex_unlock(&plMutex);
+    pthread_rwlock_unlock(&plRwLock);
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
@@ -1563,7 +1576,8 @@ void sendLogUploadInterruptToScheduler()
     Profile *tempProfile = NULL;
     T2Debug("%s ++in\n", __FUNCTION__);
 
-    pthread_mutex_lock(&plMutex);
+    /* Use read lock for parallel access */
+    pthread_rwlock_rdlock(&plRwLock);
     for(; profileIndex < Vector_Size(profileList); profileIndex++)
     {
         tempProfile = (Profile *)Vector_At(profileList, profileIndex);
@@ -1716,7 +1730,7 @@ T2ERROR initProfileList(bool checkPreviousSeek)
         return T2ERROR_SUCCESS;
     }
     initialized = true;
-    if(pthread_mutex_init(&plMutex, NULL) != 0)
+    if(pthread_rwlock_init(&plRwLock, NULL) != 0)
     {
         T2Error("%s mutex init has failed\n", __FUNCTION__);
         return T2ERROR_FAILURE;
@@ -1727,9 +1741,10 @@ T2ERROR initProfileList(bool checkPreviousSeek)
         return T2ERROR_FAILURE;
     }
 
-    pthread_mutex_lock(&plMutex);
+    /* Use write lock to initialize empty profileList */
+    pthread_rwlock_wrlock(&plRwLock);
     Vector_Create(&profileList);
-    pthread_mutex_unlock(&plMutex);
+    pthread_rwlock_unlock(&plRwLock);
 
     registerConditionalReportCallBack(&triggerReportOnCondtion);
 
@@ -1802,7 +1817,7 @@ T2ERROR uninitProfileList()
     }
 
     pthread_mutex_destroy(&reportLock);
-    pthread_mutex_destroy(&plMutex);
+    pthread_rwlock_destroy(&plRwLock);
 
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;

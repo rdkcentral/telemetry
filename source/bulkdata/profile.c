@@ -1457,6 +1457,7 @@ T2ERROR enableProfile(const char *profileName)
         bool deleteOnTimeout = profile->deleteonTimeout;
         bool reportOnUpdate = profile->reportOnUpdate;
         int firstReportingInterval = profile->firstReportingInterval;
+        char *timeRefCopy = profile->timeRef ? strdup(profile->timeRef) : NULL;
 
         /* Keep profile->enable = true while holding lock to make enabling atomic.
          * This prevents concurrent disable/delete operations from interfering.
@@ -1482,9 +1483,9 @@ T2ERROR enableProfile(const char *profileName)
 
         T2ERROR schedResult = registerProfileWithScheduler(profileNameCopy, reportingInterval,
                               activationTimeoutPeriod, deleteOnTimeout,
-                              true, reportOnUpdate, firstReportingInterval, profile->timeRef);
+                              true, reportOnUpdate, firstReportingInterval, timeRefCopy);
 
-        // Clean up allocated memory - scheduler takes direct reference to profile->timeRef
+        // Clean up allocated memory - timeRefCopy was our safe copy
         if(markerInfos)
         {
             for(size_t i = 0; i < eMarkerCount; i++)
@@ -1495,6 +1496,10 @@ T2ERROR enableProfile(const char *profileName)
             free(markerInfos);
         }
         free(profileNameCopy);
+        if(timeRefCopy)
+        {
+            free(timeRefCopy);
+        }
 
         if(schedResult != T2ERROR_SUCCESS)
         {
@@ -1527,12 +1532,20 @@ T2ERROR enableProfile(const char *profileName)
             }
             /* Note: Event markers are cleaned up when profile is disabled/deleted */
 
+            if(timeRefCopy)
+            {
+                free(timeRefCopy);
+            }
             return T2ERROR_FAILURE;
         }
         pthread_rwlock_unlock(&plRwLock);
 
         T2ER_StartDispatchThread();
 
+        if(timeRefCopy)
+        {
+            free(timeRefCopy);
+        }
         T2Info("Successfully enabled profile : %s\n", profileName);
         return T2ERROR_SUCCESS;
 
@@ -1548,6 +1561,10 @@ cleanup_and_fail:
             free(markerInfos);
         }
         free(profileNameCopy);
+        if(timeRefCopy)
+        {
+            free(timeRefCopy);
+        }
         atomic_store(&profile->enable, false);
         /* Note: triggerCondMutex will be destroyed in freeProfile() - NOT here */
         pthread_rwlock_unlock(&plRwLock);
@@ -2257,7 +2274,16 @@ T2ERROR uninitProfileList()
 
     deleteAllProfiles(false); // avoid removing multiProfiles from Disc
 
-    if(!pthread_mutex_trylock(&triggerConditionQueMutex))
+    /* Destroy the profileList Vector to prevent memory leak on re-initialization */
+    pthread_rwlock_wrlock(&plRwLock);
+    if(profileList)
+    {
+        Vector_Destroy(profileList, no_op_cleanup); // Should be empty after deleteAllProfiles
+        profileList = NULL;
+    }
+    pthread_rwlock_unlock(&plRwLock);
+
+    if(!pthread_mutex_trylock(&triggerConditionQueMutex)))
     {
         if(triggerConditionQueue)
         {

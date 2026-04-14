@@ -1067,13 +1067,13 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
             {
                 T2Error("Failed to create report thread: %s\n", strerror(ret));
 
-                /* Roll back state on thread creation failure */
+                /* Roll back state on thread creation failure - must hold mutex */
                 profile->reportInProgress = false;
                 profile->bClearSeekMap = false;
                 profile->restartRequested = false;
                 pthread_cond_signal(&profile->reportInProgressCond);
-
                 pthread_mutex_unlock(&profile->reportInProgressMutex);
+
                 if(profile->threadExists)
                 {
                     pthread_mutex_unlock(&profile->reuseThreadMutex);
@@ -1395,14 +1395,6 @@ T2ERROR enableProfile(const char *profileName)
         bool deleteOnTimeout = profile->deleteonTimeout;
         bool reportOnUpdate = profile->reportOnUpdate;
         int firstReportingInterval = profile->firstReportingInterval;
-        char *timeRefCopy = profile->timeRef ? strdup(profile->timeRef) : NULL;
-
-        // Check timeRef allocation if it was attempted
-        if(profile->timeRef && !timeRefCopy)
-        {
-            T2Error("Failed to allocate memory for time reference copy\n");
-            goto cleanup_and_fail;
-        }
 
         /* Keep profile->enable = true while holding lock to make enabling atomic.
          * This prevents concurrent disable/delete operations from interfering.
@@ -1741,6 +1733,9 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
             removeProfileFromDisk(SEEKFOLDER, tempProfile->name);
 #endif
         }
+
+        /* Free the profile since it's no longer in the vector */
+        freeProfile(tempProfile);
     }
     if(delFromDisk == true)
     {
@@ -1749,7 +1744,8 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
 
     pthread_rwlock_wrlock(&plRwLock);
     T2Debug("Deleting all profiles from the profileList\n");
-    Vector_Destroy(profileList, freeProfile);
+    /* Vector was already cleared and profiles freed in loop above */
+    Vector_Destroy(profileList, no_op_cleanup);
     profileList = NULL;
     Vector_Create(&profileList);
     pthread_rwlock_unlock(&plRwLock);
@@ -1777,7 +1773,7 @@ bool isProfileEnabled(const char *profileName)
         pthread_rwlock_unlock(&plRwLock);
         return false;
     }
-    is_profile_enable = get_profile->enable;
+    is_profile_enable = atomic_load(&get_profile->enable);
     T2Debug("is_profile_enable = %d \n", is_profile_enable);
     pthread_rwlock_unlock(&plRwLock);
     return is_profile_enable;

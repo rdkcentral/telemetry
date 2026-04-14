@@ -1067,7 +1067,8 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
             {
                 T2Error("Failed to create report thread: %s\n", strerror(ret));
 
-                /* Roll back state on thread creation failure - must hold mutex */
+                /* Roll back state on thread creation failure - must hold reportInProgressMutex */
+                pthread_mutex_lock(&profile->reportInProgressMutex);
                 profile->reportInProgress = false;
                 profile->bClearSeekMap = false;
                 profile->restartRequested = false;
@@ -1336,8 +1337,7 @@ T2ERROR enableProfile(const char *profileName)
             T2Error("Failed to allocate memory for profile name copy\n");
             atomic_store(&profile->enable, false);
             pthread_mutex_destroy(&profile->triggerCondMutex);
-            pthread_mutex_destroy(&profile->reportInProgressMutex);
-            pthread_cond_destroy(&profile->reportInProgressCond);
+            /* Note: reportInProgressMutex/Cond are destroyed in freeProfile - NOT here */
             pthread_rwlock_unlock(&plRwLock);
             return T2ERROR_FAILURE;
         }
@@ -1359,8 +1359,7 @@ T2ERROR enableProfile(const char *profileName)
                 free(profileNameCopy);
                 atomic_store(&profile->enable, false);
                 pthread_mutex_destroy(&profile->triggerCondMutex);
-                pthread_mutex_destroy(&profile->reportInProgressMutex);
-                pthread_cond_destroy(&profile->reportInProgressCond);
+                /* Note: reportInProgressMutex/Cond are destroyed in freeProfile - NOT here */
                 pthread_rwlock_unlock(&plRwLock);
                 return T2ERROR_FAILURE;
             }
@@ -1488,8 +1487,7 @@ cleanup_and_fail:
         free(profileNameCopy);
         atomic_store(&profile->enable, false);
         pthread_mutex_destroy(&profile->triggerCondMutex);
-        pthread_mutex_destroy(&profile->reportInProgressMutex);
-        pthread_cond_destroy(&profile->reportInProgressCond);
+        /* Note: reportInProgressMutex/Cond are destroyed in freeProfile - NOT here */
         pthread_rwlock_unlock(&plRwLock);
         return T2ERROR_FAILURE;
     }

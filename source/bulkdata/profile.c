@@ -1678,7 +1678,7 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
         }
 
         /* Clear the list so no other thread can access these profiles */
-        Vector_Clear(profileList);
+        Vector_Clear(profileList, NULL);
     }
     pthread_rwlock_unlock(&plRwLock);
 

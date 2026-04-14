@@ -1009,17 +1009,39 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
         profile->reportInProgress = true;
         profile->bClearSeekMap = isClearSeekMap;
         
-        // Hold reportInProgressMutex until reuseThreadMutex is acquired to prevent race conditions
+        /* Release reportInProgressMutex before acquiring reuseThreadMutex to maintain
+         * consistent lock ordering (reuseThreadMutex → reportInProgressMutex)
+         * and prevent deadlock with CollectAndReport thread */
+        pthread_mutex_unlock(&profile->reportInProgressMutex);
+        
         if(safe_acquire_profile_lock(&profile->reuseThreadMutex, "reuseThreadMutex", __FUNCTION__) != 0)
         {
-            // Failed to acquire reuseThreadMutex, reset report state and notify waiters
-            profile->reportInProgress = false;
-            pthread_cond_signal(&profile->reportInProgressCond);
-            pthread_mutex_unlock(&profile->reportInProgressMutex);
+            // Failed to acquire reuseThreadMutex, reset report state
+            if(safe_acquire_profile_lock(&profile->reportInProgressMutex, "reportInProgressMutex", __FUNCTION__) == 0)
+            {
+                profile->reportInProgress = false;
+                pthread_cond_signal(&profile->reportInProgressCond);
+                pthread_mutex_unlock(&profile->reportInProgressMutex);
+            }
             return;
         }
         
-        // Successfully acquired both mutexes, now unlock reportInProgressMutex
+        // Successfully acquired reuseThreadMutex, now lock reportInProgressMutex for final checks
+        if(safe_acquire_profile_lock(&profile->reportInProgressMutex, "reportInProgressMutex", __FUNCTION__) != 0)
+        {
+            pthread_mutex_unlock(&profile->reuseThreadMutex);
+            return;
+        }
+        
+        // Verify profile is still enabled and not already in progress
+        if(!profile->enable || profile->reportInProgress != true)
+        {
+            profile->reportInProgress = false;
+            pthread_mutex_unlock(&profile->reportInProgressMutex);
+            pthread_mutex_unlock(&profile->reuseThreadMutex);
+            return;
+        }
+        
         pthread_mutex_unlock(&profile->reportInProgressMutex);
         if(profile->threadExists)
         {
@@ -1738,7 +1760,7 @@ T2ERROR deleteProfile(const char *profileName)
 
     /* Release plMutex before pthread_join to avoid deadlock.
      * pthread_join can block indefinitely if the CollectAndReport thread
-     * is stuck (e.g., waiting on rbusMethodMutex). Holding plMutex during
+     * is stuck (e.g., waiting on rbusMethodMutex). Holding plRwLock during
      * pthread_join prevents other threads (timeout callbacks, other profile
      * operations) from making progress, creating a deadlock.
      */
@@ -2353,6 +2375,12 @@ T2ERROR triggerReportOnCondtion(const char *referenceName, const char *reference
                                 {
                                     revalidatedProfile->triggerReportOnCondition = false;
                                     pthread_mutex_unlock(&revalidatedProfile->triggerCondMutex);
+                                }
+                                else
+                                {
+                                    /* Profile was deleted/modified - unlock mutex using original tempProfile reference
+                                     * This is safe because we haven't released our reference to tempProfile yet */
+                                    pthread_mutex_unlock(&tempProfile->triggerCondMutex);
                                 }
                                 pthread_rwlock_unlock(&plRwLock);
                             }

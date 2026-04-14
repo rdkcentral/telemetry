@@ -274,11 +274,12 @@ static void freeProfile(void *data)
             profile->jsonReportObj = NULL;
         }
 
-        /* Destroy all mutexes and condition variables that were initialized at profile creation */
+        /* Destroy all pthread objects - they are guaranteed to be initialized by addProfile() */
         pthread_mutex_destroy(&profile->reuseThreadMutex);
         pthread_cond_destroy(&profile->reuseThread);
         pthread_mutex_destroy(&profile->reportInProgressMutex);
         pthread_cond_destroy(&profile->reportInProgressCond);
+        pthread_mutex_destroy(&profile->triggerCondMutex);
 
         free(profile);
     }
@@ -1277,11 +1278,46 @@ T2ERROR addProfile(Profile *profile)
         return T2ERROR_FAILURE;
     }
 
-    /* Initialize thread synchronization objects at profile add time */
-    if(pthread_mutex_init(&profile->reuseThreadMutex, NULL) != 0 ||
-            pthread_cond_init(&profile->reuseThread, NULL) != 0)
+    /* Initialize ALL pthread objects at profile add time - regardless of how profile was created.
+     * This ensures freeProfile() can always safely destroy all pthread objects. */
+    if(pthread_mutex_init(&profile->reuseThreadMutex, NULL) != 0)
     {
-        T2Error("Failed to initialize profile thread synchronization objects\n");
+        T2Error("Failed to initialize reuseThreadMutex\n");
+        return T2ERROR_FAILURE;
+    }
+
+    if(pthread_cond_init(&profile->reuseThread, NULL) != 0)
+    {
+        T2Error("Failed to initialize reuseThread condition variable\n");
+        pthread_mutex_destroy(&profile->reuseThreadMutex);
+        return T2ERROR_FAILURE;
+    }
+
+    if(pthread_mutex_init(&profile->reportInProgressMutex, NULL) != 0)
+    {
+        T2Error("Failed to initialize reportInProgressMutex\n");
+        pthread_mutex_destroy(&profile->reuseThreadMutex);
+        pthread_cond_destroy(&profile->reuseThread);
+        return T2ERROR_FAILURE;
+    }
+
+    if(pthread_cond_init(&profile->reportInProgressCond, NULL) != 0)
+    {
+        T2Error("Failed to initialize reportInProgressCond\n");
+        pthread_mutex_destroy(&profile->reuseThreadMutex);
+        pthread_cond_destroy(&profile->reuseThread);
+        pthread_mutex_destroy(&profile->reportInProgressMutex);
+        return T2ERROR_FAILURE;
+    }
+
+    /* Initialize triggerCondMutex here too - move from enableProfile() to ensure all mutexes exist */
+    if(pthread_mutex_init(&profile->triggerCondMutex, NULL) != 0)
+    {
+        T2Error("Failed to initialize triggerCondMutex\n");
+        pthread_mutex_destroy(&profile->reuseThreadMutex);
+        pthread_cond_destroy(&profile->reuseThread);
+        pthread_mutex_destroy(&profile->reportInProgressMutex);
+        pthread_cond_destroy(&profile->reportInProgressCond);
         return T2ERROR_FAILURE;
     }
 
@@ -1322,30 +1358,7 @@ T2ERROR enableProfile(const char *profileName)
     else
     {
         atomic_store(&profile->enable, true);
-        if(pthread_mutex_init(&profile->triggerCondMutex, NULL) != 0)
-        {
-            T2Error(" %s Mutex init has failed\n", __FUNCTION__);
-            atomic_store(&profile->enable, false);
-            pthread_rwlock_unlock(&plRwLock);
-            return T2ERROR_FAILURE;
-        }
-        if(pthread_mutex_init(&profile->reportInProgressMutex, NULL) != 0)
-        {
-            T2Error(" %s Mutex init has failed\n", __FUNCTION__);
-            atomic_store(&profile->enable, false);
-            pthread_mutex_destroy(&profile->triggerCondMutex);
-            pthread_rwlock_unlock(&plRwLock);
-            return T2ERROR_FAILURE;
-        }
-        if(pthread_cond_init(&profile->reportInProgressCond, NULL) != 0)
-        {
-            T2Error(" %s Cond init has failed\n", __FUNCTION__);
-            atomic_store(&profile->enable, false);
-            pthread_mutex_destroy(&profile->triggerCondMutex);
-            pthread_mutex_destroy(&profile->reportInProgressMutex);
-            pthread_rwlock_unlock(&plRwLock);
-            return T2ERROR_FAILURE;
-        }
+        /* Note: triggerCondMutex is now initialized in addProfile() */
 
         size_t eMarkerCount = Vector_Size(profile->eMarkerList);
         char *profileNameCopy = strdup(profile->name);
@@ -1353,8 +1366,7 @@ T2ERROR enableProfile(const char *profileName)
         {
             T2Error("Failed to allocate memory for profile name copy\n");
             atomic_store(&profile->enable, false);
-            pthread_mutex_destroy(&profile->triggerCondMutex);
-            /* Note: reportInProgressMutex/Cond are destroyed in freeProfile - NOT here */
+            /* Note: triggerCondMutex will be destroyed in freeProfile() - NOT here */
             pthread_rwlock_unlock(&plRwLock);
             return T2ERROR_FAILURE;
         }
@@ -1375,8 +1387,7 @@ T2ERROR enableProfile(const char *profileName)
                 T2Error("Failed to allocate memory for marker info array\n");
                 free(profileNameCopy);
                 atomic_store(&profile->enable, false);
-                pthread_mutex_destroy(&profile->triggerCondMutex);
-                /* Note: reportInProgressMutex/Cond are destroyed in freeProfile - NOT here */
+                /* Note: triggerCondMutex will be destroyed in freeProfile() - NOT here */
                 pthread_rwlock_unlock(&plRwLock);
                 return T2ERROR_FAILURE;
             }
@@ -1503,8 +1514,7 @@ cleanup_and_fail:
         }
         free(profileNameCopy);
         atomic_store(&profile->enable, false);
-        pthread_mutex_destroy(&profile->triggerCondMutex);
-        /* Note: reportInProgressMutex/Cond are destroyed in freeProfile - NOT here */
+        /* Note: triggerCondMutex will be destroyed in freeProfile() - NOT here */
         pthread_rwlock_unlock(&plRwLock);
         return T2ERROR_FAILURE;
     }
@@ -2190,7 +2200,7 @@ T2ERROR uninitProfileList()
     }
 
     atomic_store(&initialized, false);
-    pthread_mutex_unlock(&init_mutex);
+    /* Keep init_mutex held during entire uninit to prevent concurrent initialization */
 
     deleteAllProfiles(false); // avoid removing multiProfiles from Disc
 
@@ -2206,6 +2216,8 @@ T2ERROR uninitProfileList()
 
     pthread_mutex_destroy(&reportLock);
     pthread_rwlock_destroy(&plRwLock);
+
+    pthread_mutex_unlock(&init_mutex);
 
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;

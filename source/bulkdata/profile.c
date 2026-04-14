@@ -2283,7 +2283,7 @@ T2ERROR uninitProfileList()
     }
     pthread_rwlock_unlock(&plRwLock);
 
-    if(!pthread_mutex_trylock(&triggerConditionQueMutex)))
+    if(!pthread_mutex_trylock(&triggerConditionQueMutex))
     {
         if(triggerConditionQueue)
         {

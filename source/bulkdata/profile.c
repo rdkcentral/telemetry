@@ -1722,20 +1722,7 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
     count = Vector_Size(profileList);
     if(count > 0)
     {
-        /* Don't remove profiles from list yet - mark them for deletion instead.
-         * This prevents use-after-free races with other threads that might
-         * already hold profile pointers after releasing locks. */
-        for(int i = 0; i < count; i++)
-        {
-            Profile *tempProfile = (Profile *)Vector_At(profileList, i);
-            if(tempProfile)
-            {
-                tempProfile->marked_for_deletion = true;
-                atomic_store(&tempProfile->enable, false);
-                tempProfile->isSchedulerstarted = false;
-            }
-        }
-
+        /* Allocate array to hold profile pointers */
         profileCopies = malloc(count * sizeof(Profile*));
         if(!profileCopies)
         {
@@ -1744,11 +1731,23 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
             return T2ERROR_FAILURE;
         }
 
-        /* Copy profile pointers for safe iteration outside lock */
+        /* Copy profile pointers and ATOMICALLY remove them from the list
+         * to prevent use-after-free races with concurrent readers */
         for(int i = 0; i < count; i++)
         {
-            profileCopies[i] = (Profile *)Vector_At(profileList, i);
+            Profile *tempProfile = (Profile *)Vector_At(profileList, i);
+            profileCopies[i] = tempProfile;
+            if(tempProfile)
+            {
+                tempProfile->marked_for_deletion = true;
+                atomic_store(&tempProfile->enable, false);
+                tempProfile->isSchedulerstarted = false;
+            }
         }
+
+        /* Immediately clear the list to prevent any concurrent access to profiles
+         * that we're about to free. This must be done under the write lock. */
+        Vector_Clear(profileList, no_op_cleanup);
     }
     pthread_rwlock_unlock(&plRwLock);
 
@@ -1809,10 +1808,9 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
         freeProfile(tempProfile);
     }
 
-    /* Now safely clear the list and recreate it */
+    /* Recreate the profile list under lock */
     pthread_rwlock_wrlock(&plRwLock);
-    Vector_Clear(profileList, no_op_cleanup); // Profiles already freed above
-    Vector_Destroy(profileList, no_op_cleanup);
+    Vector_Destroy(profileList, no_op_cleanup); // Already cleared above
     profileList = NULL;
     Vector_Create(&profileList);
     pthread_rwlock_unlock(&plRwLock);

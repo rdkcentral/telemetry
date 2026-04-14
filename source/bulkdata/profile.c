@@ -704,8 +704,8 @@ static void* CollectAndReport(void* data)
                             timeout = profile->maxlatencyTime;
                             pthread_mutex_unlock(&profile->reuseThreadMutex);
                             pthread_mutex_lock(&profile->reportMutex);
-                            /* Access enable flag safely - it's protected within this timed wait section */
-                            while (profile->enable && n != ETIMEDOUT)
+                            /* Access enable flag safely using atomic operation to prevent race conditions */
+                            while (atomic_load(&profile->enable) && n != ETIMEDOUT)
                             {
                                 n = pthread_cond_timedwait(&profile->reportcond, &profile->reportMutex, &timeout);
                             }
@@ -773,8 +773,8 @@ static void* CollectAndReport(void* data)
                             timeout = profile->maxlatencyTime;
                             pthread_mutex_unlock(&profile->reuseThreadMutex);
                             pthread_mutex_lock(&profile->reportMutex);
-                            /* Access enable flag safely - it's protected within this timed wait section */
-                            while (profile->enable && n != ETIMEDOUT)
+                            /* Access enable flag safely using atomic operation to prevent race conditions */
+                            while (atomic_load(&profile->enable) && n != ETIMEDOUT)
                             {
                                 n = pthread_cond_timedwait(&profile->reportcond, &profile->reportMutex, &timeout);
                             }
@@ -968,13 +968,13 @@ reportThreadEnd :
         T2Info("%s --out\n", __FUNCTION__);
         pthread_mutex_lock(&profile->reuseThreadMutex);
         /* Access enable flag safely under mutex protection to prevent race conditions */
-        while(profile->enable && !profile->restartRequested)
+        while(atomic_load(&profile->enable) && !profile->restartRequested)
         {
             pthread_cond_wait(&profile->reuseThread, &profile->reuseThreadMutex);
         }
         profile->restartRequested = false;
     }
-    while(profile->enable);  /* do-while loop condition - thread exits when disabled */
+    while(atomic_load(&profile->enable));  /* do-while loop condition - thread exits when disabled */
 
     pthread_mutex_unlock(&profile->reuseThreadMutex);
     T2Info("%s --out Exiting collect and report Thread\n", __FUNCTION__);
@@ -1012,22 +1012,27 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
 
     pthread_rwlock_unlock(&plRwLock);
 
-    T2Info("%s: profile %s is in %s state\n", __FUNCTION__, profileName, profile->enable ? "Enabled" : "Disabled");
+    T2Info("%s: profile %s is in %s state\n", __FUNCTION__, profileName, atomic_load(&profile->enable) ? "Enabled" : "Disabled");
 
-    /* Follow consistent lock ordering: reuseThreadMutex → reportInProgressMutex
-     * to prevent deadlock with other threads */
-    if(safe_acquire_profile_lock(&profile->reuseThreadMutex, "reuseThreadMutex", __FUNCTION__) != 0)
+    /* Only lock reuseThreadMutex if thread exists (mutex is initialized) */
+    if(profile->threadExists)
     {
-        return;
+        if(safe_acquire_profile_lock(&profile->reuseThreadMutex, "reuseThreadMutex", __FUNCTION__) != 0)
+        {
+            return;
+        }
     }
 
     if(safe_acquire_profile_lock(&profile->reportInProgressMutex, "reportInProgressMutex", __FUNCTION__) != 0)
     {
-        pthread_mutex_unlock(&profile->reuseThreadMutex);
+        if(profile->threadExists)
+        {
+            pthread_mutex_unlock(&profile->reuseThreadMutex);
+        }
         return;
     }
 
-    if(profile->enable && !profile->reportInProgress)
+    if(atomic_load(&profile->enable) && !profile->reportInProgress)
     {
         profile->reportInProgress = true;
         profile->bClearSeekMap = isClearSeekMap;
@@ -1054,6 +1059,20 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
             if(ret != 0)
             {
                 T2Error("Failed to create report thread: %s\n", strerror(ret));
+
+                /* Roll back state on thread creation failure */
+                profile->reportInProgress = false;
+                profile->bClearSeekMap = false;
+                profile->restartRequested = false;
+                pthread_cond_signal(&profile->reportInProgressCond);
+
+                pthread_mutex_unlock(&profile->reportInProgressMutex);
+                if(profile->threadExists)
+                {
+                    pthread_mutex_unlock(&profile->reuseThreadMutex);
+                }
+                pthread_attr_destroy(&thread_attr);
+                return;
             }
 
             pthread_attr_destroy(&thread_attr);
@@ -1063,7 +1082,10 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
     {
         T2Warning("Either profile is disabled or report generation still in progress - ignoring the request\n");
         pthread_mutex_unlock(&profile->reportInProgressMutex);
-        pthread_mutex_unlock(&profile->reuseThreadMutex);
+        if(profile->threadExists)
+        {
+            pthread_mutex_unlock(&profile->reuseThreadMutex);
+        }
     }
     T2Debug("%s --out\n", __FUNCTION__);
 }
@@ -1086,7 +1108,7 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
     }
 
     /* Check enable status while still holding global lock to prevent race condition */
-    if(!profile->enable)
+    if(!atomic_load(&profile->enable))
     {
         T2Warning("Profile : %s is disabled, ignoring the event\n", profileName);
         pthread_rwlock_unlock(&plRwLock);
@@ -1266,7 +1288,7 @@ T2ERROR enableProfile(const char *profileName)
         pthread_rwlock_unlock(&plRwLock);
         return T2ERROR_FAILURE;
     }
-    if(profile->enable)
+    if(atomic_load(&profile->enable))
     {
         T2Info("Profile : %s is already enabled - ignoring duplicate request\n", profileName);
         pthread_rwlock_unlock(&plRwLock);
@@ -1274,18 +1296,18 @@ T2ERROR enableProfile(const char *profileName)
     }
     else
     {
-        profile->enable = true;
+        atomic_store(&profile->enable, true);
         if(pthread_mutex_init(&profile->triggerCondMutex, NULL) != 0)
         {
             T2Error(" %s Mutex init has failed\n", __FUNCTION__);
-            profile->enable = false;
+            atomic_store(&profile->enable, false);
             pthread_rwlock_unlock(&plRwLock);
             return T2ERROR_FAILURE;
         }
         if(pthread_mutex_init(&profile->reportInProgressMutex, NULL) != 0)
         {
             T2Error(" %s Mutex init has failed\n", __FUNCTION__);
-            profile->enable = false;
+            atomic_store(&profile->enable, false);
             pthread_mutex_destroy(&profile->triggerCondMutex);
             pthread_rwlock_unlock(&plRwLock);
             return T2ERROR_FAILURE;
@@ -1293,7 +1315,7 @@ T2ERROR enableProfile(const char *profileName)
         if(pthread_cond_init(&profile->reportInProgressCond, NULL) != 0)
         {
             T2Error(" %s Cond init has failed\n", __FUNCTION__);
-            profile->enable = false;
+            atomic_store(&profile->enable, false);
             pthread_mutex_destroy(&profile->triggerCondMutex);
             pthread_mutex_destroy(&profile->reportInProgressMutex);
             pthread_rwlock_unlock(&plRwLock);
@@ -1305,7 +1327,7 @@ T2ERROR enableProfile(const char *profileName)
         if(!profileNameCopy)
         {
             T2Error("Failed to allocate memory for profile name copy\n");
-            profile->enable = false;
+            atomic_store(&profile->enable, false);
             pthread_mutex_destroy(&profile->triggerCondMutex);
             pthread_mutex_destroy(&profile->reportInProgressMutex);
             pthread_cond_destroy(&profile->reportInProgressCond);
@@ -1328,7 +1350,7 @@ T2ERROR enableProfile(const char *profileName)
             {
                 T2Error("Failed to allocate memory for marker info array\n");
                 free(profileNameCopy);
-                profile->enable = false;
+                atomic_store(&profile->enable, false);
                 pthread_mutex_destroy(&profile->triggerCondMutex);
                 pthread_mutex_destroy(&profile->reportInProgressMutex);
                 pthread_cond_destroy(&profile->reportInProgressCond);
@@ -1412,10 +1434,6 @@ T2ERROR enableProfile(const char *profileName)
             free(markerInfos);
         }
         free(profileNameCopy);
-        if(timeRefCopy)
-        {
-            free(timeRefCopy);
-        }
 
         if(schedResult != T2ERROR_SUCCESS)
         {
@@ -1424,7 +1442,7 @@ T2ERROR enableProfile(const char *profileName)
             Profile *failedProfile = NULL;
             if(T2ERROR_SUCCESS == getProfile(profileName, &failedProfile))
             {
-                failedProfile->enable = false;
+                atomic_store(&failedProfile->enable, false);
                 /* Note: markers are cleaned up when profile is disabled */
             }
             pthread_rwlock_unlock(&plRwLock);
@@ -1435,7 +1453,7 @@ T2ERROR enableProfile(const char *profileName)
         /* Re-acquire lock to verify profile is still valid and complete the enable transaction */
         pthread_rwlock_wrlock(&plRwLock);
         Profile *finalProfile = NULL;
-        if(T2ERROR_SUCCESS != getProfile(profileName, &finalProfile) || !finalProfile->enable)
+        if(T2ERROR_SUCCESS != getProfile(profileName, &finalProfile) || !atomic_load(&finalProfile->enable))
         {
             /* Profile was deleted or disabled during scheduler registration - rollback needed */
             pthread_rwlock_unlock(&plRwLock);
@@ -1469,7 +1487,7 @@ cleanup_and_fail:
             free(markerInfos);
         }
         free(profileNameCopy);
-        profile->enable = false;
+        atomic_store(&profile->enable, false);
         pthread_mutex_destroy(&profile->triggerCondMutex);
         pthread_mutex_destroy(&profile->reportInProgressMutex);
         pthread_cond_destroy(&profile->reportInProgressCond);
@@ -1501,7 +1519,7 @@ void updateMarkerComponentMap()
     for(size_t profileIndex = 0; profileIndex < profileCount; profileIndex++)
     {
         Profile *tempProfile = (Profile *)Vector_At(profileList, profileIndex);
-        if(tempProfile->enable)
+        if(atomic_load(&tempProfile->enable))
         {
             totalMarkerCount += Vector_Size(tempProfile->eMarkerList);
         }
@@ -1524,7 +1542,7 @@ void updateMarkerComponentMap()
         for(size_t profileIndex = 0; profileIndex < profileCount; profileIndex++)
         {
             Profile *tempProfile = (Profile *)Vector_At(profileList, profileIndex);
-            if(tempProfile->enable)
+            if(atomic_load(&tempProfile->enable))
             {
                 T2Debug("Copying component map for profile %s \n", tempProfile->name);
                 size_t emIndex = 0;
@@ -1613,7 +1631,7 @@ T2ERROR disableProfile(const char *profileName, bool *isDeleteRequired)
     }
     else
     {
-        profile->enable = false;
+        atomic_store(&profile->enable, false);
     }
 #ifdef PERSIST_LOG_MON_REF
     removeProfileFromDisk(SEEKFOLDER, profile->name);
@@ -1633,7 +1651,7 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
     int count = 0;
     int profileIndex = 0;
 
-    /* Copy profile pointers while holding lock to prevent race conditions */
+    /* Remove profiles from list while holding lock to prevent use-after-free */
     pthread_rwlock_wrlock(&plRwLock);
     if(profileList == NULL)
     {
@@ -1653,11 +1671,14 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
             return T2ERROR_FAILURE;
         }
 
-        /* Copy all profile pointers while holding the lock */
+        /* Move all profiles from list to temporary array to prevent other threads from accessing them */
         for(int i = 0; i < count; i++)
         {
             profileCopies[i] = (Profile *)Vector_At(profileList, i);
         }
+
+        /* Clear the list so no other thread can access these profiles */
+        Vector_Clear(profileList);
     }
     pthread_rwlock_unlock(&plRwLock);
 
@@ -1672,7 +1693,7 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
 
         /* Disable profile first */
         pthread_rwlock_wrlock(&plRwLock);
-        tempProfile->enable = false;
+        atomic_store(&tempProfile->enable, false);
         tempProfile->isSchedulerstarted = false;
         pthread_rwlock_unlock(&plRwLock);
 
@@ -1774,9 +1795,9 @@ T2ERROR deleteProfile(const char *profileName)
         return T2ERROR_FAILURE;
     }
 
-    if(profile->enable)
+    if(atomic_load(&profile->enable))
     {
-        profile->enable = false;
+        atomic_store(&profile->enable, false);
     }
     if(profile->isSchedulerstarted)
     {
@@ -2063,8 +2084,7 @@ T2ERROR initProfileList(bool checkPreviousSeek)
     if (atomic_load(&initialized))
     {
         pthread_mutex_unlock(&init_mutex);
-        T2Debug("Profile list already initialized\n");
-        loadReportProfilesFromDisk(checkPreviousSeek);
+        T2Debug("Profile list already initialized - skipping disk load to prevent duplicates\n");
         T2Debug("%s --out\n", __FUNCTION__);
         return T2ERROR_SUCCESS;
     }

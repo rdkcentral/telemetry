@@ -273,6 +273,13 @@ static void freeProfile(void *data)
             cJSON_Delete(profile->jsonReportObj);
             profile->jsonReportObj = NULL;
         }
+
+        /* Destroy all mutexes and condition variables that were initialized at profile creation */
+        pthread_mutex_destroy(&profile->reuseThreadMutex);
+        pthread_cond_destroy(&profile->reuseThread);
+        pthread_mutex_destroy(&profile->reportInProgressMutex);
+        pthread_cond_destroy(&profile->reportInProgressCond);
+
         free(profile);
     }
     T2Debug("%s ++out \n", __FUNCTION__);
@@ -439,11 +446,8 @@ static void* CollectAndReport(void* data)
         return NULL;
     }
     Profile* profile = (Profile *)data;
-    pthread_mutex_init(&profile->reuseThreadMutex, NULL);
-    pthread_cond_init(&profile->reuseThread, NULL);
     pthread_mutex_lock(&profile->reuseThreadMutex);
-    profile->restartRequested = false;
-    profile->threadExists = true;
+    atomic_store(&profile->threadExists, true);
     //GrepSeekProfile *GPF = profile->GrepSeekProfle;
     do
     {
@@ -992,10 +996,8 @@ reportThreadEnd :
     pthread_mutex_unlock(&profile->reportInProgressMutex);
     pthread_mutex_unlock(&profile->reuseThreadMutex);
     pthread_mutex_lock(&profile->reuseThreadMutex);
-    profile->threadExists = false;
+    atomic_store(&profile->threadExists, false);
     pthread_mutex_unlock(&profile->reuseThreadMutex);
-    pthread_mutex_destroy(&profile->reuseThreadMutex);
-    pthread_cond_destroy(&profile->reuseThread);
     return NULL;
 }
 
@@ -1021,21 +1023,17 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
 
     T2Info("%s: profile %s is in %s state\n", __FUNCTION__, profileName, atomic_load(&profile->enable) ? "Enabled" : "Disabled");
 
-    /* Only lock reuseThreadMutex if thread exists (mutex is initialized) */
-    if(profile->threadExists)
+    /* Check threadExists safely under reuseThreadMutex protection */
+    bool threadCurrentlyExists = false;
+    if(safe_acquire_profile_lock(&profile->reuseThreadMutex, "reuseThreadMutex", __FUNCTION__) != 0)
     {
-        if(safe_acquire_profile_lock(&profile->reuseThreadMutex, "reuseThreadMutex", __FUNCTION__) != 0)
-        {
-            return;
-        }
+        return;
     }
+    threadCurrentlyExists = atomic_load(&profile->threadExists);
 
     if(safe_acquire_profile_lock(&profile->reportInProgressMutex, "reportInProgressMutex", __FUNCTION__) != 0)
     {
-        if(profile->threadExists)
-        {
-            pthread_mutex_unlock(&profile->reuseThreadMutex);
-        }
+        pthread_mutex_unlock(&profile->reuseThreadMutex);
         return;
     }
 
@@ -1045,22 +1043,35 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
         profile->bClearSeekMap = isClearSeekMap;
 
         pthread_mutex_unlock(&profile->reportInProgressMutex);
-        if(profile->threadExists)
+        if(threadCurrentlyExists)
         {
             T2Info("Signal Thread To restart\n");
             profile->restartRequested = true;
             pthread_cond_signal(&profile->reuseThread);
-            pthread_mutex_unlock(&profile->reuseThreadMutex);
         }
-        else
-        {
-            pthread_mutex_unlock(&profile->reuseThreadMutex);
+        pthread_mutex_unlock(&profile->reuseThreadMutex);
 
+        if(!threadCurrentlyExists)
+        {
             /* Create thread with explicit stack size - keep joinable for proper cleanup */
             pthread_attr_t thread_attr;
-            pthread_attr_init(&thread_attr);
-            pthread_attr_setstacksize(&thread_attr, 256 * 1024); /* 256KB stack */
-            /* Remove PTHREAD_CREATE_DETACHED since deleteProfile needs to join this thread */
+            if(pthread_attr_init(&thread_attr) != 0)
+            {
+                T2Error("Failed to initialize thread attributes\n");
+                /* Roll back without thread creation */
+                pthread_mutex_lock(&profile->reportInProgressMutex);
+                profile->reportInProgress = false;
+                profile->bClearSeekMap = false;
+                pthread_cond_signal(&profile->reportInProgressCond);
+                pthread_mutex_unlock(&profile->reportInProgressMutex);
+                return;
+            }
+
+            if(pthread_attr_setstacksize(&thread_attr, 256 * 1024) != 0) /* 256KB stack */
+            {
+                T2Warning("Failed to set thread stack size, using default\n");
+                /* Continue with default stack size */
+            }
 
             int ret = pthread_create(&profile->reportThread, &thread_attr, CollectAndReport, (void*)profile);
             if(ret != 0)
@@ -1075,10 +1086,6 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
                 pthread_cond_signal(&profile->reportInProgressCond);
                 pthread_mutex_unlock(&profile->reportInProgressMutex);
 
-                if(profile->threadExists)
-                {
-                    pthread_mutex_unlock(&profile->reuseThreadMutex);
-                }
                 pthread_attr_destroy(&thread_attr);
                 return;
             }
@@ -1090,10 +1097,7 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
     {
         T2Warning("Either profile is disabled or report generation still in progress - ignoring the request\n");
         pthread_mutex_unlock(&profile->reportInProgressMutex);
-        if(profile->threadExists)
-        {
-            pthread_mutex_unlock(&profile->reuseThreadMutex);
-        }
+        pthread_mutex_unlock(&profile->reuseThreadMutex);
     }
     T2Debug("%s --out\n", __FUNCTION__);
 }
@@ -1272,6 +1276,19 @@ T2ERROR addProfile(Profile *profile)
         T2Error("profile list is not initialized yet, ignoring\n");
         return T2ERROR_FAILURE;
     }
+
+    /* Initialize thread synchronization objects at profile add time */
+    if(pthread_mutex_init(&profile->reuseThreadMutex, NULL) != 0 ||
+            pthread_cond_init(&profile->reuseThread, NULL) != 0)
+    {
+        T2Error("Failed to initialize profile thread synchronization objects\n");
+        return T2ERROR_FAILURE;
+    }
+
+    /* Initialize atomic thread state */
+    atomic_store(&profile->threadExists, false);
+    profile->restartRequested = false;
+
     pthread_rwlock_wrlock(&plRwLock);
     Vector_PushBack(profileList, profile);
 
@@ -1421,7 +1438,7 @@ T2ERROR enableProfile(const char *profileName)
                               activationTimeoutPeriod, deleteOnTimeout,
                               true, reportOnUpdate, firstReportingInterval, profile->timeRef);
 
-        // Clean up allocated memory - timeRefCopy freed here since scheduler uses profile->timeRef
+        // Clean up allocated memory - scheduler takes direct reference to profile->timeRef
         if(markerInfos)
         {
             for(size_t i = 0; i < eMarkerCount; i++)
@@ -1701,10 +1718,10 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
 
         /* Read threadExists under reuseThreadMutex: threadExists is written under
          * reuseThreadMutex in CollectAndReport, so reads must use the same lock.
-         * The thread sets threadExists = false and then destroys reuseThreadMutex
-         * before returning, so reuseThreadMutex must not be accessed after join. */
+         * Since reuseThreadMutex lifetime is now tied to the profile, it is always
+         * safe to access. */
         pthread_mutex_lock(&tempProfile->reuseThreadMutex);
-        bool threadStillExists = tempProfile->threadExists;
+        bool threadStillExists = atomic_load(&tempProfile->threadExists);
         if (threadStillExists)
         {
             tempProfile->restartRequested = true;
@@ -1825,11 +1842,10 @@ T2ERROR deleteProfile(const char *profileName)
     pthread_mutex_unlock(&profile->reportInProgressMutex);
 
     /* Read threadExists under reuseThreadMutex: it is written under the same mutex
-     * in CollectAndReport.  The thread sets threadExists = false and then destroys
-     * reuseThreadMutex before returning, so reuseThreadMutex must not be used after
-     * pthread_join returns. */
+     * in CollectAndReport.  Since reuseThreadMutex lifetime is now tied to the profile,
+     * it is always safe to access. */
     pthread_mutex_lock(&profile->reuseThreadMutex);
-    bool threadStillExists = profile->threadExists;
+    bool threadStillExists = atomic_load(&profile->threadExists);
     pthread_mutex_unlock(&profile->reuseThreadMutex);
 
     /* Release plRwLock before pthread_join to avoid deadlock.

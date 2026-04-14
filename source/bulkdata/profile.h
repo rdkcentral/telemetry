@@ -95,7 +95,20 @@ typedef struct _Profile
     bool restartRequested;
     atomic_bool threadExists;
     GrepSeekProfile *grepSeekProfile; // To store GrepConfig
+
+    int ref_count;
+    pthread_mutex_t ref_mutex;
+    bool marked_for_deletion;
+    /* Bitmask to track which pthread objects are initialized */
+    uint8_t initialized_objects;
 } Profile;
+
+/* Bit flags for tracking initialized pthread objects */
+#define PTHREAD_REUSETHREAD_MUTEX_INIT   (1 << 0)
+#define PTHREAD_REUSETHREAD_COND_INIT    (1 << 1)
+#define PTHREAD_REPORTPROGRESS_MUTEX_INIT (1 << 2)
+#define PTHREAD_REPORTPROGRESS_COND_INIT  (1 << 3)
+#define PTHREAD_TRIGGERCOND_MUTEX_INIT   (1 << 4)
 
 T2ERROR initProfileList(bool checkPreviousSeek);
 
@@ -108,6 +121,12 @@ int getProfileCount();
 T2ERROR profileWithNameExists(const char *profileName, bool *bProfileExists);
 
 T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo);
+
+Profile* profile_acquire_ref(Profile* profile);
+
+void profile_release_ref(Profile* profile);
+
+T2ERROR getProfileSafe(const char *profileName, Profile **profile);
 
 T2ERROR enableProfile(const char *profileName);
 

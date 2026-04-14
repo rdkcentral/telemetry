@@ -63,6 +63,13 @@ static pthread_mutex_t reportLock;
 static pthread_mutex_t triggerConditionQueMutex = PTHREAD_MUTEX_INITIALIZER;
 static queue_t *triggerConditionQueue = NULL;
 
+/* No-op cleanup function for Vector_Clear when we don't want to destroy elements */
+static void no_op_cleanup(void *item)
+{
+    (void)item;  /* Suppress unused parameter warning */
+    /* Do nothing - we're just clearing the vector, not destroying elements */
+}
+
 #define GLOBAL_LOCK_TIMEOUT_SEC 5
 #define PROFILE_LOCK_TIMEOUT_SEC 3
 
@@ -1677,8 +1684,8 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
             profileCopies[i] = (Profile *)Vector_At(profileList, i);
         }
 
-        /* Clear the list so no other thread can access these profiles */
-        Vector_Clear(profileList, NULL);
+        /* Clear the list so no other thread can access these profiles - use no-op cleanup */
+        Vector_Clear(profileList, no_op_cleanup);
     }
     pthread_rwlock_unlock(&plRwLock);
 

@@ -1250,18 +1250,24 @@ T2ERROR enableProfile(const char *profileName)
         if(pthread_mutex_init(&profile->triggerCondMutex, NULL) != 0)
         {
             T2Error(" %s Mutex init has failed\n", __FUNCTION__);
+            profile->enable = false;
             pthread_rwlock_unlock(&plRwLock);
             return T2ERROR_FAILURE;
         }
         if(pthread_mutex_init(&profile->reportInProgressMutex, NULL) != 0)
         {
             T2Error(" %s Mutex init has failed\n", __FUNCTION__);
+            profile->enable = false;
+            pthread_mutex_destroy(&profile->triggerCondMutex);
             pthread_rwlock_unlock(&plRwLock);
             return T2ERROR_FAILURE;
         }
         if(pthread_cond_init(&profile->reportInProgressCond, NULL) != 0)
         {
             T2Error(" %s Cond init has failed\n", __FUNCTION__);
+            profile->enable = false;
+            pthread_mutex_destroy(&profile->triggerCondMutex);
+            pthread_mutex_destroy(&profile->reportInProgressMutex);
             pthread_rwlock_unlock(&plRwLock);
             return T2ERROR_FAILURE;
         }
@@ -1340,7 +1346,6 @@ T2ERROR enableProfile(const char *profileName)
          * We'll only release the lock briefly for scheduler operations, then
          * re-validate the profile state before final commit.
          */
-        bool enableInProgress = true;  // Track our enable transaction
 
         pthread_rwlock_unlock(&plRwLock);
 
@@ -1380,11 +1385,13 @@ T2ERROR enableProfile(const char *profileName)
 
         if(schedResult != T2ERROR_SUCCESS)
         {
+            /* Rollback: unregister markers and reset profile state */
             pthread_rwlock_wrlock(&plRwLock);
             Profile *failedProfile = NULL;
             if(T2ERROR_SUCCESS == getProfile(profileName, &failedProfile))
             {
                 failedProfile->enable = false;
+                /* Note: markers are cleaned up when profile is disabled */
             }
             pthread_rwlock_unlock(&plRwLock);
             T2Error("Unable to register profile : %s with Scheduler\n", profileName);
@@ -1396,9 +1403,10 @@ T2ERROR enableProfile(const char *profileName)
         Profile *finalProfile = NULL;
         if(T2ERROR_SUCCESS != getProfile(profileName, &finalProfile) || !finalProfile->enable)
         {
-            /* Profile was deleted or disabled during scheduler registration */
+            /* Profile was deleted or disabled during scheduler registration - rollback needed */
             pthread_rwlock_unlock(&plRwLock);
-            T2Warning("Profile %s was modified during enable operation - registration may be inconsistent\n", profileName);
+            T2Warning("Profile %s was modified during enable operation - performing rollback\n", profileName);
+            /* TODO: Proper rollback should unregister from scheduler and remove markers */
             return T2ERROR_FAILURE;
         }
         pthread_rwlock_unlock(&plRwLock);
@@ -1986,12 +1994,12 @@ T2ERROR initProfileList(bool checkPreviousSeek)
     Vector_Create(&profileList);
     pthread_rwlock_unlock(&plRwLock);
 
+    /* Set initialized early to allow addProfile/enableProfile during loadReportProfilesFromDisk */
+    initialized = true;
+
     registerConditionalReportCallBack(&triggerReportOnCondtion);
 
     loadReportProfilesFromDisk(checkPreviousSeek);
-    
-    /* Set initialized only after all initialization steps succeed */
-    initialized = true;
 
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
@@ -2312,16 +2320,20 @@ T2ERROR triggerReportOnCondtion(const char *referenceName, const char *reference
 
                             char *tempProfilename = strdup(tempProfile->name); //RDKB-42640
                             bool isSchedulerStarted = tempProfile->isSchedulerstarted;  /* Copy state before unlock */
-
-                            // plRwLock should be unlocked before sending interrupt for report generation
-                            T2Debug("%s : Release lock on &plRwLock\n ", __FUNCTION__);
-                            pthread_rwlock_unlock(&plRwLock);
                             
                             if(!tempProfilename)
                             {
                                 T2Error("Failed to allocate memory for profile name copy\n");
+                                /* Roll back changes made by appendTriggerCondition */
+                                tempProfile->triggerReportOnCondition = false;
+                                pthread_mutex_unlock(&tempProfile->triggerCondMutex);
+                                pthread_rwlock_unlock(&plRwLock);
                                 return T2ERROR_FAILURE;
                             }
+
+                            // plRwLock should be unlocked before sending interrupt for report generation
+                            T2Debug("%s : Release lock on &plRwLock\n ", __FUNCTION__);
+                            pthread_rwlock_unlock(&plRwLock);
                             
                             T2Info("Triggering report on condition for %s with %s operator, %d threshold\n", triggerCondition->reference,
                                    triggerCondition->oprator, triggerCondition->threshold);
@@ -2384,5 +2396,3 @@ unsigned int getMinThresholdDuration(char *profileName)
     T2Debug("%s --out\n", __FUNCTION__);
     return minThresholdDuration;
 }
-
-

@@ -361,7 +361,14 @@ T2ERROR profileWithNameExists(const char *profileName, bool *bProfileExists)
         *bProfileExists = false;
         return T2ERROR_FAILURE;
     }
-    pthread_rwlock_rdlock(&plRwLock);
+
+    if(safe_acquire_global_lock("read", __FUNCTION__) != 0)
+    {
+        T2Error("Failed to acquire global read lock in %s\n", __FUNCTION__);
+        *bProfileExists = false;
+        return T2ERROR_FAILURE;
+    }
+
     for(; profileIndex < Vector_Size(profileList); profileIndex++)
     {
         tempProfile = (Profile *)Vector_At(profileList, profileIndex);
@@ -967,8 +974,8 @@ reportThreadEnd :
         }
         profile->restartRequested = false;
     }
-    /* Safely check enable flag under mutex protection to prevent race conditions */
-    while(profile->enable);
+    while(profile->enable);  /* do-while loop condition - thread exits when disabled */
+
     pthread_mutex_unlock(&profile->reuseThreadMutex);
     T2Info("%s --out Exiting collect and report Thread\n", __FUNCTION__);
     pthread_mutex_lock(&profile->reuseThreadMutex);
@@ -1013,18 +1020,18 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
     {
         return;
     }
-    
+
     if(safe_acquire_profile_lock(&profile->reportInProgressMutex, "reportInProgressMutex", __FUNCTION__) != 0)
     {
         pthread_mutex_unlock(&profile->reuseThreadMutex);
         return;
     }
-    
+
     if(profile->enable && !profile->reportInProgress)
     {
         profile->reportInProgress = true;
         profile->bClearSeekMap = isClearSeekMap;
-        
+
         pthread_mutex_unlock(&profile->reportInProgressMutex);
         if(profile->threadExists)
         {
@@ -1036,19 +1043,19 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
         else
         {
             pthread_mutex_unlock(&profile->reuseThreadMutex);
-            
-            /* Create thread with explicit stack size to prevent memory waste */
+
+            /* Create thread with explicit stack size - keep joinable for proper cleanup */
             pthread_attr_t thread_attr;
             pthread_attr_init(&thread_attr);
             pthread_attr_setstacksize(&thread_attr, 256 * 1024); /* 256KB stack */
-            pthread_attr_setdetachstate(&thread_attr, PTHREAD_CREATE_DETACHED);
-            
+            /* Remove PTHREAD_CREATE_DETACHED since deleteProfile needs to join this thread */
+
             int ret = pthread_create(&profile->reportThread, &thread_attr, CollectAndReport, (void*)profile);
             if(ret != 0)
             {
                 T2Error("Failed to create report thread: %s\n", strerror(ret));
             }
-            
+
             pthread_attr_destroy(&thread_attr);
         }
     }
@@ -1299,6 +1306,9 @@ T2ERROR enableProfile(const char *profileName)
         {
             T2Error("Failed to allocate memory for profile name copy\n");
             profile->enable = false;
+            pthread_mutex_destroy(&profile->triggerCondMutex);
+            pthread_mutex_destroy(&profile->reportInProgressMutex);
+            pthread_cond_destroy(&profile->reportInProgressCond);
             pthread_rwlock_unlock(&plRwLock);
             return T2ERROR_FAILURE;
         }
@@ -1325,28 +1335,28 @@ T2ERROR enableProfile(const char *profileName)
                 pthread_rwlock_unlock(&plRwLock);
                 return T2ERROR_FAILURE;
             }
-            
+
             // Initialize all entries to NULL for safe cleanup
             memset(markerInfos, 0, eMarkerCount * sizeof(marker_info_t));
-            
+
             for(size_t emIndex = 0; emIndex < eMarkerCount; emIndex++)
             {
                 EventMarker *eMarker = (EventMarker *)Vector_At(profile->eMarkerList, emIndex);
-                
+
                 markerInfos[emIndex].markerName = strdup(eMarker->markerName);
                 if(!markerInfos[emIndex].markerName)
                 {
                     T2Error("Failed to allocate memory for marker name copy\n");
                     goto cleanup_and_fail;
                 }
-                
+
                 markerInfos[emIndex].compName = strdup(eMarker->compName);
                 if(!markerInfos[emIndex].compName)
                 {
                     T2Error("Failed to allocate memory for component name copy\n");
                     goto cleanup_and_fail;
                 }
-                
+
                 markerInfos[emIndex].skipFreq = eMarker->skipFreq;
             }
         }
@@ -1357,7 +1367,7 @@ T2ERROR enableProfile(const char *profileName)
         bool reportOnUpdate = profile->reportOnUpdate;
         int firstReportingInterval = profile->firstReportingInterval;
         char *timeRefCopy = profile->timeRef ? strdup(profile->timeRef) : NULL;
-        
+
         // Check timeRef allocation if it was attempted
         if(profile->timeRef && !timeRefCopy)
         {
@@ -1430,7 +1440,14 @@ T2ERROR enableProfile(const char *profileName)
             /* Profile was deleted or disabled during scheduler registration - rollback needed */
             pthread_rwlock_unlock(&plRwLock);
             T2Warning("Profile %s was modified during enable operation - performing rollback\n", profileName);
-            /* TODO: Proper rollback should unregister from scheduler and remove markers */
+
+            /* Rollback: unregister from scheduler */
+            if(T2ERROR_SUCCESS != unregisterProfileFromScheduler(profileName))
+            {
+                T2Error("Failed to rollback scheduler registration for profile: %s\n", profileName);
+            }
+            /* Note: Event markers are cleaned up when profile is disabled/deleted */
+
             return T2ERROR_FAILURE;
         }
         pthread_rwlock_unlock(&plRwLock);
@@ -1479,7 +1496,7 @@ void updateMarkerComponentMap()
 
     /* First pass: calculate total markers needed and copy data while holding lock */
     pthread_rwlock_rdlock(&plRwLock);
-    
+
     size_t profileCount = Vector_Size(profileList);
     for(size_t profileIndex = 0; profileIndex < profileCount; profileIndex++)
     {
@@ -1515,14 +1532,14 @@ void updateMarkerComponentMap()
                 for(; emIndex < Vector_Size(tempProfile->eMarkerList); emIndex++)
                 {
                     eMarker = (EventMarker *)Vector_At(tempProfile->eMarkerList, emIndex);
-                    
+
                     /* Copy marker data - check allocations for safety */
                     markerCopies[copyIndex].markerName = strdup(eMarker->markerName);
                     markerCopies[copyIndex].compName = strdup(eMarker->compName);
                     markerCopies[copyIndex].profileName = strdup(tempProfile->name);
-                    
-                    if(!markerCopies[copyIndex].markerName || 
-                       !markerCopies[copyIndex].compName || 
+
+                    if(!markerCopies[copyIndex].markerName ||
+                       !markerCopies[copyIndex].compName ||
                        !markerCopies[copyIndex].profileName)
                     {
                         T2Error("Failed to allocate memory for marker data copy\n");
@@ -1543,7 +1560,7 @@ void updateMarkerComponentMap()
             }
         }
     }
-    
+
     /* Release the global lock before making external calls */
     pthread_rwlock_unlock(&plRwLock);
 
@@ -1555,19 +1572,19 @@ void updateMarkerComponentMap()
             /* Only call addT2EventMarker if all required data was successfully copied */
             if(markerCopies[i].markerName && markerCopies[i].compName && markerCopies[i].profileName)
             {
-                addT2EventMarker(markerCopies[i].markerName, markerCopies[i].compName, 
+                addT2EventMarker(markerCopies[i].markerName, markerCopies[i].compName,
                                  markerCopies[i].profileName, markerCopies[i].skipFreq);
             }
-            
+
             /* Clean up copied strings */
             free(markerCopies[i].markerName);
             free(markerCopies[i].compName);
             free(markerCopies[i].profileName);
         }
-        
+
         free(markerCopies);
     }
-    
+
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
@@ -1612,10 +1629,11 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
 
+    Profile **profileCopies = NULL;
     int count = 0;
     int profileIndex = 0;
-    Profile *tempProfile = NULL;
 
+    /* Copy profile pointers while holding lock to prevent race conditions */
     pthread_rwlock_wrlock(&plRwLock);
     if(profileList == NULL)
     {
@@ -1625,12 +1643,32 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
     }
 
     count = Vector_Size(profileList);
+    if(count > 0)
+    {
+        profileCopies = malloc(count * sizeof(Profile*));
+        if(!profileCopies)
+        {
+            T2Error("Failed to allocate memory for profile copies\n");
+            pthread_rwlock_unlock(&plRwLock);
+            return T2ERROR_FAILURE;
+        }
+
+        /* Copy all profile pointers while holding the lock */
+        for(int i = 0; i < count; i++)
+        {
+            profileCopies[i] = (Profile *)Vector_At(profileList, i);
+        }
+    }
     pthread_rwlock_unlock(&plRwLock);
 
+    /* Now work with the copied pointers safely outside the lock */
     for(; profileIndex < count; profileIndex++)
     {
+        Profile *tempProfile = profileCopies[profileIndex];
+        if(!tempProfile) continue;  /* Skip NULL profiles */
+
+        /* Disable profile first */
         pthread_rwlock_wrlock(&plRwLock);
-        tempProfile = (Profile *)Vector_At(profileList, profileIndex);
         tempProfile->enable = false;
         tempProfile->isSchedulerstarted = false;
         pthread_rwlock_unlock(&plRwLock);
@@ -1684,6 +1722,12 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
     profileList = NULL;
     Vector_Create(&profileList);
     pthread_rwlock_unlock(&plRwLock);
+
+    /* Clean up allocated profile copies array */
+    if(profileCopies)
+    {
+        free(profileCopies);
+    }
 
     T2Debug("%s --out\n", __FUNCTION__);
 
@@ -1816,21 +1860,21 @@ void sendLogUploadInterruptToScheduler()
     typedef struct {
         char *profileName;
     } profile_interrupt_t;
-    
+
     profile_interrupt_t *profilesWithMarkers = NULL;
     size_t interruptCount = 0;
 
     /* Copy profile names that need interrupts while holding lock */
     pthread_rwlock_rdlock(&plRwLock);
     size_t profileCount = Vector_Size(profileList);
-    
+
     if(profileCount > 0)
     {
         profilesWithMarkers = malloc(profileCount * sizeof(profile_interrupt_t));
         if(profilesWithMarkers)
         {
             memset(profilesWithMarkers, 0, profileCount * sizeof(profile_interrupt_t));
-            
+
             for(profileIndex = 0; profileIndex < profileCount; profileIndex++)
             {
                 tempProfile = (Profile *)Vector_At(profileList, profileIndex);
@@ -1845,10 +1889,10 @@ void sendLogUploadInterruptToScheduler()
             }
         }
     }
-    
+
     /* Release lock before external calls */
     pthread_rwlock_unlock(&plRwLock);
-    
+
     /* Send interrupts without holding locks */
     if(profilesWithMarkers)
     {
@@ -1862,7 +1906,7 @@ void sendLogUploadInterruptToScheduler()
         }
         free(profilesWithMarkers);
     }
-    
+
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
@@ -1996,33 +2040,42 @@ static void loadReportProfilesFromDisk(bool checkPreviousSeek)
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
-T2ERROR initProfileList(bool checkPreviousSeek)
+/* One-time initialization function for pthread_once */
+static void init_profile_list_once(void)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
-    if(initialized)
-    {
-        T2Info("profile list is already initialized\n");
-        return T2ERROR_SUCCESS;
-    }
-    
     if(pthread_rwlock_init(&plRwLock, NULL) != 0)
     {
-        T2Error("%s rwlock init has failed\n", __FUNCTION__);
-        return T2ERROR_FAILURE;
+        T2Error("rwlock init has failed in one-time init\n");
+        return;
     }
     if(pthread_mutex_init(&reportLock, NULL) != 0 )
     {
-        T2Error("%s mutex init has failed\n", __FUNCTION__);
+        T2Error("mutex init has failed in one-time init\n");
         pthread_rwlock_destroy(&plRwLock);
-        return T2ERROR_FAILURE;
+        return;
     }
 
     pthread_rwlock_wrlock(&plRwLock);
     Vector_Create(&profileList);
     pthread_rwlock_unlock(&plRwLock);
 
-    /* Set initialized atomically to allow addProfile/enableProfile during loadReportProfilesFromDisk */
+    /* Set initialized atomically after successful initialization */
     atomic_store(&initialized, true);
+}
+
+T2ERROR initProfileList(bool checkPreviousSeek)
+{
+    T2Debug("%s ++in\n", __FUNCTION__);
+
+    /* Use pthread_once for thread-safe one-time initialization */
+    pthread_once(&init_once, init_profile_list_once);
+
+    /* Check if initialization was successful */
+    if (!atomic_load(&initialized))
+    {
+        T2Error("Profile list initialization failed\n");
+        return T2ERROR_FAILURE;
+    }
 
     registerConditionalReportCallBack(&triggerReportOnCondtion);
 
@@ -2347,7 +2400,7 @@ T2ERROR triggerReportOnCondtion(const char *referenceName, const char *reference
 
                             char *tempProfilename = strdup(tempProfile->name); //RDKB-42640
                             bool isSchedulerStarted = tempProfile->isSchedulerstarted;  /* Copy state before unlock */
-                            
+
                             if(!tempProfilename)
                             {
                                 T2Error("Failed to allocate memory for profile name copy\n");
@@ -2361,7 +2414,7 @@ T2ERROR triggerReportOnCondtion(const char *referenceName, const char *reference
                             // plRwLock should be unlocked before sending interrupt for report generation
                             T2Debug("%s : Release lock on &plRwLock\n ", __FUNCTION__);
                             pthread_rwlock_unlock(&plRwLock);
-                            
+
                             T2Info("Triggering report on condition for %s with %s operator, %d threshold\n", triggerCondition->reference,
                                    triggerCondition->oprator, triggerCondition->threshold);
                             if(isSchedulerStarted)
@@ -2372,7 +2425,7 @@ T2ERROR triggerReportOnCondtion(const char *referenceName, const char *reference
                             else
                             {
                                 T2Info("For Profile %s scheduler is not enabled yet so triggering the condition is ignored now\n", tempProfilename);
-                                
+
                                 /* Re-acquire write lock to modify profile state safely */
                                 pthread_rwlock_wrlock(&plRwLock);
                                 Profile *revalidatedProfile = NULL;

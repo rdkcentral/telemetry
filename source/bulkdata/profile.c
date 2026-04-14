@@ -1010,6 +1010,11 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
         profile->bClearSeekMap = isClearSeekMap;
         pthread_mutex_unlock(&profile->reportInProgressMutex);
 
+        /* Read threadExists under reuseThreadMutex for proper synchronization.
+         * threadExists is written under reuseThreadMutex in CollectAndReport,
+         * so it must also be read under the same mutex to avoid a data race.
+         * Combine the read and the signal within the same lock to prevent a
+         * race between reading threadExists and signaling/creating the thread. */
         if(safe_acquire_profile_lock(&profile->reuseThreadMutex, "reuseThreadMutex", __FUNCTION__) != 0)
         {
             pthread_mutex_unlock(&profile->reportInProgressMutex);

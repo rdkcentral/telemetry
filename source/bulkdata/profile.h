@@ -97,6 +97,7 @@ typedef struct _Profile
     pthread_mutex_t reuseThreadMutex;
     bool restartRequested;
     atomic_bool threadExists;    /* Atomic for lock-free reads */
+    bool syncObjectsInitialized;
     GrepSeekProfile *grepSeekProfile; // To store GrepConfig
 } Profile;
 

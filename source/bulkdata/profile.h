@@ -22,17 +22,6 @@
 
 #include <stdbool.h>
 #include <pthread.h>
-#ifndef __cplusplus
-#include <stdatomic.h>
-#else
-/* In C++ builds, use std::atomic<bool> which provides the same atomicity
- * guarantees and struct layout as C11 atomic_bool. Atomic operations on
- * these fields are only performed in C implementation files. */
-#include <atomic>
-#ifndef atomic_bool
-typedef std::atomic<bool> atomic_bool;
-#endif
-#endif
 #include <cjson/cJSON.h>
 
 #include "t2collection.h"
@@ -55,10 +44,10 @@ typedef struct _Profile
     /* Lock hierarchy: if both locks are needed, acquire plRwLock before this lock */
     pthread_mutex_t lock;        /* Per-profile lock for fine-grained locking */
 
-    atomic_bool enable;          /* Atomic for lock-free reads */
+    volatile bool enable;          /* Modified atomically via __atomic builtins */
     bool isSchedulerstarted;
     bool isUpdated;
-    atomic_bool reportInProgress; /* Atomic for lock-free reads */
+    volatile bool reportInProgress; /* Modified atomically via __atomic builtins */
     pthread_cond_t reportInProgressCond;
     pthread_mutex_t reportInProgressMutex;
     bool generateNow;
@@ -106,7 +95,7 @@ typedef struct _Profile
     pthread_cond_t reuseThread;
     pthread_mutex_t reuseThreadMutex;
     bool restartRequested;
-    atomic_bool threadExists;    /* Atomic for lock-free reads */
+    volatile bool threadExists;    /* Modified atomically via __atomic builtins */
     bool syncObjectsInitialized;
     GrepSeekProfile *grepSeekProfile; // To store GrepConfig
 } Profile;

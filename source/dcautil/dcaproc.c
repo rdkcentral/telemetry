@@ -589,7 +589,7 @@ int getCPUInfo(procMemCpuInfo *pInfo, char* filename)
         if(strcasestr(top_op, pInfo->processName) == NULL)
         {
             int line_pid = 0;
-            if(sscanf(top_op, "%d", &line_pid) != 1 || line_pid != pInfo->pid[0])
+            if(pInfo->pid == NULL || sscanf(top_op, "%d", &line_pid) != 1 || line_pid != pInfo->pid[0])
             {
                 continue;
             }
@@ -608,7 +608,7 @@ int getCPUInfo(procMemCpuInfo *pInfo, char* filename)
         if(strcasestr(top_op, pInfo->processName) == NULL)
         {
             int line_pid = 0;
-            if(sscanf(top_op, "%d", &line_pid) != 1 || line_pid != pInfo->pid[0])
+            if(pInfo->pid == NULL || sscanf(top_op, "%d", &line_pid) != 1 || line_pid != pInfo->pid[0])
             {
                 continue;
             }

@@ -207,7 +207,6 @@ static void freeProfile(void *data)
             cJSON_Delete(profile->jsonReportObj);
             profile->jsonReportObj = NULL;
         }
-        pthread_mutex_destroy(&profile->profileMutex);
         free(profile);
     }
     T2Debug("%s ++out \n", __FUNCTION__);
@@ -1139,7 +1138,6 @@ T2ERROR addProfile(Profile *profile)
         T2Error("profile list is not initialized yet, ignoring\n");
         return T2ERROR_FAILURE;
     }
-    pthread_mutex_init(&profile->profileMutex, NULL);
     pthread_rwlock_wrlock(&profileListLock);
     Vector_PushBack(profileList, profile);
 
@@ -1650,6 +1648,8 @@ T2ERROR initProfileList(bool checkPreviousSeek)
     if(pthread_mutex_init(&reportLock, NULL) != 0 )
     {
         T2Error("%s mutex init has failed\n", __FUNCTION__);
+        pthread_rwlock_destroy(&profileListLock);
+        initialized = false;
         return T2ERROR_FAILURE;
     }
 

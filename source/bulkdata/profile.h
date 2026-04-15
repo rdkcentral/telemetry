@@ -25,11 +25,12 @@
 #ifndef __cplusplus
 #include <stdatomic.h>
 #else
-/* In C++ builds provide a layout-compatible substitute so the header compiles.
- * Atomic operations on these fields are only performed in C implementation
- * files which include <stdatomic.h> directly. */
+/* In C++ builds, use std::atomic<bool> which provides the same atomicity
+ * guarantees and struct layout as C11 atomic_bool. Atomic operations on
+ * these fields are only performed in C implementation files. */
+#include <atomic>
 #ifndef atomic_bool
-typedef volatile bool atomic_bool;
+typedef std::atomic<bool> atomic_bool;
 #endif
 #endif
 #include <cjson/cJSON.h>

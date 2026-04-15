@@ -319,7 +319,7 @@ static T2ERROR getProfile(const char *profileName, Profile **profile)
     }
 
     /* Guard against uninitialized state before taking the lock */
-    if(!initialized || profileList == NULL)
+    if (!initialized || profileList == NULL)
     {
         return T2ERROR_PROFILE_NOT_FOUND;
     }

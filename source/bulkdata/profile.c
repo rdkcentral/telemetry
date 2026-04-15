@@ -60,7 +60,6 @@ static Vector *profileList;
  * 2. profile->lock - protects individual profile operations
  */
 static pthread_rwlock_t plRwLock = PTHREAD_RWLOCK_INITIALIZER;
-static pthread_mutex_t reportLock = PTHREAD_MUTEX_INITIALIZER;
 
 static pthread_mutex_t triggerConditionQueMutex = PTHREAD_MUTEX_INITIALIZER;
 static queue_t *triggerConditionQueue = NULL;
@@ -240,10 +239,50 @@ static T2ERROR initProfileLocks(Profile *profile)
         return T2ERROR_FAILURE;
     }
 
+    /* Initialize thread synchronization objects */
+    if(pthread_mutex_init(&profile->triggerCondMutex, NULL) != 0)
+    {
+        pthread_mutex_destroy(&profile->lock);
+        return T2ERROR_FAILURE;
+    }
+    if(pthread_mutex_init(&profile->reportInProgressMutex, NULL) != 0)
+    {
+        pthread_mutex_destroy(&profile->lock);
+        pthread_mutex_destroy(&profile->triggerCondMutex);
+        return T2ERROR_FAILURE;
+    }
+    if(pthread_cond_init(&profile->reportInProgressCond, NULL) != 0)
+    {
+        pthread_mutex_destroy(&profile->lock);
+        pthread_mutex_destroy(&profile->triggerCondMutex);
+        pthread_mutex_destroy(&profile->reportInProgressMutex);
+        return T2ERROR_FAILURE;
+    }
+    if(pthread_mutex_init(&profile->reuseThreadMutex, NULL) != 0)
+    {
+        pthread_mutex_destroy(&profile->lock);
+        pthread_mutex_destroy(&profile->triggerCondMutex);
+        pthread_mutex_destroy(&profile->reportInProgressMutex);
+        pthread_cond_destroy(&profile->reportInProgressCond);
+        return T2ERROR_FAILURE;
+    }
+    if(pthread_cond_init(&profile->reuseThread, NULL) != 0)
+    {
+        pthread_mutex_destroy(&profile->lock);
+        pthread_mutex_destroy(&profile->triggerCondMutex);
+        pthread_mutex_destroy(&profile->reportInProgressMutex);
+        pthread_cond_destroy(&profile->reportInProgressCond);
+        pthread_mutex_destroy(&profile->reuseThreadMutex);
+        return T2ERROR_FAILURE;
+    }
+
     /* Initialize atomic variables */
     atomic_store(&profile->enable, false);
     atomic_store(&profile->reportInProgress, false);
     atomic_store(&profile->threadExists, false);
+
+    /* Mark synchronization objects as initialized */
+    profile->syncObjectsInitialized = true;
 
     return T2ERROR_SUCCESS;
 }
@@ -251,11 +290,19 @@ static T2ERROR initProfileLocks(Profile *profile)
 /* Cleanup per-profile locks */
 static void cleanupProfileLocks(Profile *profile)
 {
-    if(!profile)
+    if(!profile || !profile->syncObjectsInitialized)
     {
         return;
     }
+
     pthread_mutex_destroy(&profile->lock);
+    pthread_mutex_destroy(&profile->triggerCondMutex);
+    pthread_mutex_destroy(&profile->reportInProgressMutex);
+    pthread_cond_destroy(&profile->reportInProgressCond);
+    pthread_mutex_destroy(&profile->reuseThreadMutex);
+    pthread_cond_destroy(&profile->reuseThread);
+
+    profile->syncObjectsInitialized = false;
 }
 
 static T2ERROR getProfile(const char *profileName, Profile **profile)
@@ -978,6 +1025,13 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
 
+    /* Check if profile system is initialized */
+    if(!initialized)
+    {
+        T2Warning("Profile system not initialized, ignoring timeout\n");
+        return;
+    }
+
     /* Use fine-grained lookup instead of global lock */
     Profile *profile = NULL;
     if(T2ERROR_SUCCESS != getProfile(profileName, &profile))
@@ -1010,7 +1064,17 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
         else
         {
             pthread_mutex_unlock(&profile->reuseThreadMutex);
-            pthread_create(&profile->reportThread, NULL, CollectAndReport, (void*)profile);
+            int createResult = pthread_create(&profile->reportThread, NULL, CollectAndReport, (void*)profile);
+            if(createResult != 0)
+            {
+                T2Error("Failed to create CollectAndReport thread: %s\n", strerror(createResult));
+                /* Rollback: clear reportInProgress and signal waiters */
+                pthread_mutex_lock(&profile->reportInProgressMutex);
+                atomic_store(&profile->reportInProgress, false);
+                pthread_cond_signal(&profile->reportInProgressCond);
+                pthread_mutex_unlock(&profile->reportInProgressMutex);
+                return;
+            }
         }
     }
     else
@@ -1233,50 +1297,6 @@ T2ERROR enableProfile(const char *profileName)
         return T2ERROR_SUCCESS;
     }
 
-    /* Initialize thread synchronization objects if needed */
-    if(pthread_mutex_init(&profile->triggerCondMutex, NULL) != 0)
-    {
-        T2Error(" %s triggerCondMutex init has failed\n", __FUNCTION__);
-        pthread_mutex_unlock(&profile->lock);
-        return T2ERROR_FAILURE;
-    }
-    if(pthread_mutex_init(&profile->reportInProgressMutex, NULL) != 0)
-    {
-        T2Error(" %s reportInProgressMutex init has failed\n", __FUNCTION__);
-        pthread_mutex_destroy(&profile->triggerCondMutex);
-        pthread_mutex_unlock(&profile->lock);
-        return T2ERROR_FAILURE;
-    }
-    if(pthread_cond_init(&profile->reportInProgressCond, NULL) != 0)
-    {
-        T2Error(" %s reportInProgressCond init has failed\n", __FUNCTION__);
-        pthread_mutex_destroy(&profile->triggerCondMutex);
-        pthread_mutex_destroy(&profile->reportInProgressMutex);
-        pthread_mutex_unlock(&profile->lock);
-        return T2ERROR_FAILURE;
-    }
-
-    /* Initialize thread reuse synchronization objects */
-    if(pthread_mutex_init(&profile->reuseThreadMutex, NULL) != 0)
-    {
-        T2Error(" %s reuseThreadMutex init has failed\n", __FUNCTION__);
-        pthread_mutex_destroy(&profile->triggerCondMutex);
-        pthread_mutex_destroy(&profile->reportInProgressMutex);
-        pthread_cond_destroy(&profile->reportInProgressCond);
-        pthread_mutex_unlock(&profile->lock);
-        return T2ERROR_FAILURE;
-    }
-    if(pthread_cond_init(&profile->reuseThread, NULL) != 0)
-    {
-        T2Error(" %s reuseThread init has failed\n", __FUNCTION__);
-        pthread_mutex_destroy(&profile->triggerCondMutex);
-        pthread_mutex_destroy(&profile->reportInProgressMutex);
-        pthread_cond_destroy(&profile->reportInProgressCond);
-        pthread_mutex_destroy(&profile->reuseThreadMutex);
-        pthread_mutex_unlock(&profile->lock);
-        return T2ERROR_FAILURE;
-    }
-
     /* Set enabled atomically */
     atomic_store(&profile->enable, true);
     pthread_mutex_unlock(&profile->lock);
@@ -1296,8 +1316,13 @@ T2ERROR enableProfile(const char *profileName)
                                     true, profile->reportOnUpdate, profile->firstReportingInterval,
                                     profile->timeRef) != T2ERROR_SUCCESS)
     {
-        atomic_store(&profile->enable, false);
         T2Error("Unable to register profile : %s with Scheduler\n", profileName);
+
+        /* Rollback: disable profile and return failure */
+        pthread_mutex_lock(&profile->lock);
+        atomic_store(&profile->enable, false);
+        pthread_mutex_unlock(&profile->lock);
+
         return T2ERROR_FAILURE;
     }
 
@@ -1572,11 +1597,6 @@ T2ERROR deleteProfile(const char *profileName)
         freeGrepSeekProfile(profile->grepSeekProfile);
     }
 
-    pthread_mutex_destroy(&profile->reportInProgressMutex);
-    pthread_cond_destroy(&profile->reportInProgressCond);
-    pthread_mutex_destroy(&profile->reuseThreadMutex);
-    pthread_cond_destroy(&profile->reuseThread);
-
     /* Remove profile from list using write lock */
     pthread_rwlock_wrlock(&plRwLock);
     T2Info("removing profile : %s from profile list\n", profile->name);
@@ -1829,8 +1849,8 @@ T2ERROR uninitProfileList()
         pthread_mutex_unlock(&triggerConditionQueMutex);
     }
 
-    pthread_mutex_destroy(&reportLock);
-    pthread_rwlock_destroy(&plRwLock);
+    /* Static locks don't need explicit destruction */
+    /* pthread_rwlock_destroy(&plRwLock); -- Statically initialized */
 
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;

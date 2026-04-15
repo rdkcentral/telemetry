@@ -55,9 +55,10 @@
 static bool initialized = false;
 static Vector *profileList;
 /*
- * Lock hierarchy (acquire in this order to prevent deadlock):
+ * Lock hierarchy: if both locks are needed, acquire in this order to prevent deadlock:
  * 1. plRwLock - protects profileList access
  * 2. profile->lock - protects individual profile operations
+ * Either lock may be held independently when only one is needed.
  */
 static pthread_rwlock_t plRwLock = PTHREAD_RWLOCK_INITIALIZER;
 
@@ -315,6 +316,12 @@ static T2ERROR getProfile(const char *profileName, Profile **profile)
     {
         T2Error("profileName is null\n");
         return T2ERROR_FAILURE;
+    }
+
+    /* Guard against uninitialized state before taking the lock */
+    if(!initialized || profileList == NULL)
+    {
+        return T2ERROR_PROFILE_NOT_FOUND;
     }
 
     /* Use read lock for parallel profile lookups */
@@ -1444,9 +1451,7 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
         }
 
         /* Read threadExists under reuseThreadMutex: threadExists is written under
-         * reuseThreadMutex in CollectAndReport, so reads must use the same lock.
-         * The thread sets threadExists = false and then destroys reuseThreadMutex
-         * before returning, so reuseThreadMutex must not be accessed after join. */
+         * reuseThreadMutex in CollectAndReport, so reads must use the same lock. */
         pthread_mutex_lock(&tempProfile->reuseThreadMutex);
         bool threadStillExists = atomic_load(&tempProfile->threadExists);
         if (threadStillExists)
@@ -1459,8 +1464,8 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
         if (threadStillExists)
         {
             pthread_join(tempProfile->reportThread, NULL);
-            /* Do not access reuseThreadMutex after join: the thread destroys it
-             * after setting threadExists = false (see CollectAndReport cleanup). */
+            /* reuseThreadMutex is destroyed in freeProfile()/cleanupProfileLocks(),
+             * not by the thread, so it is safe to access after join. */
         }
 
         /* No global lock needed for per-profile cleanup */
@@ -1562,9 +1567,8 @@ T2ERROR deleteProfile(const char *profileName)
     pthread_mutex_unlock(&profile->reportInProgressMutex);
 
     /* Read threadExists under reuseThreadMutex: it is written under the same mutex
-     * in CollectAndReport.  The thread sets threadExists = false and then destroys
-     * reuseThreadMutex before returning, so reuseThreadMutex must not be used after
-     * pthread_join returns. */
+     * in CollectAndReport. reuseThreadMutex is destroyed in freeProfile()/
+     * cleanupProfileLocks(), not by the thread, so it is safe to access after join. */
     pthread_mutex_lock(&profile->reuseThreadMutex);
     bool threadStillExists = atomic_load(&profile->threadExists);
     pthread_mutex_unlock(&profile->reuseThreadMutex);
@@ -1580,8 +1584,6 @@ T2ERROR deleteProfile(const char *profileName)
         pthread_cond_signal(&profile->reuseThread);
         pthread_mutex_unlock(&profile->reuseThreadMutex);
         pthread_join(profile->reportThread, NULL);
-        /* Do not access reuseThreadMutex after join: the thread destroys it
-         * after setting threadExists = false (see CollectAndReport cleanup). */
     }
 
     /* No global lock needed for per-profile cleanup operations in fine-grained design */

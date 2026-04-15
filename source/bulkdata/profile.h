@@ -22,7 +22,16 @@
 
 #include <stdbool.h>
 #include <pthread.h>
+#ifndef __cplusplus
 #include <stdatomic.h>
+#else
+/* In C++ builds provide a layout-compatible substitute so the header compiles.
+ * Atomic operations on these fields are only performed in C implementation
+ * files which include <stdatomic.h> directly. */
+#ifndef atomic_bool
+typedef volatile bool atomic_bool;
+#endif
+#endif
 #include <cjson/cJSON.h>
 
 #include "t2collection.h"
@@ -42,7 +51,7 @@ typedef struct _JSONEncoding
 
 typedef struct _Profile
 {
-    /* Lock hierarchy: always acquire plRwLock before this lock to prevent deadlock */
+    /* Lock hierarchy: if both locks are needed, acquire plRwLock before this lock */
     pthread_mutex_t lock;        /* Per-profile lock for fine-grained locking */
 
     atomic_bool enable;          /* Atomic for lock-free reads */

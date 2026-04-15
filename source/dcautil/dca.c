@@ -319,6 +319,17 @@ int processTopPattern(char* profileName,  Vector* topMarkerList, int profileExec
             continue;
         }
 
+        if (topMarkerObj->cpuValue)
+        {
+            free(topMarkerObj->cpuValue);
+            topMarkerObj->cpuValue = NULL;
+        }
+        if (topMarkerObj->memValue)
+        {
+            free(topMarkerObj->memValue);
+            topMarkerObj->memValue = NULL;
+        }
+
         // If the skip frequency is set, skip the marker processing for this interval
         int tmp_skip_interval, is_skip_param;
         tmp_skip_interval = topMarkerObj->skipFreq;

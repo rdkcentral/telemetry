@@ -50,7 +50,7 @@ static ProfileXConf *singleProfile = NULL;
  * Kept as mutex (not rwlock) because pthread_cond_wait requires pthread_mutex_t.
  * Lock hierarchy: L0 (same level as profileListLock in profile.c).
  */
-static pthread_mutex_t xconfProfileLock;
+static pthread_mutex_t xconfProfileLock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t reuseThread;
 static bool reportThreadExits = false;
 
@@ -613,18 +613,13 @@ T2ERROR ProfileXConf_init(bool checkPreviousSeek)
         Config *config = NULL;
 
         initialized = true;
-        if(pthread_mutex_init(&xconfProfileLock, NULL) != 0)
-        {
-            T2Error("%s Mutex init has failed\n", __FUNCTION__);
-            return T2ERROR_FAILURE;
-        }
         /* Initialize condition variable at module init to prevent race where
          * ProfileXConf_notifyTimeout signals before CollectAndReportXconf initializes it.
          */
         if(pthread_cond_init(&reuseThread, NULL) != 0)
         {
             T2Error("%s Condition variable init has failed\n", __FUNCTION__);
-            pthread_mutex_destroy(&xconfProfileLock);
+            initialized = false;
             return T2ERROR_FAILURE;
         }
         Vector_Create(&configList);

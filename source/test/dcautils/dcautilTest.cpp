@@ -371,7 +371,7 @@ TEST(GETPROCINFO, PMINFO_NULL)
    memset(&pInfo, '\0', sizeof(procMemCpuInfo));
    memcpy(pInfo.processName, processName, strlen(processName) + 1);
    pInfo.total_instance = 0;
-   EXPECT_EQ(0,getProcInfo(&pInfo, NULL));
+   EXPECT_NE(0,getProcInfo(&pInfo, NULL));
    free(filename);
 }
 

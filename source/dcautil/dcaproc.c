@@ -228,16 +228,6 @@ int getProcUsage(char *processName, TopMarker* marker, char* filename)
 
         pInfo.total_instance = index;
         pInfo.pid = pid;
-        if (marker->cpuValue)
-        {
-            free(marker->cpuValue);
-            marker->cpuValue = NULL;
-        }
-        if (marker->memValue)
-        {
-            free(marker->memValue);
-            marker->memValue = NULL;
-        }
         if(0 != getProcInfo(&pInfo, filename))
         {
             T2Debug("Process info - CPU: %s, Memory: %s \n", pInfo.cpuUse, pInfo.memUse);
@@ -599,8 +589,10 @@ int getCPUInfo(procMemCpuInfo *pInfo, char* filename)
         if(strcasestr(top_op, pInfo->processName) == NULL)
         {
             int line_pid = 0;
-            if(sscanf(top_op, "%d", &line_pid) != 1 || line_pid != pInfo->pid[0])
+            if(pInfo->pid == NULL || sscanf(top_op, "%d", &line_pid) != 1 || line_pid != pInfo->pid[0])
+            {
                 continue;
+            }
         }
         if(sscanf(top_op, "%s %s %s %s %s %s %s %s", var1, var2, var3, var4, var5, var6, var7, var8) == 8)
         {
@@ -616,8 +608,10 @@ int getCPUInfo(procMemCpuInfo *pInfo, char* filename)
         if(strcasestr(top_op, pInfo->processName) == NULL)
         {
             int line_pid = 0;
-            if(sscanf(top_op, "%d", &line_pid) != 1 || line_pid != pInfo->pid[0])
+            if(pInfo->pid == NULL || sscanf(top_op, "%d", &line_pid) != 1 || line_pid != pInfo->pid[0])
+            {
                 continue;
+            }
         }
         if(sscanf(top_op, "%16s %16s %16s %16s %16s %16s %16s %512s %512s %512s", var1, var2, var3, var4, var5, var6, var7, var8, var9, var10) == 10)
         {

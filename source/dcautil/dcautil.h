@@ -53,7 +53,7 @@ void freeGResult(void *data);
 T2ERROR saveGrepConfig(char *name, Vector* grepMarkerList);
 T2ERROR getGrepResults(GrepSeekProfile **GSP, Vector *markerList, bool isClearSeekMap, bool check_rotated, char *customLogPath);
 #define PREFIX_SIZE 5
-#define BUF_LEN 16
+#define BUF_LEN 64
 
 typedef struct proc_info
 {

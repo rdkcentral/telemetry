@@ -795,19 +795,20 @@ static void SetupReachTimeZoneDSTFallback(FILE* devicePropsHandle)
         }));
 
     // getBuildType: fopen(DEVICE_PROPERTIES) -> devicePropsHandle, fscanf fills
-    // "BUILD_TYPE=PROD" then EOF, fclose returns 0.
+    // "BUILD_TYPE=PROD" and breaks (no EOF call), fclose returns 0.
     EXPECT_CALL(*g_fileIOMock, fopen(StrEq("/etc/device.properties"), _))
         .WillOnce(Return(devicePropsHandle))  // getBuildType
         .WillOnce(Return(nullptr));            // getTimezone CPU_ARCH read
 
+    // getBuildType breaks out of its fscanf loop as soon as it finds "BUILD_TYPE",
+    // so fscanf is called exactly once.
     EXPECT_CALL(*g_fileIOMock, fscanf(devicePropsHandle, _, _))
         .WillOnce(Invoke([](FILE*, const char*, va_list args) -> int {
             char* buf = va_arg(args, char*);
             strncpy(buf, "BUILD_TYPE=PROD", 254);
             buf[254] = '\0';
             return 1;
-        }))
-        .WillOnce(Return(EOF));
+        }));
 
     EXPECT_CALL(*g_fileIOMock, fclose(devicePropsHandle))
         .WillOnce(Return(0));

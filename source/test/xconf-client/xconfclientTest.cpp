@@ -934,7 +934,7 @@ TEST_F(xconfclientTestFixture, getTimezone_timeZoneDST_valid_timezone)
         .WillOnce(Return(0));
     // fscanf fills the zone buffer with "US/Eastern" and then signals end-of-file.
     EXPECT_CALL(*g_fileIOMock, fscanf(tzFile, _, _))
-        .WillOnce(Invoke([](FILE*, const char*, va_list args) -> int {
+        .WillOnce(::testing::Invoke([](FILE*, const char*, va_list args) -> int {
             char* buf = va_arg(args, char*);
             strncpy(buf, "US/Eastern", 10);
             buf[10] = '\0';

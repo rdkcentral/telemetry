@@ -64,6 +64,23 @@ def _extract_string_literal(node):
     return None
 
 
+def _extract_string_from_arg(node):
+    """Extract a string literal from an argument, handling casts like (char *) \"str\"."""
+    # Direct string literal
+    result = _extract_string_literal(node)
+    if result is not None:
+        return result
+
+    # Cast expression: (char *) "str" — search descendants for a string_literal
+    if node.type == "cast_expression":
+        for child in _walk_tree(node):
+            result = _extract_string_literal(child)
+            if result is not None:
+                return result
+
+    return None
+
+
 def _find_c_files(repo_path):
     """Recursively find all .c, .cpp, .h files in a directory."""
     c_files = []
@@ -117,9 +134,10 @@ def scan_direct_calls(repo_path, repo_name):
             if not args:
                 continue
 
-            marker_name = _extract_string_literal(args[0])
+            marker_name = _extract_string_from_arg(args[0])
             if marker_name is None:
-                continue
+                # Fall back to raw argument text so no occurrence is missed
+                marker_name = args[0].text.decode("utf-8")
 
             line = node.start_point[0] + 1  # tree-sitter is 0-indexed
             markers.append(MarkerRecord(
@@ -180,7 +198,7 @@ def detect_wrappers(repo_path):
     """Detect wrapper functions that call t2_event_* with a variable (not literal) first arg.
 
     Returns list of dicts:
-        {'wrapper_name': str, 'marker_param_index': int, 'api': str, 'file': str}
+        {'wrapper_name': str, 'marker_param_index': int, 'api': str, 'file': str, 'inner_line': int}
     """
     parser = _create_parser()
     wrappers = []
@@ -242,11 +260,13 @@ def detect_wrappers(repo_path):
                     # Find which parameter position this variable corresponds to
                     if var_name in param_names:
                         param_index = param_names.index(var_name)
+                        inner_line = body_node.start_point[0] + 1
                         wrappers.append({
                             "wrapper_name": func_name,
                             "marker_param_index": param_index,
                             "api": callee,
                             "file": file_path,
+                            "inner_line": inner_line,
                         })
                         logger.debug("Detected wrapper: %s (param %d) → %s in %s",
                                      func_name, param_index, callee, file_path)
@@ -292,9 +312,10 @@ def resolve_wrapper_calls(repo_path, repo_name, wrappers):
             if len(args) <= param_index:
                 continue
 
-            marker_name = _extract_string_literal(args[param_index])
+            marker_name = _extract_string_from_arg(args[param_index])
             if marker_name is None:
-                continue
+                # Fall back to raw argument text so no occurrence is missed
+                marker_name = args[param_index].text.decode("utf-8")
 
             line = node.start_point[0] + 1
             markers.append(MarkerRecord(
@@ -310,16 +331,62 @@ def resolve_wrapper_calls(repo_path, repo_name, wrappers):
     return markers
 
 
+def scan_t2_init(repo_path):
+    """Scan a repo for t2_init() calls and extract the configured component name argument.
+
+    Returns a list of strings (the first string-literal argument of each t2_init call).
+    Returns an empty list if no t2_init calls are found.
+    """
+    parser = _create_parser()
+    names = []
+    c_files = _find_c_files(repo_path)
+
+    for file_path in c_files:
+        tree = _parse_file(parser, file_path)
+        if tree is None:
+            continue
+
+        for node in _walk_tree(tree.root_node):
+            if node.type != "call_expression":
+                continue
+
+            func_name = _get_function_name(node)
+            if func_name != "t2_init":
+                continue
+
+            args = _get_call_arguments(node)
+            if not args:
+                continue
+
+            name = _extract_string_from_arg(args[0])
+            if name is None:
+                # Fall back to raw argument text so no occurrence is missed
+                name = args[0].text.decode("utf-8")
+            names.append(name)
+
+    logger.info("Found %d t2_init call(s) in %s", len(names), repo_path)
+    return names
+
+
 def scan_repo(repo_path, repo_name):
     """Full scan of a repo: direct calls + wrapper resolution.
 
     Returns list of MarkerRecord.
     """
-    # Pass 1: Direct calls
+    # Pass 1: Direct calls (includes raw-text fallback for non-literals)
     markers = scan_direct_calls(repo_path, repo_name)
 
     # Pass 2: Detect wrappers
     wrappers = detect_wrappers(repo_path)
+
+    # Exclude wrapper-internal t2_event_* calls from Pass 1 results
+    # (these have raw variable names like "marker" and are resolved properly in Pass 3)
+    if wrappers:
+        wrapper_internal = set()
+        for w in wrappers:
+            rel_path = os.path.relpath(w["file"], repo_path)
+            wrapper_internal.add((rel_path, w["inner_line"]))
+        markers = [m for m in markers if (m.file_path, m.line) not in wrapper_internal]
 
     # Pass 3: Resolve wrapper call sites
     wrapper_markers = resolve_wrapper_calls(repo_path, repo_name, wrappers)

@@ -35,13 +35,13 @@
 │                  │ │              │ │                  │
 │ t2_event_s/d/f   │ │ t2ValNotify  │ │ All APIs (source │
 │ + wrapper resolve│ │ t2CountNotify│ │ + script)        │
-│                  │ │              │ │ added lines only │
+│ + t2_init detect │ │              │ │ added lines only │
 │ NOT t2ValNotify/ │ │ NOT t2_event │ │                  │
 │ t2CountNotify    │ │              │ │                  │
 └────────┬─────────┘ └──────┬───────┘ └────────┬─────────┘
          │                  │                  │
          └──────────────────┼──────────────────┘
-                      │  list of MarkerRecord
+                      │  list of MarkerRecord + t2_init_map
                       ▼
 ┌──────────────────────────────────────────────────────────────────┐
 │                    report_generator.py                            │
@@ -50,6 +50,7 @@
 │  2. Detect duplicates (same marker name, different component)    │
 │  3. Generate markdown:                                           │
 │     - Summary stats                                              │
+│     - Configured component names (from t2_init)                  │
 │     - Unique marker inventory (marker + components list)         │
 │     - Detailed marker inventory table (with ⚠️ on duplicates)    │
 │     - Duplicate markers section                                  │
@@ -165,18 +166,30 @@ b'ssh://git@github.com/rdk-e/meta-rdk-tools'@sha : sha
 
 **Pass 1 — Direct calls:**
 - Walk AST for `call_expression` nodes where function name is `t2_event_s`, `t2_event_d`, or `t2_event_f`
-- First argument is a `string_literal` → extract marker name
+- First argument: try `string_literal` → try cast-unwrapped `string_literal` → fall back to raw argument text
+- This ensures no occurrence is missed; variables and macros appear as raw text (e.g. `MY_MACRO`, `some_var`)
 - Record: marker name, file, line, API variant
 
 **Pass 2 — Wrapper detection:**
 - Walk AST for `function_definition` nodes whose body contains a `call_expression` to `t2_event_*`
 - If the first argument to `t2_event_*` is an `identifier` (not a string literal) → this function is a wrapper
-- Record: wrapper function name, which parameter position carries the marker, which `t2_event_*` variant
+- Record: wrapper function name, which parameter position carries the marker, which `t2_event_*` variant, file, and inner line number of the `t2_event_*` call
 
 **Pass 3 — Wrapper call site resolution:**
 - For each detected wrapper, walk AST again to find all `call_expression` nodes calling that wrapper
-- Extract the string literal at the marker argument position
+- Extract the string literal (or cast-unwrapped literal, or raw text fallback) at the marker argument position
 - Record as: marker name, file, line, API = `wrapperName→t2_event_*`
+
+**Wrapper-internal exclusion:**
+- After Pass 2, the `(file, line)` of each wrapper-internal `t2_event_*` call is collected
+- These are filtered out of Pass 1 results to avoid spurious entries where the raw variable name (e.g. `marker`) would appear alongside the properly resolved call-site markers from Pass 3
+
+**t2_init detection:**
+- `scan_t2_init(repo_path)`: walk AST for `call_expression` nodes where function name is `t2_init`
+- Extract the first argument: try string literal → try cast-unwrapped literal (e.g. `(char *) "name"`) → fall back to raw argument text
+- Returns a list of configured names per component (empty list if no `t2_init` found)
+- Results are passed to the report generator separately from marker records
+- Configured Component Names table only includes components that have at least one marker
 
 **Limitation:** Only one level of wrapping. If a wrapper calls another wrapper, the inner wrapper is not resolved.
 
@@ -233,10 +246,12 @@ t2CountNotify "MARKER_NAME" 1
 **Output sections:**
 1. Header with branch, org, generation timestamp
 2. Summary: total markers (static/dynamic split), components scanned, unresolved count, duplicate count
-3. Marker inventory table (static markers, sorted, duplicates flagged)
-4. Dynamic markers table (markers with shell variables)
-5. Duplicate markers section (if any)
-6. Unresolved components table (if input-file mode, components not found)
+3. Configured component names table (from `t2_init` — shows NA if absent, all occurrences if multiple)
+4. Unique marker inventory (marker + components list)
+5. Marker inventory table (static markers, sorted, duplicates flagged)
+6. Dynamic markers table (markers with shell variables)
+7. Duplicate markers section (if any)
+8. Unresolved components table (if input-file mode, components not found)
 
 ## Error handling
 

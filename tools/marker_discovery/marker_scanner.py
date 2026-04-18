@@ -100,8 +100,9 @@ def run_full_path_single(org, repo, branch, temp_dir):
 
 
 def scan_cloned_repos(cloned_repos):
-    """Run all scanners on cloned repos. Returns list of MarkerRecord."""
+    """Run all scanners on cloned repos. Returns (list of MarkerRecord, dict of t2_init names)."""
     all_markers = []
+    t2_init_map = {}
 
     for repo_info in cloned_repos:
         repo_path = repo_info["path"]
@@ -130,7 +131,15 @@ def scan_cloned_repos(cloned_repos):
         except Exception as e:
             logger.warning("Patch parser failed for %s: %s", repo_name, e)
 
-    return all_markers
+        # t2_init configured component name detection
+        try:
+            names = code_parser.scan_t2_init(repo_path)
+            t2_init_map[repo_name] = names if names else []
+        except Exception as e:
+            logger.warning("t2_init scan failed for %s: %s", repo_name, e)
+            t2_init_map[repo_name] = []
+
+    return all_markers, t2_init_map
 
 
 def run_input_file_path(input_file, temp_dir):
@@ -156,6 +165,7 @@ def main(argv=None):
 
     try:
         all_markers = []
+        all_t2_init = {}
         total_repos_scanned = 0
         unresolved_components = []
 
@@ -167,8 +177,9 @@ def main(argv=None):
             total_repos_scanned = total_components
             unresolved_components = unresolved
 
-            markers = scan_cloned_repos(cloned)
+            markers, t2_init_map = scan_cloned_repos(cloned)
             all_markers.extend(markers)
+            all_t2_init.update(t2_init_map)
 
             branch_display = f"per-component (from {args.input_file})"
         elif args.repo:
@@ -183,8 +194,9 @@ def main(argv=None):
             args.orgs = sorted(repo_orgs)
 
             if cloned:
-                markers = scan_cloned_repos(cloned)
+                markers, t2_init_map = scan_cloned_repos(cloned)
                 all_markers.extend(markers)
+                all_t2_init.update(t2_init_map)
 
             branch_display = args.branch
         else:
@@ -193,8 +205,9 @@ def main(argv=None):
                 cloned, total_in_org = run_full_path(org, args.branch, temp_dir)
                 total_repos_scanned += total_in_org
 
-                markers = scan_cloned_repos(cloned)
+                markers, t2_init_map = scan_cloned_repos(cloned)
                 all_markers.extend(markers)
+                all_t2_init.update(t2_init_map)
 
             branch_display = args.branch
 
@@ -205,6 +218,7 @@ def main(argv=None):
             orgs=args.orgs,
             components_scanned=total_repos_scanned,
             unresolved_components=unresolved_components,
+            t2_init_map=all_t2_init,
         )
 
         # Output

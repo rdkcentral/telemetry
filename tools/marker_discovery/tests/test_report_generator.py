@@ -187,3 +187,58 @@ class TestReportGeneration:
         report = generate_report(markers, "develop", ["rdkcentral"], 10, unresolved_components=unresolved)
 
         assert "**Unresolved Components**: 1" in report
+
+    def test_t2_init_section_with_names(self):
+        markers = [_make_marker("A", "repo1"), _make_marker("B", "repo2")]
+        t2_init_map = {
+            "repo1": ["my-component"],
+            "repo2": ["other-comp"],
+        }
+        report = generate_report(markers, "develop", ["rdkcentral"], 10, t2_init_map=t2_init_map)
+
+        assert "## Configured Component Names" in report
+        assert "| repo1 | my-component |" in report
+        assert "| repo2 | other-comp |" in report
+
+    def test_t2_init_excludes_components_without_markers(self):
+        markers = [_make_marker("A", "repo1")]
+        t2_init_map = {
+            "repo1": ["my-component"],
+            "no-markers-repo": ["other-comp"],
+        }
+        report = generate_report(markers, "develop", ["rdkcentral"], 10, t2_init_map=t2_init_map)
+
+        assert "## Configured Component Names" in report
+        assert "| repo1 | my-component |" in report
+        assert "no-markers-repo" not in report
+
+    def test_t2_init_na_when_empty(self):
+        markers = [_make_marker("A", "repo1")]
+        t2_init_map = {
+            "repo1": [],
+        }
+        report = generate_report(markers, "develop", ["rdkcentral"], 10, t2_init_map=t2_init_map)
+
+        assert "## Configured Component Names" in report
+        assert "| repo1 | NA |" in report
+
+    def test_t2_init_multiple_names(self):
+        markers = [_make_marker("A", "repo1")]
+        t2_init_map = {
+            "repo1": ["comp-a", "comp-b"],
+        }
+        report = generate_report(markers, "develop", ["rdkcentral"], 10, t2_init_map=t2_init_map)
+
+        assert "| repo1 | comp-a, comp-b |" in report
+
+    def test_no_t2_init_section_when_empty_map(self):
+        markers = [_make_marker("A", "repo1")]
+        report = generate_report(markers, "develop", ["rdkcentral"], 10, t2_init_map={})
+
+        assert "## Configured Component Names" not in report
+
+    def test_no_t2_init_section_when_none(self):
+        markers = [_make_marker("A", "repo1")]
+        report = generate_report(markers, "develop", ["rdkcentral"], 10)
+
+        assert "## Configured Component Names" not in report

@@ -4,11 +4,12 @@ A command-line utility that scans repositories in GitHub organizations to identi
 
 ## Features
 
-- **C/C++ scanning** — Uses [tree-sitter](https://tree-sitter.github.io/) to parse `.c`, `.cpp`, and `.h` files, extracting markers from `t2_event_s()`, `t2_event_d()`, and `t2_event_f()` calls
-- **Wrapper resolution** — Detects functions that wrap `t2_event_*` calls and traces call sites to recover the actual marker names
+- **C/C++ scanning** — Uses [tree-sitter](https://tree-sitter.github.io/) to parse `.c`, `.cpp`, and `.h` files, extracting markers from `t2_event_s()`, `t2_event_d()`, and `t2_event_f()` calls. Handles cast-wrapped arguments like `(char *) "MARKER"`. When a marker name cannot be resolved (variables, macros), the raw argument text is captured so no occurrence is missed.
+- **Wrapper resolution** — Detects functions that wrap `t2_event_*` calls and traces call sites to recover the actual marker names. Wrapper-internal forwarding calls are excluded to avoid spurious entries.
 - **Script scanning** — Regex-based extraction of `t2ValNotify` and `t2CountNotify` calls from shell scripts and other text files
 - **Dynamic marker tracking** — Markers containing shell variables (`$var`, `${var}`) are identified and listed separately; pure positional args like `$1` are resolved when possible
 - **Patch scanning** — Detects marker calls in `.patch` files (added lines only)
+- **Configured component name detection** — Finds `t2_init()` calls in each component and extracts the configured component name argument, including cast-wrapped forms like `(char *) "name"`. Falls back to raw argument text if not a string literal.
 - **Duplicate detection** — Flags markers that appear across multiple components
 - **Version manifest input** — Accept a `versions.txt` file with exact commit SHAs for reproducible scans. Includes all GitHub repos regardless of org. Supports HTTPS and SSH GitHub URLs.
 - **Single attempt cloning** — No branch fallback retries; 5-minute timeout per clone
@@ -122,9 +123,9 @@ Supported URL schemes: `https://`, `http://`, `ssh://`, `ssh://git@`. SSH URLs a
 
 ### Three-Pass C/C++ Scanning
 
-1. **Direct calls** — Finds `t2_event_s("MARKER", ...)`, `t2_event_d(...)`, `t2_event_f(...)` where the first argument is a string literal
-2. **Wrapper detection** — Identifies functions that call `t2_event_*` with a variable first argument and maps it to a function parameter
-3. **Wrapper resolution** — Finds call sites of detected wrappers and extracts the string literal passed at the marker parameter position
+1. **Direct calls** — Finds `t2_event_s("MARKER", ...)`, `t2_event_d(...)`, `t2_event_f(...)`. Extracts the first argument as the marker name. Handles cast-wrapped args like `(const char *) "MARKER"`. If the argument is a variable or macro, the raw text is captured (e.g. `MY_MACRO`, `some_var`).
+2. **Wrapper detection** — Identifies functions that call `t2_event_*` with a variable first argument and maps it to a function parameter. Records the line of the internal `t2_event_*` call.
+3. **Wrapper resolution** — Finds call sites of detected wrappers and extracts the string literal (or raw text) at the marker parameter position. Wrapper-internal `t2_event_*` calls (from Pass 2) are excluded from Pass 1 results to avoid spurious entries.
 
 Example:
 ```c
@@ -159,11 +160,12 @@ The generated markdown report includes:
 
 1. **Header** — Branch, organizations, generation timestamp
 2. **Summary** — Total markers, static/dynamic counts, components scanned, unresolved count, duplicate count
-3. **Unique Marker Inventory** — One row per unique marker name with the list of components it appears in
-4. **Detailed Marker Inventory** — Table of all static markers sorted by name, with component, file path, line number, and API
-5. **Dynamic Markers** — Separate table for markers containing shell variables (if any)
-6. **Duplicate Markers** — Markers appearing in multiple components, flagged with ⚠️ (if any)
-7. **Unresolved Components** — Components from the input file that could not be cloned (if any)
+3. **Configured Component Names** — Table mapping each component to its `t2_init()` configured name (NA if absent, all occurrences if multiple)
+4. **Unique Marker Inventory** — One row per unique marker name with the list of components it appears in
+5. **Detailed Marker Inventory** — Table of all static markers sorted by name, with component, file path, line number, and API
+6. **Dynamic Markers** — Separate table for markers containing shell variables (if any)
+7. **Duplicate Markers** — Markers appearing in multiple components, flagged with ⚠️ (if any)
+8. **Unresolved Components** — Components from the input file that could not be cloned (if any)
 
 ## Authentication
 

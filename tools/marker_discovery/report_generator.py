@@ -34,7 +34,7 @@ def _get_unique_components(markers):
     return {m.component for m in markers}
 
 
-def generate_report(markers, branch, orgs, components_scanned, unresolved_components=None):
+def generate_report(markers, branch, orgs, components_scanned, unresolved_components=None, t2_init_map=None):
     """Generate a markdown report from discovered markers.
 
     Args:
@@ -43,11 +43,14 @@ def generate_report(markers, branch, orgs, components_scanned, unresolved_compon
         orgs: list of organization names
         components_scanned: total number of repos scanned
         unresolved_components: optional list of dicts with 'name', 'version', 'reason'
+        t2_init_map: optional dict mapping component name → list of configured names from t2_init
 
     Returns markdown string.
     """
     if unresolved_components is None:
         unresolved_components = []
+    if t2_init_map is None:
+        t2_init_map = {}
     # Separate static and dynamic markers
     static_markers = [m for m in markers if m.source_type != "script_dynamic"]
     dynamic_markers = [m for m in markers if m.source_type == "script_dynamic"]
@@ -87,6 +90,26 @@ def generate_report(markers, branch, orgs, components_scanned, unresolved_compon
     else:
         lines.append(f"- **Duplicate Markers**: 0")
     lines.append("")
+
+    # Configured Component Names (from t2_init calls)
+    # Only show components that have at least one marker
+    if t2_init_map:
+        components_with_markers = {m.component for m in markers}
+        filtered_t2_init = {k: v for k, v in t2_init_map.items() if k in components_with_markers}
+
+        if filtered_t2_init:
+            lines.append("## Configured Component Names")
+            lines.append("| Component | Configured Name |")
+            lines.append("|-----------|-----------------|")
+
+            for comp in sorted(filtered_t2_init.keys(), key=str.lower):
+                names = filtered_t2_init[comp]
+                if names:
+                    lines.append(f"| {comp} | {', '.join(names)} |")
+                else:
+                    lines.append(f"| {comp} | NA |")
+
+            lines.append("")
 
     # Unique Marker Inventory (one row per unique marker name, with components)
     lines.append("## Unique Marker Inventory")

@@ -27,8 +27,9 @@ Supports three modes:
   - With input file: clone at exact commit SHA, single attempt, no fallback
 - **All GitHub orgs in input file**: All GitHub repos listed in the version manifest are included regardless of org. Non-GitHub URLs (gerrit, kernel.org, tarballs) and md5sum entries are skipped.
 - **Unresolved component tracking**: Components that fail to clone are listed in a dedicated report section
-- **Source file scanning**: Parse `.c`, `.cpp`, `.h` files using tree-sitter C/C++ AST to extract `t2_event_s`, `t2_event_d`, `t2_event_f` calls
-- **Wrapper resolution (level 1)**: Detect functions that wrap `t2_event_*` calls with a variable argument, then resolve call sites to extract the actual marker name string literals
+- **Source file scanning**: Parse `.c`, `.cpp`, `.h` files using tree-sitter C/C++ AST to extract `t2_event_s`, `t2_event_d`, `t2_event_f` calls. Handles cast-wrapped arguments like `(char *) "MARKER"`. Falls back to raw argument text for variables and macros so no occurrence is missed.
+- **Wrapper resolution (level 1)**: Detect functions that wrap `t2_event_*` calls with a variable argument, then resolve call sites to extract the actual marker name string literals. Wrapper-internal forwarding calls are excluded from direct-call results to avoid duplicates.
+- **Configured component name detection**: Scan for `t2_init()` calls in each component and extract the configured component name (first string literal argument, including cast-wrapped forms). If not a string literal, raw argument text is captured. If no `t2_init` is found, report NA. If multiple exist, list all occurrences. Only components with markers appear in the table.
 - **Script file scanning**: Scan all script files (any type) for `t2ValNotify` and `t2CountNotify` calls. These APIs are NOT searched in C/C++ files (they appear there as wrapper definitions, handled by wrapper resolution). Report API as `t2ValNotify` or `t2CountNotify` directly.
 - **Dynamic marker classification**: Markers containing shell variables (`$var`, `${var}`) are classified as "script_dynamic" and reported in a separate section. Pure positional args (`$1`) are resolved when possible by tracing shell function call sites.
 - **Patch file scanning**: Scan `.patch` files for added lines (`+` prefix) containing `t2_event_*`, `t2ValNotify`, and `t2CountNotify` calls
@@ -38,7 +39,7 @@ Supports three modes:
 
 ### Out of scope (v1)
 
-- Macro-wrapped marker calls (e.g., `#define REPORT(m,v) t2_event_d(m,v)`)
+- Macro-wrapped marker calls (e.g., `#define REPORT(m,v) t2_event_d(m,v)`) — the call site is captured with the macro name as raw text, but not expanded
 - Wrappers of wrappers (more than one level of indirection)
 - JSON/CSV/HTML output formats
 - Cross-referencing against telemetry profile configurations
@@ -66,6 +67,13 @@ Supports three modes:
 - **Components Scanned**: 258
 - **Unresolved Components**: 5 ⚠️
 - **Duplicate Markers**: 12 ⚠️
+
+## Configured Component Names
+| Component | Configured Name |
+|-----------|----------------|
+| dcm-agent | dcmAgent |
+| telemetry | telemetryAgent |
+| common_utilities | NA |
 
 ## Unique Marker Inventory
 | Marker Name | Components |

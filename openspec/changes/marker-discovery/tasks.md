@@ -96,3 +96,22 @@
   - Branch fallback works
   - Markers are discovered correctly
   - Report output matches expected format
+
+- [x] **Task 12: Configured component name detection (t2_init)**
+  Add `scan_t2_init(repo_path)` to `code_parser.py`:
+  - Walk tree-sitter AST for `t2_init()` call expressions
+  - Extract first string literal argument as configured component name
+  - Return list of names (empty if none found, multiple if multiple calls)
+  Update `marker_scanner.py` to collect t2_init results per component via `scan_cloned_repos()`.
+  Update `report_generator.py` to render a "Configured Component Names" table after Summary (NA for components without t2_init, comma-separated for multiple). Only show components that have markers.
+  Add 6 tests in `test_code_parser.py` (TestScanT2Init) and 5 tests in `test_report_generator.py`.
+
+- [x] **Task 13: Cast-wrapped argument handling and raw text fallback**
+  Update all extraction points in `code_parser.py`:
+  - Add `_extract_string_from_arg()` helper that handles cast expressions like `(char *) "MARKER"` and `(const char *) "name"`
+  - All three passes (direct calls, wrapper resolution, t2_init) use cast-aware extraction with raw text fallback
+  - If the first argument is not a string literal or cast-wrapped literal, capture the raw argument text (e.g. `MY_MACRO`, `some_var`, `get_name()`)
+  - No occurrence is missed — the developer can decode raw text by inspecting the file/line
+  Update `detect_wrappers()` to record the `inner_line` of wrapper-internal `t2_event_*` calls.
+  Update `scan_repo()` to exclude wrapper-internal calls from Pass 1 results using `(file, line)` matching, preventing spurious raw-variable-name entries.
+  Add 7 new tests: cast-wrapped markers, macro markers, cast-wrapped wrapper call sites, variable wrapper call sites, wrapper-internal exclusion, cast-wrapped t2_init, header file t2_init. Total: 80 tests passing.

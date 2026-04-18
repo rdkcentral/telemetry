@@ -4,7 +4,7 @@ import os
 import tempfile
 import pytest
 
-from tools.marker_discovery.code_parser import scan_direct_calls, detect_wrappers, resolve_wrapper_calls, scan_repo
+from tools.marker_discovery.code_parser import scan_direct_calls, detect_wrappers, resolve_wrapper_calls, scan_repo, scan_t2_init
 
 
 @pytest.fixture
@@ -121,14 +121,42 @@ class TestDirectCalls:
         assert markers[0].marker_name == "LONG_MARKER_NAME"
         assert markers[0].api == "t2_event_s"
 
-    def test_skips_variable_marker(self, repo_with_variable_marker):
-        """Direct scan should NOT pick up calls with variable first args."""
+    def test_variable_marker_captured_as_raw_text(self, repo_with_variable_marker):
+        """Direct scan should capture variable first args as raw text."""
         markers = scan_direct_calls(repo_with_variable_marker, "test")
-        assert len(markers) == 0
+        assert len(markers) == 1
+        assert markers[0].marker_name == "name"
 
     def test_empty_repo(self, tmp_path):
         markers = scan_direct_calls(tmp_path, "empty")
         assert markers == []
+
+    def test_cast_wrapped_marker(self, tmp_path):
+        """Cast expression like (const char*) should still extract the marker name."""
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "cast.c").write_text('''
+void foo() {
+    t2_event_s((const char *) "CAST_MARKER", "1");
+}
+''')
+        markers = scan_direct_calls(tmp_path, "test")
+        assert len(markers) == 1
+        assert markers[0].marker_name == "CAST_MARKER"
+
+    def test_macro_marker_captured_as_raw_text(self, tmp_path):
+        """Macro first arg should be captured as raw text."""
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "macro.c").write_text('''
+#define MY_MARKER "SOME_MARKER"
+void foo() {
+    t2_event_s(MY_MARKER, "1");
+}
+''')
+        markers = scan_direct_calls(tmp_path, "test")
+        assert len(markers) == 1
+        assert markers[0].marker_name == "MY_MARKER"
 
 
 class TestWrapperDetection:
@@ -159,6 +187,46 @@ class TestWrapperResolution:
             assert m.api == "t2CountNotify→t2_event_d"
             assert m.source_type == "source"
 
+    def test_resolves_cast_wrapped_call_site(self, tmp_path):
+        """Wrapper call with cast-wrapped arg should extract the string."""
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "wrapper.c").write_text('''
+void myLog(const char *marker, int val) {
+    t2_event_d(marker, val);
+}
+''')
+        (src / "caller.c").write_text('''
+void check() {
+    myLog((const char *) "CAST_STATUS", 1);
+}
+''')
+        wrappers = detect_wrappers(tmp_path)
+        markers = resolve_wrapper_calls(tmp_path, "test", wrappers)
+
+        assert len(markers) == 1
+        assert markers[0].marker_name == "CAST_STATUS"
+
+    def test_resolves_variable_call_site_as_raw_text(self, tmp_path):
+        """Wrapper call with non-literal arg should capture raw text."""
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "wrapper.c").write_text('''
+void myLog(const char *marker, int val) {
+    t2_event_d(marker, val);
+}
+''')
+        (src / "caller.c").write_text('''
+void check() {
+    myLog(some_global_var, 1);
+}
+''')
+        wrappers = detect_wrappers(tmp_path)
+        markers = resolve_wrapper_calls(tmp_path, "test", wrappers)
+
+        assert len(markers) == 1
+        assert markers[0].marker_name == "some_global_var"
+
 
 class TestScanRepo:
     def test_full_scan_combines_direct_and_wrapper(self, repo_with_wrapper):
@@ -176,3 +244,96 @@ void init() {
         assert "INIT_OK" in names
         assert "STATUS_CHECK_OK" in names
         assert "STATUS_CHECK_FAIL" in names
+
+    def test_wrapper_internal_call_excluded(self, repo_with_wrapper):
+        """The t2_event_d(marker, val) inside the wrapper body should NOT appear as a raw-text marker."""
+        markers = scan_repo(repo_with_wrapper, "test-repo")
+
+        names = {m.marker_name for m in markers}
+        # Should have the resolved call-site markers, not the raw "marker" variable
+        assert "STATUS_CHECK_OK" in names
+        assert "STATUS_CHECK_FAIL" in names
+        assert "marker" not in names
+
+
+class TestScanT2Init:
+    def test_finds_single_t2_init(self, tmp_path):
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "init.c").write_text('''
+#include "t2_api.h"
+
+void startup() {
+    t2_init("my-component");
+}
+''')
+        names = scan_t2_init(tmp_path)
+        assert names == ["my-component"]
+
+    def test_finds_multiple_t2_init(self, tmp_path):
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "init.c").write_text('''
+void startup() {
+    t2_init("comp-a");
+    t2_init("comp-b");
+}
+''')
+        names = scan_t2_init(tmp_path)
+        assert sorted(names) == ["comp-a", "comp-b"]
+
+    def test_no_t2_init(self, tmp_path):
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "main.c").write_text('''
+void startup() {
+    t2_event_s("MARKER", "1");
+}
+''')
+        names = scan_t2_init(tmp_path)
+        assert names == []
+
+    def test_t2_init_with_variable_arg(self, tmp_path):
+        """t2_init with a non-literal arg should capture raw text."""
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "init.c").write_text('''
+void startup(const char *name) {
+    t2_init(name);
+}
+''')
+        names = scan_t2_init(tmp_path)
+        assert names == ["name"]
+
+    def test_empty_repo(self, tmp_path):
+        names = scan_t2_init(tmp_path)
+        assert names == []
+
+    def test_t2_init_across_files(self, tmp_path):
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "a.c").write_text('void a() { t2_init("alpha"); }')
+        (src / "b.c").write_text('void b() { t2_init("beta"); }')
+
+        names = scan_t2_init(tmp_path)
+        assert sorted(names) == ["alpha", "beta"]
+
+    def test_t2_init_with_cast(self, tmp_path):
+        """t2_init((char *) \"Thunder_Plugins\") should extract the name."""
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "init.h").write_text('''
+void startup() {
+    t2_init((char *) "Thunder_Plugins");
+}
+''')
+        names = scan_t2_init(tmp_path)
+        assert names == ["Thunder_Plugins"]
+
+    def test_t2_init_in_header_file(self, tmp_path):
+        src = tmp_path / "include"
+        src.mkdir()
+        (src / "config.h").write_text('void init() { t2_init("MyComp"); }')
+
+        names = scan_t2_init(tmp_path)
+        assert names == ["MyComp"]

@@ -208,21 +208,17 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])],
                 AC_SUBST(LIBRDKCERTSEL_FLAG)
 
 # ThreadSanitizer support for detecting data races in L2 tests
-                TSAN_CFLAGS = ""
-                TSAN_LDFLAGS = ""
-                               AC_ARG_ENABLE([tsan],
-                                             AS_HELP_STRING([--enable - tsan], [enable ThreadSanitizer for race detection (default is no)]),
-                                             [
-                                                 case "${enableval}" in
-                                                 yes) TSAN_CFLAGS = "-fsanitize=thread -g -O1 -fno-omit-frame-pointer"
-                TSAN_LDFLAGS = "-fsanitize=thread";;
-                               no)  ;;
+                AC_ARG_ENABLE([tsan],
+                              AS_HELP_STRING([--enable - tsan], [enable ThreadSanitizer for race detection (default is no)]),
+                              [
+                                  case "${enableval}" in
+                                  yes) CFLAGS = "$CFLAGS -fsanitize=thread -g -O1 -fno-omit-frame-pointer"
+                LDFLAGS = "$LDFLAGS -fsanitize=thread";;
+                no)  ;;
                 *) AC_MSG_ERROR([bad value $ {enableval} for --enable - tsan]) ;;
                 esac
                 ],
                 [echo "ThreadSanitizer is disabled"])
-                AC_SUBST(TSAN_CFLAGS)
-                AC_SUBST(TSAN_LDFLAGS)
 
                 AC_CONFIG_FILES([Makefile
                                  source / Makefile

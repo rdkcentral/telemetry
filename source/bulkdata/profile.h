@@ -108,7 +108,6 @@ typedef struct _Profile
     bool restartRequested;
     bool threadExists;
     GrepSeekProfile *grepSeekProfile; // To store GrepConfig
-    pthread_mutex_t profileMutex; // L1: per-profile lock for state protection
 } Profile;
 
 T2ERROR initProfileList(bool checkPreviousSeek);

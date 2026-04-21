@@ -428,7 +428,6 @@ static void* reportOnDemand(void *input)
     if(!strncmp(action, ON_DEMAND_ACTION_UPLOAD, MAX_PROFILENAMES_LENGTH))
     {
         T2Info("Upload XCONF report on demand \n");
-        set_logdemand(true);
         generateDcaReport(false, true);
     }
     else if(!strncmp(action, ON_DEMAND_ACTION_ABORT, MAX_PROFILENAMES_LENGTH))
@@ -486,6 +485,10 @@ T2ERROR initReportProfiles()
     drop_root();
 #endif
 
+    //Initialise the properties file RDK-58222
+    T2InitProperties();
+    T2Info("Initializing properties\n");
+    
 #if defined (PRIVACYMODES_CONTROL)
 // Define scope
     {
@@ -640,9 +643,6 @@ T2ERROR initReportProfiles()
 
     }
 
-    //Initialise the properties file RDK-58222
-    T2InitProperties();
-    T2Info("InitProperties is successful\n");
 
     // This indicates telemetry has started
     FILE* bootFlag = NULL ;

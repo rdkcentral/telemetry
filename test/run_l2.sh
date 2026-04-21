@@ -26,6 +26,12 @@ mkdir -p "$RESULT_DIR"
 # ThreadSanitizer support (enabled by default, adds ~5-15x runtime overhead)
 # Pass --disable-tsan to skip TSan instrumentation and reduce test execution time
 ENABLE_TSAN=true
+if [ "x$1" = "x--disable-tsan" ]; then
+    echo "ThreadSanitizer disabled"
+    ENABLE_TSAN=false
+else
+    echo "ThreadSanitizer enabled for race detection"
+fi
 
 if ! grep -q "LOG_PATH=/opt/logs/" /etc/include.properties; then
     echo "LOG_PATH=/opt/logs/" >> /etc/include.properties
@@ -50,31 +56,47 @@ else
     echo "All tests passed successfully."
 fi
 
-# ThreadSanitizer: rebuild with TSan and run a quick smoke test to collect race reports.
-# Tests are run above against the normal (fast) binary for correctness.
-# TSan adds ~5-15x slowdown which breaks timing-sensitive tests, so we only do a short
-# exercise here to detect races without relying on test pass/fail.
+# ThreadSanitizer: rebuild with TSan and re-run the tests to collect race reports.
+# Tests above ran against the normal (fast) binary for correctness (final_result).
+# TSan adds ~5-15x slowdown which may break timing-sensitive tests, so TSan test
+# pass/fail is ignored — we only care about the race detection output.
 if [ "$ENABLE_TSAN" = true ]; then
     echo ""
     echo "=== Rebuilding with ThreadSanitizer for race detection ==="
-    autoreconf --install 2>/dev/null
-    ./configure --enable-tsan 2>/dev/null
-    make clean 2>/dev/null
-    make 2>/dev/null
-    make install 2>/dev/null
+    autoreconf --install
+    ./configure --enable-tsan
+    make clean
+    make
+    make install
     echo "TSan-instrumented build complete."
 
-    # Run the TSan-instrumented binary briefly to trigger race detection
     export TSAN_OPTIONS="halt_on_error=0 second_deadlock_stack=1 history_size=4 log_path=$RESULT_DIR/tsan.log"
-    /usr/local/bin/telemetry2_0 &
-    TSAN_PID=$!
-    sleep 15
-    kill -INT $TSAN_PID 2>/dev/null
-    wait $TSAN_PID 2>/dev/null
+
+    # Re-run a subset of tests against the TSan-instrumented binary to exercise
+    # threaded code paths (profile processing, signal handling, report generation).
+    # Pass/fail is ignored; only TSan log output matters.
+    #
+    # We skip test_xconf_communications (~10min without TSan, up to 2.5h with TSan)
+    # as it primarily exercises HTTP retry logic with less thread coverage.
+    # To run TSan against ALL suites, uncomment the xconf line below:
+    #   timeout $TSAN_TEST_TIMEOUT pytest -v test/functional-tests/tests/test_xconf_communications.py || true
+    #
+    # Timeout guards against potential deadlocks from signal-unsafe calls
+    # (sig_handler -> T2Log -> malloc can deadlock under TSan interceptors).
+    # Longest remaining suite is multiprofile_msgpacket (~6min without TSan,
+    # up to ~90min with TSan overhead). 1800s (30min) allows ample headroom.
+    # If enabling xconf_communications (~10min normal), increase to 3600.
+    TSAN_TEST_TIMEOUT=1800
+    echo ""
+    echo "=== Running tests with TSan-instrumented binary (pass/fail ignored, ${TSAN_TEST_TIMEOUT}s timeout per suite) ==="
+    timeout $TSAN_TEST_TIMEOUT pytest -v test/functional-tests/tests/test_runs_as_daemon.py || true
+    timeout $TSAN_TEST_TIMEOUT pytest -v test/functional-tests/tests/test_bootup_sequence.py || true
+    timeout $TSAN_TEST_TIMEOUT pytest -v test/functional-tests/tests/test_multiprofile_msgpacket.py || true
+    # Allow TSan log files to flush
     sleep 2
 
     # Report TSan findings (only telemetry source files, not external dependencies)
-    tsan_files=$(find "$RESULT_DIR" -name "tsan.log*" 2>/dev/null)
+    tsan_files=$(find "$RESULT_DIR" -name "tsan.log*" -size +0c 2>/dev/null)
     if [ -n "$tsan_files" ]; then
         echo ""
         echo "=== ThreadSanitizer Report (telemetry source only) ==="

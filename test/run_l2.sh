@@ -23,13 +23,10 @@ export top_srcdir=`pwd`
 RESULT_DIR="/tmp/l2_test_report"
 mkdir -p "$RESULT_DIR"
 
-# ThreadSanitizer support
-ENABLE_TSAN=false
-if [ "x$1" = "x--enable-tsan" ]; then
-    echo "Enabling ThreadSanitizer for race detection"
-    ENABLE_TSAN=true
-    export TSAN_OPTIONS="halt_on_error=0 second_deadlock_stack=1 history_size=4 log_path=$RESULT_DIR/tsan.log"
-fi
+# ThreadSanitizer support (enabled by default, adds ~5-15x runtime overhead)
+# Pass --disable-tsan to skip TSan instrumentation and reduce test execution time
+ENABLE_TSAN=true
+export TSAN_OPTIONS="halt_on_error=0 second_deadlock_stack=1 history_size=4 log_path=$RESULT_DIR/tsan.log"
 
 if ! grep -q "LOG_PATH=/opt/logs/" /etc/include.properties; then
     echo "LOG_PATH=/opt/logs/" >> /etc/include.properties

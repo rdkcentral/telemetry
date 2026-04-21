@@ -153,69 +153,6 @@ void trimLeadingAndTrailingws(char* string)
 
 }
 
-/**
- * @brief Apply regex pattern to a string value and update it in place
- * @param inputValue Pointer to the string value to process (will be modified)
- * @param regexPattern Regex pattern to apply
- * @return T2ERROR_SUCCESS on success, T2ERROR_FAILURE on error
- */
-static T2ERROR applyRegexToValue(char** inputValue, const char* regexPattern)
-{
-    if (!inputValue || !*inputValue || !regexPattern)
-    {
-        T2Error("Invalid arguments for regex operation\n");
-        return T2ERROR_INVALID_ARGS;
-    }
-
-    regex_t regpattern;
-    int rc = 0;
-    size_t nmatch = 1;
-    regmatch_t pmatch[2];
-    char string[256] = {'\0'};
-
-    rc = regcomp(&regpattern, regexPattern, REG_EXTENDED);
-    if(rc != 0)
-    {
-        T2Warning("regcomp() failed, returning nonzero (%d)\n", rc);
-        return T2ERROR_FAILURE;
-    }
-    else
-    {
-        T2Debug("regcomp() successful, returning value (%d)\n", rc);
-        rc = regexec(&regpattern, *inputValue, nmatch, pmatch, 0);
-        if(rc != 0)
-        {
-            T2Warning("regexec() failed, Failed to match '%s' with '%s',returning %d.\n",
-                      *inputValue, regexPattern, rc);
-            free(*inputValue);
-            *inputValue = strdup("");
-            if (*inputValue == NULL)
-            {
-                T2Error("strdup failed for empty string after regexec failure\n");
-                regfree(&regpattern);
-                return T2ERROR_FAILURE;
-            }
-        }
-        else
-        {
-            T2Debug("regexec successful, Match is found %.*s\n",
-                    pmatch[0].rm_eo - pmatch[0].rm_so, &(*inputValue)[pmatch[0].rm_so]);
-            sprintf(string, "%.*s", pmatch[0].rm_eo - pmatch[0].rm_so, &(*inputValue)[pmatch[0].rm_so]);
-            free(*inputValue);
-            *inputValue = strdup(string);
-            if (*inputValue == NULL)
-            {
-                T2Error("strdup failed for matched string after regexec success\n");
-                regfree(&regpattern);
-                return T2ERROR_FAILURE;
-            }
-        }
-        regfree(&regpattern);
-    }
-
-    return T2ERROR_SUCCESS;
-}
-
 T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *paramValueList)
 {
     if(valArray == NULL || paramNameList == NULL || paramValueList == NULL)
@@ -452,419 +389,74 @@ T2ERROR encodeStaticParamsInJSON(cJSON *valArray, Vector *staticParamList)
     return T2ERROR_SUCCESS;
 }
 
-T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepMarkerList)
+T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepResult)
 {
     T2Debug("%s ++in \n", __FUNCTION__);
-    if(valArray == NULL || grepMarkerList == NULL)
+    if(valArray == NULL || grepResult == NULL)
     {
         T2Error("Invalid or NULL Arguments\n");
         return T2ERROR_INVALID_ARGS;
     }
-
     size_t index = 0;
     cJSON *arrayItem = NULL;
-    for(; index < Vector_Size(grepMarkerList); index++)
+    for(; index < Vector_Size(grepResult); index++)
     {
-        GrepMarker* grepMarker = (GrepMarker *)Vector_At(grepMarkerList, index);
-        if (!grepMarker)
+        GrepResult* grep = (GrepResult *)Vector_At(grepResult, index);
+        if(grep)
         {
-            continue;
-        }
-
-        switch(grepMarker->mType)
-        {
-        case MTYPE_COUNTER:
-            if(grepMarker->u.count > 0)
+            if(grep->markerName == NULL || grep->markerValue == NULL ) // Ignore null values
             {
-                char stringValue[10] = {'\0'};
-                sprintf(stringValue, "%d", grepMarker->u.count);
-                arrayItem = cJSON_CreateObject();
-                if(arrayItem == NULL)
-                {
-                    T2Error("cJSON_CreateObject failed .. arrayItem is NULL\n");
-                    return T2ERROR_FAILURE;
-                }
-
-                if(cJSON_AddStringToObject(arrayItem, grepMarker->markerName, stringValue) == NULL)
-                {
-                    T2Error("cJSON_AddStringToObject failed\n");
-                    cJSON_Delete(arrayItem);
-                    return T2ERROR_FAILURE;
-                }
-                cJSON_AddItemToArray(valArray, arrayItem);
-                T2Debug("Marker value for : %s is %d\n", grepMarker->markerName, grepMarker->u.count);
-                grepMarker->u.count = 0;
+                continue ;
             }
-            break;
-
-        case MTYPE_ACCUMULATE:
-            if(grepMarker->u.accumulatedValues != NULL && Vector_Size(grepMarker->u.accumulatedValues))
+            arrayItem = cJSON_CreateObject();
+            if(arrayItem == NULL)
             {
-                arrayItem = cJSON_CreateObject();
-                if(arrayItem == NULL)
+                T2Error("cJSON_CreateObject failed..arrayItem is NULL \n");
+                return T2ERROR_FAILURE;
+            }
+            if(grep->trimParameter)
+            {
+                trimLeadingAndTrailingws((char*)grep->markerValue);
+            }
+            if(grep->regexParameter != NULL)
+            {
+                regex_t regpattern;
+                int rc = 0;
+                size_t nmatch = 1;
+                regmatch_t pmatch[2];
+                char string[256] = {'\0'};
+                rc = regcomp(&regpattern, grep->regexParameter, REG_EXTENDED);
+                if(rc != 0)
                 {
-                    T2Error("cJSON_CreateObject failed .. arrayItem is NULL\n");
-                    return T2ERROR_FAILURE;
-                }
-                cJSON *vectorToarray = cJSON_CreateArray();
-                if(vectorToarray == NULL)
-                {
-                    T2Error("cJSON_CreateArray failed .. vectorToarray is NULL\n");
-                    cJSON_Delete(arrayItem);
-                    return T2ERROR_FAILURE;
-                }
-
-                Vector* regaccumulateValues = NULL;
-                if(grepMarker->regexParam != NULL)
-                {
-                    regex_t regpattern;
-                    int rc = 0;
-                    size_t nmatch = 1;
-                    regmatch_t pmatch[2];
-                    char string[21][256];
-                    memset(string, '\0', sizeof(char) * 21 * 256);
-                    rc = regcomp(&regpattern, grepMarker->regexParam, REG_EXTENDED);
-                    if(rc != 0)
-                    {
-                        T2Warning("regcomp() failed, returning nonzero (%d)\n", rc);
-                    }
-                    else
-                    {
-                        T2Debug("regcomp() successful, returning value (%d)\n", rc);
-                        Vector_Create(&regaccumulateValues);
-                        for(size_t i = 0; i < Vector_Size(grepMarker->u.accumulatedValues); i++)
-                        {
-                            char* stringValue = (char*)Vector_At(grepMarker->u.accumulatedValues, i);
-                            if (stringValue)
-                            {
-                                if(grepMarker->trimParam)
-                                {
-                                    trimLeadingAndTrailingws(stringValue);
-                                }
-                                rc = regexec(&regpattern, stringValue, nmatch, pmatch, 0);
-                                if(strcmp(stringValue, "maximum accumulation reached") == 0)
-                                {
-                                    sprintf(string[i], "%s", stringValue);
-                                }
-                                else if(rc != 0)
-                                {
-                                    T2Warning("regexec() failed, Failed to match '%s' with '%s',returning %d.\n", stringValue, grepMarker->regexParam, rc);
-                                    sprintf(string[i], "%s", "");
-                                }
-                                else
-                                {
-                                    T2Debug("regexec successful, Match is found %.*s\n", pmatch[0].rm_eo - pmatch[0].rm_so, &stringValue[pmatch[0].rm_so]);
-                                    sprintf(string[i], "%.*s", pmatch[0].rm_eo - pmatch[0].rm_so, &stringValue[pmatch[0].rm_so]);
-                                }
-                                Vector_PushBack(regaccumulateValues, string[i]);
-                            }
-                        }
-                        regfree(&regpattern);
-                    }
-                }
-                if(regaccumulateValues != NULL && Vector_Size(regaccumulateValues) > 0)
-                {
-                    convertVectorToJson(vectorToarray, regaccumulateValues);
+                    T2Warning("regcomp() failed, returning nonzero (%d)\n", rc);
                 }
                 else
                 {
-                    convertVectorToJson(vectorToarray, grepMarker->u.accumulatedValues);
-                }
-                Vector_Clear(grepMarker->u.accumulatedValues, freeAccumulatedParam);
-                cJSON_AddItemToObject(arrayItem, grepMarker->markerName, vectorToarray);
-                // Add timestamp support for MTYPE_ACCUMULATE
-                if((grepMarker->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH) && (grepMarker->accumulatedTimestamp != NULL) && (Vector_Size(grepMarker->accumulatedTimestamp) > 0))
-                {
-                    // Populate markerName_CT if not already set
-                    if(grepMarker->markerName_CT == NULL)
+                    T2Debug("regcomp() successful, returning value (%d)\n", rc);
+                    rc = regexec(&regpattern, grep->markerValue, nmatch, pmatch, 0);
+                    if(rc != 0)
                     {
-                        char buf[512];
-                        snprintf(buf, sizeof(buf), "%s_CT", grepMarker->markerName);
-                        grepMarker->markerName_CT = strdup(buf);
+                        T2Warning("regexec() failed, Failed to match '%s' with '%s',returning %d.\n", grep->markerValue, grep->regexParameter, rc);
+                        free((char*)grep->markerValue);
+                        grep->markerValue = strdup("");
                     }
-
-                    cJSON *TimevectorToarray = cJSON_CreateArray();
-                    if(TimevectorToarray == NULL)
+                    else
                     {
-                        T2Error("cJSON_CreateArray failed .. TimevectorToarray is NULL\n");
-                        cJSON_Delete(arrayItem);
-                        if(regaccumulateValues != NULL)
-                        {
-                            Vector_Clear(regaccumulateValues, NULL);
-                            free(regaccumulateValues);
-                        }
-                        return T2ERROR_FAILURE;
+                        T2Debug("regexec successful, Match is found %.*s\n", pmatch[0].rm_eo - pmatch[0].rm_so, &grep->markerValue[pmatch[0].rm_so]);
+                        sprintf(string, "%.*s", pmatch[0].rm_eo - pmatch[0].rm_so, &grep->markerValue[pmatch[0].rm_so]);
+                        free((char*)grep->markerValue);
+                        grep->markerValue = strdup(string);
                     }
-                    convertVectorToJson(TimevectorToarray, grepMarker->accumulatedTimestamp);
-                    T2Debug("convertVectorToJson is successful for timestamps\n");
-                    Vector_Clear(grepMarker->accumulatedTimestamp, freeAccumulatedParam);
-                    cJSON_AddItemToObject(arrayItem, grepMarker->markerName_CT, TimevectorToarray);
-                }
-
-                cJSON_AddItemToArray(valArray, arrayItem);
-                char *temp = cJSON_Print(vectorToarray);
-                if(temp)
-                {
-                    T2Debug("Marker value Array for : %s is %s\n", grepMarker->markerName, temp);
-                    free(temp);
-                }
-                if(regaccumulateValues != NULL)
-                {
-                    Vector_Clear(regaccumulateValues, NULL);
-                    free(regaccumulateValues);
+                    regfree(&regpattern);
                 }
             }
-            break;
-
-        case MTYPE_ABSOLUTE:
-        default:
-            if(grepMarker->u.markerValue != NULL)
+            if(cJSON_AddStringToObject(arrayItem, grep->markerName, grep->markerValue)  == NULL)
             {
-                arrayItem = cJSON_CreateObject();
-                if(arrayItem == NULL)
-                {
-                    T2Error("cJSON_CreateObject failed.. arrayItem is NULL\n");
-                    return T2ERROR_FAILURE;
-                }
-                if(grepMarker->trimParam)
-                {
-                    trimLeadingAndTrailingws(grepMarker->u.markerValue);
-                }
-                if(grepMarker->regexParam != NULL)
-                {
-                    if(applyRegexToValue(&grepMarker->u.markerValue, grepMarker->regexParam) != T2ERROR_SUCCESS)
-                    {
-                        T2Error("Failed to apply regex to grep marker value\n");
-                        cJSON_Delete(arrayItem);
-                        return T2ERROR_FAILURE;
-                    }
-                }
-                if(cJSON_AddStringToObject(arrayItem, grepMarker->markerName, grepMarker->u.markerValue) == NULL)
-                {
-                    T2Error("cJSON_AddStringToObject failed\n");
-                    cJSON_Delete(arrayItem);
-                    return T2ERROR_FAILURE;
-                }
-                cJSON_AddItemToArray(valArray, arrayItem);
-                T2Debug("Marker value for : %s is %s\n", grepMarker->markerName, grepMarker->u.markerValue);
-                free(grepMarker->u.markerValue);
-                grepMarker->u.markerValue = NULL;
-            }
-        }
-    }
-    T2Debug("%s --Out \n", __FUNCTION__);
-    return T2ERROR_SUCCESS;
-}
-
-T2ERROR encodeTopResultInJSON(cJSON *valArray, Vector *topMarkerList)
-{
-    T2Debug("%s ++in \n", __FUNCTION__);
-    if(valArray == NULL || topMarkerList == NULL)
-    {
-        T2Error("Invalid or NULL Arguments\n");
-        return T2ERROR_INVALID_ARGS;
-    }
-
-    size_t index = 0;
-    cJSON *arrayItem = NULL;
-    for(; index < Vector_Size(topMarkerList); index++)
-    {
-        TopMarker* topMarker = (TopMarker *)Vector_At(topMarkerList, index);
-        if (!topMarker)
-        {
-            continue;
-        }
-
-        // Handle Load Average case (single value)
-        if(topMarker->loadAverage != NULL)
-        {
-            arrayItem = cJSON_CreateObject();
-            if(arrayItem == NULL)
-            {
-                T2Error("cJSON_CreateObject failed.. arrayItem is NULL\n");
-                return T2ERROR_FAILURE;
-            }
-
-            // Create a working copy for processing
-            char* workingValue = strdup(topMarker->loadAverage);
-            if(workingValue == NULL)
-            {
-                T2Error("Failed to duplicate load average value\n");
+                T2Error("cJSON_AddStringToObject failed.\n");
                 cJSON_Delete(arrayItem);
                 return T2ERROR_FAILURE;
             }
-
-            // Apply trimming if specified
-            if(topMarker->trimParam)
-            {
-                trimLeadingAndTrailingws(workingValue);
-            }
-
-            // Apply regex processing if specified
-            if(topMarker->regexParam != NULL)
-            {
-                if(applyRegexToValue(&workingValue, topMarker->regexParam) != T2ERROR_SUCCESS)
-                {
-                    T2Error("Failed to apply regex to top marker value\n");
-                    cJSON_Delete(arrayItem);
-                    free(workingValue);
-                    return T2ERROR_FAILURE;
-                }
-            }
-
-            // Add the load average marker value to JSON with markerName
-            if(cJSON_AddStringToObject(arrayItem, topMarker->markerName, workingValue) == NULL)
-            {
-                T2Error("cJSON_AddStringToObject failed for load average marker\n");
-                cJSON_Delete(arrayItem);
-                free(workingValue);
-                return T2ERROR_FAILURE;
-            }
-
             cJSON_AddItemToArray(valArray, arrayItem);
-            T2Debug("Load average marker value for : %s is %s\n", topMarker->searchString, workingValue);
-
-            // Clean up the working copy
-            free(workingValue);
-        }
-        // Handle CPU & Memory package case (both values present)
-        else if(topMarker->cpuValue != NULL && topMarker->memValue != NULL)
-        {
-            // Process CPU Value
-            arrayItem = cJSON_CreateObject();
-            if(arrayItem == NULL)
-            {
-                T2Error("cJSON_CreateObject failed for CPU marker.. arrayItem is NULL\n");
-                return T2ERROR_FAILURE;
-            }
-
-            // Create CPU marker name with prefix
-            size_t cpuNameLen = strlen("cpu_") + strlen(topMarker->searchString) + 1;
-            char* cpuMarkerName = malloc(cpuNameLen);
-            if(cpuMarkerName == NULL)
-            {
-                T2Error("Failed to allocate memory for CPU marker name\n");
-                cJSON_Delete(arrayItem);
-                return T2ERROR_FAILURE;
-            }
-            snprintf(cpuMarkerName, cpuNameLen, "cpu_%s", topMarker->searchString);
-
-            // Create a working copy for CPU processing
-            char* cpuWorkingValue = strdup(topMarker->cpuValue);
-            if(cpuWorkingValue == NULL)
-            {
-                T2Error("Failed to duplicate CPU value\n");
-                cJSON_Delete(arrayItem);
-                free(cpuMarkerName);
-                return T2ERROR_FAILURE;
-            }
-
-            // Apply trimming if specified
-            if(topMarker->trimParam)
-            {
-                trimLeadingAndTrailingws(cpuWorkingValue);
-            }
-
-            // Apply regex processing if specified
-            if(topMarker->regexParam != NULL)
-            {
-                if(applyRegexToValue(&cpuWorkingValue, topMarker->regexParam) != T2ERROR_SUCCESS)
-                {
-                    T2Error("Failed to apply regex to top marker value\n");
-                    cJSON_Delete(arrayItem);
-                    free(cpuWorkingValue);
-                    free(cpuMarkerName);
-                    return T2ERROR_FAILURE;
-                }
-            }
-
-            // Add the CPU marker value to JSON
-            if(cJSON_AddStringToObject(arrayItem, cpuMarkerName, cpuWorkingValue) == NULL)
-            {
-                T2Error("cJSON_AddStringToObject failed for CPU marker\n");
-                cJSON_Delete(arrayItem);
-                free(cpuMarkerName);
-                free(cpuWorkingValue);
-                return T2ERROR_FAILURE;
-            }
-
-            cJSON_AddItemToArray(valArray, arrayItem);
-            T2Debug("CPU marker value for : %s is %s\n", cpuMarkerName, cpuWorkingValue);
-
-            // Clean up CPU processing resources
-            free(cpuMarkerName);
-            free(cpuWorkingValue);
-
-            // Process Memory Value
-            arrayItem = cJSON_CreateObject();
-            if(arrayItem == NULL)
-            {
-                T2Error("cJSON_CreateObject failed for Memory marker.. arrayItem is NULL\n");
-                return T2ERROR_FAILURE;
-            }
-
-            // Create Memory marker name with prefix
-            size_t memNameLen = strlen("mem_") + strlen(topMarker->searchString) + 1;
-            char* memMarkerName = malloc(memNameLen);
-            if(memMarkerName == NULL)
-            {
-                T2Error("Failed to allocate memory for Memory marker name\n");
-                cJSON_Delete(arrayItem);
-                return T2ERROR_FAILURE;
-            }
-            snprintf(memMarkerName, memNameLen, "mem_%s", topMarker->searchString);
-
-            // Create a working copy for Memory processing
-            char* memWorkingValue = strdup(topMarker->memValue);
-            if(memWorkingValue == NULL)
-            {
-                T2Error("Failed to duplicate Memory value\n");
-                cJSON_Delete(arrayItem);
-                free(memMarkerName);
-                return T2ERROR_FAILURE;
-            }
-
-            // Apply trimming if specified
-            if(topMarker->trimParam)
-            {
-                trimLeadingAndTrailingws(memWorkingValue);
-            }
-
-            // Apply regex processing if specified
-            if(topMarker->regexParam != NULL)
-            {
-                if(applyRegexToValue(&memWorkingValue, topMarker->regexParam) != T2ERROR_SUCCESS)
-                {
-                    T2Error("Failed to apply regex to top marker value\n");
-                    cJSON_Delete(arrayItem);
-                    free(memWorkingValue);
-                    free(memMarkerName);
-                    return T2ERROR_FAILURE;
-                }
-            }
-
-            // Add the Memory marker value to JSON
-            if(cJSON_AddStringToObject(arrayItem, memMarkerName, memWorkingValue) == NULL)
-            {
-                T2Error("cJSON_AddStringToObject failed for Memory marker\n");
-                cJSON_Delete(arrayItem);
-                free(memMarkerName);
-                free(memWorkingValue);
-                return T2ERROR_FAILURE;
-            }
-
-            cJSON_AddItemToArray(valArray, arrayItem);
-            T2Debug("Memory marker value for : %s is %s\n", memMarkerName, memWorkingValue);
-
-            // Clean up Memory processing resources
-            free(memMarkerName);
-            free(memWorkingValue);
-        }
-        else
-        {
-            T2Debug("Top marker %s has no valid values to report (loadAverage=%p, cpuValue=%p, memValue=%p)\n",
-                    topMarker->searchString ? topMarker->searchString : "unknown",
-                    topMarker->loadAverage, topMarker->cpuValue, topMarker->memValue);
         }
     }
     T2Debug("%s --Out \n", __FUNCTION__);
@@ -1210,8 +802,6 @@ char *prepareHttpUrl(T2HTTP *http)
         unsigned int index = 0;
         int params_len = 0;
         char *url_params = NULL;
-        char *temp_params = NULL;
-        char *temp_url = NULL;
 
         for(; index < http->RequestURIparamList->count; index++)
         {
@@ -1252,21 +842,13 @@ char *prepareHttpUrl(T2HTTP *http)
             {
                 new_params_len += strlen(httpParamVal);
             }
-            temp_params = realloc(url_params, new_params_len);
-            if(temp_params == NULL)
+            url_params = realloc(url_params, new_params_len);
+            if(url_params == NULL)
             {
                 T2Error("Unable to allocate %d bytes of memory at Line %d on %s \n", new_params_len, __LINE__, __FILE__);
                 curl_free(httpParamVal);
-                // Free url_params to avoid memory leak before continuing
-                if(url_params)
-                {
-                    free(url_params);
-                    url_params = NULL;
-                    params_len = 0;  // Reset params_len to match freed state
-                }
                 continue;
             }
-            url_params = temp_params;
             params_len += snprintf(url_params + params_len, new_params_len - params_len, "%s=%s&", httpParam->HttpName, httpParamVal);
 
             curl_free(httpParamVal);
@@ -1279,16 +861,7 @@ char *prepareHttpUrl(T2HTTP *http)
             int url_len = strlen(httpUrl);
             int modified_url_len = url_len + strlen("?") + strlen(url_params) + 1;
 
-            temp_url = realloc(httpUrl, modified_url_len);
-            if(temp_url == NULL)
-            {
-                T2Error("Unable to allocate %d bytes of memory for URL at Line %d on %s \n", modified_url_len, __LINE__, __FILE__);
-                free(httpUrl);
-                free(url_params);
-                curl_easy_cleanup(curl);
-                return NULL;
-            }
-            httpUrl = temp_url;
+            httpUrl = realloc(httpUrl, modified_url_len);
             snprintf(httpUrl + url_len, modified_url_len - url_len, "?%s", url_params);
 
         }
@@ -1303,74 +876,3 @@ char *prepareHttpUrl(T2HTTP *http)
 
     return httpUrl;
 }
-
-void tagReportAsCached(char **jsonReport)
-{
-    if (!jsonReport)
-    {
-        T2Error("jsonReport is NULL\n");
-        return;
-    }
-
-    cJSON *jsonReportObj = cJSON_Parse(*jsonReport);
-    if (!jsonReportObj)
-    {
-        T2Error("Failed to parse JSON report\n");
-        return;
-    }
-
-    cJSON *reportTypeEntry = cJSON_CreateObject();
-    if (!reportTypeEntry)
-    {
-        T2Error("Failed to create REPORT_TYPE object\n");
-        destroyJSONReport(jsonReportObj);
-        return;
-    }
-    cJSON_AddStringToObject(reportTypeEntry, "REPORT_TYPE", "CACHED");
-    cJSON *searchResult = cJSON_GetObjectItemCaseSensitive(jsonReportObj, "searchResult");
-    if (searchResult && cJSON_IsArray(searchResult))
-    {
-        T2Info("Inserting REPORT_TYPE: CACHED at index 1 of searchResult array\n");
-        cJSON_InsertItemInArray(searchResult, 1, reportTypeEntry);
-    }
-    else
-    {
-        cJSON *reportArray = cJSON_GetObjectItemCaseSensitive(jsonReportObj, "Report");
-        if (reportArray && cJSON_IsArray(reportArray))
-        {
-            T2Info("Inserting REPORT_TYPE: CACHED at beginning of Report array\n");
-            cJSON_InsertItemInArray(reportArray, 0, reportTypeEntry);
-        }
-        else
-        {
-            T2Error("Neither 'searchResult' nor 'Report' arrays found in the JSON\n");
-            destroyJSONReport(reportTypeEntry);
-            destroyJSONReport(jsonReportObj);
-            return;
-        }
-    }
-
-    char *updatedJsonReport = cJSON_PrintUnformatted(jsonReportObj);
-    if (updatedJsonReport)
-    {
-        free(*jsonReport);  // Freeing the old report only after the new one is generated
-        *jsonReport = updatedJsonReport;
-    }
-
-    destroyJSONReport(jsonReportObj);
-}
-
-#ifdef GTEST_ENABLE
-typedef bool (*checkForEmptyStringFunc)(char *);
-typedef T2ERROR (*applyRegexToValueFunc)(char **, const char *);
-
-checkForEmptyStringFunc checkForEmptyStringCallback(void)
-{
-    return checkForEmptyString;
-}
-
-applyRegexToValueFunc applyRegexToValueCallback(void)
-{
-    return applyRegexToValue;
-}
-#endif

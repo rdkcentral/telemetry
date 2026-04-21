@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE log4c SYSTEM "">
+
+<log4c version="1.2.4">
+
+        <config>
+                <bufsize>0</bufsize>
+                <debug level="7"/>
+                <nocleanup>0</nocleanup>
+                <reread>1</reread>
+        </config>
+
+        <layout name="basic" type="basic"/>
+        <layout name="dated" type="dated"/>
+
+        <rollingpolicy name="myrollingpolicy" type="sizewin" maxsize="10485760" maxnum="10" />
+        <appender name="RI_T2rollingfileappender" type="rollingfile" logdir="/opt/logs" prefix="telemetry2_0.txt" layout="dated" rollingpolicy="myrollingpolicy" />
+        <!-- Should start with RI.Stack as prefix for logging to work. This is coming somewhere from rdklogger -->
+        <category name="RI.Stack.LOG.RDK.T2" priority="debug" appender="RI_T2rollingfileappender"/>
+
+</log4c>

@@ -105,14 +105,12 @@ void *t2_queue_remove(queue_t *q, uint32_t index)
     element_t	*e, *tmp = NULL;
     void *data;
     uint32_t i = 0;
-    uint32_t count;
     if(q == NULL)
     {
         return NULL;
     }
 
-    count = t2_queue_count(q);
-    if (count == 0 || index >= count)
+    if (index > (t2_queue_count(q) - 1))
     {
         return NULL;
     }
@@ -148,14 +146,12 @@ void    *t2_queue_peek(queue_t *q, uint32_t index)
 {
     element_t	*e;
     uint32_t i = 0;
-    uint32_t count;
     if(q == NULL)
     {
         return NULL;
     }
 
-    count = t2_queue_count(q);
-    if (count == 0 || index >= count)
+    if (index > (t2_queue_count(q) - 1))
     {
         return NULL;
     }

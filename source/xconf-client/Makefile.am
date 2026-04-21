@@ -24,9 +24,7 @@ libxconfclient_la_SOURCES = xconfclient.c
 libxconfclient_la_LDFLAGS = -shared -fPIC -lcjson -lcurl
 if IS_LIBRDKCERTSEL_ENABLED
 libxconfclient_la_CFLAGS = $(LIBRDKCERTSEL_FLAG)
-libxconfclient_la_LDFLAGS += -lRdkCertSelector -lrdkconfig
-else
-libxconfclient_la_CFLAGS =
+libxconfclient_la_LDFLAGS += -lRdkCertSelector
 endif
 libxconfclient_la_LIBADD = ${top_builddir}/source/t2parser/libt2parser.la ${top_builddir}/source/ccspinterface/libccspinterface.la
 libxconfclient_la_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \
@@ -39,13 +37,6 @@ libxconfclient_la_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus
                                 -I${top_srcdir}/source/ccspinterface \
                                 -I${top_srcdir}/source/t2parser \
                                 -I${top_srcdir}/source/dcautil \
-                                -I${top_srcdir}/source/utils \
-                                -I${top_srcdir}/source/protocol/http
+                                -I${top_srcdir}/source/utils
 
 libxconfclient_la_DEPENDENCIES = ${top_builddir}/source/ccspinterface/libccspinterface.la ${top_builddir}/source/t2parser/libt2parser.la
-
-if IS_PRIVACYCONTROL_ENABLED
-libxconfclient_la_CFLAGS += $(PRIVACYCONTROL_FLAG)
-libxconfclient_la_CPPFLAGS += -I${top_srcdir}/source/privacycontrol
-libxconfclient_la_DEPENDENCIES += ${top_builddir}/source/privacycontrol/libt2thunder_privacycontrol.la
-endif

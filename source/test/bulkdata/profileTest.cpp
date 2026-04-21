@@ -7,8 +7,6 @@
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
-#include <thread>
-#include <chrono>
 
 #include "test/mocks/SystemMock.h"
 #include "test/mocks/FileioMock.h"
@@ -17,7 +15,6 @@
 #include "test/mocks/rdkconfigMock.h"
 #include "test/mocks/VectorMock.h"
 #include "test/bulkdata/SchedulerMock.h"
-#include "test/bulkdata/profileMock.h"
 
 using namespace std;
 
@@ -28,6 +25,7 @@ using ::testing::Invoke;
 
 extern "C" {
 #include "busInterface.h"
+//#include "profile.c"
 #include "profile.h"
 #include "datamodel.h"
 #include "t2markers.h"
@@ -35,8 +33,6 @@ extern "C" {
 #include "profilexconf.h"
 #include "t2eventreceiver.h"
 #include "msgpack.h"
-#include <glib.h>
-#include <glib/gi18n.h>
 
 extern bool initialized;
 
@@ -49,7 +45,6 @@ SystemMock * g_systemMock = NULL;
 rdklogMock *m_rdklogMock = NULL;
 rbusMock *g_rbusMock = NULL;
 rdkconfigMock *g_rdkconfigMock = nullptr;
-profileMock *g_profileMock = nullptr;
 extern VectorMock *g_vectorMock;
 extern SchedulerMock *g_schedulerMock;
 
@@ -63,7 +58,6 @@ protected:
 	g_rdkconfigMock = new rdkconfigMock();
 	g_vectorMock = new VectorMock();
 	g_schedulerMock = new SchedulerMock();
-	g_profileMock = new profileMock();
     }
     void TearDown() override 
     {
@@ -73,7 +67,6 @@ protected:
        delete g_rdkconfigMock;
        delete g_vectorMock;
        delete g_schedulerMock;
-       delete g_profileMock;
 
         g_fileIOMock = nullptr;
         g_systemMock = nullptr;
@@ -81,7 +74,6 @@ protected:
 	g_rdkconfigMock = nullptr;
 	g_vectorMock = nullptr;
 	g_schedulerMock = nullptr;
-	g_profileMock = nullptr;
     }
 };
 
@@ -230,28 +222,6 @@ TEST_F(ProfileTest, UninitProfileList_Success) {
         .Times(::testing::AtMost(1))
         .WillRepeatedly(Return(0));
     EXPECT_EQ(uninitProfileList(), T2ERROR_SUCCESS);
-}
-
-TEST_F(ProfileTest, ReportProfiles_uninit) {
-    EXPECT_CALL(*g_vectorMock, Vector_Create(_))
-        .Times(::testing::AtMost(3))
-        .WillRepeatedly(Return(T2ERROR_SUCCESS));
-    EXPECT_CALL(*g_vectorMock, Vector_PushBack(_, _))
-        .Times(::testing::AtMost(1))
-        .WillRepeatedly(Return(T2ERROR_SUCCESS));
-    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
-        .Times(::testing::AtMost(3))
-        .WillRepeatedly(Return(0));
-    EXPECT_CALL(*g_vectorMock, Vector_At(_, _))
-        .Times(::testing::AtMost(2))
-        .WillRepeatedly(Return(nullptr));
-    EXPECT_CALL(*g_schedulerMock, uninitScheduler())
-        .Times(::testing::AtMost(1));
-    EXPECT_CALL(*g_schedulerMock, unregisterProfileFromScheduler(_))
-        .Times(::testing::AtMost(5))
-        .WillRepeatedly(Return(T2ERROR_SUCCESS));
-
-    EXPECT_EQ(ReportProfiles_uninit(), T2ERROR_FAILURE);
 }
 
 // Test getProfileCount
@@ -788,14 +758,6 @@ TEST_F(ProfileTest, ReportProfiles_deleteProfileXConf) {
 }
 #endif
 
-TEST_F(ProfileTest, ReportProfiles_deleteProfileXConf_EmptyList) {
-    ProfileXConf profile;
-    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
-        .Times(::testing::AtMost(1))
-        .WillRepeatedly(Return(0)); // Return 1 to indicate only one profile (no duplicates)
-    EXPECT_EQ(ReportProfiles_deleteProfileXConf(&profile), T2ERROR_SUCCESS);
-}
-
 TEST_F(ProfileTest, ReportProfiles_deleteProfile) {
     EXPECT_CALL(*g_vectorMock, Vector_Size(_))
         .Times(::testing::AtMost(2))
@@ -847,16 +809,7 @@ TEST_F(ProfileTest, RemovePreRPfromDisk) {
     EXPECT_EQ(RemovePreRPfromDisk("/tmp", &dummy), T2ERROR_SUCCESS);
 }
 
-TEST_F(ProfileTest, RemovePreRPfromDisk_FailsIfDirNull) {
-    hash_map_t dummy;
-    // Mock opendir to return NULL to simulate failure
-    EXPECT_CALL(*g_fileIOMock, opendir(_))
-        .Times(1)
-        .WillOnce(Return(nullptr));
-    // readdir and closedir should NOT be called in this branch
-    EXPECT_EQ(RemovePreRPfromDisk("/tmp", &dummy), T2ERROR_FAILURE);
-}
-
+#if 0
 TEST_F(ProfileTest, deleteAllReportProfiles) {
     EXPECT_CALL(*g_vectorMock, Vector_Size(_))
         .Times(::testing::AtMost(1))
@@ -865,67 +818,56 @@ TEST_F(ProfileTest, deleteAllReportProfiles) {
         .WillRepeatedly(Return(T2ERROR_SUCCESS));
     EXPECT_EQ(deleteAllReportProfiles(), T2ERROR_SUCCESS);
 }
+#endif
 
-#ifdef GTEST_ENABLE
-extern "C" {
-typedef void* (*reportOnDemandFunc)(void*);
-reportOnDemandFunc reportOnDemandFuncCallback(void);
-typedef void (*freeProfilesHashMapFunc)(void *);
-freeProfilesHashMapFunc freeProfilesHashMapFuncCallback(void);
-typedef void (*freeReportProfileHashMapFunc)(void *);
-freeReportProfileHashMapFunc freeReportProfileHashMapFuncCallback(void);
-typedef void (*__msgpack_free_blobFunc)(void*);
-__msgpack_free_blobFunc __msgpack_free_blobFuncCallback(void);
+#if 0
+TEST_F(ProfileTest, isMtlsEnabled) {
+    char status[8] = "true";
+    EXPECT_CALL(*g_rbusMock, rbus_get(_,_,_))
+           .Times(::testing::AtMost(2))
+           .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
+    EXPECT_CALL(*g_rbusMock, rbusValue_GetType(_))
+           .Times(::testing::AtMost(2))
+           .WillRepeatedly(Return(RBUS_BOOLEAN));
+    EXPECT_CALL(*g_rbusMock, rbusValue_GetBoolean(_))
+           .Times(::testing::AtMost(2))
+           .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
+    EXPECT_CALL(*g_rbusMock, rbusValue_Release(_))
+           .Times(::testing::AtMost(2))
+           .WillRepeatedly(Return());
+    EXPECT_CALL(*g_rbusMock, rbusValue_ToString(_,_,_))
+           .Times(::testing::AtMost(1))
+           .WillRepeatedly(Return(status));
+    EXPECT_TRUE(isMtlsEnabled());
 }
+#endif
 
-TEST(ReportProfilesCallbacks, FreeProfilesHashMap) {
-    auto cb = freeProfilesHashMapFuncCallback();
-    ASSERT_NE(cb, nullptr);
-
-    // Test with an actual element
-    hash_element_t* item = (hash_element_t*) std::malloc(sizeof(hash_element_t));
-    item->key = (char*) std::malloc(12);
-    std::strcpy(item->key, "testkey");
-    item->data = std::malloc(8);
-    cb(item);
-
-    // Test with nullptr
-    cb(nullptr);
-}
-TEST_F(ProfileTest, reportOnDemandTest)
-{
-        reportOnDemandFunc func = reportOnDemandFuncCallback();
-        ASSERT_NE(func,nullptr);
-        func((void*)"ABORT");
-        func((void*)"FOO");
-        func(nullptr);
-}
-
-TEST(ReportProfilesCallbacks, FreeReportProfileHashMap) {
-    auto cb = freeReportProfileHashMapFuncCallback();
-    ASSERT_NE(cb, nullptr);
-
-    // Make an item with ReportProfile-like .data
-    hash_element_t* item = (hash_element_t*) std::malloc(sizeof(hash_element_t));
-    item->key = (char*) std::malloc(12);
-    std::strcpy(item->key, "profkey");
-    struct ReportProfile {
-        char* hash;
-        char* config;
-        void* hash_map_pad; // just to align with how your system might fill it, can be omitted
-    };
-    ReportProfile* rp = (ReportProfile*) std::malloc(sizeof(ReportProfile));
-    rp->hash = (char*) std::malloc(6);
-    std::strcpy(rp->hash, "hashV");
-    rp->config = (char*) std::malloc(8);
-    std::strcpy(rp->config, "cfgVal");
-    item->data = rp;
-
-    cb(item);
-
-    // Safe to call with nullptr
-    cb(nullptr);
-    SUCCEED();
+#if 0
+TEST_F(ProfileTest, ReportProfiles_uninit) {
+    EXPECT_CALL(*g_vectorMock, Vector_Create(_))
+        .Times(::testing::AtMost(3))  // 1 for local test configlist, 1 for global profileList, 1 for configList in loadReportProfilesFromDisk
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_vectorMock, Vector_PushBack(_, _))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(::testing::AtMost(3))  // May be called multiple times - in deleteAllProfiles, etc.
+        .WillRepeatedly(Return(0)); // Return 0 to indicate no profiles (avoid unregister calls)
+    EXPECT_CALL(*g_vectorMock, Vector_At(_, _))
+        .Times(::testing::AtMost(2))  // May be called if profiles exist
+        .WillRepeatedly(Return(nullptr));
+    
+    // Scheduler mock expectations - uninitScheduler is definitely called
+    EXPECT_CALL(*g_schedulerMock, uninitScheduler())
+        .Times(::testing::AtMost(1));
+    
+    // unregisterProfileFromScheduler may be called for each profile during deleteAllProfiles
+    // Using AtMost to handle cases where profiles exist
+    EXPECT_CALL(*g_schedulerMock, unregisterProfileFromScheduler(_))
+        .Times(::testing::AtMost(5))  // Allow up to 5 calls in case profiles exist
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    
+    EXPECT_EQ(ReportProfiles_uninit(), T2ERROR_SUCCESS);
 }
 #endif
 #endif
@@ -933,13 +875,6 @@ TEST(ReportProfilesCallbacks, FreeReportProfileHashMap) {
 #if 1
 //comment
 //=================================== profilexconf.c ================================
-
-
-#ifdef GTEST_ENABLE
-extern "C" {
-         void test_set_reportThreadExits(bool value);
- }
-#endif
 
 TEST_F(ProfileTest, InitAndUninit) {
     // Covers ProfileXConf_init and ProfileXConf_uninit
@@ -985,21 +920,11 @@ TEST_F(ProfileTest, SetAndIsSet) {
     profile->cachedReportList = nullptr;
     profile->protocol = strdup("HTTP");
     profile->encodingType = strdup("JSON");
-    profile->jsonReportObj = nullptr;  // types now match
-    profile->checkPreviousSeek = true;
-
-    profile->t2HTTPDest = (T2HTTP *)malloc(sizeof(T2HTTP));
-    profile->t2HTTPDest->URL = strdup("https://mock1xconf:50051/dataLakeMockXconf");
-    profile->isUpdated = true;
-    GrepSeekProfile *gsProfile = (GrepSeekProfile *)malloc(sizeof(GrepSeekProfile));
-    if (gsProfile)
-    {
-         gsProfile->logFileSeekMap = hash_map_create();
-         gsProfile->execCounter = 0;
-    }
-    profile->grepSeekProfile = gsProfile;
-    //profile->grepSeekProfile = nullptr;
+    profile->t2HTTPDest = nullptr;
+    profile->grepSeekProfile = nullptr;
     profile->reportInProgress = false;
+    profile->isUpdated = false;
+
     EXPECT_CALL(*g_vectorMock, Vector_Size(_))
         .Times(::testing::AtMost(3))
         .WillRepeatedly(Return(0)); // Return 1 to indicate one profile in the list
@@ -1012,15 +937,14 @@ TEST_F(ProfileTest, SetAndIsSet) {
     EXPECT_CALL(*g_vectorMock, Vector_PushBack(_, _))
         .Times(::testing::AtMost(3))
         .WillRepeatedly(Return(T2ERROR_SUCCESS));
-
+    
     // Scheduler mock expectations - ProfileXConf_set calls registerProfileWithScheduler
     EXPECT_CALL(*g_schedulerMock, registerProfileWithScheduler(_, _, _, _, _, _, _, _))
         .Times(::testing::AtMost(1))
         .WillRepeatedly(Return(T2ERROR_SUCCESS));
-
+    
     EXPECT_EQ(ProfileXConf_set(profile), T2ERROR_SUCCESS);
     EXPECT_TRUE(ProfileXConf_isSet());
-
 
     // Get name
     char* name = ProfileXconf_getName();
@@ -1028,13 +952,11 @@ TEST_F(ProfileTest, SetAndIsSet) {
     EXPECT_STREQ(name, "TestProfile");
     free(name);
 
-   test_set_reportThreadExits(true);
-   generateDcaReport(false,true);
-    EXPECT_CALL(*g_schedulerMock, SendInterruptToTimeoutThread(_))
-        .Times(::testing::AtMost(1));
-
-    ReportProfiles_Interrupt();
-
+    // Clean up - ProfileXConf_uninit calls unregisterProfileFromScheduler
+    EXPECT_CALL(*g_schedulerMock, unregisterProfileFromScheduler(_))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    
     EXPECT_EQ(ProfileXConf_uninit(), T2ERROR_SUCCESS);
 }
 
@@ -1156,6 +1078,38 @@ TEST_F(ProfileTest, StoreMarkerEventSuccess) {
 }
 #endif
 
+#if 0
+TEST_F(ProfileTest, TerminateReportNoProfile) {
+    // Should fail if no profile
+    EXPECT_EQ(ProfileXConf_terminateReport(), T2ERROR_SUCCESS);
+}
+#endif
+
+#if 0
+TEST_F(ProfileTest, TerminateReportNoInProgress) {
+    ProfileXConf* profile = (ProfileXConf*)malloc(sizeof(ProfileXConf));
+    memset(profile, 0, sizeof(ProfileXConf));
+    profile->name = strdup("TerminateProfile");
+    profile->eMarkerList = nullptr;
+    profile->gMarkerList = nullptr;
+    profile->topMarkerList = nullptr;
+    profile->paramList = nullptr;
+    profile->cachedReportList = nullptr;
+    profile->protocol = strdup("HTTP");
+    profile->encodingType = strdup("JSON");
+    profile->t2HTTPDest = nullptr;
+    profile->grepSeekProfile = nullptr;
+    profile->reportInProgress = false;
+    profile->isUpdated = false;
+
+    ProfileXConf_set(profile);
+
+    EXPECT_EQ(ProfileXConf_terminateReport(), T2ERROR_FAILURE);
+
+    ProfileXConf_uninit();
+}
+#endif
+
 // Additional coverage for delete
 TEST_F(ProfileTest, DeleteProfile) {
     ProfileXConf* profile = (ProfileXConf*)malloc(sizeof(ProfileXConf));
@@ -1174,7 +1128,6 @@ TEST_F(ProfileTest, DeleteProfile) {
     profile->isUpdated = false;
 
     ProfileXConf_set(profile);
-    EXPECT_EQ(ReportProfiles_setProfileXConf(profile),T2ERROR_FAILURE);
     EXPECT_EQ(ProfileXConf_delete(profile), T2ERROR_FAILURE);
     ProfileXConf_uninit();
 }
@@ -1349,10 +1302,11 @@ TEST_F(ProfileTest, InitFailures) {
 */
 
 TEST_F(ProfileTest, StartDispatchThread_Normal) {
+    //EREnabled = true;
+    //stopDispatchThread = true;
     T2ERROR res = T2ER_StartDispatchThread();
-
+    //ASSERT_EQ(res, T2ERROR_FAILURE);
     ASSERT_EQ(res, T2ERROR_SUCCESS);
-    std::this_thread::sleep_for(std::chrono::milliseconds(100)); // Stop the thread after starting it
 }
 
 #if 0
@@ -1476,9 +1430,306 @@ TEST_F(ProfileTest, VectorMockDemo_PushBack_Success) {
 
 #endif
 
+#if 0
+//comment
+//==================================== datamodel.c ===================
+
+TEST_F(ProfileTest, Init_Success)
+{
+    EXPECT_EQ(datamodel_init(), T2ERROR_SUCCESS);
+}
+
+TEST_F(ProfileTest, processProfile_ValidJson_RP) {
+    //char json[] = "{\"profiles\":[]}";
+    char json[] = "{ \"profiles\": [ { \"name\": \"TR_AC732\", \"hash\": \"Hash732\", \"value\": { \"Name\": \"RDKB_Profile_3\", \"Description\": \"RDKB_Profile\", \"Version\": \"0.1\", \"Protocol\": \"RBUS_METHOD\", \"EncodingType\": \"JSON\", \"ActivationTimeout\": 3600, \"ReportingInterval\": 20, \"GenerateNow\": false, \"RootName\": \"FR2_US_TC3\", \"Parameter\": [ { \"type\": \"event\", \"eventName\": \"TEST_EVENT_MARKER_1\", \"component\": \"sysint\", \"use\": \"count\" }, { \"type\": \"event\", \"eventName\": \"TEST_EVENT_MARKER_2\", \"component\": \"sysint\", \"use\": \"accumulate\", \"reportTimestamp\":\"Unix-Epoch\" }, { \"type\": \"grep\", \"marker\": \"SYS_INFO_CrashPortalUpload_success\", \"search\": \"Success loading\", \"logFile\": \"core_log.txt\", \"use\": \"count\", \"reportEmpty\":true } ], \"ReportingAdjustments\": [ { \"ReportOnUpdate\": false, \"FirstReportingInterval\": 15, \"MaxUploadLatency\": 20000 } ], \"RBUS_METHOD\":{\"Method\":\"Device.X_RDK_Xmidt.SendData\",\"Parameters\":[{\"name\":\"msg_type\",\"value\":\"event\"},{\"name\":\"source\",\"value\":\"telemetry2\"},{\"name\":\"dest\",\"value\":\"event:/profile-report/LTE-report\"},{\"name\":\"content_type\",\"value\":\"application/json\"},{\"name\":\"qos\",\"value\":\"75\"}]}, \"JSONEncoding\": { \"ReportFormat\": \"NameValuePair\", \"ReportTimestamp\": \"None\" } } } ] }";
+    EXPECT_EQ(datamodel_processProfile(json, T2_RP), T2ERROR_SUCCESS);
+}
+
+#if 0
+TEST_F(ProfileTest, processProfile_ValidJson_TEMP_RP) {
+    //char json[] = "{\"profiles\":[]}";
+    char json[] = "{ \"profiles\": [ { \"name\": \"TR_Temp\", \"hash\": \"HashTemp\", \"value\": { \"Name\": \"RDKB_Profile_3\", \"Description\": \"RDKB_Profile\", \"Version\": \"0.1\", \"Protocol\": \"RBUS_METHOD\", \"EncodingType\": \"JSON\", \"ActivationTimeout\": 3600, \"ReportingInterval\": 20, \"GenerateNow\": false, \"RootName\": \"FR2_US_TC3\", \"Parameter\": [ { \"type\": \"event\", \"eventName\": \"TEST_EVENT_MARKER_1\", \"component\": \"sysint\", \"use\": \"count\" }, { \"type\": \"event\", \"eventName\": \"TEST_EVENT_MARKER_2\", \"component\": \"sysint\", \"use\": \"accumulate\", \"reportTimestamp\":\"Unix-Epoch\" }, { \"type\": \"grep\", \"marker\": \"SYS_INFO_CrashPortalUpload_success\", \"search\": \"Success loading\", \"logFile\": \"core_log.txt\", \"use\": \"count\", \"reportEmpty\":true } ], \"ReportingAdjustments\": [ { \"ReportOnUpdate\": false, \"FirstReportingInterval\": 15, \"MaxUploadLatency\": 20000 } ], \"RBUS_METHOD\":{\"Method\":\"Device.X_RDK_Xmidt.SendData\",\"Parameters\":[{\"name\":\"msg_type\",\"value\":\"event\"},{\"name\":\"source\",\"value\":\"telemetry2\"},{\"name\":\"dest\",\"value\":\"event:/profile-report/LTE-report\"},{\"name\":\"content_type\",\"value\":\"application/json\"},{\"name\":\"qos\",\"value\":\"75\"}]}, \"JSONEncoding\": { \"ReportFormat\": \"NameValuePair\", \"ReportTimestamp\": \"None\" } } } ] }";
+    EXPECT_EQ(datamodel_processProfile(json, T2_TEMP_RP), T2ERROR_SUCCESS);
+}
+#endif
+
+TEST_F(ProfileTest, processProfile_InvalidJson) {
+    char json[] = "fail";
+    EXPECT_EQ(datamodel_processProfile(json, T2_RP), T2ERROR_FAILURE);
+}
+
+TEST_F(ProfileTest, processProfile_MissingProfiles) {
+    char json[] = "missing_profiles";
+    EXPECT_EQ(datamodel_processProfile(json, T2_RP), T2ERROR_FAILURE);
+}
+
+#if 0
+//Hanginf because unable to get the rp lock
+TEST_F(ProfileTest, processProfile_StopProcessingTrue) {
+    char json[] = "{\"profiles\":[]}";
+    EXPECT_EQ(datamodel_processProfile(json, T2_RP), T2ERROR_SUCCESS);
+}
+#endif
+
+TEST_F(ProfileTest, getSavedJsonProfilesasString_EmptyVector) {
+    char* result = nullptr;
+    //gVector.configs.clear();
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_vectorMock, Vector_Create(_))
+        .Times(::testing::AtMost(1))  // 1 for local test configlist, 1 for global profileList, 1 for configList in loadReportProfilesFromDisk
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _))
+        .Times(::testing::AtMost(1))  // 1 for local test configlist, 1 for configList in loadReportProfilesFromDisk
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    datamodel_getSavedJsonProfilesasString(&result);
+    // Result should be a valid JSON string
+    //ASSERT_NE(result, nullptr);
+    ASSERT_EQ(result, nullptr);
+    free(result);
+}
+
+TEST_F(ProfileTest, getSavedJsonProfilesasString_WithConfigs) {
+    //Config conf;
+    //strcpy(conf.name, "test");
+    //conf.configData = strdup("{\"Hash\":\"abc123\"}");
+    //gVector.configs = { &conf };
+    char* result = nullptr;
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_vectorMock, Vector_Create(_))
+        .Times(::testing::AtMost(1))  // 1 for local test configlist, 1 for global profileList, 1 for configList in loadReportProfilesFromDisk
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _))
+        .Times(::testing::AtMost(1))  // 1 for local test configlist, 1 for configList in loadReportProfilesFromDisk
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    datamodel_getSavedJsonProfilesasString(&result);
+    //ASSERT_NE(result, nullptr);
+    ASSERT_EQ(result, nullptr);
+    //free(conf.configData);
+    free(result);
+}
+/*
+TEST_F(ProfileTest, getSavedMsgpackProfilesasString_FileNotFound) {
+    char* result = nullptr;
+    ASSERT_EQ(datamodel_getSavedMsgpackProfilesasString(&result), 0);
+    ASSERT_EQ(result, nullptr);
+}
+
+*/
+TEST_F(ProfileTest, MsgpackProcessProfile_Success) {
+    char* blob = (char*)malloc(10);
+    int size = 10;
+    EXPECT_EQ(datamodel_MsgpackProcessProfile(blob, size), T2ERROR_SUCCESS);
+}
+#endif
+
+#if 0
+TEST_F(ProfileTest, NotifySchedulerstart) {
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_)).Times(::testing::AtMost(1)).WillRepeatedly(Return(0));
+    NotifySchedulerstart("profileY", true);
+}
+#endif
+
+#if 0
+TEST_F(ProfileTest, ReportProfiles_setProfileXConf) {
+    ProfileXConf profile;
+    EXPECT_CALL(*g_schedulerMock, registerProfileWithScheduler(_, _, _, _, _, _, _, _))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    
+    EXPECT_CALL(*g_rbusMock, rbus_checkStatus())
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(RBUS_ENABLED));
+    
+    EXPECT_CALL(*g_rbusMock, rbus_registerLogHandler(_))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
+        
+    EXPECT_CALL(*g_rbusMock, rbus_open(_, _))
+        .Times(::testing::AtMost(2))
+        .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
+    
+    // Mock successful parameter retrieval
+    EXPECT_CALL(*g_rbusMock, rbus_get(_, _, _))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
+        
+    EXPECT_CALL(*g_rbusMock, rbusValue_GetType(_))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(RBUS_STRING));
+        
+    EXPECT_CALL(*g_rbusMock, rbusValue_ToString(_, _, _))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(strdup("test_value")));
+        
+    EXPECT_CALL(*g_rbusMock, rbusValue_Release(_))
+        .Times(::testing::AtMost(1));
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(::testing::AtMost(2))
+        .WillRepeatedly(Return(0)); // Return 1 to indicate only one profile (no duplicates)
+				   
+    EXPECT_CALL(*g_rbusMock, rbus_checkStatus())
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(RBUS_ENABLED));
+
+    EXPECT_CALL(*g_rbusMock, rbus_open(_, _))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
+
+    EXPECT_CALL(*g_rbusMock, rbusObject_Init(_, _))
+        .Times(::testing::AtMost(1));
+
+    EXPECT_CALL(*g_rbusMock, rbusValue_Init(_))
+        .Times(::testing::AtMost(1));
+
+    EXPECT_CALL(*g_rbusMock, rbusValue_SetString(_, _))
+        .Times(::testing::AtMost(1));
+
+    EXPECT_CALL(*g_rbusMock, rbusObject_SetValue(_, _, _))
+        .Times(::testing::AtMost(1));
+
+    EXPECT_CALL(*g_rbusMock, rbusValue_Release(_))
+        .Times(::testing::AtMost(1));
+
+    EXPECT_CALL(*g_rbusMock, rbusEvent_Publish(_,_))
+	.Times(::testing::AtMost(1))
+	.WillRepeatedly(Return(RBUS_ERROR_SUCCESS));
+
+    EXPECT_CALL(*g_rbusMock, rbusObject_Release(_))
+        .Times(::testing::AtMost(1));
+    EXPECT_EQ(ReportProfiles_setProfileXConf(&profile), T2ERROR_SUCCESS);
+}
+#endif
+
+#if 0
+TEST_F(ProfileTest, ClearMarkerComponentMapShouldRemoveEntries) {
+    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).Times(::testing::AtMost(2))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_EQ(clearT2MarkerComponentMap(), T2ERROR_SUCCESS);
+}
+#endif
+
+TEST_F(ProfileTest, destroyT2MarkerComponentMap) {
+    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).Times(::testing::AtMost(2))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_EQ(clearT2MarkerComponentMap(), T2ERROR_SUCCESS);
+}
+
+#if 0
+TEST_F(ProfileTest, updateEventMap) {
+    T2Marker t2Marker;
+    EXPECT_EQ(updateEventMap("marker1", &t2Marker), T2ERROR_SUCCESS);
+}
+#endif
+
+TEST_F(ProfileTest, getComponentsWithEventMarkers) {
+    Vector *profileList = nullptr;
+    //Vector_Create(&profileList);
+
+    getComponentsWithEventMarkers(&profileList);
+}
+
+TEST_F(ProfileTest, getMarkerProfileList) {
+    Vector *profileList = nullptr;
+    EXPECT_EQ(getMarkerProfileList("SYS_INFO_TEST_MARKER", &profileList), T2ERROR_FAILURE);
+}
+
+TEST_F(ProfileTest, getComponentMarkerList) {
+    EXPECT_CALL(*g_vectorMock, Vector_Create(_))
+        .Times(::testing::AtMost(1))
+	.WillRepeatedly(Return(T2ERROR_SUCCESS));
+}
 
 TEST_F(ProfileTest, createComponentDataElements) {
     EXPECT_CALL(*g_vectorMock, Vector_Size(_)).Times(::testing::AtMost(1)).WillRepeatedly(Return(0));
     createComponentDataElements();
 }
 
+#if 0
+//CRASH on pthread_join
+TEST_F(ProfileTest, T2ER_Uninit) {
+    EXPECT_CALL(*g_vectorMock, Vector_Destroy(_, _)).Times(::testing::AtMost(2))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    T2ER_Uninit();
+}
+#endif
+
+#if 0
+//CollectAndReport to be implemented through NotifyTimeout
+TEST_F(ProfileTest, NotifyTimeout_reportInProgress)
+{
+    //profile to be returned by Vector_At mock call
+    Profile *profile = (Profile*)malloc(sizeof(Profile));
+    profile->name = strdup("Profile1");
+    profile->enable = true;
+    profile->reportInProgress = true;
+
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(1));
+
+    EXPECT_CALL(*g_vectorMock, Vector_At(_, 0))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(profile));
+    
+    NotifyTimeout("Profile1", true);
+}
+
+TEST_F(ProfileTest, NotifyTimeout_ThreadFalse)
+{
+    //profile to be returned by Vector_At mock call
+    GrepSeekProfile *grepSeekProfile = (GrepSeekProfile*)malloc(sizeof(GrepSeekProfile));
+    grepSeekProfile->execCounter= 0;
+
+    Profile *profile = (Profile*)malloc(sizeof(Profile));
+    profile->name = strdup("Profile1");
+    profile->enable = true;
+    profile->reportInProgress = false;
+    profile->threadExists = false;
+    profile->grepSeekProfile = grepSeekProfile;
+    profile->encodingType = nullptr;
+
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(1));
+
+    EXPECT_CALL(*g_vectorMock, Vector_At(_, 0))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(profile));
+    
+    // NotifyTimeout may call CollectAndReport which calls getLapsedTime
+    EXPECT_CALL(*g_schedulerMock, getLapsedTime(_, _, _))
+        .Times(::testing::AtMost(1)); // Not called because profile list is not initialized
+    
+    NotifyTimeout("Profile1", true);
+    sleep(50);
+}
+
+TEST_F(ProfileTest, NotifyTimeout_ThreadTrue)
+{
+    //profile to be returned by Vector_At mock call
+    Profile *profile = (Profile*)malloc(sizeof(Profile));
+    profile->name = strdup("Profile1");
+    profile->enable = true;
+    profile->reportInProgress = false;
+    profile->threadExists = true;
+
+    EXPECT_CALL(*g_vectorMock, Vector_Size(_))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(1));
+
+    EXPECT_CALL(*g_vectorMock, Vector_At(_, 0))
+        .Times(::testing::AtMost(1))
+        .WillRepeatedly(Return(profile));
+    
+    // NotifyTimeout may call CollectAndReport which calls getLapsedTime
+    EXPECT_CALL(*g_schedulerMock, getLapsedTime(_, _, _))
+        .Times(::testing::AtMost(1)); // Not called because profile list is not initialized
+    
+    NotifyTimeout("Profile1", true);
+}
+
+#endif

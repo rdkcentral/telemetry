@@ -91,7 +91,6 @@ typedef struct _Profile
     Vector *triggerConditionList;
     pthread_cond_t reuseThread;
     pthread_mutex_t reuseThreadMutex;
-    bool restartRequested;
     bool threadExists;
     GrepSeekProfile *grepSeekProfile; // To store GrepConfig
 } Profile;

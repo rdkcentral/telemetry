@@ -26,42 +26,6 @@ import re
 import signal
 from urllib.parse import unquote, quote, urlparse, parse_qsl
 
-# Certificate configuration for mTLS
-# Check for combined PEM files (cert+key in one file) first, then separate files
-CERT_COMBINED_PATHS = [
-    '/opt/certs/client.pem',
-    '/etc/pki/Test-RDK-root/Test-RDK-client-ICA/certs/rdkclient.pem',
-]
-
-CERT_SEPARATE_PATHS = [
-    ('/opt/certs/client.pem', '/opt/certs/client.key'),
-    ('/etc/pki/Test-RDK-root/Test-RDK-client-ICA/certs/rdkclient.pem', '/etc/pki/Test-RDK-root/Test-RDK-client-ICA/private/rdkclient.key'),
-]
-
-# Find the first valid certificate
-CERT_PATH = None
-
-# Try combined PEM files first (cert+key in single file)
-for cert_file in CERT_COMBINED_PATHS:
-    if os.path.exists(cert_file):
-        CERT_PATH = cert_file
-        print(f"Using combined client certificate+key: {cert_file}")
-        break
-
-# If no combined file found, try separate cert and key files
-if CERT_PATH is None:
-    for cert_file, key_file in CERT_SEPARATE_PATHS:
-        if os.path.exists(cert_file) and os.path.exists(key_file):
-            CERT_PATH = (cert_file, key_file)
-            print(f"Using client certificate: {cert_file} with key: {key_file}")
-            break
-
-if CERT_PATH is None:
-    print("WARNING: No valid client certificate found!")
-
-# CA certificate for server verification
-CA_BUNDLE = '/etc/ssl/certs/ca-certificates.crt'  # System CA bundle
-
 
 def run_telemetry():
     return subprocess.run("/usr/local/bin/telemetry2_0", shell=True)
@@ -111,12 +75,12 @@ def sigterm_telemetry(pid):
 
 
 def adminSupport_cache(save: bool = True):
-    if(requests.get(ADMIN_SUPPORT_SET, verify=CA_BUNDLE, cert=CERT_PATH, params={ADMIN_CACHE_ARG: str(save).lower()})):
+    if(requests.get(ADMIN_SUPPORT_SET, verify=False,params={ADMIN_CACHE_ARG: str(save).lower()})):
         return True
     return False
 
 def adminSupport_requestData():
-    return_data = requests.get(ADMIN_SUPPORT_GET, verify=CA_BUNDLE, cert=CERT_PATH, params={ADMIN_RQUEST_DATA: "true"})
+    return_data = requests.get(ADMIN_SUPPORT_GET, verify=False,params={ADMIN_RQUEST_DATA: "true"})
     try:
         return_json = return_data.json()
     except:
@@ -182,18 +146,8 @@ def check_Rbus_data():
     result = subprocess.run(RBUSCLI_GET_CMD+T2_TEMP_REPORT_PROFILE_PARAM, shell=True, capture_output=True, text=True)
     assert RBUS_EXCEPTION_STRING not in result.stdout
 
-def adminSupport_DLXconf_cache(save:bool = True):
-    if(requests.get(DL_ADMIN_URL +"Xconf", verify=CA_BUNDLE, cert=CERT_PATH, params={ADMIN_CACHE_ARG: str(save).lower()})):
-        return True
-    return False
-
-def adminSupport_DLReport_cache(save:bool = True):
-    if(requests.get(DL_ADMIN_URL +"Report", verify=CA_BUNDLE, cert=CERT_PATH, params={ADMIN_CACHE_ARG: str(save).lower()})):
-        return True
-    return False
-
 def adminSupport_DLXconf_requestData():
-    return_data = requests.get(DL_ADMIN_URL+"Xconf", verify=CA_BUNDLE, cert=CERT_PATH, params={ADMIN_RQUEST_DATA: "true"})
+    return_data = requests.get(ADMIN_SUPPORT_URL, verify=False,params={ADMIN_RQUEST_DATA: "true"})
     try:
         return_json = return_data.json()
     except:
@@ -201,7 +155,33 @@ def adminSupport_DLXconf_requestData():
     return return_json
 
 def adminSupport_DLReport_requestData():
-    return_data = requests.get(DL_ADMIN_URL+"Report", verify=CA_BUNDLE, cert=CERT_PATH, params={ADMIN_RQUEST_DATA: "true"})
+    return_data = requests.get(ADMIN_SUPPORT_URL, verify=False,params={ADMIN_RQUEST_DATA: "true"})
+    try:
+        return_json = return_data.json()
+    except:
+        return_json = []
+    return return_json
+
+def adminSupport_DLXconf_cache(save:bool = True):
+    if(requests.get(DL_ADMIN_URL +"Xconf", verify=False,params={ADMIN_CACHE_ARG: str(save).lower()})):
+        return True
+    return False
+
+def adminSupport_DLReport_cache(save:bool = True):
+    if(requests.get(DL_ADMIN_URL +"Report", verify=False,params={ADMIN_CACHE_ARG: str(save).lower()})):
+        return True
+    return False
+
+def adminSupport_DLXconf_requestData():
+    return_data = requests.get(DL_ADMIN_URL+"Xconf", verify=False,params={ADMIN_RQUEST_DATA: "true"})
+    try:
+        return_json = return_data.json()
+    except:
+        return_json = []
+    return return_json
+
+def adminSupport_DLReport_requestData():
+    return_data = requests.get(DL_ADMIN_URL+"Report", verify=False,params={ADMIN_RQUEST_DATA: "true"})
     try:
         return_json = return_data.json()
     except:

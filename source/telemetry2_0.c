@@ -45,7 +45,6 @@
 #include "scheduler.h"
 #include "t2eventreceiver.h"
 #include "t2common.h"
-#include "multicurlinterface.h"
 
 #ifdef INCLUDE_BREAKPAD
 #ifndef ENABLE_RDKC_SUPPORT
@@ -73,10 +72,6 @@ T2ERROR initTelemetry()
     T2Debug("%s ++in\n", __FUNCTION__);
 
     initWhoamiSupport();
-    if (init_connection_pool() != 0)
-    {
-        T2Error("Failed to initialize HTTP connection pool\n");
-    }
     if(T2ERROR_SUCCESS == initReportProfiles())
     {
 #ifndef DEVICE_EXTENDER
@@ -129,7 +124,6 @@ static void terminate()
         uninitXConfClient();
 #endif
         ReportProfiles_uninit();
-        http_pool_cleanup();
     }
 
 }
@@ -271,8 +265,6 @@ static void t2DaemonMainModeInit( )
     sigaddset(&blocking_signal, EXEC_RELOAD);
     sigaddset(&blocking_signal, LOG_UPLOAD_ONDEMAND);
     sigaddset(&blocking_signal, SIGIO);
-
-    act.sa_mask = blocking_signal; // block these signals while inside handler
 
     DAEMONPID = getpid(); // save the pid of the deamon
     T2Debug("Telemetry 2.0 Process PID %d\n", (int)DAEMONPID); //Debug line

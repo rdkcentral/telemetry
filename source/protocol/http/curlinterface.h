@@ -35,7 +35,11 @@
 #define HEADER_ACCEPT       "Accept: application/json"
 #define HEADER_CONTENTTYPE  "Content-type: application/json"
 
-T2ERROR sendReportOverHTTP(char *httpUrl, char* payload);
+#if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
+#define TR181_DEVICE_CURRENT_WAN_IFNAME             "Device.X_RDK_WanManager.CurrentActiveInterface"
+#endif
+
+T2ERROR sendReportOverHTTP(char *httpUrl, char* payload, pid_t* outForkedPid);
 
 T2ERROR sendCachedReportsOverHTTP(char *httpUrl, Vector *reportList);
 

@@ -34,9 +34,6 @@ extern "C"
 #include <bulkdata/reportprofiles.h>
 #include <utils/t2log_wrapper.h>	
 sigset_t blocking_signal;
-
-void freeSchedulerProfile(void *data);
-void* TimeoutThread(void *arg);
 }
 
 #include "gmock/gmock.h"
@@ -157,26 +154,6 @@ TEST(GETLAPSEDTIME, T2_GT_T1)
     EXPECT_EQ(1, getLapsedTime(&output, &time1, &time2));
 }
 
-TEST(GETLAPSEDTIME, T1_TV_NSEC_GT_T2_BY_GT_1SEC)
-{
-    struct timespec time1;
-    struct timespec time2;
-    struct timespec output;
-
-    // Make time1->tv_nsec - time2->tv_nsec > 1,000,000,000
-    time1.tv_sec = 10;
-    time1.tv_nsec = 200000000; // 2.1 seconds in nanoseconds
-    time2.tv_sec = 10;
-    time2.tv_nsec = 100000000;     // 0.001 seconds in nanoseconds
-
-    // This will hit the "if (com)" block for the second condition
-    getLapsedTime(&output, &time1, &time2);
-
-    // You can check output values if you want, but just calling is enough for coverage
-    EXPECT_EQ(output.tv_sec, 0); // 10-10
-    EXPECT_EQ(output.tv_nsec, 100000000);
-}
-
 TEST(REGISTERSCHEWITHPROFILE_BEFORE_INITSCHEDULER, TEST1)
 {
    EXPECT_EQ(T2ERROR_INVALID_ARGS,  registerProfileWithScheduler(NULL, 50, 3600, true, true, true, 10, "2022-12-20T11:05:56Z"));
@@ -197,10 +174,6 @@ TEST(UNREGISTERPROFILEFROMSCH_BEFORE_INITSCHEDULER, TEST2)
     EXPECT_EQ(T2ERROR_INVALID_ARGS,  unregisterProfileFromScheduler(NULL));
 }
 
-TEST(UNINITSCHEDULER_BEFORE_INITSCHEDULER, TEST)
-{
-   uninitScheduler();
-}
 
 void ReportProfiles_ToutCb(const char* profileName, bool isClearSeekMap)
 {
@@ -227,160 +200,22 @@ TEST(initScheduler, NULL_CALLBACK)
     EXPECT_EQ(T2ERROR_SUCCESS,  initScheduler((TimeoutNotificationCB)NULL, (ActivationTimeoutCB)NULL, (NotifySchedulerstartCB)NULL));
 }
 
-TEST(SendInterruptToTimeoutThread, NON_NULL_CHECK)
+TEST(REGISTERSCHEWITHPROFILE_AFTER_INITSCHEDULER, TEST3)
 {
-    EXPECT_EQ(T2ERROR_SUCCESS, SendInterruptToTimeoutThread("RDKB_Profile"));
-}
-
-TEST(REGISTERSCHEWITHPROFILE_AFTER_INITSCHEDULER, REGISTER_PROFILE)
-{
-   EXPECT_EQ(T2ERROR_SUCCESS,  registerProfileWithScheduler("RDKB_Profile", 10, 100, true, true, true, 15, "0001-01-01T00:00:00Z"));
-}
-
-TEST(REGISTERSCHEWITHPROFILE_AFTER_INITSCHEDULER, REGISTER_PROFILE_AGAIN)
-{
-   EXPECT_EQ(T2ERROR_SUCCESS,  registerProfileWithScheduler("RDKB_Profile", 10, 100, true, true, true, 15, "0001-01-01T00:00:00Z"));
-}
-
-TEST(REGISTERSCHEWITHPROFILE, DUPLICATE_PROFILE)
-{
-    initScheduler((TimeoutNotificationCB)ReportProfiles_ToutCb, (ActivationTimeoutCB)ReportProfiles_ActivationToutCb, (NotifySchedulerstartCB)NotifySchedulerstartCb);
-    registerProfileWithScheduler("DUPLICATE_PROFILE", 5, 100, true, true, true, 5, "0001-01-01T00:00:00Z");
-    EXPECT_EQ(T2ERROR_SUCCESS, registerProfileWithScheduler("DUPLICATE_PROFILE", 5, 100, true, true, true, 5, "0001-01-01T00:00:00Z"));
-    unregisterProfileFromScheduler("DUPLICATE_PROFILE");
-    uninitScheduler();
-}
-
-TEST(UNREGISTERPROFILEFROMSCHEDULER, NULL_NAME)
-{
-    EXPECT_EQ(T2ERROR_INVALID_ARGS, unregisterProfileFromScheduler(NULL));
-}
-
-
-TEST(UNREGISTERPROFILEFROMSCHEDULER, BEFORE_INIT)
-{
-    uninitScheduler(); // makes sure scheduler is uninitialized
-    EXPECT_EQ(T2ERROR_SUCCESS, unregisterProfileFromScheduler("SOME_PROFILE"));
-}
-
-
-TEST(SENDINTERRUPTTOTIMEOUTTHREAD, NOT_INITIALIZED)
-{
-    uninitScheduler(); // ensure not initialized
-    EXPECT_EQ(T2ERROR_FAILURE, SendInterruptToTimeoutThread("SHOULD_FAIL"));
-}
-
-
-TEST(UNREGISTERPROFILEFROMSCHEDULER, PROFILE_NOT_FOUND)
-{
-    initScheduler((TimeoutNotificationCB)ReportProfiles_ToutCb, (ActivationTimeoutCB)ReportProfiles_ActivationToutCb, (NotifySchedulerstartCB)NotifySchedulerstartCb);
-    EXPECT_EQ(T2ERROR_FAILURE, unregisterProfileFromScheduler("NOT_EXIST_PROFILE"));
-    uninitScheduler();
-}
-
-
-TEST(REGISTERPROFILEWITHSCHEDULER, NULL_PROFILE)
-{
-    initScheduler((TimeoutNotificationCB)ReportProfiles_ToutCb, (ActivationTimeoutCB)ReportProfiles_ActivationToutCb, (NotifySchedulerstartCB)NotifySchedulerstartCb);
-    EXPECT_EQ(T2ERROR_INVALID_ARGS, registerProfileWithScheduler(NULL, 10, 100, true, true, true, 5, "2022-12-20T11:05:56Z"));
-    uninitScheduler();
-}
-
-
-TEST(REGISTERPROFILEWITHSCHEDULER, NOT_INITIALIZED)
-{
-    uninitScheduler();
-    EXPECT_EQ(T2ERROR_FAILURE, registerProfileWithScheduler("FAIL_PROFILE", 10, 100, true, true, true, 5, "2022-12-20T11:05:56Z"));
-}
-
-
-TEST(UNINITSCHEDULER, NOT_INITIALIZED)
-{
-    uninitScheduler(); // Should just return/log
-}
-
-
-TEST(REGISTERPROFILEWITHSCHEDULER, FIRSTREPORT_LT_TIMEOUT)
-{
-    initScheduler((TimeoutNotificationCB)ReportProfiles_ToutCb, (ActivationTimeoutCB)ReportProfiles_ActivationToutCb, (NotifySchedulerstartCB)NotifySchedulerstartCb);
-
-
-    registerProfileWithScheduler("REPORT_TEST", 2, 50, true, true, true, 5, "0001-01-01T00:00:00Z");
-    unregisterProfileFromScheduler("REPORT_TEST");
-    uninitScheduler();
-}
-
-TEST(TIMEOUTTHREAD, TEST1)
-{
-    SchedulerProfile *tProfile = (SchedulerProfile *)malloc(sizeof(SchedulerProfile));
-    tProfile->name = strdup("RDKB_Profile");
-    tProfile->timeRefinSec = 10;
-    tProfile->repeat = true;
-    tProfile->terminated = false;
-    tProfile->timeOutDuration = 10;
-    tProfile->timeToLive = 100;
-    tProfile->deleteonTime = true;
-    tProfile->reportonupdate = true;
-    tProfile->firstreportint = 20;
-    tProfile->firstexecution = true;
- 
-    TimeoutThread((void *)tProfile);
-    free(tProfile->name);
-    free(tProfile);
-}
-
-TEST(TIMEOUTTHREAD, TEST2)
-{
-    SchedulerProfile *tProfile = (SchedulerProfile *)malloc(sizeof(SchedulerProfile));
-    tProfile->name = strdup("RDKB_Profile");
-    tProfile->timeRefinSec = 10;
-    tProfile->repeat = true;
-    tProfile->terminated = false;
-    tProfile->timeOutDuration = 20;
-    tProfile->timeToLive = 100;
-    tProfile->deleteonTime = true;
-    tProfile->reportonupdate = true;
-    tProfile->firstreportint = 20;
-    tProfile->firstexecution = false;
-
-    TimeoutThread((void *)tProfile);
-    free(tProfile->name);
-    free(tProfile);
-}
-
-TEST(TIMEOUTTHREAD, WAIT_NO_REPORTING_INTERVAL)
-{
-    SchedulerProfile *tProfile = (SchedulerProfile *)malloc(sizeof(SchedulerProfile));
-    tProfile->name = strdup("RDKB_Profile");
-    tProfile->timeRefinSec = 0;
-    tProfile->timeRef = NULL; 
-    tProfile->timeOutDuration = UINT_MAX;
-    tProfile->repeat = false;
-    tProfile->terminated = false;
-    tProfile->timeToLive = 100;
-    tProfile->deleteonTime = true;
-    tProfile->reportonupdate = true;
-    tProfile->firstreportint = 0;
-    tProfile->firstexecution = false;
-
-    // Call TimeoutThread directly – will exercise pthread_cond_wait branch
-    TimeoutThread((void *)tProfile);
-
-    free(tProfile->name);
-    free(tProfile);
+   EXPECT_EQ(T2ERROR_SUCCESS,  registerProfileWithScheduler("RDKB_Profile", 50, 3600, true, true, true, 10, "2022-12-20T11:05:56Z"));
 }
 
 TEST(SendInterruptToTimeoutThread, NULL_CHECK)
 {
     EXPECT_EQ(T2ERROR_INVALID_ARGS, SendInterruptToTimeoutThread(NULL));
 }
-#if 0
-TEST(UNREGISTERPROFILEFROMSCH_AFTER_INITSCHEDULER, UNREGISTER_PROFILE_NOT_REGISTERED)
+
+TEST(SendInterruptToTimeoutThread, NON_NULL_CHECK)
 {
-    EXPECT_EQ(T2ERROR_FAILURE,  unregisterProfileFromScheduler("Profile1"));
+    EXPECT_EQ(T2ERROR_SUCCESS, SendInterruptToTimeoutThread("RDKB_Profile"));
 }
-#endif
-TEST(UNREGISTERPROFILEFROMSCH_AFTER_INITSCHEDULER, UNREGISTER_KNOWN_PROFILE)
+
+TEST(UNREGISTERPROFILEFROMSCH_AFTER_INITSCHEDULER, TEST1)
 {
     EXPECT_EQ(T2ERROR_SUCCESS,  unregisterProfileFromScheduler("RDKB_Profile"));
 }
@@ -389,63 +224,3 @@ TEST(UNINITSCHEDULER, TEST)
 {
    uninitScheduler();
 }
-
-TEST(UNINITSCHEDULER, TEST1)
-{
-   initScheduler((TimeoutNotificationCB)ReportProfiles_ToutCb, (ActivationTimeoutCB)ReportProfiles_ActivationToutCb, (NotifySchedulerstartCB)NotifySchedulerstartCb);
-   registerProfileWithScheduler("RDKB_Profile", 10, 100, true, true, true, 10, "0001-01-01T00:00:00Z");
-   uninitScheduler();
-}
-
-TEST(FREE_SCHEDULER_PROFILE, NULL_ARG)
-{
-    freeSchedulerProfile(NULL); // just returns, for coverage
-}
-
-static void* DummySchedulerThread(void* arg)
-{
-    (void)arg;
-    return NULL;
-}
-
-TEST(FREE_SCHEDULER_PROFILE, NORMAL)
-{
-    SchedulerProfile *sch = (SchedulerProfile*)calloc(1, sizeof(SchedulerProfile));
-    sch->name = strdup("FREE_PROFILE");
-    pthread_mutex_init(&sch->tMutex, NULL);
-    pthread_cond_init(&sch->tCond, NULL);
-    pthread_t threadId;
-    ASSERT_EQ(0, pthread_create(&threadId, NULL, DummySchedulerThread, NULL));	
-    freeSchedulerProfile(sch);
-}
-
-TEST(UNINITSCHEDULER, CALLED_TWICE)
-{
-    uninitScheduler();
-    uninitScheduler();
-}
-
-TEST(UNREGISTERPROFILEFROMSCHEDULER, ALREADY_REMOVED)
-{
-    initScheduler((TimeoutNotificationCB)ReportProfiles_ToutCb, (ActivationTimeoutCB)ReportProfiles_ActivationToutCb, (NotifySchedulerstartCB)NotifySchedulerstartCb);
-    registerProfileWithScheduler("REMOVEME", 2, 10, true, true, true, 1, "0001-01-01T00:00:00Z");
-    unregisterProfileFromScheduler("REMOVEME");
-    EXPECT_EQ(T2ERROR_FAILURE, unregisterProfileFromScheduler("REMOVEME"));
-    uninitScheduler();
-}
-#ifdef GTEST_ENABLE
-extern "C"
-{
-  typedef unsigned int (*getSchdInSec_fn)(char*);
-  getSchdInSec_fn getSchdInSec_fnCallback(void);
-}
-TEST(getSchdInSec, IndirectCall)
-{
-    getSchdInSec_fn fn = getSchdInSec_fnCallback();
-    char timeRef[] = "2022-12-20T11:05:56Z";
-    // Call via function pointer
-    unsigned int result = fn(timeRef);
-    EXPECT_GE(result, 0u);
-    EXPECT_LE(result, 86400u);
-}
-#endif

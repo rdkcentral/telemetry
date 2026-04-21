@@ -55,6 +55,7 @@ static void *bus_handle = NULL;
 static bool isRFCT2Enable = false ;
 static bool isT2Ready = false;
 static bool isRbusEnabled = false ;
+static int count = 0;
 static pthread_mutex_t initMtx = PTHREAD_MUTEX_INITIALIZER;
 static bool isMutexInitialized = false ;
 
@@ -84,23 +85,13 @@ static void EVENT_DEBUG(char* format, ...)
     logHandle = fopen(SENDER_LOG_FILE, "a+");
     if(logHandle)
     {
-        struct timespec ts;
-        struct tm timeinfo;
+        time_t rawtime;
+        struct tm* timeinfo;
 
-        if(clock_gettime(CLOCK_REALTIME, &ts) == -1)
-        {
-            fclose(logHandle);
-            pthread_mutex_unlock(&loggerMutex);
-            return;
-        }
-
-        char timeBuffer[24] = { '\0' };
-        long msecs;
-
-        localtime_r(&ts.tv_sec, &timeinfo);
-        msecs = ts.tv_nsec / 1000000;
-        strftime(timeBuffer, sizeof(timeBuffer), "%Y-%m-%d %H:%M:%S", &timeinfo);
-        snprintf(timeBuffer + strlen(timeBuffer), sizeof(timeBuffer) - strlen(timeBuffer), ".%03ld", msecs);
+        time(&rawtime);
+        timeinfo = localtime(&rawtime);
+        static char timeBuffer[20] = { '\0' };
+        strftime(timeBuffer, sizeof(timeBuffer), "%Y-%m-%d %H:%M:%S", timeinfo);
         fprintf(logHandle, "%s : ", timeBuffer);
         va_list argList;
         va_start(argList, format);
@@ -325,9 +316,8 @@ void *cacheEventToFile(void *arg)
     fl.l_len = 0;
     fl.l_pid = 0;
     FILE *fs = NULL;
+    char path[100];
     pthread_detach(pthread_self());
-    int ch;
-    int count = 0;
     EVENT_ERROR("%s:%d, Caching the event to File\n", __func__, __LINE__);
     if(telemetry_data == NULL)
     {
@@ -363,25 +353,12 @@ void *cacheEventToFile(void *arg)
         EVENT_ERROR("%s: File open error %s\n", __FUNCTION__, T2_CACHE_FILE);
         goto unlock;
     }
-
-    fs = fopen(T2_CACHE_FILE, "r");
-    if (fs != NULL)
+    fs = popen ("cat /tmp/t2_caching_file | wc -l", "r");
+    if(fs != NULL)
     {
-        while ((ch = fgetc(fs)) != EOF)
-        {
-            if (ch == '\n')
-            {
-                count++;
-            }
-        }
-
-        //If the file is not empty and does not contain a newline, call it one line
-        if (count == 0 && ftell(fs) > 0)
-        {
-            count++;
-        }
-        fclose(fs);
-        fs = NULL;
+        fgets(path, 100, fs);
+        count = atoi ( path );
+        pclose(fs);
     }
     if(count < MAX_EVENT_CACHE)
     {
@@ -778,7 +755,7 @@ void t2_uninit(void)
 T2ERROR t2_event_s(const char* marker, const char* value)
 {
 
-    int ret = -1;
+    int ret;
     T2ERROR retStatus = T2ERROR_FAILURE ;
     EVENT_DEBUG("%s ++in\n", __FUNCTION__);
     char* strvalue = NULL;
@@ -805,13 +782,13 @@ T2ERROR t2_event_s(const char* marker, const char* value)
         return T2ERROR_SUCCESS;
     }
     strvalue = strdup(value);
+    if( strvalue[strlen(strvalue) - 1] == '\n' )
+    {
+        strvalue[strlen(strvalue) - 1] = '\0';
+    }
+    ret = report_or_cache_data(strvalue, marker);
     if(strvalue != NULL)
     {
-        if( strvalue[strlen(strvalue) - 1] == '\n' )
-        {
-            strvalue[strlen(strvalue) - 1] = '\0';
-        }
-        ret = report_or_cache_data(strvalue, marker);
         free(strvalue);
     }
     if(ret != -1)

@@ -166,9 +166,7 @@ def test_reporting_interval_working():
     rbus_set_data(T2_TEMP_REPORT_PROFILE_PARAM, "string", data_temp_with_reporting_interval)
     sleep(2)
     REPORTING_INTERVAL_LOG1 = grep_T2logs("reporting interval is taken - TR_AC732")
-    run_shell_command("echo WIFI_MAC_10_TOTAL_COUNT:2 >> /opt/logs/wifihealth.txt")
-    sleep(2)
-    run_shell_command("echo WIFI_MAC_17_TOTAL_COUNT:0 >> /opt/logs/wifihealth.txt")
+
     command1 = ["telemetry2_0_client TEST_EVENT_MARKER_1 300"]
     command2 = ["telemetry2_0_client TEST_EVENT_MARKER_2 occurrance1"]
     command3 = ["telemetry2_0_client TEST_EVENT_MARKER_2 occurrance2"]
@@ -187,8 +185,6 @@ def test_reporting_interval_working():
     assert "TEST_EVENT_MARKER_1\":\"2" in grep_T2logs("FR2_US_TC3") # 234 -Include data from data source T2 events as count
     assert "occurrance1\",\"occurrance2" in grep_T2logs("FR2_US_TC3") # 212 - Include data from data source as T2 events - 1
     assert "TEST_EVENT_MARKER_2_CT" in grep_T2logs("FR2_US_TC3") # 248 - Event accumulate with and without timestamp in report profiles for event markers.
-    assert "Total_6G_clients_split" not in grep_T2logs("FR2_US_TC3")
-    assert "XWIFIS_CNT_2_split" in grep_T2logs("FR2_US_TC3")
                                                                     # 216 - Epoch time/UTC time support
     assert "Device.X_RDK_Xmidt.SendData" in grep_T2logs("T2 asyncMethodHandler called: ") # 228 - Report sending with protocol as RBUS_METHOD in report profiles.
     assert "send via rbusMethod is failure" in grep_T2logs("send via rbusMethod is failure") # 225 - Caching of upload failed reports - 1
@@ -248,7 +244,7 @@ def test_for_invalid_activation_timeout():
     rbus_set_data("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.ConfigURL", "string", "https://mockxconf:50050/loguploader2/getT2DCMSettings")
     os.makedirs('/opt/logs/PreviousLogs', exist_ok=True)
     file = open('/opt/logs/session0.txt', 'w')
-    file.write("This log file is for previous logs with value\n")
+    file.write("This log file is for previous logs\n")
     file.write("Second line in the previous logs\n")
     file.close()
     clear_T2logs()
@@ -294,10 +290,6 @@ def test_for_invalid_activation_timeout():
 @pytest.mark.run(order=8)
 def test_with_delete_on_timeout():
     #clear_T2logs()
-    # Clear both msgpack and JSON profiles from previous tests
-    rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_empty_profile))
-    rbus_set_data(T2_TEMP_REPORT_PROFILE_PARAM, "string", data_empty_profile)
-    sleep(2)
     RUN_START_TIME = dt.now()
     run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 ~DEBUG")
     sleep(2)
@@ -323,7 +315,7 @@ def test_with_delete_on_timeout():
     assert "MODEL_NAME\":\"DOCKER" in grep_T2logs("rp_TR_AC66") # 243 - Include data from data source as TR181 Parameter with regex
     assert "TEST_EVENT_MARKER_2\":\"17" in grep_T2logs("rp_TR_AC66") # 242 - Include data from data source as T2 events with regex
     assert "rp_TR_AC66" in grep_T2logs(LOG_DELETE_PROFILE) # 232 -Support for Delete on Timeout of profiles
-
+    
     assert "temp_TR_AC66" in grep_T2logs(LOG_PROFILE_ENABLE)  # 301 - Profile setting and parsing in JSON format
     assert "temp_TR_AC66" in grep_T2logs(LOG_PROFILE_TIMEOUT) # 315 - Support for activation timeout of profiles
     assert "SYS_INFO_CrashPortalUpload_success\":\"200" in grep_T2logs("temp_TR_AC66") # 318 - Regex support for log grep patterns
@@ -349,7 +341,7 @@ def test_for_first_reporting_interval_Maxlatency():
     sleep(5)
     assert "PARAM_NULL" not in grep_T2logs(LOG_PROFILE_ENABLE)
     assert "NA_FRI" in grep_T2logs(LOG_PROFILE_ENABLE) #verify when timeref is not default first reporting inetrval is not accepted
-
+    
     assert "NA_MLU" in grep_T2logs(LOG_PROFILE_ENABLE)
     assert "NA_FRI" not in grep_T2logs("Waiting for 5 sec for next TIMEOUT for profile as firstreporting interval is given")
     sleep(10)
@@ -386,7 +378,7 @@ def test_for_subscribe_tr181():
     clear_persistant_files()
     os.makedirs('/opt/logs/PreviousLogs', exist_ok=True)
     file = open('/opt/logs/PreviousLogs/session0.txt', 'w')
-    file.write("This log file is for previous logs with value\n")
+    file.write("This log file is for previous logs\n")
     file.write("Second line in the previous logs\n")
     file.close()
     run_telemetry()
@@ -502,35 +494,3 @@ def test_stress_test():
     pid2 = run_shell_command(command_to_get_pid)
     assert pid1==pid2 #  253 - Stress testing of interaction with rbus interface to check for any deadlocks or rbus timeouts.
 
-@pytest.mark.run(order=15)
-def test_grep_accumulate():
-    os.makedirs('/opt/logs', exist_ok=True)
-    run_shell_command("rm -rf /opt/logs/accum.log")
-    run_shell_command("cp test/functional-tests/tests/accum.log /opt/logs/")
-    sleep(1)
-
-    rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string", tomsgpack(data_with_grep_accumulate_timestamp))
-    sleep(20)
-    assert "SYS_INFO_Accum_Time" in grep_T2logs("cJSON Report ") # Verify that the values are accumulated upto 20 values and a warning message is added. 
-    assert "SYS_INFO_Accum_Time_CT" in grep_T2logs("cJSON Report ") # Matched timetamp will be reported as a different marker
-    assert "SYS_INFO_Accum_No_Time" in grep_T2logs("cJSON Report ") # Marker is reporting even without matching timestamp
-    assert "SYS_INFO_Accum_CT" not in grep_T2logs("cJSON Report ") # timestamp marker is not reporting without a matching timestamp
-    assert "SYS_INFO_Accum_Alone" in grep_T2logs("cJSON Report ") # Accumulate marker is reporting when reporttimestamp is not configured
-    assert "Load_Average" in grep_T2logs("cJSON Report ") # 
-    assert "cpu_telemetry2_0" in grep_T2logs("cJSON Report ") # 
-    assert "mem_telemetry2_0" in grep_T2logs("cJSON Report ") # 
-    file = open('/opt/logs/accum.log', 'a')
-    file.write(
-            "251007-09:29:39.441 INFO     identifier:thevalue23\n"
-            "251007-09:29:40.441 ERROR     identifier:thevalue24\n"
-            "filler updated line\n"
-            "251007-09:29:41.335 INFO     identifier:thevalue25\n"
-            "filler line\n"
-            "zero value=0\n"
-            "zero value=0\n"
-            )
-    file.close()
-    sleep(15)
-    assert "SYS_INFO_0_value" not in grep_T2logs("cJSON Report ") # 0 value should not be reported in absolute use
-    assert "SYS_INFO_0_accum" not in grep_T2logs("cJSON Report ") # 0 value should not be reported in accumulate use
-    assert "SYS_INFO_Accum_Time\":[\"thevalue23" in grep_T2logs("cJSON Report ") #Marker is reporting  in the next cycle even if the maximum accumulation is reached in the previous report 

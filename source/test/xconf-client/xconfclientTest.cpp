@@ -26,7 +26,6 @@
 #include "test/mocks/rbusMock.h"
 #include "xconfclientMock.h"
 
-
 extern "C" {
 #include <stdio.h>
 #include <string.h>
@@ -43,7 +42,6 @@ extern "C" {
 #include "telemetry2_0.h"
 #include "ccspinterface/busInterface.h"
 sigset_t blocking_signal;
-char* configURL = NULL;
 }
 
 using namespace std;
@@ -54,30 +52,30 @@ using ::testing::StrEq;
 using ::testing::SetArgPointee;
 using ::testing::DoAll;
 
-extern FileMock *g_fileIOMock;
 XconfclientMock *m_xconfclientMock = NULL;
 rbusMock *g_rbusMock = NULL;
-
-// Helper macro to prevent deadlock from mocked fwrite and fputs calls in the protocol code when GTest tries to log output, which can cause a deadlock if the logging functions are mocked without allowing real calls to them.
-#define PREVENT_GTEST_LOGGING_DEADLOCK() \
-    EXPECT_CALL(*g_fileIOMock, fwrite(::testing::_, ::testing::_, ::testing::_, ::testing::_)) \
-        .Times(::testing::AnyNumber()) \
-        .WillRepeatedly(::testing::Invoke( \
-            [](const void* ptr, size_t size, size_t nitems, FILE* stream) { \
-                return ::fwrite(ptr, size, nitems, stream); \
-            }))
 
 TEST(GETBUILDTYPE, NULL_CHECK)
 {
     EXPECT_EQ(T2ERROR_FAILURE, getBuildType(NULL));
 }
+/*
+TEST(APPENDREQUEST, NULL_CHECK)
+{
+    char *buf = NULL;
+    EXPECT_EQ(T2ERROR_FAILURE, appendRequestParams(buf,256));
+    char* urlWithParams = (char*) malloc(1024 * sizeof(char));
+     memset(urlWithParams, '0', 1024 * sizeof(char));
+     snprintf(urlWithParams, 1024, "%s?", "https://mockxconf:50050/loguploader/getT2DCMSettings?");
+    EXPECT_EQ(T2ERROR_FAILURE, appendRequestParams(urlWithParams,970));
+    free(urlWithParams);
+    urlWithParams = NULL;
+}
+*/
 
 TEST(DOHTTPGET, HTTPURL_CHECK)
 {
     char* data = NULL;
-    FileMock fileMock;
-    g_fileIOMock = &fileMock;
-    PREVENT_GTEST_LOGGING_DEADLOCK();
     EXPECT_EQ(T2ERROR_FAILURE,  doHttpGet(NULL, &data));
 }
 
@@ -94,34 +92,6 @@ protected:
         g_fileIOMock = new FileMock();
 	g_systemMock = new SystemMock();
     m_xconfclientMock = new XconfclientMock();
-
-        // Set default behaviors for curl functions to prevent them from being called
-        EXPECT_CALL(*g_fileIOMock, curl_easy_init())
-            .Times(::testing::AnyNumber())
-            .WillRepeatedly(::testing::Return(nullptr));
-        
-        EXPECT_CALL(*g_fileIOMock, curl_easy_perform(::testing::_))
-            .Times(::testing::AnyNumber())
-            .WillRepeatedly(::testing::Return(CURLE_FAILED_INIT));
-
-        EXPECT_CALL(*g_fileIOMock, curl_easy_cleanup(::testing::_))
-            .Times(::testing::AnyNumber());
-
-        EXPECT_CALL(*g_fileIOMock, curl_easy_setopt(::testing::_, ::testing::_, ::testing::_))
-            .Times(::testing::AnyNumber())
-            .WillRepeatedly(::testing::Return(CURLE_OK));
-
-        // Add curl_slist functions to prevent deadlock during pool initialization
-        EXPECT_CALL(*g_fileIOMock, curl_slist_append(::testing::_, ::testing::_))
-            .Times(::testing::AnyNumber())
-            .WillRepeatedly(::testing::Invoke([](struct curl_slist* list, const char* str) {
-                // Return a fake non-null pointer to simulate successful append
-                static int counter = 1;
-                return (struct curl_slist*)(uintptr_t)(0x2000 + counter++);
-            }));
-        
-        EXPECT_CALL(*g_fileIOMock, curl_slist_free_all(::testing::_))
-            .Times(::testing::AnyNumber());
     }
 
     void TearDown() override
@@ -149,7 +119,7 @@ TEST_F(xconfclientTestFixture, getBuildType)
 
 TEST_F(xconfclientTestFixture, getBuildType1)
 {
-    FILE* fakeFile = reinterpret_cast<FILE*>(0x1234);
+     FILE* fakeFile = reinterpret_cast<FILE*>(0x1234);
     char fileContent[] = "BUILD_TYPE=PROD";
     char build_type[256] = {0};
 
@@ -165,31 +135,13 @@ TEST_F(xconfclientTestFixture, getBuildType1)
      EXPECT_EQ(T2ERROR_FAILURE, getBuildType(build_type));
 }
 
-TEST_F(xconfclientTestFixture, getBuildType2)
-{
-    FILE* fakeFile = reinterpret_cast<FILE*>(0x1234);
-    char fileContent[] = "BUILD_TYPE=PROD";
-    char build_type[256] = {0};
-
-    // Expect fopen called with DEVICE_PROPERTIES and returns fakeFile
-    EXPECT_CALL(*g_fileIOMock, fopen(_,_))
-        .WillOnce(Return(fakeFile));
-
-    EXPECT_CALL(*g_fileIOMock, fscanf(fakeFile, _, _))
-            .WillOnce(Return(255))
-            .WillOnce(Return(EOF));
-    EXPECT_CALL(*g_fileIOMock, fclose(_))
-            .Times(1)
-            .WillOnce(Return(0));
-     EXPECT_EQ(T2ERROR_FAILURE, getBuildType(build_type));
-}
-
-
 TEST_F(xconfclientTestFixture, appendRequestParams1)
 {
      EXPECT_CALL(*m_xconfclientMock, getParameterValue(_,_))
             .Times(1)
             .WillOnce(Return(T2ERROR_FAILURE));
+     //char* urlWithParams = (char*) malloc(1024 * sizeof(char));
+     //memset(urlWithParams, '0', 1024 * sizeof(char));
      CURLU *requestURL = curl_url();
      curl_url_set(requestURL, CURLUPART_URL, "https://mockxconf:50050/loguploader/getT2DCMSettings", 0);
      EXPECT_EQ(T2ERROR_FAILURE, appendRequestParams(requestURL));
@@ -274,28 +226,9 @@ TEST_F(xconfclientTestFixture, appendRequestParams6)
 
 TEST_F(xconfclientTestFixture, appendRequestParams7)
 {
-     EXPECT_CALL(*m_xconfclientMock, getParameterValue(_,_))
-            .Times(7)
-            .WillOnce(::testing::Return(T2ERROR_SUCCESS))
-            .WillOnce(::testing::Return(T2ERROR_SUCCESS))
-            .WillOnce(::testing::Return(T2ERROR_SUCCESS))
-            .WillOnce(::testing::Return(T2ERROR_SUCCESS))
-            .WillOnce(::testing::Return(T2ERROR_SUCCESS))
-            .WillOnce(::testing::Return(T2ERROR_SUCCESS))
-            .WillOnce(::testing::Return(T2ERROR_FAILURE));
-     CURLU *requestURL = curl_url();
-     curl_url_set(requestURL, CURLUPART_URL, "https://mockxconf:50050/loguploader/getT2DCMSettings", 0);
-     EXPECT_EQ(T2ERROR_FAILURE, appendRequestParams(requestURL));
-     curl_free(requestURL);
-     requestURL = NULL;
-}
-
-TEST_F(xconfclientTestFixture, appendRequestParams8)
-{
      char build_type[256] = {0};
      EXPECT_CALL(*m_xconfclientMock, getParameterValue(_,_))
-            .Times(7)
-            .WillOnce(Return(T2ERROR_SUCCESS))
+            .Times(6)
             .WillOnce(Return(T2ERROR_SUCCESS))
             .WillOnce(Return(T2ERROR_SUCCESS))
             .WillOnce(Return(T2ERROR_SUCCESS))
@@ -314,7 +247,6 @@ TEST_F(xconfclientTestFixture, appendRequestParams8)
      curl_free(requestURL);
      requestURL = NULL;
 }
-
 TEST_F(xconfclientTestFixture, fetchRemoteConfiguration)
 {
     char* configURL = "https://mockxconf:50050/loguploader/getT2DCMSettings";
@@ -328,7 +260,9 @@ TEST_F(xconfclientTestFixture, fetchRemoteConfiguration)
 TEST_F(xconfclientTestFixture, doHttpGet)
 {
      char* data = NULL;
-
+     EXPECT_CALL(*g_fileIOMock, pipe(_))
+             .Times(1)
+             .WillOnce(Return(-1));
      EXPECT_EQ(T2ERROR_FAILURE, doHttpGet("https://test.com", &data));
 }
 
@@ -337,11 +271,9 @@ TEST_F(xconfclientTestFixture,  getRemoteConfigURL)
      char* configURL = NULL;
      #if defined(ENABLE_RDKB_SUPPORT)
      EXPECT_CALL(*g_systemMock, access(_,_))
-                .Times(2)
-                .WillOnce(Return(-1))
-                .WillOnce(Return(0));
+                .Times(1)
+                .WillOnce(Return(-1));
      #endif
-     
      EXPECT_CALL(*m_xconfclientMock, getParameterValue(_,_))
                 .Times(1)
                 .WillOnce(Return(T2ERROR_FAILURE));
@@ -351,7 +283,6 @@ TEST_F(xconfclientTestFixture,  getRemoteConfigURL)
 TEST_F(xconfclientTestFixture,  getRemoteConfigURL1)
 {
      char* configURL = NULL;
-
      #if defined(ENABLE_RDKB_SUPPORT)
      EXPECT_CALL(*g_systemMock, access(_,_))
                 .Times(1)
@@ -371,394 +302,112 @@ TEST_F(xconfclientTestFixture,  getRemoteConfigURL2)
                 .Times(1)
                 .WillOnce(Return(0));
      #endif
+     EXPECT_CALL(*m_xconfclientMock, getParameterValue(_,_))
+            .Times(1)
+        .WillOnce(Return(T2ERROR_SUCCESS));
 
-     EXPECT_CALL(*m_xconfclientMock, getParameterValue(_, _))
-        .WillOnce([](const char* paramName, char** paramValue) {
-            if (strcmp(paramName, "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.ConfigURL") == 0)
-                *paramValue = strdup("https://mockxconf:50050/loguploader/getT2DCMSettings");
-            else
-                *paramValue = strdup("UNKNOWN");
-            return T2ERROR_SUCCESS;
-    });
-     
-     EXPECT_EQ(T2ERROR_SUCCESS, getRemoteConfigURL(&configURL));
-}
-
-TEST_F(xconfclientTestFixture,  getRemoteConfigURL3)
-{
-     char* configURL = NULL;
-
-     #if defined(ENABLE_RDKB_SUPPORT)
-     EXPECT_CALL(*g_systemMock, access(_,_))
-                .Times(1)
-                .WillOnce(Return(0));
-     #endif
-
-     EXPECT_CALL(*m_xconfclientMock, getParameterValue(_, _))
-        .Times(2)
-        .WillOnce([](const char* paramName, char** paramValue) {
-            if (strcmp(paramName, "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.ConfigURL") == 0)
-                *paramValue = strdup("www.//mockxconf:50050/loguploader/getT2DCMSettings");
-            else
-                *paramValue = strdup("UNKNOWN");
-            return T2ERROR_SUCCESS;
-    })
-        .WillOnce([](const char* paramName, char** paramValue) {
-            if (strcmp(paramName, "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.ConfigURL") == 0)
-                *paramValue = strdup("https://mockxconf:50050/loguploader/getT2DCMSettings");
-            else
-                *paramValue = strdup("UNKNOWN");
-            return T2ERROR_SUCCESS;
-    });
-     EXPECT_EQ(T2ERROR_SUCCESS, getRemoteConfigURL(&configURL));
+     EXPECT_EQ(T2ERROR_FAILURE, getRemoteConfigURL(&configURL));
 }
 
 TEST_F(xconfclientTestFixture, doHttpGet1)
 {
      char* data = NULL;
-
-        // Set up curl_easy_init to return valid handles for pool initialization
-        // The pool will call curl_easy_init() based on pool size (default 2)
-        EXPECT_CALL(*g_fileIOMock, curl_easy_init())
-            .Times(::testing::AnyNumber())
-            .WillRepeatedly(::testing::Invoke([]() {
-                // Return unique fake handles for each call
-                static int handle_counter = 1;
-                return (CURL*)(uintptr_t)(0x1000 + handle_counter++);
-            }));
-        EXPECT_CALL(*m_xconfclientMock, isMtlsEnabled())
-            .Times(1)
-            .WillOnce(Return(0));
+     EXPECT_CALL(*g_fileIOMock, pipe(_))
+             .Times(2)
+             .WillOnce(Return(0))
+	     .WillOnce(Return(-1));
      EXPECT_EQ(T2ERROR_FAILURE, doHttpGet("https://test.com", &data));
-}
-
-TEST_F(xconfclientTestFixture, doHttpGet2)
-{
-     char* data = NULL;
-
-     EXPECT_CALL(*g_fileIOMock, curl_easy_init())
-     .Times(::testing::AnyNumber())
-     .WillRepeatedly(::testing::Invoke([]() {
-         // Return unique fake handles for each call
-         static int handle_counter = 1;
-         return (CURL*)(uintptr_t)(0x1000 + handle_counter++);
-     }));
-
-#if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
-#if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
-    EXPECT_CALL(*m_xconfclientMock, getParameterValue(_,_))
-            .WillOnce([](const char* paramName, char** paramValue) {
-            if (strcmp(paramName, "Device.X_RDK_WanManager.CurrentActiveInterface") == 0)
-                *paramValue = strdup("erouter0");
-            else
-                *paramValue = strdup("unknown");
-            return T2ERROR_SUCCESS;
-    });
-#endif
-#endif
-
-    EXPECT_CALL(*m_xconfclientMock, isMtlsEnabled())
-            .Times(1)
-            .WillOnce(Return(0));
-    EXPECT_CALL(*g_fileIOMock, curl_easy_perform(_))
-            .Times(1)
-            .WillOnce(Return(CURLE_OK));
-    EXPECT_CALL(*g_fileIOMock, curl_easy_getinfo_mock(_,_,_))
-            .Times(::testing::AtLeast(1))
-            .WillRepeatedly([](CURL* curl, CURLINFO info, void* response_code) {
-                if (info == CURLINFO_RESPONSE_CODE) {
-                    *(long*)response_code = 200;
-                }
-                return CURLE_OK;
-            });
-    
-    //Add curl_easy_cleanup expectation
-    EXPECT_CALL(*g_fileIOMock, curl_easy_cleanup(_))
-            .Times(::testing::AnyNumber());
-    EXPECT_EQ(T2ERROR_SUCCESS, doHttpGet("https://test.com", &data));
-}
-
-
-TEST_F(xconfclientTestFixture, doHttpGet3)
-{
-     char* data = NULL;
-
-     EXPECT_CALL(*g_fileIOMock, curl_easy_init())
-     .Times(::testing::AnyNumber())
-     .WillRepeatedly(::testing::Invoke([]() {
-         // Return unique fake handles for each call
-         static int handle_counter = 1;
-         return (CURL*)(uintptr_t)(0x1000 + handle_counter++);
-     }));
-
-#if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
-#if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
-    EXPECT_CALL(*m_xconfclientMock, getParameterValue(_,_))
-            .WillOnce([](const char* paramName, char** paramValue) {
-            if (strcmp(paramName, "Device.X_RDK_WanManager.CurrentActiveInterface") == 0)
-                *paramValue = strdup("erouter0");
-            else
-                *paramValue = strdup("unknown");
-            return T2ERROR_SUCCESS;
-    });
-#endif
-#endif
-
-    EXPECT_CALL(*m_xconfclientMock, isMtlsEnabled())
-            .Times(1)
-            .WillOnce(Return(0));
-    EXPECT_CALL(*g_fileIOMock, curl_easy_perform(_))
-            .Times(1)
-            .WillOnce(Return(CURLE_OK));
-            EXPECT_CALL(*g_fileIOMock, curl_easy_getinfo_mock(_,_,_))
-            .Times(::testing::AtLeast(1))
-            .WillRepeatedly([](CURL* curl, CURLINFO info, void* response_code) {
-                if (info == CURLINFO_RESPONSE_CODE) {
-                    *(long*)response_code = 404;
-                }
-                return CURLE_OK;
-            });
-    
-    //Add curl_easy_cleanup expectation
-    EXPECT_CALL(*g_fileIOMock, curl_easy_cleanup(_))
-            .Times(::testing::AnyNumber());
-    EXPECT_EQ(T2ERROR_PROFILE_NOT_SET, doHttpGet("https://test.com", &data));
-}
-
-TEST_F(xconfclientTestFixture, doHttpGet4)
-{
-     char* data = NULL;
-
-     EXPECT_CALL(*g_fileIOMock, curl_easy_init())
-     .Times(::testing::AnyNumber())
-     .WillRepeatedly(::testing::Invoke([]() {
-         // Return unique fake handles for each call
-         static int handle_counter = 1;
-         return (CURL*)(uintptr_t)(0x1000 + handle_counter++);
-     }));
-
-#if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
-#if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
-    EXPECT_CALL(*m_xconfclientMock, getParameterValue(_,_))
-            .WillOnce([](const char* paramName, char** paramValue) {
-            if (strcmp(paramName, "Device.X_RDK_WanManager.CurrentActiveInterface") == 0)
-                *paramValue = strdup("erouter0");
-            else
-                *paramValue = strdup("unknown");
-            return T2ERROR_SUCCESS;
-    });
-#endif
-#endif
-
-    EXPECT_CALL(*m_xconfclientMock, isMtlsEnabled())
-            .Times(1)
-            .WillOnce(Return(0));
-    EXPECT_CALL(*g_fileIOMock, curl_easy_perform(_))
-            .Times(1)
-            .WillOnce(Return(CURLE_OK));
-    EXPECT_CALL(*g_fileIOMock, curl_easy_getinfo_mock(_,_,_))
-            .Times(::testing::AtLeast(1))
-            .WillRepeatedly([](CURL* curl, CURLINFO info, void* response_code) {
-                if (info == CURLINFO_RESPONSE_CODE) {
-                    *(long*)response_code = 302;
-                }
-                return CURLE_OK;
-            });
-    
-    //Add curl_easy_cleanup expectation
-    EXPECT_CALL(*g_fileIOMock, curl_easy_cleanup(_))
-            .Times(::testing::AnyNumber());
-    EXPECT_EQ(T2ERROR_FAILURE, doHttpGet("https://test.com", &data));
-}
-
-TEST_F(xconfclientTestFixture, doHttpGet5)
-{
-     char* data = NULL;
-
-     EXPECT_CALL(*g_fileIOMock, curl_easy_init())
-     .Times(::testing::AnyNumber())
-     .WillRepeatedly(::testing::Invoke([]() {
-         // Return unique fake handles for each call
-         static int handle_counter = 1;
-         return (CURL*)(uintptr_t)(0x1000 + handle_counter++);
-     }));
-
-#if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
-#if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
-    EXPECT_CALL(*m_xconfclientMock, getParameterValue(_,_))
-            .WillOnce([](const char* paramName, char** paramValue) {
-            if (strcmp(paramName, "Device.X_RDK_WanManager.CurrentActiveInterface") == 0)
-                *paramValue = strdup("erouter0");
-            else
-                *paramValue = strdup("unknown");
-            return T2ERROR_SUCCESS;
-    });
-#endif
-#endif
-
-    EXPECT_CALL(*m_xconfclientMock, isMtlsEnabled())
-            .Times(1)
-            .WillOnce(Return(0));
-    // Mock curl_easy_perform to simulate receiving data
-    EXPECT_CALL(*g_fileIOMock, curl_easy_perform(_))
-            .Times(1)
-            .WillOnce(::testing::Invoke([](CURL* handle) {
-                // Simulate curl calling the write callback with response data
-                const char* test_response = "{\"status\":\"success\",\"data\":\"test response data\"}";
-                
-                // In a real scenario, curl would call the callback set via CURLOPT_WRITEFUNCTION
-                // For testing, we need to directly populate the response structure
-                // This is tricky because we need access to the response pointer
-                
-                return CURLE_OK;
-            }));
-    EXPECT_CALL(*g_fileIOMock, curl_easy_getinfo_mock(_,_,_))
-            .Times(::testing::AtLeast(1))
-            .WillRepeatedly([](CURL* curl, CURLINFO info, void* response_code) {
-                if (info == CURLINFO_RESPONSE_CODE) {
-                    *(long*)response_code = 200;
-                }
-                return CURLE_OK;
-            });
-    
-    //Add curl_easy_cleanup expectation
-    EXPECT_CALL(*g_fileIOMock, curl_easy_cleanup(_))
-            .Times(::testing::AnyNumber());
-    EXPECT_EQ(T2ERROR_SUCCESS, doHttpGet("https://test.com", &data));
-}
-
-TEST_F(xconfclientTestFixture, doHttpGet7)
-{
-     char* data = NULL;
-
-     EXPECT_CALL(*g_fileIOMock, curl_easy_init())
-     .Times(::testing::AnyNumber())
-     .WillRepeatedly(::testing::Invoke([]() {
-         // Return unique fake handles for each call
-         static int handle_counter = 1;
-         return (CURL*)(uintptr_t)(0x1000 + handle_counter++);
-     }));
-    #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
-#if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
-    EXPECT_CALL(*m_xconfclientMock, getParameterValue(_,_))
-            .Times(1)
-            .WillOnce([](const char* paramName, char** paramValue) {
-            if (strcmp(paramName, "Device.X_RDK_WanManager.CurrentActiveInterface") == 0)
-                *paramValue = strdup("erouter0");
-            else
-                *paramValue = strdup("unknown");
-            return ;
-    });
-#endif
-#endif
-    EXPECT_CALL(*m_xconfclientMock, isMtlsEnabled())
-            .Times(1)
-            .WillOnce(Return(1));
-    EXPECT_CALL(*g_systemMock, access(_,_))
-            .Times(1)
-            .WillOnce(Return(1));
-
-    EXPECT_CALL(*g_fileIOMock, curl_easy_perform(_))
-            .Times(1)
-            .WillOnce(Return(CURLE_OK));
-    EXPECT_CALL(*g_fileIOMock, curl_easy_getinfo_mock(_,_,_))
-            .Times(1)
-            .WillOnce([](CURL* curl, CURLINFO info, void* response_code) {
-                if (info == CURLINFO_RESPONSE_CODE) {
-                    *(long*)response_code = 200;
-                    return CURLE_OK;
-                }
-                return CURLE_OK;
-            });
-
-    EXPECT_EQ(doHttpGet("https://test.com", &data), T2ERROR_SUCCESS);
-}
-
-TEST_F(xconfclientTestFixture, doHttpGet8)
-{
-     char* data = NULL;
-
-     EXPECT_CALL(*g_fileIOMock, curl_easy_init())
-     .Times(::testing::AnyNumber())
-     .WillRepeatedly(::testing::Invoke([]() {
-         // Return unique fake handles for each call
-         static int handle_counter = 1;
-         return (CURL*)(uintptr_t)(0x1000 + handle_counter++);
-     }));
-    #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
-#if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
-    EXPECT_CALL(*m_xconfclientMock, getParameterValue(_,_))
-            .Times(1)
-            .WillOnce([](const char* paramName, char** paramValue) {
-            if (strcmp(paramName, "Device.X_RDK_WanManager.CurrentActiveInterface") == 0)
-                *paramValue = strdup("erouter0");
-            else
-                *paramValue = strdup("unknown");
-            return ;
-    });
-#endif
-#endif
-    EXPECT_CALL(*m_xconfclientMock, isMtlsEnabled())
-            .Times(1)
-            .WillOnce(Return(1));
-    EXPECT_CALL(*g_systemMock, access(_,_))
-            .Times(1)
-            .WillOnce(Return(0));
-
-    EXPECT_CALL(*g_fileIOMock, curl_easy_perform(_))
-            .Times(1)
-            .WillOnce(Return(CURLE_OK));
-    EXPECT_CALL(*g_fileIOMock, curl_easy_getinfo_mock(_,_,_))
-            .Times(1)
-            .WillOnce([](CURL* curl, CURLINFO info, void* response_code) {
-                if (info == CURLINFO_RESPONSE_CODE) {
-                    *(long*)response_code = 200;
-                    return CURLE_OK;
-                }
-                return CURLE_OK;
-            });
-
-    EXPECT_EQ(doHttpGet("https://test.com", &data), T2ERROR_SUCCESS);
-}
-
-TEST_F(xconfclientTestFixture, initXConfClient_failure)
-{
-     #if defined(ENABLE_RDKB_SUPPORT)
-     EXPECT_CALL(*g_systemMock, access(_,_))
-                .Times(1)
-                .WillOnce(Return(0));
-     #endif
-
-     EXPECT_CALL(*m_xconfclientMock, getParameterValue(_, _))
-        .WillOnce([](const char* paramName, char** paramValue) {
-            if (strcmp(paramName, "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.ConfigURL") == 0)
-                *paramValue = strdup("www.mockxconf:50050/loguploader/getT2DCMSettings");
-            else
-                *paramValue = strdup("UNKNOWN");
-            return T2ERROR_SUCCESS;
-     })
-        .WillOnce([](const char* paramName, char** paramValue) {
-            if (strcmp(paramName, "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.ConfigURL") == 0)
-                *paramValue = strdup("www.mockxconf:50050/loguploader/getT2DCMSettings");
-            else
-                *paramValue = strdup("UNKNOWN");
-            return T2ERROR_SUCCESS;
-     })
-        .WillOnce([](const char* paramName, char** paramValue) {
-            if (strcmp(paramName, "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.ConfigURL") == 0)
-                *paramValue = strdup("www.mockxconf:50050/loguploader/getT2DCMSettings");
-            else
-                *paramValue = strdup("UNKNOWN");
-            return T2ERROR_SUCCESS;
-     });
-     EXPECT_CALL(*m_xconfclientMock, ProfileXConf_isSet())
-            .Times(1)
-            .WillOnce(Return(false));
-     EXPECT_EQ(T2ERROR_SUCCESS, initXConfClient());
-     sleep(20);
 }
 
 TEST(STOPXCONFCLIENT, success_check)
 {
      EXPECT_EQ(T2ERROR_SUCCESS, stopXConfClient());
+}
+
+TEST(STARTXCONFCLIENT, success_check)
+{
+    EXPECT_EQ(T2ERROR_SUCCESS, startXConfClient());
+}
+
+TEST_F(xconfclientTestFixture, doHttpGet2)
+{
+     char* data = NULL;
+     EXPECT_CALL(*g_fileIOMock, pipe(_))
+             .Times(2)
+             .WillOnce(Return(0))
+	     .WillOnce(Return(0));
+#if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
+#if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
+    EXPECT_CALL(*m_xconfclientMock, getParameterValue(_,_))
+            .Times(1)
+            .WillOnce(Return(T2ERROR_SUCCESS));
+#endif
+#endif
+    EXPECT_CALL(*m_xconfclientMock, isMtlsEnabled())
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, fork())
+            .Times(1)
+            .WillOnce(Return(-1));
+     EXPECT_EQ(T2ERROR_FAILURE, doHttpGet("https://test.com", &data));
+}
+
+TEST_F(xconfclientTestFixture, doHttpGet3)
+{
+     char* data = NULL;
+     EXPECT_CALL(*g_fileIOMock, pipe(_))
+             .Times(2)
+             .WillOnce(Return(0))
+             .WillOnce(Return(0));
+#if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
+#if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
+    EXPECT_CALL(*m_xconfclientMock, getParameterValue(_,_))
+            .Times(1)
+            .WillOnce(Return(T2ERROR_SUCCESS));
+#endif
+#endif
+    EXPECT_CALL(*m_xconfclientMock, isMtlsEnabled())
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, fork())
+            .Times(1)
+            .WillOnce(Return(1));
+    EXPECT_CALL(*g_fileIOMock, close(_))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, read(_,_,_))
+            .Times(1)
+            .WillOnce(Return(-1));
+     EXPECT_EQ(T2ERROR_FAILURE, doHttpGet("https://test.com", &data));
+}
+
+TEST_F(xconfclientTestFixture, doHttpGet4)
+{
+     char* data = NULL;
+     EXPECT_CALL(*g_fileIOMock, pipe(_))
+             .Times(2)
+             .WillOnce(Return(0))
+             .WillOnce(Return(0));
+    #if defined(ENABLE_RDKB_SUPPORT) && !defined(RDKB_EXTENDER)
+#if defined(WAN_FAILOVER_SUPPORTED) || defined(FEATURE_RDKB_CONFIGURABLE_WAN_INTERFACE)
+    EXPECT_CALL(*m_xconfclientMock, getParameterValue(_,_))
+            .Times(1)
+            .WillOnce(Return(T2ERROR_SUCCESS));
+#endif
+#endif
+    EXPECT_CALL(*m_xconfclientMock, isMtlsEnabled())
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, fork())
+            .Times(1)
+            .WillOnce(Return(1));
+    EXPECT_CALL(*g_fileIOMock, close(_))
+            .Times(2)
+            .WillOnce(Return(0))
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, read(_,_,_))
+            .Times(1)
+            .WillOnce(Return(0));
+
+     EXPECT_EQ(T2ERROR_FAILURE, doHttpGet("https://test.com", &data));  
 }

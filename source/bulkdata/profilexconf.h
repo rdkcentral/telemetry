@@ -50,8 +50,6 @@ typedef struct _ProfileXConf
 {
     bool isUpdated;
     bool reportInProgress;
-    pthread_cond_t reportInProgressCond;
-    pthread_mutex_t reportInProgressMutex;
     bool bClearSeekMap;
     bool checkPreviousSeek; // To support Previous_Logs report post reboot
     bool saveSeekConfig; // To save the Seek config to persistant storage
@@ -82,6 +80,7 @@ void    ProfileXConf_updateMarkerComponentMap();
 void    ProfileXConf_notifyTimeout(bool isClearSeekMap, bool isOnDemand);
 T2ERROR ProfileXConf_storeMarkerEvent(T2Event *eventInfo);
 char*   ProfileXconf_getName();
+T2ERROR ProfileXConf_terminateReport();
 
 T2ERROR ReportProfiles_setProfileXConf(ProfileXConf *profile);
 

@@ -19,82 +19,74 @@
 # limitations under the License.
 ####################################################################################
 
-export top_srcdir = `pwd`
-                    RESULT_DIR = "/tmp/l2_test_report"
-                                 mkdir - p "$RESULT_DIR"
+export top_srcdir=`pwd`
+RESULT_DIR="/tmp/l2_test_report"
+mkdir -p "$RESULT_DIR"
 
 # ThreadSanitizer support
-                                 ENABLE_TSAN = false
-                                     if [ "x$1" = "x--enable-tsan" ];
-then
-echo "Enabling ThreadSanitizer for race detection"
-ENABLE_TSAN = true
-export TSAN_OPTIONS = "halt_on_error=0 second_deadlock_stack=1 history_size=4 log_path=$RESULT_DIR/tsan.log"
-                      fi
-
-                      if ! grep - q "LOG_PATH=/opt/logs/" / etc / include.properties;
-then
-echo "LOG_PATH=/opt/logs/" >> / etc / include.properties
-                           fi
-
-                           if ! grep - q "PERSISTENT_PATH=/opt/" / etc / include.properties;
-then
-echo "PERSISTENT_PATH=/opt/" >> / etc / include.properties
-                             fi
-
-# If TSan enabled, rebuild telemetry2_0 with ThreadSanitizer instrumentation
-                             if [ "$ENABLE_TSAN" = true ];
-then
-echo "Rebuilding telemetry with ThreadSanitizer..."
-autoreconf --install
-. / configure --enable - tsan
-make clean
-make
-make install
-echo "TSan-instrumented build complete."
+ENABLE_TSAN=false
+if [ "x$1" = "x--enable-tsan" ]; then
+    echo "Enabling ThreadSanitizer for race detection"
+    ENABLE_TSAN=true
+    export TSAN_OPTIONS="halt_on_error=0 second_deadlock_stack=1 history_size=4 log_path=$RESULT_DIR/tsan.log"
 fi
 
-gcc test / functional - tests / tests / app.c - o test / functional - tests / tests / t2_app - ltelemetry_msgsender - lt2utils
+if ! grep -q "LOG_PATH=/opt/logs/" /etc/include.properties; then
+    echo "LOG_PATH=/opt/logs/" >> /etc/include.properties
+fi
 
-final_result = 0
+if ! grep -q "PERSISTENT_PATH=/opt/" /etc/include.properties; then
+    echo "PERSISTENT_PATH=/opt/" >> /etc/include.properties
+fi
+
+# If TSan enabled, rebuild telemetry2_0 with ThreadSanitizer instrumentation
+if [ "$ENABLE_TSAN" = true ]; then
+    echo "Rebuilding telemetry with ThreadSanitizer..."
+    autoreconf --install
+    ./configure --enable-tsan
+    make clean
+    make
+    make install
+    echo "TSan-instrumented build complete."
+fi
+
+gcc test/functional-tests/tests/app.c -o test/functional-tests/tests/t2_app -ltelemetry_msgsender -lt2utils
+
+final_result=0
 # removing --exitfirst flag as it is causing the test to exit after first failure
-               pytest - v --json - report --json - report - summary --json - report - file $RESULT_DIR / runs_as_daemon.json test / functional - tests / tests / test_runs_as_daemon.py || final_result = 1
-                   pytest - v --json - report --json - report - summary --json - report - file $RESULT_DIR / bootup_sequence.json test / functional - tests / tests / test_bootup_sequence.py || final_result = 1
-                       pytest - v --json - report --json - report - summary --json - report - file $RESULT_DIR / xconf_communications.json test / functional - tests / tests / test_xconf_communications.py || final_result = 1
-                           pytest - v --json - report --json - report - summary --json - report - file $RESULT_DIR / msg_packet.json test / functional - tests / tests / test_multiprofile_msgpacket.py || final_result = 1
+pytest -v --json-report --json-report-summary --json-report-file $RESULT_DIR/runs_as_daemon.json test/functional-tests/tests/test_runs_as_daemon.py || final_result=1
+pytest -v --json-report --json-report-summary --json-report-file $RESULT_DIR/bootup_sequence.json test/functional-tests/tests/test_bootup_sequence.py || final_result=1
+pytest -v --json-report --json-report-summary --json-report-file $RESULT_DIR/xconf_communications.json test/functional-tests/tests/test_xconf_communications.py || final_result=1
+pytest -v --json-report --json-report-summary --json-report-file $RESULT_DIR/msg_packet.json test/functional-tests/tests/test_multiprofile_msgpacket.py || final_result=1
 
-                               if [ $final_result - ne 0 ];
-then
-echo "Some tests failed. Please check the JSON reports in $RESULT_DIR for details."
+if [ $final_result -ne 0 ]; then
+    echo "Some tests failed. Please check the JSON reports in $RESULT_DIR for details."
 else
     echo "All tests passed successfully."
-    fi
+fi
 
 # Report ThreadSanitizer findings
-    if [ "$ENABLE_TSAN" = true ];
-then
-tsan_files = $(find "$RESULT_DIR" - name "tsan.log*" 2 > / dev / null)
-             if [ -n "$tsan_files" ];
-then
-echo ""
-echo "=== ThreadSanitizer Report ==="
-total_warnings = 0
-                 for f in $tsan_files;
-do
-count = $(grep - c "WARNING: ThreadSanitizer:" "$f" 2 > / dev / null || echo 0)
-            total_warnings = $((total_warnings + count))
-                             echo ""
-                             echo "--- $f ($count warning(s)) ---"
-                             cat "$f"
-                             done
-                             echo ""
-                             echo "=== TSan Summary: $total_warnings total warning(s) ==="
-                             echo "Full logs saved in: $RESULT_DIR/tsan.log*"
-                             final_result = 1
-                                            else
-                                                echo ""
-                                                echo "=== ThreadSanitizer: No data races detected ==="
-                                                fi
-                                                fi
+if [ "$ENABLE_TSAN" = true ]; then
+    tsan_files=$(find "$RESULT_DIR" -name "tsan.log*" 2>/dev/null)
+    if [ -n "$tsan_files" ]; then
+        echo ""
+        echo "=== ThreadSanitizer Report ==="
+        total_warnings=0
+        for f in $tsan_files; do
+            count=$(grep -c "WARNING: ThreadSanitizer:" "$f" 2>/dev/null || echo 0)
+            total_warnings=$((total_warnings + count))
+            echo ""
+            echo "--- $f ($count warning(s)) ---"
+            cat "$f"
+        done
+        echo ""
+        echo "=== TSan Summary: $total_warnings total warning(s) ==="
+        echo "Full logs saved in: $RESULT_DIR/tsan.log*"
+        final_result=1
+    else
+        echo ""
+        echo "=== ThreadSanitizer: No data races detected ==="
+    fi
+fi
 
-                                                exit $final_result
+exit $final_result

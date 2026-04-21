@@ -536,6 +536,14 @@ static char* getAbsolutePatternMatch(FileDescriptor* fileDescriptor, const char*
     const char *end = memchr(start, '\n', chars_left);
     size_t length = end ? (size_t)(end - start) : chars_left;
 
+    // Skip if the value is empty (i.e. length=0)
+    if (length == 0)
+    {
+        T2Debug("Skipping marker %s as the value is empty\n", marker->markerName);
+        marker->u.markerValue = NULL;
+        return 0;
+    }
+ 
     char *result = (char*)malloc(length + 1);
     if (!result)
     {

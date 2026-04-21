@@ -103,13 +103,13 @@ if [ "$ENABLE_TSAN" = true ]; then
         total_warnings=0
         for f in $tsan_files; do
             # Filter to only show warnings involving telemetry source files
-            telemetry_warnings=$(grep -A 20 "WARNING: ThreadSanitizer:" "$f" 2>/dev/null | grep -c "L2_CONTAINER_SHARED_VOLUME/source/" 2>/dev/null || echo 0)
+            telemetry_warnings=$(grep -A 20 "WARNING: ThreadSanitizer:" "$f" 2>/dev/null | grep -c "L2_CONTAINER_SHARED_VOLUME/source/" 2>/dev/null) || telemetry_warnings=0
             if [ "$telemetry_warnings" -gt 0 ]; then
                 echo ""
                 echo "--- $f ---"
                 # Print only SUMMARY lines that reference telemetry source
                 grep "SUMMARY: ThreadSanitizer:" "$f" 2>/dev/null | grep "L2_CONTAINER_SHARED_VOLUME/source/" | sort -u
-                count=$(grep "SUMMARY: ThreadSanitizer:" "$f" 2>/dev/null | grep -c "L2_CONTAINER_SHARED_VOLUME/source/" || echo 0)
+                count=$(grep "SUMMARY: ThreadSanitizer:" "$f" 2>/dev/null | grep -c "L2_CONTAINER_SHARED_VOLUME/source/" 2>/dev/null) || count=0
                 total_warnings=$((total_warnings + count))
             fi
         done

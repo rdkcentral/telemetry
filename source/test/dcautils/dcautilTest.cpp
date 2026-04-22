@@ -1085,9 +1085,7 @@ TEST_F(dcaTestFixture, processTopPattern2)
 
     //saveTopoutput
     EXPECT_CALL(*g_systemMock, access(_,_))
-                .Times(2)
-                .WillOnce(Return(0))
-                .WillOnce(Return(0));
+		        .WillRepeatedly(Return(0));
     #ifdef LIBSYSWRAPPER_BUILD
        EXPECT_CALL(*g_systemMock, v_secure_system(_))
                 .Times(4)

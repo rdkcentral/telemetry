@@ -532,11 +532,14 @@ int getCPUInfo(procMemCpuInfo *pInfo, char* filename)
 
         return 0;
     }
-    if((filename != NULL) && (access(filename, F_OK) == 0))
+    if(filename != NULL)
+    {
+        inFp = fopen(filename, "r");
+    }
+    if(inFp != NULL)
     {
         /* TOPTEMP file is available - open directly in C, no shell spawning needed */
         T2Debug("%s ++in the saved temp log %s is available \n", __FUNCTION__, filename);
-        inFp = fopen(filename, "r");
         normalize = TOPITERATION;
         read_from_file = 1;
     }

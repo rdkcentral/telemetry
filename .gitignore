@@ -1,0 +1,36 @@
+# Build system generated files
+Makefile
+Makefile.in
+aclocal.m4
+autom4te.cache/
+compile
+config.guess
+config.log
+config.status
+config.sub
+configure
+configure~
+depcomp
+install-sh
+libtool
+ltmain.sh
+missing
+m4/
+
+# Build artifacts
+*.o
+*.lo
+*.la
+*.a
+*.so
+*.bin
+*.deps/
+*.dirstamp
+.deps/
+.libs/
+
+# Source subdirectory build files
+source/**/Makefile
+source/**/Makefile.in
+source/**/*.deps/
+source/**/.libs/

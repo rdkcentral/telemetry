@@ -206,6 +206,19 @@ AC_ARG_ENABLE([rdkcertselector],
 AM_CONDITIONAL([IS_LIBRDKCERTSEL_ENABLED], [test x$IS_LIBRDKCERTSEL_ENABLED = xtrue])
 AC_SUBST(LIBRDKCERTSEL_FLAG)
 
+# ThreadSanitizer support for detecting data races in L2 tests
+AC_ARG_ENABLE([tsan],
+        AS_HELP_STRING([--enable-tsan],[enable ThreadSanitizer for race detection (default is no)]),
+        [
+          case "${enableval}" in
+           yes) CFLAGS="$CFLAGS -fsanitize=thread -g -O1 -fno-omit-frame-pointer"
+                LDFLAGS="$LDFLAGS -fsanitize=thread";;
+           no)  ;;
+          *) AC_MSG_ERROR([bad value ${enableval} for --enable-tsan]) ;;
+           esac
+           ],
+        [echo "ThreadSanitizer is disabled"])
+
 AC_CONFIG_FILES([Makefile
                  source/Makefile
                  source/bulkdata/Makefile

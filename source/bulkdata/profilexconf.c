@@ -687,20 +687,22 @@ T2ERROR ProfileXConf_uninit()
     }
     initialized = false;
 
-    /* Use xconfProfileLock consistently for all reportInProgress access.
-     * reportInProgressMutex is not used in profilexconf.c — all
-     * reportInProgress reads/writes are protected by xconfProfileLock. */
+    /* Wake the report thread (if it exists) and join it before cleanup.
+     * The thread may be in one of two states:
+     *   (a) reportInProgress=true  — actively generating a report
+     *   (b) reportInProgress=false — idle in pthread_cond_wait(&reuseThread)
+     * In both cases we must signal and join; otherwise case (b) would skip
+     * the join, and freeProfileXConf + pthread_cond_destroy would destroy
+     * resources the sleeping thread still references (undefined behavior). */
     pthread_mutex_lock(&xconfProfileLock);
-    bool reportInProgress = singleProfile->reportInProgress;
-    if(reportInProgress)
+    if(reportThreadExits)
     {
-        T2Debug("Waiting for final report before uninit\n");
         pthread_cond_signal(&reuseThread);
         pthread_mutex_unlock(&xconfProfileLock);
         pthread_join(singleProfile->reportThread, NULL);
         pthread_mutex_lock(&xconfProfileLock);
         singleProfile->reportInProgress = false;
-        T2Info("Final report is completed, releasing profile memory\n");
+        T2Info("Report thread joined, releasing profile memory\n");
     }
     freeProfileXConf();
     pthread_mutex_unlock(&xconfProfileLock);

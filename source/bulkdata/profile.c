@@ -1308,12 +1308,15 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
     pthread_rwlock_unlock(&profileListLock);
 
     /* Second pass: perform blocking operations (unregister, signal, join) without
-     * holding profileListLock.  Safe because initialized=false in the caller
-     * (uninitProfileList) prevents concurrent list modifications, and all
-     * profiles were disabled atomically above. */
+     * holding profileListLock for extended periods.  The caller (uninitProfileList)
+     * sets initialized=false before calling, which prevents concurrent list
+     * modifications.  We still briefly acquire rdlock for each Vector_At to
+     * satisfy Coverity's lock-consistency analysis. */
     for(profileIndex = 0; profileIndex < count; profileIndex++)
     {
+        pthread_rwlock_rdlock(&profileListLock);
         tempProfile = (Profile *)Vector_At(profileList, profileIndex);
+        pthread_rwlock_unlock(&profileListLock);
 
         if(T2ERROR_SUCCESS != unregisterProfileFromScheduler(tempProfile->name))
         {
@@ -2045,3 +2048,5 @@ unsigned int getMinThresholdDuration(char *profileName)
     T2Debug("%s --out\n", __FUNCTION__);
     return minThresholdDuration;
 }
+
+

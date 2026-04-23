@@ -687,28 +687,29 @@ T2ERROR ProfileXConf_uninit()
     }
     initialized = false;
 
-    pthread_mutex_lock(&singleProfile->reportInProgressMutex);
+    /* Use xconfProfileLock consistently for all reportInProgress access.
+     * reportInProgressMutex is not used in profilexconf.c — all
+     * reportInProgress reads/writes are protected by xconfProfileLock. */
+    pthread_mutex_lock(&xconfProfileLock);
     bool reportInProgress = singleProfile->reportInProgress;
-    pthread_mutex_unlock(&singleProfile->reportInProgressMutex);
     if(reportInProgress)
     {
         T2Debug("Waiting for final report before uninit\n");
-        pthread_mutex_lock(&xconfProfileLock);
         pthread_cond_signal(&reuseThread);
         pthread_mutex_unlock(&xconfProfileLock);
         pthread_join(singleProfile->reportThread, NULL);
-        pthread_mutex_lock(&singleProfile->reportInProgressMutex);
-        singleProfile->reportInProgress = false ;
-        pthread_mutex_unlock(&singleProfile->reportInProgressMutex);
+        pthread_mutex_lock(&xconfProfileLock);
+        singleProfile->reportInProgress = false;
         T2Info("Final report is completed, releasing profile memory\n");
     }
-    pthread_mutex_lock(&xconfProfileLock);
     freeProfileXConf();
     pthread_mutex_unlock(&xconfProfileLock);
 
-    /* Destroy condition variable at module uninit, after all threads are stopped */
+    /* Destroy condition variable at module uninit, after all threads are stopped.
+     * xconfProfileLock is statically initialized (PTHREAD_MUTEX_INITIALIZER) and
+     * does not need to be destroyed — destroying it would leave it invalid if
+     * the module were ever re-initialized in the same process. */
     pthread_cond_destroy(&reuseThread);
-    pthread_mutex_destroy(&xconfProfileLock);
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
@@ -724,9 +725,8 @@ T2ERROR ProfileXConf_set(ProfileXConf *profile)
     if(!singleProfile)
     {
         singleProfile = profile;
-        pthread_mutex_lock(&singleProfile->reportInProgressMutex);
-        singleProfile->reportInProgress = false ;
-        pthread_mutex_unlock(&singleProfile->reportInProgressMutex);
+        /* reportInProgress is protected by xconfProfileLock (already held) */
+        singleProfile->reportInProgress = false;
         size_t emIndex = 0;
         EventMarker *eMarker = NULL;
         for(; emIndex < Vector_Size(singleProfile->eMarkerList); emIndex++)
@@ -887,9 +887,8 @@ T2ERROR ProfileXConf_delete(ProfileXConf *profile)
     if(isNameEqual)
     {
         profile->bClearSeekMap = singleProfile->bClearSeekMap ;
-        pthread_mutex_lock(&profile->reportInProgressMutex);
-        profile->reportInProgress = false ;
-        pthread_mutex_unlock(&profile->reportInProgressMutex);
+        /* reportInProgress is protected by xconfProfileLock (already held) */
+        profile->reportInProgress = false;
         if(count > 0 && profile->cachedReportList != NULL)
         {
             T2Info("There are %zu cached reports in the profile \n", count);
@@ -1037,12 +1036,11 @@ void ProfileXConf_notifyTimeout(bool isClearSeekMap, bool isOnDemand)
         return ;
     }
     isOnDemandReport = isOnDemand;
-    pthread_mutex_lock(&singleProfile->reportInProgressMutex);
+    /* reportInProgress is protected by xconfProfileLock (already held) */
     if(!singleProfile->reportInProgress)
     {
         singleProfile->bClearSeekMap = isClearSeekMap;
         singleProfile->reportInProgress = true;
-        pthread_mutex_unlock(&singleProfile->reportInProgressMutex);
 
         if (reportThreadExits)
         {
@@ -1059,7 +1057,6 @@ void ProfileXConf_notifyTimeout(bool isClearSeekMap, bool isOnDemand)
     }
     else
     {
-        pthread_mutex_unlock(&singleProfile->reportInProgressMutex);
         T2Warning("Received profileTimeoutCb while previous callback is still in progress - ignoring the request\n");
     }
 

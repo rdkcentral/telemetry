@@ -1055,6 +1055,16 @@ void ProfileXConf_notifyTimeout(bool isClearSeekMap, bool isOnDemand)
             {
                 T2Error("Failed to create report thread with error code = %d !!! \n", reportThreadStatus);
             }
+            else
+            {
+                /* Set flag immediately so ProfileXConf_uninit can find and
+                 * join this thread.  Without this, there is a race window
+                 * between pthread_create returning and the new thread
+                 * setting reportThreadExits=true inside CollectAndReportXconf,
+                 * during which uninit would skip the join and free resources
+                 * the thread is about to use. */
+                reportThreadExits = true;
+            }
         }
     }
     else

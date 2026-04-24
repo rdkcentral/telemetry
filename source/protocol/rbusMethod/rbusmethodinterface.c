@@ -117,27 +117,39 @@ T2ERROR sendReportsOverRBUSMethod(char *methodName, Vector* inputParams, char* p
 
     pthread_once(&rbusMethodMutexOnce, sendOverRBUSMethodInit);
 
-    /* Initialize state under lock, then release before the async call.
-     * The callback will lock, set results, signal, and unlock — so every
-     * thread only unlocks a mutex it locked itself (no cross-thread unlock). */
+    /* Hold rbusMethodMutex across the entire async-call + wait sequence.
+     * This serializes concurrent callers so shared globals (isRbusMethod,
+     * rbusMethodCallbackDone) cannot be clobbered by a second caller while
+     * an async invocation is in flight.  The callback can still acquire the
+     * mutex because pthread_cond_timedwait atomically releases it. */
     pthread_mutex_lock(&rbusMethodMutex);
     isRbusMethod = false ;
     rbusMethodCallbackDone = false;
-    pthread_mutex_unlock(&rbusMethodMutex);
 
     if ( T2ERROR_SUCCESS == rbusMethodCaller(methodName, &inParams, payload, &asyncMethodHandler))
     {
         struct timespec ts;
-        clock_gettime(CLOCK_REALTIME, &ts);
+        if (clock_gettime(CLOCK_REALTIME, &ts) != 0)
+        {
+            T2Error("clock_gettime failed: %s (errno=%d)\n", strerror(errno), errno);
+            pthread_mutex_unlock(&rbusMethodMutex);
+            rbusObject_Release(inParams);
+            T2Debug("%s --out\n", __FUNCTION__);
+            return T2ERROR_FAILURE;
+        }
         ts.tv_sec += MAX_RETRY_ATTEMPTS * 2;  /* Total timeout: 10 seconds */
 
-        pthread_mutex_lock(&rbusMethodMutex);
         while (!rbusMethodCallbackDone)
         {
             int rc = pthread_cond_timedwait(&rbusMethodCond, &rbusMethodMutex, &ts);
             if(rc == ETIMEDOUT)
             {
                 T2Error("Timed out waiting for rbus method callback. Giving up\n");
+                break;
+            }
+            else if(rc != 0)
+            {
+                T2Error("pthread_cond_timedwait failed: %s (rc=%d)\n", strerror(rc), rc);
                 break;
             }
         }
@@ -156,6 +168,10 @@ T2ERROR sendReportsOverRBUSMethod(char *methodName, Vector* inputParams, char* p
             /* Timed out — callback never fired */
             ret = T2ERROR_NO_RBUS_METHOD_PROVIDER;
         }
+        pthread_mutex_unlock(&rbusMethodMutex);
+    }
+    else
+    {
         pthread_mutex_unlock(&rbusMethodMutex);
     }
     rbusObject_Release(inParams);

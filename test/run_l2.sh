@@ -47,6 +47,10 @@ pytest -v --json-report --json-report-summary --json-report-file $RESULT_DIR/msg
 echo "Running race condition tests (PR #345)..."
 pytest -v --json-report --json-report-summary --json-report-file $RESULT_DIR/race_conditions.json test/functional-tests/tests/test_profile_race_conditions.py || final_result=1
 
+# DCA utility tests (grep markers, top markers, log rotation, incremental processing)
+echo "Running DCA utility tests..."
+pytest -v --json-report --json-report-summary --json-report-file $RESULT_DIR/dcautil.json test/functional-tests/tests/test_dcautil.py || final_result=1
+
 if [ $final_result -ne 0 ]; then
     echo "Some tests failed. Please check the JSON reports in $RESULT_DIR for details."
 else
@@ -89,6 +93,7 @@ if [ "$ENABLE_TSAN" = true ]; then
     timeout $TSAN_TEST_TIMEOUT pytest -v test/functional-tests/tests/test_runs_as_daemon.py || true
     timeout $TSAN_TEST_TIMEOUT pytest -v test/functional-tests/tests/test_bootup_sequence.py || true
     timeout $TSAN_TEST_TIMEOUT pytest -v test/functional-tests/tests/test_multiprofile_msgpacket.py || true
+    timeout $TSAN_TEST_TIMEOUT pytest -v test/functional-tests/tests/test_dcautil.py || true
     # Allow TSan log files to flush
     sleep 2
 

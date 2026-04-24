@@ -26,3 +26,21 @@ Feature: Telemetry runs as daemon to collect data
     Then the telemetry should be running as a daemon
     And  when the telemetry is attempted to be started again
     Then the telemetry should not be start another instance
+
+  Scenario: Check Telemetry Is Starting
+    Given the telemetry system is running
+    When check telemetry is starting is executed
+    Then the system should handle it correctly
+    And no errors or crashes should occur
+
+  Scenario: Second Telemetry Instance Is Not Started
+    Given the telemetry system is running
+    When second telemetry instance is not started is executed
+    Then the system should handle it correctly
+    And no errors or crashes should occur
+
+  Scenario: Tear Down
+    Given the telemetry system is running
+    When tear down is executed
+    Then the system should handle it correctly
+    And no errors or crashes should occur

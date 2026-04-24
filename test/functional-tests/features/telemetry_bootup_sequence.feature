@@ -36,3 +36,51 @@ Feature: Telemetry bootup sequence and Xconf communication
     Then the telemetry should re fetch the Xconf communication
     When the telemetry gets SIGTERM signal 
     Then the telemetry should be removing all Temporary flags and terminate
+
+  Scenario: Boot Sequence
+    Given the telemetry system is running
+    When boot sequence is executed
+    Then the system should handle it correctly
+    And no errors or crashes should occur
+
+  Scenario: Persistant Data
+    Given the telemetry system is running
+    When persistant data is executed
+    Then the system should handle it correctly
+    And no errors or crashes should occur
+
+  Scenario: Bootup Flags
+    Given the telemetry system is running
+    When bootup flags is executed
+    Then the system should handle it correctly
+    And no errors or crashes should occur
+
+  Scenario: Rbus Data
+    Given the telemetry system is running
+    When rbus data is executed
+    Then the system should handle it correctly
+    And no errors or crashes should occur
+
+  Scenario: Xconf Request
+    Given the telemetry system is running
+    When xconf request is executed
+    Then the system should handle it correctly
+    And no errors or crashes should occur
+
+  Scenario: Exec Reload
+    Given the telemetry system is running
+    When exec reload is executed
+    Then the system should handle it correctly
+    And no errors or crashes should occur
+
+  Scenario: Terminal Signal
+    Given the telemetry system is running
+    When terminal signal is executed
+    Then the system should handle it correctly
+    And no errors or crashes should occur
+
+  Scenario: Telemetry Exit
+    Given the telemetry system is running
+    When telemetry exit is executed
+    Then the system should handle it correctly
+    And no errors or crashes should occur

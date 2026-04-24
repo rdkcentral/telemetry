@@ -45,13 +45,29 @@ static bool isRbusMethod = false ;
 static void sendOverRBUSMethodInit()
 {
     pthread_condattr_t condattr;
+    int ret;
+
     pthread_mutex_init(&rbusMethodMutex, NULL);
     /* Use CLOCK_MONOTONIC so NTP/time-sync adjustments don't cause
      * the timed wait to expire too early or block too long. */
-    pthread_condattr_init(&condattr);
-    pthread_condattr_setclock(&condattr, CLOCK_MONOTONIC);
+    ret = pthread_condattr_init(&condattr);
+    if (ret != 0)
+    {
+        T2Error("pthread_condattr_init failed: %s\n", strerror(ret));
+        /* Fall back to default clock */
+        pthread_cond_init(&rbusMethodCond, NULL);
+        return;
+    }
+    ret = pthread_condattr_setclock(&condattr, CLOCK_MONOTONIC);
+    if (ret != 0)
+    {
+        T2Error("pthread_condattr_setclock failed: %s\n", strerror(ret));
+    }
     pthread_cond_init(&rbusMethodCond, &condattr);
-    pthread_condattr_destroy(&condattr);
+    if (pthread_condattr_destroy(&condattr) != 0)
+    {
+        T2Error("pthread_condattr_destroy failed\n");
+    }
 }
 
 static void asyncMethodHandler(rbusHandle_t handle, char const* methodName, rbusError_t retStatus, rbusObject_t params)

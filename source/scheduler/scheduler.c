@@ -263,7 +263,13 @@ void* TimeoutThread(void *arg)
                 T2Info("Waiting for %d sec for next TIMEOUT for profile as reporting interval is taken - %s\n", tProfile->timeOutDuration, tProfile->name);
             }
         }
+        /* Release tMutex before calling notifySchedulerstartcb to avoid
+         * lock-order-inversion: this thread holds tMutex and the callback
+         * acquires profileListLock(wr), while other threads hold
+         * profileListLock(rd) and then try to acquire tMutex. */
+        pthread_mutex_unlock(&tProfile->tMutex);
         notifySchedulerstartcb(tProfile->name, true);
+        pthread_mutex_lock(&tProfile->tMutex);
         //When first reporting interval is given waiting for first report int vale
         if(tProfile->firstreportint > 0 && tProfile->firstexecution == true )
         {

@@ -43,6 +43,10 @@ pytest -v --json-report --json-report-summary --json-report-file $RESULT_DIR/boo
 pytest -v --json-report --json-report-summary --json-report-file $RESULT_DIR/xconf_communications.json test/functional-tests/tests/test_xconf_communications.py || final_result=1
 pytest -v --json-report --json-report-summary --json-report-file $RESULT_DIR/msg_packet.json test/functional-tests/tests/test_multiprofile_msgpacket.py || final_result=1
 
+# PR #345 race condition tests (thread hardening)
+echo "Running race condition tests (PR #345)..."
+pytest -v --json-report --json-report-summary --json-report-file $RESULT_DIR/race_conditions.json test/functional-tests/tests/test_profile_race_conditions.py || final_result=1
+
 if [ $final_result -ne 0 ]; then
     echo "Some tests failed. Please check the JSON reports in $RESULT_DIR for details."
 else

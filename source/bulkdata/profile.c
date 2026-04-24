@@ -1286,7 +1286,11 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
     int profileIndex = 0;
     Profile *tempProfile = NULL;
 
-    pthread_rwlock_rdlock(&profileListLock);
+    /* Acquire wrlock once to atomically validate, read count, and disable all
+     * profiles.  This eliminates the TOCTOU race between the old pattern of
+     * rdlock-for-count then wrlock-per-profile, where the list could change
+     * between the two operations. */
+    pthread_rwlock_wrlock(&profileListLock);
     if(profileList == NULL)
     {
         T2Error("profile list is not initialized yet or profileList is empty, ignoring\n");
@@ -1295,14 +1299,23 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
     }
 
     count = Vector_Size(profileList);
-    pthread_rwlock_unlock(&profileListLock);
-
-    for(; profileIndex < count; profileIndex++)
+    for(profileIndex = 0; profileIndex < count; profileIndex++)
     {
-        pthread_rwlock_wrlock(&profileListLock);
         tempProfile = (Profile *)Vector_At(profileList, profileIndex);
         tempProfile->enable = false;
         tempProfile->isSchedulerstarted = false;
+    }
+    pthread_rwlock_unlock(&profileListLock);
+
+    /* Second pass: perform blocking operations (unregister, signal, join) without
+     * holding profileListLock for extended periods.  The caller (uninitProfileList)
+     * sets initialized=false before calling, which prevents concurrent list
+     * modifications.  We still briefly acquire rdlock for each Vector_At to
+     * satisfy Coverity's lock-consistency analysis. */
+    for(profileIndex = 0; profileIndex < count; profileIndex++)
+    {
+        pthread_rwlock_rdlock(&profileListLock);
+        tempProfile = (Profile *)Vector_At(profileList, profileIndex);
         pthread_rwlock_unlock(&profileListLock);
 
         if(T2ERROR_SUCCESS != unregisterProfileFromScheduler(tempProfile->name))
@@ -1330,13 +1343,13 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
              * after setting threadExists = false (see CollectAndReport cleanup). */
         }
 
-        /* Re-acquire profileListLock for profile cleanup */
-        pthread_rwlock_wrlock(&profileListLock);
+        /* grepSeekProfile cleanup is safe without profileListLock here:
+         * the profile's thread has been joined (or never existed), and
+         * initialized=false prevents concurrent access from other threads. */
         if(tempProfile->grepSeekProfile)
         {
             freeGrepSeekProfile(tempProfile->grepSeekProfile);
         }
-        pthread_rwlock_unlock(&profileListLock);
         if(delFromDisk == true)
         {
             removeProfileFromDisk(REPORTPROFILES_PERSISTENCE_PATH, tempProfile->name);

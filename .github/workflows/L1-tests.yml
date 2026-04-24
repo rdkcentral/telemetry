@@ -2,7 +2,7 @@ name: L1 Unit Tests
 
 on:
   pull_request:
-    branches: [ develop, feature/RDKEMW-16851 ]
+    branches: [ develop ]
 
 env:
   AUTOMATICS_UNAME: ${{ secrets.AUTOMATICS_UNAME }}

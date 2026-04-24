@@ -186,21 +186,6 @@ int processTopPattern(char* profileName,  Vector* topMarkerList, Vector* out_gre
         {
             continue;
         }
-        if (topMarkerObj->cpuValue)
-        {
-            free(topMarkerObj->cpuValue);
-            topMarkerObj->cpuValue = NULL;
-        }
-        if (topMarkerObj->memValue)
-        {
-            free(topMarkerObj->memValue);
-            topMarkerObj->memValue = NULL;
-        }
-        if(topMarkerObj->loadAverage)
-        {
-            free(topMarkerObj->loadAverage);
-            topMarkerObj->loadAverage = NULL;
-        }
         int tmp_skip_interval, is_skip_param;
         tmp_skip_interval = grepMarkerObj->skipFreq;
         if(tmp_skip_interval <= 0)
@@ -237,21 +222,6 @@ int processTopPattern(char* profileName,  Vector* topMarkerList, Vector* out_gre
             continue;
         }
 
-        if (topMarkerObj->cpuValue)
-        {
-            free(topMarkerObj->cpuValue);
-            topMarkerObj->cpuValue = NULL;
-        }
-        if (topMarkerObj->memValue)
-        {
-            free(topMarkerObj->memValue);
-            topMarkerObj->memValue = NULL;
-        }
-        if(topMarkerObj->loadAverage)
-        {
-            free(topMarkerObj->loadAverage);
-            topMarkerObj->loadAverage = NULL;
-        }
 
         // If the skip frequency is set, skip the marker processing for this interval
         int tmp_skip_interval, is_skip_param;

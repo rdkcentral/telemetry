@@ -202,7 +202,7 @@ TEST(GETPROCINFO, PMINFO_NULL)
    memset(&pInfo, '\0', sizeof(procMemCpuInfo));
    memcpy(pInfo.processName, processName, strlen(processName) + 1);
    pInfo.total_instance = 0;
-   EXPECT_NE(0,getProcInfo(&pInfo, NULL));
+   EXPECT_EQ(0,getProcInfo(&pInfo, NULL));
    free(filename);
 }
 
@@ -911,7 +911,9 @@ TEST_F(dcaTestFixture, processTopPattern2)
 
     //saveTopoutput
     EXPECT_CALL(*g_systemMock, access(_,_))
-		        .WillRepeatedly(Return(0));
+                .Times(2)
+                .WillOnce(Return(0))
+                .WillOnce(Return(0));
     #ifdef LIBSYSWRAPPER_BUILD
        EXPECT_CALL(*g_systemMock, v_secure_system(_))
                 .Times(4)
@@ -928,37 +930,32 @@ TEST_F(dcaTestFixture, processTopPattern2)
                 .WillOnce(Return(0));
     #endif
     FILE* fp = (FILE*)0xFFFFFFFF;
-    //getProcUsage - pidof
+    //getProcUsage
     #ifdef LIBSYSWRAPPER_BUILD
     EXPECT_CALL(*g_fileIOMock, v_secure_popen(_,_))
-            .Times(2)
+            .Times(3)
+            .WillOnce(Return(fp))
             .WillOnce(Return(fp))
             .WillOnce(Return(fp));
     #else
     EXPECT_CALL(*g_fileIOMock, popen(_,_))
-            .Times(1)
+            .Times(2)
+            .WillOnce(Return(fp))
             .WillOnce(Return(fp));
     #endif
     
     #ifdef LIBSYSWRAPPER_BUILD
     EXPECT_CALL(*g_fileIOMock, v_secure_pclose(_))
-                .Times(2)
+                .Times(3)
+                .WillOnce(Return(0))
                 .WillOnce(Return(0))
                 .WillOnce(Return(0));
     #else
     EXPECT_CALL(*g_fileIOMock, pclose(_))
-                .Times(1)
+                .Times(2)
+                .WillOnce(Return(0))
                 .WillOnce(Return(0));
     #endif
-
-    // getCPUInfo reads TOPTEMP file directly via fopen
-    FILE* topfp = (FILE*)0xEEEEEEEE;
-    EXPECT_CALL(*g_fileIOMock, fopen(_,_))
-            .Times(1)
-            .WillOnce(Return(topfp));
-    EXPECT_CALL(*g_fileIOMock, fclose(_))
-            .Times(1)
-            .WillOnce(Return(0));
 
     //getMEMinfo
     EXPECT_CALL(*g_fileIOMock, read(_,_,_))

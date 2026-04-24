@@ -137,14 +137,8 @@ extern "C" int fscanf(FILE *stream, const char *format, ...)
     va_list args;
     va_start(args, format);
     static int call_count = 0;
-    static FileMock *last_mock = nullptr;
     if (g_fileIOMock == nullptr){
        return fscanf_func(stream, format, args);
-    }
-    /* Reset call_count when a new mock instance is active (i.e. new test started) */
-    if (g_fileIOMock != last_mock) {
-        call_count = 0;
-        last_mock = g_fileIOMock;
     }
     if (strcmp(format, "%d") == 0) {
         int *out_ptr = va_arg(args, int *);

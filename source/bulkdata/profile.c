@@ -1266,12 +1266,22 @@ T2ERROR disableProfile(const char *profileName, bool *isDeleteRequired)
     }
     else
     {
-        /* Protect enable flag with reuseThreadMutex so CollectAndReport thread
-         * sees the update consistently (it reads enable under this mutex). */
-        pthread_mutex_lock(&profile->reuseThreadMutex);
-        profile->enable = false;
-        pthread_cond_signal(&profile->reuseThread);
-        pthread_mutex_unlock(&profile->reuseThreadMutex);
+        /* Only touch reuseThreadMutex/reuseThread when the report thread
+         * exists and therefore owns valid synchronization primitives.
+         * reuseThreadMutex is initialized inside CollectAndReport() and
+         * destroyed when that thread exits, so accessing it when the thread
+         * has not started or has already exited is undefined behavior. */
+        if (profile->threadExists)
+        {
+            pthread_mutex_lock(&profile->reuseThreadMutex);
+            profile->enable = false;
+            pthread_cond_signal(&profile->reuseThread);
+            pthread_mutex_unlock(&profile->reuseThreadMutex);
+        }
+        else
+        {
+            profile->enable = false;
+        }
     }
 #ifdef PERSIST_LOG_MON_REF
     removeProfileFromDisk(SEEKFOLDER, profile->name);

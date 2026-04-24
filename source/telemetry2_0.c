@@ -71,6 +71,7 @@ static pid_t DAEMONPID; //static varible store the Main Pid
  * volatile sig_atomic_t is the only type guaranteed safe from signal context. */
 static volatile sig_atomic_t g_sig_shutdown = 0;
 static volatile sig_atomic_t g_sig_log_upload = 0;
+static volatile sig_atomic_t g_sig_log_upload_ondemand = 0;
 static volatile sig_atomic_t g_sig_reload = 0;
 
 T2ERROR initTelemetry()
@@ -161,11 +162,21 @@ void sig_handler(int sig, siginfo_t* info, void* uc)
      * The main loop polls these flags and performs the actual work. */
     if ( sig == SIGINT || sig == SIGTERM )
     {
+        if (g_sig_shutdown)
+        {
+            /* Repeated shutdown signal while terminate() is still running.
+             * Force immediate exit.  _exit() is async-signal-safe. */
+            _exit(1);
+        }
         g_sig_shutdown = 1;
     }
-    else if ( sig == SIGUSR1 || sig == LOG_UPLOAD || sig == LOG_UPLOAD_ONDEMAND || sig == SIGIO )
+    else if ( sig == SIGUSR1 || sig == LOG_UPLOAD )
     {
         g_sig_log_upload = 1;
+    }
+    else if ( sig == LOG_UPLOAD_ONDEMAND || sig == SIGIO )
+    {
+        g_sig_log_upload_ondemand = 1;
     }
     else if ( sig == SIGUSR2 || sig == EXEC_RELOAD )
     {
@@ -245,8 +256,14 @@ static void t2DaemonMainModeInit( )
         if(g_sig_log_upload)
         {
             g_sig_log_upload = 0;
-            T2Info("LOG_UPLOAD signal received\n");
+            T2Info("LOG_UPLOAD received!\n");
             set_retainseekmap(false);
+            ReportProfiles_Interrupt();
+        }
+        if(g_sig_log_upload_ondemand)
+        {
+            g_sig_log_upload_ondemand = 0;
+            T2Info("LOG_UPLOAD_ONDEMAND received!\n");
             ReportProfiles_Interrupt();
         }
         if(g_sig_reload)

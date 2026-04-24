@@ -39,6 +39,7 @@
 static pthread_once_t rbusMethodMutexOnce = PTHREAD_ONCE_INIT;
 static pthread_mutex_t rbusMethodMutex;
 static pthread_cond_t rbusMethodCond;
+static clockid_t rbusMethodCondClock = CLOCK_REALTIME;
 static bool rbusMethodCallbackDone = false;
 static bool isRbusMethod = false ;
 
@@ -49,21 +50,32 @@ static void sendOverRBUSMethodInit()
 
     pthread_mutex_init(&rbusMethodMutex, NULL);
     /* Use CLOCK_MONOTONIC so NTP/time-sync adjustments don't cause
-     * the timed wait to expire too early or block too long. */
+     * the timed wait to expire too early or block too long.
+     * Track the actual clock so the timed-wait side always matches. */
     ret = pthread_condattr_init(&condattr);
     if (ret != 0)
     {
         T2Error("pthread_condattr_init failed: %s\n", strerror(ret));
-        /* Fall back to default clock */
         pthread_cond_init(&rbusMethodCond, NULL);
+        rbusMethodCondClock = CLOCK_REALTIME;
         return;
     }
     ret = pthread_condattr_setclock(&condattr, CLOCK_MONOTONIC);
     if (ret != 0)
     {
         T2Error("pthread_condattr_setclock failed: %s\n", strerror(ret));
+        rbusMethodCondClock = CLOCK_REALTIME;
     }
-    pthread_cond_init(&rbusMethodCond, &condattr);
+    else
+    {
+        rbusMethodCondClock = CLOCK_MONOTONIC;
+    }
+    if (pthread_cond_init(&rbusMethodCond, &condattr) != 0)
+    {
+        T2Error("pthread_cond_init failed, retrying with defaults\n");
+        pthread_cond_init(&rbusMethodCond, NULL);
+        rbusMethodCondClock = CLOCK_REALTIME;
+    }
     if (pthread_condattr_destroy(&condattr) != 0)
     {
         T2Error("pthread_condattr_destroy failed\n");
@@ -151,7 +163,7 @@ T2ERROR sendReportsOverRBUSMethod(char *methodName, Vector* inputParams, char* p
     if ( T2ERROR_SUCCESS == rbusMethodCaller(methodName, &inParams, payload, &asyncMethodHandler))
     {
         struct timespec ts;
-        if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0)
+        if (clock_gettime(rbusMethodCondClock, &ts) != 0)
         {
             T2Error("clock_gettime failed: %s (errno=%d)\n", strerror(errno), errno);
             pthread_mutex_unlock(&rbusMethodMutex);

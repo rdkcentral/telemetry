@@ -139,35 +139,6 @@ static void terminate()
     }
 
 }
-static void _print_stack_backtrace(void)
-{
-#ifdef __GNUC__
-#ifndef _BUILD_ANDROID
-#ifdef __GLIBC__
-    void* tracePtrs[100];
-    char** funcNames = NULL;
-    int i, count = 0;
-
-    count = backtrace( tracePtrs, 100 );
-    backtrace_symbols_fd( tracePtrs, count, 2 );
-
-    funcNames = backtrace_symbols( tracePtrs, count );
-
-    if ( funcNames )
-    {
-        // Print the stack trace
-        for( i = 0; i < count; i++ )
-        {
-            printf("%s\n", funcNames[i] );
-        }
-
-        // Free the string pointers
-        free( funcNames );
-    }
-#endif
-#endif
-#endif
-}
 
 void sig_handler(int sig, siginfo_t* info, void* uc)
 {
@@ -188,7 +159,7 @@ void sig_handler(int sig, siginfo_t* info, void* uc)
 
     /* POSIX async-signal-safe: only set flags here.
      * The main loop polls these flags and performs the actual work. */
-    if ( sig == SIGINT || sig == SIGTERM || sig == SIGKILL )
+    if ( sig == SIGINT || sig == SIGTERM )
     {
         g_sig_shutdown = 1;
     }

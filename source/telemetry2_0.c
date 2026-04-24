@@ -201,6 +201,7 @@ static void t2DaemonMainModeInit( )
     act.sa_sigaction = sig_handler;
     act.sa_flags = SA_ONSTACK | SA_SIGINFO ;
 
+    sigemptyset(&blocking_signal);
     sigaddset(&blocking_signal, SIGUSR2);
     sigaddset(&blocking_signal, SIGUSR1);
     sigaddset(&blocking_signal, LOG_UPLOAD);

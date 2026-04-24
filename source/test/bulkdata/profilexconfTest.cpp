@@ -22,6 +22,7 @@
 #include <string>
 #include <thread>
 #include <chrono>
+#include <semaphore.h>
 extern "C" {
 //#include "profilexconf.h"
 #include "reportprofiles.h"
@@ -628,4 +629,211 @@ TEST_F(profileXconfTestFixture, ProfileXConf_deleteProfile)
 TEST_F(profileXconfTestFixture, ProfileXConf_uninit)
 {
     EXPECT_EQ(ProfileXConf_uninit(), T2ERROR_SUCCESS);
+}
+
+/* =========================================================================
+ * L2 race-condition tests for thread-hardening fixes
+ *
+ * These tests exercise the specific scenarios addressed in the thread-safety
+ * fixes merged into profilexconf.c:
+ *   (a) ProfileXConf_uninit() must signal and join the report thread even
+ *       when the thread is idle (reportInProgress=false, reportThreadExits=true)
+ *       in pthread_cond_wait.  Previously the join was skipped in that state,
+ *       leading to use-after-free when freeProfileXConf()/pthread_cond_destroy()
+ *       freed resources the sleeping thread still referenced.
+ *   (b) ProfileXConf_notifyTimeout() must be a no-op when reportInProgress is
+ *       already true (concurrent timeout during an ongoing report).  The flag
+ *       is now checked under the same xconfProfileLock that protects thread
+ *       creation, eliminating the earlier two-mutex split.
+ *   (c) reportThreadExits is set immediately after a successful pthread_create
+ *       so that ProfileXConf_uninit() can always find and join the new thread,
+ *       closing the race window that existed before the thread could set the
+ *       flag itself.
+ * =========================================================================
+ */
+
+/* Helper: build a minimal ProfileXConf that CollectAndReportXconf can
+ * execute one report cycle through without needing any grep/param mocks.
+ * The caller owns the memory; freeProfileXConf() will release it when
+ * called from ProfileXConf_uninit(). */
+static ProfileXConf *createMinimalXconfProfile(const char *name)
+{
+    ProfileXConf *p = (ProfileXConf *)malloc(sizeof(ProfileXConf));
+    memset(p, 0, sizeof(ProfileXConf));
+    p->name          = strdup(name);
+    p->protocol      = strdup("HTTP");
+    p->encodingType  = strdup("JSON");
+    p->t2HTTPDest    = (T2HTTP *)malloc(sizeof(T2HTTP));
+    p->t2HTTPDest->URL = strdup("http://test.local/race");
+
+    p->grepSeekProfile = (GrepSeekProfile *)malloc(sizeof(GrepSeekProfile));
+    memset(p->grepSeekProfile, 0, sizeof(GrepSeekProfile));
+    p->grepSeekProfile->logFileSeekMap = hash_map_create();
+    p->grepSeekProfile->execCounter    = 0;
+
+    Vector_Create(&p->eMarkerList); /* empty – no event encoding */
+    p->gMarkerList   = NULL;        /* no grep pass */
+    p->topMarkerList = NULL;        /* no top pass  */
+    p->paramList     = NULL;        /* no param pass */
+    p->cachedReportList = NULL;
+
+    p->reportInProgress = false;
+    p->isUpdated        = false;
+    pthread_mutex_init(&p->reportInProgressMutex, NULL);
+    pthread_cond_init(&p->reportInProgressCond,   NULL);
+    return p;
+}
+
+/* L2 test (a): ProfileXConf_uninit() joins the report thread even when the
+ * thread is idle (waiting in pthread_cond_wait with reportInProgress=false).
+ *
+ * Scenario:
+ *   1. Re-initialise the module with an empty persistence directory.
+ *   2. Manually set a minimal profile via ProfileXConf_set().
+ *   3. Call ProfileXConf_notifyTimeout() – this creates the report thread
+ *      (sets reportThreadExits=true immediately after pthread_create).
+ *   4. The thread generates one minimal JSON report and calls
+ *      sendReportOverHTTP (mocked).  A semaphore lets the test know when
+ *      the HTTP send has completed and the thread is about to go idle.
+ *   5. Once idle the thread is blocked in pthread_cond_wait(&reuseThread).
+ *      With the old code ProfileXConf_uninit() would skip the join because
+ *      reportInProgress==false, leaving the thread alive while resources
+ *      were freed (use-after-free / UB).
+ *   6. With the fix, uninit signals reuseThread and joins the thread safely.
+ */
+TEST_F(profileXconfTestFixture, ProfileXConf_uninit_JoinsIdleReportThread)
+{
+    /* Re-initialise after previous ProfileXConf_uninit test left state clean */
+    EXPECT_CALL(*g_fileIOMock, opendir(_))
+        .WillRepeatedly(Return(nullptr));
+    EXPECT_CALL(*g_fileIOMock, mkdir(_, _))
+        .WillRepeatedly(Return(0));
+    EXPECT_EQ(T2ERROR_SUCCESS, ProfileXConf_init(false));
+
+    /* Set a minimal profile so that the report thread can complete one cycle */
+    ProfileXConf *testProfile = createMinimalXconfProfile("RaceTestProfile_Idle");
+    EXPECT_CALL(*g_schedulerMock, registerProfileWithScheduler(_, _, _, _, _, _, _, _))
+        .WillOnce(Return(T2ERROR_SUCCESS));
+    EXPECT_EQ(T2ERROR_SUCCESS, ProfileXConf_set(testProfile));
+
+    /* Allow any calls that the report thread may make without test-thread
+     * expectations – these prevent "uninteresting call" gmock warnings from
+     * the report thread which would compete for gtest's internal lock with
+     * the main test thread and cause a deadlock inside pthread_join. */
+    EXPECT_CALL(*g_profileXConfMock, saveSeekConfigtoFile(_, _))
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_schedulerMock, getLapsedTime(_, _, _))
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly(Return(0));
+
+    /* Semaphore: signalled by the mock when sendReportOverHTTP is called,
+     * meaning the thread has completed its report and is about to go idle. */
+    sem_t reportSent;
+    sem_init(&reportSent, 0, 0);
+    EXPECT_CALL(*g_profileXConfMock, sendReportOverHTTP(_, _))
+        .WillOnce([&reportSent](char * /*url*/, char * /*payload*/) {
+            sem_post(&reportSent);
+            return T2ERROR_SUCCESS;
+        });
+
+    /* Trigger one report – creates the report thread */
+    ProfileXConf_notifyTimeout(false, false);
+
+    /* Wait (up to 5 s) for the report to be sent */
+    struct timespec deadline;
+    clock_gettime(CLOCK_REALTIME, &deadline);
+    deadline.tv_sec += 5;
+    ASSERT_EQ(0, sem_timedwait(&reportSent, &deadline))
+        << "Timed out waiting for report thread to send its report";
+    sem_destroy(&reportSent);
+
+    /* Give the thread a moment to exit sendReportOverHTTP and re-enter
+     * pthread_cond_wait (the idle state) before calling uninit. */
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    /* ProfileXConf_uninit() must signal the idle thread and join it.
+     * With the old code this would deadlock or leave the thread dangling. */
+    EXPECT_EQ(T2ERROR_SUCCESS, ProfileXConf_uninit());
+}
+
+/* L2 test (b)+(c): A second ProfileXConf_notifyTimeout() call that arrives
+ * while a report is already in progress must be silently ignored; only one
+ * report is generated and only one HTTP upload occurs.
+ *
+ * Scenario:
+ *   1. Re-initialise and set a minimal profile.
+ *   2. Mock sendReportOverHTTP to block until the test releases it, and to
+ *      signal when it has been entered (so we know reportInProgress=true).
+ *   3. Call notifyTimeout() – starts the thread which blocks inside the mock.
+ *   4. While the thread is blocked (reportInProgress=true), call notifyTimeout()
+ *      again.  With the consolidated xconfProfileLock check, the second call
+ *      sees reportInProgress==true and must not create a new thread.
+ *   5. Release the blocking mock.  Exactly one HTTP upload should have happened.
+ *   6. Call uninit to clean up.
+ */
+TEST_F(profileXconfTestFixture, ProfileXConf_notifyTimeout_IgnoredWhenReportInProgress)
+{
+    /* Re-initialise after the previous test called uninit */
+    EXPECT_CALL(*g_fileIOMock, opendir(_))
+        .WillRepeatedly(Return(nullptr));
+    EXPECT_CALL(*g_fileIOMock, mkdir(_, _))
+        .WillRepeatedly(Return(0));
+    EXPECT_EQ(T2ERROR_SUCCESS, ProfileXConf_init(false));
+
+    ProfileXConf *testProfile = createMinimalXconfProfile("RaceTestProfile_Double");
+    EXPECT_CALL(*g_schedulerMock, registerProfileWithScheduler(_, _, _, _, _, _, _, _))
+        .WillOnce(Return(T2ERROR_SUCCESS));
+    EXPECT_EQ(T2ERROR_SUCCESS, ProfileXConf_set(testProfile));
+
+    /* Allow any calls the report thread makes after sendReportOverHTTP returns
+     * to prevent "uninteresting call" warnings from competing for gtest's
+     * internal lock and deadlocking with the main thread's pthread_join. */
+    EXPECT_CALL(*g_profileXConfMock, saveSeekConfigtoFile(_, _))
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_schedulerMock, getLapsedTime(_, _, _))
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly(Return(0));
+
+    /* Two semaphores: one to detect when the thread enters the HTTP mock
+     * (reportInProgress is guaranteed to be true at that point), and one
+     * to unblock the mock when the test is ready. */
+    sem_t threadInSend;
+    sem_t releaseThread;
+    sem_init(&threadInSend,   0, 0);
+    sem_init(&releaseThread,  0, 0);
+
+    /* sendReportOverHTTP must be called exactly once – the second notifyTimeout
+     * must not create a parallel thread that generates a second report. */
+    EXPECT_CALL(*g_profileXConfMock, sendReportOverHTTP(_, _))
+        .Times(1)
+        .WillOnce([&threadInSend, &releaseThread](char * /*url*/, char * /*payload*/) {
+            sem_post(&threadInSend);   /* tell the test we are in the report */
+            sem_wait(&releaseThread);  /* block until the test releases us    */
+            return T2ERROR_SUCCESS;
+        });
+
+    /* Start the first (and only) report */
+    ProfileXConf_notifyTimeout(false, false);
+
+    /* Wait until the report thread is inside sendReportOverHTTP (reportInProgress=true) */
+    struct timespec deadline;
+    clock_gettime(CLOCK_REALTIME, &deadline);
+    deadline.tv_sec += 5;
+    ASSERT_EQ(0, sem_timedwait(&threadInSend, &deadline))
+        << "Timed out waiting for report thread to enter sendReportOverHTTP";
+
+    /* Second call: must be ignored because reportInProgress==true */
+    ProfileXConf_notifyTimeout(false, false);
+
+    /* Release the blocked report thread */
+    sem_post(&releaseThread);
+
+    sem_destroy(&threadInSend);
+    sem_destroy(&releaseThread);
+
+    /* Wait for the thread to finish and go idle before uninit */
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    EXPECT_EQ(T2ERROR_SUCCESS, ProfileXConf_uninit());
 }

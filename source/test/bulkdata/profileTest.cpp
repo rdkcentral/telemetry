@@ -1482,3 +1482,121 @@ TEST_F(ProfileTest, createComponentDataElements) {
     createComponentDataElements();
 }
 
+/* =========================================================================
+ * L2 race-condition test for the deleteAllProfiles() TOCTOU fix
+ *
+ * The original code used a separate rdlock to read the profile count and
+ * then a per-profile wrlock to disable each entry, creating a TOCTOU window
+ * where the list could change between the two operations.  The fix acquires
+ * a single wrlock that atomically reads the count and disables all profiles.
+ *
+ * This fixture avoids VectorMock (g_vectorMock is left null) so that the
+ * real vector fallback implementation is used, allowing actual Profile
+ * objects to be added to and manipulated in profileList.
+ * =========================================================================
+ */
+class ProfileRaceConditionTest : public ::testing::Test {
+protected:
+    void SetUp() override
+    {
+        g_fileIOMock    = new FileMock();
+        g_systemMock    = new SystemMock();
+        g_rbusMock      = new rbusMock();
+        g_rdkconfigMock = new rdkconfigMock();
+        g_schedulerMock = new SchedulerMock();
+        g_profileMock   = new profileMock();
+        /* g_vectorMock intentionally NOT set so real vector fallback is used */
+
+        /* Ensure the module starts from a clean state regardless of what
+         * earlier tests left behind. */
+        uninitProfileList();
+    }
+
+    void TearDown() override
+    {
+        uninitProfileList();
+
+        delete g_fileIOMock;
+        delete g_systemMock;
+        delete g_rbusMock;
+        delete g_rdkconfigMock;
+        delete g_schedulerMock;
+        delete g_profileMock;
+
+        g_fileIOMock    = nullptr;
+        g_systemMock    = nullptr;
+        g_rbusMock      = nullptr;
+        g_rdkconfigMock = nullptr;
+        g_schedulerMock = nullptr;
+        g_profileMock   = nullptr;
+    }
+
+    /* Build a minimal, fully-initialised Profile that can safely be added to
+     * profileList and freed by freeProfile() inside deleteAllProfiles(). */
+    static Profile *makeProfile(const char *name, bool enable)
+    {
+        Profile *p = (Profile *)calloc(1, sizeof(Profile));
+        p->name              = strdup(name);
+        p->enable            = enable;
+        p->isSchedulerstarted = enable;
+        p->threadExists      = false; /* no report thread, skip join */
+        p->grepSeekProfile   = nullptr;
+        pthread_mutex_init(&p->triggerCondMutex,       nullptr);
+        pthread_mutex_init(&p->eventMutex,             nullptr);
+        pthread_mutex_init(&p->reportMutex,            nullptr);
+        pthread_mutex_init(&p->reportInProgressMutex,  nullptr);
+        pthread_mutex_init(&p->reuseThreadMutex,       nullptr);
+        pthread_cond_init(&p->reportcond,              nullptr);
+        pthread_cond_init(&p->reuseThread,             nullptr);
+        pthread_cond_init(&p->reportInProgressCond,    nullptr);
+        return p;
+    }
+};
+
+/* L2 test: deleteAllProfiles() atomically disables all profiles under a
+ * single wrlock, then unregisters and joins them in a second pass.
+ *
+ * Verifies the TOCTOU fix: the count is captured and all profiles are set to
+ * enable=false within the same wrlock acquisition, so no concurrent writer
+ * can insert or remove entries between counting and disabling.
+ *
+ * We verify the end-to-end behaviour: after the call the profile list is
+ * empty (all profiles freed) and the function returns T2ERROR_SUCCESS.
+ */
+TEST_F(ProfileRaceConditionTest, DeleteAllProfiles_AtomicDisable_AllProfilesDisabled)
+{
+    /* Mock file I/O so that initProfileList / loadReportProfilesFromDisk
+     * finds no saved profiles on disk (empty persistence directory). */
+    EXPECT_CALL(*g_fileIOMock, opendir(_))
+        .WillRepeatedly(Return(nullptr));
+    EXPECT_CALL(*g_fileIOMock, mkdir(_, _))
+        .WillRepeatedly(Return(0));
+
+    EXPECT_EQ(T2ERROR_SUCCESS, initProfileList(false));
+
+    /* Add three enabled profiles using real vector operations */
+    Profile *p1 = makeProfile("Profile_Race_1", true);
+    Profile *p2 = makeProfile("Profile_Race_2", true);
+    Profile *p3 = makeProfile("Profile_Race_3", true);
+    EXPECT_EQ(T2ERROR_SUCCESS, addProfile(p1));
+    EXPECT_EQ(T2ERROR_SUCCESS, addProfile(p2));
+    EXPECT_EQ(T2ERROR_SUCCESS, addProfile(p3));
+    EXPECT_EQ(3, getProfileCount());
+
+    /* unregisterProfileFromScheduler is called once per profile in the
+     * second pass; allow it to succeed silently via the mock fallback. */
+    EXPECT_CALL(*g_schedulerMock, unregisterProfileFromScheduler(_))
+        .Times(::testing::AtMost(3))
+        .WillRepeatedly(Return(T2ERROR_SUCCESS));
+
+    /* deleteAllProfiles(false) must:
+     *   pass 1 – acquire wrlock, disable all profiles atomically, release
+     *   pass 2 – unregister/join each profile outside the lock
+     *   final  – destroy old vector, create new empty vector
+     * The fix prevents a TOCTOU window between counting and disabling. */
+    EXPECT_EQ(T2ERROR_SUCCESS, deleteAllProfiles(false));
+
+    /* After the call the list must be empty */
+    EXPECT_EQ(0, getProfileCount());
+}
+

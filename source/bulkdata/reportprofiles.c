@@ -484,11 +484,11 @@ T2ERROR initReportProfiles()
     // Drop root privileges for Telemetry 2.0, If NonRootSupport RFC is true
     drop_root();
 #endif
-    
+
     //Initialise the properties file RDK-58222
     T2InitProperties();
     T2Info("Initializing properties\n");
-    
+
 #if defined (PRIVACYMODES_CONTROL)
 // Define scope
     {

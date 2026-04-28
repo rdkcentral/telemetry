@@ -176,15 +176,26 @@ static size_t httpGetCallBack(void *responseBuffer, size_t len, size_t nmemb,
 static void release_hrot_engine_state(void)
 {
     ENGINE *e = ENGINE_by_id("e4sss");
-    if (e != NULL)
+    if (e == NULL)
     {
-        // ENGINE_finish() releases the functional reference obtained by
-        // ENGINE_init(), which triggers the engine's finish callback to
-        // close the hardware session (SE051 APDU channel).
-        ENGINE_finish(e);
-        // ENGINE_free() releases the structural reference from ENGINE_by_id()
-        ENGINE_free(e);
+        // On non-HROT platforms, ENGINE_by_id() may push a lookup failure
+        // onto the thread-local OpenSSL error queue. Clear it so this helper
+        // remains a true no-op for callers that have already drained errors.
+        ERR_clear_error();
+        return;
     }
+
+    // ENGINE_finish() releases the functional reference obtained by
+    // ENGINE_init(), which triggers the engine's finish callback to
+    // close the hardware session (SE051 APDU channel).
+    if (ENGINE_finish(e) != 1)
+    {
+        // Cleanup should not leave stale OpenSSL errors behind.
+        ERR_clear_error();
+    }
+
+    // ENGINE_free() releases the structural reference from ENGINE_by_id()
+    ENGINE_free(e);
 }
 static void cleanup_curl_handles(void)
 {

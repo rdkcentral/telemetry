@@ -35,6 +35,7 @@
 #include <time.h>
 #include <openssl/err.h>
 #include <openssl/crypto.h>
+#include <openssl/engine.h>
 #include "multicurlinterface.h"
 #include "busInterface.h"
 #include "t2log_wrapper.h"
@@ -163,6 +164,28 @@ static size_t httpGetCallBack(void *responseBuffer, size_t len, size_t nmemb,
     return realsize;
 }
 
+// Release HROT engine session state after each mTLS operation.
+// On platforms with auto-initialized OpenSSL engines (e.g., SE051 via
+// openssl.cnf init=1), the e4sss ENGINE accumulates per-session hardware
+// handles (APDU session objects, secure channel buffers) that are NOT
+// released by curl's connection cache management or ERR_clear_error().
+// This function explicitly finds the loaded ENGINE and calls
+// ENGINE_finish() to release its functional reference and associated
+// hardware session state.  A fresh ENGINE_init() will happen automatically
+// on the next TLS handshake via the openssl.cnf auto-init mechanism.
+static void release_hrot_engine_state(void)
+{
+    ENGINE *e = ENGINE_by_id("e4sss");
+    if (e != NULL)
+    {
+        // ENGINE_finish() releases the functional reference obtained by
+        // ENGINE_init(), which triggers the engine's finish callback to
+        // close the hardware session (SE051 APDU channel).
+        ENGINE_finish(e);
+        // ENGINE_free() releases the structural reference from ENGINE_by_id()
+        ENGINE_free(e);
+    }
+}
 static void cleanup_curl_handles(void)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
@@ -620,6 +643,9 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
                 if(curl_code != CURLE_OK || http_code != 200)
                 {
                     T2Error("%s: Failed to establish connection using xPKI certificate: %s, Curl failed : %d\n", __func__, pCertFile, curl_code);
+		    // Drain OpenSSL error queue between retries to prevent
+                    // ENGINE-internal error state accumulation (HROT/SE051).
+                    ERR_clear_error();
                 }
                 else
                 {
@@ -825,6 +851,11 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
     // ERR_clear_error() is thread-safe since OpenSSL 1.1.0.
     ERR_clear_error();
 
+    // Release HROT engine hardware session state.  On SE051 platforms the
+    // e4sss ENGINE accumulates APDU session objects across TLS operations;
+    // this explicitly closes the hardware session after each request.
+    release_hrot_engine_state();
+
     release_pool_handle(idx);
 
     T2Debug("%s ++out\n", __FUNCTION__);
@@ -1013,6 +1044,9 @@ T2ERROR http_pool_post(const char *url, const char *payload)
                 if(curl_code != CURLE_OK || http_code != 200)
                 {
                     T2Error("%s: Failed to establish connection using xPKI certificate: %s, curl failed: %d (entry %d)\n", __func__, pCertFile, curl_code, idx);
+		     // Drain OpenSSL error queue between retries to prevent
+                    // ENGINE-internal error state accumulation (HROT/SE051).
+                    ERR_clear_error();
                 }
                 else
                 {
@@ -1108,6 +1142,9 @@ T2ERROR http_pool_post(const char *url, const char *payload)
 #else
     ERR_remove_thread_state(NULL);
 #endif
+    // Release HROT engine hardware session state after POST operation.
+    release_hrot_engine_state();
+
     // Note: When using LIBRDKCERTSEL_BUILD, pCertURI and pCertPC are owned by the
     // cert selector object and are freed when rdkcertselector_free() is called
     release_pool_handle(idx);

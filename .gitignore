@@ -42,3 +42,6 @@ source/**/.libs/
 # Libtool wrapper scripts
 source/telemetry2_0
 source/commonlib/telemetry2_0_client
+
+# Code review artifacts
+reviews/

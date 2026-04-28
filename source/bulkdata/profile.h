@@ -39,6 +39,20 @@ typedef struct _JSONEncoding
     TimeStampFormat tsFormat;
 } JSONEncoding;
 
+/**
+ * Lock Hierarchy (acquire in ascending order to prevent deadlocks):
+ *   L0: profileListLock  (module-level rwlock - protects profileList)
+ *       Use rdlock for read-only traversals (lookups, iteration without mutation).
+ *       Use wrlock when adding/removing/modifying profiles or profileList itself.
+ *   L1: reuseThreadMutex (per-profile - protects thread lifecycle)
+ *   L2: reportInProgressMutex (per-profile - protects reportInProgress flag)
+ *   L3: triggerCondMutex / eventMutex / reportMutex (per-profile - leaf locks)
+ *
+ * Rules:
+ *   - Always acquire L0 before L1, L1 before L2, etc.
+ *   - Never hold a higher-numbered lock when acquiring a lower-numbered lock.
+ *   - Release profileListLock before long operations (pthread_join, HTTP send).
+ */
 typedef struct _Profile
 {
     bool enable;

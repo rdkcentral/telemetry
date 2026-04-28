@@ -80,24 +80,31 @@ static int getScheduleInSeconds(const char* cronPattern)
 static int sanitize_string(char *str)
 {
     char *src = str, *dst = str;
+    int invalid_char_found = 0;
+
     while (*src)
     {
-        if (isalnum(*src) || *src == '.' || *src == '-' || *src == '_')
+        if (isalnum((unsigned char)*src) || *src == '.' || *src == '-' || *src == '_')
         {
             *dst++ = *src;
         }
+        else
+        {
+            invalid_char_found = 1;
+        }
         src++;
     }
+
     *dst = '\0'; // Null-terminate
-    if(strncmp(src, dst, strlen(src)) == 0)
+    if (!invalid_char_found)
     {
-	free(str);
+        free(str);
         return 0;
     }
     else
     {
         T2Error("Invalid search string configuration. Sanitizing it\n");
-	free(str);
+        free(str);
         return -1;
     }
 }

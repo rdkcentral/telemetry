@@ -654,7 +654,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
                 if(curl_code != CURLE_OK || http_code != 200)
                 {
                     T2Error("%s: Failed to establish connection using xPKI certificate: %s, Curl failed : %d\n", __func__, pCertFile, curl_code);
-		    // Drain OpenSSL error queue between retries to prevent
+                    // Drain OpenSSL error queue between retries to prevent
                     // ENGINE-internal error state accumulation (HROT/SE051).
                     ERR_clear_error();
                 }
@@ -852,9 +852,6 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
     }
 #endif
 
-    // Important Note: When using LIBRDKCERTSEL_BUILD, pCertURI and pCertPC are owned by the
-    // cert selector object and are freed when rdkcertselector_free() is called
-
     // Clear OpenSSL per-thread error queue.
     // Every curl_easy_perform() may push records onto the per-thread ERR_STATE
     // list on any TLS error (cert verify failure, connection reset, timeout).
@@ -862,12 +859,23 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
     // ERR_clear_error() is thread-safe since OpenSSL 1.1.0.
     ERR_clear_error();
 
-    // Release HROT engine hardware session state.  On SE051 platforms the
-    // e4sss ENGINE accumulates APDU session objects across TLS operations;
-    // this explicitly closes the hardware session after each request.
-    release_hrot_engine_state();
-
+    // Important Note: When using LIBRDKCERTSEL_BUILD, pCertURI and pCertPC are owned by the
+    // cert selector object and are freed when rdkcertselector_free() is called
     release_pool_handle(idx);
+
+    // Release HROT engine hardware session state only after this request is no
+    // longer counted as active, and only when no other pooled HTTP operations
+    // are still in flight. The ENGINE state is process-global, so this check
+    // must be serialized with the active request count.
+    pthread_mutex_lock(&pool_mutex);
+    if (active_requests == 0)
+    {
+        // On SE051 platforms the e4sss ENGINE accumulates APDU session objects
+        // across TLS operations; explicitly close the hardware session only
+        // when the pool has no active users.
+        release_hrot_engine_state();
+    }
+    pthread_mutex_unlock(&pool_mutex);
 
     T2Debug("%s ++out\n", __FUNCTION__);
     return result;
@@ -1055,7 +1063,7 @@ T2ERROR http_pool_post(const char *url, const char *payload)
                 if(curl_code != CURLE_OK || http_code != 200)
                 {
                     T2Error("%s: Failed to establish connection using xPKI certificate: %s, curl failed: %d (entry %d)\n", __func__, pCertFile, curl_code, idx);
-		     // Drain OpenSSL error queue between retries to prevent
+                    // Drain OpenSSL error queue between retries to prevent
                     // ENGINE-internal error state accumulation (HROT/SE051).
                     ERR_clear_error();
                 }
@@ -1153,12 +1161,24 @@ T2ERROR http_pool_post(const char *url, const char *payload)
 #else
     ERR_remove_thread_state(NULL);
 #endif
-    // Release HROT engine hardware session state after POST operation.
-    release_hrot_engine_state();
 
     // Note: When using LIBRDKCERTSEL_BUILD, pCertURI and pCertPC are owned by the
     // cert selector object and are freed when rdkcertselector_free() is called
     release_pool_handle(idx);
+
+    // Release HROT engine hardware session state only after this request is no
+    // longer counted as active, and only when no other pooled HTTP operations
+    // are still in flight. The ENGINE state is process-global, so this check
+    // must be serialized with the active request count.
+    pthread_mutex_lock(&pool_mutex);
+    if (active_requests == 0)
+    {
+        // On SE051 platforms the e4sss ENGINE accumulates APDU session objects
+        // across TLS operations; explicitly close the hardware session only
+        // when the pool has no active users.
+        release_hrot_engine_state();
+    }
+    pthread_mutex_unlock(&pool_mutex);
 
     T2Debug("%s ++out\n", __FUNCTION__);
     return result;

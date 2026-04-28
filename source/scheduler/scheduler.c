@@ -304,7 +304,7 @@ void* TimeoutThread(void *arg)
                 else
                 {
                     set_retainseekmap(true); //After triggering LOG upload resetting the retainseekmap value to true so the next report generation doesn't affect
-                    timeoutNotificationCb(tProfile->name, true); //Passing clearseek value as true                    
+                    timeoutNotificationCb(tProfile->name, true); //Passing clearseek value as true
                 }
                 if(tProfile->terminated)
                 {

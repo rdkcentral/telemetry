@@ -98,13 +98,11 @@ static int sanitize_string(char *str)
     *dst = '\0'; // Null-terminate
     if (!invalid_char_found)
     {
-        free(str);
         return 0;
     }
     else
     {
         T2Error("Invalid search string configuration. Sanitizing it\n");
-        free(str);
         return -1;
     }
 }
@@ -161,11 +159,14 @@ static T2ERROR addParameter(ProfileXConf *profile, const char* name, const char*
             char *splitSuffix = NULL;
             char *accumulateSuffix = NULL;
             // T2Debug("Adding Grep Marker :: Param/Marker Name : %s ref/pattern/Comp : %s fileName : %s skipFreq : %d\n", name, ref, fileName, skipFreq);
-            if(sanitize_string(strdup(ref)) != 0)
+            char* search_str = strdup(ref);
+            if(sanitize_string(search_str) != 0)
             {
                 T2Error("Parameter can't be added as invalid search string encountered\n");
+                free(search_str);
                 return T2ERROR_FAILURE;
             }
+            free(search_str);
             TopMarker *tMarker = (TopMarker *)malloc(sizeof(TopMarker));
             memset(tMarker, 0, sizeof(TopMarker));
             tMarker->markerName = strdup(name);

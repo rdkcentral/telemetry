@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 #include "t2parserxconf.h"
 #include "xconfclient.h"
@@ -76,6 +77,30 @@ static int getScheduleInSeconds(const char* cronPattern)
     scheduleIntervalInSec = scheduleIntervalInMin * 60 ;
     return scheduleIntervalInSec ;
 }
+static int sanitize_string(char *str)
+{
+    char *src = str, *dst = str;
+    while (*src)
+    {
+        if (isalnum(*src) || *src == '.' || *src == '-' || *src == '_')
+        {
+            *dst++ = *src;
+        }
+        src++;
+    }
+    *dst = '\0'; // Null-terminate
+    if(strncmp(src, dst, strlen(src)) == 0)
+    {
+	free(str);
+        return 0;
+    }
+    else
+    {
+        T2Error("Invalid search string configuration. Sanitizing it\n");
+	free(str);
+        return -1;
+    }
+}
 
 static T2ERROR addParameter(ProfileXConf *profile, const char* name, const char* ref, const char* fileName, int skipFreq)
 {
@@ -129,6 +154,11 @@ static T2ERROR addParameter(ProfileXConf *profile, const char* name, const char*
             char *splitSuffix = NULL;
             char *accumulateSuffix = NULL;
             // T2Debug("Adding Grep Marker :: Param/Marker Name : %s ref/pattern/Comp : %s fileName : %s skipFreq : %d\n", name, ref, fileName, skipFreq);
+            if(sanitize_string(strdup(ref)) != 0)
+            {
+                T2Error("Parameter can't be added as invalid search string encountered\n");
+                return T2ERROR_FAILURE;
+            }
             TopMarker *tMarker = (TopMarker *)malloc(sizeof(TopMarker));
             memset(tMarker, 0, sizeof(TopMarker));
             tMarker->markerName = strdup(name);

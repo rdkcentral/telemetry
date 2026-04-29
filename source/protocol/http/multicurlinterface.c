@@ -173,6 +173,16 @@ static size_t httpGetCallBack(void *responseBuffer, size_t len, size_t nmemb,
 // ENGINE_finish() to release its functional reference and associated
 // hardware session state.  A fresh ENGINE_init() will happen automatically
 // on the next TLS handshake via the openssl.cnf auto-init mechanism.
+//
+// ENGINE_by_id/ENGINE_finish/ENGINE_free are deprecated in OpenSSL 3.0 in
+// favour of the provider model, but the e4sss secure-element driver is a
+// legacy ENGINE that still requires the old API.  Suppress the deprecation
+// diagnostic locally so that -Werror=deprecated-declarations does not
+// break the build on OpenSSL 3.0 platforms.
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
 static void release_hrot_engine_state(void)
 {
     ENGINE *e = ENGINE_by_id("e4sss");
@@ -197,6 +207,9 @@ static void release_hrot_engine_state(void)
     // ENGINE_free() releases the structural reference from ENGINE_by_id()
     ENGINE_free(e);
 }
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#pragma GCC diagnostic pop
+#endif
 static void cleanup_curl_handles(void)
 {
     T2Debug("%s ++in\n", __FUNCTION__);

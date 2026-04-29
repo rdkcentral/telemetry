@@ -77,7 +77,7 @@ Feature: Telemetry multiprofile configuration and report generation
     Then the multiprofile should be enabled
     Then generated report should contain the number of times the marker is reported
 
-  Scenario: Multiprofile configuration with event marker and use as count
+  Scenario: Multiprofile configuration with event marker and use as count for event occurrences
     Given When the telemetry daemon is already running
     When a multiprofile is configured with event marker and use as count
     Then the multiprofile should be enabled
@@ -93,7 +93,7 @@ Feature: Telemetry multiprofile configuration and report generation
     Given When the telemetry daemon is already running
     When a multiprofile is configured with GenerateNow as true
     Then the multiprofile should be enabled
-    Then the report shpuld be generated immediately without waiting period
+    Then the report should be generated immediately without waiting period
 
   Scenario: Multiprofile configuration with grep marker and use as count
     Given When the telemetry daemon is already running
@@ -252,32 +252,32 @@ Scenario: Include data from data source Tr181 parameters as Accumulate
     Then all the changes will be reported with values
 
 Scenario: Report sending over HTTP protocol
-    Given a profile is confugred with report sending protocol as HTTP along with the respective endpoint
+    Given a profile is configured with report sending protocol as HTTP along with the respective endpoint
     Then the report will be sent to the configured endpoint
 
 Scenario: Caching of upload failed reports
-    Given a json report is attemplted to be sent the configured method
+    Given a json report is attempted to be sent via the configured method
     When the attempt to send the report fails
     Then the report will be cached to be sent later along with the next report
 
 Scenario: Report sending with protocol set as RBUS_METHOD in report profiles.
-    Given a profile is confugred with report sending protocol as HTTP along with the respective datamodel
-    Then the report will be configured to the respective datamodel
+    Given a profile is configured with report sending protocol as RBUS_METHOD along with the respective datamodel
+    Then the report will be sent to the respective datamodel
 
 Scenario: Report generation for profiles with log grep markers during log file rotation scenarios                     
     Given a grep marker is configured
     When the respective log file reaches a certain limit and has been rotated
-    Then the content of the roatated log file is also grepped for the search string
+    Then the content of the rotated log file is also grepped for the search string
 
 Scenario: Event accumulate with and without timestamp in report profiles for event markers and datamodel.                              
     Given an event marker or tr181 marker with subscribe are configured with reportTimeStamp
-    When the event is sent to the telementry
+    When the event is sent to the telemetry
     Then the telemetry report will have the time the event was received as timestamp
 
 Scenario: Forced on demand reporting outside the regular reporting intervals.
     Given a single profile or a multiprofile is running 
     When kill signal 29 is sent to the telemetry daemon
-    Then a reportwill be generated immediately for all the running profiles
+    Then a report will be generated immediately for all the running profiles
 
 Scenario: Stress testing of interaction with rbus interface to check for any deadlocks or rbus timeouts.
     Given telemetry is running and an event marker is configured

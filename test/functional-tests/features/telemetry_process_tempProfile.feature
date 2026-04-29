@@ -81,13 +81,13 @@ Scenario: temp profile with TriggerConditions
     Then generated report should contain the content after the search string until the end of the line matching the given regex 
 
 Scenario: Caching of upload failed reports
-    Given a json report is attemplted to be sent the configured method
+    Given a json report is attempted to be sent via the configured method
     When the attempt to send the report fails
     Then the report will be cached to be sent later along with the next report
 
 Scenario: Report sending with protocol set as RBUS_METHOD in report profiles.
-    Given a profile is confugred with report sending protocol as HTTP along with the respective datamodel
-    Then the report will be configured to the respective datamodel
+    Given a profile is configured with report sending protocol as RBUS_METHOD along with the respective datamodel
+    Then the report will be sent to the respective datamodel
 
 Scenario: profile non persistence
     Given a temp profile is expired

@@ -30,7 +30,7 @@ Feature: Telemetry Single profile configuration and report generation
     Then both the markers will be reported
 
   Scenario: Caching of upload failed reports
-    Given a json report is attemplted to be sent the configured method
+    Given a json report is attempted to be sent via the configured method
     When the attempt to send the report fails
     Then the report will be cached to be sent later along with the next report
 

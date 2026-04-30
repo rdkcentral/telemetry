@@ -140,8 +140,14 @@ extern "C" int fscanf(FILE *stream, const char *format, ...)
     va_list args;
     va_start(args, format);
     static int call_count = 0;
+    static FileMock *last_mock = nullptr;
     if (g_fileIOMock == nullptr){
        return fscanf_func(stream, format, args);
+    }
+    /* Reset call_count when a new mock instance is active (i.e. new test started) */
+    if (g_fileIOMock != last_mock) {
+        call_count = 0;
+        last_mock = g_fileIOMock;
     }
     if (strcmp(format, "%d") == 0) {
         int *out_ptr = va_arg(args, int *);
@@ -469,6 +475,22 @@ extern "C" int fprintf(FILE* stream, const char* format, ...) {
     }
     else{
 	result = fprintf_func(stream, format, args);
+    }
+    va_end(args);
+    return result;
+}
+
+/* Intercept the FORTIFY_SOURCE-hardened variant of fprintf */
+extern "C" int __fprintf_chk(FILE* stream, int /*flag*/, const char* format, ...) {
+    va_list args;
+    va_start(args, format);
+    int result = -1;
+
+    if (g_fileIOMock) {
+        result = g_fileIOMock->fprintf(stream, format, args);
+    }
+    else {
+        result = vfprintf(stream, format, args);
     }
     va_end(args);
     return result;

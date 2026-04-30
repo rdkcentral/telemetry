@@ -274,6 +274,21 @@ int processTopPattern(char* profileName,  Vector* topMarkerList, int profileExec
         {
             continue;
         }
+        if (topMarkerObj->cpuValue)
+        {
+            free(topMarkerObj->cpuValue);
+            topMarkerObj->cpuValue = NULL;
+        }
+        if (topMarkerObj->memValue)
+        {
+            free(topMarkerObj->memValue);
+            topMarkerObj->memValue = NULL;
+        }
+        if(topMarkerObj->loadAverage)
+        {
+            free(topMarkerObj->loadAverage);
+            topMarkerObj->loadAverage = NULL;
+        }
         int tmp_skip_interval, is_skip_param;
         tmp_skip_interval = topMarkerObj->skipFreq;
         if(tmp_skip_interval <= 0)
@@ -309,6 +324,21 @@ int processTopPattern(char* profileName,  Vector* topMarkerList, int profileExec
             continue;
         }
 
+        if (topMarkerObj->cpuValue)
+        {
+            free(topMarkerObj->cpuValue);
+            topMarkerObj->cpuValue = NULL;
+        }
+        if (topMarkerObj->memValue)
+        {
+            free(topMarkerObj->memValue);
+            topMarkerObj->memValue = NULL;
+        }
+        if(topMarkerObj->loadAverage)
+        {
+            free(topMarkerObj->loadAverage);
+            topMarkerObj->loadAverage = NULL;
+        }
 
         // If the skip frequency is set, skip the marker processing for this interval
         int tmp_skip_interval, is_skip_param;
@@ -379,7 +409,7 @@ static int getLogSeekValue(hash_map_t *logSeekMap, const char *name, long *seek_
         T2Debug("logSeekMap is null .. Setting seek value to 0 \n");
         *seek_value = 0 ;
     }
-
+    T2Debug("seekvalue for file %s is %ld\n", name, *seek_value);
     T2Debug("%s --out \n", __FUNCTION__);
     return rc;
 }
@@ -524,6 +554,7 @@ static int getCountPatternMatch(FileDescriptor* fileDescriptor, GrepMarker* mark
 
     // Using the union for efficient memory handling
     marker->u.count = count;
+    T2Debug("Count Marker: Marker = %s Value %d\n", marker->markerName, marker->u.count);
     T2Debug("%s --out\n", __FUNCTION__);
     return 0;
 }
@@ -634,7 +665,7 @@ static int getAbsolutePatternMatch(FileDescriptor* fileDescriptor, GrepMarker* m
     {
         marker->u.markerValue = result;
     }
-
+    T2Debug("Absolute Marker: Marker = %s Value %s\n", marker->markerName, marker->u.markerValue);
     T2Debug("%s --out\n", __FUNCTION__);
     return 0;
 }
@@ -1011,7 +1042,9 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
 
     //create a tmp file for main file fd
     char tmp_fdmain[] = "/tmp/dca_tmpfile_fdmainXXXXXX";
+    mode_t old_umask = umask(0077); // Set secure umask (owner read/write only)
     int tmp_fd = mkstemp(tmp_fdmain);
+    umask(old_umask); // Restore original umask
     if (tmp_fd == -1)
     {
         T2Error("Failed to create temp file: %s\n", strerror(errno));
@@ -1038,7 +1071,9 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
         if (rd != -1 && fstat(rd, &rb) == 0 && rb.st_size > 0)
         {
             char tmp_fdrotated[] = "/tmp/dca_tmpfile_fdrotatedXXXXXX";
+            mode_t old_umask = umask(0077); // Set secure umask (owner read/write only)
             int tmp_rd = mkstemp(tmp_fdrotated);
+            umask(old_umask); // Restore original umask
             if (tmp_rd == -1)
             {
                 T2Error("Failed to create temp file: %s\n", strerror(errno));
@@ -1100,7 +1135,7 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
         }
         else
         {
-            T2Error("Error opening rotated file. Start search in current file\n");
+            T2Debug("Error opening rotated file. Start search in current file\n");
             T2Debug("File size rounded to nearest page size used for offset read: %jd bytes\n", (intmax_t)offset_in_page_size_multiple);
             if(seek_value < sb.st_size)
             {

@@ -1,0 +1,47 @@
+# Build system generated files
+Makefile
+Makefile.in
+aclocal.m4
+autom4te.cache/
+compile
+config.guess
+config.log
+config.status
+config.sub
+configure
+configure~
+depcomp
+install-sh
+libtool
+ltmain.sh
+missing
+m4/
+
+# Build artifacts
+*.o
+*.lo
+*.la
+*.a
+*.so
+*.bin
+*.deps/
+*.dirstamp
+.deps/
+.libs/
+
+# Libtool wrapper scripts
+source/telemetry2_0
+source/commonlib/telemetry2_0_client
+
+# Source subdirectory build files
+source/**/Makefile
+source/**/Makefile.in
+source/**/*.deps/
+source/**/.libs/
+
+# Libtool wrapper scripts
+source/telemetry2_0
+source/commonlib/telemetry2_0_client
+
+# Code review artifacts
+reviews/

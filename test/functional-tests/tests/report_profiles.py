@@ -1,6 +1,6 @@
 
 data_empty_profile = '''{
-    "profiles": [{}]
+    "profiles": []
     }'''
 
 data_without_namefield = '''{

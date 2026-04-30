@@ -35,8 +35,8 @@ public:
     MOCK_METHOD(T2ERROR, registerProfileWithScheduler, (const char* profileName, unsigned int timeInterval, unsigned int activationTimeout, bool deleteonTimout, bool repeat, bool reportOnUpdate, unsigned int firstReportingInterval, char *timeRef), ());
     MOCK_METHOD(T2ERROR, unregisterProfileFromScheduler, (const char* profileName), ());
     MOCK_METHOD(T2ERROR, SendInterruptToTimeoutThread, (char* profileName), ());
-    MOCK_METHOD(bool, get_logdemand, (), ());
-    MOCK_METHOD(void, set_logdemand, (bool value), ());
+    MOCK_METHOD(bool, get_retainseekmap, (), ());
+    MOCK_METHOD(void, set_retainseekmap, (bool value), ());
     MOCK_METHOD(int, getLapsedTime, (struct timespec *result, struct timespec *x, struct timespec *y), ());
 };
 

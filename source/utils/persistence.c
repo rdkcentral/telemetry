@@ -48,7 +48,7 @@ static void persistReportMethodInit( )
 
 T2ERROR fetchLocalConfigs(const char* path, Vector *configList)
 {
-    if(path == NULL || ((strcmp(path, SHORTLIVED_PROFILES_PATH) != 0) && configList == NULL))
+    if(path == NULL || path[0] == '\0' || ((strcmp(path, SHORTLIVED_PROFILES_PATH) != 0) && configList == NULL))
     {
         T2Error("Path is NULL or Configlist is NULL.. Invalid argument\n");
         return T2ERROR_INVALID_ARGS;
@@ -112,6 +112,14 @@ T2ERROR fetchLocalConfigs(const char* path, Vector *configList)
         if(status == 0)
         {
             T2Info("Filename : %s Size : %ld\n", entry->d_name, (long int)filestat.st_size);
+            // Skip empty profile files
+            if(filestat.st_size == 0)
+            {
+                T2Warning("Skipping empty config file : %s\n", entry->d_name);
+                close(fp);
+                removeProfileFromDisk(path, entry->d_name);
+                continue;
+            }
 
             Config *config = (Config *)malloc(sizeof(Config));
             memset(config, 0, sizeof(Config));
@@ -168,7 +176,13 @@ T2ERROR saveConfigToFile(const char* path, const char *profileName, const char* 
         T2Error("Unable to write to file : %s\n", filePath);
         return T2ERROR_FAILURE;
     }
-    fprintf(fp, "%s", configuration);
+    if(fprintf(fp, "%s", configuration) < 0)
+    {
+        T2Error("Failed to write to file : %s\n", filePath);
+        fclose(fp);
+        removeProfileFromDisk(path, profileName);
+        return T2ERROR_FAILURE;
+    }
     if(fclose(fp) != 0)
     {
         T2Error("Unable to close file : %s\n", filePath);
@@ -225,7 +239,7 @@ void clearPersistenceFolder(const char* path)
     }
 #else
     char command[256] = {'\0'};
-    snprintf(command, sizeof(command), "rm -f %s*", path);
+    snprintf(command, sizeof(command), "rm -rf %s*", path);
     T2Debug("Executing command : %s\n", command);
     if (system(command) != 0)
     {
@@ -240,7 +254,7 @@ void clearPersistenceFolder(const char* path)
 
 void removeProfileFromDisk(const char* path, const char* fileName)
 {
-    if(path == NULL || fileName == NULL)
+    if(path == NULL || path[0] == '\0' || fileName == NULL)
     {
         return;
     }
@@ -464,8 +478,24 @@ T2ERROR getPrivacyModeFromPersistentFolder(char **privMode)
         T2Error("Unable to open the file : %s\n", filePath);
         return T2ERROR_FAILURE;
     }
-    stat(filePath, &filestat);
-    fread(data, sizeof(char), filestat.st_size, fp);
+    if (stat(filePath, &filestat) != 0)
+    {
+        T2Error("Unable to stat file : %s\n", filePath);
+        fclose(fp);
+        return T2ERROR_FAILURE;
+    }
+    if (filestat.st_size < 0 || (size_t)filestat.st_size >= sizeof(data))
+    {
+        T2Error("File size %lld exceeds buffer capacity %zu for file : %s\n", (long long)filestat.st_size, sizeof(data) - 1, filePath);
+        fclose(fp);
+        return T2ERROR_FAILURE;
+    }
+    if (fread(data, sizeof(char), filestat.st_size, fp) != (size_t)filestat.st_size)
+    {
+        T2Error("Failed to read complete data from file : %s\n", filePath);
+        fclose(fp);
+        return T2ERROR_FAILURE;
+    }
     *privMode = strdup(data);
     if(fclose(fp) != 0)
     {

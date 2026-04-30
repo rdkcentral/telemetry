@@ -59,7 +59,7 @@ profile_gtest_bin_CPPFLAGS = -I$(PKG_CONFIG_SYSROOT_DIR)/usr/include/gtest -I$(P
 
 profile_gtest_bin_SOURCES = gtest_main.cpp ../mocks/SystemMock.cpp ../mocks/FileioMock.cpp ../mocks/rdklogMock.cpp ../mocks/rbusMock.cpp ../mocks/rdkconfigMock.cpp ../mocks/VectorMock.cpp SchedulerMock.cpp profileMock.cpp  ../../bulkdata/profile.c profileTest.cpp ../../utils/persistence.c ../../utils/t2common.c ../../utils/t2collection.c ../../utils/t2MtlsUtils.c ../../utils/t2log_wrapper.c ../../dcautil/dcautil.c ../../dcautil/dca.c ../../dcautil/legacyutils.c ../../dcautil/dcaproc.c ../../xconf-client/xconfclient.c ../../protocol/rbusMethod/rbusmethodinterface.c ../../privacycontrol/rdkservices_privacyutils.c ../../reportgen/reportgen.c ../../bulkdata/t2eventreceiver.c ../../bulkdata/t2markers.c ../../t2parser/t2parser.c ../../bulkdata/datamodel.c ../../t2parser/t2parserxconf.c ../../bulkdata/reportprofiles.c ../../bulkdata/profilexconf.c ../../ccspinterface/rbusInterface.c ../../ccspinterface/busInterface.c ../../protocol/http/curlinterface.c ../../protocol/http/multicurlinterface.c 
 
-profile_gtest_bin_LDFLAGS = -L/usr/src/googletest/googletest/lib/.libs  -lgcov -L/src/googletest/googlemock/lib -L/usr/src/googletest/googlemock/lib/.libs -L/usr/include/glib-2.0 -lgmock -lcjson -lcurl -lmsgpackc -lgtest -lgtest_main -lglib-2.0
+profile_gtest_bin_LDFLAGS = -L/usr/src/googletest/googletest/lib/.libs  -lgcov -L/src/googletest/googlemock/lib -L/usr/src/googletest/googlemock/lib/.libs -L/usr/include/glib-2.0 -lgmock -lcjson -lcurl -lcrypto -lmsgpackc -lgtest -lgtest_main -lglib-2.0
 
 profile_gtest_bin_LDFLAGS += -Wl,--wrap=sendReportOverHTTP -Wl,--wrap=sendCachedReportsOverHTTP
 
@@ -69,7 +69,7 @@ reportprofiles_gtest_bin_CPPFLAGS = -I$(PKG_CONFIG_SYSROOT_DIR)/usr/include/gtes
 
 reportprofiles_gtest_bin_SOURCES = gtest_main.cpp ../mocks/SystemMock.cpp ../mocks/FileioMock.cpp ../mocks/rdklogMock.cpp ../mocks/rbusMock.cpp ../mocks/rdkconfigMock.cpp ../mocks/VectorMock.cpp SchedulerMock.cpp reportprofileMock.cpp ../../bulkdata/reportprofiles.c reportprofilesTest.cpp ../../utils/persistence.c ../../utils/t2common.c ../../utils/t2collection.c ../../utils/t2MtlsUtils.c ../../utils/t2log_wrapper.c ../../dcautil/dcautil.c ../../dcautil/dca.c ../../dcautil/legacyutils.c ../../dcautil/dcaproc.c ../../xconf-client/xconfclient.c ../../protocol/rbusMethod/rbusmethodinterface.c ../../privacycontrol/rdkservices_privacyutils.c ../../reportgen/reportgen.c ../../bulkdata/t2eventreceiver.c ../../bulkdata/t2markers.c ../../t2parser/t2parser.c ../../bulkdata/datamodel.c ../../t2parser/t2parserxconf.c ../../bulkdata/profile.c ../../bulkdata/profilexconf.c ../../ccspinterface/rbusInterface.c ../../ccspinterface/busInterface.c ../../protocol/http/curlinterface.c ../../protocol/http/multicurlinterface.c
 
-reportprofiles_gtest_bin_LDFLAGS = -L/usr/src/googletest/googletest/lib/.libs -L/usr/src/googletest/googlemock/lib/.libs -lgmock -lgtest -lpthread -lcjson -lmsgpackc -lglib-2.0 -lrt -lcurl
+reportprofiles_gtest_bin_LDFLAGS = -L/usr/src/googletest/googletest/lib/.libs -L/usr/src/googletest/googlemock/lib/.libs -lgmock -lgtest -lpthread -lcjson -lmsgpackc -lglib-2.0 -lrt -lcurl -lcrypto
 
 reportprofiles_gtest_bin_LDFLAGS += -Wl,--wrap=isRbusEnabled -Wl,--wrap=sendReportOverHTTP -Wl,--wrap=sendCachedReportsOverHTTP
 

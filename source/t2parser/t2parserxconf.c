@@ -77,35 +77,6 @@ static int getScheduleInSeconds(const char* cronPattern)
     scheduleIntervalInSec = scheduleIntervalInMin * 60 ;
     return scheduleIntervalInSec ;
 }
-static int sanitize_string(char *str)
-{
-    char *src = str, *dst = str;
-    int invalid_char_found = 0;
-
-    while (*src)
-    {
-        if (isalnum((unsigned char)*src) || *src == '.' || *src == '-' || *src == '_')
-        {
-            *dst++ = *src;
-        }
-        else
-        {
-            invalid_char_found = 1;
-        }
-        src++;
-    }
-
-    *dst = '\0'; // Null-terminate
-    if (!invalid_char_found)
-    {
-        return 0;
-    }
-    else
-    {
-        T2Error("Invalid search string configuration. Sanitizing it\n");
-        return -1;
-    }
-}
 
 static T2ERROR addParameter(ProfileXConf *profile, const char* name, const char* ref, const char* fileName, int skipFreq)
 {
@@ -159,14 +130,16 @@ static T2ERROR addParameter(ProfileXConf *profile, const char* name, const char*
             char *splitSuffix = NULL;
             char *accumulateSuffix = NULL;
             // T2Debug("Adding Grep Marker :: Param/Marker Name : %s ref/pattern/Comp : %s fileName : %s skipFreq : %d\n", name, ref, fileName, skipFreq);
-            char* search_str = strdup(ref);
-            if(sanitize_string(search_str) != 0)
+            if(ref == NULL)
             {
-                T2Error("Parameter can't be added as invalid search string encountered\n");
-                free(search_str);
+                T2Error("Search string can't be null for top markers\n");
                 return T2ERROR_FAILURE;
             }
-            free(search_str);
+            if(sanitize_string(ref) != 0)
+            {
+                T2Error("Parameter %s can't be added as invalid search string encountered\n", ref);
+                return T2ERROR_FAILURE;
+            }
             TopMarker *tMarker = (TopMarker *)malloc(sizeof(TopMarker));
             memset(tMarker, 0, sizeof(TopMarker));
             tMarker->markerName = strdup(name);

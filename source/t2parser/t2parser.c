@@ -1073,6 +1073,8 @@ T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, i
         trim = false;
         rtformat = REPORTTIMESTAMP_NONE;
         int index_flag = 0;
+        bool content_allocated = false;  // Track if content was allocated with strdup
+        bool header_allocated = false;   // Track if header was allocated with strdup
 
         cJSON* pSubitem = cJSON_GetArrayItem(jprofileParameter, ProfileParameterIndex);
         if(pSubitem != NULL)
@@ -1258,6 +1260,8 @@ T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, i
                     {
                         content = strdup(basePath);
                         header = strdup(basePath);
+                        content_allocated = true;  // Mark as allocated
+                        header_allocated = true;   // Mark as allocated
                         paramtype = "dataModel";
                         if (!content || !header)
                         {
@@ -1370,24 +1374,24 @@ T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, i
             if(ret != T2ERROR_SUCCESS)
             {
                 T2Error("%s Error in adding parameter to profile %s \n", __FUNCTION__, profile->name);
-                if (content)
+                if (content_allocated && content)
                 {
                     free(content);
                     content = NULL;
                 }
-                if (header)
+                if (header_allocated && header)
                 {
                     free(header);
                     header = NULL;
                 }
                 continue;
             }
-            if (content)
+            if (content_allocated && content)
             {
                 free(content);
                 content = NULL;
             }
-            if (header)
+            if (header_allocated && header)
             {
                 free(header);
                 header = NULL;

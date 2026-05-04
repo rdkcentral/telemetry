@@ -167,4 +167,6 @@ void initWhoamiSupport(void);
 
 bool isWhoAmiEnabled(void);
 
+int sanitize_string(const char *str);
+
 #endif /* _T2COMMON_H_ */

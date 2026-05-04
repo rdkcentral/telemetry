@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 #include "t2parserxconf.h"
 #include "xconfclient.h"
@@ -129,6 +130,16 @@ static T2ERROR addParameter(ProfileXConf *profile, const char* name, const char*
             char *splitSuffix = NULL;
             char *accumulateSuffix = NULL;
             // T2Debug("Adding Grep Marker :: Param/Marker Name : %s ref/pattern/Comp : %s fileName : %s skipFreq : %d\n", name, ref, fileName, skipFreq);
+            if(ref == NULL)
+            {
+                T2Error("Search string can't be null for top markers\n");
+                return T2ERROR_FAILURE;
+            }
+            if(sanitize_string(ref) != 0)
+            {
+                T2Error("Parameter %s can't be added as invalid search string encountered\n", ref);
+                return T2ERROR_FAILURE;
+            }
             TopMarker *tMarker = (TopMarker *)malloc(sizeof(TopMarker));
             memset(tMarker, 0, sizeof(TopMarker));
             tMarker->markerName = strdup(name);

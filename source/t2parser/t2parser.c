@@ -311,9 +311,18 @@ static T2ERROR addParameter(Profile *profile, const char* name, const char* ref,
     {
 
         // T2Debug("Adding Grep Marker :: Param/Marker Name : %s ref/pattern/Comp : %s fileName : %s skipFreq : %d\n", name, ref, fileName, skipFreq);
-
         if(fileName != NULL && strncmp("top_log.txt", fileName, sizeof("top_log.txt")) == 0)
         {
+            if(ref == NULL)
+            {
+                T2Error("Search string can't be null for top markers\n");
+                return T2ERROR_FAILURE;
+            }
+            if(sanitize_string(ref) != 0)
+            {
+                T2Error("Parameter %s can't be added as invalid search string encountered\n", ref);
+                return T2ERROR_FAILURE;
+            }
             T2Debug("This is a TopMarker name :%s  and value: %s add it to topmarker list \n", name, ref);
             TopMarker *tMarker = (TopMarker *) malloc(sizeof(TopMarker));
             if(tMarker == NULL)

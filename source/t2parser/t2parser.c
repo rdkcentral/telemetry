@@ -1012,13 +1012,34 @@ T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, i
         return T2ERROR_INVALID_ARGS;
     }
     // Only create vectors if they don't already exist
-    if(!profile->paramList) Vector_Create(&profile->paramList);
-    if(!profile->staticParamList) Vector_Create(&profile->staticParamList);
-    if(!profile->eMarkerList) Vector_Create(&profile->eMarkerList);
-    if(!profile->gMarkerList) Vector_Create(&profile->gMarkerList);
-    if(!profile->topMarkerList) Vector_Create(&profile->topMarkerList);
-    if(!profile->cachedReportList) Vector_Create(&profile->cachedReportList);
-    if(!profile->dataModelTableList) Vector_Create(&profile->dataModelTableList);
+    if (!profile->paramList)
+    {
+        Vector_Create(&profile->paramList);
+    }
+    if (!profile->staticParamList)
+    {
+        Vector_Create(&profile->staticParamList);
+    }
+    if (!profile->eMarkerList)
+    {
+        Vector_Create(&profile->eMarkerList);
+    }
+    if (!profile->gMarkerList)
+    {
+        Vector_Create(&profile->gMarkerList);
+    }
+    if (!profile->topMarkerList)
+    {
+        Vector_Create(&profile->topMarkerList);
+    }
+    if (!profile->cachedReportList)
+    {
+        Vector_Create(&profile->cachedReportList);
+    }
+    if (!profile->dataModelTableList)
+    {
+        Vector_Create(&profile->dataModelTableList);
+    }
 
     profile->grepSeekProfile = createGrepSeekProfile(0);
 
@@ -1892,7 +1913,7 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     }
     //Parameter Marker Configuration
     retvalue = addParameter_marker_config(profile, jprofileParameter, ThisProfileParameter_count);
-    if(retvalue != T2ERROR_SUCCESS)
+    if (retvalue != T2ERROR_SUCCESS)
     {
         T2Error("Parameter marker configuration is invalid\n");
         freeProfile(profile);

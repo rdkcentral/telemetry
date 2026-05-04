@@ -623,7 +623,7 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
                                             }
                                             return T2ERROR_FAILURE;
                                         }
-                                        strcat(concatenatedKey, ".");
+                                        strncat(concatenatedKey, ".", sizeof(concatenatedKey) - strlen(concatenatedKey) - 1);
                                         len++; // Account for the '.'
 
                                         if (len + strlen(token) >= sizeof(concatenatedKey))
@@ -639,7 +639,7 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
                                             }
                                             return T2ERROR_FAILURE;
                                         }
-                                        strcat(concatenatedKey, token);
+                                        strncat(concatenatedKey, token, sizeof(concatenatedKey) - strlen(concatenatedKey) - 1);
                                     }
                                     else
                                     {

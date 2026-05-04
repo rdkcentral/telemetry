@@ -117,6 +117,8 @@ T2ERROR uninitProfileList();
 
 T2ERROR addProfile(Profile *profile);
 
+void freeProfile(void *data);
+
 int getProfileCount();
 
 T2ERROR profileWithNameExists(const char *profileName, bool *bProfileExists);

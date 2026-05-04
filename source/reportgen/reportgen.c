@@ -559,6 +559,8 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
                                     if (cJSON_AddStringToObject(currentObject, token, paramValues[valIndex]->parameterValue) == NULL)
                                     {
                                         T2Error("cJSON_AddStringToObject failed.\n");
+                                        if (parameterName) { free(parameterName); }
+                                        if (parameterWild) { free(parameterWild); }
                                         cJSON_Delete(currentObject);
                                         return T2ERROR_FAILURE;
                                     }
@@ -569,6 +571,13 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
                                     int index = atoi(token);
                                     if (!firstIndexHandled)
                                     {
+                                        if (strlen(basePattern) >= sizeof(concatenatedKey))
+                                        {
+                                            T2Error("concatenatedKey buffer overflow: basePattern too long\n");
+                                            if (parameterName) { free(parameterName); }
+                                            if (parameterWild) { free(parameterWild); }
+                                            return T2ERROR_FAILURE;
+                                        }
                                         strcpy(concatenatedKey, basePattern);
                                     }
                                     // Create or get array
@@ -585,12 +594,40 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
                                 }
                                 else
                                 {
-                                    // Build concatenated key
+                                    // Build concatenated key with bounds checking
                                     if (concatenatedKey[0] != '\0')
                                     {
+                                        size_t len = strlen(concatenatedKey);
+                                        if (len + 1 >= sizeof(concatenatedKey))
+                                        {
+                                            T2Error("concatenatedKey buffer overflow: path too long\n");
+                                            if (parameterName) { free(parameterName); }
+                                            if (parameterWild) { free(parameterWild); }
+                                            return T2ERROR_FAILURE;
+                                        }
                                         strcat(concatenatedKey, ".");
+                                        len++; // Account for the '.'
+                                        
+                                        if (len + strlen(token) >= sizeof(concatenatedKey))
+                                        {
+                                            T2Error("concatenatedKey buffer overflow: path too long\n");
+                                            if (parameterName) { free(parameterName); }
+                                            if (parameterWild) { free(parameterWild); }
+                                            return T2ERROR_FAILURE;
+                                        }
+                                        strcat(concatenatedKey, token);
                                     }
-                                    strcat(concatenatedKey, token);
+                                    else
+                                    {
+                                        if (strlen(token) >= sizeof(concatenatedKey))
+                                        {
+                                            T2Error("concatenatedKey buffer overflow: token too long\n");
+                                            if (parameterName) { free(parameterName); }
+                                            if (parameterWild) { free(parameterWild); }
+                                            return T2ERROR_FAILURE;
+                                        }
+                                        strcpy(concatenatedKey, token);
+                                    }
                                     // Handle nested object creation only after the first index is done
                                     if (firstIndexHandled && nextToken != NULL && !isdigit(nextToken[0]))
                                     {
@@ -601,6 +638,8 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
                                             if (nestedObject == NULL)
                                             {
                                                 T2Error("cJSON_CreateObject failed.. nestedObject is NULL \n");
+                                                if (parameterName) { free(parameterName); }
+                                                if (parameterWild) { free(parameterWild); }
                                                 return T2ERROR_FAILURE;
                                             }
                                             cJSON_AddItemToObject(currentObject, concatenatedKey, nestedObject);

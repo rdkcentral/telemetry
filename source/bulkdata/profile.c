@@ -107,7 +107,7 @@ static void freeReportProfileConfig(void *data)
     }
 }
 
-static void freeProfile(void *data)
+void freeProfile(void *data)
 {
     T2Debug("%s ++in \n", __FUNCTION__);
     if(data != NULL)
@@ -509,7 +509,7 @@ static void* CollectAndReport(void* data)
                     profileParamVals = getProfileParameterValues(profile->paramList, count);
                     if(profileParamVals != NULL)
                     {
-                        if (Vector_Size(profile->dataModelTableList) > 0)
+                        if (profile->dataModelTableList != NULL && Vector_Size(profile->dataModelTableList) > 0)
                         {
                             encodeParamResultInJSON(valArray, profile->paramList, profileParamVals, profile->dataModelTableList);
                         }

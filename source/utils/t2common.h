@@ -186,5 +186,6 @@ void initWhoamiSupport(void);
 bool isWhoAmiEnabled(void);
 
 bool matchesParameter(const char* pattern, const char* paramName);
+int sanitize_string(const char *str);
 
 #endif /* _T2COMMON_H_ */

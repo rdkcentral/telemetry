@@ -385,4 +385,18 @@ bool matchesParameter(const char* pattern, const char* paramName)
     }
 
     return (*pattern == '\0' && *paramName == '\0');
+int sanitize_string(const char *str)
+{
+    const char *src = str;
+
+    while (*src)
+    {
+        if (!(isalnum((unsigned char)*src) || *src == '.' || *src == '-' || *src == '_'))
+        {
+            T2Error("Invalid search string configuration. Rejecting parameter due to invalid characters\n");
+            return -1;
+        }
+        src++;
+    }
+    return 0;
 }

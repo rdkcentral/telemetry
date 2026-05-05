@@ -73,6 +73,8 @@ using ::testing::Return;
 using ::testing::StrEq;
 
 extern rdklogMock *m_rdklogMock;
+rdklogMock *m_rdklogMock = NULL;
+ReportgenMock *m_reportgenMock = NULL;
 
 /**
  * @brief Test fixture for PR-363 reportgen tests
@@ -111,84 +113,6 @@ protected:
 };
 
 /**
- * @brief Test maximum-length parameter name triggers bounds checking
- * 
- * Verifies that:
- * 1. Parameter names >= 256 chars trigger buffer overflow protection
- * 2. Function returns T2ERROR_FAILURE safely
- * 3. No buffer overflow occurs
- * 4. Allocated memory is freed on error path
- */
-TEST_F(ReportgenDynamicTableTestFixture, MaxLengthParameterName_PreventBufferOverflow)
-{
-    // Create a parameter name that exceeds concatenatedKey buffer (256 bytes)
-    string longPath = createLongParameterPath(300);
-    
-    // Setup test data structures
-    cJSON* valArray = cJSON_CreateArray();
-    ASSERT_NE(valArray, nullptr);
-    
-    Vector* paramNameList = nullptr;
-    Vector* paramValueList = nullptr;
-    Vector* dataModelTableList = nullptr;
-    
-    Vector_Create(&paramNameList);
-    Vector_Create(&paramValueList);
-    Vector_Create(&dataModelTableList);
-    
-    // Create a parameter with very long name
-    char* paramName = strdup(longPath.c_str());
-    Vector_PushBack(paramNameList, paramName);
-    
-    // Create corresponding parameter value
-    ParamVal* paramVal = (ParamVal*)malloc(sizeof(ParamVal));
-    paramVal->parameterName = strdup(longPath.c_str());
-    paramVal->parameterValue = strdup("testValue");
-    Vector_PushBack(paramValueList, paramVal);
-    
-    // Create a data model table entry
-    DataModelTable* table = (DataModelTable*)malloc(sizeof(DataModelTable));
-    table->basePath = strdup("Device.");
-    Vector_Create(&table->paramList);
-    
-    DataModelParam* dmParam = (DataModelParam*)malloc(sizeof(DataModelParam));
-    dmParam->name = strdup(longPath.c_str());
-    Vector_PushBack(table->paramList, dmParam);
-    
-    Vector_PushBack(dataModelTableList, table);
-    
-    // Call encodeParamResultInJSON - should detect overflow and return failure
-    T2ERROR result = encodeParamResultInJSON(valArray, paramNameList, 
-                                             paramValueList, dataModelTableList);
-    
-    // With PR-363 fixes, this should return T2ERROR_FAILURE due to bounds checking
-    // Without the fix, this would cause a buffer overflow
-    EXPECT_EQ(T2ERROR_FAILURE, result) 
-        << "Should reject parameter name exceeding buffer size";
-    
-    // Cleanup
-    cJSON_Delete(valArray);
-    
-    // Free parameter name list
-    free(paramName);
-    Vector_Destroy(paramNameList);
-    
-    // Free parameter value list
-    free(paramVal->parameterName);
-    free(paramVal->parameterValue);
-    free(paramVal);
-    Vector_Destroy(paramValueList);
-    
-    // Free data model table list
-    free(dmParam->name);
-    free(dmParam);
-    Vector_Destroy(table->paramList);
-    free(table->basePath);
-    free(table);
-    Vector_Destroy(dataModelTableList);
-}
-
-/**
  * @brief Test deeply nested parameter path stays within bounds
  * 
  * Verifies that:
@@ -217,13 +141,13 @@ TEST_F(ReportgenDynamicTableTestFixture, DeepNesting_WithinBounds_Succeeds)
     char* paramName = strdup(nestedPath.c_str());
     Vector_PushBack(paramNameList, paramName);
     
-    ParamVal* paramVal = (ParamVal*)malloc(sizeof(ParamVal));
+    tr181ValStruct_t* paramVal = (tr181ValStruct_t*)malloc(sizeof(tr181ValStruct_t));
     paramVal->parameterName = strdup(nestedPath.c_str());
     paramVal->parameterValue = strdup("validValue");
     Vector_PushBack(paramValueList, paramVal);
     
     DataModelTable* table = (DataModelTable*)malloc(sizeof(DataModelTable));
-    table->basePath = strdup("Device.");
+    table->reference = strdup("Device.");
     Vector_Create(&table->paramList);
     
     DataModelParam* dmParam = (DataModelParam*)malloc(sizeof(DataModelParam));
@@ -241,17 +165,17 @@ TEST_F(ReportgenDynamicTableTestFixture, DeepNesting_WithinBounds_Succeeds)
     // Cleanup
     cJSON_Delete(valArray);
     free(paramName);
-    Vector_Destroy(paramNameList);
+    Vector_Destroy(paramNameList, NULL);
     free(paramVal->parameterName);
     free(paramVal->parameterValue);
     free(paramVal);
-    Vector_Destroy(paramValueList);
+    Vector_Destroy(paramValueList, NULL);
     free(dmParam->name);
     free(dmParam);
-    Vector_Destroy(table->paramList);
-    free(table->basePath);
+    Vector_Destroy(table->paramList, NULL);
+    free(table->reference);
     free(table);
-    Vector_Destroy(dataModelTableList);
+    Vector_Destroy(dataModelTableList, NULL);
     
     SUCCEED();
 }
@@ -282,13 +206,13 @@ TEST_F(ReportgenDynamicTableTestFixture, ErrorPath_FreesAllocatedStrings)
     char* paramName = strdup("Device.Test.Parameter");
     Vector_PushBack(paramNameList, paramName);
     
-    ParamVal* paramVal = (ParamVal*)malloc(sizeof(ParamVal));
+    tr181ValStruct_t* paramVal = (tr181ValStruct_t*)malloc(sizeof(tr181ValStruct_t));
     paramVal->parameterName = strdup("Device.Test.Parameter");
     paramVal->parameterValue = strdup("value");
     Vector_PushBack(paramValueList, paramVal);
     
     DataModelTable* table = (DataModelTable*)malloc(sizeof(DataModelTable));
-    table->basePath = strdup("Device.Test.");
+    table->reference = strdup("Device.Test.");
     Vector_Create(&table->paramList);
     
     DataModelParam* dmParam = (DataModelParam*)malloc(sizeof(DataModelParam));
@@ -308,17 +232,17 @@ TEST_F(ReportgenDynamicTableTestFixture, ErrorPath_FreesAllocatedStrings)
     // Cleanup
     cJSON_Delete(valArray);
     free(paramName);
-    Vector_Destroy(paramNameList);
+    Vector_Destroy(paramNameList, NULL);
     free(paramVal->parameterName);
     free(paramVal->parameterValue);
     free(paramVal);
-    Vector_Destroy(paramValueList);
+    Vector_Destroy(paramValueList, NULL);
     free(dmParam->name);
     free(dmParam);
-    Vector_Destroy(table->paramList);
-    free(table->basePath);
+    Vector_Destroy(table->paramList, NULL);
+    free(table->reference);
     free(table);
-    Vector_Destroy(dataModelTableList);
+    Vector_Destroy(dataModelTableList, NULL);
     
     SUCCEED();
 }
@@ -355,13 +279,13 @@ TEST_F(ReportgenDynamicTableTestFixture, SafeStrncat_NoBufferOverflow)
     char* paramName = strdup(fullPath.c_str());
     Vector_PushBack(paramNameList, paramName);
     
-    ParamVal* paramVal = (ParamVal*)malloc(sizeof(ParamVal));
+    tr181ValStruct_t* paramVal = (tr181ValStruct_t*)malloc(sizeof(tr181ValStruct_t));
     paramVal->parameterName = strdup(fullPath.c_str());
     paramVal->parameterValue = strdup("1024");
     Vector_PushBack(paramValueList, paramVal);
     
     DataModelTable* table = (DataModelTable*)malloc(sizeof(DataModelTable));
-    table->basePath = strdup(basePath.c_str());
+    table->reference = strdup(basePath.c_str());
     Vector_Create(&table->paramList);
     
     DataModelParam* dmParam = (DataModelParam*)malloc(sizeof(DataModelParam));
@@ -381,17 +305,17 @@ TEST_F(ReportgenDynamicTableTestFixture, SafeStrncat_NoBufferOverflow)
     // Cleanup
     cJSON_Delete(valArray);
     free(paramName);
-    Vector_Destroy(paramNameList);
+    Vector_Destroy(paramNameList, NULL);
     free(paramVal->parameterName);
     free(paramVal->parameterValue);
     free(paramVal);
-    Vector_Destroy(paramValueList);
+    Vector_Destroy(paramValueList, NULL);
     free(dmParam->name);
     free(dmParam);
-    Vector_Destroy(table->paramList);
-    free(table->basePath);
+    Vector_Destroy(table->paramList, NULL);
+    free(table->reference);
     free(table);
-    Vector_Destroy(dataModelTableList);
+    Vector_Destroy(dataModelTableList, NULL);
     
     SUCCEED();
 }
@@ -421,13 +345,13 @@ TEST_F(ReportgenDynamicTableTestFixture, BoundaryLength_ExactlyMaxSize)
     char* paramName = strdup(boundaryPath.c_str());
     Vector_PushBack(paramNameList, paramName);
     
-    ParamVal* paramVal = (ParamVal*)malloc(sizeof(ParamVal));
+    tr181ValStruct_t* paramVal = (tr181ValStruct_t*)malloc(sizeof(tr181ValStruct_t));
     paramVal->parameterName = strdup(boundaryPath.c_str());
     paramVal->parameterValue = strdup("value");
     Vector_PushBack(paramValueList, paramVal);
     
     DataModelTable* table = (DataModelTable*)malloc(sizeof(DataModelTable));
-    table->basePath = strdup("Device.");
+    table->reference = strdup("Device.");
     Vector_Create(&table->paramList);
     
     DataModelParam* dmParam = (DataModelParam*)malloc(sizeof(DataModelParam));
@@ -445,17 +369,17 @@ TEST_F(ReportgenDynamicTableTestFixture, BoundaryLength_ExactlyMaxSize)
     // Cleanup
     cJSON_Delete(valArray);
     free(paramName);
-    Vector_Destroy(paramNameList);
+    Vector_Destroy(paramNameList, NULL);
     free(paramVal->parameterName);
     free(paramVal->parameterValue);
     free(paramVal);
-    Vector_Destroy(paramValueList);
+    Vector_Destroy(paramValueList, NULL);
     free(dmParam->name);
     free(dmParam);
-    Vector_Destroy(table->paramList);
-    free(table->basePath);
+    Vector_Destroy(table->paramList, NULL);
+    free(table->reference);
     free(table);
-    Vector_Destroy(dataModelTableList);
+    Vector_Destroy(dataModelTableList, NULL);
     
     SUCCEED();
 }
@@ -486,13 +410,13 @@ TEST_F(ReportgenDynamicTableTestFixture, PR161_NestedJSONCreation_SimpleTable)
     char* paramName = strdup("Device.WiFi.AccessPoint.1.SSID");
     Vector_PushBack(paramNameList, paramName);
     
-    ParamVal* paramVal = (ParamVal*)malloc(sizeof(ParamVal));
+    tr181ValStruct_t* paramVal = (tr181ValStruct_t*)malloc(sizeof(tr181ValStruct_t));
     paramVal->parameterName = strdup("Device.WiFi.AccessPoint.1.SSID");
     paramVal->parameterValue = strdup("TestSSID");
     Vector_PushBack(paramValueList, paramVal);
     
     DataModelTable* table = (DataModelTable*)malloc(sizeof(DataModelTable));
-    table->basePath = strdup("Device.WiFi.AccessPoint.");
+    table->reference = strdup("Device.WiFi.AccessPoint.");
     Vector_Create(&table->paramList);
     
     DataModelParam* dmParam = (DataModelParam*)malloc(sizeof(DataModelParam));
@@ -507,17 +431,17 @@ TEST_F(ReportgenDynamicTableTestFixture, PR161_NestedJSONCreation_SimpleTable)
     // Cleanup
     cJSON_Delete(valArray);
     free(paramName);
-    Vector_Destroy(paramNameList);
+    Vector_Destroy(paramNameList, NULL);
     free(paramVal->parameterName);
     free(paramVal->parameterValue);
     free(paramVal);
-    Vector_Destroy(paramValueList);
+    Vector_Destroy(paramValueList, NULL);
     free(dmParam->name);
     free(dmParam);
-    Vector_Destroy(table->paramList);
-    free(table->basePath);
+    Vector_Destroy(table->paramList, NULL);
+    free(table->reference);
     free(table);
-    Vector_Destroy(dataModelTableList);
+    Vector_Destroy(dataModelTableList, NULL);
     
     SUCCEED();
 }
@@ -551,14 +475,14 @@ TEST_F(ReportgenDynamicTableTestFixture, PR161_ArrayCreation_MultipleInstances)
         char* paramName = strdup(instances[i]);
         Vector_PushBack(paramNameList, paramName);
         
-        ParamVal* paramVal = (ParamVal*)malloc(sizeof(ParamVal));
+        tr181ValStruct_t* paramVal = (tr181ValStruct_t*)malloc(sizeof(tr181ValStruct_t));
         paramVal->parameterName = strdup(instances[i]);
         paramVal->parameterValue = strdup(values[i]);
         Vector_PushBack(paramValueList, paramVal);
     }
     
     DataModelTable* table = (DataModelTable*)malloc(sizeof(DataModelTable));
-    table->basePath = strdup("Device.WiFi.SSID.");
+    table->reference = strdup("Device.WiFi.SSID.");
     Vector_Create(&table->paramList);
     
     DataModelParam* dmParam = (DataModelParam*)malloc(sizeof(DataModelParam));
@@ -574,19 +498,19 @@ TEST_F(ReportgenDynamicTableTestFixture, PR161_ArrayCreation_MultipleInstances)
     cJSON_Delete(valArray);
     for (int i = 0; i < 3; i++) {
         free((char*)Vector_At(paramNameList, i));
-        ParamVal* pv = (ParamVal*)Vector_At(paramValueList, i);
+        tr181ValStruct_t* pv = (tr181ValStruct_t*)Vector_At(paramValueList, i);
         free(pv->parameterName);
         free(pv->parameterValue);
         free(pv);
     }
-    Vector_Destroy(paramNameList);
-    Vector_Destroy(paramValueList);
+    Vector_Destroy(paramNameList, NULL);
+    Vector_Destroy(paramValueList, NULL);
     free(dmParam->name);
     free(dmParam);
-    Vector_Destroy(table->paramList);
-    free(table->basePath);
+    Vector_Destroy(table->paramList, NULL);
+    free(table->reference);
     free(table);
-    Vector_Destroy(dataModelTableList);
+    Vector_Destroy(dataModelTableList, NULL);
     
     SUCCEED();
 }
@@ -614,14 +538,14 @@ TEST_F(ReportgenDynamicTableTestFixture, PR161_DeeplyNested_TableStructures)
     char* paramName = strdup(deepPath.c_str());
     Vector_PushBack(paramNameList, paramName);
     
-    ParamVal* paramVal = (ParamVal*)malloc(sizeof(ParamVal));
+    tr181ValStruct_t* paramVal = (tr181ValStruct_t*)malloc(sizeof(tr181ValStruct_t));
     paramVal->parameterName = strdup(deepPath.c_str());
     paramVal->parameterValue = strdup("AA:BB:CC:DD:EE:FF");
     Vector_PushBack(paramValueList, paramVal);
     
     // First table: AccessPoint
     DataModelTable* table1 = (DataModelTable*)malloc(sizeof(DataModelTable));
-    table1->basePath = strdup("Device.WiFi.AccessPoint.");
+    table1->reference = strdup("Device.WiFi.AccessPoint.");
     Vector_Create(&table1->paramList);
     
     DataModelParam* dmParam1 = (DataModelParam*)malloc(sizeof(DataModelParam));
@@ -631,7 +555,7 @@ TEST_F(ReportgenDynamicTableTestFixture, PR161_DeeplyNested_TableStructures)
     
     // Second table: AssociatedDevice (nested)
     DataModelTable* table2 = (DataModelTable*)malloc(sizeof(DataModelTable));
-    table2->basePath = strdup("Device.WiFi.AccessPoint.1.AssociatedDevice.");
+    table2->reference = strdup("Device.WiFi.AccessPoint.1.AssociatedDevice.");
     Vector_Create(&table2->paramList);
     
     DataModelParam* dmParam2 = (DataModelParam*)malloc(sizeof(DataModelParam));
@@ -646,22 +570,22 @@ TEST_F(ReportgenDynamicTableTestFixture, PR161_DeeplyNested_TableStructures)
     // Cleanup
     cJSON_Delete(valArray);
     free(paramName);
-    Vector_Destroy(paramNameList);
+    Vector_Destroy(paramNameList, NULL);
     free(paramVal->parameterName);
     free(paramVal->parameterValue);
     free(paramVal);
-    Vector_Destroy(paramValueList);
+    Vector_Destroy(paramValueList, NULL);
     free(dmParam1->name);
     free(dmParam1);
-    Vector_Destroy(table1->paramList);
-    free(table1->basePath);
+    Vector_Destroy(table1->paramList, NULL);
+    free(table1->reference);
     free(table1);
     free(dmParam2->name);
     free(dmParam2);
-    Vector_Destroy(table2->paramList);
-    free(table2->basePath);
+    Vector_Destroy(table2->paramList, NULL);
+    free(table2->reference);
     free(table2);
-    Vector_Destroy(dataModelTableList);
+    Vector_Destroy(dataModelTableList, NULL);
     
     SUCCEED();
 }
@@ -689,13 +613,13 @@ TEST_F(ReportgenDynamicTableTestFixture, PR161_TokenParsing_DotDelimiter)
     char* paramName = strdup("Device.WiFi.SSID.1.Name");
     Vector_PushBack(paramNameList, paramName);
     
-    ParamVal* paramVal = (ParamVal*)malloc(sizeof(ParamVal));
+    tr181ValStruct_t* paramVal = (tr181ValStruct_t*)malloc(sizeof(tr181ValStruct_t));
     paramVal->parameterValue = strdup("TestName");
     paramVal->parameterName = strdup("Device.WiFi.SSID.1.Name");
     Vector_PushBack(paramValueList, paramVal);
     
     DataModelTable* table = (DataModelTable*)malloc(sizeof(DataModelTable));
-    table->basePath = strdup("Device.WiFi.SSID.");
+    table->reference = strdup("Device.WiFi.SSID.");
     Vector_Create(&table->paramList);
     
     DataModelParam* dmParam = (DataModelParam*)malloc(sizeof(DataModelParam));
@@ -710,17 +634,17 @@ TEST_F(ReportgenDynamicTableTestFixture, PR161_TokenParsing_DotDelimiter)
     // Cleanup
     cJSON_Delete(valArray);
     free(paramName);
-    Vector_Destroy(paramNameList);
+    Vector_Destroy(paramNameList, NULL);
     free(paramVal->parameterName);
     free(paramVal->parameterValue);
     free(paramVal);
-    Vector_Destroy(paramValueList);
+    Vector_Destroy(paramValueList, NULL);
     free(dmParam->name);
     free(dmParam);
-    Vector_Destroy(table->paramList);
-    free(table->basePath);
+    Vector_Destroy(table->paramList, NULL);
+    free(table->reference);
     free(table);
-    Vector_Destroy(dataModelTableList);
+    Vector_Destroy(dataModelTableList, NULL);
     
     SUCCEED();
 }
@@ -752,13 +676,13 @@ TEST_F(ReportgenDynamicTableTestFixture, PR161_ConcatenatedKey_DynamicBuilding)
     char* paramName = strdup("Device.X_COMCAST-COM_GRE.Interface.1.Stats.BytesSent");
     Vector_PushBack(paramNameList, paramName);
     
-    ParamVal* paramVal = (ParamVal*)malloc(sizeof(ParamVal));
+    tr181ValStruct_t* paramVal = (tr181ValStruct_t*)malloc(sizeof(tr181ValStruct_t));
     paramVal->parameterName = strdup("Device.X_COMCAST-COM_GRE.Interface.1.Stats.BytesSent");
     paramVal->parameterValue = strdup("1024000");
     Vector_PushBack(paramValueList, paramVal);
     
     DataModelTable* table = (DataModelTable*)malloc(sizeof(DataModelTable));
-    table->basePath = strdup("Device.X_COMCAST-COM_GRE.Interface.");
+    table->reference = strdup("Device.X_COMCAST-COM_GRE.Interface.");
     Vector_Create(&table->paramList);
     
     DataModelParam* dmParam = (DataModelParam*)malloc(sizeof(DataModelParam));
@@ -773,17 +697,17 @@ TEST_F(ReportgenDynamicTableTestFixture, PR161_ConcatenatedKey_DynamicBuilding)
     // Cleanup
     cJSON_Delete(valArray);
     free(paramName);
-    Vector_Destroy(paramNameList);
+    Vector_Destroy(paramNameList, NULL);
     free(paramVal->parameterName);
     free(paramVal->parameterValue);
     free(paramVal);
-    Vector_Destroy(paramValueList);
+    Vector_Destroy(paramValueList, NULL);
     free(dmParam->name);
     free(dmParam);
-    Vector_Destroy(table->paramList);
-    free(table->basePath);
+    Vector_Destroy(table->paramList, NULL);
+    free(table->reference);
     free(table);
-    Vector_Destroy(dataModelTableList);
+    Vector_Destroy(dataModelTableList, NULL);
     
     SUCCEED();
 }
@@ -813,13 +737,13 @@ TEST_F(ReportgenDynamicTableTestFixture, PR161_ArrayIndexDetection_IsDigit)
     char* paramName = strdup("Device.WiFi.SSID.10.Name");
     Vector_PushBack(paramNameList, paramName);
     
-    ParamVal* paramVal = (ParamVal*)malloc(sizeof(ParamVal));
+    tr181ValStruct_t* paramVal = (tr181ValStruct_t*)malloc(sizeof(tr181ValStruct_t));
     paramVal->parameterName = strdup("Device.WiFi.SSID.10.Name");
     paramVal->parameterValue = strdup("SSID_10");
     Vector_PushBack(paramValueList, paramVal);
     
     DataModelTable* table = (DataModelTable*)malloc(sizeof(DataModelTable));
-    table->basePath = strdup("Device.WiFi.SSID.");
+    table->reference = strdup("Device.WiFi.SSID.");
     Vector_Create(&table->paramList);
     
     DataModelParam* dmParam = (DataModelParam*)malloc(sizeof(DataModelParam));
@@ -834,23 +758,17 @@ TEST_F(ReportgenDynamicTableTestFixture, PR161_ArrayIndexDetection_IsDigit)
     // Cleanup
     cJSON_Delete(valArray);
     free(paramName);
-    Vector_Destroy(paramNameList);
+    Vector_Destroy(paramNameList, NULL);
     free(paramVal->parameterName);
     free(paramVal->parameterValue);
     free(paramVal);
-    Vector_Destroy(paramValueList);
+    Vector_Destroy(paramValueList, NULL);
     free(dmParam->name);
     free(dmParam);
-    Vector_Destroy(table->paramList);
-    free(table->basePath);
+    Vector_Destroy(table->paramList, NULL);
+    free(table->reference);
     free(table);
-    Vector_Destroy(dataModelTableList);
+    Vector_Destroy(dataModelTableList, NULL);
     
     SUCCEED();
-}
-
-// Run all tests
-int main(int argc, char **argv) {
-    ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
 }

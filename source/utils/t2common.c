@@ -385,6 +385,7 @@ bool matchesParameter(const char* pattern, const char* paramName)
     }
 
     return (*pattern == '\0' && *paramName == '\0');
+}
 int sanitize_string(const char *str)
 {
     const char *src = str;

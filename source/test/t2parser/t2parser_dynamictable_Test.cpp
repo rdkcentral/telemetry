@@ -89,6 +89,11 @@ extern T2parserMock *m_t2parserMock;
 extern rdklogMock *m_rdklogMock;
 extern rbusMock *g_rbusMock;
 
+// Mock instance definitions
+T2parserMock *m_t2parserMock = NULL;
+rdklogMock *m_rdklogMock = NULL;
+rbusMock *g_rbusMock = NULL;
+
 /**
  * @brief Test fixture for PR-363 specific tests
  */

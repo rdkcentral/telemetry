@@ -44,15 +44,19 @@ autoreconf --install
 
 make -C source/test
 
+# List of 13 test binaries to run
 tests="
 ./source/test/bulkdata/profile_gtest.bin
 ./source/test/bulkdata/datamodel_gtest.bin
 ./source/test/bulkdata/profilexconf_gtest.bin
 ./source/test/bulkdata/t2markers_gtest.bin
 ./source/test/bulkdata/reportprofiles_gtest.bin
+./source/test/bulkdata/profile_dynamictable_gtest.bin
 ./source/test/reportgen/reportgen_gtest.bin
+./source/test/reportgen/reportgen_dynamictable_gtest.bin
 ./source/test/scheduler/scheduler_gtest.bin
 ./source/test/t2parser/t2parser_gtest.bin
+./source/test/t2parser/t2parser_dynamictable_gtest.bin
 ./source/test/dcautils/dcautil_gtest.bin
 ./source/test/ccspinterface/ccspinterface_gtest.bin
 "
@@ -71,6 +75,7 @@ do
         fail=1
     fi
 done
+
 #### Generate the coverage report ####
 if [ "$ENABLE_COV" = true ]; then
     echo "Generating coverage report"
@@ -81,6 +86,7 @@ if [ "$ENABLE_COV" = true ]; then
     lcov --remove coverage.info "/usr/*" --output-file coverage.info
     lcov --list coverage.info
 fi
+
 if [ $fail -ne 0 ]; then
     echo "Some unit tests failed."
     exit 1

@@ -68,6 +68,10 @@ void freeProfile(void *data);
 extern rdklogMock *m_rdklogMock;
 extern rbusMock *g_rbusMock;
 
+// Mock instance definitions
+rdklogMock *m_rdklogMock = NULL;
+rbusMock *g_rbusMock = NULL;
+
 /**
  * @brief Test fixture for PR-363 profile tests
  */

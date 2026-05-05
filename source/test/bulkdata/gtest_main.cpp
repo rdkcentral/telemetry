@@ -25,20 +25,26 @@
 #include <gmock/gmock.h>
 
 #define GTEST_DEFAULT_RESULT_FILEPATH "/tmp/Gtest_Report/"
-#define GTEST_DEFAULT_RESULT_FILENAME "bulkdata_gtest_report.json"
 #define GTEST_REPORT_FILEPATH_SIZE 128
 
 GTEST_API_ int main(int argc, char *argv[])
 {
     char testresults_fullfilepath[GTEST_REPORT_FILEPATH_SIZE];
     char buffer[GTEST_REPORT_FILEPATH_SIZE];
+    char *basename_ptr;
 
     memset( testresults_fullfilepath, 0, GTEST_REPORT_FILEPATH_SIZE );
     memset( buffer, 0, GTEST_REPORT_FILEPATH_SIZE );
 
-    snprintf( testresults_fullfilepath, GTEST_REPORT_FILEPATH_SIZE, "json:%s%s" , GTEST_DEFAULT_RESULT_FILEPATH , GTEST_DEFAULT_RESULT_FILENAME);
-    ::testing::InitGoogleTest(&argc, argv);
+    /* Extract basename from argv[0] to create unique filename */
+    basename_ptr = strrchr(argv[0], '/');
+    basename_ptr = basename_ptr ? basename_ptr + 1 : argv[0];
+    snprintf( buffer, GTEST_REPORT_FILEPATH_SIZE, "%s_report.json", basename_ptr);
+    snprintf( testresults_fullfilepath, GTEST_REPORT_FILEPATH_SIZE, "json:%s%s" , GTEST_DEFAULT_RESULT_FILEPATH , buffer);
+    
+    /* CRITICAL: Set output flag BEFORE InitGoogleTest */
     ::testing::GTEST_FLAG(output) = testresults_fullfilepath;
+    ::testing::InitGoogleTest(&argc, argv);
     ::testing::InitGoogleMock(&argc, argv);
     return RUN_ALL_TESTS();
 }

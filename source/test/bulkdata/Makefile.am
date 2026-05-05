@@ -80,4 +80,4 @@ profile_dynamictable_gtest_bin_CPPFLAGS = $(profile_gtest_bin_CPPFLAGS)
 
 profile_dynamictable_gtest_bin_SOURCES = profile_dynamictable_Test.cpp ../mocks/rdklogMock.cpp ../mocks/rbusMock.cpp ../mocks/profileStub.c ../../utils/vector.c ../../utils/t2log_wrapper.c ../../utils/t2common.c ../../utils/t2collection.c
 
-profile_dynamictable_gtest_bin_LDFLAGS = -L/usr/src/googletest/googletest/lib/.libs -lgcov -L/src/googletest/googlemock/lib -L/usr/src/googletest/googlemock/lib/.libs -L/usr/include/glib-2.0 -lgmock -lcjson -lcurl -lmsgpackc -lgtest -lgtest_main -lglib-2.0
+profile_dynamictable_gtest_bin_LDFLAGS = -L/usr/src/googletest/googletest/lib/.libs -lgcov -L/src/googletest/googlemock/lib -L/usr/src/googletest/googlemock/lib/.libs -L/usr/include/glib-2.0 -lgmock -lcjson -lcurl -lmsgpackc -lgtest -lglib-2.0

@@ -385,6 +385,21 @@ TEST_F(ProfileDynamicTableTestFixture, NullCheckPattern_DefensiveProgramming)
 
 // Run all tests
 int main(int argc, char **argv) {
+    char testresults_fullfilepath[128];
+    char buffer[128];
+    char *basename_ptr;
+
+    memset( testresults_fullfilepath, 0, 128 );
+    memset( buffer, 0, 128 );
+
+    /* Extract basename from argv[0] to create unique filename */
+    basename_ptr = strrchr(argv[0], '/');
+    basename_ptr = basename_ptr ? basename_ptr + 1 : argv[0];
+    snprintf( buffer, 128, "%s_report.json", basename_ptr);
+    snprintf( testresults_fullfilepath, 128, "json:/tmp/Gtest_Report/%s" , buffer);
+    
+    /* Set output flag BEFORE InitGoogleTest */
+    ::testing::GTEST_FLAG(output) = testresults_fullfilepath;
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

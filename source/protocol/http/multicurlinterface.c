@@ -268,7 +268,11 @@ T2ERROR init_connection_pool()
 #endif
 
         // Connection reuse settings
-        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_FORBID_REUSE, 0L);
+        //Disable connection reuse (FORBID_REUSE=1) so that
+        // curl tears down the TLS session after each request.  This causes
+        // OpenSSL to call SSL_CTX_free → EC_KEY_free → ENGINE_finish through
+        // its own reference counting, releasing the SE051 hardware session state.
+        CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_FORBID_REUSE, 1L);
         CURL_SETOPT_CHECK(pool_entries[i].easy_handle, CURLOPT_FRESH_CONNECT, 0L);
 
         // Socket options
@@ -620,6 +624,9 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
                 if(curl_code != CURLE_OK || http_code != 200)
                 {
                     T2Error("%s: Failed to establish connection using xPKI certificate: %s, Curl failed : %d\n", __func__, pCertFile, curl_code);
+                    // Drain OpenSSL error queue between retries to prevent
+                    // ENGINE-internal error state accumulation (HROT/SE051).
+                    ERR_clear_error();
                 }
                 else
                 {
@@ -815,9 +822,6 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
     }
 #endif
 
-    // Important Note: When using LIBRDKCERTSEL_BUILD, pCertURI and pCertPC are owned by the
-    // cert selector object and are freed when rdkcertselector_free() is called
-
     // Clear OpenSSL per-thread error queue.
     // Every curl_easy_perform() may push records onto the per-thread ERR_STATE
     // list on any TLS error (cert verify failure, connection reset, timeout).
@@ -825,6 +829,8 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
     // ERR_clear_error() is thread-safe since OpenSSL 1.1.0.
     ERR_clear_error();
 
+    // Important Note: When using LIBRDKCERTSEL_BUILD, pCertURI and pCertPC are owned by the
+    // cert selector object and are freed when rdkcertselector_free() is called
     release_pool_handle(idx);
 
     T2Debug("%s ++out\n", __FUNCTION__);
@@ -1013,6 +1019,9 @@ T2ERROR http_pool_post(const char *url, const char *payload)
                 if(curl_code != CURLE_OK || http_code != 200)
                 {
                     T2Error("%s: Failed to establish connection using xPKI certificate: %s, curl failed: %d (entry %d)\n", __func__, pCertFile, curl_code, idx);
+                    // Drain OpenSSL error queue between retries to prevent
+                    // ENGINE-internal error state accumulation (HROT/SE051).
+                    ERR_clear_error();
                 }
                 else
                 {

@@ -67,6 +67,13 @@ static bool isDebugEnabled = true;
 static int initcomplete = 0;
 static pid_t DAEMONPID; //static varible store the Main Pid
 
+/* Signal-safe flags: sig_handler sets these; main loop dispatches.
+ * volatile sig_atomic_t is the only type guaranteed safe from signal context. */
+static volatile sig_atomic_t g_sig_shutdown = 0;
+static volatile sig_atomic_t g_sig_log_upload = 0;
+static volatile sig_atomic_t g_sig_log_upload_ondemand = 0;
+static volatile sig_atomic_t g_sig_reload = 0;
+
 T2ERROR initTelemetry()
 {
     T2ERROR ret = T2ERROR_FAILURE;
@@ -133,114 +140,54 @@ static void terminate()
     }
 
 }
-static void _print_stack_backtrace(void)
-{
-#ifdef __GNUC__
-#ifndef _BUILD_ANDROID
-#ifdef __GLIBC__
-    void* tracePtrs[100];
-    char** funcNames = NULL;
-    int i, count = 0;
-
-    count = backtrace( tracePtrs, 100 );
-    backtrace_symbols_fd( tracePtrs, count, 2 );
-
-    funcNames = backtrace_symbols( tracePtrs, count );
-
-    if ( funcNames )
-    {
-        // Print the stack trace
-        for( i = 0; i < count; i++ )
-        {
-            printf("%s\n", funcNames[i] );
-        }
-
-        // Free the string pointers
-        free( funcNames );
-    }
-#endif
-#endif
-#endif
-}
 
 void sig_handler(int sig, siginfo_t* info, void* uc)
 {
-    if(DAEMONPID == getpid())
-    {
-        int fd;
-        const char *path = "/tmp/telemetry_logupload";
-        if ( sig == SIGINT )
-        {
-            T2Info(("SIGINT received!\n"));
-#ifndef DEVICE_EXTENDER
-            uninitXConfClient();
-#endif
-            ReportProfiles_uninit();
-            exit(0);
-        }
-        else if ( sig == SIGUSR1 || sig == LOG_UPLOAD )
-        {
-            T2Info(("LOG_UPLOAD received!\n"));
-            set_retainseekmap(false);
-            ReportProfiles_Interrupt();
-        }
-        else if (sig == LOG_UPLOAD_ONDEMAND || sig == SIGIO)
-        {
-            T2Info(("LOG_UPLOAD_ONDEMAND received!\n"));
-            ReportProfiles_Interrupt();
-        }
-        else if(sig == SIGUSR2 || sig == EXEC_RELOAD)
-        {
-            T2Info(("EXEC_RELOAD received!\n"));
-            fd = open(path, O_RDONLY | O_CREAT, 0400);
-            if(fd  == -1)
-            {
-                T2Warning("Failed to open the file\n");
-            }
-            else
-            {
-                T2Debug("File is created\n");
-                close(fd);
-            }
-#ifndef DEVICE_EXTENDER
-            stopXConfClient();
-            if(T2ERROR_SUCCESS == startXConfClient())
-            {
-                T2Info("XCONF config reload - SUCCESS \n");
-            }
-            else
-            {
-                T2Info("XCONF config reload - IN PROGRESS ... Ignore current reload request \n");
-            }
-#endif
+    int saved_errno = errno;
+    (void)info;
+    (void)uc;
 
-        }
-        else if ( sig == SIGTERM || sig == SIGKILL )
+    if(DAEMONPID != getpid())
+    {
+        /* Child process: terminate immediately for fatal signals */
+        if(!(sig == SIGUSR1 || sig == LOG_UPLOAD || sig == LOG_UPLOAD_ONDEMAND || sig == SIGIO || sig == SIGCHLD || sig == SIGPIPE || sig == SIGUSR2 || sig == EXEC_RELOAD || sig == SIGALRM ))
         {
-            terminate();
-            exit(0);
+            _exit(1);
         }
-        else
+        errno = saved_errno;
+        return;
+    }
+
+    /* POSIX async-signal-safe: only set flags here.
+     * The main loop polls these flags and performs the actual work. */
+    if ( sig == SIGINT || sig == SIGTERM )
+    {
+        if (g_sig_shutdown)
         {
-            /* get stack trace first */
-            _print_stack_backtrace();
-            terminate();
-            T2Warning("[%s][%u] Signal number: %d\n", __FUNCTION__, __LINE__, info->si_signo);
-            T2Warning("[%s][%u] Signal error: %d\n", __FUNCTION__, __LINE__, info->si_errno);
-            T2Warning("[%s][%u] Signal code: %d\n", __FUNCTION__, __LINE__, info->si_code);
-            T2Warning("[%s][%u] Signal value: %d\n", __FUNCTION__, __LINE__, info->si_value.sival_int);
-            (void)uc;
-            exit(0);
+            /* Repeated shutdown signal while terminate() is still running.
+             * Force immediate exit.  _exit() is async-signal-safe. */
+            _exit(1);
         }
+        g_sig_shutdown = 1;
+    }
+    else if ( sig == SIGUSR1 || sig == LOG_UPLOAD )
+    {
+        g_sig_log_upload = 1;
+    }
+    else if ( sig == LOG_UPLOAD_ONDEMAND || sig == SIGIO )
+    {
+        g_sig_log_upload_ondemand = 1;
+    }
+    else if ( sig == SIGUSR2 || sig == EXEC_RELOAD )
+    {
+        g_sig_reload = 1;
     }
     else
     {
-        // This logic is added to terminate child imediately if we get terminate signals eg:SIGTERM / SIGKILL ...
-        if(!(sig == SIGUSR1 || sig == LOG_UPLOAD || sig == LOG_UPLOAD_ONDEMAND || sig == SIGIO || sig == SIGCHLD || sig == SIGPIPE || sig == SIGUSR2 || sig == EXEC_RELOAD || sig == SIGALRM ))
-        {
-            exit(0);
-        }
+        /* Unknown fatal signal — request shutdown */
+        g_sig_shutdown = 1;
     }
+    errno = saved_errno;
 }
 
 static void t2DaemonMainModeInit( )
@@ -265,6 +212,7 @@ static void t2DaemonMainModeInit( )
     act.sa_sigaction = sig_handler;
     act.sa_flags = SA_ONSTACK | SA_SIGINFO ;
 
+    sigemptyset(&blocking_signal);
     sigaddset(&blocking_signal, SIGUSR2);
     sigaddset(&blocking_signal, SIGUSR1);
     sigaddset(&blocking_signal, LOG_UPLOAD);
@@ -277,6 +225,7 @@ static void t2DaemonMainModeInit( )
     DAEMONPID = getpid(); // save the pid of the deamon
     T2Debug("Telemetry 2.0 Process PID %d\n", (int)DAEMONPID); //Debug line
 
+    sigaction(SIGINT, &act, NULL);
     sigaction(SIGTERM, &act, NULL);
     sigaction(SIGUSR1, &act, NULL);
     sigaction(LOG_UPLOAD, &act, NULL);
@@ -293,9 +242,61 @@ static void t2DaemonMainModeInit( )
 
     T2Info("Telemetry 2.0 Component Init Success\n");
 
+    /* Main dispatch loop: poll signal flags set by sig_handler.
+     * All signal-unsafe work (uninit, logging, mutex ops) happens here
+     * in normal thread context, not in signal handler context. */
     while(1)
     {
-        sleep(30);
+        if(g_sig_shutdown)
+        {
+            T2Info("Shutdown signal received, terminating\n");
+            terminate();
+            exit(0);
+        }
+        if(g_sig_log_upload)
+        {
+            g_sig_log_upload = 0;
+            T2Info("LOG_UPLOAD received!\n");
+            set_retainseekmap(false);
+            ReportProfiles_Interrupt();
+        }
+        if(g_sig_log_upload_ondemand)
+        {
+            g_sig_log_upload_ondemand = 0;
+            T2Info("LOG_UPLOAD_ONDEMAND received!\n");
+            ReportProfiles_Interrupt();
+        }
+        if(g_sig_reload)
+        {
+            g_sig_reload = 0;
+            T2Info("EXEC_RELOAD signal received\n");
+            {
+                int fd;
+                const char *path = "/tmp/telemetry_logupload";
+                fd = open(path, O_RDONLY | O_CREAT, 0400);
+                if(fd == -1)
+                {
+                    T2Warning("Failed to open the file\n");
+                }
+                else
+                {
+                    T2Debug("File is created\n");
+                    close(fd);
+                }
+            }
+#ifndef DEVICE_EXTENDER
+            stopXConfClient();
+            if(T2ERROR_SUCCESS == startXConfClient())
+            {
+                T2Info("XCONF config reload - SUCCESS \n");
+            }
+            else
+            {
+                T2Info("XCONF config reload - IN PROGRESS ... Ignore current reload request \n");
+            }
+#endif
+        }
+        sleep(1);
     }
     T2Info("Telemetry 2.0 Process Terminated\n");
 }

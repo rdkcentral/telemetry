@@ -1116,14 +1116,18 @@ void uninitXConfClient()
         pthread_cond_signal(&xcThreadCond);
         pthread_mutex_unlock(&xcThreadMutex);
         pthread_join(xcrThread, NULL);
-        pthread_mutex_destroy(&xcMutex);
-        pthread_mutex_destroy(&xcThreadMutex);
-        pthread_cond_destroy(&xcCond);
-        pthread_cond_destroy(&xcThreadCond);
 #ifdef DCMAGENT
         bexitDCMThread = false;
         pthread_join(dcmThread, NULL);
 #endif
+        /* Destroy synchronization primitives only after ALL threads using
+         * them have been joined.  Previously these were destroyed between
+         * the xcrThread join and dcmThread join, creating a window where
+         * the exiting thread could still reference destroyed mutexes. */
+        pthread_mutex_destroy(&xcMutex);
+        pthread_mutex_destroy(&xcThreadMutex);
+        pthread_cond_destroy(&xcCond);
+        pthread_cond_destroy(&xcThreadCond);
     }
     else
     {

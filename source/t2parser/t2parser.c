@@ -1011,13 +1011,35 @@ T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, i
         T2Error("Invalid Arguments\n");
         return T2ERROR_INVALID_ARGS;
     }
-    Vector_Create(&profile->paramList);
-    Vector_Create(&profile->staticParamList);
-    Vector_Create(&profile->eMarkerList);
-    Vector_Create(&profile->gMarkerList);
-    Vector_Create(&profile->topMarkerList);
-    Vector_Create(&profile->cachedReportList);
-    Vector_Create(&profile->dataModelTableList);
+    // Only create vectors if they don't already exist
+    if (!profile->paramList)
+    {
+        Vector_Create(&profile->paramList);
+    }
+    if (!profile->staticParamList)
+    {
+        Vector_Create(&profile->staticParamList);
+    }
+    if (!profile->eMarkerList)
+    {
+        Vector_Create(&profile->eMarkerList);
+    }
+    if (!profile->gMarkerList)
+    {
+        Vector_Create(&profile->gMarkerList);
+    }
+    if (!profile->topMarkerList)
+    {
+        Vector_Create(&profile->topMarkerList);
+    }
+    if (!profile->cachedReportList)
+    {
+        Vector_Create(&profile->cachedReportList);
+    }
+    if (!profile->dataModelTableList)
+    {
+        Vector_Create(&profile->dataModelTableList);
+    }
 
     profile->grepSeekProfile = createGrepSeekProfile(0);
 
@@ -1051,6 +1073,8 @@ T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, i
         trim = false;
         rtformat = REPORTTIMESTAMP_NONE;
         int index_flag = 0;
+        bool content_allocated = false;  // Track if content was allocated with strdup
+        bool header_allocated = false;   // Track if header was allocated with strdup
 
         cJSON* pSubitem = cJSON_GetArrayItem(jprofileParameter, ProfileParameterIndex);
         if(pSubitem != NULL)
@@ -1236,6 +1260,8 @@ T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, i
                     {
                         content = strdup(basePath);
                         header = strdup(basePath);
+                        content_allocated = true;  // Mark as allocated
+                        header_allocated = true;   // Mark as allocated
                         paramtype = "dataModel";
                         if (!content || !header)
                         {
@@ -1335,6 +1361,10 @@ T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, i
             if (content != NULL && header != NULL && index_flag == 0)
             {
                 ret = addParameter(profile, header, content, logfile, skipFrequency, firstSeekFromEOF, paramtype, use, reportEmpty, rtformat, trim, regex); //add Multiple Report Profile Parameter
+                if(ret == T2ERROR_SUCCESS)
+                {
+                    T2Debug("[[Added parameter:%s]]\n", header);
+                }
             }
             else
             {
@@ -1344,28 +1374,24 @@ T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, i
             if(ret != T2ERROR_SUCCESS)
             {
                 T2Error("%s Error in adding parameter to profile %s \n", __FUNCTION__, profile->name);
-                if (content)
+                if (content_allocated && content)
                 {
                     free(content);
                     content = NULL;
                 }
-                if (header)
+                if (header_allocated && header)
                 {
                     free(header);
                     header = NULL;
                 }
                 continue;
             }
-            else
-            {
-                T2Debug("[[Added parameter:%s]]\n", header);
-            }
-            if (content)
+            if (content_allocated && content)
             {
                 free(content);
                 content = NULL;
             }
-            if (header)
+            if (header_allocated && header)
             {
                 free(header);
                 header = NULL;
@@ -1891,9 +1917,12 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     }
     //Parameter Marker Configuration
     retvalue = addParameter_marker_config(profile, jprofileParameter, ThisProfileParameter_count);
-    if(retvalue != T2ERROR_SUCCESS)
+    if (retvalue != T2ERROR_SUCCESS)
     {
         T2Error("Parameter marker configuration is invalid\n");
+        freeProfile(profile);
+        cJSON_Delete(json_root);
+        return T2ERROR_FAILURE;
     }
 
     int triggerCondition_count = 0;
@@ -2513,7 +2542,10 @@ T2ERROR addParameterMsgpack_marker_config(Profile* profile, msgpack_object* valu
             T2Debug("Added parameter:%s \n", header);
             profileParamCount++;
         }
-        free(header);
+        if (header)
+        {
+            free(header);
+        }
         free(content);
         free(logfile);
         free(use);

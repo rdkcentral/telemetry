@@ -560,7 +560,7 @@ TEST_F(profileXconfTestFixture, ProfileXConf_notifyTimeout)
             return outparamlist;
         });
    
-    EXPECT_CALL(*g_profileXConfMock, encodeParamResultInJSON(_, _))
+    EXPECT_CALL(*g_profileXConfMock, encodeParamResultInJSON(_, _, _, _))
         .Times(1)
         .WillOnce(Return(T2ERROR_SUCCESS));
    

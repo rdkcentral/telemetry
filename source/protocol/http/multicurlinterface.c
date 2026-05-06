@@ -634,7 +634,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
                 }
             }
         }
-        while(rdkcertselector_setCurlStatus(handleCertSelector, curl_code, (const char*)url) == TRY_ANOTHER);
+        while(rdkcertselector_setCurlStatus(handleCertSelector, curl_code, (const char * )url) == TRY_ANOTHER);
 #else
         // Fallback to getMtlsCerts if certificate selector not available
         if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pCertPC))
@@ -811,7 +811,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
     {
 #ifdef LIBRDKCONFIG_BUILD
         size_t sKey = strlen(pCertPC);
-        if (rdkconfig_free((unsigned char**)&pCertPC, sKey) == RDKCONFIG_FAIL)
+        if (rdkconfig_free((unsigned char * *)&pCertPC, sKey) == RDKCONFIG_FAIL)
         {
             T2Error("Failed to free password using rdkconfig\n");
         }
@@ -1029,7 +1029,7 @@ T2ERROR http_pool_post(const char *url, const char *payload)
                 }
             }
         }
-        while(rdkcertselector_setCurlStatus(thisCertSel, curl_code, (const char*)url) == TRY_ANOTHER);
+        while(rdkcertselector_setCurlStatus(thisCertSel, curl_code, (const char * )url) == TRY_ANOTHER);
 #else
         // Fallback to getMtlsCerts if certificate selector not available
         if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pCertPC))
@@ -1099,7 +1099,7 @@ T2ERROR http_pool_post(const char *url, const char *payload)
     {
 #ifdef LIBRDKCONFIG_BUILD
         size_t sKey = strlen(pCertPC);
-        if (rdkconfig_free((unsigned char**)&pCertPC, sKey) == RDKCONFIG_FAIL)
+        if (rdkconfig_free((unsigned char * *)&pCertPC, sKey) == RDKCONFIG_FAIL)
         {
             T2Error("Failed to free password using rdkconfig\n");
         }

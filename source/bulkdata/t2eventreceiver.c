@@ -453,7 +453,7 @@ static T2ERROR flushCacheFromFile(void)
     fp = fopen(T2_CACHE_FILE, "r");
     if(fp)
     {
-        while(fgets(telemetry_data, 255, (FILE*)fp) != NULL)
+        while(fgets(telemetry_data, 255, (FILE * )fp) != NULL)
         {
             data_len = strlen(telemetry_data);
             if(data_len > 0 && telemetry_data[data_len - 1] == '\n' )

@@ -26,10 +26,17 @@ AUTOMAKE_OPTIONS = subdir-objects
 
 ACLOCAL_AMFLAGS = -I m4
 
-bin_PROGRAMS = reportgen_gtest.bin
+bin_PROGRAMS = reportgen_gtest.bin reportgen_dynamictable_gtest.bin
 
 reportgen_gtest_bin_CPPFLAGS = -I$(PKG_CONFIG_SYSROOT_DIR)/usr/include/gtest -I$(PKG_CONFIG_SYSROOT_DIR)/usr/include/glib-2.0 -I$(PKG_CONFIG_SYSROOT_DIR)/usr/lib/x86_64-linux-gnu/glib-2.0/include -I$(PKG_CONFIG_SYSROOT_DIR)/usr/local/lib -I${top_srcdir}/source/include -I${top_srcdir}/source/dcautil -I${top_srcdir}/source/utils -I${top_srcdir}/source/ccspinterface -I${top_srcdir}/source -I${top_srcdir}/include -I${top_srcdir}/source/reportgen -I${top_srcdir}/source/test/rbus -I${top_srcdir}/source/test/rdk_logger -I$(PKG_CONFIG_SYSROOT_DIR)/usr/lib -I$(PKG_CONFIG_SYSROOT_DIR)/usr/include -I$(PKG_CONFIG_SYSROOT_DIR)/usr/include/cjson -I$(PKG_CONFIG_SYSROOT_DIR)/usr/include/gmock 
 
 reportgen_gtest_bin_SOURCES = gtest_main.cpp reportgenTest.cpp reportgenMock.cpp ../mocks/rdklogMock.cpp ../../utils/t2log_wrapper.c ../../reportgen/reportgen.c ../../utils/vector.c ../../utils/t2common.c 
 
 reportgen_gtest_bin_LDFLAGS = -lgtest -lgcov -L/src/googletest/googlemock/lib -L/usr/src/googletest/googlemock/lib/.libs -lgmock -lcjson -lcurl -lmsgpackc
+
+# DataModelTable (PR-161) & Memory Safety (PR-363) Test Suite
+reportgen_dynamictable_gtest_bin_CPPFLAGS = $(reportgen_gtest_bin_CPPFLAGS) -I${top_srcdir}/source/bulkdata
+
+reportgen_dynamictable_gtest_bin_SOURCES = gtest_main.cpp reportgen_dynamictable_Test.cpp reportgenMock.cpp ../mocks/rdklogMock.cpp ../../utils/t2log_wrapper.c ../../reportgen/reportgen.c ../../utils/vector.c ../../utils/t2common.c
+
+reportgen_dynamictable_gtest_bin_LDFLAGS = $(reportgen_gtest_bin_LDFLAGS)

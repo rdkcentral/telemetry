@@ -393,7 +393,7 @@ int sanitize_string(const char *str)
 
     while (*src)
     {
-        if (!(isalnum((unsigned char)*src) || *src == '.' || *src == '-' || *src == '_'))
+        if (!(isalnum((unsigned char) * src) || *src == '.' || *src == '-' || *src == '_'))
         {
             T2Error("Invalid search string configuration. Rejecting parameter due to invalid characters\n");
             return -1;

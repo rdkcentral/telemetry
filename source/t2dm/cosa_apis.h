@@ -94,7 +94,8 @@ typedef ANSC_STATUS
 typedef struct _COSA_BASE_OBJECT
 {
     COSA_BASE_CONTENT
-} COSA_BASE_OBJECT, *PCOSA_BASE_OBJECT;
+}
+COSA_BASE_OBJECT, *PCOSA_BASE_OBJECT;
 
 /*
  *  This struct is for creating entry context link in writable table when call GetEntry()
@@ -111,7 +112,8 @@ typedef struct _COSA_BASE_OBJECT
 typedef struct _COSA_CONTEXT_LINK_OBJECT
 {
     COSA_CONTEXT_LINK_CLASS_CONTENT
-} COSA_CONTEXT_LINK_OBJECT, *PCOSA_CONTEXT_LINK_OBJECT;
+}
+COSA_CONTEXT_LINK_OBJECT, *PCOSA_CONTEXT_LINK_OBJECT;
 
 #define  ACCESS_COSA_CONTEXT_LINK_OBJECT(p)              \
          ACCESS_CONTAINER(p, COSA_CONTEXT_LINK_OBJECT, Linkage)

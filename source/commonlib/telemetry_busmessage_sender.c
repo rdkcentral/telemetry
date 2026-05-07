@@ -919,3 +919,18 @@ T2ERROR t2_event_d(const char* marker, int value)
     pthread_mutex_unlock(&dMutex);
     return retStatus ;
 }
+#ifdef GTEST_ENABLE
+bool* test_get_isRbusEnabled_ptr(void)
+{
+    return &isRbusEnabled;
+}
+bool* test_get_isT2Ready_ptr(void)
+{
+    return &isT2Ready;
+}
+typedef T2ERROR (*doPopulateEventMarkerListFunc)(void);
+doPopulateEventMarkerListFunc getDoPopulateEventMarkerListCallback(void)
+{
+    return doPopulateEventMarkerList;
+}
+#endif

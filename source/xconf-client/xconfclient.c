@@ -61,6 +61,44 @@
 #define XCONF_RETRY_TIMEOUT 180
 #define MAX_XCONF_RETRY_COUNT 5
 #define IFINTERFACE      "erouter0"
+#if defined(NTP_SYNC_INDICATION)
+/*
+ * NTP Sync Gating for Xconf Fetch
+ *
+ * The NTP sync indicator is a platform-provided one-time marker,
+ * created once after NTP synchronizes and NOT removed on network disconnection.
+ *   - RDKB:   /tmp/clock-event
+ *   - Others: /tmp/systimemgr/ntp
+ *
+ * Design decisions (confirmed with NTP team):
+ * - adjtimex() is redundant since the indicator file serves the same purpose
+ * - No dedicated monitor thread — reuses existing xconf worker thread
+ * - One-shot gate at boot only; not used for proactive xconf reload on
+ *   network reconnect (file is never removed, so re-triggering is not possible)
+ * - Uses inotify for instant zero-CPU detection, with select() for
+ *   interruptible shutdown
+ * - Waits indefinitely for the NTP sync indicator once the directory exists.
+ *   If the directory (NTP_SYNC_DIR) does not exist at startup, polls for up to
+ *   NTP_SYNC_DIR_WAIT_TIMEOUT_SEC for it to appear (systimemgr creates it).
+ *   If the directory never appears, proceeds without NTP — systimemgr is likely
+ *   not installed on this platform.
+ * - CLOCK_MONOTONIC used for directory-wait deadline — CLOCK_REALTIME is not
+ *   safe before NTP has synced.
+ */
+#if defined(ENABLE_RDKB_SUPPORT)
+#define NTP_SYNC_INDICATOR "/tmp/clock-event"
+#define NTP_SYNC_DIR "/tmp"
+#define NTP_SYNC_FILENAME "clock-event"
+#else
+#define NTP_SYNC_INDICATOR "/tmp/systimemgr/ntp"
+#define NTP_SYNC_DIR "/tmp/systimemgr"
+#define NTP_SYNC_FILENAME "ntp"
+#endif
+/* Maximum time to wait for NTP_SYNC_DIR to appear when it does not exist yet.
+ * 30 minutes covers typical systimemgr startup lag. If the directory never
+ * appears, systimemgr is likely absent and we proceed without NTP gate. */
+#define NTP_SYNC_DIR_WAIT_TIMEOUT_SEC  1800
+#endif /* NTP_SYNC_INDICATION */
 #define XCONF_CONFIG_FILE  "DCMresponse.txt"
 #define PROCESS_CONFIG_COMPLETE_FLAG "/tmp/t2DcmComplete"
 #define HTTP_RESPONSE_FILE "/tmp/httpOutput.txt"
@@ -1557,7 +1595,6 @@ static void* getUpdatedConfigurationThread(void *data)
     }
     pthread_mutex_lock(&xcThreadMutex);
 #endif /* NTP_SYNC_INDICATION */
-    
     do
     {
         T2Debug("%s while Loop -- START \n", __FUNCTION__);

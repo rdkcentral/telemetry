@@ -1821,6 +1821,11 @@ T2ERROR T2RbusConsumer(TriggerCondition *triggerCondition)
     char user_data[32] = {0};
     //char componentName[] = "t2consumer";
     T2Debug("--in %s\n", __FUNCTION__);
+    if(triggerCondition->type == NULL || triggerCondition->reference == NULL || triggerCondition->oprator == NULL){
+        T2Error("TriggerCondition parameters are NULL\n");
+	return T2ERROR_FAILURE;
+    }
+    
     if(triggerCondition->isSubscribed == true)
     {
         T2Debug("%s already subscribed\n", triggerCondition->reference);

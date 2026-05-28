@@ -381,10 +381,17 @@ rbusError_t eventSubHandler(rbusHandle_t handle, rbusEventSubAction_t action, co
 }
 
 #if defined(PRIVACYMODES_CONTROL)
+static pthread_mutex_t privacyWorkerMutex = PTHREAD_MUTEX_INITIALIZER;
+
 /**
  * Worker thread to handle privacy mode callbacks off the RBUS handler thread.
  * Prevents RBUS handler starvation by moving heavy operations (profile deletion,
  * XConf restart) to a detached thread.
+ *
+ * Serialized via privacyWorkerMutex to prevent concurrent invocations racing on
+ * profile deletion when PrivacyMode is toggled rapidly (e.g. DO_NOT_SHARE ->
+ * SHARE -> DO_NOT_SHARE in quick succession), which causes double-free of
+ * grepSeekProfile in deleteAllProfiles().
  */
 static void* privacyModeCallbackWorker(void *arg)
 {
@@ -395,6 +402,7 @@ static void* privacyModeCallbackWorker(void *arg)
         return NULL;
     }
     T2Debug("%s ++in mode=%s\n", __FUNCTION__, mode);
+    pthread_mutex_lock(&privacyWorkerMutex);
 
     if(strcmp(mode, "DO_NOT_SHARE") == 0)
     {
@@ -424,6 +432,7 @@ static void* privacyModeCallbackWorker(void *arg)
     }
 
     free(mode);
+    pthread_mutex_unlock(&privacyWorkerMutex);
     T2Debug("%s --out\n", __FUNCTION__);
     return NULL;
 }

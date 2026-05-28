@@ -1159,14 +1159,23 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
     int count = 0;
     int profileIndex = 0;
     Profile *tempProfile = NULL;
+    static bool deleteInProgress = false;
 
     pthread_mutex_lock(&plMutex);
+    if(deleteInProgress)
+    {
+        T2Info("deleteAllProfiles already in progress, skipping\n");
+        pthread_mutex_unlock(&plMutex);
+        return T2ERROR_SUCCESS;
+    }
+
     if(profileList == NULL)
     {
         T2Error("profile list is not initialized yet or profileList is empty, ignoring\n");
         pthread_mutex_unlock(&plMutex);
         return T2ERROR_FAILURE;
     }
+    deleteInProgress = true;
 
     count = Vector_Size(profileList);
     pthread_mutex_unlock(&plMutex);
@@ -1216,6 +1225,7 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
     Vector_Destroy(profileList, freeProfile);
     profileList = NULL;
     Vector_Create(&profileList);
+    deleteInProgress = false;
     pthread_mutex_unlock(&plMutex);
 
     T2Debug("%s --out\n", __FUNCTION__);

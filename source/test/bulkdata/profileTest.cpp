@@ -1564,10 +1564,11 @@ TEST_F(ProfileTest, CollectAndReport_AsyncDeleteOnRBUSMethodFailure) {
     free(testProfile->encodingType);
     free(testProfile->t2RBUSDest->rbusMethodName);
     free(testProfile->t2RBUSDest);
-    if (testProfile->grepSeekProfile && testProfile->grepSeekProfile->logFileSeekMap) {
-        hash_map_remove(testProfile->grepSeekProfile->logFileSeekMap);
+    if (testProfile->grepSeekProfile) {
+        // logFileSeekMap cleanup: hash_map_remove requires a key argument,
+        // so we skip it here since we're freeing the entire structure
+        free(testProfile->grepSeekProfile);
     }
-    free(testProfile->grepSeekProfile);
     free(testProfile->jsonEncoding);
     free(testProfile);
     
@@ -1643,10 +1644,11 @@ TEST_F(ProfileTest, CollectAndReport_ThreadExitsCleanly_AfterAsyncDelete) {
     free(testProfile->encodingType);
     free(testProfile->t2RBUSDest->rbusMethodName);
     free(testProfile->t2RBUSDest);
-    if (testProfile->grepSeekProfile && testProfile->grepSeekProfile->logFileSeekMap) {
-        hash_map_remove(testProfile->grepSeekProfile->logFileSeekMap);
+    if (testProfile->grepSeekProfile) {
+        // logFileSeekMap cleanup: hash_map_remove requires a key argument,
+        // so we skip it here since we're freeing the entire structure
+        free(testProfile->grepSeekProfile);
     }
-    free(testProfile->grepSeekProfile);
     free(testProfile->jsonEncoding);
     free(testProfile);
     

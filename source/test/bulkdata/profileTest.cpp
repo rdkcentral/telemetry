@@ -1505,7 +1505,6 @@ TEST_F(ProfileTest, CollectAndReport_AsyncDeleteOnRBUSMethodFailure) {
     testProfile->enable = true;
     testProfile->threadExists = false;
     testProfile->reportInProgress = false;
-    testProfile->sendingReportsInProgress = false;
     testProfile->SendErr = 4;  // > 3, triggering delete condition
     
     // Setup RBUS destination
@@ -1566,7 +1565,7 @@ TEST_F(ProfileTest, CollectAndReport_AsyncDeleteOnRBUSMethodFailure) {
     free(testProfile->t2RBUSDest->rbusMethodName);
     free(testProfile->t2RBUSDest);
     if (testProfile->grepSeekProfile && testProfile->grepSeekProfile->logFileSeekMap) {
-        hash_map_delete(testProfile->grepSeekProfile->logFileSeekMap);
+        hash_map_remove(testProfile->grepSeekProfile->logFileSeekMap);
     }
     free(testProfile->grepSeekProfile);
     free(testProfile->jsonEncoding);
@@ -1645,7 +1644,7 @@ TEST_F(ProfileTest, CollectAndReport_ThreadExitsCleanly_AfterAsyncDelete) {
     free(testProfile->t2RBUSDest->rbusMethodName);
     free(testProfile->t2RBUSDest);
     if (testProfile->grepSeekProfile && testProfile->grepSeekProfile->logFileSeekMap) {
-        hash_map_delete(testProfile->grepSeekProfile->logFileSeekMap);
+        hash_map_remove(testProfile->grepSeekProfile->logFileSeekMap);
     }
     free(testProfile->grepSeekProfile);
     free(testProfile->jsonEncoding);

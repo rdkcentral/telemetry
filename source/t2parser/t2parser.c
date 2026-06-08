@@ -120,7 +120,7 @@ static char * getProfileParameter(Profile * profile, const char *ref)
 
 static T2ERROR addhttpURIreqParameter(Profile *profile, const char* Hname, const char* Href)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    T2Debug("%s ++in\n");
     if(NULL == Hname || NULL == Href )
     {
         T2Error("Hname or Href is NULL\n");

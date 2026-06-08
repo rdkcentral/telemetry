@@ -94,7 +94,7 @@ static char *t2Version = NULL;
 static pthread_mutex_t reportExecutionGateMutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t reportExecutionGateCond = PTHREAD_COND_INITIALIZER;
 static bool reportExecutionGateBusy = false;
-static char reportExecutionGateOwner[256] = { 0 };
+static char reportExecutionGateOwner[MAX_PROFILENAMES_LENGTH] = { 0 };
 
 pthread_mutex_t rpMutex = PTHREAD_MUTEX_INITIALIZER;
 T2ERROR RemovePreRPfromDisk(const char* path, hash_map_t *map);

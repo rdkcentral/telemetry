@@ -222,6 +222,8 @@ static void* CollectAndReportXconf(void* data)
 
     do
     {
+        bool executionGateAcquired = false;
+
         /* CRITICAL SECTION START: Acquire xconfProfileLock to check/access singleProfile */
         pthread_mutex_lock(&xconfProfileLock);
 
@@ -277,6 +279,9 @@ static void* CollectAndReportXconf(void* data)
          */
         pthread_mutex_unlock(&xconfProfileLock);
         /* CRITICAL SECTION END - xconfProfileLock released, other threads can now proceed */
+
+        ReportProfiles_Lock(profile->name);
+        executionGateAcquired = true;
 
         int clockReturn = 0;
         clockReturn = clock_gettime(CLOCK_MONOTONIC, &startTime);
@@ -570,6 +575,11 @@ static void* CollectAndReportXconf(void* data)
             profile->reportInProgress = false;
         }
 reportXconfThreadEnd :
+        if(executionGateAcquired)
+        {
+            ReportProfiles_Unlock();
+            executionGateAcquired = false;
+        }
         T2Info("%s while Loop -- END \n", __FUNCTION__);
         /* CRITICAL: Check wait condition in a loop to handle spurious wakeups.
          * pthread_cond_wait can wake up spuriously without an actual signal. We must verify the actual

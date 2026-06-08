@@ -395,6 +395,7 @@ static void* CollectAndReport(void* data)
         struct timespec elapsedTime;
         char* customLogPath = NULL;
         int clockReturn = 0;
+        bool executionGateAcquired = false;
 
         T2ERROR ret = T2ERROR_FAILURE;
         if( profile->name == NULL || profile->encodingType == NULL || profile->protocol == NULL )
@@ -420,6 +421,8 @@ static void* CollectAndReport(void* data)
             goto reportThreadEnd;
         }
 
+        ReportProfiles_Lock(profile->name);
+        executionGateAcquired = true;
         T2Info("%s ++in profileName : %s\n", __FUNCTION__, profile->name);
 
 
@@ -896,6 +899,11 @@ static void* CollectAndReport(void* data)
             T2Debug(" profile->triggerReportOnCondition is not set \n");
         }
 reportThreadEnd :
+    if(executionGateAcquired)
+    {
+        ReportProfiles_Unlock();
+        executionGateAcquired = false;
+    }
         T2Info("%s while Loop -- END; wait for restart event\n", __FUNCTION__);
         T2Info("%s --out\n", __FUNCTION__);
         pthread_mutex_lock(&profile->reuseThreadMutex);

@@ -91,6 +91,10 @@ static cap_user appcaps;
 static BulkData bulkdata;
 static bool rpInitialized = false;
 static char *t2Version = NULL;
+static pthread_mutex_t reportExecutionGateMutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t reportExecutionGateCond = PTHREAD_COND_INITIALIZER;
+static bool reportExecutionGateBusy = false;
+static char reportExecutionGateOwner[256] = { 0 };
 
 pthread_mutex_t rpMutex = PTHREAD_MUTEX_INITIALIZER;
 T2ERROR RemovePreRPfromDisk(const char* path, hash_map_t *map);
@@ -213,6 +217,44 @@ void ReportProfiles_Interrupt()
     }
 
     T2Debug("%s --out\n", __FUNCTION__);
+}
+
+void ReportProfiles_Lock(const char* profileName)
+{
+    const char* currentProfile = (profileName && profileName[0] != '\0') ? profileName : "UNKNOWN";
+    bool waitLogged = false;
+
+    pthread_mutex_lock(&reportExecutionGateMutex);
+    while(reportExecutionGateBusy)
+    {
+        if(!waitLogged)
+        {
+            T2Info("Report execution gate busy. profile=%s waiting for active profile=%s\n",
+                   currentProfile,
+                   reportExecutionGateOwner[0] != '\0' ? reportExecutionGateOwner : "UNKNOWN");
+            waitLogged = true;
+        }
+        pthread_cond_wait(&reportExecutionGateCond, &reportExecutionGateMutex);
+    }
+
+    reportExecutionGateBusy = true;
+    snprintf(reportExecutionGateOwner, sizeof(reportExecutionGateOwner), "%s", currentProfile);
+    T2Info("Report execution gate acquired for profile=%s\n", reportExecutionGateOwner);
+    pthread_mutex_unlock(&reportExecutionGateMutex);
+}
+
+void ReportProfiles_Unlock(void)
+{
+    pthread_mutex_lock(&reportExecutionGateMutex);
+    if(reportExecutionGateBusy)
+    {
+        T2Info("Report execution gate released for profile=%s\n",
+               reportExecutionGateOwner[0] != '\0' ? reportExecutionGateOwner : "UNKNOWN");
+        reportExecutionGateBusy = false;
+        reportExecutionGateOwner[0] = '\0';
+        pthread_cond_broadcast(&reportExecutionGateCond);
+    }
+    pthread_mutex_unlock(&reportExecutionGateMutex);
 }
 
 void ReportProfiles_TimeoutCb(char* profileName, bool isClearSeekMap)

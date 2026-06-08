@@ -91,6 +91,10 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
 
 void ReportProfiles_Interrupt();
 
+void ReportProfiles_Lock(const char* profileName);
+
+void ReportProfiles_Unlock(void);
+
 void generateDcaReport(bool isDelayed, bool isOnDemand);
 
 /* MSGPACK Declarations */

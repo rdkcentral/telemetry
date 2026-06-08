@@ -252,7 +252,7 @@ void ReportProfiles_Unlock(void)
                reportExecutionGateOwner[0] != '\0' ? reportExecutionGateOwner : "UNKNOWN");
         reportExecutionGateBusy = false;
         reportExecutionGateOwner[0] = '\0';
-        pthread_cond_broadcast(&reportExecutionGateCond);
+        pthread_cond_signal(&reportExecutionGateCond);
     }
     pthread_mutex_unlock(&reportExecutionGateMutex);
 }

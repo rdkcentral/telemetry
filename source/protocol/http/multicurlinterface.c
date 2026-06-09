@@ -77,7 +77,7 @@
 #define SAMPLE_WINDOW_DRAIN_RETRY_MS 100
 static bool pool_initialized = false;
 static bool pool_shutting_down = false;
-static bool sampling_window_active = false;
+static unsigned int sampling_window_refcount = 0;
 
 // pool_mutex protects pool state and synchronizes access to pool entries
 static pthread_mutex_t pool_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -116,7 +116,7 @@ T2ERROR http_pool_begin_sampling_window(unsigned int timeout_ms)
     }
 
     pthread_mutex_lock(&pool_mutex);
-    sampling_window_active = true;
+    sampling_window_refcount++;
     pthread_mutex_unlock(&pool_mutex);
 
     while (1)
@@ -177,7 +177,14 @@ T2ERROR http_pool_begin_sampling_window(unsigned int timeout_ms)
 void http_pool_end_sampling_window(void)
 {
     pthread_mutex_lock(&pool_mutex);
-    sampling_window_active = false;
+    if (sampling_window_refcount > 0)
+    {
+        sampling_window_refcount--;
+    }
+    else
+    {
+        T2Warning("http_pool_end_sampling_window called with refcount already 0\n");
+    }
     pthread_mutex_unlock(&pool_mutex);
 }
 
@@ -499,7 +506,7 @@ static T2ERROR acquire_pool_handle(CURL **easy, int *idx)
             return T2ERROR_FAILURE;
         }
 
-        if (sampling_window_active)
+        if (sampling_window_refcount > 0)
         {
             pthread_mutex_unlock(&pool_mutex);
 
@@ -519,7 +526,7 @@ static T2ERROR acquire_pool_handle(CURL **easy, int *idx)
             continue;
         }
 
-	// Try to find an available handle
+        // Try to find an available handle
         for(int i = 0; i < pool_size; i++)
         {
             if(pool_entries[i].handle_available)
@@ -576,7 +583,7 @@ static void release_pool_handle(int idx)
         {
             T2Warning("release_pool_handle called with active_requests already 0\n");
         }
-        T2Info("Released curl handle = %d, active_requests = %d\n", idx, active_requests);
+        T2Info("Released curl handle = %d, active_requests = %u\n", idx, active_requests);
     }
     else
     {

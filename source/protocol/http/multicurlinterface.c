@@ -505,21 +505,12 @@ static T2ERROR acquire_pool_handle(CURL **easy, int *idx)
             return T2ERROR_FAILURE;
         }
 
-        if (sampling_window_refcount > 0)
+       /* No timeout for sampling window — DCA always finishes finite work.
+        * pool_shutting_down check above is the escape hatch for process restart. */
+
+	if (sampling_window_refcount > 0)
         {
             pthread_mutex_unlock(&pool_mutex);
-
-            if (clock_gettime(CLOCK_MONOTONIC, &current_time) != 0)
-            {
-                T2Error("clock_gettime failed for current_time: %s\n", strerror(errno));
-                return T2ERROR_FAILURE;
-            }
-
-            if ((current_time.tv_sec - start_time.tv_sec) >= POOL_ACQUIRE_TIMEOUT_SEC)
-            {
-                T2Error("Timeout waiting for sampling window to complete, treating as upload failure\n");
-                return T2ERROR_FAILURE;
-            }
 
             usleep(POOL_ACQUIRE_RETRY_MS * 1000);
             continue;

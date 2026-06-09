@@ -37,6 +37,9 @@
 
 T2ERROR sendReportOverHTTP(char *httpUrl, char* payload);
 
+void setTopPatternExecuted(bool executed);
+T2ERROR sendReportOverHTTPWithSmartDelay(char* httpUrl, char* payload);
+
 T2ERROR sendCachedReportsOverHTTP(char *httpUrl, Vector *reportList);
 
 #ifdef LIBRDKCERTSEL_BUILD

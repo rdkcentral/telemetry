@@ -70,6 +70,26 @@ typedef enum _ADDRESS_TYPE
     ADDR_IPV6
 } ADDRESS_TYPE;
 
+#define T2_POST_TOP_SMART_DELAY_SEC  2
+static bool g_topPatternExecuted = false;
+
+void setTopPatternExecuted(bool executed)
+{
+    g_topPatternExecuted = executed;
+}
+
+T2ERROR sendReportOverHTTPWithSmartDelay(char* httpUrl, char* payload)
+{
+    if(g_topPatternExecuted)
+    {
+        T2Info("Smart delay: %d sec after top-pattern before HTTP upload\n",
+               T2_POST_TOP_SMART_DELAY_SEC);
+        sleep(T2_POST_TOP_SMART_DELAY_SEC);
+        g_topPatternExecuted = false;
+    }
+    return sendReportOverHTTP(httpUrl, payload);
+}
+
 T2ERROR sendReportOverHTTP(char *httpUrl, char *payload)
 {
     T2ERROR ret = T2ERROR_FAILURE;

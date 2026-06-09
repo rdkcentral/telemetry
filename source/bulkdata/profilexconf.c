@@ -59,6 +59,7 @@ static bool isOnDemandReport = false ;
 
 #ifdef GTEST_ENABLE
 #define sendReportOverHTTP __wrap_sendReportOverHTTP
+#define sendReportOverHTTPWithSmartDelay __wrap_sendReportOverHTTPWithSmartDelay
 #define sendCachedReportsOverHTTP __wrap_sendCachedReportsOverHTTP
 #endif
 
@@ -324,6 +325,7 @@ static void* CollectAndReportXconf(void* data)
             if(profile->topMarkerList != NULL && Vector_Size(profile->topMarkerList) > 0)
             {
                 processTopPattern(profile->name, profile->topMarkerList, count);
+                setTopPatternExecuted(true);
                 T2Info("Top markers report is completed\n");
                 encodeTopResultInJSON(valArray, profile->topMarkerList);
             }
@@ -445,7 +447,8 @@ static void* CollectAndReportXconf(void* data)
                 else
                 {
                     T2Debug("Abort upload is not yet set.\n");
-                    ret = sendReportOverHTTP(profile->t2HTTPDest->URL, jsonReport);
+                    ret = sendReportOverHTTPWithSmartDelay(profile->t2HTTPDest->URL, jsonReport);
+
                 }
 
 #ifdef PERSIST_LOG_MON_REF

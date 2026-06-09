@@ -49,6 +49,7 @@
 
 #ifdef GTEST_ENABLE
 #define sendReportOverHTTP __wrap_sendReportOverHTTP
+#define sendReportOverHTTPWithSmartDelay __wrap_sendReportOverHTTPWithSmartDelay
 #define sendCachedReportsOverHTTP __wrap_sendCachedReportsOverHTTP
 #endif
 
@@ -512,6 +513,7 @@ static void* CollectAndReport(void* data)
                 {
                     processTopPattern(profile->name, profile->topMarkerList, 0);
                     encodeTopResultInJSON(valArray, profile->topMarkerList);
+                    setTopPatternExecuted(true);
                 }
                 if(profile->gMarkerList != NULL && Vector_Size(profile->gMarkerList) > 0)
                 {
@@ -645,7 +647,7 @@ static void* CollectAndReport(void* data)
                             if(n == ETIMEDOUT)
                             {
                                 T2Info("TIMEOUT for maxUploadLatency of profile %s\n", profile->name);
-                                ret = sendReportOverHTTP(httpUrl, jsonReport);
+                                ret = sendReportOverHTTPWithSmartDelay(httpUrl, jsonReport);
                             }
                             else if(n == 0)
                             {
@@ -692,7 +694,7 @@ static void* CollectAndReport(void* data)
                         }
                         else
                         {
-                            ret = sendReportOverHTTP(httpUrl, jsonReport);
+                            ret = sendReportOverHTTPWithSmartDelay(httpUrl, jsonReport);
                         }
                     }
                     else

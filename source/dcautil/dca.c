@@ -47,6 +47,7 @@
 #include "t2log_wrapper.h"
 #include "t2common.h"
 #include "busInterface.h"
+#include "multicurlinterface.h"
 
 
 static bool check_rotated_logs = false; // using this variable to indicate whether it needs to check the rotated logs or not . Initialising it with false.
@@ -59,6 +60,12 @@ static bool firstreport_after_bootup = false; // the rotated logs check should r
 #define BUFFER_SIZE 4096  // TODO fine tune this value based on the size of the data    
 #define LARGE_FILE_THRESHOLD 1000000 // 1MB
 #define MAX_TIMESTAMP_LENGTH 24
+
+/*
+ * CPU contention avoidance window:
+ * prevent overlap between top/process sampling and telemetry curl work.
+ */
+#define DCA_SAMPLING_CURL_WAIT_TIMEOUT_MS 2000
 /**
  * @addtogroup DCA_TYPES
  * @{
@@ -256,6 +263,7 @@ static time_t extractUnixTimestamp(const char* line_start, size_t line_length)
 int processTopPattern(char* profileName,  Vector* topMarkerList, int profileExecCounter)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
+    bool isSamplingActive = false;
     if(profileName == NULL || topMarkerList == NULL)
     {
         T2Error("Invalid arguments for %s\n", __FUNCTION__);
@@ -314,6 +322,18 @@ int processTopPattern(char* profileName,  Vector* topMarkerList, int profileExec
 
     for (; var < vCount; ++var) // Loop of marker list starts here
     {
+        if(!isSamplingActive)
+        {
+            /*
+             * Enter sampling window so new curl work is deferred while
+             * top/process markers are being collected.
+             */
+            if(http_pool_begin_sampling_window(DCA_SAMPLING_CURL_WAIT_TIMEOUT_MS) == T2ERROR_SUCCESS)
+            {
+                isSamplingActive = true;
+            }
+        }
+
         TopMarker* topMarkerObj = (TopMarker*) Vector_At(topMarkerList, var);
         if (!topMarkerObj || !topMarkerObj->logFile || !topMarkerObj->searchString || !topMarkerObj->markerName)
         {
@@ -368,6 +388,13 @@ int processTopPattern(char* profileName,  Vector* topMarkerList, int profileExec
             getProcUsage(topMarkerObj->searchString, topMarkerObj, filename);
         }
 
+    }
+
+
+    if(isSamplingActive)
+    {
+        /* Leave sampling window and allow deferred curl work to proceed. */
+        http_pool_end_sampling_window();
     }
 
 #if !defined(ENABLE_RDKC_SUPPORT) && !defined(ENABLE_RDKB_SUPPORT)

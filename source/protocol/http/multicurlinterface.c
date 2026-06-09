@@ -142,8 +142,14 @@ T2ERROR http_pool_begin_sampling_window(unsigned int timeout_ms)
                 break;
             }
 
-            elapsed_ms = (unsigned int)((current_time.tv_sec - start_time.tv_sec) * 1000U);
-            elapsed_ms += (unsigned int)((current_time.tv_nsec - start_time.tv_nsec) / 1000000L);
+            long sec = current_time.tv_sec - start_time.tv_sec;
+            long nsec = current_time.tv_nsec - start_time.tv_nsec;
+            if (nsec < 0)
+            {
+                sec--;
+                nsec += 1000000000L;
+            }
+            elapsed_ms = (unsigned int)(sec * 1000L + (nsec / 1000000L));
 
             if (elapsed_ms >= timeout_ms)
             {
@@ -565,6 +571,10 @@ static void release_pool_handle(int idx)
         if (active_requests > 0)
         {
             active_requests--;
+        }
+        else
+        {
+            T2Warning("release_pool_handle called with active_requests already 0\n");
         }
         T2Info("Released curl handle = %d, active_requests = %d\n", idx, active_requests);
     }

@@ -71,7 +71,7 @@
 #define MAX_ALLOWED_POOL_SIZE 5  // Maximum allowed pool size
 #define MIN_ALLOWED_POOL_SIZE 1  // Minimum allowed pool size
 #define HTTP_RESPONSE_FILE "/tmp/httpOutput.txt"
-#define POOL_ACQUIRE_TIMEOUT_SEC  35
+#define POOL_ACQUIRE_TIMEOUT_SEC  85
 #define POOL_ACQUIRE_RETRY_MS     100
 /* Maximum wait for in-flight requests to drain when DCA sampling starts. */
 #define SAMPLE_WINDOW_DRAIN_RETRY_MS 100

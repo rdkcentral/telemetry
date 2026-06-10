@@ -43,6 +43,8 @@ T2ERROR init_connection_pool();
 // New dedicated APIs for better separation of concerns
 T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_output);
 T2ERROR http_pool_post(const char *url, const char *payload);
+T2ERROR http_pool_begin_sampling_window(unsigned int timeout_ms);
+void http_pool_end_sampling_window(void);
 
 T2ERROR http_pool_cleanup(void);
 

@@ -73,8 +73,9 @@
 #define HTTP_RESPONSE_FILE "/tmp/httpOutput.txt"
 #define POOL_ACQUIRE_TIMEOUT_SEC  85
 #define POOL_ACQUIRE_RETRY_MS     100
-/* Polling interval while waiting for in-flight requests to drain when DCA sampling starts. */
+/* Polling interval while waiting for in-flight requests to drain when DCA sampling starts. */
 #define SAMPLE_WINDOW_DRAIN_RETRY_MS 100
+
 static bool pool_initialized = false;
 static bool pool_shutting_down = false;
 static unsigned int sampling_window_refcount = 0;
@@ -753,7 +754,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
                 }
             }
         }
-        while(rdkcertselector_setCurlStatus(handleCertSelector, curl_code, (const char*)url) == TRY_ANOTHER);
+        while(rdkcertselector_setCurlStatus(handleCertSelector, curl_code, (const char * )url) == TRY_ANOTHER);
 #else
         // Fallback to getMtlsCerts if certificate selector not available
         if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pCertPC))
@@ -930,7 +931,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
     {
 #ifdef LIBRDKCONFIG_BUILD
         size_t sKey = strlen(pCertPC);
-        if (rdkconfig_free((unsigned char**)&pCertPC, sKey) == RDKCONFIG_FAIL)
+        if (rdkconfig_free((unsigned char * *)&pCertPC, sKey) == RDKCONFIG_FAIL)
         {
             T2Error("Failed to free password using rdkconfig\n");
         }
@@ -1148,7 +1149,7 @@ T2ERROR http_pool_post(const char *url, const char *payload)
                 }
             }
         }
-        while(rdkcertselector_setCurlStatus(thisCertSel, curl_code, (const char*)url) == TRY_ANOTHER);
+        while(rdkcertselector_setCurlStatus(thisCertSel, curl_code, (const char * )url) == TRY_ANOTHER);
 #else
         // Fallback to getMtlsCerts if certificate selector not available
         if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pCertPC))
@@ -1218,7 +1219,7 @@ T2ERROR http_pool_post(const char *url, const char *payload)
     {
 #ifdef LIBRDKCONFIG_BUILD
         size_t sKey = strlen(pCertPC);
-        if (rdkconfig_free((unsigned char**)&pCertPC, sKey) == RDKCONFIG_FAIL)
+        if (rdkconfig_free((unsigned char * *)&pCertPC, sKey) == RDKCONFIG_FAIL)
         {
             T2Error("Failed to free password using rdkconfig\n");
         }

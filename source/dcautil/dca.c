@@ -64,7 +64,7 @@ static bool firstreport_after_bootup = false; // the rotated logs check should r
  * CPU contention avoidance window:
  * prevent overlap between top/process sampling and telemetry curl work.
  */
-#define DCA_SAMPLING_CURL_WAIT_TIMEOUT_MS 2000
+#define DCA_SAMPLING_CURL_WAIT_TIMEOUT_MS 15000
 /**
  * @addtogroup DCA_TYPES
  * @{

@@ -33,6 +33,7 @@
 #include <sys/stat.h>
 #include <signal.h>
 #include <time.h>
+#include <errno.h>
 #include <openssl/err.h>
 #include <openssl/crypto.h>
 #include "multicurlinterface.h"
@@ -70,10 +71,14 @@
 #define MAX_ALLOWED_POOL_SIZE 5  // Maximum allowed pool size
 #define MIN_ALLOWED_POOL_SIZE 1  // Minimum allowed pool size
 #define HTTP_RESPONSE_FILE "/tmp/httpOutput.txt"
-#define POOL_ACQUIRE_TIMEOUT_SEC  35
+#define POOL_ACQUIRE_TIMEOUT_SEC  85
 #define POOL_ACQUIRE_RETRY_MS     100
+/* Polling interval while waiting for in-flight requests to drain when DCA sampling starts. */
+#define SAMPLE_WINDOW_DRAIN_RETRY_MS 100
+
 static bool pool_initialized = false;
 static bool pool_shutting_down = false;
+static unsigned int sampling_window_refcount = 0;
 
 // pool_mutex protects pool state and synchronizes access to pool entries
 static pthread_mutex_t pool_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -94,6 +99,95 @@ static http_pool_entry_t *pool_entries = NULL;  // Dynamic array of pool entries
 static struct curl_slist *post_headers = NULL;  // Shared POST headers
 static int pool_size = 0;                       // Number of pool entries
 static unsigned int active_requests = 0;        // Number of in-flight curl_easy_perform() calls
+
+/*
+ * CPU contention avoidance window:
+ * while DCA top sampling is active, defer new curl acquisitions to avoid
+ * running two CPU-intensive telemetry paths in parallel.
+ */
+T2ERROR http_pool_begin_sampling_window(unsigned int timeout_ms)
+{
+    struct timespec start_time, current_time;
+    bool timeout_reached = false;
+
+    if (clock_gettime(CLOCK_MONOTONIC, &start_time) != 0)
+    {
+        T2Error("clock_gettime failed for start_time in %s: %s\n", __FUNCTION__, strerror(errno));
+        return T2ERROR_FAILURE;
+    }
+
+    pthread_mutex_lock(&pool_mutex);
+    sampling_window_refcount++;
+    pthread_mutex_unlock(&pool_mutex);
+
+    while (1)
+    {
+        unsigned int pending = 0;
+
+        pthread_mutex_lock(&pool_mutex);
+        pending = active_requests;
+        pthread_mutex_unlock(&pool_mutex);
+
+        if (pending == 0)
+        {
+            break;
+        }
+
+        if (timeout_ms > 0)
+        {
+            unsigned int elapsed_ms = 0;
+
+            if (clock_gettime(CLOCK_MONOTONIC, &current_time) != 0)
+            {
+                T2Error("clock_gettime failed for current_time in %s: %s\n", __FUNCTION__, strerror(errno));
+                break;
+            }
+
+            long sec = current_time.tv_sec - start_time.tv_sec;
+            long nsec = current_time.tv_nsec - start_time.tv_nsec;
+            if (nsec < 0)
+            {
+                sec--;
+                nsec += 1000000000L;
+            }
+            elapsed_ms = (unsigned int)(sec * 1000L + (nsec / 1000000L));
+
+            if (elapsed_ms >= timeout_ms)
+            {
+                timeout_reached = true;
+                break;
+            }
+        }
+
+        usleep(SAMPLE_WINDOW_DRAIN_RETRY_MS * 1000);
+    }
+
+    if (timeout_reached)
+    {
+        unsigned int pending_requests = 0;
+        pthread_mutex_lock(&pool_mutex);
+        pending_requests = active_requests;
+        pthread_mutex_unlock(&pool_mutex);
+        T2Warning("Sampling window started with %u active request(s) still in flight after %u ms\n",
+                  pending_requests, timeout_ms);
+    }
+
+    return T2ERROR_SUCCESS;
+}
+
+void http_pool_end_sampling_window(void)
+{
+    pthread_mutex_lock(&pool_mutex);
+    if (sampling_window_refcount > 0)
+    {
+        sampling_window_refcount--;
+    }
+    else
+    {
+        T2Warning("http_pool_end_sampling_window called with refcount already 0\n");
+    }
+    pthread_mutex_unlock(&pool_mutex);
+}
 
 #ifdef LIBRDKCERTSEL_BUILD
 #if defined(ENABLE_RED_RECOVERY_SUPPORT)
@@ -412,6 +506,26 @@ static T2ERROR acquire_pool_handle(CURL **easy, int *idx)
             return T2ERROR_FAILURE;
         }
 
+        if (sampling_window_refcount > 0)
+        {
+            pthread_mutex_unlock(&pool_mutex);
+
+            if (clock_gettime(CLOCK_MONOTONIC, &current_time) != 0)
+            {
+                T2Error("clock_gettime failed for current_time: %s\n", strerror(errno));
+                return T2ERROR_FAILURE;
+            }
+
+            if ((current_time.tv_sec - start_time.tv_sec) >= POOL_ACQUIRE_TIMEOUT_SEC)
+            {
+                T2Error("Timeout waiting for sampling window to complete, treating as upload failure\n");
+                return T2ERROR_FAILURE;
+            }
+
+            usleep(POOL_ACQUIRE_RETRY_MS * 1000);
+            continue;
+        }
+
         // Try to find an available handle
         for(int i = 0; i < pool_size; i++)
         {
@@ -461,8 +575,15 @@ static void release_pool_handle(int idx)
     if (idx >= 0 && idx < pool_size)
     {
         pool_entries[idx].handle_available = true;
-        active_requests--;
-        T2Info("Released curl handle = %d, active_requests = %d\n", idx, active_requests);
+        if (active_requests > 0)
+        {
+            active_requests--;
+        }
+        else
+        {
+            T2Warning("release_pool_handle called with active_requests already 0\n");
+        }
+        T2Info("Released curl handle = %d, active_requests = %u\n", idx, active_requests);
     }
     else
     {
@@ -633,7 +754,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
                 }
             }
         }
-        while(rdkcertselector_setCurlStatus(handleCertSelector, curl_code, (const char*)url) == TRY_ANOTHER);
+        while(rdkcertselector_setCurlStatus(handleCertSelector, curl_code, (const char * )url) == TRY_ANOTHER);
 #else
         // Fallback to getMtlsCerts if certificate selector not available
         if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pCertPC))
@@ -810,7 +931,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
     {
 #ifdef LIBRDKCONFIG_BUILD
         size_t sKey = strlen(pCertPC);
-        if (rdkconfig_free((unsigned char**)&pCertPC, sKey) == RDKCONFIG_FAIL)
+        if (rdkconfig_free((unsigned char * *)&pCertPC, sKey) == RDKCONFIG_FAIL)
         {
             T2Error("Failed to free password using rdkconfig\n");
         }
@@ -1028,7 +1149,7 @@ T2ERROR http_pool_post(const char *url, const char *payload)
                 }
             }
         }
-        while(rdkcertselector_setCurlStatus(thisCertSel, curl_code, (const char*)url) == TRY_ANOTHER);
+        while(rdkcertselector_setCurlStatus(thisCertSel, curl_code, (const char * )url) == TRY_ANOTHER);
 #else
         // Fallback to getMtlsCerts if certificate selector not available
         if(T2ERROR_SUCCESS == getMtlsCerts(&pCertFile, &pCertPC))
@@ -1098,7 +1219,7 @@ T2ERROR http_pool_post(const char *url, const char *payload)
     {
 #ifdef LIBRDKCONFIG_BUILD
         size_t sKey = strlen(pCertPC);
-        if (rdkconfig_free((unsigned char**)&pCertPC, sKey) == RDKCONFIG_FAIL)
+        if (rdkconfig_free((unsigned char * *)&pCertPC, sKey) == RDKCONFIG_FAIL)
         {
             T2Error("Failed to free password using rdkconfig\n");
         }

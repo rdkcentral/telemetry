@@ -35,6 +35,21 @@
 #define PREVIOUS_LOGS_VAL  "1"
 #define PREVIOUS_LOGS_PATH "/opt/logs/PreviousLogs/"
 
+/** Sentinel written by dcm-agent backup_logs on successful completion.
+ *  Telemetry waits for this file before grepping PREVIOUS_LOGS_PATH to
+ *  guarantee the previous-log directory is fully populated.
+ *  Cross-repo interface: also defined in dcm-agent backup_logs/include/backup_logs.h.
+ *  Any path change MUST be coordinated with the dcm-agent repository. */
+#define BACKUP_LOGS_DONE_FLAG      "/tmp/.backup_logs_done"
+#define BACKUP_LOGS_DONE_DIR       "/tmp"
+#define BACKUP_LOGS_DONE_FILENAME  ".backup_logs_done"
+
+#ifdef GTEST_ENABLE
+#  define BACKUP_LOGS_SYNC_TIMEOUT_S  2
+#else
+#  define BACKUP_LOGS_SYNC_TIMEOUT_S  60
+#endif
+
 typedef struct _GrepResult
 {
     const char* markerName;

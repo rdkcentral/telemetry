@@ -757,6 +757,16 @@ static int report_or_cache_data(char* telemetry_data, const char* markerName)
 void t2_init(char *component)
 {
     componentName = strdup(component);
+    initMutex();
+
+    if(initMessageBus() != T2ERROR_SUCCESS)
+    {
+        EVENT_ERROR("%s:%d, T2:initMessageBus failed in t2_init, will retry during event send\n", __func__, __LINE__);
+    }
+    else
+    {
+        isRFCT2Enable = true;
+    }
 }
 
 void t2_uninit(void)
@@ -787,7 +797,6 @@ T2ERROR t2_event_s(const char* marker, const char* value)
         EVENT_DEBUG("%s:%d, T2:component with pid = %d is trying to send event %s with value %s without component name \n", __func__, __LINE__, (int) getpid(), marker, value);
         return T2ERROR_COMPONENT_NULL;
     }
-    initMutex();
     pthread_mutex_lock(&sMutex);
     if ( NULL == marker || NULL == value)
     {

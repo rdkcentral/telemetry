@@ -94,7 +94,7 @@ TEST_F(datamodelTestFixture, datamodel_processProfile_before_init)
     "{\"type\":\"event\",\"eventName\":\"USED_MEM_accum_split\",\"component\":\"sysint\",\"use\":\"accumulate\",\"reportTimestamp\":\"Unix-Epoch\"},"
     "{\"type\":\"grep\",\"content\":\"cujo-agent\",\"logFile\":\"top_log.txt\",\"use\":\"absolute\"}],"
     "\"ReportingAdjustments\":{\"ReportOnUpdate\":true,\"FirstReportingInterval\":15,\"MaxUploadLatency\":20000},"
-    "\"HTTP\":{\"URL\":\"https://stbrtl.r53.xcal.tv/\",\"Compression\":\"None\",\"Method\":\"POST\","
+    "\"HTTP\":{\"URL\":\"https://example.com/\",\"Compression\":\"None\",\"Method\":\"POST\","
     "\"RequestURIParameter\":[{\"Name\":\"reportName\",\"Reference\":\"Profile.Name\"}]},"
     "\"JSONEncoding\":{\"ReportFormat\":\"NameValuePair\",\"ReportTimestamp\":\"None\"}}}]}";
     
@@ -138,7 +138,7 @@ TEST_F(datamodelTestFixture, datamodel_processProfile_RP)
     "{\"type\":\"event\",\"eventName\":\"USED_MEM_accum_split\",\"component\":\"sysint\",\"use\":\"accumulate\",\"reportTimestamp\":\"Unix-Epoch\"},"
     "{\"type\":\"grep\",\"content\":\"cujo-agent\",\"logFile\":\"top_log.txt\",\"use\":\"absolute\"}],"
     "\"ReportingAdjustments\":{\"ReportOnUpdate\":true,\"FirstReportingInterval\":15,\"MaxUploadLatency\":20000},"
-    "\"HTTP\":{\"URL\":\"https://stbrtl.r53.xcal.tv/\",\"Compression\":\"None\",\"Method\":\"POST\","
+    "\"HTTP\":{\"URL\":\"https://example.com/\",\"Compression\":\"None\",\"Method\":\"POST\","
     "\"RequestURIParameter\":[{\"Name\":\"reportName\",\"Reference\":\"Profile.Name\"}]},"
     "\"JSONEncoding\":{\"ReportFormat\":\"NameValuePair\",\"ReportTimestamp\":\"None\"}}}]}";
     EXPECT_CALL(*g_datamodelMock, ReportProfiles_ProcessReportProfilesBlob(_, _))
@@ -163,7 +163,7 @@ TEST_F(datamodelTestFixture, datamodel_processProfile_TRP)
     "{\"type\":\"event\",\"eventName\":\"USED_MEM_accum_split\",\"component\":\"sysint\",\"use\":\"accumulate\",\"reportTimestamp\":\"Unix-Epoch\"},"
     "{\"type\":\"grep\",\"content\":\"cujo-agent\",\"logFile\":\"top_log.txt\",\"use\":\"absolute\"}],"
     "\"ReportingAdjustments\":{\"ReportOnUpdate\":true,\"FirstReportingInterval\":15,\"MaxUploadLatency\":20000},"
-    "\"HTTP\":{\"URL\":\"https://stbrtl.r53.xcal.tv/\",\"Compression\":\"None\",\"Method\":\"POST\","
+    "\"HTTP\":{\"URL\":\"https://example.com/\",\"Compression\":\"None\",\"Method\":\"POST\","
     "\"RequestURIParameter\":[{\"Name\":\"reportName\",\"Reference\":\"Profile.Name\"}]},"
     "\"JSONEncoding\":{\"ReportFormat\":\"NameValuePair\",\"ReportTimestamp\":\"None\"}}}]}";
     
@@ -190,7 +190,7 @@ TEST_F(datamodelTestFixture, datamodel_processProfile_invalid)
     "{\"type\":\"event\",\"eventName\":\"USED_MEM_accum_split\",\"component\":\"sysint\",\"use\":\"accumulate\",\"reportTimestamp\":\"Unix-Epoch\"},"
     "{\"type\":\"grep\",\"content\":\"cujo-agent\",\"logFile\":\"top_log.txt\",\"use\":\"absolute\"}],"
     "\"ReportingAdjustments\":{\"ReportOnUpdate\":true,\"FirstReportingInterval\":15,\"MaxUploadLatency\":20000},"
-    "\"HTTP\":{\"URL\":\"https://stbrtl.r53.xcal.tv/\",\"Compression\":\"None\",\"Method\":\"POST\","
+    "\"HTTP\":{\"URL\":\"https://example.com/\",\"Compression\":\"None\",\"Method\":\"POST\","
     "\"RequestURIParameter\":[{\"Name\":\"reportName\",\"Reference\":\"Profile.Name\"}]},"
     "\"JSONEncoding\":{\"ReportFormat\":\"NameValuePair\",\"ReportTimestamp\":\"None\"}}}]}";
     
@@ -226,7 +226,7 @@ TEST_F(datamodelTestFixture, datamodel_processProfile_no_profiles)
     "{\"type\":\"event\",\"eventName\":\"USED_MEM_accum_split\",\"component\":\"sysint\",\"use\":\"accumulate\",\"reportTimestamp\":\"Unix-Epoch\"},"
     "{\"type\":\"grep\",\"content\":\"cujo-agent\",\"logFile\":\"top_log.txt\",\"use\":\"absolute\"}],"
     "\"ReportingAdjustments\":{\"ReportOnUpdate\":true,\"FirstReportingInterval\":15,\"MaxUploadLatency\":20000},"
-    "\"HTTP\":{\"URL\":\"https://stbrtl.r53.xcal.tv/\",\"Compression\":\"None\",\"Method\":\"POST\","
+    "\"HTTP\":{\"URL\":\"https://example.com/\",\"Compression\":\"None\",\"Method\":\"POST\","
     "\"RequestURIParameter\":[{\"Name\":\"reportName\",\"Reference\":\"Profile.Name\"}]},"
     "\"JSONEncoding\":{\"ReportFormat\":\"NameValuePair\",\"ReportTimestamp\":\"None\"}}}]}";
     

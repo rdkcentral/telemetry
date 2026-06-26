@@ -204,7 +204,7 @@ static void rBusInterface_Uninit( )
 
 static T2ERROR initMessageBus( )
 {
-    // EVENT_DEBUG("%s ++in\n", __FUNCTION__);
+    EVENT_ERROR("%s ++in\n", __FUNCTION__);
     T2ERROR status = T2ERROR_SUCCESS;
     char* component_id = (char*)CCSP_FIXED_COMP_ID;
 #if defined(CCSP_SUPPORT_ENABLED)
@@ -248,7 +248,7 @@ static T2ERROR initMessageBus( )
         }
     }
 #endif // CCSP_SUPPORT_ENABLED 
-    // EVENT_DEBUG("%s --out\n", __FUNCTION__);
+    EVENT_ERROR("%s --out\n", __FUNCTION__);
     return status;
 }
 
@@ -440,6 +440,7 @@ int filtered_event_send(const char* data, const char *markerName)
     rbusError_t ret = RBUS_ERROR_SUCCESS;
     int status = 0 ;
     EVENT_DEBUG("%s ++in\n", __FUNCTION__);
+    EVENT_ERROR("%s ++in\n", __FUNCTION__);
     if(!bus_handle)
     {
         EVENT_ERROR("bus_handle is null .. exiting !!! \n");
@@ -530,6 +531,7 @@ int filtered_event_send(const char* data, const char *markerName)
     }
 #endif // CCSP_SUPPORT_ENABLED 
     EVENT_DEBUG("%s --out with status %d \n", __FUNCTION__, status);
+    EVENT_ERROR("%s --out with status %d \n", __FUNCTION__, status);
     return status;
 }
 
@@ -560,6 +562,7 @@ static T2ERROR doPopulateEventMarkerList( )
 
     snprintf(deNameSpace[0], 124, "%s%s%s", T2_ROOT_PARAMETER, componentName, T2_EVENT_LIST_PARAM_SUFFIX);
     EVENT_DEBUG("rbus mode : Query marker list with data element = %s \n", deNameSpace[0]);
+    EVENT_ERROR("rbus mode : Query marker list with data element = %s \n", deNameSpace[0]);
 
     pthread_mutex_lock(&markerListMutex);
     EVENT_DEBUG("Lock markerListMutex & Clean up eventMarkerMap \n");
@@ -596,6 +599,7 @@ static T2ERROR doPopulateEventMarkerList( )
         eventMarkerMap = hash_map_create();
         rbusProperty_t rbusPropertyList = rbusObject_GetProperties(objectValue);
         EVENT_DEBUG("\t rbus mode :  Update event map for component %s with below events : \n", componentName);
+        EVENT_ERROR("\t rbus mode :  Update event map for component %s with below events : \n", componentName);
         while(NULL != rbusPropertyList)
         {
             const char* eventname = rbusProperty_GetName(rbusPropertyList);
@@ -668,6 +672,7 @@ static bool isCachingRequired( )
     rbusError_t retVal = RBUS_ERROR_SUCCESS;
 
     retVal = rbus_getUint(bus_handle, T2_OPERATIONAL_STATUS, &t2ReadyStatus);
+    EVENT_ERROR("Retrieved T2 Operational status: %d\n", t2ReadyStatus);
 
     if(retVal != RBUS_ERROR_SUCCESS)
     {
@@ -741,7 +746,7 @@ static int report_or_cache_data(char* telemetry_data, const char* markerName)
 
     if(isT2Ready)
     {
-        // EVENT_DEBUG("T2: Sending event : %s\n", telemetry_data);
+        EVENT_ERROR("T2: Sending event : %s\n", telemetry_data);
         ret = filtered_event_send(telemetry_data, markerName);
         if(0 != ret)
         {

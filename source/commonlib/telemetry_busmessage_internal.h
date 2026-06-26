@@ -27,7 +27,7 @@ const char destCompPath[64] = "/com/cisco/spvtg/ccsp/pam";
 
 
 #define EVENT_ERROR(format, ...) \
-    fprintf(stderr, "T2ERROR:%s %s:%d: ", __func__ , __FILE__, __LINE__ ); \
+    fprintf(stderr, "T2INFO:%s %s:%d: ", __func__ , __FILE__, __LINE__ ); \
     fprintf(stderr, (format), ##__VA_ARGS__ ); \
     fprintf(stderr, "\n" );
 

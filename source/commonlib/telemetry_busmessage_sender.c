@@ -42,6 +42,7 @@
 #include "t2log_wrapper.h"
 #include "telemetry_busmessage_internal.h"
 
+#if 0
 #define MESSAGE_DELIMITER "<#=#>"
 #define MAX_EVENT_CACHE 200
 #define T2_COMPONENT_READY    "/tmp/.t2ReadyToReceiveEvents"
@@ -925,4 +926,35 @@ T2ERROR t2_event_d(const char* marker, int value)
     EVENT_DEBUG("%s --out\n", __FUNCTION__);
     pthread_mutex_unlock(&dMutex);
     return retStatus ;
+}
+
+#endif
+void t2_init(char *component)
+{
+    (void)component;
+}
+
+void t2_uninit(void)
+{
+}
+
+T2ERROR t2_event_s(const char* marker, const char* value)
+{
+    (void)marker;
+    (void)value;
+    return T2ERROR_SUCCESS;
+}
+
+T2ERROR t2_event_f(const char* marker, double value)
+{
+    (void)marker;
+    (void)value;
+    return T2ERROR_SUCCESS;
+}
+
+T2ERROR t2_event_d(const char* marker, int value)
+{
+    (void)marker;
+    (void)value;
+    return T2ERROR_SUCCESS;
 }

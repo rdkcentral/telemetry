@@ -51,8 +51,14 @@ jobs:
     steps:
       - name: Upload results
         if: github.repository_owner == 'rdkcentral'
+        env:
+          TEST_RESULTS_PUSH_URL: ${{ secrets.TEST_RESULTS_PUSH_URL }}
         run: |
           echo "Contents in /tmp/Gtest_Report:"
           ls -l /tmp/Gtest_Report
+          if [ -z "${TEST_RESULTS_PUSH_URL}" ]; then
+            echo "TEST_RESULTS_PUSH_URL secret not set. Skipping test result upload."
+            exit 0
+          fi
           git config --global --add safe.directory `pwd`
-          gtest-json-result-push.py /tmp/Gtest_Report https://rdkeorchestrationservice.apps.cloud.comcast.net/rdke_orchestration_api/push_unit_test_results `pwd`
+          gtest-json-result-push.py /tmp/Gtest_Report "${TEST_RESULTS_PUSH_URL}" `pwd`

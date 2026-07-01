@@ -107,6 +107,25 @@ static void freeReportProfileConfig(void *data)
     }
 }
 
+static void* deleteProfileAsync(void *data)
+{
+    char *profileName = (char *)data;
+
+    if(profileName == NULL)
+    {
+        T2Error("profileName is NULL in deleteProfileAsync\n");
+        return NULL;
+    }
+
+    if(T2ERROR_SUCCESS != deleteProfile(profileName))
+    {
+        T2Error("Failed to delete profile asynchronously: %s\n", profileName);
+    }
+
+    free(profileName);
+    return NULL;
+}
+
 void freeProfile(void *data)
 {
     T2Debug("%s ++in \n", __FUNCTION__);
@@ -822,15 +841,27 @@ static void* CollectAndReport(void* data)
                                 }
                                 T2Error("ERROR: no method provider; profile will be deleted: %s %s\n", profile->name,
                                         profile->t2RBUSDest->rbusMethodName);
-                                if(T2ERROR_SUCCESS != deleteProfile(profile->name))
+                                char *profileNameCopy = strdup(profile->name);
+                                pthread_t deleteThread;
+                                if(profileNameCopy == NULL)
                                 {
-                                    T2Error("Failed to delete profile after RBUS_METHOD failures: %s\n", profile->name);
+                                    T2Error("Failed to allocate profile name for async delete: %s\n", profile->name);
                                     T2Info("%s --out\n", __FUNCTION__);
-                                    //return NULL;
                                     goto reportThreadEnd;
                                 }
+                                if(pthread_create(&deleteThread, NULL, deleteProfileAsync, profileNameCopy) != 0)
+                                {
+                                    T2Error("Failed to spawn async delete thread after RBUS_METHOD failures: %s\n", profile->name);
+                                    free(profileNameCopy);
+                                    T2Info("%s --out\n", __FUNCTION__);
+                                    goto reportThreadEnd;
+                                }
+                                if(pthread_detach(deleteThread) != 0)
+                                {
+                                    T2Warning("Failed to detach async delete thread for profile: %s\n", profile->name);
+                                }
+                                T2Info("Queued async delete for profile after RBUS_METHOD failures: %s\n", profile->name);
                                 T2Info("%s --out\n", __FUNCTION__);
-                                //return NULL;
                                 goto reportThreadEnd;
                             }
                         }

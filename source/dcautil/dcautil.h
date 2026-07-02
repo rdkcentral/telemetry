@@ -30,16 +30,11 @@
 
 #define TOPTEMP "/tmp/t2toplog"
 #define DCADONEFLAG "/tmp/.dca_done"
+#define TELEMETRY_PREVLOGS_DONE_FLAG "/tmp/.telemetry_prevlogs_done"
 
 #define PREVIOUS_LOG "PREVIOUS_LOG"
 #define PREVIOUS_LOGS_VAL  "1"
 #define PREVIOUS_LOGS_PATH "/opt/logs/PreviousLogs/"
-
-/** Sentinel written by dcm-agent backup_logs on successful completion.
- *  Telemetry waits for this file before grepping PREVIOUS_LOGS_PATH to
- *  guarantee the previous-log directory is fully populated.
- *  Cross-repo interface: also defined in dcm-agent backup_logs/include/backup_logs.h.
- *  Any path change MUST be coordinated with the dcm-agent repository. */
 #define BACKUP_LOGS_DONE_FLAG      "/tmp/.backup_logs_done"
 #define BACKUP_LOGS_DONE_DIR       "/tmp"
 #define BACKUP_LOGS_DONE_FILENAME  ".backup_logs_done"

@@ -57,6 +57,7 @@ static bool isT2Ready = false;
 static bool isRbusEnabled = false ;
 static pthread_mutex_t initMtx = PTHREAD_MUTEX_INITIALIZER;
 static bool isMutexInitialized = false ;
+static volatile bool isT2InitComplete = false ;
 
 static hash_map_t *eventMarkerMap = NULL;
 
@@ -756,12 +757,11 @@ static int report_or_cache_data(char* telemetry_data, const char* markerName)
     return ret;
 }
 
-/**
- * Initialize the component name with unique name
- */
-void t2_init(char *component)
+static void *t2_init_worker(void *arg)
 {
-    componentName = strdup(component);
+    (void)arg;
+    pthread_detach(pthread_self());
+
     initMutex();
 
     if(initMessageBus() != T2ERROR_SUCCESS)
@@ -771,6 +771,24 @@ void t2_init(char *component)
     else
     {
         isRFCT2Enable = true;
+    }
+
+    isT2InitComplete = true;
+    return NULL;
+}
+
+/**
+ * Initialize the component name with unique name
+ */
+void t2_init(char *component)
+{
+    pthread_t initThread;
+    componentName = strdup(component);
+
+    if(pthread_create(&initThread, NULL, t2_init_worker, NULL) != 0)
+    {
+        EVENT_ERROR("%s:%d, T2:Failed to create init worker thread, falling back to sync init\n", __func__, __LINE__);
+        t2_init_worker(NULL);
     }
 }
 
@@ -797,6 +815,11 @@ T2ERROR t2_event_s(const char* marker, const char* value)
     T2ERROR retStatus = T2ERROR_FAILURE ;
     EVENT_DEBUG("%s ++in\n", __FUNCTION__);
     char* strvalue = NULL;
+    if(!isT2InitComplete)
+    {
+        EVENT_DEBUG("%s:%d, T2:t2_init is not complete, dropping event %s\n", __func__, __LINE__, marker ? marker : "NULL");
+        return T2ERROR_FAILURE;
+    }
     if(componentName == NULL)
     {
         EVENT_DEBUG("%s:%d, T2:component with pid = %d is trying to send event %s with value %s without component name \n", __func__, __LINE__, (int) getpid(), marker, value);
@@ -844,6 +867,11 @@ T2ERROR t2_event_f(const char* marker, double value)
     T2ERROR retStatus = T2ERROR_FAILURE ;
     EVENT_DEBUG("%s ++in\n", __FUNCTION__);
 
+    if(!isT2InitComplete)
+    {
+        EVENT_DEBUG("%s:%d, T2:t2_init is not complete, dropping event %s\n", __func__, __LINE__, marker ? marker : "NULL");
+        return T2ERROR_FAILURE;
+    }
     if(componentName == NULL)
     {
         EVENT_DEBUG("%s:%d, T2:component with pid = %d is trying to send event %s with value %lf without component name \n", __func__, __LINE__, (int) getpid(), marker, value);
@@ -888,6 +916,11 @@ T2ERROR t2_event_d(const char* marker, int value)
     T2ERROR retStatus = T2ERROR_FAILURE ;
     EVENT_DEBUG("%s ++in\n", __FUNCTION__);
 
+    if(!isT2InitComplete)
+    {
+        EVENT_DEBUG("%s:%d, T2:t2_init is not complete, dropping event %s\n", __func__, __LINE__, marker ? marker : "NULL");
+        return T2ERROR_FAILURE;
+    }
     if(componentName == NULL)
     {
         EVENT_DEBUG("%s:%d, T2:component with pid = %d is trying to send event %s with value %d without component name \n", __func__, __LINE__, (int) getpid(), marker, value);

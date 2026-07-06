@@ -762,3 +762,195 @@ TEST(STOPXCONFCLIENT, success_check)
 {
      EXPECT_EQ(T2ERROR_SUCCESS, stopXConfClient());
 }
+
+/*
+ * Tests for the getTimezone() timeZoneDST fallback path.
+ *
+ * getTimezone() is a static function exercised indirectly via appendRequestParams().
+ * The fallback to /opt/persistent/timeZoneDST is reached after the JSON-based
+ * primary path exhausts its 10 retries without finding a timezone.
+ *
+ * Preconditions for each test:
+ *   - All getParameterValue calls succeed (6 calls with dummy values).
+ *   - getBuildType succeeds: fopen(DEVICE_PROPERTIES) returns a fake handle, fscanf
+ *     fills "BUILD_TYPE=PROD" and then returns EOF.
+ *   - getTimezone CPU_ARCH read: fopen(DEVICE_PROPERTIES) returns NULL (no CPU_ARCH).
+ *   - getTimezone JSON loop: fopen("/opt/output.json") returns NULL (10 retries fail).
+ * After these preconditions the timeZoneDST fallback is exercised.
+ */
+#if !defined(ENABLE_RDKB_SUPPORT) && !defined(ENABLE_RDKC_SUPPORT)
+
+// Helper to set up the mocks needed to reach the timeZoneDST fallback in getTimezone().
+// Requires g_fileIOMock and m_xconfclientMock to be set.
+static void SetupReachTimeZoneDSTFallback(FILE* devicePropsHandle)
+{
+    using namespace testing;
+
+    // All 6 getParameterValue calls succeed with dummy values.
+    EXPECT_CALL(*m_xconfclientMock, getParameterValue(_, _))
+        .Times(AtLeast(6))
+        .WillRepeatedly(Invoke([](const char*, char** val) -> T2ERROR {
+            *val = strdup("dummy");
+            return T2ERROR_SUCCESS;
+        }));
+
+    // getBuildType: fopen(DEVICE_PROPERTIES) -> devicePropsHandle, fscanf fills
+    // "BUILD_TYPE=PROD" and breaks (no EOF call), fclose returns 0.
+    EXPECT_CALL(*g_fileIOMock, fopen(StrEq("/etc/device.properties"), _))
+        .WillOnce(Return(devicePropsHandle))  // getBuildType
+        .WillOnce(Return(nullptr));            // getTimezone CPU_ARCH read
+
+    // getBuildType breaks out of its fscanf loop as soon as it finds "BUILD_TYPE",
+    // so fscanf is called exactly once.
+    EXPECT_CALL(*g_fileIOMock, fscanf(devicePropsHandle, _, _))
+        .WillOnce(Invoke([](FILE*, const char*, va_list args) -> int {
+            char* buf = va_arg(args, char*);
+            strncpy(buf, "BUILD_TYPE=PROD", 254);
+            buf[254] = '\0';
+            return 1;
+        }));
+
+    EXPECT_CALL(*g_fileIOMock, fclose(devicePropsHandle))
+        .WillOnce(Return(0));
+
+    // getTimezone JSON loop: fopen("/opt/output.json") returns NULL all 10 retries.
+    EXPECT_CALL(*g_fileIOMock, fopen(StrEq("/opt/output.json"), _))
+        .Times(10)
+        .WillRepeatedly(Return(nullptr));
+}
+
+// Test 1: fopen("/opt/persistent/timeZoneDST") returns NULL.
+// The fallback cannot open the file; timezone stays NULL; appendRequestParams returns FAILURE.
+TEST_F(xconfclientTestFixture, getTimezone_timeZoneDST_fopen_null)
+{
+    FILE* devicePropsHandle = reinterpret_cast<FILE*>(0x1234);
+    PREVENT_GTEST_LOGGING_DEADLOCK();
+    SetupReachTimeZoneDSTFallback(devicePropsHandle);
+
+    EXPECT_CALL(*g_fileIOMock, fopen(StrEq("/opt/persistent/timeZoneDST"), _))
+        .WillOnce(Return(nullptr));
+
+    CURLU* requestURL = curl_url();
+    curl_url_set(requestURL, CURLUPART_URL,
+                 "https://mockxconf:50050/loguploader/getT2DCMSettings", 0);
+    EXPECT_EQ(T2ERROR_FAILURE, appendRequestParams(requestURL));
+    curl_free(requestURL);
+    requestURL = NULL;
+}
+
+// Test 2: ftell returns -1 (unreadable/error).
+// The fallback opens the file but ftell fails; file is closed; timezone stays NULL.
+TEST_F(xconfclientTestFixture, getTimezone_timeZoneDST_ftell_negative)
+{
+    FILE* devicePropsHandle = reinterpret_cast<FILE*>(0x1234);
+    FILE* tzFile = reinterpret_cast<FILE*>(0x5678);
+    PREVENT_GTEST_LOGGING_DEADLOCK();
+    SetupReachTimeZoneDSTFallback(devicePropsHandle);
+
+    EXPECT_CALL(*g_fileIOMock, fopen(StrEq("/opt/persistent/timeZoneDST"), _))
+        .WillOnce(Return(tzFile));
+    EXPECT_CALL(*g_fileIOMock, fseek(tzFile, 0, SEEK_END))
+        .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, ftell(tzFile))
+        .WillOnce(Return(-1L));
+    EXPECT_CALL(*g_fileIOMock, fclose(tzFile))
+        .WillOnce(Return(0));
+
+    CURLU* requestURL = curl_url();
+    curl_url_set(requestURL, CURLUPART_URL,
+                 "https://mockxconf:50050/loguploader/getT2DCMSettings", 0);
+    EXPECT_EQ(T2ERROR_FAILURE, appendRequestParams(requestURL));
+    curl_free(requestURL);
+    requestURL = NULL;
+}
+
+// Test 3: ftell returns 0 (empty file).
+// The fallback opens the file but it is empty; file is closed; timezone stays NULL.
+TEST_F(xconfclientTestFixture, getTimezone_timeZoneDST_empty_file)
+{
+    FILE* devicePropsHandle = reinterpret_cast<FILE*>(0x1234);
+    FILE* tzFile = reinterpret_cast<FILE*>(0x5678);
+    PREVENT_GTEST_LOGGING_DEADLOCK();
+    SetupReachTimeZoneDSTFallback(devicePropsHandle);
+
+    EXPECT_CALL(*g_fileIOMock, fopen(StrEq("/opt/persistent/timeZoneDST"), _))
+        .WillOnce(Return(tzFile));
+    EXPECT_CALL(*g_fileIOMock, fseek(tzFile, 0, SEEK_END))
+        .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, ftell(tzFile))
+        .WillOnce(Return(0L));
+    EXPECT_CALL(*g_fileIOMock, fclose(tzFile))
+        .WillOnce(Return(0));
+
+    CURLU* requestURL = curl_url();
+    curl_url_set(requestURL, CURLUPART_URL,
+                 "https://mockxconf:50050/loguploader/getT2DCMSettings", 0);
+    EXPECT_EQ(T2ERROR_FAILURE, appendRequestParams(requestURL));
+    curl_free(requestURL);
+    requestURL = NULL;
+}
+
+// Test 4: ftell returns a value exceeding the 256-byte limit.
+// The fallback rejects oversized files; file is closed; timezone stays NULL.
+TEST_F(xconfclientTestFixture, getTimezone_timeZoneDST_file_too_large)
+{
+    FILE* devicePropsHandle = reinterpret_cast<FILE*>(0x1234);
+    FILE* tzFile = reinterpret_cast<FILE*>(0x5678);
+    PREVENT_GTEST_LOGGING_DEADLOCK();
+    SetupReachTimeZoneDSTFallback(devicePropsHandle);
+
+    EXPECT_CALL(*g_fileIOMock, fopen(StrEq("/opt/persistent/timeZoneDST"), _))
+        .WillOnce(Return(tzFile));
+    EXPECT_CALL(*g_fileIOMock, fseek(tzFile, 0, SEEK_END))
+        .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, ftell(tzFile))
+        .WillOnce(Return(512L));
+    EXPECT_CALL(*g_fileIOMock, fclose(tzFile))
+        .WillOnce(Return(0));
+
+    CURLU* requestURL = curl_url();
+    curl_url_set(requestURL, CURLUPART_URL,
+                 "https://mockxconf:50050/loguploader/getT2DCMSettings", 0);
+    EXPECT_EQ(T2ERROR_FAILURE, appendRequestParams(requestURL));
+    curl_free(requestURL);
+    requestURL = NULL;
+}
+
+// Test 5: Valid timezone string read from /opt/persistent/timeZoneDST.
+// The fallback reads a valid timezone; appendRequestParams returns SUCCESS.
+TEST_F(xconfclientTestFixture, getTimezone_timeZoneDST_valid_timezone)
+{
+    FILE* devicePropsHandle = reinterpret_cast<FILE*>(0x1234);
+    FILE* tzFile = reinterpret_cast<FILE*>(0x5678);
+    PREVENT_GTEST_LOGGING_DEADLOCK();
+    SetupReachTimeZoneDSTFallback(devicePropsHandle);
+
+    EXPECT_CALL(*g_fileIOMock, fopen(StrEq("/opt/persistent/timeZoneDST"), _))
+        .WillOnce(Return(tzFile));
+    EXPECT_CALL(*g_fileIOMock, fseek(tzFile, 0, SEEK_END))
+        .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, ftell(tzFile))
+        .WillOnce(Return(10L));
+    EXPECT_CALL(*g_fileIOMock, fseek(tzFile, 0, SEEK_SET))
+        .WillOnce(Return(0));
+    // fscanf fills the zone buffer with "US/Eastern" and then signals end-of-file.
+    EXPECT_CALL(*g_fileIOMock, fscanf(tzFile, _, _))
+        .WillOnce(::testing::Invoke([](FILE*, const char*, va_list args) -> int {
+            char* buf = va_arg(args, char*);
+            strncpy(buf, "US/Eastern", 10);
+            buf[10] = '\0';
+            return 1;
+        }))
+        .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, fclose(tzFile))
+        .WillOnce(Return(0));
+
+    CURLU* requestURL = curl_url();
+    curl_url_set(requestURL, CURLUPART_URL,
+                 "https://mockxconf:50050/loguploader/getT2DCMSettings", 0);
+    EXPECT_EQ(T2ERROR_SUCCESS, appendRequestParams(requestURL));
+    curl_free(requestURL);
+    requestURL = NULL;
+}
+
+#endif /* !defined(ENABLE_RDKB_SUPPORT) && !defined(ENABLE_RDKC_SUPPORT) */

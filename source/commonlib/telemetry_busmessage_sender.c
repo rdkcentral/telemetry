@@ -821,8 +821,20 @@ T2ERROR t2_event_s(const char* marker, const char* value)
     char* strvalue = NULL;
     if(!isT2InitComplete)
     {
-        EVENT_DEBUG("%s:%d, T2:t2_init is not complete, dropping event %s\n", __func__, __LINE__, marker ? marker : "NULL");
-        return T2ERROR_FAILURE;
+        EVENT_ERROR("%s:%d, T2:t2_init is not complete, caching event %s\n", __func__, __LINE__, marker ? marker : "NULL");
+        if(marker && value && strlen(value) > 0 && strcmp(value, "0") != 0)
+        {
+            int eventDataLen = strlen(marker) + strlen(value) + strlen(MESSAGE_DELIMITER) + 1;
+            char* buffer = (char*) malloc(eventDataLen * sizeof(char));
+            if(buffer)
+            {
+                pthread_t tid;
+                snprintf(buffer, eventDataLen, "%s%s%s", marker, MESSAGE_DELIMITER, value);
+                initMutex();
+                pthread_create(&tid, NULL, cacheEventToFile, (void *)buffer);
+            }
+        }
+        return T2ERROR_SUCCESS;
     }
     if(componentName == NULL)
     {
@@ -873,8 +885,21 @@ T2ERROR t2_event_f(const char* marker, double value)
 
     if(!isT2InitComplete)
     {
-        EVENT_DEBUG("%s:%d, T2:t2_init is not complete, dropping event %s\n", __func__, __LINE__, marker ? marker : "NULL");
-        return T2ERROR_FAILURE;
+        EVENT_ERROR("%s:%d, T2:t2_init is not complete, caching event %s\n", __func__, __LINE__, marker ? marker : "NULL");
+        if(marker)
+        {
+            char *buffer = (char*) malloc(MAX_DATA_LEN * sizeof(char));
+            if(buffer)
+            {
+                pthread_t tid;
+                char valStr[64] = { '\0' };
+                snprintf(valStr, sizeof(valStr), "%f", value);
+                snprintf(buffer, MAX_DATA_LEN, "%s%s%s", marker, MESSAGE_DELIMITER, valStr);
+                initMutex();
+                pthread_create(&tid, NULL, cacheEventToFile, (void *)buffer);
+            }
+        }
+        return T2ERROR_SUCCESS;
     }
     if(componentName == NULL)
     {
@@ -922,8 +947,21 @@ T2ERROR t2_event_d(const char* marker, int value)
 
     if(!isT2InitComplete)
     {
-        EVENT_DEBUG("%s:%d, T2:t2_init is not complete, dropping event %s\n", __func__, __LINE__, marker ? marker : "NULL");
-        return T2ERROR_FAILURE;
+        EVENT_ERROR("%s:%d, T2:t2_init is not complete, caching event %s\n", __func__, __LINE__, marker ? marker : "NULL");
+        if(marker && value != 0)
+        {
+            char *buffer = (char*) malloc(MAX_DATA_LEN * sizeof(char));
+            if(buffer)
+            {
+                pthread_t tid;
+                char valStr[64] = { '\0' };
+                snprintf(valStr, sizeof(valStr), "%d", value);
+                snprintf(buffer, MAX_DATA_LEN, "%s%s%s", marker, MESSAGE_DELIMITER, valStr);
+                initMutex();
+                pthread_create(&tid, NULL, cacheEventToFile, (void *)buffer);
+            }
+        }
+        return T2ERROR_SUCCESS;
     }
     if(componentName == NULL)
     {

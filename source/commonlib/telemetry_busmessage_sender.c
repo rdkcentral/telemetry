@@ -761,6 +761,7 @@ static void *t2_init_worker(void *arg)
 {
     (void)arg;
     pthread_detach(pthread_self());
+    EVENT_ERROR("%s ++in\n", __FUNCTION__);
 
     initMutex();
 
@@ -774,6 +775,7 @@ static void *t2_init_worker(void *arg)
     }
 
     isT2InitComplete = true;
+    EVENT_ERROR("%s --out\n", __FUNCTION__);
     return NULL;
 }
 
@@ -783,6 +785,7 @@ static void *t2_init_worker(void *arg)
 void t2_init(char *component)
 {
     pthread_t initThread;
+    EVENT_ERROR("%s ++in\n", __FUNCTION__);
     componentName = strdup(component);
 
     if(pthread_create(&initThread, NULL, t2_init_worker, NULL) != 0)
@@ -790,6 +793,7 @@ void t2_init(char *component)
         EVENT_ERROR("%s:%d, T2:Failed to create init worker thread, falling back to sync init\n", __func__, __LINE__);
         t2_init_worker(NULL);
     }
+    EVENT_ERROR("%s --out\n", __FUNCTION__);
 }
 
 void t2_uninit(void)

@@ -201,7 +201,23 @@ getGrepResults (GrepSeekProfile **GSP, Vector *markerList, bool isClearSeekMap, 
         freeGrepSeekProfile(*GSP);
         *GSP = createGrepSeekProfile(count);
     }
-
+     /* Signal that telemetry previous-log grep is complete.
+     * Downstream consumers (e.g. uploadSTBLogs) wait for this sentinel
+     * before starting the log upload to avoid incomplete telemetry data. */
+    if (customLogPath != NULL && strcmp(customLogPath, PREVIOUS_LOGS_PATH) == 0)
+    {
+        FILE *fp = fopen(TELEMETRY_PREVLOGS_DONE_FLAG, "w");
+        if (fp != NULL)
+        {
+            fclose(fp);
+            T2Info("Created telemetry previous-logs sentinel: %s\n", TELEMETRY_PREVLOGS_DONE_FLAG);
+        }
+        else
+        {
+            T2Error("%s: Failed to create sentinel %s (errno=%d)\n",
+                    __FUNCTION__, TELEMETRY_PREVLOGS_DONE_FLAG, errno);
+        }
+    }
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }

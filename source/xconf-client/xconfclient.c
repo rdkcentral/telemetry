@@ -835,9 +835,8 @@ T2ERROR fetchRemoteConfiguration(char *configURL, char **configData)
 
 T2ERROR getRemoteConfigURL(char **configURL)
 {
-
-    T2ERROR ret = T2ERROR_FAILURE;
     T2Debug("%s ++in\n", __FUNCTION__);
+    T2ERROR ret = T2ERROR_FAILURE;
 
     char *paramVal = NULL;
     /**
@@ -858,49 +857,35 @@ T2ERROR getRemoteConfigURL(char **configURL)
     }
 #endif
 
-    int retryCount = 0;
-    do
+    if (T2ERROR_SUCCESS == getParameterValue(TR181_CONFIG_URL, &paramVal))
     {
-        if (T2ERROR_SUCCESS == getParameterValue(TR181_CONFIG_URL, &paramVal))
+        if (NULL != paramVal)
         {
-            if (NULL != paramVal)
+            if ((strlen(paramVal) > 8) && (0 == strncmp(paramVal, "https://", 8)))   // Enforcing https for new endpoints
             {
-                if ((strlen(paramVal) > 8) && (0 == strncmp(paramVal, "https://", 8)))   // Enforcing https for new endpoints
-                {
-                    T2Info("Setting config URL base location to : %s\n", paramVal);
-                    *configURL = paramVal;
-                    ret = T2ERROR_SUCCESS;
-                    break;
-                }
-                else
-                {
-                    T2Error("URL doesn't start with https or is invalid !!! URL value received : %s .\n", paramVal);
-                    free(paramVal);
-                    ret = T2ERROR_INVALID_RESPONSE;
-                }
-
+                T2Info("Setting config URL base location to : %s\n", paramVal);
+                *configURL = paramVal;
+                ret = T2ERROR_SUCCESS;
             }
             else
             {
-                ret = T2ERROR_FAILURE;
-                break;
+                T2Error("URL doesn't start with https or is invalid !!! URL value received : %s .\n", paramVal);
+                free(paramVal);
+                ret = T2ERROR_INVALID_RESPONSE;
             }
+
         }
         else
         {
-            T2Error("Failed to fetch value for parameter %s \n", TR181_CONFIG_URL);
             ret = T2ERROR_FAILURE;
-            break;
-        }
-
-        if (ret == T2ERROR_INVALID_RESPONSE)
-        {
-            retryCount++;
-            T2Info("Retrying to fetch config URL, attempt %d\n", retryCount);
-            sleep(3); // Adding a small delay before retry
         }
     }
-    while (ret == T2ERROR_INVALID_RESPONSE && retryCount < 3);   // Recovery for any transient errors from TR181 provider
+    else
+    {
+        T2Error("Failed to fetch value for parameter %s \n", TR181_CONFIG_URL);
+        ret = T2ERROR_FAILURE;
+    }
+
     T2Debug("%s --out\n", __FUNCTION__);
     return ret;
 }

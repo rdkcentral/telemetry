@@ -411,28 +411,31 @@ int processTopPattern(char* profileName,  Vector* topMarkerList, int profileExec
  *  @return Returns the status of the operation.
  *  @retval Returns -1 on failure, appropriate errorcode otherwise.
  */
-static int getLogSeekValue(hash_map_t *logSeekMap, const char *name, long *seek_value)
+static int getLogSeekValue(hash_map_t *logSeekMap, const char *name, long *seek_value, ino_t *stored_inode)
 {
 
     T2Debug("%s ++in for file %s \n", __FUNCTION__, name);
     int rc = 0;
     if (logSeekMap)
     {
-        long *data = (long*) hash_map_get(logSeekMap, name) ;
+        LogSeekInfo *data = (LogSeekInfo*) hash_map_get(logSeekMap, name) ;
         if (data)
         {
-            *seek_value = *data ;
+            *seek_value = data->seekValue ;
+            *stored_inode = data->inode ;
         }
         else
         {
             T2Debug("data is null .. Setting seek value to 0 from getLogSeekValue \n");
             *seek_value = 0 ;
+            *stored_inode = 0 ;
         }
     }
     else
     {
         T2Debug("logSeekMap is null .. Setting seek value to 0 \n");
         *seek_value = 0 ;
+        *stored_inode = 0 ;
     }
     T2Debug("seekvalue for file %s is %ld\n", name, *seek_value);
     T2Debug("%s --out \n", __FUNCTION__);
@@ -447,7 +450,7 @@ static int getLogSeekValue(hash_map_t *logSeekMap, const char *name, long *seek_
  *  @return Returns the status of the operation.
  *  @retval Returns -1 on failure, appropriate errorcode otherwise.
  */
-static T2ERROR updateLogSeek(hash_map_t *logSeekMap, const char* logFileName, const long logfileSize)
+static T2ERROR updateLogSeek(hash_map_t *logSeekMap, const char* logFileName, const long logfileSize, const ino_t inode)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
     if(logSeekMap == NULL || logFileName == NULL)
@@ -455,12 +458,13 @@ static T2ERROR updateLogSeek(hash_map_t *logSeekMap, const char* logFileName, co
         T2Error("Invalid or NULL arguments\n");
         return T2ERROR_FAILURE;
     }
-    T2Debug("Adding seekvalue of %ld for %s to logSeekMap \n", logfileSize, logFileName);
-    long* val = (long *) malloc(sizeof(long));
+    T2Debug("Adding seekvalue of %ld (inode: %lu) for %s to logSeekMap \n", logfileSize, (unsigned long)inode, logFileName);
+    LogSeekInfo* val = (LogSeekInfo *) malloc(sizeof(LogSeekInfo));
     if(NULL != val)
     {
-        memset(val, 0, sizeof(long));
-        *val = logfileSize;
+        memset(val, 0, sizeof(LogSeekInfo));
+        val->seekValue = logfileSize;
+        val->inode = inode;
         hash_map_put(logSeekMap, strdup(logFileName), (void *)val, free);
     }
     else
@@ -892,10 +896,11 @@ static int processPatternWithOptimizedFunction(GrepMarker* marker, FileDescripto
     return 0;
 }
 
-static int getLogFileDescriptor(GrepSeekProfile* gsProfile, const char* logPath, const char* logFile, int old_fd, off_t* out_seek_value)
+static int getLogFileDescriptor(GrepSeekProfile* gsProfile, const char* logPath, const char* logFile, int old_fd, off_t* out_seek_value, bool* out_inode_changed)
 {
     long seek_value_from_map = 0;
-    getLogSeekValue(gsProfile->logFileSeekMap, logFile, &seek_value_from_map);
+    ino_t stored_inode = 0;
+    getLogSeekValue(gsProfile->logFileSeekMap, logFile, &seek_value_from_map, &stored_inode);
     if (old_fd != -1)
     {
         close(old_fd);
@@ -937,13 +942,23 @@ static int getLogFileDescriptor(GrepSeekProfile* gsProfile, const char* logPath,
     }
 
     // Check if the file size matches the seek value from the map
-    if (sb.st_size == seek_value_from_map)
+    if (sb.st_size == seek_value_from_map && sb.st_ino == stored_inode)
     {
         T2Debug("The logfile size matches the seek value (%ld) for %s\n", seek_value_from_map, logFile);
         close(fd);
         return -1; // Consistent error return value
     }
-    updateLogSeek(gsProfile->logFileSeekMap, logFile, sb.st_size);
+
+    // Detect inode change: if inode differs from stored value, the file was rotated
+    // This covers the corner case where new file grows past seek_value after rotation
+    *out_inode_changed = (stored_inode != 0 && sb.st_ino != stored_inode);
+    if (*out_inode_changed)
+    {
+        T2Info("Inode changed for %s (stored: %lu, current: %lu) - log rotation detected\n",
+               logFile, (unsigned long)stored_inode, (unsigned long)sb.st_ino);
+    }
+
+    updateLogSeek(gsProfile->logFileSeekMap, logFile, sb.st_size, sb.st_ino);
     *out_seek_value = seek_value_from_map;
     return fd;
 }
@@ -1025,7 +1040,7 @@ static void freeFileDescriptor(FileDescriptor* fileDescriptor)
     }
 }
 
-static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t seek_value, const char* logPath, const char* logFile, bool check_rotated )
+static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t seek_value, const char* logPath, const char* logFile, bool check_rotated, bool inode_changed)
 {
     char *addrcf = NULL;
     char *addrrf = NULL;
@@ -1090,7 +1105,9 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
         return NULL;
     }
 
-    if(seek_value > sb.st_size || check_rotated == true)
+    // Inode change means rotation happened even if current file size > seek_value
+    // In this case, read the rotated file from seek_value and the entire current file
+    if(seek_value > sb.st_size || check_rotated == true || inode_changed == true)
     {
         int rd = getRotatedLogFileDescriptor(logPath, logFile);
         if (rd != -1 && fstat(rd, &rb) == 0 && rb.st_size > 0)
@@ -1146,6 +1163,17 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
                 addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, 0);
                 addrrf = mmap(NULL, rb.st_size, PROT_READ, MAP_PRIVATE, tmp_rd, offset_in_page_size_multiple);
             }
+            else if(inode_changed)
+            {
+                // Inode changed means current file is NEW — read it entirely from offset 0
+                // Rotated file (old file) has size <= seek_value, meaning we already read
+                // most/all of it; read whatever remains (entire rotated file from 0)
+                rotated_fsize = rb.st_size;
+                main_fsize = sb.st_size;
+                bytes_ignored_main = 0;
+                addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, 0);
+                addrrf = mmap(NULL, rb.st_size, PROT_READ, MAP_PRIVATE, tmp_rd, 0);
+            }
             else
             {
                 rotated_fsize = rb.st_size;
@@ -1162,7 +1190,15 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
         {
             T2Debug("Error opening rotated file. Start search in current file\n");
             T2Debug("File size rounded to nearest page size used for offset read: %jd bytes\n", (intmax_t)offset_in_page_size_multiple);
-            if(seek_value < sb.st_size)
+            if(inode_changed)
+            {
+                // Inode changed but rotated file unavailable - read entire current file
+                T2Info("Rotated file unavailable after inode change, reading entire current file\n");
+                addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, 0);
+                bytes_ignored_main = 0;
+                main_fsize = sb.st_size;
+            }
+            else if(seek_value < sb.st_size)
             {
                 addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, offset_in_page_size_multiple);
                 bytes_ignored_main = bytes_ignored;
@@ -1341,7 +1377,8 @@ static int parseMarkerListOptimized(GrepSeekProfile *gsProfile, Vector * ip_vMar
 
             // Get a valid file descriptor for the current log file
             off_t seek_value = 0;
-            fd = getLogFileDescriptor(gsProfile, logPath, log_file_for_this_iteration, fd, &seek_value);
+            bool inode_changed = false;
+            fd = getLogFileDescriptor(gsProfile, logPath, log_file_for_this_iteration, fd, &seek_value, &inode_changed);
             prevfile = updateFilename(prevfile, log_file_for_this_iteration);
             if (fd == -1)
             {
@@ -1349,7 +1386,7 @@ static int parseMarkerListOptimized(GrepSeekProfile *gsProfile, Vector * ip_vMar
                 continue;
             }
 
-            fileDescriptor = getFileDeltaInMemMapAndSearch(fd, seek_value, logPath, log_file_for_this_iteration, check_rotated_logs);
+            fileDescriptor = getFileDeltaInMemMapAndSearch(fd, seek_value, logPath, log_file_for_this_iteration, check_rotated_logs, inode_changed);
 
             if (fd != -1)
             {
@@ -1437,7 +1474,7 @@ extractUnixTimestampFunc extractUnixTimestampFuncCallback(void)
     return extractUnixTimestamp;
 }
 
-typedef T2ERROR (*updateLogSeekFunc)(hash_map_t *, const char *, const long);
+typedef T2ERROR (*updateLogSeekFunc)(hash_map_t *, const char *, const long, const ino_t);
 updateLogSeekFunc updateLogSeekFuncCallback(void)
 {
     return updateLogSeek;

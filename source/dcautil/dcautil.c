@@ -105,12 +105,15 @@ T2ERROR saveSeekConfigtoFile(char* profileName, GrepSeekProfile *ProfileSeekMap)
     for (unsigned int i = 0; i < count ; i++)
     {
         char *logFileName = NULL;
-        long *seekvalue = NULL;
+        LogSeekInfo *seekInfo = NULL;
         logFileName = hash_map_lookupKey(logfileMap, i);
-        seekvalue = hash_map_lookup(logfileMap, i);
+        seekInfo = (LogSeekInfo *)hash_map_lookup(logfileMap, i);
         cJSON *logFileObj = cJSON_CreateObject();
-        cJSON_AddNumberToObject(logFileObj, logFileName, (double)*seekvalue);
-        cJSON_AddItemToArray(valArray, logFileObj);
+        cJSON_AddNumberToObject(logFileObj, "seekValue", (double)seekInfo->seekValue);
+        cJSON_AddNumberToObject(logFileObj, "inode", (double)seekInfo->inode);
+        cJSON *wrapper = cJSON_CreateObject();
+        cJSON_AddItemToObject(wrapper, logFileName, logFileObj);
+        cJSON_AddItemToArray(valArray, wrapper);
     }
     char *jsonReport = cJSON_PrintUnformatted(valArray);
     if(T2ERROR_SUCCESS != saveConfigToFile(SEEKFOLDER, profileName, jsonReport))
@@ -170,15 +173,32 @@ T2ERROR loadSavedSeekConfig(char *profileName, GrepSeekProfile *ProfileSeekMap)
 
             if (key != NULL)
             {
-                // Check the value type and print it
-                if (cJSON_IsNumber(value))
+                // New format: {"logFileName": {"seekValue": N, "inode": M}}
+                if (cJSON_IsObject(value))
                 {
-                    long *tempnum;
-                    double val = value->valuedouble;
-                    tempnum = (long *)malloc(sizeof(long));
-                    *tempnum = (long)val;
-                    hash_map_put(ProfileSeekMap->logFileSeekMap, strdup(key), tempnum, NULL);
-                    //printf("Key: %s, Value: %ld\n", key, *tempnum);
+                    cJSON *seekVal = cJSON_GetObjectItem(value, "seekValue");
+                    cJSON *inodeVal = cJSON_GetObjectItem(value, "inode");
+                    if (cJSON_IsNumber(seekVal))
+                    {
+                        LogSeekInfo *info = (LogSeekInfo *)malloc(sizeof(LogSeekInfo));
+                        if (info)
+                        {
+                            info->seekValue = (long)seekVal->valuedouble;
+                            info->inode = (inodeVal && cJSON_IsNumber(inodeVal)) ? (ino_t)inodeVal->valuedouble : 0;
+                            hash_map_put(ProfileSeekMap->logFileSeekMap, strdup(key), info, free);
+                        }
+                    }
+                }
+                // Legacy format: {"logFileName": N}
+                else if (cJSON_IsNumber(value))
+                {
+                    LogSeekInfo *info = (LogSeekInfo *)malloc(sizeof(LogSeekInfo));
+                    if (info)
+                    {
+                        info->seekValue = (long)value->valuedouble;
+                        info->inode = 0;  // No inode info in legacy format
+                        hash_map_put(ProfileSeekMap->logFileSeekMap, strdup(key), info, free);
+                    }
                 }
             }
 

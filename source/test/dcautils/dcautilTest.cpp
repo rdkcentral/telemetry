@@ -1654,17 +1654,18 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_InodeChanged_NewFileGrowsPastSeek)
 }
 
 /**
- * Test: Log rotation corner case — inode changed AND rotated file smaller than seek_value.
+ * Test: Multi-rotation corner case — rotated file is NOT the original.
  *
- * Scenario:
- *   - Stored: seekValue=5000, inode=11111
- *   - Current "Consolelog.txt.0": size=8000, inode=22222 (rotation detected)
- *   - Rotated "Consolelog.txt.1": size=3000 (< 5000, truncated before rotation)
+ * Scenario (from real device logs):
+ *   - Stored: seekValue=5000, inode=11111 (original file, now at .log.2 or deeper)
+ *   - Current "Consolelog.txt.0": size=8000, inode=22222 (newest file, rotation detected)
+ *   - Rotated "Consolelog.txt.1": size=3000, inode=33333 (INTERMEDIATE file, NOT the original)
  *
- * Expected: reads entire rotated file from 0 AND reads entire new current file from 0.
- * Without the fix, the new file would be read from offset 5000, losing data.
+ * Expected: reads ENTIRE rotated file from 0 AND ENTIRE new current file from 0.
+ * Without the fix, seek_value would be incorrectly applied to the intermediate
+ * rotated file, causing data loss (as seen with missing WPE_INFO_MigStatus_split).
  */
-TEST_F(dcaTestFixture, getDCAResultsInVector_InodeChanged_RotatedSmallerThanSeek)
+TEST_F(dcaTestFixture, getDCAResultsInVector_MultiRotation_IntermediateFile)
 {
     GrepSeekProfile *gsProfile = (GrepSeekProfile *)malloc(sizeof(GrepSeekProfile));
     gsProfile->logFileSeekMap = hash_map_create();
@@ -1672,17 +1673,17 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_InodeChanged_RotatedSmallerThanSeek
     LogSeekInfo *tempnum;
     tempnum = (LogSeekInfo *)malloc(sizeof(LogSeekInfo));
     tempnum->seekValue = 5000;
-    tempnum->inode = 11111;
+    tempnum->inode = 11111;  // Original file inode (now at .log.2 or deeper)
     hash_map_put(gsProfile->logFileSeekMap, strdup("Consolelog.txt.0"), (void*)tempnum, free);
 
     Vector* vecMarkerList = NULL;
     Vector_Create(&vecMarkerList);
     GrepMarker* marker = (GrepMarker*) malloc(sizeof(GrepMarker));
     memset(marker, 0, sizeof(GrepMarker));
-    marker->markerName = strdup("SYS_INFO_ROTATION_EDGE");
-    marker->searchString = strdup("EdgeMarker");
+    marker->markerName = strdup("WPE_INFO_MigStatus");
+    marker->searchString = strdup("Migration Status");
     marker->trimParam = true;
-    marker->regexParam = strdup("[0-9]+");
+    marker->regexParam = strdup("[A-Z_]+");
     marker->logFile = strdup("Consolelog.txt.0");
     marker->skipFreq = 0;
     marker->paramType = strdup("grep");
@@ -1701,12 +1702,12 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_InodeChanged_RotatedSmallerThanSeek
             .Times(2)
             .WillRepeatedly(Return(3));
 
-    // fstat: main inode=22222, rotated size=3000 (< seek_value 5000)
+    // fstat: main inode=22222, rotated inode=33333 (DIFFERENT from stored 11111)
     EXPECT_CALL(*g_fileIOMock, fstat(_, _))
         .Times(4)
         .WillOnce([](int fd, struct stat* statbuf) {
             statbuf->st_size = 8000;
-            statbuf->st_ino = 22222;
+            statbuf->st_ino = 22222;  // Current file — different from stored
             return 0;
         })
         .WillOnce([](int fd, struct stat* statbuf) {
@@ -1715,13 +1716,13 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_InodeChanged_RotatedSmallerThanSeek
             return 0;
         })
         .WillOnce([](int fd, struct stat* statbuf) {
-            statbuf->st_size = 3000;  // Rotated file SMALLER than seek_value
-            statbuf->st_ino = 11111;
+            statbuf->st_size = 3000;  // Intermediate rotated file
+            statbuf->st_ino = 33333;  // DIFFERENT from stored 11111 — multi-rotation!
             return 0;
         })
         .WillOnce([](int fd, struct stat* statbuf) {
             statbuf->st_size = 3000;
-            statbuf->st_ino = 11111;
+            statbuf->st_ino = 33333;
             return 0;
         });
 
@@ -1736,22 +1737,22 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_InodeChanged_RotatedSmallerThanSeek
             .WillOnce(Return(8000))
             .WillOnce(Return(3000));
 
-    // Both files mapped from offset 0 (entire contents) — this is the fix behavior
+    // Both files mapped from offset 0 — multi-rotation reads everything
     EXPECT_CALL(*g_fileIOMock, mmap(_,_,_,_,_,_))
             .Times(2)
             .WillOnce([](void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
                 // Main file: entire new file read from offset 0
-                EXPECT_EQ(0, offset);  // Verify: new file read from beginning
-                const char* test_str = "New file: EdgeMarker value 55 at start of new log\n";
+                EXPECT_EQ(0, offset);
+                const char* test_str = "New file: Migration Status is COMPLETED in current\n";
                 char* mapped_mem = (char*)malloc(length);
                 memset(mapped_mem, 0, length);
                 strncpy(mapped_mem, test_str, length - 1);
                 return (void*)mapped_mem;
             })
             .WillOnce([](void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
-                // Rotated file: entire file read from offset 0
-                EXPECT_EQ(0, offset);  // Verify: rotated file read from beginning
-                const char* test_str = "Rotated: EdgeMarker value 77 in old truncated log\n";
+                // Rotated (intermediate) file: read entirely from offset 0
+                EXPECT_EQ(0, offset);
+                const char* test_str = "Intermediate: Migration Status is STARTED in rotated\n";
                 char* mapped_mem = (char*)malloc(length);
                 memset(mapped_mem, 0, length);
                 strncpy(mapped_mem, test_str, length - 1);
@@ -1760,7 +1761,7 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_InodeChanged_RotatedSmallerThanSeek
 
     EXPECT_EQ(0, getDCAResultsInVector(gsProfile, vecMarkerList, false, "/opt/logs"));
 
-    // Marker found in both files
+    // Marker found in BOTH files (no data lost from intermediate file)
     EXPECT_EQ(2, marker->u.count);
 
     hash_map_destroy(gsProfile->logFileSeekMap, free);

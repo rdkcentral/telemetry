@@ -896,7 +896,7 @@ static int processPatternWithOptimizedFunction(GrepMarker* marker, FileDescripto
     return 0;
 }
 
-static int getLogFileDescriptor(GrepSeekProfile* gsProfile, const char* logPath, const char* logFile, int old_fd, off_t* out_seek_value, bool* out_inode_changed)
+static int getLogFileDescriptor(GrepSeekProfile* gsProfile, const char* logPath, const char* logFile, int old_fd, off_t* out_seek_value, bool* out_inode_changed, ino_t* out_stored_inode)
 {
     long seek_value_from_map = 0;
     ino_t stored_inode = 0;
@@ -960,6 +960,7 @@ static int getLogFileDescriptor(GrepSeekProfile* gsProfile, const char* logPath,
 
     updateLogSeek(gsProfile->logFileSeekMap, logFile, sb.st_size, sb.st_ino);
     *out_seek_value = seek_value_from_map;
+    *out_stored_inode = stored_inode;
     return fd;
 }
 
@@ -1040,7 +1041,7 @@ static void freeFileDescriptor(FileDescriptor* fileDescriptor)
     }
 }
 
-static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t seek_value, const char* logPath, const char* logFile, bool check_rotated, bool inode_changed)
+static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t seek_value, const char* logPath, const char* logFile, bool check_rotated, bool inode_changed, ino_t stored_inode)
 {
     char *addrcf = NULL;
     char *addrrf = NULL;
@@ -1155,19 +1156,39 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
                 return NULL;
             }
 
-            if(rb.st_size > seek_value)
+            // Determine if the rotated file is the ORIGINAL file we previously read
+            // (its inode matches our stored inode) or an intermediate file from
+            // multiple rotations (different inode — we've never seen this content).
+            bool rotated_is_original = (stored_inode != 0 && rb.st_ino == stored_inode);
+
+            if(rotated_is_original && rb.st_size > seek_value)
             {
+                // Rotated file IS the original — apply seek_value to skip already-read data
+                // Read unread tail of rotated + entire new current file
                 rotated_fsize = rb.st_size - seek_value;
                 main_fsize = sb.st_size;
                 bytes_ignored_rotated = bytes_ignored;
                 addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, 0);
                 addrrf = mmap(NULL, rb.st_size, PROT_READ, MAP_PRIVATE, tmp_rd, offset_in_page_size_multiple);
             }
+            else if(rotated_is_original && rb.st_size <= seek_value)
+            {
+                // Rotated file is original but we already read past its end — skip it
+                // Read entire new current file
+                rotated_fsize = 0;
+                main_fsize = sb.st_size;
+                bytes_ignored_main = 0;
+                addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, 0);
+                addrrf = NULL;
+                close(tmp_rd);
+                tmp_rd = -1;
+            }
             else if(inode_changed)
             {
-                // Inode changed means current file is NEW — read it entirely from offset 0
-                // Rotated file (old file) has size <= seek_value, meaning we already read
-                // most/all of it; read whatever remains (entire rotated file from 0)
+                // Rotated file is NOT the original (multi-rotation: intermediate file)
+                // We have never seen this content — read BOTH files entirely from 0
+                T2Info("Multi-rotation detected: rotated file inode %lu != stored %lu, reading both from 0\n",
+                       (unsigned long)rb.st_ino, (unsigned long)stored_inode);
                 rotated_fsize = rb.st_size;
                 main_fsize = sb.st_size;
                 bytes_ignored_main = 0;
@@ -1176,13 +1197,18 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
             }
             else
             {
+                // No inode change (seek_value > sb.st_size or check_rotated path)
+                // Legacy behavior: read entire rotated + current from seek
                 rotated_fsize = rb.st_size;
                 main_fsize = sb.st_size - seek_value;
                 bytes_ignored_main = bytes_ignored;
                 addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, offset_in_page_size_multiple);
                 addrrf = mmap(NULL, rb.st_size, PROT_READ, MAP_PRIVATE, tmp_rd, 0);
             }
-            close(tmp_rd);
+            if(tmp_rd != -1)
+            {
+                close(tmp_rd);
+            }
             close(rd);
             rd = -1;
         }
@@ -1378,7 +1404,8 @@ static int parseMarkerListOptimized(GrepSeekProfile *gsProfile, Vector * ip_vMar
             // Get a valid file descriptor for the current log file
             off_t seek_value = 0;
             bool inode_changed = false;
-            fd = getLogFileDescriptor(gsProfile, logPath, log_file_for_this_iteration, fd, &seek_value, &inode_changed);
+            ino_t prev_stored_inode = 0;
+            fd = getLogFileDescriptor(gsProfile, logPath, log_file_for_this_iteration, fd, &seek_value, &inode_changed, &prev_stored_inode);
             prevfile = updateFilename(prevfile, log_file_for_this_iteration);
             if (fd == -1)
             {
@@ -1386,7 +1413,7 @@ static int parseMarkerListOptimized(GrepSeekProfile *gsProfile, Vector * ip_vMar
                 continue;
             }
 
-            fileDescriptor = getFileDeltaInMemMapAndSearch(fd, seek_value, logPath, log_file_for_this_iteration, check_rotated_logs, inode_changed);
+            fileDescriptor = getFileDeltaInMemMapAndSearch(fd, seek_value, logPath, log_file_for_this_iteration, check_rotated_logs, inode_changed, prev_stored_inode);
 
             if (fd != -1)
             {

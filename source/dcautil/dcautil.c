@@ -53,7 +53,7 @@
  * @return true  sentinel detected within timeout
  * @return false timeout elapsed or inotify initialisation failed
  */
-static bool waitForBackupLogsDone(void)
+bool waitForBackupLogsDone(void)
 {
     /* Fast path: sentinel already written by backup_logs */
     if (access(BACKUP_LOGS_DONE_FLAG, F_OK) == 0)

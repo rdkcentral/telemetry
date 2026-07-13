@@ -89,7 +89,7 @@ int getMemInfo(procMemCpuInfo *pmInfo);
 int getCPUInfo(procMemCpuInfo *pInfo, char* filename);
 int getProcPidStat(int pid, procinfo * pinfo);
 int getTotalCpuTimes(int * totalTime);
-
+bool waitForBackupLogsDone(void);
 
 #ifdef PERSIST_LOG_MON_REF
 typedef void (*freeconfigdata)(void *data);

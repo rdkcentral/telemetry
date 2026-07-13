@@ -106,7 +106,12 @@ static bool waitForBackupLogsDone(void)
     {
         /* Check deadline */
         struct timespec now;
-        if (clock_gettime(CLOCK_MONOTONIC, &now) == 0 && now.tv_sec >= deadline.tv_sec)
+        if (clock_gettime(CLOCK_MONOTONIC, &now) != 0)
+        {
+            T2Error("clock_gettime failed (errno=%d) while waiting for backup_logs sentinel; proceeding without sync\n", errno);
+            break;
+        }
+        if (now.tv_sec >= deadline.tv_sec)
         {
             T2Warning("backup_logs sentinel not present after %ds; proceeding without sync\n",
                       BACKUP_LOGS_SYNC_TIMEOUT_S);

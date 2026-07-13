@@ -26,6 +26,8 @@
 #include <limits.h>
 #include <sys/select.h>
 #include <sys/inotify.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 #include "dca.h"
 #include "dcautil.h"
 #include "telemetry2_0.h"
@@ -211,10 +213,10 @@ getGrepResults (GrepSeekProfile **GSP, Vector *markerList, bool isClearSeekMap, 
      * before starting the log upload to avoid incomplete telemetry data. */
     if (customLogPath != NULL && strcmp(customLogPath, PREVIOUS_LOGS_PATH) == 0)
     {
-        FILE *fp = fopen(TELEMETRY_PREVLOGS_DONE_FLAG, "w");
-        if (fp != NULL)
+        int fd = open(TELEMETRY_PREVLOGS_DONE_FLAG, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+        if (fd >= 0)
         {
-            fclose(fp);
+            close(fd);
             T2Info("Created telemetry previous-logs sentinel: %s\n", TELEMETRY_PREVLOGS_DONE_FLAG);
         }
         else

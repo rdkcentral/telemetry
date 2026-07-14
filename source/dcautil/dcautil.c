@@ -36,23 +36,6 @@
 #include "legacyutils.h"
 #include "persistence.h"
 
-/**
- * @brief Wait for the backup_logs completion sentinel before grepping PreviousLogs.
- *
- * Strategy:
- * 1. Fast path: sentinel already present → return true immediately.
- * 2. Set up inotify on BACKUP_LOGS_DONE_DIR (/tmp) for IN_CREATE | IN_MOVED_TO.
- * 3. Re-check after watch is established to close the creation race window.
- * 4. select() loop with 2 s heartbeat; exit when sentinel appears or
- *    BACKUP_LOGS_SYNC_TIMEOUT_S total seconds have elapsed.
- *
- * This is a **soft gate**: if the function returns false (timeout or inotify
- * failure) the caller still proceeds — previous-log grep runs against whatever
- * files are present, and a warning is logged.
- *
- * @return true  Sentinel detected within timeout
- * @return false Timeout elapsed or sync could not be established (inotify/clock/select failure)
- */
 bool waitForBackupLogsDone(void)
 {
     /* Fast path: sentinel already written by backup_logs */

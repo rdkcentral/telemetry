@@ -50,8 +50,8 @@
  * failure) the caller still proceeds — previous-log grep runs against whatever
  * files are present, and a warning is logged.
  *
- * @return true  sentinel detected within timeout
- * @return false timeout elapsed or inotify initialisation failed
+ * @return true  Sentinel detected within timeout
+ * @return false Timeout elapsed or sync could not be established (inotify/clock/select failure)
  */
 bool waitForBackupLogsDone(void)
 {

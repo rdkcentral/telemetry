@@ -72,8 +72,7 @@ bool waitForBackupLogsDone(void)
     int wd = inotify_add_watch(ifd, BACKUP_LOGS_DONE_DIR, IN_CREATE | IN_MOVED_TO);
     if (wd < 0)
     {
-        T2Error("inotify_add_watch on %s failed (errno=%d); proceeding without backup_logs sync\n",
-                BACKUP_LOGS_DONE_DIR, errno);
+        T2Error("inotify_add_watch on %s failed (errno=%d); proceeding without backup_logs sync\n", BACKUP_LOGS_DONE_DIR, errno);
         close(ifd);
         return false;
     }
@@ -98,8 +97,7 @@ bool waitForBackupLogsDone(void)
     }
     deadline.tv_sec += BACKUP_LOGS_SYNC_TIMEOUT_S;
 
-    T2Info("Waiting up to %ds for backup_logs sentinel: %s\n",
-           BACKUP_LOGS_SYNC_TIMEOUT_S, BACKUP_LOGS_DONE_FLAG);
+    T2Info("Waiting up to %ds for backup_logs sentinel: %s\n", BACKUP_LOGS_SYNC_TIMEOUT_S, BACKUP_LOGS_DONE_FLAG);
 
     bool found = false;
     char buf[sizeof(struct inotify_event) + NAME_MAX + 1];
@@ -115,8 +113,7 @@ bool waitForBackupLogsDone(void)
         }
         if (now.tv_sec >= deadline.tv_sec)
         {
-            T2Warning("backup_logs sentinel not present after %ds; proceeding without sync\n",
-                      BACKUP_LOGS_SYNC_TIMEOUT_S);
+            T2Warning("backup_logs sentinel not present after %ds; proceeding without sync\n", BACKUP_LOGS_SYNC_TIMEOUT_S);
             break;
         }
 

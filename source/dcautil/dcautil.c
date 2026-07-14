@@ -187,17 +187,11 @@ getGrepResults (GrepSeekProfile **GSP, Vector *markerList, bool isClearSeekMap, 
         return T2ERROR_FAILURE;
     }
 
-    /* Synchronize with backup_logs before grepping the previous-log directory.
-     * backup_logs populates PREVIOUS_LOGS_PATH; reading it before the write is
-     * complete yields incomplete or empty results.  This is a soft gate — if the
-     * sentinel does not appear within BACKUP_LOGS_SYNC_TIMEOUT_S seconds we
-     * still proceed so telemetry is never permanently blocked. */
     if (customLogPath != NULL && strcmp(customLogPath, PREVIOUS_LOGS_PATH) == 0)
     {
         if (!waitForBackupLogsDone())
         {
-            T2Warning("%s: backup_logs sentinel absent; grepping %s with potentially incomplete data\n",
-                      __FUNCTION__, PREVIOUS_LOGS_PATH);
+            T2Warning("%s: backup_logs sentinel absent; grepping %s with potentially incomplete data\n", __FUNCTION__, PREVIOUS_LOGS_PATH);
         }
     }
 
@@ -208,9 +202,7 @@ getGrepResults (GrepSeekProfile **GSP, Vector *markerList, bool isClearSeekMap, 
         freeGrepSeekProfile(*GSP);
         *GSP = createGrepSeekProfile(count);
     }
-     /* Signal that telemetry previous-log grep is complete.
-     * Downstream consumers (e.g. uploadSTBLogs) wait for this sentinel
-     * before starting the log upload to avoid incomplete telemetry data. */
+  
     if (customLogPath != NULL && strcmp(customLogPath, PREVIOUS_LOGS_PATH) == 0)
     {
         int fd = open(TELEMETRY_PREVLOGS_DONE_FLAG, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);

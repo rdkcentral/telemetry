@@ -104,14 +104,28 @@ T2ERROR saveSeekConfigtoFile(char* profileName, GrepSeekProfile *ProfileSeekMap)
     cJSON *valArray = cJSON_CreateArray();
     for (unsigned int i = 0; i < count ; i++)
     {
-        char *logFileName = NULL;
-        LogSeekInfo *seekInfo = NULL;
-        logFileName = hash_map_lookupKey(logfileMap, i);
-        seekInfo = (LogSeekInfo *)hash_map_lookup(logfileMap, i);
+        char *logFileName = hash_map_lookupKey(logfileMap, i);
+        LogSeekInfo *seekInfo = (LogSeekInfo *)hash_map_lookup(logfileMap, i);
+        if (!logFileName || !seekInfo)
+        {
+            T2Warning("Skipping entry %u: NULL key or value in logFileSeekMap\n", i);
+            continue;
+        }
         cJSON *logFileObj = cJSON_CreateObject();
+        if (!logFileObj)
+        {
+            T2Error("Failed to allocate cJSON object for seek entry\n");
+            continue;
+        }
         cJSON_AddNumberToObject(logFileObj, "seekValue", (double)seekInfo->seekValue);
         cJSON_AddNumberToObject(logFileObj, "inode", (double)seekInfo->inode);
         cJSON *wrapper = cJSON_CreateObject();
+        if (!wrapper)
+        {
+            T2Error("Failed to allocate cJSON wrapper object\n");
+            cJSON_Delete(logFileObj);
+            continue;
+        }
         cJSON_AddItemToObject(wrapper, logFileName, logFileObj);
         cJSON_AddItemToArray(valArray, wrapper);
     }

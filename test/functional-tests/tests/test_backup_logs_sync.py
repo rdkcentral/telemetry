@@ -50,7 +50,15 @@ PREVIOUS_LOGS_DIR = "/opt/logs/PreviousLogs"
 PREVIOUS_LOGS_FILE = os.path.join(PREVIOUS_LOGS_DIR, "backup_sync_test.txt")
 PREVIOUS_LOGS_CONTENT = "backup_sync_test_marker_value_12345"
 
-# ── Profile that greps a PreviousLogs file with GenerateNow ──────────
+# ── Persistence paths (must match source/utils/persistence.h) ────────
+SEEKFOLDER = "/opt/.t2seekmap"
+REPORTPROFILES_PATH = "/opt/.t2reportprofiles"
+MSGPACK_FILE = "profiles.msgpack"
+T2_BOOTFLAG = "/tmp/.t2bootup"
+
+# ── Profile that greps a PreviousLogs file ───────────────────────────
+# GenerateNow must be false for the checkPreviousSeek path to activate
+# when the daemon loads this profile from disk at startup.
 _PROFILE_BACKUP_SYNC = json.dumps({
     "profiles": [{
         "name": "BACKUP_SYNC_TEST",
@@ -62,8 +70,7 @@ _PROFILE_BACKUP_SYNC = json.dumps({
             "Protocol": "HTTP",
             "EncodingType": "JSON",
             "ActivationTimeOut": 180,
-            "ReportingInterval": 120,
-            "GenerateNow": True,
+            "ReportingInterval": 300,
             "RootName": "backup_sync_report",
             "Parameter": [
                 {
@@ -99,6 +106,31 @@ def _create_previous_logs():
         f.write(PREVIOUS_LOGS_CONTENT + "\n")
         f.write("second line in backup sync test log\n")
 
+def _seed_persistence():
+    """Create persistence state (seek config + profile on disk) so the
+    daemon loads the profile with checkPreviousSeek=true on next startup.
+
+    Requires:
+    * SEEKFOLDER with a valid seek config for the profile name.
+    * Profile msgpack saved to REPORTPROFILES_PATH.
+    * BOOTFLAG absent so firstBootStatus() returns true.
+    """
+    os.makedirs(SEEKFOLDER, exist_ok=True)
+    seek_config = json.dumps([{"backup_sync_test.txt": 0}])
+    with open(os.path.join(SEEKFOLDER, "BACKUP_SYNC_TEST"), "w") as f:
+        f.write(seek_config)
+
+    os.makedirs(REPORTPROFILES_PATH, exist_ok=True)
+    data = json.loads(_PROFILE_BACKUP_SYNC)
+    raw_msgpack = msgpack.packb(data)
+    with open(os.path.join(REPORTPROFILES_PATH, MSGPACK_FILE), "wb") as f:
+        f.write(raw_msgpack)
+
+    try:
+        os.remove(T2_BOOTFLAG)
+    except FileNotFoundError:
+        pass
+
 def _full_reset():
     """Kill daemon, remove flags/sentinels, recreate PreviousLogs."""
     kill_telemetry(9)
@@ -108,6 +140,10 @@ def _full_reset():
     _clean_sentinels()
     _create_previous_logs()
     clear_T2logs()
+    try:
+        os.remove(T2_BOOTFLAG)
+    except FileNotFoundError:
+        pass
 
 
 # ── Test 1: fast path – sentinel already present ─────────────────────
@@ -120,13 +156,12 @@ def test_backup_sync_sentinel_preexists():
     # Pre-create the sentinel BEFORE starting the daemon
     open(BACKUP_LOGS_DONE_FLAG, "w").close()
 
-    run_telemetry()
-    sleep(2)
-    run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 DEBUG")
-    sleep(1)
+    # Seed persistence so profile loads from disk with checkPreviousSeek=true.
+    # On startup the daemon will call NotifyTimeout which triggers a report
+    # with customLogPath=PREVIOUS_LOGS_PATH, invoking waitForBackupLogsDone().
+    _seed_persistence()
 
-    rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string",
-                  _tomsgpack(_PROFILE_BACKUP_SYNC))
+    run_telemetry()
     sleep(5)
 
     # Verify fast-path log message
@@ -147,24 +182,21 @@ def test_backup_sync_sentinel_via_inotify():
     timeout window, inotify should detect it and the daemon proceeds."""
     _full_reset()
 
-    run_telemetry()
-    sleep(2)
-    run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 DEBUG")
-    sleep(1)
-
-    # Push profile – daemon will start waiting for the sentinel
-    rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string",
-                  _tomsgpack(_PROFILE_BACKUP_SYNC))
+    # Seed persistence so profile loads from disk with checkPreviousSeek=true.
+    # The daemon will call waitForBackupLogsDone() immediately at startup;
+    # since the sentinel doesn't exist yet it enters the inotify wait loop.
+    _seed_persistence()
 
     # Create the sentinel after a short delay (while daemon is waiting)
     def _create_sentinel():
-        sleep(3)
+        sleep(5)
         open(BACKUP_LOGS_DONE_FLAG, "w").close()
 
     t = threading.Thread(target=_create_sentinel, daemon=True)
     t.start()
 
-    sleep(10)  # Allow time for inotify detection + grep + report
+    run_telemetry()
+    sleep(15)  # Allow time for daemon start + inotify detection + grep + report
 
     # Verify inotify detection log (either "sentinel created" or "race resolved")
     inotify_log = grep_T2logs("backup_logs sentinel")
@@ -188,14 +220,11 @@ def test_backup_sync_timeout():
     BACKUP_LOGS_SYNC_TIMEOUT_S (60 s) and proceed with the grep anyway."""
     _full_reset()
 
-    # Do NOT create the sentinel — force the timeout path
-    run_telemetry()
-    sleep(2)
-    run_shell_command("rdklogctrl telemetry2_0 LOG.RDK.T2 DEBUG")
-    sleep(1)
+    # Do NOT create the sentinel — force the timeout path.
+    # Seed persistence so profile loads from disk with checkPreviousSeek=true.
+    _seed_persistence()
 
-    rbus_set_data(T2_REPORT_PROFILE_PARAM_MSG_PCK, "string",
-                  _tomsgpack(_PROFILE_BACKUP_SYNC))
+    run_telemetry()
 
     # Wait for the 60 s timeout + report generation
     sleep(70)

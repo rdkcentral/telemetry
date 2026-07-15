@@ -7,6 +7,7 @@ on:
 env:
   AUTOMATICS_UNAME: ${{ secrets.AUTOMATICS_UNAME }}
   AUTOMATICS_PASSCODE: ${{ secrets.AUTOMATICS_PASSCODE }}
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
 
 jobs:
   execute-L1-tests-on-pr:

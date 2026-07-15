@@ -40,6 +40,11 @@ public:
 };
 
 extern SystemMock* g_systemMock;
+/* Separate enable flags for clock_gettime/select mocking —
+ * these must NOT be globally intercepted when g_systemMock is active
+ * because gtest itself calls clock_gettime for timing. */
+extern bool g_mockClockGettime;
+extern bool g_mockSelect;
 
 extern "C" int system(const char* cmd);
 extern "C" int unlink(const char* str);

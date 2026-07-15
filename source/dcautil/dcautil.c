@@ -354,15 +354,32 @@ T2ERROR loadSavedSeekConfig(char *profileName, GrepSeekProfile *ProfileSeekMap)
 
             if (key != NULL)
             {
-                // Check the value type and print it
-                if (cJSON_IsNumber(value))
+                // New format: {"logFileName": {"seekValue": N, "inode": M}}
+                if (cJSON_IsObject(value))
                 {
-                    long *tempnum;
-                    double val = value->valuedouble;
-                    tempnum = (long *)malloc(sizeof(long));
-                    *tempnum = (long)val;
-                    hash_map_put(ProfileSeekMap->logFileSeekMap, strdup(key), tempnum, NULL);
-                    //printf("Key: %s, Value: %ld\n", key, *tempnum);
+                    cJSON *seekVal = cJSON_GetObjectItem(value, "seekValue");
+                    cJSON *inodeVal = cJSON_GetObjectItem(value, "inode");
+                    if (cJSON_IsNumber(seekVal))
+                    {
+                        LogSeekInfo *info = (LogSeekInfo *)malloc(sizeof(LogSeekInfo));
+                        if (info)
+                        {
+                            info->seekValue = (long)seekVal->valuedouble;
+                            info->inode = (inodeVal && cJSON_IsNumber(inodeVal)) ? (ino_t)inodeVal->valuedouble : 0;
+                            hash_map_put(ProfileSeekMap->logFileSeekMap, strdup(key), info, free);
+                        }
+                    }
+                }
+                // Legacy format: {"logFileName": N}
+                else if (cJSON_IsNumber(value))
+                {
+                    LogSeekInfo *info = (LogSeekInfo *)malloc(sizeof(LogSeekInfo));
+                    if (info)
+                    {
+                        info->seekValue = (long)value->valuedouble;
+                        info->inode = 0;  // No inode info in legacy format
+                        hash_map_put(ProfileSeekMap->logFileSeekMap, strdup(key), info, free);
+                    }
                 }
             }
 

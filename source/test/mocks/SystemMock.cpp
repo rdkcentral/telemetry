@@ -30,6 +30,7 @@ typedef int (*inotify_rm_watch_ptr) (int fd, int wd);
 typedef int (*clock_gettime_ptr) (clockid_t clk_id, struct timespec *tp);
 typedef int (*select_ptr) (int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout);
 
+
 system_ptr system_func = (system_ptr) dlsym(RTLD_NEXT, "system");
 unlink_ptr unlink_func = (unlink_ptr) dlsym(RTLD_NEXT, "unlink");
 access_ptr access_func = (access_ptr) dlsym(RTLD_NEXT, "access");
@@ -39,6 +40,12 @@ inotify_add_watch_ptr inotify_add_watch_func = (inotify_add_watch_ptr) dlsym(RTL
 inotify_rm_watch_ptr inotify_rm_watch_func = (inotify_rm_watch_ptr) dlsym(RTLD_NEXT, "inotify_rm_watch");
 clock_gettime_ptr clock_gettime_func = (clock_gettime_ptr) dlsym(RTLD_NEXT, "clock_gettime");
 select_ptr select_func = (select_ptr) dlsym(RTLD_NEXT, "select");
+
+/* Flags default to false — clock_gettime/select are only intercepted when
+ * a test explicitly enables them to avoid breaking gtest internals. */
+bool g_mockClockGettime = false;
+bool g_mockSelect = false;
+
 
 // Mock Method
 extern "C" int system(const char * cmd)
@@ -106,18 +113,18 @@ extern "C" int inotify_rm_watch(int fd, int wd)
 
 extern "C" int clock_gettime(clockid_t clk_id, struct timespec *tp)
 {
-    if (!g_systemMock)
+    if (g_systemMock && g_mockClockGettime)
     {
-        return clock_gettime_func(clk_id, tp);
+        return g_systemMock->clock_gettime(clk_id, tp);
     }
-    return g_systemMock->clock_gettime(clk_id, tp);
+    return clock_gettime_func(clk_id, tp);
 }
 
 extern "C" int select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout)
 {
-    if (!g_systemMock)
+    if (g_systemMock && g_mockSelect)
     {
-        return select_func(nfds, readfds, writefds, exceptfds, timeout);
+        return g_systemMock->select(nfds, readfds, writefds, exceptfds, timeout);
     }
-    return g_systemMock->select(nfds, readfds, writefds, exceptfds, timeout);
-}                                              
+    return select_func(nfds, readfds, writefds, exceptfds, timeout);
+}

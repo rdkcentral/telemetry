@@ -1,378 +1,2141 @@
 /*
- * If not stated otherwise in this file or this component's LICENSE file the
- * following copyright and licenses apply:
- *
- * Copyright 2019 RDK Management
+ * Copyright 2020 Comcast Cable Communications Management, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
-#include <stdlib.h>
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
+#include <iostream>
+#include <stdexcept>
+#include "test/mocks/SystemMock.h"
+#include "test/mocks/FileioMock.h"
+#include "test/mocks/rdklogMock.h"
+
+extern "C" {
 #include <stdio.h>
-#include <errno.h>
 #include <string.h>
-#include <time.h>
+#include <assert.h>
+#include <stdlib.h>
 #include <unistd.h>
-#include <limits.h>
-#include <sys/select.h>
+#include <stdarg.h>
+#include <errno.h>
 #include <sys/inotify.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include "dca.h"
-#include "dcautil.h"
+#include <glib.h>
+#include <glib/gi18n.h>
+#include "utils/vector.h"
+#include "dcautil/dca.h"
+#include "dcautil/legacyutils.h"
+#include "dcautil/dcautil.h"
+#include "dcautil/dcalist.h"
+#include "dcautil/rdk_linkedlist.h"
 #include "telemetry2_0.h"
-#include "t2log_wrapper.h"
-#include "t2common.h"
-#include "legacyutils.h"
-#include "persistence.h"
+#include "utils/t2log_wrapper.h"
+#include "utils/t2common.h"
+#include "ccspinterface/busInterface.h"
+}
 
-bool waitForBackupLogsDone(void)
+using namespace std;
+
+using ::testing::_;
+using ::testing::Return;
+using ::testing::StrEq;
+
+FileMock *g_fileIOMock = NULL;
+SystemMock * g_systemMock = NULL;
+rdklogMock *m_rdklogMock = NULL;
+
+// Define timestamp formats with their required lengths and strptime patterns
+typedef struct
 {
-    /* Fast path: sentinel already written by backup_logs */
-    if (access(BACKUP_LOGS_DONE_FLAG, F_OK) == 0)
+    const char* name;           // Format name for logging
+    const char* pattern;        // strptime pattern
+    size_t required_length;     // Minimum characters needed
+    size_t extract_length;      // Characters to extract for parsing
+} TimestampFormat;
+
+#define MAX_TIMESTAMP_LENGTH 24
+
+//testing the strnstr function
+static const char *strnstr(const char *haystack, const char *needle, size_t len)
+{
+    if (haystack  == NULL || needle == NULL)
     {
-        T2Info("backup_logs sentinel %s already present\n", BACKUP_LOGS_DONE_FLAG);
-        return true;
+        return NULL;
+    }
+    size_t needle_len = strlen(needle);
+    if (needle_len == 0)
+    {
+        return haystack;
     }
 
-    int ifd = inotify_init1(IN_CLOEXEC);
-    if (ifd < 0)
+    // Check if search is possible and prevent overflow
+    if (len < needle_len || len - needle_len > len)
     {
-        T2Error("inotify_init1 failed (errno=%d); proceeding without backup_logs sync\n", errno);
-        return false;
+        return NULL;
     }
 
-    int wd = inotify_add_watch(ifd, BACKUP_LOGS_DONE_DIR, IN_CREATE | IN_MOVED_TO);
-    if (wd < 0)
+    // Check minimum length requirements for optimized search
+    if (needle_len < 4)
     {
-        T2Error("inotify_add_watch on %s failed (errno=%d); proceeding without backup_logs sync\n", BACKUP_LOGS_DONE_DIR, errno);
-        close(ifd);
-        return false;
-    }
-
-    /* Re-check after watch is set — closes the race window between the first
-     * access() call and establishing the watch. */
-    if (access(BACKUP_LOGS_DONE_FLAG, F_OK) == 0)
-    {
-        T2Info("backup_logs sentinel detected (race resolved): %s\n", BACKUP_LOGS_DONE_FLAG);
-        inotify_rm_watch(ifd, wd);
-        close(ifd);
-        return true;
-    }
-
-    struct timespec deadline;
-    if (clock_gettime(CLOCK_MONOTONIC, &deadline) != 0)
-    {
-        T2Error("clock_gettime failed (errno=%d); proceeding without backup_logs sync\n", errno);
-        inotify_rm_watch(ifd, wd);
-        close(ifd);
-        return false;
-    }
-    deadline.tv_sec += BACKUP_LOGS_SYNC_TIMEOUT_S;
-
-    T2Info("Waiting up to %ds for backup_logs sentinel: %s\n", BACKUP_LOGS_SYNC_TIMEOUT_S, BACKUP_LOGS_DONE_FLAG);
-
-    bool found = false;
-    char buf[sizeof(struct inotify_event) + NAME_MAX + 1];
-
-    while (!found)
-    {
-        /* Check deadline */
-        struct timespec now;
-        if (clock_gettime(CLOCK_MONOTONIC, &now) != 0)
+        // Use simple search for short patterns
+        for (size_t i = 0; i <= len - needle_len; i++)
         {
-            T2Error("clock_gettime failed (errno=%d) while waiting for backup_logs sentinel; proceeding without sync\n", errno);
-            break;
-        }
-        if (now.tv_sec >= deadline.tv_sec)
-        {
-            T2Warning("backup_logs sentinel not present after %ds; proceeding without sync\n", BACKUP_LOGS_SYNC_TIMEOUT_S);
-            break;
-        }
-
-        struct timeval tv = {2, 0};
-        fd_set fds;
-        FD_ZERO(&fds);
-        FD_SET(ifd, &fds);
-
-        int ret = select(ifd + 1, &fds, NULL, NULL, &tv);
-        if (ret < 0)
-        {
-            if (errno == EINTR)
+            if (memcmp(haystack + i, needle, needle_len) == 0)
             {
-                continue;
+                return haystack + i;
             }
-            T2Error("select() failed (errno=%d) waiting for backup_logs sentinel\n", errno);
-            break;
         }
-        if (ret == 0)
-        {
-            continue;   /* 2 s heartbeat — loop back to check deadline */
-        }
+        return NULL;
+    }
 
-        ssize_t len = read(ifd, buf, sizeof(buf));
-        if (len <= 0)
+    size_t skip[256];
+    for (size_t i = 0; i < 256; ++i)
+    {
+        skip[i] = needle_len;
+    }
+    for (size_t i = 0; i < needle_len - 1; ++i)
+    {
+        skip[(unsigned char)needle[i]] = needle_len - i - 1;
+    }
+
+    size_t i = 0;
+    while (i <= len - needle_len)
+    {
+        size_t j = needle_len - 1;
+        while (j < needle_len && haystack[i + j] == needle[j])
         {
+            j--;
+        }
+        if (j == (size_t) -1)
+        {
+            return haystack + i; // Match found
+        }
+        size_t s = skip[(unsigned char)haystack[i + needle_len - 1]];
+        i += (s > 0) ? s : 1;
+    }
+    return NULL;
+}
+
+TEST(STRNSTR, SAMPLE1)
+{
+   char *haystack = "fdghfilikeflowershfjkh";
+   char *needle = "ilikeflowers";
+   EXPECT_STREQ(strnstr(haystack, needle, 22), "ilikeflowershfjkh");
+}
+
+TEST(STRNSTR, SAMPLE2)
+{
+   char *haystack = "fdghfilikehjowershfjkhilikeflowers";
+   char *needle = "ilikeflowers";
+   EXPECT_STREQ(strnstr(haystack, needle, 34), "ilikeflowers");
+}
+
+TEST(STRNSTR, SAMPLE3)
+{
+   char *haystack = "filikeflowershfjkhdghf";
+   char *needle = "ilikeflowers";
+   EXPECT_STREQ(strnstr(haystack, needle, 22), "ilikeflowershfjkhdghf");
+}
+
+TEST(STRNSTR, SAMPLE4)
+{
+   char *haystack = "abcabcabcde";
+   char *needle = "abcd";
+   EXPECT_STREQ(strnstr(haystack, needle, 11), "abcde");
+}
+
+TEST(STRNSTR, SAMPLE5)
+{
+   char *haystack = "abcabcabcabcabc";
+   char *needle = "abcd";
+   EXPECT_STREQ(strnstr(haystack, needle, 15), NULL);
+}
+
+TEST(STRNSTR, SAMPLE6)
+{
+   char *haystack = "abcdabcabcabcabc";
+   char *needle = "abcd";
+   EXPECT_STREQ(strnstr(haystack, needle, 15), "abcdabcabcabcabc");
+}
+
+static time_t extractUnixTimestamp(const char* line_start, size_t line_length)
+{
+    if (!line_start || line_length == 0)
+    {
+        T2Warning("%s: Invalid parameters\n", __FUNCTION__);
+        return 0;
+    }
+
+    static const TimestampFormat formats[] =
+    {
+        {"ISO 8601",   "%Y-%m-%dT%H:%M:%S", 23, 23},  // YYYY-MM-DDTHH:MM:SS.mmm
+        {"YYMMDD",     "%y%m%d-%H:%M:%S",   15, 15},  // YYMMDD-HH:MM:SS
+    };
+
+    for (int i = 0; i < 2; i++)
+    {
+        const TimestampFormat* fmt = &formats[i];
+
+        if (line_length < fmt->required_length)
+        {
+            T2Debug("%s: Line too short for %s format (need %zu chars)\n",
+                    __FUNCTION__, fmt->name, fmt->required_length);
             continue;
         }
 
-        ssize_t offset = 0;
-        while (offset < len)
+        // Extract timestamp string safely with memcpy
+        char timestamp_str[MAX_TIMESTAMP_LENGTH] = {0};
+        size_t copy_len = fmt->extract_length;
+
+        memcpy(timestamp_str, line_start, copy_len);
+        timestamp_str[copy_len] = '\0';
+
+        struct tm tm_time = {0};
+        char* result = strptime(timestamp_str, fmt->pattern, &tm_time);
+        if (result != NULL)
         {
-            struct inotify_event *ev = (struct inotify_event *)(buf + offset);
-            if (ev->len > 0 && strcmp(ev->name, BACKUP_LOGS_DONE_FILENAME) == 0)
+            tm_time.tm_isdst = -1;
+            time_t unix_timestamp = mktime(&tm_time);
+            if (unix_timestamp != -1)
             {
-                T2Info("backup_logs sentinel created: %s\n", BACKUP_LOGS_DONE_FLAG);
-                found = true;
-                break;
+                T2Debug("%s: Successfully parsed %s timestamp: %s -> Unix: %ld\n",
+                        __FUNCTION__, fmt->name, timestamp_str, (long)unix_timestamp);
+                return unix_timestamp;
             }
-            offset += (ssize_t)(sizeof(struct inotify_event) + ev->len);
-        }
-    }
-
-    inotify_rm_watch(ifd, wd);
-    close(ifd);
-    return found;
-}
-
-/**
- * @brief Get the Grep Results object. Main function called by rest of the consumers.
- *
- * @param profileName
- * @param markerList
- * @param grepResultList
- * @param isClearSeekMap
- * @param check_rotated
- * @param customLogPath
- * @return T2ERROR
- */
-
-T2ERROR
-getGrepResults (GrepSeekProfile **GSP, Vector *markerList, bool isClearSeekMap, bool check_rotated, char *customLogPath)
-{
-    T2Debug("%s ++in\n", __FUNCTION__);
-    if(GSP == NULL || markerList == NULL )
-    {
-        T2Error("Invalid Args or Args are NULL\n");
-        return T2ERROR_FAILURE;
-    }
-
-    if (customLogPath != NULL && strcmp(customLogPath, PREVIOUS_LOGS_PATH) == 0)
-    {
-        if (!waitForBackupLogsDone())
-        {
-            T2Warning("%s: backup_logs sentinel absent; grepping %s with potentially incomplete data\n", __FUNCTION__, PREVIOUS_LOGS_PATH);
-        }
-    }
-
-    getDCAResultsInVector(*GSP, markerList, check_rotated, customLogPath);
-    if (isClearSeekMap)
-    {
-        int count = (*GSP)->execCounter;
-        freeGrepSeekProfile(*GSP);
-        *GSP = createGrepSeekProfile(count);
-    }
-  
-    if (customLogPath != NULL && strcmp(customLogPath, PREVIOUS_LOGS_PATH) == 0)
-    {
-        int fd = open(TELEMETRY_PREVLOGS_DONE_FLAG, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
-        if (fd >= 0)
-        {
-            close(fd);
-            T2Info("Created telemetry previous-logs sentinel: %s\n", TELEMETRY_PREVLOGS_DONE_FLAG);
+            else
+            {
+                T2Warning("%s: mktime() failed for %s timestamp: %s\n",
+                          __FUNCTION__, fmt->name, timestamp_str);
+            }
         }
         else
         {
-            T2Error("%s: Failed to create sentinel %s (errno=%d)\n",
-                    __FUNCTION__, TELEMETRY_PREVLOGS_DONE_FLAG, errno);
+            T2Debug("%s: %s strptime() failed for: %s\n", __FUNCTION__, fmt->name, timestamp_str);
         }
     }
-    T2Debug("%s --out\n", __FUNCTION__);
-    return T2ERROR_SUCCESS;
+
+    size_t print_len = (line_length < MAX_TIMESTAMP_LENGTH) ? line_length : MAX_TIMESTAMP_LENGTH;
+    char debug_str[MAX_TIMESTAMP_LENGTH] = {0};
+    memcpy(debug_str, line_start, print_len);
+    debug_str[print_len] = '\0';
+
+    T2Debug("%s: Timestamp does not match any supported formats. "
+            "Supported: 'YYYY-MM-DDTHH:MM:SS.mmm', 'YYMMDD-HH:MM:SS'. "
+            "Found at line start: '%s'\n", __FUNCTION__, debug_str);
+
+    return 0;
 }
 
-// dcaFlagReportCompleation this function is used to create legacy DCA Flag DCADONEFLAG
-void dcaFlagReportCompleation()
+// Testing the extractUnixTimestamp function
+TEST(extractUnixTimestamp, VALID_ISO8601_TIMESTAMP)
 {
-    T2Debug("%s --in creating flag %s\n", __FUNCTION__, DCADONEFLAG);
-    FILE *fileCheck = fopen(DCADONEFLAG, "w+");
-    if (fileCheck == NULL )
-    {
-        T2Error(" Error in creating the Flag :  %s\n", DCADONEFLAG);
-    }
-    else
-    {
-        fclose(fileCheck);
-    }
-    T2Debug("%s --out\n", __FUNCTION__);
+    // Test ISO 8601 format: YYYY-MM-DDTHH:MM:SS.mmm
+    const char* timestamp_str = "2025-11-26T14:30:45.123";
+    time_t result = extractUnixTimestamp(timestamp_str, strlen(timestamp_str));
+    EXPECT_NE(result, (time_t)0);
+    
+    // Verify the parsed timestamp
+    struct tm *tm_info = localtime(&result);
+    EXPECT_EQ(tm_info->tm_year + 1900, 2025);
+    EXPECT_EQ(tm_info->tm_mon + 1, 11);
+    EXPECT_EQ(tm_info->tm_mday, 26);
+    EXPECT_EQ(tm_info->tm_hour, 14);
+    EXPECT_EQ(tm_info->tm_min, 30);
+    EXPECT_EQ(tm_info->tm_sec, 45);
 }
 
-# ifdef PERSIST_LOG_MON_REF
-T2ERROR saveSeekConfigtoFile(char* profileName, GrepSeekProfile *ProfileSeekMap)
+TEST(extractUnixTimestamp, VALID_YYMMDD_TIMESTAMP)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
-    if(profileName == NULL)
-    {
-        T2Error("Profile Name is not available\n");
-        return T2ERROR_FAILURE;
-    }
-    if(ProfileSeekMap == NULL)
-    {
-        T2Error("ProfileSeekMap is NULL\n");
-        return T2ERROR_FAILURE;
-    }
-    hash_map_t *logfileMap = ProfileSeekMap->logFileSeekMap;
-    if(logfileMap == NULL)
-    {
-        T2Error("logfileMap is NULL\n");
-        return T2ERROR_FAILURE;
-    }
-
-    unsigned int count = (unsigned int) hash_map_count(logfileMap);
-
-    cJSON *valArray = cJSON_CreateArray();
-    for (unsigned int i = 0; i < count ; i++)
-    {
-        char *logFileName = hash_map_lookupKey(logfileMap, i);
-        LogSeekInfo *seekInfo = (LogSeekInfo *)hash_map_lookup(logfileMap, i);
-        if (!logFileName || !seekInfo)
-        {
-            T2Warning("Skipping entry %u: NULL key or value in logFileSeekMap\n", i);
-            continue;
-        }
-        cJSON *logFileObj = cJSON_CreateObject();
-        if (!logFileObj)
-        {
-            T2Error("Failed to allocate cJSON object for seek entry\n");
-            continue;
-        }
-        cJSON_AddNumberToObject(logFileObj, "seekValue", (double)seekInfo->seekValue);
-        cJSON_AddNumberToObject(logFileObj, "inode", (double)seekInfo->inode);
-        cJSON *wrapper = cJSON_CreateObject();
-        if (!wrapper)
-        {
-            T2Error("Failed to allocate cJSON wrapper object\n");
-            cJSON_Delete(logFileObj);
-            continue;
-        }
-        cJSON_AddItemToObject(wrapper, logFileName, logFileObj);
-        cJSON_AddItemToArray(valArray, wrapper);
-    }
-    char *jsonReport = cJSON_PrintUnformatted(valArray);
-    if(T2ERROR_SUCCESS != saveConfigToFile(SEEKFOLDER, profileName, jsonReport))
-    {
-        T2Error("Failed to save config to file\n");
-        cJSON_Delete(valArray);
-        free(jsonReport);
-        return T2ERROR_FAILURE;
-    }
-    T2Debug("%s --out\n", __FUNCTION__);
-    return T2ERROR_SUCCESS;
+    // Test YYMMDD format: YYMMDD-HH:MM:SS
+    const char* timestamp_str = "251126-14:30:45";
+    time_t result = extractUnixTimestamp(timestamp_str, strlen(timestamp_str));
+    EXPECT_NE(result, (time_t)0);
+    
+    // Verify the parsed timestamp
+    struct tm *tm_info = localtime(&result);
+    EXPECT_EQ(tm_info->tm_year + 1900, 2025);
+    EXPECT_EQ(tm_info->tm_mon + 1, 11);
+    EXPECT_EQ(tm_info->tm_mday, 26);
+    EXPECT_EQ(tm_info->tm_hour, 14);
+    EXPECT_EQ(tm_info->tm_min, 30);
+    EXPECT_EQ(tm_info->tm_sec, 45);
 }
 
-T2ERROR loadSavedSeekConfig(char *profileName, GrepSeekProfile *ProfileSeekMap)
+TEST(extractUnixTimestamp, INVALID_TIMESTAMP_FORMAT)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
+    // Test with invalid timestamp format
+    const char* timestamp_str = "invalid-timestamp-format";
+    time_t result = extractUnixTimestamp(timestamp_str, strlen(timestamp_str));
+    EXPECT_EQ(result, (time_t)0);
+}
 
-    if(profileName == NULL)
-    {
-        T2Error("Profile Name is not available\n");
-        return T2ERROR_FAILURE;
-    }
-    int len = strlen(profileName) + strlen(SEEKFOLDER) + 2;
-    char *seekFile = (char *)malloc(len);
-    snprintf(seekFile, len, "%s/%s", SEEKFOLDER, profileName);
-    FILE *file = fopen(seekFile, "rb");
-    if(file == NULL)
-    {
-        T2Error("Failed to open file\n");
-        free(seekFile);
-        return T2ERROR_FAILURE;
-    }
-    fseek(file, 0, SEEK_END);
-    long fileSize = ftell(file);
-    fseek(file, 0, SEEK_SET);
+TEST(extractUnixTimestamp, NULL_PARAMETERS)
+{
+    // Test with NULL line_start
+    time_t result = extractUnixTimestamp(NULL, 20);
+    EXPECT_EQ(result, (time_t)0);
+    
+    // Test with zero length
+    const char* timestamp_str = "2025-11-26T14:30:45.123";
+    result = extractUnixTimestamp(timestamp_str, 0);
+    EXPECT_EQ(result, (time_t)0);
+}
 
-    char *data = malloc(fileSize + 1);
-    if (data == NULL)
-    {
-        T2Error("Memory allocation failed\n");
-        fclose(file);
-        return T2ERROR_FAILURE;
-    }
-    fread(data, 1, fileSize, file);
-    fclose(file);
-    data[fileSize] = '\0';
-    cJSON *json = cJSON_Parse(data);
-    cJSON *item = NULL;
-    //GrepSeekProfile *ProfileSeekMap = NULL;
-    cJSON_ArrayForEach(item, json)
-    {
-        // Each `item` is an object in the array
-        if (item->child != NULL)
-        {
-            const char *key = item->child->string;
-            cJSON *value = item->child;
+TEST(extractUnixTimestamp, SHORT_LINE_LENGTH)
+{
+    // Test with line too short for any valid timestamp
+    const char* timestamp_str = "2025-11-26T14:30:45.123";
+    time_t result = extractUnixTimestamp(timestamp_str, 10); // Too short
+    EXPECT_EQ(result, (time_t)0);
+}
 
-            if (key != NULL)
-            {
-                // New format: {"logFileName": {"seekValue": N, "inode": M}}
-                if (cJSON_IsObject(value))
-                {
-                    cJSON *seekVal = cJSON_GetObjectItem(value, "seekValue");
-                    cJSON *inodeVal = cJSON_GetObjectItem(value, "inode");
-                    if (cJSON_IsNumber(seekVal))
-                    {
-                        LogSeekInfo *info = (LogSeekInfo *)malloc(sizeof(LogSeekInfo));
-                        if (info)
-                        {
-                            info->seekValue = (long)seekVal->valuedouble;
-                            info->inode = (inodeVal && cJSON_IsNumber(inodeVal)) ? (ino_t)inodeVal->valuedouble : 0;
-                            hash_map_put(ProfileSeekMap->logFileSeekMap, strdup(key), info, free);
-                        }
-                    }
-                }
-                // Legacy format: {"logFileName": N}
-                else if (cJSON_IsNumber(value))
-                {
-                    LogSeekInfo *info = (LogSeekInfo *)malloc(sizeof(LogSeekInfo));
-                    if (info)
-                    {
-                        info->seekValue = (long)value->valuedouble;
-                        info->inode = 0;  // No inode info in legacy format
-                        hash_map_put(ProfileSeekMap->logFileSeekMap, strdup(key), info, free);
-                    }
-                }
-            }
+TEST(extractUnixTimestamp, EDGE_CASE_MINIMUM_LENGTH)
+{
+    // Test with minimum length for YYMMDD format (15 characters)
+    const char* timestamp_str = "251126-14:30:45extra_data";
+    time_t result = extractUnixTimestamp(timestamp_str, 15);
+    EXPECT_NE(result, (time_t)0);
+}
 
-        }
+TEST(extractUnixTimestamp, PARTIAL_MATCH)
+{
+    // Test with partial timestamp that looks valid but isn't complete
+    const char* timestamp_str = "2025-11-26T"; // Incomplete ISO format
+    time_t result = extractUnixTimestamp(timestamp_str, strlen(timestamp_str));
+    EXPECT_EQ(result, (time_t)0);
+}
+
+TEST(extractUnixTimestamp, MALFORMED_DATE)
+{
+    // Test with malformed date values
+    const char* timestamp_str = "2025-13-32T25:70:70.123"; // Invalid month/day/hour/min/sec
+    time_t result = extractUnixTimestamp(timestamp_str, strlen(timestamp_str));
+    EXPECT_EQ(result, (time_t)0);
+}
+
+TEST(extractUnixTimestamp, BOUNDARY_YEAR_VALUES)
+{
+    // Test with boundary year values for YYMMDD format
+    const char* timestamp_str1 = "001126-14:30:45"; // Year 2000
+    time_t result1 = extractUnixTimestamp(timestamp_str1, strlen(timestamp_str1));
+    EXPECT_NE(result1, (time_t)0);
+    
+    const char* timestamp_str2 = "991126-14:30:45"; // Year 2099
+    time_t result2 = extractUnixTimestamp(timestamp_str2, strlen(timestamp_str2));
+    EXPECT_NE(result2, (time_t)0);
+}
+
+//dcaproc.c
+
+TEST(GETPROCUSAGE, MARKER_NULL)
+{
+   EXPECT_EQ(-1, getProcUsage("telemetry2_0", NULL, NULL));
+}
+
+TEST(GETPROCUSAGE, PROCESS_NULL)
+{
+   char* filename = NULL;
+   filename = strdup("top_log.txt");
+   EXPECT_EQ(-1, getProcUsage(NULL, NULL, filename));
+   EXPECT_EQ(-1, getProcUsage(NULL, NULL, NULL));
+   free(filename);
+}
+
+TEST(GETPROCPIDSTAT, PINFO_NULL)
+{
+   EXPECT_EQ(0, getProcPidStat(12345, NULL));
+}
+
+TEST(GETPROCINFO, PMINFO_NULL)
+{
+   char* filename = NULL;
+   char* processName = NULL;
+   processName = strdup("telemetry2_0");
+   EXPECT_EQ(0, getProcInfo(NULL, filename));
+
+   filename = strdup("top_log.txt");
+   EXPECT_EQ(0, getProcInfo(NULL, filename));
+
+   procMemCpuInfo pInfo;
+   memset(&pInfo, '\0', sizeof(procMemCpuInfo));
+   memcpy(pInfo.processName, processName, strlen(processName) + 1);
+   pInfo.total_instance = 0;
+   EXPECT_NE(0,getProcInfo(&pInfo, NULL));
+   free(filename);
+   free(processName);
+}
+
+TEST(GETMEMINFO, PMINFO_NULL)
+{
+   EXPECT_EQ(0, getMemInfo(NULL));
+}
+
+TEST(GETCPUINFO, PINFO_NULL)
+{
+   char* filename = NULL;
+   EXPECT_EQ(0, getCPUInfo(NULL, filename));
+   filename = strdup("top_log.txt");
+   EXPECT_EQ(0, getCPUInfo(NULL, filename));
+
+
+}
+
+
+//dcautil.c
+char* gmarker1 = "SYS_INFO_BOOTUP";
+char* dcamarker1 = "SYS_INFO1";
+char* dcamarker2 = "SYS_INFO2";
+
+TEST(GETGREPRESULTS, PROFILENAME_NULL)
+{
+   Vector* markerlist = NULL;
+   Vector_Create(&markerlist);
+   Vector_PushBack(markerlist, (void*) strdup(dcamarker1));
+   Vector_PushBack(markerlist, (void*) strdup(dcamarker2));
+   Vector* grepResultlist = NULL;
+   Vector_Create(&grepResultlist);
+   GrepSeekProfile *gsProfile = (GrepSeekProfile *)malloc(sizeof(GrepSeekProfile));
+   gsProfile->logFileSeekMap = hash_map_create();
+   gsProfile->execCounter = 0;
+   hash_map_put(gsProfile->logFileSeekMap, strdup("t2_log.txt"), (void*)1, free);
+   EXPECT_EQ(T2ERROR_FAILURE, getGrepResults(NULL, markerlist, false, false,"/opt/logs"));
+   EXPECT_EQ(T2ERROR_FAILURE, getGrepResults(&gsProfile, NULL, false, false,"/opt/logs"));
+   EXPECT_EQ(T2ERROR_FAILURE, getGrepResults(NULL, markerlist, false, true,"/opt/logs"));
+   EXPECT_EQ(T2ERROR_FAILURE, getGrepResults(&gsProfile, NULL, false, true,"/opt/logs"));
+   Vector_Destroy(markerlist, free);
+   Vector_Destroy(grepResultlist, free);
+   if(gsProfile->logFileSeekMap)
+   {
+      hash_map_destroy(gsProfile->logFileSeekMap, free);
+   }
+   free(gsProfile);
+   grepResultlist = NULL;
+   markerlist = NULL;
+}
+
+#ifdef PERSIST_LOG_MON_REF
+TEST(saveSeekConfigtoFile, profilename_NULL)
+{
+   GrepSeekProfile *gsProfile = (GrepSeekProfile *)malloc(sizeof(GrepSeekProfile));
+   gsProfile->logFileSeekMap = hash_map_create();
+   gsProfile->execCounter = 0;
+   hash_map_put(gsProfile->logFileSeekMap, strdup("t2_log.txt"), (void*)1, free);
+   EXPECT_EQ(T2ERROR_FAILURE, saveSeekConfigtoFile(NULL, gsProfile));
+   EXPECT_EQ(T2ERROR_FAILURE, saveSeekConfigtoFile("RDKB_Profile1", NULL));
+   if(gsProfile->logFileSeekMap)
+   {
+        hash_map_destroy(gsProfile->logFileSeekMap, free);
+        gsProfile->logFileSeekMap = NULL;
+   }
+   EXPECT_EQ(T2ERROR_FAILURE, saveSeekConfigtoFile("RDKB_Profile1", gsProfile));
+}
+
+TEST(loadSavedSeekConfig, profilename_NULL)
+{
+   GrepSeekProfile *gsProfile = (GrepSeekProfile *)malloc(sizeof(GrepSeekProfile));
+   gsProfile->logFileSeekMap = hash_map_create();
+   gsProfile->execCounter = 0;
+   EXPECT_EQ(T2ERROR_FAILURE, loadSavedSeekConfig(NULL, gsProfile));
+   hash_map_destroy(gsProfile->logFileSeekMap, free);
+   free(gsProfile);
+}
+
+#endif
+
+
+TEST(GETLOADAVG, MARKER_NULL)
+{
+    EXPECT_EQ(0, getLoadAvg(NULL));
+}
+
+TEST(GETLOADAVG, VALID_MARKER)
+{
+    TopMarker* topMarker = (TopMarker*) malloc(sizeof(TopMarker));
+    memset(topMarker, 0, sizeof(TopMarker));
+    EXPECT_EQ(1, getLoadAvg(topMarker));
+    free(topMarker);
+}
+
+TEST(CREATEGREPSEEKPROFILE, SEEKMAPCREATE_CHECK)
+{
+    GrepSeekProfile *gsProfile = createGrepSeekProfile(0);
+    EXPECT_NE(gsProfile, nullptr);
+    EXPECT_NE(gsProfile->logFileSeekMap, nullptr);
+    EXPECT_EQ(gsProfile->execCounter, 0);
+    hash_map_destroy(gsProfile->logFileSeekMap, free);
+    free(gsProfile);
+}
+
+TEST(FREEFREPSEEKPROFILE, SEEKMAPFREE_CHECK)
+{
+    GrepSeekProfile *gsProfile = createGrepSeekProfile(0);
+    EXPECT_NE(gsProfile, nullptr);
+    EXPECT_NE(gsProfile->logFileSeekMap, nullptr);
+    EXPECT_EQ(gsProfile->execCounter, 0);
+        
+    freeGrepSeekProfile(gsProfile);
+        
+    // Check if the profile is freed correctly
+    EXPECT_NE(gsProfile, nullptr);
+}
+
+TEST(CLEARCONFVAL, FREECONFVAL)
+{
+        clearConfVal();
+}
+
+//dca.c
+TEST(PROCESSTOPPATTERN, VECTOR_NULL)
+{
+    Vector* topMarkerlist = NULL;
+    Vector_Create(&topMarkerlist);
+    TopMarker* topMarker = (TopMarker*) malloc(sizeof(TopMarker));
+    memset(topMarker, 0, sizeof(TopMarker));
+    topMarker->markerName = strdup("cpu_telemetry2_0");
+    topMarker->searchString = strdup("telemetry2_0");
+    topMarker->trimParam = false;
+    topMarker->regexParam = NULL;
+    topMarker->logFile = strdup("top_log.txt");
+    topMarker->skipFreq = 0;
+    topMarker->paramType = strdup("grep");
+    Vector_PushBack(topMarkerlist, (void*) topMarker);
+    EXPECT_EQ(0, processTopPattern("RDK_Profile", topMarkerlist, 1));
+
+    EXPECT_EQ(-1, processTopPattern(NULL, topMarkerlist, 1));
+    EXPECT_EQ(-1, processTopPattern("RDK_Profile",NULL, 1));
+
+    Vector_Destroy(topMarkerlist, free);
+    topMarkerlist = NULL;
+}
+
+TEST(getDCAResultsInVector, markerlist_NULL)
+{
+    Vector* markerlist = NULL;
+    Vector_Create(&markerlist);
+    Vector_PushBack(markerlist, (void*) strdup("SYS_INFO_BOOTUP"));
+    GrepSeekProfile *gsProfile = (GrepSeekProfile *)malloc(sizeof(GrepSeekProfile));
+    gsProfile->logFileSeekMap = hash_map_create();
+    gsProfile->execCounter = 0;
+    hash_map_put(gsProfile->logFileSeekMap, strdup("t2_log.txt"), (void*)1, free);
+    EXPECT_EQ(-1, getDCAResultsInVector(NULL, markerlist, true, "/opt/logs/core_log.txt"));
+    EXPECT_EQ(-1, getDCAResultsInVector(gsProfile, NULL, true, "/opt/logs/core_log.txt"));
+    // commenting the below case as string will never be passed to this function instead of the vector.
+    //EXPECT_EQ(-1, getDCAResultsInVector(gsProfile, markerlist, true, "/opt/logs/core_log.txt"));
+    hash_map_destroy(gsProfile->logFileSeekMap, free);
+    Vector_Destroy(markerlist, free);
+}
+
+class dcaTestFixture : public ::testing::Test {
+protected:
+    void SetUp() override
+    {
+        g_fileIOMock = new FileMock();
+	g_systemMock = new SystemMock();
     }
-    cJSON_Delete(json);
-    free(data);
-    free(seekFile);
-    return T2ERROR_SUCCESS;
-    T2Debug("%s --out\n", __FUNCTION__);
+
+    void TearDown() override
+    {
+       delete g_fileIOMock;
+       delete g_systemMock;
+
+        g_fileIOMock = nullptr;
+	g_systemMock = nullptr;
+    }                                                                                                       
+}; 
+
+//dcautil.c
+TEST_F(dcaTestFixture, firstBootstatus){
+    EXPECT_CALL(*g_systemMock, access(_,_))
+            .Times(1)
+            .WillOnce(Return(-1));
+
+    EXPECT_EQ(true, firstBootStatus());
+}
+
+TEST_F(dcaTestFixture, firstBootstatus_1){
+    EXPECT_CALL(*g_systemMock, access(_,_))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    EXPECT_EQ(false, firstBootStatus());
+}
+
+TEST_F(dcaTestFixture, dcaFlagReportCompleation)
+{
+    FILE* fp = (FILE*)NULL;
+    EXPECT_CALL(*g_fileIOMock, fopen(_,_))
+            .Times(1)
+            .WillOnce(Return(fp));
+    dcaFlagReportCompleation();
+}
+
+TEST_F(dcaTestFixture, dcaFlagReportCompleation1)
+{
+    FILE* fp = (FILE*)0xffffffff;
+    EXPECT_CALL(*g_fileIOMock, fopen(_,_))
+            .Times(1)
+            .WillOnce(Return(fp));
+    EXPECT_CALL(*g_fileIOMock, fclose(_))
+            .Times(1)
+            .WillOnce(Return(0));
+    dcaFlagReportCompleation();
+}
+
+#ifdef PERSIST_LOG_MON_REF
+TEST_F(dcaTestFixture, loadSavedSeekConfig)
+{
+    GrepSeekProfile *gsProfile = (GrepSeekProfile *)malloc(sizeof(GrepSeekProfile));
+    gsProfile->logFileSeekMap = hash_map_create();
+    gsProfile->execCounter = 0;
+    FILE* fp = (FILE*)NULL;
+    EXPECT_CALL(*g_fileIOMock, fopen(_,_))
+            .Times(1)
+            .WillOnce(Return(fp));
+    EXPECT_EQ(T2ERROR_FAILURE, loadSavedSeekConfig("RDK_Profile", gsProfile));
+    hash_map_destroy(gsProfile->logFileSeekMap, free);
+    free(gsProfile);
+}
+
+TEST_F(dcaTestFixture, loadSavedSeekConfig1)
+{
+    GrepSeekProfile *gsProfile = (GrepSeekProfile *)malloc(sizeof(GrepSeekProfile));
+    gsProfile->logFileSeekMap = hash_map_create();
+    gsProfile->execCounter = 0;
+    FILE* fp = (FILE*)0xffffffff;
+    EXPECT_CALL(*g_fileIOMock, fopen(_,_))
+            .Times(1)
+            .WillOnce(Return(fp));
+    EXPECT_CALL(*g_fileIOMock, fseek(_,_,_))
+            .Times(2)
+            .WillOnce(Return(0))
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, ftell(_))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, fread(_,_,_,_))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, fclose(_))
+            .Times(1)
+            .WillOnce(Return(0));
+    
+    EXPECT_EQ(T2ERROR_SUCCESS, loadSavedSeekConfig("RDK_Profile", gsProfile));
+    hash_map_destroy(gsProfile->logFileSeekMap,free);
+    free(gsProfile);
+}
+
+TEST_F(dcaTestFixture, saveSeekConfigtoFile)
+{
+    GrepSeekProfile *gsProfile = (GrepSeekProfile *)malloc(sizeof(GrepSeekProfile));
+    gsProfile->logFileSeekMap = hash_map_create();
+    gsProfile->execCounter = 0;
+    long *tempnum;
+    double val = 123456;
+    tempnum = (long *)malloc(sizeof(long));
+    *tempnum = (long)val;
+    hash_map_put(gsProfile->logFileSeekMap, strdup("t2_log.txt"), (void*)tempnum, free);
+    FILE* fp = (FILE*)NULL;
+    EXPECT_CALL(*g_fileIOMock, fopen(_,_))
+            .Times(1)
+            .WillOnce(Return(fp));
+    EXPECT_EQ(T2ERROR_FAILURE, saveSeekConfigtoFile("RDK_Profile", gsProfile));
+    hash_map_destroy(gsProfile->logFileSeekMap, free);
+    gsProfile->logFileSeekMap = NULL;
+    free(gsProfile);
 }
 #endif
 
-bool firstBootStatus()
+//dcaproc.c
+
+TEST_F(dcaTestFixture, getProcUsage)
 {
-    T2Debug("%s ++in\n", __FUNCTION__);
-    bool status = true;
-    if(access(BOOTFLAG, F_OK) != -1)
-    {
-        status = false;
-    }
-    T2Debug("%s --out\n", __FUNCTION__);
-    return status;
+    Vector* topMarkerlist = NULL;
+    Vector_Create(&topMarkerlist);
+    TopMarker* topMarker = (TopMarker*) malloc(sizeof(TopMarker));
+    topMarker->markerName = strdup("cpu_telemetry2_0");
+    topMarker->searchString = strdup("telemetry2_0");
+    topMarker->trimParam = false;
+    topMarker->regexParam = NULL;
+    topMarker->logFile = strdup("top_log.txt");
+    topMarker->skipFreq = 0;
+    topMarker->paramType = strdup("grep");
+    topMarker->reportEmptyParam = true;
+    Vector_PushBack(topMarkerlist, (void*) topMarker);
+
+    char* filename = strdup("/tmp/t2toplog/RDK_Profile");
+
+    FILE* fp = (FILE*)NULL;
+    #ifdef LIBSYSWRAPPER_BUILD
+    EXPECT_CALL(*g_fileIOMock, v_secure_popen(_,_))
+            .Times(1)
+            .WillOnce(Return(fp));
+    #else
+    EXPECT_CALL(*g_fileIOMock, popen(_,_))
+            .Times(1)
+            .WillOnce(Return(fp));
+    #endif
+    EXPECT_EQ(0, getProcUsage(topMarker->searchString, topMarker, filename));
+    Vector_Destroy(topMarkerlist, NULL);
+    free(filename);
+}   
+
+TEST_F(dcaTestFixture, getProcPidStat)
+{
+    procinfo pinfo;
+    int fd = (int)0xffffffff;
+    EXPECT_CALL(*g_fileIOMock, open(_,_))
+            .Times(1)
+            .WillOnce(Return(-1));
+    ASSERT_EQ(0, getProcPidStat(123, &pinfo));
 }
+
+TEST_F(dcaTestFixture, getProcPidStat1)
+{
+    procinfo pinfo;
+    int fd = (int)0xffffffff;
+    EXPECT_CALL(*g_fileIOMock, open(_,_))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, read(_,_,_))
+            .Times(1)
+            .WillOnce(Return(-1));
+    EXPECT_CALL(*g_fileIOMock, close(_))
+            .Times(1)
+            .WillOnce(Return(0));
+    ASSERT_EQ(0, getProcPidStat(123, &pinfo));
+}
+
+#if !defined(ENABLE_RDKC_SUPPORT) && !defined(ENABLE_RDKB_SUPPORT)
+TEST_F(dcaTestFixture, saveTopOutput)
+{
+    EXPECT_CALL(*g_systemMock, access(_,_))
+                .Times(1)
+                .WillOnce(Return(0));
+   #ifdef LIBSYSWRAPPER_BUILD
+       EXPECT_CALL(*g_systemMock, v_secure_system(_))
+                .Times(3)
+                .WillOnce(Return(0))
+                .WillOnce(Return(-1))
+                .WillOnce(Return(-1));
+    #else
+       EXPECT_CALL(*g_systemMock, system(_))
+                .Times(3)
+                .WillOnce(Return(0))
+                .WillOnce(Return(-1))
+                .WillOnce(Return(-1));
+    #endif
+    EXPECT_EQ(NULL, saveTopOutput("RDK_Profile")); 
+}
+
+TEST_F(dcaTestFixture, saveTopOutput1)
+{
+    EXPECT_CALL(*g_systemMock, access(_,_))
+                .Times(1)
+                .WillOnce(Return(-1));
+    #ifdef LIBSYSWRAPPER_BUILD
+       EXPECT_CALL(*g_systemMock, v_secure_system(_))
+                .Times(2)
+                .WillOnce(Return(-1))
+                .WillOnce(Return(-1));
+    #else
+       EXPECT_CALL(*g_systemMock, system(_))
+                .Times(2)
+                .WillOnce(Return(-1))
+                .WillOnce(Return(-1));
+    #endif
+   EXPECT_EQ(NULL, saveTopOutput("RDK_Profile"));
+}
+
+TEST_F(dcaTestFixture, saveTopOutput2)
+{
+    char* filename = NULL;
+    filename = "/tmp/t2toplog_RDK_Profile";
+    EXPECT_CALL(*g_systemMock, access(_,_))
+                .Times(1)
+                .WillOnce(Return(-1));
+    #ifdef LIBSYSWRAPPER_BUILD
+       EXPECT_CALL(*g_systemMock, v_secure_system(_))
+                .Times(2)
+                .WillOnce(Return(0))
+                .WillOnce(Return(0));
+    #else
+       EXPECT_CALL(*g_systemMock, system(_))
+                .Times(2)
+                .WillOnce(Return(0))
+                .WillOnce(Return(0));
+    #endif
+    EXPECT_STREQ(filename, saveTopOutput("RDK_Profile"));
+}
+
+TEST_F(dcaTestFixture, removeTopOutput)
+{
+   char* filename = NULL;
+   filename = strdup("/tmp/t2toplog_RDK_Profile");
+    #ifdef LIBSYSWRAPPER_BUILD
+    EXPECT_CALL(*g_systemMock, v_secure_system(_))
+                .Times(1)
+                .WillOnce(Return(-1));
+    #else
+    EXPECT_CALL(*g_systemMock, system(_))
+                .Times(1)
+                .WillOnce(Return(-1));
+    #endif
+    removeTopOutput(filename);
+}
+
+TEST_F(dcaTestFixture, removeTopOutput1)
+{
+    char* filename = NULL;
+    filename = strdup("/tmp/t2toplog_RDK_Profile");
+    #ifdef LIBSYSWRAPPER_BUILD
+    EXPECT_CALL(*g_systemMock, v_secure_system(_))
+                .Times(1)
+                .WillOnce(Return(0));
+    #else
+    EXPECT_CALL(*g_systemMock, system(_))
+                .Times(1)
+                .WillOnce(Return(0));
+    #endif
+    removeTopOutput(filename);
+}
+
+#else
+TEST_F(dcaTestFixture, getTotalCpuTimes)
+{
+    FILE* mockfp = (FILE *)NULL;
+    int *totaltime = 0;
+    EXPECT_CALL(*g_fileIOMock, fopen(_,_))
+            .Times(1)
+            .WillOnce(Return(mockfp));
+    EXPECT_EQ(0, getTotalCpuTimes(totaltime));
+}
+
+TEST_F(dcaTestFixture, getTotalCpuTimes1)
+{
+    FILE* mockfp = (FILE *)0xFFFFFFFF;
+    int *totaltime = 0;
+    EXPECT_CALL(*g_fileIOMock, fopen(_,_))
+            .Times(1)
+            .WillOnce(Return(mockfp));
+    EXPECT_CALL(*g_fileIOMock, fscanf(_,_,_))
+	    .Times(1)
+	    .WillOnce(Return(-1));
+    EXPECT_CALL(*g_fileIOMock, fclose(_))
+            .Times(1)
+	    .WillOnce(Return(0));
+    EXPECT_EQ(1, getTotalCpuTimes(totaltime));
+}
+#endif
+
+
+//legacyutils.c
+
+TEST_F(dcaTestFixture, getLoadAvg)
+{
+    TopMarker* topMarker = (TopMarker*) malloc(sizeof(TopMarker));
+    memset(topMarker, 0, sizeof(TopMarker));
+    topMarker->markerName = strdup("cpu_telemetry2_0");
+    topMarker->searchString = strdup("telemetry2_0");
+    topMarker->trimParam = false;
+    topMarker->regexParam = NULL;
+    topMarker->logFile = strdup("top_log.txt");
+    topMarker->skipFreq = 0;
+    topMarker->paramType = strdup("grep");
+    topMarker->reportEmptyParam = true;
+    FILE* fp = (FILE*)NULL;
+    EXPECT_CALL(*g_fileIOMock, fopen(_,_))
+            .Times(1)
+            .WillOnce(Return(fp));
+    EXPECT_EQ(0, getLoadAvg(topMarker));
+}
+
+/*TEST_F(dcaTestFixture, getLoadAvg1)
+{
+    GrepResult* loadAvg = (GrepResult*) malloc(sizeof(GrepResult));
+    loadAvg->markerName = strdup("Load_Average");
+    loadAvg->markerValue = strdup("2.15");
+    loadAvg->trimParameter = true;
+    loadAvg->regexParameter = "[0-9]+";
+    Vector_PushBack(grepResultList, loadAvg);
+    FILE* fp = (FILE*)0xffffffff;
+    EXPECT_CALL(*g_fileIOMock, fopen(_,_))
+            .Times(1)
+            .WillOnce(Return(fp));
+    EXPECT_CALL(*g_fileIOMock, fread(_,_,_,_))
+            .Times(1)
+            .WillOnce(Return(1));
+    EXPECT_CALL(*g_fileIOMock, fclose(_))
+	    .Times(1)
+	    .WillOnce(Return(0));
+    EXPECT_EQ(0, getLoadAvg(grepResultList, false, NULL));
+    Vector_Destroy(grepResultList, freeGResult);
+}
+*/
+TEST_F(dcaTestFixture, getLoadAvg2)
+{
+    TopMarker* topMarker = (TopMarker*) malloc(sizeof(TopMarker));
+    memset(topMarker, 0, sizeof(TopMarker));
+    topMarker->markerName = strdup("cpu_telemetry2_0");
+    topMarker->searchString = strdup("telemetry2_0");
+    topMarker->trimParam = true;
+    topMarker->regexParam = "[0-9]+";
+    topMarker->logFile = strdup("top_log.txt");
+    topMarker->skipFreq = 0;
+    topMarker->paramType = strdup("grep");
+    topMarker->reportEmptyParam = true;
+    FILE* fp = (FILE*)0xffffffff;
+    EXPECT_CALL(*g_fileIOMock, fopen(_,_))
+            .Times(1)
+            .WillOnce(Return(fp));
+    EXPECT_CALL(*g_fileIOMock, fread(_,_,_,_))
+            .Times(1)
+            .WillOnce(Return(14));
+    EXPECT_CALL(*g_fileIOMock, fclose(_))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_EQ(1, getLoadAvg(topMarker));
+}
+
+TEST_F(dcaTestFixture, initProperties)
+{
+    char* logpath = NULL;
+    long int pagesize = 0;
+    char* perspath = NULL;
+    FILE* fp = (FILE*)0xffffffff;
+    EXPECT_CALL(*g_fileIOMock, fopen(_,_))
+            .Times(2)
+            .WillOnce(Return(fp))
+            .WillOnce(Return(fp));
+    EXPECT_CALL(*g_fileIOMock, fscanf(_,_,_))
+            .Times(10)
+            .WillOnce(Return(0))
+            .WillOnce(Return(0))
+            .WillOnce(Return(0))
+            .WillOnce(Return(0))
+            .WillOnce(Return(0))
+            .WillOnce(Return(EOF))
+            .WillOnce(Return(0))
+            .WillOnce(Return(0))
+            .WillOnce(Return(0))
+            .WillOnce(Return(EOF));
+    EXPECT_CALL(*g_fileIOMock, fclose(_))
+            .Times(2)
+            .WillOnce(Return(0))
+            .WillOnce(Return(0));
+    initProperties(&logpath, &perspath, &pagesize);
+}
+
+//dca.c
+#if 0
+//This testcase is not required as we don't pass trim and regex as separate arguments anymore
+TEST_F(dcaTestFixture, processTopPattern)
+{
+    Vector* topMarkerlist = NULL;
+    Vector_Create(&topMarkerlist);
+    TopMarker* topMarker = (TopMarker*) malloc(sizeof(TopMarker));
+    memset(topMarker, 0, sizeof(TopMarker));
+    topMarker->markerName = strdup("cpu_telemetry2_0");
+    topMarker->searchString = strdup("telemetry2_0");
+    topMarker->trimParam = false;
+    topMarker->regexParam = NULL;
+    topMarker->logFile = strdup("top_log.txt");
+    topMarker->skipFreq = 0;
+    topMarker->paramType = strdup("grep");
+    topMarker->reportEmptyParam = true;
+  
+    TopMarker* topMarker1 = (TopMarker*) malloc(sizeof(TopMarker));
+    memset(topMarker, 0, sizeof(TopMarker));
+    topMarker1->markerName = strdup("cpu_telemetry2_0");
+    topMarker1->searchString = strdup("telemetry2_0");
+    topMarker1->trimParam = false;
+    topMarker1->regexParam = NULL;
+    topMarker1->logFile = strdup("top_log.txt");
+    topMarker1->skipFreq = 0;
+    topMarker1->paramType = strdup("grep");
+    topMarker->reportEmptyParam = true;
+    Vector_PushBack(topMarkerlist, (void*) topMarker1);
+
+    EXPECT_CALL(*g_systemMock, access(_,_))
+                .Times(1)
+                .WillOnce(Return(-1));
+    #ifdef LIBSYSWRAPPER_BUILD
+       EXPECT_CALL(*g_systemMock, v_secure_system(_))
+                .Times(3)
+                .WillOnce(Return(0))
+                .WillOnce(Return(0))
+                .WillOnce(Return(-1));
+    #else
+       EXPECT_CALL(*g_systemMock, system(_))
+                .Times(3)
+                .WillOnce(Return(0))
+                .WillOnce(Return(0))
+                .WillOnce(Return(-1));
+    #endif
+    FILE* fp = (FILE*)NULL;
+    #ifdef LIBSYSWRAPPER_BUILD
+    EXPECT_CALL(*g_fileIOMock, v_secure_popen(_,_))
+            .Times(1)
+            .WillOnce(Return(fp));
+    #else
+    EXPECT_CALL(*g_fileIOMock, popen(_,_))
+            .Times(1)
+            .WillOnce(Return(fp));
+    #endif
+    EXPECT_EQ(0, processTopPattern("RDK_Profile", topMarkerlist, 1));
+    Vector_Destroy(topMarkerlist, NULL);
+}
+#endif
+
+TEST_F(dcaTestFixture, processTopPattern1)
+{
+    Vector* topMarkerlist = NULL;
+    Vector_Create(&topMarkerlist);
+    TopMarker* topMarker = (TopMarker*) malloc(sizeof(TopMarker));
+    memset(topMarker, 0, sizeof(TopMarker));
+    topMarker->markerName = strdup("cpu_telemetry2_0");
+    topMarker->searchString = strdup("telemetry2_0");
+    topMarker->trimParam = true;
+    topMarker->regexParam = strdup("[0-9]+");
+    topMarker->logFile = strdup("top_log.txt");
+    topMarker->skipFreq = 0;
+    TopMarker* topMarker1 = (TopMarker*) malloc(sizeof(TopMarker));
+    memset(topMarker1, 0, sizeof(TopMarker));
+    topMarker1->markerName = strdup("Load_Average");
+    topMarker1->searchString = strdup("telemetry2_0");
+    topMarker1->trimParam = true;
+    topMarker1->regexParam = strdup("[0-9]+");
+    topMarker1->logFile = strdup("top_log.txt");
+    topMarker1->skipFreq = 0;
+    Vector_PushBack(topMarkerlist, (void*) topMarker1);
+    Vector_PushBack(topMarkerlist, (void*) topMarker);
+    EXPECT_CALL(*g_systemMock, access(_,_))
+                .Times(1)
+                .WillOnce(Return(-1));
+    #ifdef LIBSYSWRAPPER_BUILD
+       EXPECT_CALL(*g_systemMock, v_secure_system(_))
+                .Times(3)
+                .WillOnce(Return(0))
+                .WillOnce(Return(0))
+                .WillOnce(Return(-1));
+    #else
+       EXPECT_CALL(*g_systemMock, system(_))
+                .Times(3)
+                .WillOnce(Return(0))
+                .WillOnce(Return(0))
+                .WillOnce(Return(-1));
+    #endif
+    FILE* fp = (FILE*)NULL;
+    #ifdef LIBSYSWRAPPER_BUILD
+    EXPECT_CALL(*g_fileIOMock, v_secure_popen(_,_))
+            .Times(1)
+            .WillOnce(Return(fp));
+    #else
+    EXPECT_CALL(*g_fileIOMock, popen(_,_))
+            .Times(1)
+            .WillOnce(Return(fp));
+    #endif
+    FILE* fs= (FILE*)0xffffffff;
+    EXPECT_CALL(*g_fileIOMock, fopen(_,_))
+            .Times(1)
+            .WillOnce(Return(fs));
+    EXPECT_CALL(*g_fileIOMock, fread(_,_,_,_))
+            .Times(1)
+            .WillOnce(Return(14));
+    EXPECT_CALL(*g_fileIOMock, fclose(_))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    EXPECT_EQ(0, processTopPattern("RDK_Profile", topMarkerlist, 1));
+    Vector_Destroy(topMarkerlist, freeGMarker);
+}
+
+TEST_F(dcaTestFixture, processTopPattern2)
+{
+    Vector* topMarkerlist = NULL;
+    Vector_Create(&topMarkerlist);
+    TopMarker* topMarker = (TopMarker*) malloc(sizeof(TopMarker));
+    memset(topMarker, 0, sizeof(TopMarker));
+    topMarker->markerName = strdup("cpu_telemetry2_0");
+    topMarker->searchString = strdup("telemetry2_0");
+    topMarker->trimParam = true;
+    topMarker->regexParam = strdup("[0-9]+");
+    topMarker->logFile = strdup("top_log.txt");
+    topMarker->skipFreq = 1;
+    Vector_PushBack(topMarkerlist, (void*) topMarker);
+
+    TopMarker* topMarker2 = (TopMarker*) malloc(sizeof(TopMarker));
+    memset(topMarker2, 0, sizeof(TopMarker));
+    topMarker2->markerName = strdup("mem_telemetry2_0");
+    topMarker2->searchString = strdup("telemetry2_0");
+    topMarker2->trimParam = true;
+    topMarker2->regexParam = strdup("[0-9]+");
+    topMarker2->logFile = strdup("top_log.txt");
+    topMarker2->skipFreq = 0;
+    Vector_PushBack(topMarkerlist, (void*) topMarker2);
+
+    //saveTopoutput
+    EXPECT_CALL(*g_systemMock, access(_,_))
+		        .WillRepeatedly(Return(0));
+    #ifdef LIBSYSWRAPPER_BUILD
+       EXPECT_CALL(*g_systemMock, v_secure_system(_))
+                .Times(4)
+                .WillOnce(Return(0)) //saveTopoutput
+                .WillOnce(Return(0)) //removeTopoutput
+                .WillOnce(Return(0)) //saveTopoutput
+                .WillOnce(Return(0));
+    #else 
+       EXPECT_CALL(*g_systemMock, system(_))
+                .Times(4)
+                .WillOnce(Return(0))
+                .WillOnce(Return(0))
+                .WillOnce(Return(0))
+                .WillOnce(Return(0));
+    #endif
+    FILE* fp = (FILE*)0xFFFFFFFF;
+    //getProcUsage - pidof
+    #ifdef LIBSYSWRAPPER_BUILD
+    EXPECT_CALL(*g_fileIOMock, v_secure_popen(_,_))
+            .Times(2)
+            .WillOnce(Return(fp))
+            .WillOnce(Return(fp));
+    #else
+    EXPECT_CALL(*g_fileIOMock, popen(_,_))
+            .Times(1)
+            .WillOnce(Return(fp));
+    #endif
+    
+    #ifdef LIBSYSWRAPPER_BUILD
+    EXPECT_CALL(*g_fileIOMock, v_secure_pclose(_))
+                .Times(2)
+                .WillOnce(Return(0))
+                .WillOnce(Return(0));
+    #else
+    EXPECT_CALL(*g_fileIOMock, pclose(_))
+                .Times(1)
+                .WillOnce(Return(0));
+    #endif
+
+    // getCPUInfo reads TOPTEMP file directly via fopen
+    FILE* topfp = (FILE*)0xEEEEEEEE;
+    EXPECT_CALL(*g_fileIOMock, fopen(_,_))
+            .Times(1)
+            .WillOnce(Return(topfp));
+    EXPECT_CALL(*g_fileIOMock, fclose(_))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    //getMEMinfo
+    EXPECT_CALL(*g_fileIOMock, read(_,_,_))
+             .WillOnce([](int fd, void* buf, size_t count) {
+                 const char *stat_str = "7396 (telemetry2_0) S 1 7396 7396 0 -1 1077936448 17297 316924 7 544 410 610 1888 258 20 0 14 0 2373301 1024380928 3425 18446744073709551615 94059930939392 94059930943425 140725223263616 0 0 0 0 4096 268454400 0 0 0 17 3 0 0 0 0 0 94059930950768 94059930951697 94060511973376 140725223266476 140725223266504 140725223266504 140725223268316 0";
+                 size_t len = strlen(stat_str);
+                 size_t to_copy = len < count ? len : count;
+                 memcpy(buf, stat_str, to_copy);
+                 return to_copy;
+                });
+    
+   //getprocpidstat
+   EXPECT_CALL(*g_fileIOMock, open(_,_))
+            .Times(1)
+            .WillOnce(Return(0));
+   EXPECT_CALL(*g_fileIOMock, close(_))
+            .Times(1)
+            .WillOnce(Return(0));
+    //getCPUInfo
+    EXPECT_CALL(*g_fileIOMock, fgets(_,_,_))
+            .WillOnce([](char* buf, size_t size, FILE* stream) {
+                const char* test_line = "2268 root 20 0 831m 66m 20m S 27 13.1 491:06.82 telemetry2_0\n";
+                strncpy(buf, test_line, size-1);
+                buf[size-1] = '\0';
+                return buf;
+            })
+            .WillOnce(Return((char*)NULL));
+    EXPECT_EQ(0, processTopPattern("RDK_Profile", topMarkerlist, 1));
+    Vector_Destroy(topMarkerlist, freeGMarker);
+}
+
+TEST_F(dcaTestFixture, getDCAResultsInVector_1)
+{
+    GrepSeekProfile *gsProfile = (GrepSeekProfile *)malloc(sizeof(GrepSeekProfile));
+    gsProfile->logFileSeekMap = hash_map_create();
+    gsProfile->execCounter = 0;
+    long *tempnum;
+    double val = 1234;
+    tempnum = (long *)malloc(sizeof(long));
+    *tempnum = (long)val;
+    hash_map_put(gsProfile->logFileSeekMap, strdup("t2_log.txt"), (void*)tempnum, free);
+    
+    Vector* vecMarkerList = NULL;
+    Vector_Create(&vecMarkerList);
+    GrepMarker* marker = (GrepMarker*) malloc(sizeof(GrepMarker));
+    memset(marker, 0, sizeof(GrepMarker));
+    marker->markerName = strdup("SYS_INFO_TEST");
+    marker->searchString = strdup("Test Marker");
+    marker->trimParam = true;
+    marker->regexParam = strdup("[0-9]+");
+    marker->logFile = strdup("Consolelog.txt.0");
+    marker->skipFreq = 0;
+    marker->paramType = strdup("grep");
+    marker->mType = MTYPE_COUNTER;
+    marker->u.count = 0;
+    marker->reportEmptyParam = true;
+    Vector_PushBack(vecMarkerList, (void*) marker);
+
+    //freeFileDescriptor
+    EXPECT_CALL(*g_fileIOMock, munmap(_, _))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, close(_)) 
+            .Times(2)
+            .WillOnce(Return(0))
+            .WillOnce(Return(0));
+
+    //getLogFileDescriptor
+    EXPECT_CALL(*g_fileIOMock, open(_,_))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, fstat(_, _))
+        .Times(2)
+        .WillOnce([](int fd, struct stat* statbuf) {
+        statbuf->st_size = 1235;      // Set file size
+        return 0; // Success
+    })
+        .WillOnce([](int fd, struct stat* statbuf) {
+        statbuf->st_size = 1300;      // Set file size
+        return 0; // Success
+    });
+
+    //getDeltainmmapsearch 
+    EXPECT_CALL(*g_fileIOMock, mkstemp(_))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_systemMock, unlink(_))
+                .Times(1)
+                .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock,sendfile(_,_,_,_))
+            .Times(1)
+            .WillOnce(Return(1300));
+    EXPECT_CALL(*g_fileIOMock, mmap(_,_,_,_,_,_))
+                .Times(1)
+                .WillOnce([](void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
+                    const char* test_str = "This is a Test Marker with value 1234 in the log file.\nAnother line without the marker.\n";
+                    char* mapped_mem = (char*)malloc(length);
+                    memset(mapped_mem, 0, length);
+                    strncpy(mapped_mem, test_str, length - 1);
+                    return (void*)mapped_mem;
+                });
+    
+    EXPECT_EQ(0, getDCAResultsInVector(gsProfile, vecMarkerList, true, "/opt/logs"));
+    hash_map_destroy(gsProfile->logFileSeekMap, free);
+    gsProfile->logFileSeekMap = NULL;
+    free(gsProfile);
+    Vector_Destroy(vecMarkerList, NULL);
+}
+
+TEST_F(dcaTestFixture, getDCAResultsInVector_2)
+{
+   
+    GrepSeekProfile *gsProfile = (GrepSeekProfile *)malloc(sizeof(GrepSeekProfile));
+    gsProfile->logFileSeekMap = hash_map_create();
+    gsProfile->execCounter = 0;
+    long *tempnum;
+    double val = 1234;
+    tempnum = (long *)malloc(sizeof(long));
+    *tempnum = (long)val;
+    hash_map_put(gsProfile->logFileSeekMap, strdup("t2_log.txt"), (void*)tempnum, free);
+    
+    Vector* vecMarkerList = NULL;
+    Vector_Create(&vecMarkerList);
+    GrepMarker* marker = (GrepMarker*) malloc(sizeof(GrepMarker));
+    memset(marker, 0, sizeof(GrepMarker));
+    marker->markerName = strdup("SYS_INFO_TEST");
+    marker->searchString = strdup("temp:");
+    marker->trimParam = true;
+    marker->regexParam = strdup("[0-9]+");
+    marker->logFile = strdup("Consolelog.txt.0");
+    marker->skipFreq = 0;
+    marker->paramType = strdup("grep");
+    marker->mType = MTYPE_ABSOLUTE;
+    marker->u.markerValue = NULL;
+    marker->u.count = 0;
+    marker->reportEmptyParam = true;
+    Vector_PushBack(vecMarkerList, (void*) marker);
+
+    //freeFileDescriptor
+    EXPECT_CALL(*g_fileIOMock, munmap(_, _))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, close(_)) 
+            .Times(2)
+            .WillOnce(Return(0))
+            .WillOnce(Return(0));
+
+    //getLogFileDescriptor
+    EXPECT_CALL(*g_fileIOMock, open(_,_))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, fstat(_, _))
+        .Times(2)
+        .WillOnce([](int fd, struct stat* statbuf) {
+        statbuf->st_size = 1300;      // Set file size
+        return 0; // Success
+    })
+        .WillOnce([](int fd, struct stat* statbuf) {
+        statbuf->st_size = 1300;      // Set file size
+        return 0; // Success
+    });
+
+    //getDeltainmmapsearch 
+    EXPECT_CALL(*g_fileIOMock, mkstemp(_))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_systemMock, unlink(_))
+                .Times(1)
+                .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock,sendfile(_,_,_,_))
+            .Times(1)
+            .WillOnce(Return(1300));
+    EXPECT_CALL(*g_fileIOMock, mmap(_,_,_,_,_,_))
+                .Times(1)
+                .WillOnce([](void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
+                    const char* test_str = "This is a Test Marker with value temp:1245.\nAnother line without the marker.\n Another line with marker temp:2345\n";
+                    char* mapped_mem = (char*)malloc(length);
+                    memset(mapped_mem, 0, length);
+                    strncpy(mapped_mem, test_str, length - 1);
+                    return (void*)mapped_mem;
+                });
+
+    
+    EXPECT_EQ(0, getDCAResultsInVector(gsProfile, vecMarkerList, true, "/opt/logs"));
+    hash_map_destroy(gsProfile->logFileSeekMap, free);
+    gsProfile->logFileSeekMap = NULL;
+    free(gsProfile);
+    Vector_Destroy(vecMarkerList, freeGMarker);
+}
+
+TEST_F(dcaTestFixture, getDCAResultsInVector_3)
+{
+   
+    GrepSeekProfile *gsProfile = (GrepSeekProfile *)malloc(sizeof(GrepSeekProfile));
+    gsProfile->logFileSeekMap = hash_map_create();
+    gsProfile->execCounter = 1;
+    long *tempnum;
+    double val = 1234;
+    tempnum = (long *)malloc(sizeof(long));
+    *tempnum = (long)val;
+    hash_map_put(gsProfile->logFileSeekMap, strdup("t2_log.txt"), (void*)tempnum, free);
+    
+    Vector* vecMarkerList = NULL;
+    Vector_Create(&vecMarkerList);
+    GrepMarker* marker = (GrepMarker*) malloc(sizeof(GrepMarker));
+    memset(marker, 0, sizeof(GrepMarker));
+    marker->markerName = strdup("SYS_INFO_TEST");
+    marker->searchString = strdup("Test Marker");
+    marker->trimParam = true;
+    marker->u.markerValue = NULL;
+    marker->u.accumulatedValues = NULL;
+    marker->regexParam = strdup("[0-9]+");
+    marker->logFile = strdup("Consolelog.txt.0");
+    marker->skipFreq = 0;
+    marker->paramType = strdup("grep");
+    marker->mType = MTYPE_COUNTER;
+    marker->u.count = 0;
+    marker->reportEmptyParam = true;
+    Vector_PushBack(vecMarkerList, (void*) marker);
+
+
+    //freeFileDescriptor
+    EXPECT_CALL(*g_fileIOMock, munmap(_, _))
+            .Times(2)
+            .WillOnce(Return(0))
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, close(_)) 
+            .Times(4)
+            .WillOnce(Return(0))
+            .WillOnce(Return(0))
+            .WillOnce(Return(0))
+            .WillOnce(Return(0));
+
+    //getLogFileDescriptor
+    EXPECT_CALL(*g_fileIOMock, open(_,_))
+            .Times(2)
+            .WillOnce(Return(0))
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, fstat(_, _))
+        .Times(4)
+        .WillOnce([](int fd, struct stat* statbuf) {
+        statbuf->st_size = 1235;      // Set file size
+        return 0; // Success
+    })
+        .WillOnce([](int fd, struct stat* statbuf) {
+        statbuf->st_size = 1235;      // Set file size
+        return 0; // Success
+    })
+        .WillOnce([](int fd, struct stat* statbuf) {
+        statbuf->st_size = 1000;      // Set file size
+        return 0; // Success
+    })
+        .WillOnce([](int fd, struct stat* statbuf) {
+        statbuf->st_size = 1000;      // Set file size
+        return 0; // Success
+    });
+
+    //getDeltainmmapsearch 
+    EXPECT_CALL(*g_fileIOMock, mkstemp(_))
+            .Times(2)
+            .WillOnce(Return(0))
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_systemMock, unlink(_))
+                .Times(2)
+                .WillOnce(Return(0))
+                .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock,sendfile(_,_,_,_))
+            .Times(2)
+            .WillOnce(Return(1235))
+            .WillOnce(Return(1000));
+    EXPECT_CALL(*g_fileIOMock, mmap(_,_,_,_,_,_))
+                .Times(2)
+                .WillOnce([](void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
+                    const char* test_str = "This is a Test Marker with value 1234 in the log file.\nAnother line without the marker.\n";
+                    char* mapped_mem = (char*)malloc(length);
+                    memset(mapped_mem, 0, length);
+                    strncpy(mapped_mem, test_str, length - 1);
+                    return (void*)mapped_mem;
+                })
+                .WillOnce([](void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
+                    const char* test_str = "This is with value Test:1250 in the log file.\nAnother line without the marker.\nThe line with Test Markeris found\n";
+                    char* mapped_mem = (char*)malloc(length);
+                    memset(mapped_mem, 0, length);
+                    strncpy(mapped_mem, test_str, length - 1);
+                    return (void*)mapped_mem;
+                });
+
+    
+    EXPECT_EQ(0, getDCAResultsInVector(gsProfile, vecMarkerList, true, "/opt/logs"));
+    hash_map_destroy(gsProfile->logFileSeekMap, free);
+    gsProfile->logFileSeekMap = NULL;
+    free(gsProfile);
+    Vector_Destroy(vecMarkerList, freeGMarker);
+}
+
+
+TEST_F(dcaTestFixture, getDCAResultsInVector_Accum)
+{
+   
+    GrepSeekProfile *gsProfile = (GrepSeekProfile *)malloc(sizeof(GrepSeekProfile));
+    gsProfile->logFileSeekMap = hash_map_create();
+    gsProfile->execCounter = 1;
+    long *tempnum;
+    double val = 1234;
+    tempnum = (long *)malloc(sizeof(long));
+    *tempnum = (long)val;
+    hash_map_put(gsProfile->logFileSeekMap, strdup("t2_log.txt"), (void*)tempnum, free);
+    
+    Vector* vecMarkerList = NULL;
+    Vector_Create(&vecMarkerList);
+    GrepMarker* marker = (GrepMarker*) malloc(sizeof(GrepMarker));
+    memset(marker, 0, sizeof(GrepMarker));
+    marker->markerName = strdup("SYS_INFO_TEST");
+    marker->searchString = strdup("Test Marker");
+    marker->trimParam = true;
+    marker->u.markerValue = NULL;
+    marker->u.count = 0;
+    marker->mType = MTYPE_ACCUMULATE;
+    marker->reportTimestampParam = REPORTTIMESTAMP_UNIXEPOCH;
+    Vector_Create(&marker->u.accumulatedValues);
+    if(marker->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH)
+    {
+        Vector_Create(&marker->accumulatedTimestamp);
+    }
+    marker->regexParam = strdup("[0-9]+");
+    marker->logFile = strdup("Consolelog.txt.0");
+    marker->skipFreq = 0;
+    marker->paramType = strdup("grep");
+    marker->reportEmptyParam = true;
+    Vector_PushBack(vecMarkerList, (void*) marker);
+
+    //freeFileDescriptor
+    EXPECT_CALL(*g_fileIOMock, munmap(_, _))
+            .WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_fileIOMock, close(_)) 
+            .WillRepeatedly(Return(0));
+
+        //getLogFileDescriptor
+    EXPECT_CALL(*g_fileIOMock, open(_,_))
+            .WillRepeatedly(Return(0));
+
+    EXPECT_CALL(*g_fileIOMock, fstat(_, _))
+        .Times(testing::AtMost(4))
+        .WillOnce([](int fd, struct stat* statbuf) {
+        statbuf->st_size = 1235;      // Set file size
+        return 0; // Success
+    })
+        .WillOnce([](int fd, struct stat* statbuf) {
+        statbuf->st_size = 1235;      // Set file size
+        return 0; // Success
+    })
+        .WillOnce([](int fd, struct stat* statbuf) {
+        statbuf->st_size = 1000;      // Set file size
+        return 0; // Success
+    })
+        .WillOnce([](int fd, struct stat* statbuf) {
+        statbuf->st_size = 1000;      // Set file size
+        return 0; // Success
+    });
+    //getDeltainmmapsearch 
+    EXPECT_CALL(*g_fileIOMock, mkstemp(_))
+            .WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_systemMock, unlink(_))
+            .WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_fileIOMock,sendfile(_,_,_,_))
+            .Times(testing::AtMost(2))
+            .WillOnce(Return(1235))
+            .WillOnce(Return(1000));
+    EXPECT_CALL(*g_fileIOMock, mmap(_,_,_,_,_,_))
+                .Times(testing::AtMost(2))
+                .WillOnce([](void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
+                    const char* test_str = "2025-10-26T14:40:55.001Z This is a Test Marker with value 1234 in the log file.\n2025-10-26T14:40:55.001Z Another line without the marker.\n2025-10-26T14:40:55.001Z Line with Test Marker";
+                    char* mapped_mem = (char*)malloc(length);
+                    memset(mapped_mem, 0, length);
+                    strncpy(mapped_mem, test_str, length - 1);
+                    return (void*)mapped_mem;
+                })
+                .WillOnce([](void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
+                    const char* test_str = "2025-10-26T14:40:55.001Z This is with value Test:1250 in the log file.\n2025-10-26T14:40:55.001Z Another line without the marker.\n2025-10-26T14:40:55.001Z The line with Test Markeris found\n2025-10-26T14:40:55.001Z Line with 0 vale for Test Marker0";
+                    char* mapped_mem = (char*)malloc(length);
+                    memset(mapped_mem, 0, length);
+                    strncpy(mapped_mem, test_str, length - 1);
+                    return (void*)mapped_mem;
+                });
+    
+    EXPECT_EQ(0, getDCAResultsInVector(gsProfile, vecMarkerList, true, "/opt/logs"));
+
+    hash_map_destroy(gsProfile->logFileSeekMap, free);
+    gsProfile->logFileSeekMap = NULL;
+    free(gsProfile);
+    Vector_Destroy(vecMarkerList, freeGMarker);
+}
+
+TEST_F(dcaTestFixture, T2InitProperties)
+{
+   EXPECT_CALL(*g_fileIOMock, fopen(_,_))
+            .Times(2)
+            .WillOnce(Return((FILE*)0XFFFFFFFF))
+            .WillOnce(Return((FILE*)0XFFFFFFFF));
+   EXPECT_CALL(*g_fileIOMock, fscanf(_,_,_))
+            .Times(2)
+            .WillOnce(Return(EOF))
+            .WillOnce(Return(EOF));
+
+   EXPECT_CALL(*g_fileIOMock, fclose(_))
+            .Times(2)
+            .WillOnce(Return(0))
+            .WillOnce(Return(0));         
+            
+    T2InitProperties();
+}
+
+//dcautil.c
+
+TEST_F(dcaTestFixture, getGrepResults_success)
+{
+    GrepSeekProfile *gsProfile = (GrepSeekProfile *)malloc(sizeof(GrepSeekProfile));
+    gsProfile->logFileSeekMap = hash_map_create();
+    gsProfile->execCounter = 0;
+    long *tempnum;
+    double val = 1234;
+    tempnum = (long *)malloc(sizeof(long));
+    *tempnum = (long)val;
+    hash_map_put(gsProfile->logFileSeekMap, strdup("t2_log.txt"), (void*)tempnum, free);
+    
+    Vector* vecMarkerList = NULL;
+    Vector_Create(&vecMarkerList);
+    GrepMarker* marker = (GrepMarker*) malloc(sizeof(GrepMarker));
+    marker->markerName = strdup("SYS_INFO_TEST");
+    marker->searchString = strdup("temp:");
+    marker->trimParam = true;
+    marker->regexParam = strdup("[0-9]+");
+    marker->logFile = strdup("Consolelog.txt.0");
+    marker->skipFreq = 0;
+    marker->paramType = strdup("grep");
+    marker->mType = MTYPE_ABSOLUTE;
+    marker->u.markerValue = NULL;
+    marker->u.count = 0;
+    marker->reportEmptyParam = true;
+    Vector_PushBack(vecMarkerList, (void*) marker);
+
+    //freeFileDescriptor
+    EXPECT_CALL(*g_fileIOMock, munmap(_, _))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, close(_)) 
+            .Times(2)
+            .WillOnce(Return(0))
+            .WillOnce(Return(0));
+
+    //getLogFileDescriptor
+    EXPECT_CALL(*g_fileIOMock, open(_,_))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, fstat(_, _))
+        .Times(2)
+        .WillOnce([](int fd, struct stat* statbuf) {
+        statbuf->st_size = 1300;      // Set file size
+        return 0; // Success
+    })
+        .WillOnce([](int fd, struct stat* statbuf) {
+        statbuf->st_size = 1300;      // Set file size
+        return 0; // Success
+    });
+
+    //getDeltainmmapsearch 
+    EXPECT_CALL(*g_fileIOMock, mkstemp(_))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_systemMock, unlink(_))
+                .Times(1)
+                .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock,sendfile(_,_,_,_))
+            .Times(1)
+            .WillOnce(Return(1300));
+    EXPECT_CALL(*g_fileIOMock, mmap(_,_,_,_,_,_))
+                .Times(1)
+                .WillOnce([](void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
+                    const char* test_str = "This is a Test Marker with value temp:1245.\nAnother line without the marker.\n Another line with marker temp:2345\n";
+                    char* mapped_mem = (char*)malloc(length);
+                    memset(mapped_mem, 0, length);
+                    strncpy(mapped_mem, test_str, length - 1);
+                    return (void*)mapped_mem;
+                });
+
+    
+    EXPECT_EQ(T2ERROR_SUCCESS, getGrepResults(&gsProfile, vecMarkerList, true, true, "/opt/logs"));
+    hash_map_destroy(gsProfile->logFileSeekMap, free);
+    gsProfile->logFileSeekMap = NULL;
+    free(gsProfile);
+    Vector_Destroy(vecMarkerList, freeGMarker);
+}
+
+// waitForBackupLogsDone L1 tests
+
+TEST_F(dcaTestFixture, waitForBackupLogsDone_SentinelAlreadyPresent)
+{
+    // Fast path: access() returns 0 meaning sentinel file exists
+    EXPECT_CALL(*g_systemMock, access(StrEq(BACKUP_LOGS_DONE_FLAG), _))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    EXPECT_EQ(true, waitForBackupLogsDone());
+}
+
+TEST_F(dcaTestFixture, waitForBackupLogsDone_InotifyInitFails)
+{
+    // access() returns -1 (sentinel not present), inotify_init1 fails
+    EXPECT_CALL(*g_systemMock, access(StrEq(BACKUP_LOGS_DONE_FLAG), _))
+            .Times(1)
+            .WillOnce(Return(-1));
+    EXPECT_CALL(*g_systemMock, inotify_init1(_))
+            .Times(1)
+            .WillOnce(Return(-1));
+
+    EXPECT_EQ(false, waitForBackupLogsDone());
+}
+
+TEST_F(dcaTestFixture, waitForBackupLogsDone_InotifyAddWatchFails)
+{
+    // access() returns -1, inotify_init1 succeeds, inotify_add_watch fails
+    EXPECT_CALL(*g_systemMock, access(StrEq(BACKUP_LOGS_DONE_FLAG), _))
+            .Times(1)
+            .WillOnce(Return(-1));
+    EXPECT_CALL(*g_systemMock, inotify_init1(_))
+            .Times(1)
+            .WillOnce(Return(5));
+    EXPECT_CALL(*g_systemMock, inotify_add_watch(5, StrEq(BACKUP_LOGS_DONE_DIR), _))
+            .Times(1)
+            .WillOnce(Return(-1));
+    EXPECT_CALL(*g_fileIOMock, close(5))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    EXPECT_EQ(false, waitForBackupLogsDone());
+}
+
+TEST_F(dcaTestFixture, waitForBackupLogsDone_RaceResolved)
+{
+    // First access() returns -1, inotify setup succeeds, second access() returns 0 (race resolved)
+    EXPECT_CALL(*g_systemMock, access(StrEq(BACKUP_LOGS_DONE_FLAG), _))
+            .Times(2)
+            .WillOnce(Return(-1))
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_systemMock, inotify_init1(_))
+            .Times(1)
+            .WillOnce(Return(5));
+    EXPECT_CALL(*g_systemMock, inotify_add_watch(5, StrEq(BACKUP_LOGS_DONE_DIR), _))
+            .Times(1)
+            .WillOnce(Return(1));
+    EXPECT_CALL(*g_systemMock, inotify_rm_watch(5, 1))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, close(5))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    EXPECT_EQ(true, waitForBackupLogsDone());
+}
+
+TEST_F(dcaTestFixture, waitForBackupLogsDone_ClockGettimeFails)
+{
+    // access() returns -1 both times, inotify setup succeeds, clock_gettime fails
+    EXPECT_CALL(*g_systemMock, access(StrEq(BACKUP_LOGS_DONE_FLAG), _))
+            .Times(2)
+            .WillOnce(Return(-1))
+            .WillOnce(Return(-1));
+    EXPECT_CALL(*g_systemMock, inotify_init1(_))
+            .Times(1)
+            .WillOnce(Return(5));
+    EXPECT_CALL(*g_systemMock, inotify_add_watch(5, StrEq(BACKUP_LOGS_DONE_DIR), _))
+            .Times(1)
+            .WillOnce(Return(1));
+    EXPECT_CALL(*g_systemMock, clock_gettime(_, _))
+            .Times(1)
+            .WillOnce(Return(-1));
+    EXPECT_CALL(*g_systemMock, inotify_rm_watch(5, 1))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, close(5))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    EXPECT_EQ(false, waitForBackupLogsDone());
+}
+
+TEST_F(dcaTestFixture, waitForBackupLogsDone_Timeout)
+{
+    // Sentinel never appears, select returns 0 (timeout heartbeat), deadline expires
+    EXPECT_CALL(*g_systemMock, access(StrEq(BACKUP_LOGS_DONE_FLAG), _))
+            .Times(2)
+            .WillOnce(Return(-1))
+            .WillOnce(Return(-1));
+    EXPECT_CALL(*g_systemMock, inotify_init1(_))
+            .Times(1)
+            .WillOnce(Return(5));
+    EXPECT_CALL(*g_systemMock, inotify_add_watch(5, StrEq(BACKUP_LOGS_DONE_DIR), _))
+            .Times(1)
+            .WillOnce(Return(1));
+
+    // First clock_gettime sets the deadline (tv_sec=100)
+    // Second clock_gettime returns past deadline (tv_sec >= 100 + BACKUP_LOGS_SYNC_TIMEOUT_S)
+    EXPECT_CALL(*g_systemMock, clock_gettime(_, _))
+            .Times(2)
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100;
+                tp->tv_nsec = 0;
+                return 0;
+            })
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100 + BACKUP_LOGS_SYNC_TIMEOUT_S;
+                tp->tv_nsec = 0;
+                return 0;
+            });
+
+    EXPECT_CALL(*g_systemMock, inotify_rm_watch(5, 1))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, close(5))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    EXPECT_EQ(false, waitForBackupLogsDone());
+}
+
+TEST_F(dcaTestFixture, waitForBackupLogsDone_SelectFails)
+{
+    // select() fails with non-EINTR error
+    EXPECT_CALL(*g_systemMock, access(StrEq(BACKUP_LOGS_DONE_FLAG), _))
+            .Times(2)
+            .WillOnce(Return(-1))
+            .WillOnce(Return(-1));
+    EXPECT_CALL(*g_systemMock, inotify_init1(_))
+            .Times(1)
+            .WillOnce(Return(5));
+    EXPECT_CALL(*g_systemMock, inotify_add_watch(5, StrEq(BACKUP_LOGS_DONE_DIR), _))
+            .Times(1)
+            .WillOnce(Return(1));
+    EXPECT_CALL(*g_systemMock, clock_gettime(_, _))
+            .Times(2)
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100;
+                tp->tv_nsec = 0;
+                return 0;
+            })
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100;  // Not past deadline yet
+                tp->tv_nsec = 0;
+                return 0;
+            });
+    EXPECT_CALL(*g_systemMock, select(_, _, _, _, _))
+            .Times(1)
+            .WillOnce([](int, fd_set*, fd_set*, fd_set*, struct timeval*) {
+                errno = EBADF;
+                return -1;
+            });
+    EXPECT_CALL(*g_systemMock, inotify_rm_watch(5, 1))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, close(5))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    EXPECT_EQ(false, waitForBackupLogsDone());
+}
+
+TEST_F(dcaTestFixture, waitForBackupLogsDone_SelectEINTR)
+{
+    // select() returns EINTR, then deadline expires
+    EXPECT_CALL(*g_systemMock, access(StrEq(BACKUP_LOGS_DONE_FLAG), _))
+            .Times(2)
+            .WillOnce(Return(-1))
+            .WillOnce(Return(-1));
+    EXPECT_CALL(*g_systemMock, inotify_init1(_))
+            .Times(1)
+            .WillOnce(Return(5));
+    EXPECT_CALL(*g_systemMock, inotify_add_watch(5, StrEq(BACKUP_LOGS_DONE_DIR), _))
+            .Times(1)
+            .WillOnce(Return(1));
+    EXPECT_CALL(*g_systemMock, clock_gettime(_, _))
+            .Times(3)
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100;
+                tp->tv_nsec = 0;
+                return 0;
+            })
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100;  // Not past deadline
+                tp->tv_nsec = 0;
+                return 0;
+            })
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100 + BACKUP_LOGS_SYNC_TIMEOUT_S;  // Past deadline
+                tp->tv_nsec = 0;
+                return 0;
+            });
+    EXPECT_CALL(*g_systemMock, select(_, _, _, _, _))
+            .Times(1)
+            .WillOnce([](int, fd_set*, fd_set*, fd_set*, struct timeval*) {
+                errno = EINTR;
+                return -1;
+            });
+    EXPECT_CALL(*g_systemMock, inotify_rm_watch(5, 1))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, close(5))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    EXPECT_EQ(false, waitForBackupLogsDone());
+}
+
+TEST_F(dcaTestFixture, waitForBackupLogsDone_SentinelDetectedViaInotify)
+{
+    // Sentinel detected via inotify event
+    EXPECT_CALL(*g_systemMock, access(StrEq(BACKUP_LOGS_DONE_FLAG), _))
+            .Times(2)
+            .WillOnce(Return(-1))
+            .WillOnce(Return(-1));
+    EXPECT_CALL(*g_systemMock, inotify_init1(_))
+            .Times(1)
+            .WillOnce(Return(5));
+    EXPECT_CALL(*g_systemMock, inotify_add_watch(5, StrEq(BACKUP_LOGS_DONE_DIR), _))
+            .Times(1)
+            .WillOnce(Return(1));
+    EXPECT_CALL(*g_systemMock, clock_gettime(_, _))
+            .Times(2)
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100;
+                tp->tv_nsec = 0;
+                return 0;
+            })
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100;  // Not past deadline
+                tp->tv_nsec = 0;
+                return 0;
+            });
+    EXPECT_CALL(*g_systemMock, select(_, _, _, _, _))
+            .Times(1)
+            .WillOnce(Return(1));  // Data available to read
+
+    // Construct a fake inotify_event with the sentinel filename
+    struct inotify_event fake_event;
+    fake_event.wd = 1;
+    fake_event.mask = IN_CREATE;
+    fake_event.cookie = 0;
+    fake_event.len = strlen(BACKUP_LOGS_DONE_FILENAME) + 1;
+
+    // Build the buffer: struct inotify_event + filename (null-terminated)
+    size_t event_size = sizeof(struct inotify_event) + fake_event.len;
+    char *event_buf = (char *)malloc(event_size);
+    memcpy(event_buf, &fake_event, sizeof(struct inotify_event));
+    memcpy(event_buf + sizeof(struct inotify_event), BACKUP_LOGS_DONE_FILENAME, fake_event.len);
+
+    EXPECT_CALL(*g_fileIOMock, read(5, _, _))
+            .Times(1)
+            .WillOnce([event_buf, event_size](int, void* buf, size_t count) -> ssize_t {
+                size_t copy_size = (event_size < count) ? event_size : count;
+                memcpy(buf, event_buf, copy_size);
+                return (ssize_t)copy_size;
+            });
+
+    EXPECT_CALL(*g_systemMock, inotify_rm_watch(5, 1))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, close(5))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    EXPECT_EQ(true, waitForBackupLogsDone());
+    free(event_buf);
+}
+
+TEST_F(dcaTestFixture, waitForBackupLogsDone_ReadReturnsZero)
+{
+    // select() returns data ready, but read() returns 0 — loop back, then deadline expires
+    EXPECT_CALL(*g_systemMock, access(StrEq(BACKUP_LOGS_DONE_FLAG), _))
+            .Times(2)
+            .WillOnce(Return(-1))
+            .WillOnce(Return(-1));
+    EXPECT_CALL(*g_systemMock, inotify_init1(_))
+            .Times(1)
+            .WillOnce(Return(5));
+    EXPECT_CALL(*g_systemMock, inotify_add_watch(5, StrEq(BACKUP_LOGS_DONE_DIR), _))
+            .Times(1)
+            .WillOnce(Return(1));
+    EXPECT_CALL(*g_systemMock, clock_gettime(_, _))
+            .Times(3)
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100;
+                tp->tv_nsec = 0;
+                return 0;
+            })
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100;
+                tp->tv_nsec = 0;
+                return 0;
+            })
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100 + BACKUP_LOGS_SYNC_TIMEOUT_S;
+                tp->tv_nsec = 0;
+                return 0;
+            });
+    EXPECT_CALL(*g_systemMock, select(_, _, _, _, _))
+            .Times(1)
+            .WillOnce(Return(1));
+    EXPECT_CALL(*g_fileIOMock, read(5, _, _))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_systemMock, inotify_rm_watch(5, 1))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, close(5))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    EXPECT_EQ(false, waitForBackupLogsDone());
+}
+
+TEST_F(dcaTestFixture, waitForBackupLogsDone_UnrelatedInotifyEvent)
+{
+    // An inotify event for a different file, then deadline expires
+    EXPECT_CALL(*g_systemMock, access(StrEq(BACKUP_LOGS_DONE_FLAG), _))
+            .Times(2)
+            .WillOnce(Return(-1))
+            .WillOnce(Return(-1));
+    EXPECT_CALL(*g_systemMock, inotify_init1(_))
+            .Times(1)
+            .WillOnce(Return(5));
+    EXPECT_CALL(*g_systemMock, inotify_add_watch(5, StrEq(BACKUP_LOGS_DONE_DIR), _))
+            .Times(1)
+            .WillOnce(Return(1));
+    EXPECT_CALL(*g_systemMock, clock_gettime(_, _))
+            .Times(3)
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100;
+                tp->tv_nsec = 0;
+                return 0;
+            })
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100;
+                tp->tv_nsec = 0;
+                return 0;
+            })
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100 + BACKUP_LOGS_SYNC_TIMEOUT_S;
+                tp->tv_nsec = 0;
+                return 0;
+            });
+    EXPECT_CALL(*g_systemMock, select(_, _, _, _, _))
+            .Times(1)
+            .WillOnce(Return(1));
+
+    // Construct an inotify event for a different filename
+    const char *other_file = "other_file.txt";
+    struct inotify_event fake_event;
+    fake_event.wd = 1;
+    fake_event.mask = IN_CREATE;
+    fake_event.cookie = 0;
+    fake_event.len = strlen(other_file) + 1;
+
+    size_t event_size = sizeof(struct inotify_event) + fake_event.len;
+    char *event_buf = (char *)malloc(event_size);
+    memcpy(event_buf, &fake_event, sizeof(struct inotify_event));
+    memcpy(event_buf + sizeof(struct inotify_event), other_file, fake_event.len);
+
+    EXPECT_CALL(*g_fileIOMock, read(5, _, _))
+            .Times(1)
+            .WillOnce([event_buf, event_size](int, void* buf, size_t count) -> ssize_t {
+                size_t copy_size = (event_size < count) ? event_size : count;
+                memcpy(buf, event_buf, copy_size);
+                return (ssize_t)copy_size;
+            });
+
+    EXPECT_CALL(*g_systemMock, inotify_rm_watch(5, 1))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, close(5))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    EXPECT_EQ(false, waitForBackupLogsDone());
+    free(event_buf);
+}
+
+TEST_F(dcaTestFixture, waitForBackupLogsDone_ClockGettimeFailsInLoop)
+{
+    // clock_gettime succeeds initially but fails inside the while loop
+    EXPECT_CALL(*g_systemMock, access(StrEq(BACKUP_LOGS_DONE_FLAG), _))
+            .Times(2)
+            .WillOnce(Return(-1))
+            .WillOnce(Return(-1));
+    EXPECT_CALL(*g_systemMock, inotify_init1(_))
+            .Times(1)
+            .WillOnce(Return(5));
+    EXPECT_CALL(*g_systemMock, inotify_add_watch(5, StrEq(BACKUP_LOGS_DONE_DIR), _))
+            .Times(1)
+            .WillOnce(Return(1));
+    EXPECT_CALL(*g_systemMock, clock_gettime(_, _))
+            .Times(2)
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100;
+                tp->tv_nsec = 0;
+                return 0;
+            })
+            .WillOnce(Return(-1));  // Fails in the loop
+    EXPECT_CALL(*g_systemMock, inotify_rm_watch(5, 1))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, close(5))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    EXPECT_EQ(false, waitForBackupLogsDone());
+}
+
+#ifdef GTEST_ENABLE
+extern "C" {
+typedef const char *(*strnstrFunc)(const char *, const char *, size_t);
+strnstrFunc strnstrFuncCallback(void);
+typedef time_t (*extractUnixTimestampFunc)(const char*, size_t);
+extractUnixTimestampFunc extractUnixTimestampFuncCallback(void);
+typedef T2ERROR (*updateLogSeekFunc)(hash_map_t *, const char *, const long);
+updateLogSeekFunc updateLogSeekFuncCallback(void);
+}
+TEST(StaticStrnstrFunc, CoversMainBranches)
+{
+    auto fn = strnstrFuncCallback();
+    ASSERT_NE(fn, nullptr);
+
+    // NULL haystack or needle should return NULL
+    EXPECT_EQ(fn(NULL, "needle", 10), nullptr);
+    EXPECT_EQ(fn("haystack", NULL, 10), nullptr);
+
+    // Empty needle returns haystack
+    const char* h1 = "haystack";
+    EXPECT_EQ(fn(h1, "", 8), h1);
+
+    // len < needle_len or overflow returns NULL
+    EXPECT_EQ(fn("foo", "foobar", 3), nullptr);
+    // May not always trigger overflow branch but included for completeness
+    // EXPECT_EQ(fn("foo", "foo", (size_t)-1), nullptr);
+
+    // needle of length < 4 triggers simple search branch: found and not found
+    const char* h2 = "abcdef";
+    EXPECT_EQ(fn(h2, "c", 6), h2 + 2);  // found at position 2
+    EXPECT_EQ(fn(h2, "e", 4), nullptr); // not found in first 4 chars
+
+    // Optionally: COVER the optimized/longer path if you want (needle_len >= 4)
+    // This depends on your actual implementation for longer patterns
+}
+TEST(StaticExtractUnixTimestampFunc, CoversBranches)
+{
+    auto fn = extractUnixTimestampFuncCallback();
+    ASSERT_NE(fn, nullptr);
+
+    // NULL pointer or zero length hit early branch
+    EXPECT_EQ(fn(NULL, 12), (time_t)0);
+    EXPECT_EQ(fn("foo", 0), (time_t)0);
+
+    // ISO 8601 - "2023-05-30T14:15:16.123 extra"
+    const char* iso = "2023-05-30T14:15:16.123 extra text";
+    struct tm tm1 {};
+    tm1.tm_year = 2023 - 1900; // years since 1900
+    tm1.tm_mon  = 5 - 1;       // months since January
+    tm1.tm_mday = 30;
+    tm1.tm_hour = 14;
+    tm1.tm_min  = 15;
+    tm1.tm_sec  = 16;
+    time_t expected_iso = mktime(&tm1);
+    EXPECT_EQ(fn(iso, strlen(iso)), expected_iso);
+
+    // YYMMDD-HH:MM:SS - "230530-14:15:16 something"
+    const char* yymmdd = "230530-14:15:16 something";
+    struct tm tm2 {};
+    tm2.tm_year = 2023 - 1900;
+    tm2.tm_mon  = 5 - 1;
+    tm2.tm_mday = 30;
+    tm2.tm_hour = 14;
+    tm2.tm_min  = 15;
+    tm2.tm_sec  = 16;
+    time_t expected_yymmdd = mktime(&tm2);
+    EXPECT_EQ(fn(yymmdd, strlen(yymmdd)), expected_yymmdd);
+
+    // Not matching format (should return 0)
+    EXPECT_EQ(fn("1656606000 extra text", strlen("1656606000 extra text")), (time_t)0);
+}
+TEST(StaticUpdateLogSeekFunc, CoversNullBranches)
+{
+    auto fn = updateLogSeekFuncCallback();
+    ASSERT_NE(fn, nullptr);
+
+    // First branch: logSeekMap == NULL
+    EXPECT_EQ(fn(NULL, "dummy.log", 100), T2ERROR_FAILURE);
+
+    // Second branch: logFileName == NULL
+    hash_map_t dummyMap;
+    EXPECT_EQ(fn(&dummyMap, NULL, 100), T2ERROR_FAILURE);
+
+    // Additional test for a stub/empty map and filename to reach further code
+    // (Will continue past the NULL check; optionally extend to later logic in the function)
+}
+#endif

@@ -2294,6 +2294,447 @@ TEST_F(dcaTestFixture, waitForBackupLogsDone_ClockGettimeFailsInLoop)
     EXPECT_EQ(false, waitForBackupLogsDone());
 }
 
+// waitForBackupLogsDone L1 tests
+
+/* Fixture that enables clock_gettime/select mocking only during tests
+ * that need them — avoids intercepting gtest's internal timing calls. */
+class waitForBackupLogsDoneFixture : public dcaTestFixture {
+protected:
+    void SetUp() override
+    {
+        dcaTestFixture::SetUp();
+        g_mockClockGettime = true;
+        g_mockSelect       = true;
+    }
+    void TearDown() override
+    {
+        g_mockClockGettime = false;
+        g_mockSelect       = false;
+        dcaTestFixture::TearDown();
+    }
+};
+
+TEST_F(dcaTestFixture, waitForBackupLogsDone_SentinelAlreadyPresent)
+{
+    // Fast path: access() returns 0 meaning sentinel file exists
+    EXPECT_CALL(*g_systemMock, access(StrEq(BACKUP_LOGS_DONE_FLAG), _))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    EXPECT_EQ(true, waitForBackupLogsDone());
+}
+
+TEST_F(dcaTestFixture, waitForBackupLogsDone_InotifyInitFails)
+{
+    // access() returns -1 (sentinel not present), inotify_init1 fails
+    EXPECT_CALL(*g_systemMock, access(StrEq(BACKUP_LOGS_DONE_FLAG), _))
+            .Times(1)
+            .WillOnce(Return(-1));
+    EXPECT_CALL(*g_systemMock, inotify_init1(_))
+            .Times(1)
+            .WillOnce(Return(-1));
+
+    EXPECT_EQ(false, waitForBackupLogsDone());
+}
+
+TEST_F(dcaTestFixture, waitForBackupLogsDone_InotifyAddWatchFails)
+{
+    // access() returns -1, inotify_init1 succeeds, inotify_add_watch fails
+    EXPECT_CALL(*g_systemMock, access(StrEq(BACKUP_LOGS_DONE_FLAG), _))
+            .Times(1)
+            .WillOnce(Return(-1));
+    EXPECT_CALL(*g_systemMock, inotify_init1(_))
+            .Times(1)
+            .WillOnce(Return(5));
+    EXPECT_CALL(*g_systemMock, inotify_add_watch(5, StrEq(BACKUP_LOGS_DONE_DIR), _))
+            .Times(1)
+            .WillOnce(Return(-1));
+    EXPECT_CALL(*g_fileIOMock, close(5))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    EXPECT_EQ(false, waitForBackupLogsDone());
+}
+
+TEST_F(dcaTestFixture, waitForBackupLogsDone_RaceResolved)
+{
+    // First access() returns -1, inotify setup succeeds, second access() returns 0 (race resolved)
+    EXPECT_CALL(*g_systemMock, access(StrEq(BACKUP_LOGS_DONE_FLAG), _))
+            .Times(2)
+            .WillOnce(Return(-1))
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_systemMock, inotify_init1(_))
+            .Times(1)
+            .WillOnce(Return(5));
+    EXPECT_CALL(*g_systemMock, inotify_add_watch(5, StrEq(BACKUP_LOGS_DONE_DIR), _))
+            .Times(1)
+            .WillOnce(Return(1));
+    EXPECT_CALL(*g_systemMock, inotify_rm_watch(5, 1))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, close(5))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    EXPECT_EQ(true, waitForBackupLogsDone());
+}
+
+TEST_F(waitForBackupLogsDoneFixture, waitForBackupLogsDone_ClockGettimeFails)
+{
+    // access() returns -1 both times, inotify setup succeeds, clock_gettime fails
+    EXPECT_CALL(*g_systemMock, access(StrEq(BACKUP_LOGS_DONE_FLAG), _))
+            .Times(2)
+            .WillOnce(Return(-1))
+            .WillOnce(Return(-1));
+    EXPECT_CALL(*g_systemMock, inotify_init1(_))
+            .Times(1)
+            .WillOnce(Return(5));
+    EXPECT_CALL(*g_systemMock, inotify_add_watch(5, StrEq(BACKUP_LOGS_DONE_DIR), _))
+            .Times(1)
+            .WillOnce(Return(1));
+    EXPECT_CALL(*g_systemMock, clock_gettime(_, _))
+            .Times(1)
+            .WillOnce(Return(-1));
+    EXPECT_CALL(*g_systemMock, inotify_rm_watch(5, 1))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, close(5))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    EXPECT_EQ(false, waitForBackupLogsDone());
+}
+
+TEST_F(waitForBackupLogsDoneFixture, waitForBackupLogsDone_Timeout)
+{
+    // Sentinel never appears, select returns 0 (timeout heartbeat), deadline expires
+    EXPECT_CALL(*g_systemMock, access(StrEq(BACKUP_LOGS_DONE_FLAG), _))
+            .Times(2)
+            .WillOnce(Return(-1))
+            .WillOnce(Return(-1));
+    EXPECT_CALL(*g_systemMock, inotify_init1(_))
+            .Times(1)
+            .WillOnce(Return(5));
+    EXPECT_CALL(*g_systemMock, inotify_add_watch(5, StrEq(BACKUP_LOGS_DONE_DIR), _))
+            .Times(1)
+            .WillOnce(Return(1));
+
+    // First clock_gettime sets the deadline (tv_sec=100)
+    // Second clock_gettime returns past deadline (tv_sec >= 100 + BACKUP_LOGS_SYNC_TIMEOUT_S)
+    EXPECT_CALL(*g_systemMock, clock_gettime(_, _))
+            .Times(2)
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100;
+                tp->tv_nsec = 0;
+                return 0;
+            })
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100 + BACKUP_LOGS_SYNC_TIMEOUT_S;
+                tp->tv_nsec = 0;
+                return 0;
+            });
+
+    EXPECT_CALL(*g_systemMock, inotify_rm_watch(5, 1))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, close(5))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    EXPECT_EQ(false, waitForBackupLogsDone());
+}
+
+TEST_F(waitForBackupLogsDoneFixture, waitForBackupLogsDone_SelectFails)
+{
+    // select() fails with non-EINTR error
+    EXPECT_CALL(*g_systemMock, access(StrEq(BACKUP_LOGS_DONE_FLAG), _))
+            .Times(2)
+            .WillOnce(Return(-1))
+            .WillOnce(Return(-1));
+    EXPECT_CALL(*g_systemMock, inotify_init1(_))
+            .Times(1)
+            .WillOnce(Return(5));
+    EXPECT_CALL(*g_systemMock, inotify_add_watch(5, StrEq(BACKUP_LOGS_DONE_DIR), _))
+            .Times(1)
+            .WillOnce(Return(1));
+    EXPECT_CALL(*g_systemMock, clock_gettime(_, _))
+            .Times(2)
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100;
+                tp->tv_nsec = 0;
+                return 0;
+            })
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100;  // Not past deadline yet
+                tp->tv_nsec = 0;
+                return 0;
+            });
+    EXPECT_CALL(*g_systemMock, select(_, _, _, _, _))
+            .Times(1)
+            .WillOnce([](int, fd_set*, fd_set*, fd_set*, struct timeval*) {
+                errno = EBADF;
+                return -1;
+            });
+    EXPECT_CALL(*g_systemMock, inotify_rm_watch(5, 1))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, close(5))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    EXPECT_EQ(false, waitForBackupLogsDone());
+}
+
+TEST_F(waitForBackupLogsDoneFixture, waitForBackupLogsDone_SelectEINTR)
+{
+    // select() returns EINTR, then deadline expires
+    EXPECT_CALL(*g_systemMock, access(StrEq(BACKUP_LOGS_DONE_FLAG), _))
+            .Times(2)
+            .WillOnce(Return(-1))
+            .WillOnce(Return(-1));
+    EXPECT_CALL(*g_systemMock, inotify_init1(_))
+            .Times(1)
+            .WillOnce(Return(5));
+    EXPECT_CALL(*g_systemMock, inotify_add_watch(5, StrEq(BACKUP_LOGS_DONE_DIR), _))
+            .Times(1)
+            .WillOnce(Return(1));
+    EXPECT_CALL(*g_systemMock, clock_gettime(_, _))
+            .Times(3)
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100;
+                tp->tv_nsec = 0;
+                return 0;
+            })
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100;  // Not past deadline
+                tp->tv_nsec = 0;
+                return 0;
+            })
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100 + BACKUP_LOGS_SYNC_TIMEOUT_S;  // Past deadline
+                tp->tv_nsec = 0;
+                return 0;
+            });
+    EXPECT_CALL(*g_systemMock, select(_, _, _, _, _))
+            .Times(1)
+            .WillOnce([](int, fd_set*, fd_set*, fd_set*, struct timeval*) {
+                errno = EINTR;
+                return -1;
+            });
+    EXPECT_CALL(*g_systemMock, inotify_rm_watch(5, 1))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, close(5))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    EXPECT_EQ(false, waitForBackupLogsDone());
+}
+
+TEST_F(waitForBackupLogsDoneFixture, waitForBackupLogsDone_SentinelDetectedViaInotify)
+{
+    // Sentinel detected via inotify event
+    EXPECT_CALL(*g_systemMock, access(StrEq(BACKUP_LOGS_DONE_FLAG), _))
+            .Times(2)
+            .WillOnce(Return(-1))
+            .WillOnce(Return(-1));
+    EXPECT_CALL(*g_systemMock, inotify_init1(_))
+            .Times(1)
+            .WillOnce(Return(5));
+    EXPECT_CALL(*g_systemMock, inotify_add_watch(5, StrEq(BACKUP_LOGS_DONE_DIR), _))
+            .Times(1)
+            .WillOnce(Return(1));
+    EXPECT_CALL(*g_systemMock, clock_gettime(_, _))
+            .Times(2)
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100;
+                tp->tv_nsec = 0;
+                return 0;
+            })
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100;  // Not past deadline
+                tp->tv_nsec = 0;
+                return 0;
+            });
+    EXPECT_CALL(*g_systemMock, select(_, _, _, _, _))
+            .Times(1)
+            .WillOnce(Return(1));  // Data available to read
+
+    // Construct a fake inotify_event with the sentinel filename
+    struct inotify_event fake_event;
+    fake_event.wd = 1;
+    fake_event.mask = IN_CREATE;
+    fake_event.cookie = 0;
+    fake_event.len = strlen(BACKUP_LOGS_DONE_FILENAME) + 1;
+
+    // Build the buffer: struct inotify_event + filename (null-terminated)
+    size_t event_size = sizeof(struct inotify_event) + fake_event.len;
+    char *event_buf = (char *)malloc(event_size);
+    memcpy(event_buf, &fake_event, sizeof(struct inotify_event));
+    memcpy(event_buf + sizeof(struct inotify_event), BACKUP_LOGS_DONE_FILENAME, fake_event.len);
+
+    EXPECT_CALL(*g_fileIOMock, read(5, _, _))
+            .Times(1)
+            .WillOnce([event_buf, event_size](int, void* buf, size_t count) -> ssize_t {
+                size_t copy_size = (event_size < count) ? event_size : count;
+                memcpy(buf, event_buf, copy_size);
+                return (ssize_t)copy_size;
+            });
+
+    EXPECT_CALL(*g_systemMock, inotify_rm_watch(5, 1))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, close(5))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    EXPECT_EQ(true, waitForBackupLogsDone());
+    free(event_buf);
+}
+
+TEST_F(waitForBackupLogsDoneFixture, waitForBackupLogsDone_ReadReturnsZero)
+{
+    // select() returns data ready, but read() returns 0 — loop back, then deadline expires
+    EXPECT_CALL(*g_systemMock, access(StrEq(BACKUP_LOGS_DONE_FLAG), _))
+            .Times(2)
+            .WillOnce(Return(-1))
+            .WillOnce(Return(-1));
+    EXPECT_CALL(*g_systemMock, inotify_init1(_))
+            .Times(1)
+            .WillOnce(Return(5));
+    EXPECT_CALL(*g_systemMock, inotify_add_watch(5, StrEq(BACKUP_LOGS_DONE_DIR), _))
+            .Times(1)
+            .WillOnce(Return(1));
+    EXPECT_CALL(*g_systemMock, clock_gettime(_, _))
+            .Times(3)
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100;
+                tp->tv_nsec = 0;
+                return 0;
+            })
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100;
+                tp->tv_nsec = 0;
+                return 0;
+            })
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100 + BACKUP_LOGS_SYNC_TIMEOUT_S;
+                tp->tv_nsec = 0;
+                return 0;
+            });
+    EXPECT_CALL(*g_systemMock, select(_, _, _, _, _))
+            .Times(1)
+            .WillOnce(Return(1));
+    EXPECT_CALL(*g_fileIOMock, read(5, _, _))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_systemMock, inotify_rm_watch(5, 1))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, close(5))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    EXPECT_EQ(false, waitForBackupLogsDone());
+}
+
+TEST_F(waitForBackupLogsDoneFixture, waitForBackupLogsDone_UnrelatedInotifyEvent)
+{
+    // An inotify event for a different file, then deadline expires
+    EXPECT_CALL(*g_systemMock, access(StrEq(BACKUP_LOGS_DONE_FLAG), _))
+            .Times(2)
+            .WillOnce(Return(-1))
+            .WillOnce(Return(-1));
+    EXPECT_CALL(*g_systemMock, inotify_init1(_))
+            .Times(1)
+            .WillOnce(Return(5));
+    EXPECT_CALL(*g_systemMock, inotify_add_watch(5, StrEq(BACKUP_LOGS_DONE_DIR), _))
+            .Times(1)
+            .WillOnce(Return(1));
+    EXPECT_CALL(*g_systemMock, clock_gettime(_, _))
+            .Times(3)
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100;
+                tp->tv_nsec = 0;
+                return 0;
+            })
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100;
+                tp->tv_nsec = 0;
+                return 0;
+            })
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100 + BACKUP_LOGS_SYNC_TIMEOUT_S;
+                tp->tv_nsec = 0;
+                return 0;
+            });
+    EXPECT_CALL(*g_systemMock, select(_, _, _, _, _))
+            .Times(1)
+            .WillOnce(Return(1));
+
+    // Construct an inotify event for a different filename
+    const char *other_file = "other_file.txt";
+    struct inotify_event fake_event;
+    fake_event.wd = 1;
+    fake_event.mask = IN_CREATE;
+    fake_event.cookie = 0;
+    fake_event.len = strlen(other_file) + 1;
+
+    size_t event_size = sizeof(struct inotify_event) + fake_event.len;
+    char *event_buf = (char *)malloc(event_size);
+    memcpy(event_buf, &fake_event, sizeof(struct inotify_event));
+    memcpy(event_buf + sizeof(struct inotify_event), other_file, fake_event.len);
+
+    EXPECT_CALL(*g_fileIOMock, read(5, _, _))
+            .Times(1)
+            .WillOnce([event_buf, event_size](int, void* buf, size_t count) -> ssize_t {
+                size_t copy_size = (event_size < count) ? event_size : count;
+                memcpy(buf, event_buf, copy_size);
+                return (ssize_t)copy_size;
+            });
+
+    EXPECT_CALL(*g_systemMock, inotify_rm_watch(5, 1))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, close(5))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    EXPECT_EQ(false, waitForBackupLogsDone());
+    free(event_buf);
+}
+
+TEST_F(waitForBackupLogsDoneFixture, waitForBackupLogsDone_ClockGettimeFailsInLoop)
+{
+    // clock_gettime succeeds initially but fails inside the while loop
+    EXPECT_CALL(*g_systemMock, access(StrEq(BACKUP_LOGS_DONE_FLAG), _))
+            .Times(2)
+            .WillOnce(Return(-1))
+            .WillOnce(Return(-1));
+    EXPECT_CALL(*g_systemMock, inotify_init1(_))
+            .Times(1)
+            .WillOnce(Return(5));
+    EXPECT_CALL(*g_systemMock, inotify_add_watch(5, StrEq(BACKUP_LOGS_DONE_DIR), _))
+            .Times(1)
+            .WillOnce(Return(1));
+    EXPECT_CALL(*g_systemMock, clock_gettime(_, _))
+            .Times(2)
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100;
+                tp->tv_nsec = 0;
+                return 0;
+            })
+            .WillOnce(Return(-1));  // Fails in the loop
+    EXPECT_CALL(*g_systemMock, inotify_rm_watch(5, 1))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, close(5))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    EXPECT_EQ(false, waitForBackupLogsDone());
+}
+
 #ifdef GTEST_ENABLE
 extern "C" {
 typedef const char *(*strnstrFunc)(const char *, const char *, size_t);

@@ -219,6 +219,25 @@ AC_ARG_ENABLE([tsan],
            ],
         [echo "ThreadSanitizer is disabled"])
 
+ENABLE_DYNAMIC_TABLE_SUPPORT=false
+AC_ARG_ENABLE([dynamic-table-support],
+        AS_HELP_STRING([--enable-dynamic-table-support],[enable dynamic TR-181 table traversal support (default is no)]),
+        [
+          case "${enableval}" in
+           yes) ENABLE_DYNAMIC_TABLE_SUPPORT=true ;;
+           no)  ENABLE_DYNAMIC_TABLE_SUPPORT=false ;;
+          *) AC_MSG_ERROR([bad value ${enableval} for --enable-dynamic-table-support]) ;;
+           esac
+           ],
+        [echo "dynamic table support is disabled"])
+AM_CONDITIONAL([ENABLE_DYNAMIC_TABLE_SUPPORT], [test x$ENABLE_DYNAMIC_TABLE_SUPPORT = xtrue])
+
+if test x$ENABLE_DYNAMIC_TABLE_SUPPORT = xtrue; then
+    CPPFLAGS="$CPPFLAGS -DENABLE_DYNAMIC_TABLE_SUPPORT"
+fi
+
+AC_MSG_NOTICE([Dynamic table support: $ENABLE_DYNAMIC_TABLE_SUPPORT])
+
 AC_CONFIG_FILES([Makefile
                  source/Makefile
                  source/bulkdata/Makefile

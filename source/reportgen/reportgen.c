@@ -350,6 +350,9 @@ bool isDataModelTable(const char *paramName)
 
 T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *paramValueList, Vector *dataModelTableList)
 {
+#ifndef ENABLE_DYNAMIC_TABLE_SUPPORT
+    (void)dataModelTableList;
+#endif
     if(valArray == NULL || paramNameList == NULL || paramValueList == NULL)
     {
         T2Error("Invalid or NULL arguments\n");

@@ -30,10 +30,20 @@
 
 #define TOPTEMP "/tmp/t2toplog"
 #define DCADONEFLAG "/tmp/.dca_done"
+#define TELEMETRY_PREVLOGS_DONE_FLAG "/tmp/.telemetry_prevlogs_done"
 
 #define PREVIOUS_LOG "PREVIOUS_LOG"
 #define PREVIOUS_LOGS_VAL  "1"
 #define PREVIOUS_LOGS_PATH "/opt/logs/PreviousLogs/"
+#define BACKUP_LOGS_DONE_FLAG      "/tmp/.backup_logs_done"
+#define BACKUP_LOGS_DONE_DIR       "/tmp"
+#define BACKUP_LOGS_DONE_FILENAME  ".backup_logs_done"
+
+#ifdef GTEST_ENABLE
+#  define BACKUP_LOGS_SYNC_TIMEOUT_S  2
+#else
+#  define BACKUP_LOGS_SYNC_TIMEOUT_S  60
+#endif
 
 typedef struct _GrepResult
 {
@@ -79,7 +89,7 @@ int getMemInfo(procMemCpuInfo *pmInfo);
 int getCPUInfo(procMemCpuInfo *pInfo, char* filename);
 int getProcPidStat(int pid, procinfo * pinfo);
 int getTotalCpuTimes(int * totalTime);
-
+bool waitForBackupLogsDone(void);
 
 #ifdef PERSIST_LOG_MON_REF
 typedef void (*freeconfigdata)(void *data);

@@ -47,6 +47,7 @@
 #include "t2log_wrapper.h"
 #include "t2common.h"
 #include "busInterface.h"
+#include "multicurlinterface.h"
 
 
 static bool check_rotated_logs = false; // using this variable to indicate whether it needs to check the rotated logs or not . Initialising it with false.
@@ -59,6 +60,11 @@ static bool firstreport_after_bootup = false; // the rotated logs check should r
 #define BUFFER_SIZE 4096  // TODO fine tune this value based on the size of the data    
 #define LARGE_FILE_THRESHOLD 1000000 // 1MB
 #define MAX_TIMESTAMP_LENGTH 24
+/*
+ * CPU contention avoidance window:
+ * prevent overlap between top/process sampling and telemetry curl work.
+ */
+#define DCA_SAMPLING_CURL_WAIT_TIMEOUT_MS 15000
 /**
  * @addtogroup DCA_TYPES
  * @{
@@ -256,6 +262,7 @@ static time_t extractUnixTimestamp(const char* line_start, size_t line_length)
 int processTopPattern(char* profileName,  Vector* topMarkerList, int profileExecCounter)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
+    bool isSamplingActive = false;
     if(profileName == NULL || topMarkerList == NULL)
     {
         T2Error("Invalid arguments for %s\n", __FUNCTION__);
@@ -314,6 +321,18 @@ int processTopPattern(char* profileName,  Vector* topMarkerList, int profileExec
 
     for (; var < vCount; ++var) // Loop of marker list starts here
     {
+        if(!isSamplingActive)
+        {
+            /*
+             * Enter sampling window so new curl work is deferred while
+             * top/process markers are being collected.
+             */
+            if(http_pool_begin_sampling_window(DCA_SAMPLING_CURL_WAIT_TIMEOUT_MS) == T2ERROR_SUCCESS)
+            {
+                isSamplingActive = true;
+            }
+        }
+
         TopMarker* topMarkerObj = (TopMarker*) Vector_At(topMarkerList, var);
         if (!topMarkerObj || !topMarkerObj->logFile || !topMarkerObj->searchString || !topMarkerObj->markerName)
         {
@@ -368,6 +387,12 @@ int processTopPattern(char* profileName,  Vector* topMarkerList, int profileExec
             getProcUsage(topMarkerObj->searchString, topMarkerObj, filename);
         }
 
+    }
+
+    if(isSamplingActive)
+    {
+        /* Leave sampling window and allow deferred curl work to proceed. */
+        http_pool_end_sampling_window();
     }
 
 #if !defined(ENABLE_RDKC_SUPPORT) && !defined(ENABLE_RDKB_SUPPORT)
@@ -871,7 +896,7 @@ static int processPatternWithOptimizedFunction(GrepMarker* marker, FileDescripto
     return 0;
 }
 
-static int getLogFileDescriptor(GrepSeekProfile* gsProfile, const char* logPath, const char* logFile, int old_fd, off_t* out_seek_value, bool* out_inode_changed, ino_t* out_stored_inode)
+static int getLogFileDescriptor(GrepSeekProfile* gsProfile, const char* logPath, const char* logFile, int old_fd, off_t* out_seek_value, bool* out_inode_changed, ino_t* out_stored_inode, bool isCustomPath)
 {
     long seek_value_from_map = 0;
     ino_t stored_inode = 0;
@@ -926,14 +951,25 @@ static int getLogFileDescriptor(GrepSeekProfile* gsProfile, const char* logPath,
 
     // Detect inode change: if inode differs from stored value, the file was rotated
     // This covers the corner case where new file grows past seek_value after rotation
-    *out_inode_changed = (stored_inode != 0 && sb.st_ino != stored_inode);
-    if (*out_inode_changed)
+    // Suppress inode-based rotation detection when reading from a custom path (e.g., Previous_Logs)
+    // because the inode difference is due to path change, not actual log rotation
+    if (isCustomPath)
     {
-        T2Info("Inode changed for %s (stored: %lu, current: %lu) - log rotation detected\n",
-               logFile, (unsigned long)stored_inode, (unsigned long)sb.st_ino);
+        *out_inode_changed = false;
+    }
+    else
+    {
+        *out_inode_changed = (stored_inode != 0 && sb.st_ino != stored_inode);
+        if (*out_inode_changed)
+        {
+            T2Info("Inode changed for %s (stored: %lu, current: %lu) - log rotation detected\n",
+                   logFile, (unsigned long)stored_inode, (unsigned long)sb.st_ino);
+        }
     }
 
-    updateLogSeek(gsProfile->logFileSeekMap, logFile, sb.st_size, sb.st_ino);
+    // When reading from a custom path (e.g., Previous_Logs after reboot), store inode as 0
+    // so the next report from the default log path won't see a false inode mismatch
+    updateLogSeek(gsProfile->logFileSeekMap, logFile, sb.st_size, isCustomPath ? 0 : sb.st_ino);
     *out_seek_value = seek_value_from_map;
     *out_stored_inode = stored_inode;
     return fd;
@@ -1304,7 +1340,7 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
  *  @param filename
  *  @return -1 on failure, 0 on success
  */
-static int parseMarkerListOptimized(GrepSeekProfile *gsProfile, Vector * ip_vMarkerList, bool check_rotated, char* logPath)
+static int parseMarkerListOptimized(GrepSeekProfile *gsProfile, Vector * ip_vMarkerList, bool check_rotated, char* logPath, bool isCustomPath)
 {
     T2Debug("%s ++in \n", __FUNCTION__);
 
@@ -1380,7 +1416,7 @@ static int parseMarkerListOptimized(GrepSeekProfile *gsProfile, Vector * ip_vMar
             off_t seek_value = 0;
             bool inode_changed = false;
             ino_t prev_stored_inode = 0;
-            fd = getLogFileDescriptor(gsProfile, logPath, log_file_for_this_iteration, fd, &seek_value, &inode_changed, &prev_stored_inode);
+            fd = getLogFileDescriptor(gsProfile, logPath, log_file_for_this_iteration, fd, &seek_value, &inode_changed, &prev_stored_inode, isCustomPath);
             prevfile = updateFilename(prevfile, log_file_for_this_iteration);
             if (fd == -1)
             {
@@ -1453,9 +1489,12 @@ int getDCAResultsInVector(GrepSeekProfile *gSeekProfile, Vector * vecMarkerList,
     if(NULL != vecMarkerList)
     {
         char* logPath = customLogPath ? customLogPath : LOGPATH;
+        // Detect if we're reading from a non-default path (e.g., Previous_Logs after reboot)
+        // to suppress false inode-based rotation detection across path changes
+        bool isCustomPath = (customLogPath != NULL && LOGPATH != NULL && strcmp(customLogPath, LOGPATH) != 0);
 
         // Go for looping through the marker list
-        if( (rc = parseMarkerListOptimized(gSeekProfile, vecMarkerList, check_rotated, logPath)) == -1 )
+        if( (rc = parseMarkerListOptimized(gSeekProfile, vecMarkerList, check_rotated, logPath, isCustomPath)) == -1 )
         {
             T2Debug("Error in fetching grep results\n");
         }

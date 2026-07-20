@@ -428,7 +428,7 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
                     T2Error("cJSON_CreateObject failed.. arrayItem is NULL \n");
                     return T2ERROR_FAILURE;
                 }
-                T2Info("Paramter was not successfully retrieved... \n");
+                T2Info("Parameter was not successfully retrieved... \n");
 #ifdef SUPPORT_TYPING_FIELDS
                 cJSON *nullItem = cJSON_CreateNull();
                 if(nullItem == NULL)

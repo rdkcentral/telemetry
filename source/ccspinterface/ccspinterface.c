@@ -109,7 +109,7 @@ T2ERROR ccspGetParameterValues(const char **paramNames, const int paramNamesCoun
         T2Error("paramNames is NULL or paramNamesCount <= 0 - returning\n");
         return T2ERROR_INVALID_ARGS;
     }
-    if(CCSP_SUCCESS == findDestComponent((char*)paramNames[0], &destCompName, &destCompPath))
+    if(CCSP_SUCCESS == findDestComponent((char * )paramNames[0], &destCompName, &destCompPath))
     {
         T2Debug("Calling CcspBaseIf_getParameterValues for : %s, paramCount : %d Destination name : %s and path %s\n", paramNames[0], paramNamesCount, destCompName, destCompPath);
         int ret = CcspBaseIf_getParameterValues(bus_handle, destCompName, destCompPath, (char**)paramNames, paramNamesCount, valSize, valStructs);
@@ -158,9 +158,9 @@ T2ERROR getParameterNames(const char *objName, parameterInfoStruct_t ***paramNam
         T2Error("Invalid objectName, doesn't end with a wildcard '.'\n");
         return T2ERROR_INVALID_ARGS;
     }
-    if(CCSP_SUCCESS == findDestComponent((char*)objName, &destCompName, &destCompPath))
+    if(CCSP_SUCCESS == findDestComponent((char * )objName, &destCompName, &destCompPath))
     {
-        if ( CCSP_SUCCESS != CcspBaseIf_getParameterNames(bus_handle, destCompName, destCompPath, (char*)objName, 1, paramNamesLength, paramNamesSt))
+        if ( CCSP_SUCCESS != CcspBaseIf_getParameterNames(bus_handle, destCompName, destCompPath, (char * )objName, 1, paramNamesLength, paramNamesSt))
         {
             T2Error("CcspBaseIf_getParameterValues failed for : %s\n", objName);
         }
@@ -210,7 +210,7 @@ T2ERROR getCCSPParamVal(const char* paramName, char **paramValue)
     }
 
     paramNames[0] = strdup(paramName);
-    if(T2ERROR_SUCCESS != ccspGetParameterValues((const char**)paramNames, 1, &valStructs, &valSize))
+    if(T2ERROR_SUCCESS != ccspGetParameterValues((const char * *)paramNames, 1, &valStructs, &valSize))
     {
         T2Error("Unable to get %s\n", paramName);
         free(paramNames[0]);
@@ -273,7 +273,7 @@ Vector* getCCSPProfileParamValues(Vector *paramList, int execount)
             Vector_PushBack(profileValueList, profVals);
             continue;
         }
-        if(T2ERROR_SUCCESS != ccspGetParameterValues((const char**)paramNames, 1, &ccspParamValues, &paramValCount))
+        if(T2ERROR_SUCCESS != ccspGetParameterValues((const char * *)paramNames, 1, &ccspParamValues, &paramValCount))
         {
             T2Error("Failed to retrieve param : %s\n", paramNames[0]);
             paramValCount = 0;

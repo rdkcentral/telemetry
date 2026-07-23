@@ -373,6 +373,7 @@ TEST(GETPROCINFO, PMINFO_NULL)
    pInfo.total_instance = 0;
    EXPECT_NE(0,getProcInfo(&pInfo, NULL));
    free(filename);
+   free(processName);
 }
 
 TEST(GETMEMINFO, PMINFO_NULL)

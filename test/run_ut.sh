@@ -44,15 +44,19 @@ autoreconf --install
 
 make -C source/test
 
+# List of 13 test binaries to run
 tests="
 ./source/test/bulkdata/profile_gtest.bin
 ./source/test/bulkdata/datamodel_gtest.bin
 ./source/test/bulkdata/profilexconf_gtest.bin
 ./source/test/bulkdata/t2markers_gtest.bin
 ./source/test/bulkdata/reportprofiles_gtest.bin
+./source/test/bulkdata/profile_dynamictable_gtest.bin
 ./source/test/reportgen/reportgen_gtest.bin
+./source/test/reportgen/reportgen_dynamictable_gtest.bin
 ./source/test/scheduler/scheduler_gtest.bin
 ./source/test/t2parser/t2parser_gtest.bin
+./source/test/t2parser/t2parser_dynamictable_gtest.bin
 ./source/test/dcautils/dcautil_gtest.bin
 ./source/test/ccspinterface/ccspinterface_gtest.bin
 "
@@ -60,8 +64,12 @@ tests="
 for test in $tests
 do
     if [ -x "$test" ]; then
-        "$test"
+        # Run the test and filter out lines starting with "LOG.RDK." to reduce noise in the output
+        # Store output and capture exit status in POSIX-compliant way
+        output=$("$test" 2>&1)
         status=$?
+        echo "=========== Output of $test execution: =========="
+        echo "$output" | grep -v "^LOG\.RDK\."
         if [ $status -ne 0 ]; then
             echo "Test $test failed with exit code $status"
             fail=1
@@ -71,6 +79,26 @@ do
         fail=1
     fi
 done
+
+### Iteratively cat the generated gtest output files in /tmp/Gtest_Report/ 
+echo "Aggregating test results from /tmp/Gtest_Report/"
+if [ -d "/tmp/Gtest_Report/" ]; then
+    echo "Files in /tmp/Gtest_Report/:"
+    ls -l /tmp/Gtest_Report/
+
+    for report in `ls /tmp/Gtest_Report/*.json`; do
+        if [ -f "$report" ]; then
+            echo "Contents of $report:"
+            cat "$report"
+            echo "----------------------------------------"
+        else
+            echo "No JSON report files found in /tmp/Gtest_Report/"
+        fi
+    done
+else
+    echo "Directory /tmp/Gtest_Report/ does not exist."
+fi
+
 #### Generate the coverage report ####
 if [ "$ENABLE_COV" = true ]; then
     echo "Generating coverage report"
@@ -81,6 +109,7 @@ if [ "$ENABLE_COV" = true ]; then
     lcov --remove coverage.info "/usr/*" --output-file coverage.info
     lcov --list coverage.info
 fi
+
 if [ $fail -ne 0 ]; then
     echo "Some unit tests failed."
     exit 1

@@ -17,6 +17,7 @@
  * limitations under the License.
 */
 
+#include <string.h>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
@@ -24,8 +25,19 @@ extern "C" {
 #include "t2log_wrapper.h"
 }
 
+#define GTEST_DEFAULT_RESULT_FILEPATH "/tmp/Gtest_Report/"
+#define GTEST_DEFAULT_RESULT_FILENAME "ccspinterface_gtest_report.json"
+#define GTEST_REPORT_FILEPATH_SIZE 128
+
 int main(int argc, char *argv[])
 {
+    char testresults_fullfilepath[GTEST_REPORT_FILEPATH_SIZE];
+
+    memset( testresults_fullfilepath, 0, GTEST_REPORT_FILEPATH_SIZE );
+    snprintf( testresults_fullfilepath, GTEST_REPORT_FILEPATH_SIZE, "json:%s%s" , GTEST_DEFAULT_RESULT_FILEPATH , GTEST_DEFAULT_RESULT_FILENAME);
+    
+    /* Set output flag BEFORE InitGoogleTest */
+    ::testing::GTEST_FLAG(output) = testresults_fullfilepath;
     testing::InitGoogleTest(&argc, argv);
     testing::InitGoogleMock(&argc, argv);
     

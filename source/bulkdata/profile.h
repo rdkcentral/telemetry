@@ -94,6 +94,7 @@ typedef struct _Profile
     Vector *gMarkerList;
     Vector *topMarkerList;
     Vector *cachedReportList;
+    Vector *dataModelTableList;   // List of DataModelTable
     cJSON *jsonReportObj;
     pthread_t reportThread;
     pthread_mutex_t triggerCondMutex;
@@ -115,6 +116,8 @@ T2ERROR initProfileList(bool checkPreviousSeek);
 T2ERROR uninitProfileList();
 
 T2ERROR addProfile(Profile *profile);
+
+void freeProfile(void *data);
 
 int getProfileCount();
 

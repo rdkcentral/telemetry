@@ -254,7 +254,7 @@ Vector* getRbusProfileParamValues(Vector *paramList, int execcount)
         if(paramNames[0] != NULL)
         {
             T2Debug("Calling rbus_getExt for %s \n", paramNames[0]);
-            if(RBUS_ERROR_SUCCESS != rbus_getExt(t2bus_handle, 1, (const char**)paramNames, &paramValCount, &rbusPropertyValues))
+            if(RBUS_ERROR_SUCCESS != rbus_getExt(t2bus_handle, 1, (const char * *)paramNames, &paramValCount, &rbusPropertyValues))
             {
                 T2Error("Failed to retrieve param : %s\n", paramNames[0]);
                 paramValCount = 0 ;
@@ -650,7 +650,7 @@ rbusError_t t2PropertyDataSetHandler(rbusHandle_t handle, rbusProperty_t prop, r
             }
             /* Dispatch heavy callbacks to a worker thread to avoid blocking the RBUS handler */
             pthread_t privacyWorker;
-            if(pthread_create(&privacyWorker, NULL, privacyModeCallbackWorker, (void*)data) == 0)
+            if(pthread_create(&privacyWorker, NULL, privacyModeCallbackWorker, (void * )data) == 0)
             {
                 pthread_detach(privacyWorker);
             }

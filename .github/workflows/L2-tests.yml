@@ -66,7 +66,7 @@ jobs:
           docker cp native-platform:/tmp/l2_test_report /tmp/L2_TEST_RESULTS
           ls -l
           ls -l /tmp/L2_TEST_RESULTS
-       - name: Run RDK CI Container
+      - name: Run RDK CI Container
         run: |
           docker run -d --name ci-container -e AUTOMATICS_UNAME=${{ secrets.AUTOMATICS_UNAME }} -e AUTOMATICS_PASSCODE=${{ secrets.AUTOMATICS_PASSCODE }} -v /tmp/L2_TEST_RESULTS:/tmp/L2_TEST_RESULTS ghcr.io/rdkcentral/docker-rdk-ci:latest tail -f /dev/null
 

@@ -66,29 +66,12 @@ jobs:
           docker cp native-platform:/tmp/l2_test_report /tmp/L2_TEST_RESULTS
           ls -l
           ls -l /tmp/L2_TEST_RESULTS
-  upload-test-results:
-    name: Upload L2 test results to automatic test result management system
-    needs: execute-L2-tests-on-pr
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/rdkcentral/docker-rdk-ci:latest
-      volumes:
-        - /tmp/L2_TEST_RESULTS:/tmp/L2_TEST_RESULTS
-    steps:
-      - name: Upload results
-        if: github.repository_owner == 'rdkcentral'
-        env:
-          TEST_RESULTS_PUSH_URL: ${{ secrets.TEST_RESULTS_PUSH_URL }}
+       - name: Run RDK CI Container
         run: |
-            echo "Contents in workspace directory"
-            ls -l
-            echo "==============================="
-            echo "Contents in /tmp/L2_TEST_RESULTS"
-            ls -l /tmp/L2_TEST_RESULTS
-            echo "==============================="
-            if [ -z "${TEST_RESULTS_PUSH_URL}" ]; then
-                echo "TEST_RESULTS_PUSH_URL secret not set. Skipping test result upload."
-                exit 0
-            fi
-            git config --global --add safe.directory `pwd`
-            gtest-json-result-push.py /tmp/L2_TEST_RESULTS "${TEST_RESULTS_PUSH_URL}" `pwd`
+          docker run -d --name ci-container -e AUTOMATICS_UNAME=${{ secrets.AUTOMATICS_UNAME }} -e AUTOMATICS_PASSCODE=${{ secrets.AUTOMATICS_PASSCODE }} -v /tmp/L2_TEST_RESULTS:/tmp/L2_TEST_RESULTS ghcr.io/rdkcentral/docker-rdk-ci:latest tail -f /dev/null
+
+      - name: Upload Results to Automatics
+        if: github.repository_owner == 'rdkcentral'
+        run: |
+          docker cp /tmp/L2_TEST_RESULTS ci-container:/tmp/L2_TEST_RESULTS
+          docker exec -i ci-container bash -c "echo 'Contents in workspace directory' && ls -l && echo '===============================' && echo 'Contents in /tmp/L2_TEST_RESULTS' && ls -l /tmp/L2_TEST_RESULTS && echo '===============================' && git config --global --add safe.directory /mnt/L2_CONTAINER_SHARED_VOLUME && gtest-json-result-push.py /tmp/L2_TEST_RESULTS https://rdkeorchestrationservice.apps.cloud.comcast.net/rdke_orchestration_api/push_unit_test_results /mnt/L2_CONTAINER_SHARED_VOLUME"

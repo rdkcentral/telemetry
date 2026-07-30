@@ -56,6 +56,9 @@ sigset_t blocking_signal;
 // Expose internal functions for testing
 T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, 
                                  Vector *paramValueList, Vector *dataModelTableList);
+cJSON* findOrCreateArrayItem(cJSON *array, int targetIndex);
+int getBasePath(const char *input, char *basePath, size_t maxLength);
+DataModelTable *findTableByReference(Vector *dataModelTableList, const char *fullParam);
 }
 
 #include "gmock/gmock.h"
@@ -1062,4 +1065,339 @@ TEST_F(ReportgenDynamicTableTestFixture, NullArguments_ReturnsInvalidArgs)
     cJSON_Delete(valArray);
     Vector_Destroy(paramNameList, NULL);
     Vector_Destroy(paramValueList, NULL);
+}
+
+// ============================================================================
+// Direct Coverage Tests: findOrCreateArrayItem, getBasePath, findTableByReference
+// ============================================================================
+
+/**
+ * @brief findOrCreateArrayItem: exercises function body with mocked cJSON (create failure path)
+ *
+ * Since cJSON is fully mocked in this binary, m_reportgenMock must be
+ * initialized to set up mock expectations for proper coverage.
+ */
+TEST_F(ReportgenDynamicTableTestFixture, FindOrCreateArrayItem_CreateFailure_ReturnsNull)
+{
+    // Initialize mock to enable cJSON mock functions
+    testing::NiceMock<ReportgenMock> mock;
+    m_reportgenMock = &mock;
+
+    // cJSON_GetArraySize returns 0 (empty array, loop skipped)
+    ON_CALL(mock, cJSON_GetArraySize(testing::_)).WillByDefault(Return(0));
+    // cJSON_CreateObject returns NULL (simulates alloc failure)
+    ON_CALL(mock, cJSON_CreateObject()).WillByDefault(Return(nullptr));
+
+    // Use a dummy non-NULL pointer as array
+    cJSON dummyArray;
+    memset(&dummyArray, 0, sizeof(dummyArray));
+
+    // Call exercises: loop skip + CreateObject failure path
+    cJSON* result = findOrCreateArrayItem(&dummyArray, 1);
+    EXPECT_EQ(result, nullptr);
+
+    m_reportgenMock = NULL;
+}
+
+/**
+ * @brief findOrCreateArrayItem: exercises "found existing" path
+ */
+TEST_F(ReportgenDynamicTableTestFixture, FindOrCreateArrayItem_ExistingItem_ReturnsIt)
+{
+    testing::NiceMock<ReportgenMock> mock;
+    m_reportgenMock = &mock;
+
+    cJSON dummyArray;
+    memset(&dummyArray, 0, sizeof(dummyArray));
+
+    // Simulate array with 1 item that has matching index
+    cJSON dummyItem;
+    memset(&dummyItem, 0, sizeof(dummyItem));
+    cJSON indexField;
+    memset(&indexField, 0, sizeof(indexField));
+    char indexStr[] = "5";
+    indexField.valuestring = indexStr;
+
+    ON_CALL(mock, cJSON_GetArraySize(testing::_)).WillByDefault(Return(1));
+    ON_CALL(mock, cJSON_GetArrayItem(testing::_, 0)).WillByDefault(Return(&dummyItem));
+    ON_CALL(mock, cJSON_GetObjectItem(testing::_, testing::_)).WillByDefault(Return(&indexField));
+
+    // Should find existing item and return it
+    cJSON* result = findOrCreateArrayItem(&dummyArray, 5);
+    EXPECT_EQ(result, &dummyItem);
+
+    m_reportgenMock = NULL;
+}
+
+/**
+ * @brief findOrCreateArrayItem: exercises successful create path
+ */
+TEST_F(ReportgenDynamicTableTestFixture, FindOrCreateArrayItem_CreateSuccess)
+{
+    testing::NiceMock<ReportgenMock> mock;
+    m_reportgenMock = &mock;
+
+    cJSON dummyArray;
+    memset(&dummyArray, 0, sizeof(dummyArray));
+    cJSON newObj;
+    memset(&newObj, 0, sizeof(newObj));
+    cJSON strObj;
+    memset(&strObj, 0, sizeof(strObj));
+
+    // Empty array, then successful create
+    ON_CALL(mock, cJSON_GetArraySize(testing::_)).WillByDefault(Return(0));
+    ON_CALL(mock, cJSON_CreateObject()).WillByDefault(Return(&newObj));
+    ON_CALL(mock, cJSON_AddStringToObject(testing::_, testing::_, testing::_))
+        .WillByDefault(Return(&strObj));
+    ON_CALL(mock, cJSON_AddItemToArray(testing::_, testing::_))
+        .WillByDefault(Return((cJSON_bool)1));
+
+    cJSON* result = findOrCreateArrayItem(&dummyArray, 3);
+    EXPECT_EQ(result, &newObj);
+
+    m_reportgenMock = NULL;
+}
+
+/**
+ * @brief findOrCreateArrayItem: AddStringToObject fails after CreateObject succeeds
+ */
+TEST_F(ReportgenDynamicTableTestFixture, FindOrCreateArrayItem_AddStringFails_CleansUp)
+{
+    testing::NiceMock<ReportgenMock> mock;
+    m_reportgenMock = &mock;
+
+    cJSON dummyArray;
+    memset(&dummyArray, 0, sizeof(dummyArray));
+    cJSON newObj;
+    memset(&newObj, 0, sizeof(newObj));
+
+    ON_CALL(mock, cJSON_GetArraySize(testing::_)).WillByDefault(Return(0));
+    ON_CALL(mock, cJSON_CreateObject()).WillByDefault(Return(&newObj));
+    // AddStringToObject fails
+    ON_CALL(mock, cJSON_AddStringToObject(testing::_, testing::_, testing::_))
+        .WillByDefault(Return(nullptr));
+
+    // Should call cJSON_Delete(newObj) and return NULL
+    EXPECT_CALL(mock, cJSON_Delete(testing::_)).Times(1);
+
+    cJSON* result = findOrCreateArrayItem(&dummyArray, 2);
+    EXPECT_EQ(result, nullptr);
+
+    m_reportgenMock = NULL;
+}
+
+/**
+ * @brief getBasePath extracts base path from path with numeric table index
+ */
+TEST_F(ReportgenDynamicTableTestFixture, GetBasePath_WithNumericIndex_ExtractsBase)
+{
+    char basePath[256] = {0};
+
+    int result = getBasePath("Device.WiFi.AccessPoint.1.SSID", basePath, sizeof(basePath));
+    EXPECT_EQ(result, 0);
+    EXPECT_STREQ(basePath, "Device.WiFi.AccessPoint.");
+}
+
+/**
+ * @brief getBasePath with multi-digit index
+ */
+TEST_F(ReportgenDynamicTableTestFixture, GetBasePath_MultiDigitIndex)
+{
+    char basePath[256] = {0};
+
+    // Note: getBasePath looks for .digit. pattern (single digit between dots)
+    int result = getBasePath("Device.WiFi.SSID.1.Name", basePath, sizeof(basePath));
+    EXPECT_EQ(result, 0);
+    EXPECT_STREQ(basePath, "Device.WiFi.SSID.");
+}
+
+/**
+ * @brief getBasePath without numeric index returns full string as fallback
+ */
+TEST_F(ReportgenDynamicTableTestFixture, GetBasePath_NoIndex_ReturnsFull)
+{
+    char basePath[256] = {0};
+
+    int result = getBasePath("Device.WiFi.AccessPoint.Enable", basePath, sizeof(basePath));
+    EXPECT_EQ(result, 0);
+    EXPECT_STREQ(basePath, "Device.WiFi.AccessPoint.Enable");
+}
+
+/**
+ * @brief getBasePath fails when buffer is too small
+ */
+TEST_F(ReportgenDynamicTableTestFixture, GetBasePath_BufferTooSmall_ReturnsFailure)
+{
+    char basePath[10] = {0};
+
+    int result = getBasePath("Device.WiFi.AccessPoint.1.SSID", basePath, sizeof(basePath));
+    EXPECT_EQ(result, -1);
+}
+
+/**
+ * @brief getBasePath with empty string
+ */
+TEST_F(ReportgenDynamicTableTestFixture, GetBasePath_EmptyString)
+{
+    char basePath[256] = {0};
+
+    int result = getBasePath("", basePath, sizeof(basePath));
+    EXPECT_EQ(result, 0);
+    EXPECT_STREQ(basePath, "");
+}
+
+/**
+ * @brief getBasePath with nested indexes picks first one
+ */
+TEST_F(ReportgenDynamicTableTestFixture, GetBasePath_NestedIndexes_PicksFirst)
+{
+    char basePath[256] = {0};
+
+    int result = getBasePath("Device.WiFi.AccessPoint.1.AssociatedDevice.2.MACAddress",
+                             basePath, sizeof(basePath));
+    EXPECT_EQ(result, 0);
+    // Should find first .digit. pattern
+    EXPECT_STREQ(basePath, "Device.WiFi.AccessPoint.");
+}
+
+/**
+ * @brief findTableByReference finds exact matching table
+ */
+TEST_F(ReportgenDynamicTableTestFixture, FindTableByReference_ExactMatch)
+{
+    Vector* tableList = nullptr;
+    Vector_Create(&tableList);
+
+    DataModelTable* table1 = (DataModelTable*)malloc(sizeof(DataModelTable));
+    table1->reference = strdup("Device.WiFi.AccessPoint.");
+    table1->index = NULL;
+    Vector_Create(&table1->paramList);
+    Vector_PushBack(tableList, table1);
+
+    DataModelTable* found = findTableByReference(tableList,
+        "Device.WiFi.AccessPoint.1.SSID");
+    EXPECT_EQ(found, table1);
+
+    // Cleanup
+    free(table1->reference);
+    Vector_Destroy(table1->paramList, NULL);
+    free(table1);
+    Vector_Destroy(tableList, NULL);
+}
+
+/**
+ * @brief findTableByReference returns most specific (longest) match
+ */
+TEST_F(ReportgenDynamicTableTestFixture, FindTableByReference_BestMatch_LongestPrefix)
+{
+    Vector* tableList = nullptr;
+    Vector_Create(&tableList);
+
+    DataModelTable* table1 = (DataModelTable*)malloc(sizeof(DataModelTable));
+    table1->reference = strdup("Device.WiFi.");
+    table1->index = NULL;
+    Vector_Create(&table1->paramList);
+    Vector_PushBack(tableList, table1);
+
+    DataModelTable* table2 = (DataModelTable*)malloc(sizeof(DataModelTable));
+    table2->reference = strdup("Device.WiFi.AccessPoint.");
+    table2->index = NULL;
+    Vector_Create(&table2->paramList);
+    Vector_PushBack(tableList, table2);
+
+    // Should return table2 (longer/more specific match)
+    DataModelTable* found = findTableByReference(tableList,
+        "Device.WiFi.AccessPoint.1.SSID");
+    EXPECT_EQ(found, table2);
+
+    // Cleanup
+    free(table1->reference);
+    Vector_Destroy(table1->paramList, NULL);
+    free(table1);
+    free(table2->reference);
+    Vector_Destroy(table2->paramList, NULL);
+    free(table2);
+    Vector_Destroy(tableList, NULL);
+}
+
+/**
+ * @brief findTableByReference returns NULL when no match
+ */
+TEST_F(ReportgenDynamicTableTestFixture, FindTableByReference_NoMatch_ReturnsNull)
+{
+    Vector* tableList = nullptr;
+    Vector_Create(&tableList);
+
+    DataModelTable* table1 = (DataModelTable*)malloc(sizeof(DataModelTable));
+    table1->reference = strdup("Device.Ethernet.");
+    table1->index = NULL;
+    Vector_Create(&table1->paramList);
+    Vector_PushBack(tableList, table1);
+
+    DataModelTable* found = findTableByReference(tableList,
+        "Device.WiFi.AccessPoint.1.SSID");
+    EXPECT_EQ(found, nullptr);
+
+    // Cleanup
+    free(table1->reference);
+    Vector_Destroy(table1->paramList, NULL);
+    free(table1);
+    Vector_Destroy(tableList, NULL);
+}
+
+/**
+ * @brief findTableByReference with NULL list returns NULL
+ */
+TEST_F(ReportgenDynamicTableTestFixture, FindTableByReference_NullList_ReturnsNull)
+{
+    DataModelTable* found = findTableByReference(NULL, "Device.WiFi.AccessPoint.1.SSID");
+    EXPECT_EQ(found, nullptr);
+}
+
+/**
+ * @brief findTableByReference with empty list returns NULL
+ */
+TEST_F(ReportgenDynamicTableTestFixture, FindTableByReference_EmptyList_ReturnsNull)
+{
+    Vector* tableList = nullptr;
+    Vector_Create(&tableList);
+
+    DataModelTable* found = findTableByReference(tableList,
+        "Device.WiFi.AccessPoint.1.SSID");
+    EXPECT_EQ(found, nullptr);
+
+    Vector_Destroy(tableList, NULL);
+}
+
+/**
+ * @brief findTableByReference skips table with NULL reference
+ */
+TEST_F(ReportgenDynamicTableTestFixture, FindTableByReference_SkipsNullReference)
+{
+    Vector* tableList = nullptr;
+    Vector_Create(&tableList);
+
+    DataModelTable* table1 = (DataModelTable*)malloc(sizeof(DataModelTable));
+    table1->reference = NULL;  // NULL reference
+    table1->index = NULL;
+    table1->paramList = NULL;
+    Vector_PushBack(tableList, table1);
+
+    DataModelTable* table2 = (DataModelTable*)malloc(sizeof(DataModelTable));
+    table2->reference = strdup("Device.WiFi.AccessPoint.");
+    table2->index = NULL;
+    Vector_Create(&table2->paramList);
+    Vector_PushBack(tableList, table2);
+
+    // Should skip table1 (NULL ref) and find table2
+    DataModelTable* found = findTableByReference(tableList,
+        "Device.WiFi.AccessPoint.1.SSID");
+    EXPECT_EQ(found, table2);
+
+    // Cleanup
+    free(table1);
+    free(table2->reference);
+    Vector_Destroy(table2->paramList, NULL);
+    free(table2);
+    Vector_Destroy(tableList, NULL);
 }

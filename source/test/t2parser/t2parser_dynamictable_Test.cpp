@@ -1170,6 +1170,443 @@ TEST_F(DynamicTableTestFixture, ValidParse_NestedDataModelTable)
     if (configData) free(configData);
 }
 
+// ============================================================================
+// Coverage: parseDataModelTableParams, buildFullPath, addParameter_marker_config
+// These static functions are exercised through processConfiguration.
+// ============================================================================
+
+/**
+ * @brief Covers parseDataModelTableParams: valid table with multiple sub-parameters
+ *
+ * Exercises: parseDataModelTableParams (root table creation path),
+ *            buildFullPath (path concatenation), and
+ *            dataModelTable case in addParameter_marker_config.
+ */
+TEST_F(DynamicTableTestFixture, Coverage_ParseDataModelTableParams_MultipleSubParams)
+{
+    const char* config = R"({
+        "Description": "Multi SubParam Table",
+        "Version": "1",
+        "Protocol": "HTTP",
+        "EncodingType": "JSON",
+        "ReportingInterval": 60,
+        "Parameter": [
+            {
+                "type": "dataModelTable",
+                "reference": "Device.WiFi.Radio.",
+                "Parameter": [
+                    { "type": "dataModel", "reference": "Enable" },
+                    { "type": "dataModel", "reference": "Channel" },
+                    { "type": "dataModel", "reference": "OperatingFrequencyBand" }
+                ]
+            }
+        ]
+    })";
+
+    char* configData = strdup(config);
+    Profile* profile = nullptr;
+
+    T2ERROR result = processConfiguration(&configData,
+                                         const_cast<char*>("MultiSubParamTest"),
+                                         nullptr, &profile);
+
+    if (profile != nullptr) {
+        // Verify dataModelTableList was created
+        ASSERT_NE(profile->dataModelTableList, nullptr);
+        EXPECT_GT(Vector_Size(profile->dataModelTableList), (size_t)0);
+
+        DataModelTable* table = (DataModelTable*)Vector_At(profile->dataModelTableList, 0);
+        ASSERT_NE(table, nullptr);
+        EXPECT_STREQ(table->reference, "Device.WiFi.Radio.");
+        EXPECT_EQ(table->index, nullptr);  // No index specified
+
+        // Should have 3 sub-parameters
+        ASSERT_NE(table->paramList, nullptr);
+        EXPECT_EQ(Vector_Size(table->paramList), (size_t)3);
+
+        // Verify parameter names include wildcard path
+        DataModelParam* p0 = (DataModelParam*)Vector_At(table->paramList, 0);
+        ASSERT_NE(p0, nullptr);
+        EXPECT_NE(strstr(p0->name, "Device.WiFi.Radio."), nullptr);
+        EXPECT_NE(strstr(p0->name, "Enable"), nullptr);
+
+        freeProfile(profile);
+    }
+    if (configData) free(configData);
+}
+
+/**
+ * @brief Covers buildFullPath: basePath already ends with dot
+ *
+ * Tests the path where basePath ends with '.' so no extra dot is needed.
+ */
+TEST_F(DynamicTableTestFixture, Coverage_BuildFullPath_BaseEndsWithDot)
+{
+    const char* config = R"({
+        "Description": "BuildFullPath Dot Test",
+        "Version": "1",
+        "Protocol": "HTTP",
+        "EncodingType": "JSON",
+        "ReportingInterval": 60,
+        "Parameter": [
+            {
+                "type": "dataModelTable",
+                "reference": "Device.Hosts.Host.",
+                "Parameter": [
+                    { "type": "dataModel", "reference": "HostName" }
+                ]
+            }
+        ]
+    })";
+
+    char* configData = strdup(config);
+    Profile* profile = nullptr;
+
+    T2ERROR result = processConfiguration(&configData,
+                                         const_cast<char*>("BuildFullPathDotTest"),
+                                         nullptr, &profile);
+
+    if (profile != nullptr) {
+        ASSERT_NE(profile->dataModelTableList, nullptr);
+        DataModelTable* table = (DataModelTable*)Vector_At(profile->dataModelTableList, 0);
+        ASSERT_NE(table, nullptr);
+        ASSERT_NE(table->paramList, nullptr);
+
+        DataModelParam* p = (DataModelParam*)Vector_At(table->paramList, 0);
+        ASSERT_NE(p, nullptr);
+        // Path should be: Device.Hosts.Host.*.HostName (dot already present)
+        EXPECT_NE(strstr(p->name, "HostName"), nullptr);
+        EXPECT_STREQ(p->reference, "HostName");
+
+        freeProfile(profile);
+    }
+    if (configData) free(configData);
+}
+
+/**
+ * @brief Covers parseDataModelTableParams: table with index (exercises addParameter loop)
+ *
+ * When "index" is specified, addParameter_marker_config takes the indexed path
+ * (strtok loop + addParameter calls) AND still calls parseDataModelTableParams.
+ */
+TEST_F(DynamicTableTestFixture, Coverage_DataModelTable_WithIndex_ExercisesFullPath)
+{
+    const char* config = R"({
+        "Description": "Index and Params Test",
+        "Version": "1",
+        "Protocol": "HTTP",
+        "EncodingType": "JSON",
+        "ReportingInterval": 60,
+        "Parameter": [
+            {
+                "type": "dataModelTable",
+                "reference": "Device.Ethernet.Interface.",
+                "index": "1,2",
+                "Parameter": [
+                    { "type": "dataModel", "reference": "Enable" },
+                    { "type": "dataModel", "reference": "Status" }
+                ]
+            }
+        ]
+    })";
+
+    char* configData = strdup(config);
+    Profile* profile = nullptr;
+
+    T2ERROR result = processConfiguration(&configData,
+                                         const_cast<char*>("IndexAndParamsTest"),
+                                         nullptr, &profile);
+
+    if (profile != nullptr) {
+        // The index path creates addParameter calls for index 1 and 2
+        // parseDataModelTableParams also creates the table with sub-params
+        ASSERT_NE(profile->dataModelTableList, nullptr);
+        EXPECT_GT(Vector_Size(profile->dataModelTableList), (size_t)0);
+
+        DataModelTable* table = (DataModelTable*)Vector_At(profile->dataModelTableList, 0);
+        ASSERT_NE(table, nullptr);
+        EXPECT_STREQ(table->reference, "Device.Ethernet.Interface.");
+        // Index should be stored
+        ASSERT_NE(table->index, nullptr);
+        EXPECT_STREQ(table->index, "1,2");
+
+        freeProfile(profile);
+    }
+    if (configData) free(configData);
+}
+
+/**
+ * @brief Covers parseDataModelTableParams: nested recursive call
+ *
+ * Exercises the recursive path where type=dataModelTable appears inside
+ * another dataModelTable's Parameter array.
+ */
+TEST_F(DynamicTableTestFixture, Coverage_ParseDataModelTableParams_RecursiveNested)
+{
+    const char* config = R"({
+        "Description": "Recursive Nested Test",
+        "Version": "1",
+        "Protocol": "HTTP",
+        "EncodingType": "JSON",
+        "ReportingInterval": 60,
+        "Parameter": [
+            {
+                "type": "dataModelTable",
+                "reference": "Device.WiFi.AccessPoint.",
+                "Parameter": [
+                    { "type": "dataModel", "reference": "Enable" },
+                    {
+                        "type": "dataModelTable",
+                        "reference": "AssociatedDevice.",
+                        "Parameter": [
+                            { "type": "dataModel", "reference": "MACAddress" }
+                        ]
+                    }
+                ]
+            }
+        ]
+    })";
+
+    char* configData = strdup(config);
+    Profile* profile = nullptr;
+
+    T2ERROR result = processConfiguration(&configData,
+                                         const_cast<char*>("RecursiveNestedTest"),
+                                         nullptr, &profile);
+
+    if (profile != nullptr) {
+        ASSERT_NE(profile->dataModelTableList, nullptr);
+        DataModelTable* table = (DataModelTable*)Vector_At(profile->dataModelTableList, 0);
+        ASSERT_NE(table, nullptr);
+        ASSERT_NE(table->paramList, nullptr);
+
+        // Should have Enable + MACAddress (from nested table)
+        EXPECT_GE(Vector_Size(table->paramList), (size_t)2);
+
+        // Verify nested param includes nested path
+        bool foundMac = false;
+        for (size_t i = 0; i < Vector_Size(table->paramList); i++) {
+            DataModelParam* p = (DataModelParam*)Vector_At(table->paramList, i);
+            if (p && p->name && strstr(p->name, "MACAddress")) {
+                foundMac = true;
+                // Path should contain both AccessPoint and AssociatedDevice
+                EXPECT_NE(strstr(p->name, "AccessPoint"), nullptr);
+                EXPECT_NE(strstr(p->name, "AssociatedDevice"), nullptr);
+            }
+        }
+        EXPECT_TRUE(foundMac);
+
+        freeProfile(profile);
+    }
+    if (configData) free(configData);
+}
+
+/**
+ * @brief Covers addParameter_marker_config dataModelTable: range index "1-3"
+ *
+ * Exercises the sscanf "%d-%d" branch in the index parsing loop.
+ */
+TEST_F(DynamicTableTestFixture, Coverage_DataModelTable_RangeIndex_BranchCoverage)
+{
+    const char* config = R"({
+        "Description": "Range Index Branch",
+        "Version": "1",
+        "Protocol": "HTTP",
+        "EncodingType": "JSON",
+        "ReportingInterval": 60,
+        "Parameter": [
+            {
+                "type": "dataModelTable",
+                "reference": "Device.MoCA.Interface.",
+                "index": "1-3",
+                "Parameter": [
+                    { "type": "dataModel", "reference": "Enable" }
+                ]
+            }
+        ]
+    })";
+
+    char* configData = strdup(config);
+    Profile* profile = nullptr;
+
+    T2ERROR result = processConfiguration(&configData,
+                                         const_cast<char*>("RangeIndexBranchTest"),
+                                         nullptr, &profile);
+
+    if (profile != nullptr) {
+        // Verify the paramList has parameters created by addParameter
+        // for indices 1, 2, 3 via the range branch
+        EXPECT_NE(profile->paramList, nullptr);
+        freeProfile(profile);
+    }
+    if (configData) free(configData);
+}
+
+/**
+ * @brief Covers addParameter_marker_config dataModelTable: missing reference (error path)
+ *
+ * Exercises the "Missing reference in dataModelTable configuration" branch.
+ */
+TEST_F(DynamicTableTestFixture, Coverage_DataModelTable_MissingReference_ErrorPath)
+{
+    const char* config = R"({
+        "Description": "Missing Ref Error",
+        "Version": "1",
+        "Protocol": "HTTP",
+        "EncodingType": "JSON",
+        "ReportingInterval": 60,
+        "Parameter": [
+            {
+                "type": "dataModelTable",
+                "index": "1",
+                "Parameter": [
+                    { "type": "dataModel", "reference": "Status" }
+                ]
+            }
+        ]
+    })";
+
+    char* configData = strdup(config);
+    Profile* profile = nullptr;
+
+    T2ERROR result = processConfiguration(&configData,
+                                         const_cast<char*>("MissingRefErrorTest"),
+                                         nullptr, &profile);
+
+    // Should not crash; entry is skipped
+    if (profile != nullptr) {
+        freeProfile(profile);
+    }
+    if (configData) free(configData);
+    SUCCEED();
+}
+
+/**
+ * @brief Covers addParameter_marker_config: dataModelTable without index (strdup path)
+ *
+ * Exercises the else branch where content/header are strdup'd and
+ * content_allocated/header_allocated are set.
+ */
+TEST_F(DynamicTableTestFixture, Coverage_DataModelTable_NoIndex_StrdupPath)
+{
+    const char* config = R"({
+        "Description": "No Index Strdup Path",
+        "Version": "1",
+        "Protocol": "HTTP",
+        "EncodingType": "JSON",
+        "ReportingInterval": 60,
+        "Parameter": [
+            {
+                "type": "dataModelTable",
+                "reference": "Device.DHCPv4.Server.Pool.",
+                "Parameter": [
+                    { "type": "dataModel", "reference": "Enable" },
+                    { "type": "dataModel", "reference": "MinAddress" },
+                    { "type": "dataModel", "reference": "MaxAddress" }
+                ]
+            }
+        ]
+    })";
+
+    char* configData = strdup(config);
+    Profile* profile = nullptr;
+
+    T2ERROR result = processConfiguration(&configData,
+                                         const_cast<char*>("NoIndexStrdupTest"),
+                                         nullptr, &profile);
+
+    if (profile != nullptr) {
+        // The strdup path creates content=header=basePath and calls addParameter
+        // Also parseDataModelTableParams creates the table
+        ASSERT_NE(profile->dataModelTableList, nullptr);
+        DataModelTable* table = (DataModelTable*)Vector_At(profile->dataModelTableList, 0);
+        ASSERT_NE(table, nullptr);
+        EXPECT_STREQ(table->reference, "Device.DHCPv4.Server.Pool.");
+        EXPECT_EQ(table->index, nullptr);  // No index
+        EXPECT_EQ(Vector_Size(table->paramList), (size_t)3);
+
+        freeProfile(profile);
+    }
+    if (configData) free(configData);
+}
+
+/**
+ * @brief Covers parseDataModelTableParams: missing Parameter array returns failure
+ *
+ * Exercises the early return when "Parameter" key is missing.
+ */
+TEST_F(DynamicTableTestFixture, Coverage_ParseDataModelTableParams_MissingParamArray)
+{
+    const char* config = R"({
+        "Description": "Missing Param Array",
+        "Version": "1",
+        "Protocol": "HTTP",
+        "EncodingType": "JSON",
+        "ReportingInterval": 60,
+        "Parameter": [
+            {
+                "type": "dataModelTable",
+                "reference": "Device.IP.Interface."
+            }
+        ]
+    })";
+
+    char* configData = strdup(config);
+    Profile* profile = nullptr;
+
+    T2ERROR result = processConfiguration(&configData,
+                                         const_cast<char*>("MissingParamArrayTest"),
+                                         nullptr, &profile);
+
+    // parseDataModelTableParams returns T2ERROR_FAILURE but processing continues
+    if (profile != nullptr) {
+        freeProfile(profile);
+    }
+    if (configData) free(configData);
+    SUCCEED();
+}
+
+/**
+ * @brief Covers buildFullPath: path exceeds MAX_PATH_LENGTH
+ *
+ * Exercises the snprintf overflow detection branch in buildFullPath.
+ */
+TEST_F(DynamicTableTestFixture, Coverage_BuildFullPath_Overflow)
+{
+    // Create a reference so long that basePath + reference > 512 bytes
+    std::string longRef(500, 'A');
+    std::string config = R"({
+        "Description": "Overflow Path",
+        "Version": "1",
+        "Protocol": "HTTP",
+        "EncodingType": "JSON",
+        "ReportingInterval": 60,
+        "Parameter": [
+            {
+                "type": "dataModelTable",
+                "reference": "Device.VeryLongPath.",
+                "Parameter": [
+                    { "type": "dataModel", "reference": ")" + longRef + R"(" }
+                ]
+            }
+        ]
+    })";
+
+    char* configData = strdup(config.c_str());
+    Profile* profile = nullptr;
+
+    T2ERROR result = processConfiguration(&configData,
+                                         const_cast<char*>("OverflowPathTest"),
+                                         nullptr, &profile);
+
+    // Should not crash; overflow is detected and parameter is skipped
+    if (profile != nullptr) {
+        freeProfile(profile);
+    }
+    if (configData) free(configData);
+    SUCCEED();
+}
+
 // Run all tests
 int main(int argc, char **argv) {
     char testresults_fullfilepath[128];

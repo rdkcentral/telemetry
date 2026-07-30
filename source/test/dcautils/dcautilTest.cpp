@@ -409,10 +409,10 @@ TEST(GETGREPRESULTS, PROFILENAME_NULL)
    gsProfile->logFileSeekMap = hash_map_create();
    gsProfile->execCounter = 0;
    hash_map_put(gsProfile->logFileSeekMap, strdup("t2_log.txt"), (void*)1, free);
-   EXPECT_EQ(T2ERROR_FAILURE, getGrepResults(NULL, markerlist, false, false,"/opt/logs"));
-   EXPECT_EQ(T2ERROR_FAILURE, getGrepResults(&gsProfile, NULL, false, false,"/opt/logs"));
-   EXPECT_EQ(T2ERROR_FAILURE, getGrepResults(NULL, markerlist, false, true,"/opt/logs"));
-   EXPECT_EQ(T2ERROR_FAILURE, getGrepResults(&gsProfile, NULL, false, true,"/opt/logs"));
+   EXPECT_EQ(T2ERROR_FAILURE, getGrepResults(NULL, markerlist, &grepResultlist, false, false,"/opt/logs"));
+   EXPECT_EQ(T2ERROR_FAILURE, getGrepResults(&gsProfile, NULL, &grepResultlist, false, false,"/opt/logs"));
+   EXPECT_EQ(T2ERROR_FAILURE, getGrepResults(NULL, markerlist, &grepResultlist, false, true,"/opt/logs"));
+   EXPECT_EQ(T2ERROR_FAILURE, getGrepResults(&gsProfile, NULL, &grepResultlist, false, true,"/opt/logs"));
    Vector_Destroy(markerlist, free);
    Vector_Destroy(grepResultlist, free);
    if(gsProfile->logFileSeekMap)
@@ -510,11 +510,14 @@ TEST(PROCESSTOPPATTERN, VECTOR_NULL)
     topMarker->skipFreq = 0;
     topMarker->paramType = strdup("grep");
     Vector_PushBack(topMarkerlist, (void*) topMarker);
-    EXPECT_EQ(0, processTopPattern("RDK_Profile", topMarkerlist, 1));
+    Vector* out_grepResultList = NULL;
+    Vector_Create(&out_grepResultList);
+    EXPECT_EQ(0, processTopPattern("RDK_Profile", topMarkerlist, out_grepResultList, 1));
 
-    EXPECT_EQ(-1, processTopPattern(NULL, topMarkerlist, 1));
-    EXPECT_EQ(-1, processTopPattern("RDK_Profile",NULL, 1));
+    EXPECT_EQ(-1, processTopPattern(NULL, topMarkerlist, out_grepResultList, 1));
+    EXPECT_EQ(-1, processTopPattern("RDK_Profile", NULL, out_grepResultList, 1));
 
+    Vector_Destroy(out_grepResultList, freeGResult);
     Vector_Destroy(topMarkerlist, free);
     topMarkerlist = NULL;
 }
@@ -528,10 +531,11 @@ TEST(getDCAResultsInVector, markerlist_NULL)
     gsProfile->logFileSeekMap = hash_map_create();
     gsProfile->execCounter = 0;
     hash_map_put(gsProfile->logFileSeekMap, strdup("t2_log.txt"), (void*)1, free);
-    EXPECT_EQ(-1, getDCAResultsInVector(NULL, markerlist, true, "/opt/logs/core_log.txt"));
-    EXPECT_EQ(-1, getDCAResultsInVector(gsProfile, NULL, true, "/opt/logs/core_log.txt"));
+    Vector* out_grepResultList = NULL;
+    EXPECT_EQ(-1, getDCAResultsInVector(NULL, markerlist, &out_grepResultList, true, "/opt/logs/core_log.txt"));
+    EXPECT_EQ(-1, getDCAResultsInVector(gsProfile, NULL, &out_grepResultList, true, "/opt/logs/core_log.txt"));
     // commenting the below case as string will never be passed to this function instead of the vector.
-    //EXPECT_EQ(-1, getDCAResultsInVector(gsProfile, markerlist, true, "/opt/logs/core_log.txt"));
+    //EXPECT_EQ(-1, getDCAResultsInVector(gsProfile, markerlist, &out_grepResultList, true, "/opt/logs/core_log.txt"));
     hash_map_destroy(gsProfile->logFileSeekMap, free);
     Vector_Destroy(markerlist, free);
 }
@@ -992,7 +996,10 @@ TEST_F(dcaTestFixture, processTopPattern)
             .Times(1)
             .WillOnce(Return(fp));
     #endif
-    EXPECT_EQ(0, processTopPattern("RDK_Profile", topMarkerlist, 1));
+    Vector* out_grepResultList = NULL;
+    Vector_Create(&out_grepResultList);
+    EXPECT_EQ(0, processTopPattern("RDK_Profile", topMarkerlist, out_grepResultList, 1));
+    Vector_Destroy(out_grepResultList, freeGResult);
     Vector_Destroy(topMarkerlist, NULL);
 }
 #endif
@@ -1056,7 +1063,10 @@ TEST_F(dcaTestFixture, processTopPattern1)
             .Times(1)
             .WillOnce(Return(0));
 
-    EXPECT_EQ(0, processTopPattern("RDK_Profile", topMarkerlist, 1));
+    Vector* out_grepResultList = NULL;
+    Vector_Create(&out_grepResultList);
+    EXPECT_EQ(0, processTopPattern("RDK_Profile", topMarkerlist, out_grepResultList, 1));
+    Vector_Destroy(out_grepResultList, freeGResult);
     Vector_Destroy(topMarkerlist, freeGMarker);
 }
 
@@ -1161,7 +1171,10 @@ TEST_F(dcaTestFixture, processTopPattern2)
                 return buf;
             })
             .WillOnce(Return((char*)NULL));
-    EXPECT_EQ(0, processTopPattern("RDK_Profile", topMarkerlist, 1));
+    Vector* out_grepResultList = NULL;
+    Vector_Create(&out_grepResultList);
+    EXPECT_EQ(0, processTopPattern("RDK_Profile", topMarkerlist, out_grepResultList, 1));
+    Vector_Destroy(out_grepResultList, freeGResult);
     Vector_Destroy(topMarkerlist, freeGMarker);
 }
 
@@ -1236,7 +1249,9 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_1)
                     return (void*)mapped_mem;
                 });
     
-    EXPECT_EQ(0, getDCAResultsInVector(gsProfile, vecMarkerList, true, "/opt/logs"));
+    Vector* out_grepResultList = NULL;
+    EXPECT_EQ(0, getDCAResultsInVector(gsProfile, vecMarkerList, &out_grepResultList, true, "/opt/logs"));
+    if (out_grepResultList) Vector_Destroy(out_grepResultList, freeGResult);
     hash_map_destroy(gsProfile->logFileSeekMap, free);
     gsProfile->logFileSeekMap = NULL;
     free(gsProfile);
@@ -1316,8 +1331,9 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_2)
                     return (void*)mapped_mem;
                 });
 
-    
-    EXPECT_EQ(0, getDCAResultsInVector(gsProfile, vecMarkerList, true, "/opt/logs"));
+    Vector* out_grepResultList = NULL;
+    EXPECT_EQ(0, getDCAResultsInVector(gsProfile, vecMarkerList, &out_grepResultList, true, "/opt/logs"));
+    if (out_grepResultList) Vector_Destroy(out_grepResultList, freeGResult);
     hash_map_destroy(gsProfile->logFileSeekMap, free);
     gsProfile->logFileSeekMap = NULL;
     free(gsProfile);
@@ -1421,8 +1437,9 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_3)
                     return (void*)mapped_mem;
                 });
 
-    
-    EXPECT_EQ(0, getDCAResultsInVector(gsProfile, vecMarkerList, true, "/opt/logs"));
+    Vector* out_grepResultList = NULL;
+    EXPECT_EQ(0, getDCAResultsInVector(gsProfile, vecMarkerList, &out_grepResultList, true, "/opt/logs"));
+    if (out_grepResultList) Vector_Destroy(out_grepResultList, freeGResult);
     hash_map_destroy(gsProfile->logFileSeekMap, free);
     gsProfile->logFileSeekMap = NULL;
     free(gsProfile);
@@ -1519,8 +1536,10 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_Accum)
                     return (void*)mapped_mem;
                 });
     
-    EXPECT_EQ(0, getDCAResultsInVector(gsProfile, vecMarkerList, true, "/opt/logs"));
+    Vector* out_grepResultList = NULL;
+    EXPECT_EQ(0, getDCAResultsInVector(gsProfile, vecMarkerList, &out_grepResultList, true, "/opt/logs"));
 
+    if (out_grepResultList) Vector_Destroy(out_grepResultList, freeGResult);
     hash_map_destroy(gsProfile->logFileSeekMap, free);
     gsProfile->logFileSeekMap = NULL;
     free(gsProfile);
@@ -1643,11 +1662,13 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_InodeChanged_NewFileGrowsPastSeek)
                 return (void*)mapped_mem;
             });
 
-    EXPECT_EQ(0, getDCAResultsInVector(gsProfile, vecMarkerList, false, "/opt/logs"));
+    Vector* out_grepResultList = NULL;
+    EXPECT_EQ(0, getDCAResultsInVector(gsProfile, vecMarkerList, &out_grepResultList, false, "/opt/logs"));
 
     // Verify the marker was found in BOTH files (count should be 2)
     EXPECT_EQ(2, marker->u.count);
 
+    if (out_grepResultList) Vector_Destroy(out_grepResultList, freeGResult);
     hash_map_destroy(gsProfile->logFileSeekMap, free);
     gsProfile->logFileSeekMap = NULL;
     free(gsProfile);
@@ -1760,11 +1781,13 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_MultiRotation_IntermediateFile)
                 return (void*)mapped_mem;
             });
 
-    EXPECT_EQ(0, getDCAResultsInVector(gsProfile, vecMarkerList, false, "/opt/logs"));
+    Vector* out_grepResultList = NULL;
+    EXPECT_EQ(0, getDCAResultsInVector(gsProfile, vecMarkerList, &out_grepResultList, false, "/opt/logs"));
 
     // Marker found in BOTH files (no data lost from intermediate file)
     EXPECT_EQ(2, marker->u.count);
 
+    if (out_grepResultList) Vector_Destroy(out_grepResultList, freeGResult);
     hash_map_destroy(gsProfile->logFileSeekMap, free);
     gsProfile->logFileSeekMap = NULL;
     free(gsProfile);
@@ -1864,7 +1887,9 @@ TEST_F(dcaTestFixture, getGrepResults_success)
                 });
 
     
-    EXPECT_EQ(T2ERROR_SUCCESS, getGrepResults(&gsProfile, vecMarkerList, true, true, "/opt/logs"));
+    Vector* out_grepResultList = NULL;
+    EXPECT_EQ(T2ERROR_SUCCESS, getGrepResults(&gsProfile, vecMarkerList, &out_grepResultList, true, true, "/opt/logs"));
+    if (out_grepResultList) Vector_Destroy(out_grepResultList, freeGResult);
     hash_map_destroy(gsProfile->logFileSeekMap, free);
     gsProfile->logFileSeekMap = NULL;
     free(gsProfile);

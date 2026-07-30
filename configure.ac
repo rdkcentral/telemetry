@@ -34,6 +34,22 @@ AC_CONFIG_SRCDIR([source/dcautil])
 AM_INIT_AUTOMAKE([foreign no-dist-gzip dist-bzip2 1.9])
 
 LT_INIT
+
+dnl **********************************
+dnl Version and build reference info
+dnl **********************************
+AC_ARG_VAR([TREE_REFERENCE], [Git commit hash or tag to embed in the binary])
+if test -z "$TREE_REFERENCE"; then
+    if test -d "$srcdir/.git"; then
+        TREE_REFERENCE=`(cd $srcdir && git describe --always --long --dirty 2>/dev/null || git rev-parse --short HEAD 2>/dev/null) || echo unknown`
+    else
+        TREE_REFERENCE="unknown"
+    fi
+fi
+AC_SUBST([TREE_REFERENCE])
+AC_DEFINE_UNQUOTED([TREE_REFERENCE], ["$TREE_REFERENCE"], [Git tree reference / commit hash])
+AC_DEFINE_UNQUOTED([T2_VERSION], ["$PACKAGE_VERSION"], [Telemetry package version])
+
 GTEST_ENABLE_FLAG =" "
 LIBSYSWRAPPER_FLAG=" "
 IS_LIBSYSWRAPPER_ENABLED=" "

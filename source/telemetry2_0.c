@@ -55,6 +55,14 @@
 #endif
 #endif
 
+#ifndef TREE_REFERENCE
+#define TREE_REFERENCE "unknown"
+#endif
+
+#ifndef T2_VERSION
+#define T2_VERSION "2.0"
+#endif
+
 #define MAX_PARAMETERNAME_LEN    512
 /*Define signals properly to make sure they don't get overide anywhere*/
 #define LOG_UPLOAD 10
@@ -339,6 +347,9 @@ int main()
     }
 
     T2Info("Starting Telemetry 2.0 Process\n");
+    T2Info("Version:       %s\n", T2_VERSION);
+    T2Info("Tree ref:      %s\n", TREE_REFERENCE);
+    T2Info("Process Id:    %d\n", (int)getpid());
 
     // Create child process
     process_id = fork();

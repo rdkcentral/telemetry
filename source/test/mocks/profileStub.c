@@ -108,10 +108,12 @@ void freeProfile(void *data)
     {
         Vector_Destroy(profile->topMarkerList, NULL);
     }
+#ifdef ENABLE_DYNAMIC_TABLE_SUPPORT
     if(profile->dataModelTableList)
     {
         Vector_Destroy(profile->dataModelTableList, NULL);
     }
+#endif
     if(profile->triggerConditionList)
     {
         Vector_Destroy(profile->triggerConditionList, NULL);

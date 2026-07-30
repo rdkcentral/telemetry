@@ -35,7 +35,7 @@ reportgen_gtest_bin_SOURCES = gtest_main.cpp reportgenTest.cpp reportgenMock.cpp
 reportgen_gtest_bin_LDFLAGS = -lgtest -lgcov -L/src/googletest/googlemock/lib -L/usr/src/googletest/googlemock/lib/.libs -lgmock -lcjson -lcurl -lmsgpackc
 
 # DataModelTable (PR-161) & Memory Safety (PR-363) Test Suite
-reportgen_dynamictable_gtest_bin_CPPFLAGS = $(reportgen_gtest_bin_CPPFLAGS) -I${top_srcdir}/source/bulkdata
+reportgen_dynamictable_gtest_bin_CPPFLAGS = $(reportgen_gtest_bin_CPPFLAGS) -I${top_srcdir}/source/bulkdata -DENABLE_DYNAMIC_TABLE_SUPPORT
 
 reportgen_dynamictable_gtest_bin_SOURCES = gtest_main.cpp reportgen_dynamictable_Test.cpp reportgenMock.cpp ../mocks/rdklogMock.cpp ../../utils/t2log_wrapper.c ../../reportgen/reportgen.c ../../utils/vector.c ../../utils/t2common.c
 

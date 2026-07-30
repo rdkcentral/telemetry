@@ -222,10 +222,12 @@ void freeProfile(void *data)
             Vector_Destroy(profile->cachedReportList, free);
             profile->cachedReportList = NULL;
         }
+#ifdef ENABLE_DYNAMIC_TABLE_SUPPORT
         if(profile->dataModelTableList)
         {
             Vector_Destroy(profile->dataModelTableList, freeDataModelTable);
         }
+#endif
         if(profile->jsonReportObj)
         {
             cJSON_Delete(profile->jsonReportObj);
@@ -528,11 +530,19 @@ static void* CollectAndReport(void* data)
                     profileParamVals = getProfileParameterValues(profile->paramList, count);
                     if(profileParamVals != NULL)
                     {
+#ifdef ENABLE_DYNAMIC_TABLE_SUPPORT
+                        /* dataModelTableList is populated once during profile parsing
+                         * (addParameter_marker_config / parseDataModelTableParams) before
+                         * the report thread is started.  It is never modified after
+                         * initialization, so no mutex is needed here — immutable-after-
+                         * publish pattern.  Thread safety is guaranteed by the lifecycle:
+                         * parse -> start thread -> (reads only) -> join thread -> free. */
                         if (profile->dataModelTableList != NULL && Vector_Size(profile->dataModelTableList) > 0)
                         {
                             encodeParamResultInJSON(valArray, profile->paramList, profileParamVals, profile->dataModelTableList);
                         }
                         else
+#endif
                         {
                             encodeParamResultInJSON(valArray, profile->paramList, profileParamVals, NULL);
                         }

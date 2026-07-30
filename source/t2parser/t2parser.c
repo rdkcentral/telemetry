@@ -848,6 +848,7 @@ void time_param_Reporting_Adjustments_valid_set(Profile *profile, cJSON *jprofil
     }
 }
 
+#ifdef ENABLE_DYNAMIC_TABLE_SUPPORT
 static int buildFullPath(char* fullPath, const char* basePath, const char* reference)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
@@ -916,7 +917,20 @@ static T2ERROR parseDataModelTableParams(Profile* profile, cJSON* tableItem, con
 
         // Initialize root table
         currentTable->reference = strdup(jpReference->valuestring);
+        if (!currentTable->reference)
+        {
+            T2Error("Failed to allocate memory for DataModelTable reference\n");
+            free(currentTable);
+            return T2ERROR_FAILURE;
+        }
         currentTable->index = jpIndex ? strdup(jpIndex->valuestring) : NULL;
+        if (jpIndex && !currentTable->index)
+        {
+            T2Error("Failed to allocate memory for DataModelTable index\n");
+            free(currentTable->reference);
+            free(currentTable);
+            return T2ERROR_FAILURE;
+        }
         Vector_Create(&currentTable->paramList);
 
         if (!profile->dataModelTableList)
@@ -992,6 +1006,13 @@ static T2ERROR parseDataModelTableParams(Profile* profile, cJSON* tableItem, con
                 continue;
             }
             param->name = strdup(fullPath);
+            if (!param->name)
+            {
+                T2Error("Failed to allocate memory for DataModelParam name\n");
+                free(param->reference);
+                free(param);
+                continue;
+            }
             param->reportEmpty = false;
 
             // Add to table's parameter list
@@ -1003,6 +1024,7 @@ static T2ERROR parseDataModelTableParams(Profile* profile, cJSON* tableItem, con
     T2Debug("%s ++out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
+#endif
 
 T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, int ThisProfileParameter_count)
 {
@@ -1036,10 +1058,12 @@ T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, i
     {
         Vector_Create(&profile->cachedReportList);
     }
+#ifdef ENABLE_DYNAMIC_TABLE_SUPPORT
     if (!profile->dataModelTableList)
     {
         Vector_Create(&profile->dataModelTableList);
     }
+#endif
 
     profile->grepSeekProfile = createGrepSeekProfile(0);
 
@@ -1164,6 +1188,7 @@ T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, i
             }
             else if (!(strcmp(paramtype, "dataModelTable")))
             {
+#ifdef ENABLE_DYNAMIC_TABLE_SUPPORT
                 T2Debug("Processing dataModelTable configuration\n");
                 char basePath[256] = "";
                 char index[64] = "";
@@ -1281,6 +1306,10 @@ T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, i
                 {
                     T2Error("Missing reference in dataModelTable configuration\n");
                 }
+#else
+                T2Debug("Dynamic table support disabled, ignoring dataModelTable parameter\n");
+                continue;
+#endif
             }
             else if(!(strcmp(paramtype, "event")))
             {
@@ -2481,6 +2510,22 @@ T2ERROR addParameterMsgpack_marker_config(Profile* profile, msgpack_object* valu
                     rtformat =  REPORTTIMESTAMP_UNIXEPOCH;
                 }
             }
+        }
+        else if(0 == msgpack_strcmp(Parameter_type_str, "dataModelTable"))
+        {
+#ifdef ENABLE_DYNAMIC_TABLE_SUPPORT
+            T2Debug("MsgPack dataModelTable parsing is enabled only in JSON flow currently\n");
+            T2Error("%s dataModelTable in MsgPack profile is not supported in current implementation\n", __FUNCTION__);
+#else
+            T2Debug("Dynamic table support disabled, ignoring dataModelTable parameter\n");
+#endif
+            free(paramtype);
+            free(use);
+            if(regex != NULL)
+            {
+                free(regex);
+            }
+            continue;
         }
         else
         {

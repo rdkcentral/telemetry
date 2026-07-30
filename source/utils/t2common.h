@@ -147,6 +147,7 @@ typedef struct _TriggerCondition
     bool report;
 } TriggerCondition;
 
+#ifdef ENABLE_DYNAMIC_TABLE_SUPPORT
 typedef struct _DataModelParam
 {
     char *name;
@@ -160,12 +161,15 @@ typedef struct _DataModelTable
     char *index;
     Vector *paramList; // List of DataModelParam
 } DataModelTable;
+#endif
 
 void freeParam(void *data);
 
+#ifdef ENABLE_DYNAMIC_TABLE_SUPPORT
 void freeDataModelParam(void *data);
 
 void freeDataModelTable(void *data);
+#endif
 
 void freeStaticParam(void *data);
 
@@ -185,7 +189,9 @@ void initWhoamiSupport(void);
 
 bool isWhoAmiEnabled(void);
 
+#ifdef ENABLE_DYNAMIC_TABLE_SUPPORT
 bool matchesParameter(const char* pattern, const char* paramName);
+#endif
 int sanitize_string(const char *str);
 
 #endif /* _T2COMMON_H_ */

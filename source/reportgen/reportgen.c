@@ -298,6 +298,7 @@ cJSON* findOrCreateArrayItem(cJSON *array, int targetIndex)
     return newItem;
 }
 
+#ifdef ENABLE_DYNAMIC_TABLE_SUPPORT
 //Function to get the basePath like Device.WiFi.AccessPoint.
 int getBasePath(const char *input, char *basePath, size_t maxLength)
 {
@@ -387,6 +388,7 @@ DataModelTable *findTableByReference(Vector *dataModelTableList, const char *ful
     }
     return table;
 }
+#endif
 
 bool isDataModelTable(const char *paramName)
 {
@@ -397,6 +399,9 @@ bool isDataModelTable(const char *paramName)
 
 T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *paramValueList, Vector *dataModelTableList)
 {
+#ifndef ENABLE_DYNAMIC_TABLE_SUPPORT
+    (void)dataModelTableList;
+#endif
     if(valArray == NULL || paramNameList == NULL || paramValueList == NULL)
     {
         T2Error("Invalid or NULL arguments\n");
@@ -523,6 +528,7 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
         }
         else
         {
+#ifdef ENABLE_DYNAMIC_TABLE_SUPPORT
             if (((dataModelTableList != NULL) && (Vector_Size(dataModelTableList) > 0)))
             {
                 int valIndex = 0;
@@ -786,6 +792,7 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
                 }
             }
             else
+#endif
             {
                 cJSON *valList = NULL;
                 cJSON *valItem = NULL;

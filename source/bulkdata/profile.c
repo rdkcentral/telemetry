@@ -569,6 +569,35 @@ static void* CollectAndReport(void* data)
                 {
                     cJSON_AddItemToArray(valArray, triggercondition);
                 }
+#ifdef T2_ENABLE_STS_TS_TIMESTAMP
+                /* Add the collection timestamp as a separate object in Report[]. */
+                if(valArray != NULL && cJSON_IsArray(valArray))
+                {
+                    struct timespec collectionTime;
+                    if(clock_gettime(CLOCK_REALTIME, &collectionTime) == 0)
+                    {
+                        long long collectionTimeMs =
+                            (long long)collectionTime.tv_sec * 1000LL +
+                            collectionTime.tv_nsec / 1000000LL;
+                        cJSON *timestamp = cJSON_CreateObject();
+                        if(timestamp != NULL)
+                        {
+                            if(cJSON_AddNumberToObject(timestamp, "ts",
+                                                      (double)collectionTimeMs) != NULL)
+                            {
+                                if(!cJSON_AddItemToArray(valArray, timestamp))
+                                {
+                                    cJSON_Delete(timestamp);
+                                }
+                            }
+                            else
+                            {
+                                cJSON_Delete(timestamp);
+                            }
+                        }
+                    }
+                }
+#endif
                 ret = prepareJSONReport(profile->jsonReportObj, &jsonReport);
                 destroyJSONReport(profile->jsonReportObj);
                 profile->jsonReportObj = NULL;

@@ -34,3 +34,7 @@ libhttp_la_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 \
                                 -I${top_srcdir}/source/bulkdata \
                                 -I${top_srcdir}/source/utils
 
+if ENABLE_T2_ENABLE_STS_TS_TIMESTAMP
+libhttp_la_CPPFLAGS += -DT2_ENABLE_STS_TS_TIMESTAMP
+libhttp_la_LDFLAGS += -lcjson
+endif

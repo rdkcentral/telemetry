@@ -917,7 +917,20 @@ static T2ERROR parseDataModelTableParams(Profile* profile, cJSON* tableItem, con
 
         // Initialize root table
         currentTable->reference = strdup(jpReference->valuestring);
+        if (!currentTable->reference)
+        {
+            T2Error("Failed to allocate memory for DataModelTable reference\n");
+            free(currentTable);
+            return T2ERROR_FAILURE;
+        }
         currentTable->index = jpIndex ? strdup(jpIndex->valuestring) : NULL;
+        if (jpIndex && !currentTable->index)
+        {
+            T2Error("Failed to allocate memory for DataModelTable index\n");
+            free(currentTable->reference);
+            free(currentTable);
+            return T2ERROR_FAILURE;
+        }
         Vector_Create(&currentTable->paramList);
 
         if (!profile->dataModelTableList)
@@ -993,6 +1006,13 @@ static T2ERROR parseDataModelTableParams(Profile* profile, cJSON* tableItem, con
                 continue;
             }
             param->name = strdup(fullPath);
+            if (!param->name)
+            {
+                T2Error("Failed to allocate memory for DataModelParam name\n");
+                free(param->reference);
+                free(param);
+                continue;
+            }
             param->reportEmpty = false;
 
             // Add to table's parameter list

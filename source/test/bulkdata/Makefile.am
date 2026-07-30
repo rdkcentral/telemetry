@@ -76,7 +76,7 @@ reportprofiles_gtest_bin_LDFLAGS += -Wl,--wrap=isRbusEnabled -Wl,--wrap=sendRepo
 # DataModelTable (PR-161) & Memory Safety (PR-363) Test Suite
 profile_dynamictable_gtest_bin_CFLAGS = -DGTEST_ENABLE
 
-profile_dynamictable_gtest_bin_CPPFLAGS = $(profile_gtest_bin_CPPFLAGS)
+profile_dynamictable_gtest_bin_CPPFLAGS = $(profile_gtest_bin_CPPFLAGS) -DENABLE_DYNAMIC_TABLE_SUPPORT
 
 profile_dynamictable_gtest_bin_SOURCES = profile_dynamictable_Test.cpp ../mocks/rdklogMock.cpp ../mocks/rbusMock.cpp ../mocks/profileStub.c ../../utils/vector.c ../../utils/t2log_wrapper.c ../../utils/t2common.c ../../utils/t2collection.c
 

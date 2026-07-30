@@ -36,6 +36,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include <sys/types.h>
 #include <cjson/cJSON.h>
 
 #include "t2collection.h"
@@ -62,10 +63,17 @@
 #endif
 
 /*
- * Used to store the log file seek position for each profile.
+ * Used to store the log file seek position and inode for each profile.
  * The key is the profile name and
- *   value is a hash_map_t which contains the log file name as key and the seek position as value.
+ *   value is a hash_map_t which contains the log file name as key and LogSeekInfo as value.
+ * The inode is used to detect log rotation even when the new file grows past the previous seek value.
  */
+typedef struct _LogSeekInfo
+{
+    long seekValue;
+    ino_t inode;
+} LogSeekInfo;
+
 typedef struct _GrepSeekProfile
 {
     hash_map_t *logFileSeekMap;

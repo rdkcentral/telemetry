@@ -156,6 +156,20 @@ AC_ARG_ENABLE([libsyswrapper],
 AM_CONDITIONAL([IS_LIBSYSWRAPPER_ENABLED], [test x$IS_LIBSYSWRAPPER_ENABLED = xtrue])
 AC_SUBST(LIBSYSWRAPPER_FLAG)
 
+ENABLE_SUPPORT_TYPING_FIELDS=false
+AC_ARG_ENABLE([support-typing-fields],
+              AS_HELP_STRING([--enable-support-typing-fields],[enable SUPPORT_TYPING_FIELDS (default is no)]),
+              [
+                case "${enableval}" in
+                 yes) ENABLE_SUPPORT_TYPING_FIELDS=true;;
+                  no) AC_MSG_ERROR([SUPPORT_TYPING_FIELDS is disabled]) ;;
+                   *) AC_MSG_ERROR([bad value ${enableval} for --enable-support-typing-fields]) ;;
+                esac
+              ],
+              [echo "SUPPORT_TYPING_FIELDS is disabled"])
+
+AM_CONDITIONAL([ENABLE_SUPPORT_TYPING_FIELDS], [test x$ENABLE_SUPPORT_TYPING_FIELDS = xtrue])
+
 #privacy control flag
 IS_PRIVACYCONTROL_ENABLED=false
 AC_ARG_ENABLE([privacycontrol],

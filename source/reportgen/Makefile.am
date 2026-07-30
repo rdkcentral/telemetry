@@ -30,3 +30,7 @@ libreportgen_la_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1
                                 -I${top_srcdir}/source/bulkdata \
                                 -I${top_srcdir}/source/utils \
                                 -I${top_srcdir}/source/dcautil
+
+if ENABLE_SUPPORT_TYPING_FIELDS
+libreportgen_la_CPPFLAGS += -DSUPPORT_TYPING_FIELDS
+endif

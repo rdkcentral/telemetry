@@ -1160,12 +1160,6 @@ static int parseMarkerListOptimized(GrepSeekProfile *gsProfile, Vector * ip_vMar
 
             fileDescriptor = getFileDeltaInMemMapAndSearch(fd, seek_value, logPath, log_file_for_this_iteration, check_rotated_logs, inode_changed, prev_stored_inode);
 
-            if (fd != -1)
-            {
-                close(fd);
-                fd = -1;
-            }
-
             if (fileDescriptor == NULL)
             {
                 T2Error("Failed to get file descriptor for %s\n", log_file_for_this_iteration);

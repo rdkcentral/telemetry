@@ -2347,7 +2347,10 @@ static T2ERROR parseDataModelTableParamsMsgpack(Profile* profile, msgpack_object
     if (buildFullPath(currentPath, parentPath, referenceStr) != 0)
     {
         T2Error("Failed to build current path\n");
-        if (!parentTable) free(referenceStr);
+        if (!parentTable)
+        {
+            free(referenceStr);
+        }
         return T2ERROR_FAILURE;
     }
 
@@ -2355,11 +2358,17 @@ static T2ERROR parseDataModelTableParamsMsgpack(Profile* profile, msgpack_object
     if ((size_t)snprintf(pathWithWildcard, sizeof(pathWithWildcard), "%s*.", currentPath) >= sizeof(pathWithWildcard))
     {
         T2Error("Path with wildcard exceeded buffer size\n");
-        if (!parentTable) free(referenceStr);
+        if (!parentTable)
+        {
+            free(referenceStr);
+        }
         return T2ERROR_FAILURE;
     }
 
-    if (parentTable) free(referenceStr);
+    if (parentTable)
+    {
+        free(referenceStr);
+    }
 
     // Process parameters
     uint32_t paramCount = 0;
@@ -2774,7 +2783,10 @@ T2ERROR addParameterMsgpack_marker_config(Profile* profile, msgpack_object* valu
                         free(header);
                         free(paramtype);
                         free(use);
-                        if (regex != NULL) free(regex);
+                        if (regex != NULL)
+                        {
+                            free(regex);
+                        }
                         continue;
                     }
                     free(paramtype);
@@ -2823,7 +2835,9 @@ T2ERROR addParameterMsgpack_marker_config(Profile* profile, msgpack_object* valu
             continue;
         }
 
+#ifdef ENABLE_DYNAMIC_TABLE_SUPPORT
 msgpack_add_param:
+#endif
         T2Debug("%s : reportTimestamp = %d\n", __FUNCTION__, rtformat);
         if(header != NULL && content != NULL)
         {

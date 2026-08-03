@@ -47,11 +47,17 @@ static const char* getValueForParam(const char *name)
     for (int row = 0; row < NUM_ROWS; row++)
     {
         if (strcmp(name, paramNames[row * NUM_PARAMS_PER_ROW + 0]) == 0)
+        {
             return ssid_values[row];
+        }
         if (strcmp(name, paramNames[row * NUM_PARAMS_PER_ROW + 1]) == 0)
+        {
             return status_values[row];
+        }
         if (strcmp(name, paramNames[row * NUM_PARAMS_PER_ROW + 2]) == 0)
+        {
             return enable_values[row];
+        }
     }
     return NULL;
 }

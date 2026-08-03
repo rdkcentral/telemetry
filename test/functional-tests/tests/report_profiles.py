@@ -2129,3 +2129,126 @@ data_temp_with_triggerconditon_pos = '''{
         }
     ]
 }'''
+
+# ============================================================================
+# dataModelTable profiles for L2 integration testing (RDKB-65730)
+# ============================================================================
+
+# Profile with dataModelTable using explicit index "1,2"
+data_datamodeltable_explicit_index = '''{
+    "profiles": [
+        {
+            "name": "DT_ExplicitIndex",
+            "hash": "Hash_DT1",
+            "value": {
+                "Name": "DT_ExplicitIndex",
+                "Description": "DataModelTable with explicit index 1,2",
+                "Version": "1",
+                "Protocol": "HTTP",
+                "EncodingType": "JSON",
+                "ReportingInterval": 20,
+                "GenerateNow": true,
+                "TimeReference": "0001-01-01T00:00:00Z",
+                "Parameter": [
+                    {
+                        "type": "dataModel",
+                        "name": "UPTIME",
+                        "reference": "Device.DeviceInfo.UpTime",
+                        "use": "absolute"
+                    },
+                    {
+                        "type": "dataModelTable",
+                        "reference": "Device.X_T2TEST_Table.AccessPoint.",
+                        "index": "1,2",
+                        "Parameter": [
+                            {
+                                "type": "dataModel",
+                                "reference": "SSID"
+                            },
+                            {
+                                "type": "dataModel",
+                                "reference": "Status"
+                            }
+                        ]
+                    }
+                ],
+                "HTTP": {
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
+                },
+                "JSONEncoding": {
+                    "ReportFormat": "NameValuePair",
+                    "ReportTimestamp": "None"
+                }
+            }
+        }
+    ]
+}'''
+
+# Profile with dataModelTable using wildcard (no index field)
+data_datamodeltable_wildcard = '''{
+    "profiles": [
+        {
+            "name": "DT_Wildcard",
+            "hash": "Hash_DT2",
+            "value": {
+                "Name": "DT_Wildcard",
+                "Description": "DataModelTable wildcard - all rows",
+                "Version": "1",
+                "Protocol": "HTTP",
+                "EncodingType": "JSON",
+                "ReportingInterval": 20,
+                "GenerateNow": true,
+                "TimeReference": "0001-01-01T00:00:00Z",
+                "Parameter": [
+                    {
+                        "type": "dataModel",
+                        "name": "UPTIME",
+                        "reference": "Device.DeviceInfo.UpTime",
+                        "use": "absolute"
+                    },
+                    {
+                        "type": "dataModelTable",
+                        "reference": "Device.X_T2TEST_Table.AccessPoint.",
+                        "Parameter": [
+                            {
+                                "type": "dataModel",
+                                "reference": "SSID"
+                            },
+                            {
+                                "type": "dataModel",
+                                "reference": "Status"
+                            },
+                            {
+                                "type": "dataModel",
+                                "reference": "Enable"
+                            }
+                        ]
+                    }
+                ],
+                "HTTP": {
+                    "URL": "https://mockxconf:50051/dataLakeMock/",
+                    "Compression": "None",
+                    "Method": "POST",
+                    "RequestURIParameter": [
+                        {
+                            "Name": "reportName",
+                            "Reference": "Profile.Name"
+                        }
+                    ]
+                },
+                "JSONEncoding": {
+                    "ReportFormat": "NameValuePair",
+                    "ReportTimestamp": "None"
+                }
+            }
+        }
+    ]
+}'''

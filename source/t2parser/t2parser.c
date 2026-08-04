@@ -1994,7 +1994,12 @@ int msgpack_strcmp(msgpack_object *obj, char *str)
     {
         return -1;
     }
-    return strncmp(str, obj->via.str.ptr, obj->via.str.size);
+    size_t len = strlen(str);
+    if (obj->via.str.size != len)
+    {
+        return (obj->via.str.size < len) ? -1 : 1;
+    }
+    return strncmp(str, obj->via.str.ptr, len);
 }
 
 void msgpack_print(msgpack_object *obj, char *obj_name)

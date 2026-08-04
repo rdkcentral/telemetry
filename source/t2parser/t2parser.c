@@ -44,6 +44,7 @@ static char * getProfileParameter(Profile * profile, const char *ref)
     if( pValue == NULL)
     {
         T2Error("Unable to allocate memory for profile parameter value \n");
+        T2Error("This is a test message - not for prod, just an experiment \n");
         return pValue ;
     }
 

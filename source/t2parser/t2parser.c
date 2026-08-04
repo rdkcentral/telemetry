@@ -2338,8 +2338,6 @@ static T2ERROR parseDataModelTableParamsMsgpack(Profile* profile, msgpack_object
     else
     {
         currentTable = parentTable;
-        free(referenceStr);
-        referenceStr = msgpack_strdup(mpReference);
     }
 
     // Build the current path including wildcard
@@ -2348,6 +2346,11 @@ static T2ERROR parseDataModelTableParamsMsgpack(Profile* profile, msgpack_object
     {
         T2Error("Failed to build current path\n");
         if (!parentTable)
+        {
+            // Remove the table we just pushed and free it (also frees referenceStr via table->reference)
+            Vector_RemoveItem(profile->dataModelTableList, currentTable, freeDataModelTable);
+        }
+        else
         {
             free(referenceStr);
         }
@@ -2359,6 +2362,10 @@ static T2ERROR parseDataModelTableParamsMsgpack(Profile* profile, msgpack_object
     {
         T2Error("Path with wildcard exceeded buffer size\n");
         if (!parentTable)
+        {
+            Vector_RemoveItem(profile->dataModelTableList, currentTable, freeDataModelTable);
+        }
+        else
         {
             free(referenceStr);
         }
@@ -2683,6 +2690,17 @@ T2ERROR addParameterMsgpack_marker_config(Profile* profile, msgpack_object* valu
                     basePath[sizeof(basePath) - 1] = '\0';
                     free(baseRefStr);
                 }
+                if (basePath[0] == '\0')
+                {
+                    T2Error("Failed to extract or empty base reference for dataModelTable\n");
+                    free(paramtype);
+                    free(use);
+                    if (regex != NULL)
+                    {
+                        free(regex);
+                    }
+                    continue;
+                }
                 T2Debug("Base path for msgpack data model table: %s\n", basePath);
 
                 msgpack_object *mpIndex = msgpack_get_map_value(Parameter_array_map, "index");
@@ -2791,6 +2809,18 @@ T2ERROR addParameterMsgpack_marker_config(Profile* profile, msgpack_object* valu
                     }
                     free(paramtype);
                     paramtype = strdup("dataModel");
+                    if (!paramtype)
+                    {
+                        T2Error("Memory allocation failed for paramtype\n");
+                        free(content);
+                        free(header);
+                        free(use);
+                        if (regex != NULL)
+                        {
+                            free(regex);
+                        }
+                        continue;
+                    }
                     // Parse sub-parameters for dynamic table structure (no-index case)
                     T2ERROR tableRet2 = parseDataModelTableParamsMsgpack(profile, Parameter_array_map, basePath, NULL);
                     if (tableRet2 != T2ERROR_SUCCESS)

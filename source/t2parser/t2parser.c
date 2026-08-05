@@ -1994,7 +1994,12 @@ int msgpack_strcmp(msgpack_object *obj, char *str)
     {
         return -1;
     }
-    return strncmp(str, obj->via.str.ptr, obj->via.str.size);
+    size_t len = strlen(str);
+    if (obj->via.str.size != len)
+    {
+        return (obj->via.str.size < len) ? -1 : 1;
+    }
+    return strncmp(str, obj->via.str.ptr, len);
 }
 
 void msgpack_print(msgpack_object *obj, char *obj_name)
@@ -2037,19 +2042,21 @@ void msgpack_print(msgpack_object *obj, char *obj_name)
 
 msgpack_object *msgpack_get_map_value(msgpack_object *obj, char *key)
 {
-    if (NULL == obj)
+    if (NULL == obj || NULL == key)
     {
         return NULL;
     }
     if (MSGPACK_OBJECT_MAP == obj->type)
         if(obj->via.map.size != 0)
         {
+            size_t keyLen = strlen(key);
             msgpack_object_kv* current = obj->via.map.ptr;
             msgpack_object_kv* const end = obj->via.map.ptr + obj->via.map.size;
             for(; current < end; current++)
                 if (current->key.type == MSGPACK_OBJECT_STR)
                 {
-                    if ( 0 == strncmp(key, current->key.via.str.ptr, current->key.via.str.size))
+                    if (current->key.via.str.size == keyLen &&
+                            0 == strncmp(key, current->key.via.str.ptr, keyLen))
                     {
                         return &current->val;
                     }
@@ -2277,6 +2284,170 @@ T2ERROR time_param_MsgPackReporting_Adjustments_valid_set(Profile *profile, msgp
     }
     return T2ERROR_SUCCESS;
 }
+
+#ifdef ENABLE_DYNAMIC_TABLE_SUPPORT
+static T2ERROR parseDataModelTableParamsMsgpack(Profile* profile, msgpack_object* tableMap, const char* parentPath, DataModelTable* parentTable)
+{
+    T2Debug("%s ++in\n", __FUNCTION__);
+    if (!tableMap || !parentPath || !profile)
+    {
+        T2Error("Invalid input parameters\n");
+        return T2ERROR_FAILURE;
+    }
+
+    T2Debug("Processing msgpack table with parent path: %s\n", parentPath);
+
+    msgpack_object *mpReference = msgpack_get_map_value(tableMap, "reference");
+    msgpack_object *mpIndex = msgpack_get_map_value(tableMap, "index");
+    msgpack_object *mpParameters = msgpack_get_map_value(tableMap, "Parameter");
+
+    if (!mpReference || !mpParameters)
+    {
+        T2Error("Incomplete dataModelTable configuration in msgpack\n");
+        return T2ERROR_FAILURE;
+    }
+
+    char *referenceStr = msgpack_strdup(mpReference);
+    if (!referenceStr)
+    {
+        T2Error("Failed to extract reference string from msgpack\n");
+        return T2ERROR_FAILURE;
+    }
+
+    DataModelTable* currentTable = NULL;
+    if (!parentTable)
+    {
+        currentTable = (DataModelTable*)malloc(sizeof(DataModelTable));
+        if (!currentTable)
+        {
+            T2Error("Failed to allocate memory for DataModelTable\n");
+            free(referenceStr);
+            return T2ERROR_FAILURE;
+        }
+
+        currentTable->reference = referenceStr;
+        currentTable->index = mpIndex ? msgpack_strdup(mpIndex) : NULL;
+        if (mpIndex && !currentTable->index)
+        {
+            T2Error("Failed to allocate memory for DataModelTable index\n");
+            free(currentTable->reference);
+            free(currentTable);
+            return T2ERROR_FAILURE;
+        }
+        Vector_Create(&currentTable->paramList);
+
+        if (!profile->dataModelTableList)
+        {
+            Vector_Create(&profile->dataModelTableList);
+        }
+        Vector_PushBack(profile->dataModelTableList, currentTable);
+    }
+    else
+    {
+        currentTable = parentTable;
+    }
+
+    // Build the current path including wildcard
+    char currentPath[MAX_PATH_LENGTH];
+    if (buildFullPath(currentPath, parentPath, referenceStr) != 0)
+    {
+        T2Error("Failed to build current path\n");
+        if (!parentTable)
+        {
+            // Remove the table we just pushed and free it (also frees referenceStr via table->reference)
+            Vector_RemoveItem(profile->dataModelTableList, currentTable, freeDataModelTable);
+        }
+        else
+        {
+            free(referenceStr);
+        }
+        return T2ERROR_FAILURE;
+    }
+
+    char pathWithWildcard[MAX_PATH_LENGTH];
+    if ((size_t)snprintf(pathWithWildcard, sizeof(pathWithWildcard), "%s*.", currentPath) >= sizeof(pathWithWildcard))
+    {
+        T2Error("Path with wildcard exceeded buffer size\n");
+        if (!parentTable)
+        {
+            Vector_RemoveItem(profile->dataModelTableList, currentTable, freeDataModelTable);
+        }
+        else
+        {
+            free(referenceStr);
+        }
+        return T2ERROR_FAILURE;
+    }
+
+    if (parentTable)
+    {
+        free(referenceStr);
+    }
+
+    // Process parameters
+    uint32_t paramCount = 0;
+    MSGPACK_GET_ARRAY_SIZE(mpParameters, paramCount);
+    for (uint32_t i = 0; i < paramCount; i++)
+    {
+        msgpack_object *paramItem = msgpack_get_array_element(mpParameters, i);
+        if (!paramItem)
+        {
+            continue;
+        }
+
+        msgpack_object *mpType = msgpack_get_map_value(paramItem, "type");
+        msgpack_object *mpParamRef = msgpack_get_map_value(paramItem, "reference");
+
+        if (!mpType || !mpParamRef)
+        {
+            continue;
+        }
+
+        if (0 == msgpack_strcmp(mpType, "dataModelTable"))
+        {
+            // Recursive call for nested tables
+            parseDataModelTableParamsMsgpack(profile, paramItem, pathWithWildcard, currentTable);
+        }
+        else if (0 == msgpack_strcmp(mpType, "dataModel"))
+        {
+            // Create DataModelParam
+            DataModelParam* param = (DataModelParam*)malloc(sizeof(DataModelParam));
+            if (!param)
+            {
+                continue;
+            }
+
+            param->reference = msgpack_strdup(mpParamRef);
+            char fullPath[MAX_PATH_LENGTH];
+            if (buildFullPath(fullPath, pathWithWildcard, param->reference) != 0)
+            {
+                T2Error("Failed to build full path for parameter\n");
+                if (param->reference)
+                {
+                    free(param->reference);
+                }
+                free(param);
+                continue;
+            }
+            param->name = strdup(fullPath);
+            if (!param->name)
+            {
+                T2Error("Failed to allocate memory for DataModelParam name\n");
+                free(param->reference);
+                free(param);
+                continue;
+            }
+            param->reportEmpty = false;
+
+            Vector_PushBack(currentTable->paramList, param);
+            T2Debug("Added parameter: %s\n", fullPath);
+        }
+    }
+
+    T2Debug("%s ++out\n", __FUNCTION__);
+    return T2ERROR_SUCCESS;
+}
+#endif
 
 T2ERROR addParameterMsgpack_marker_config(Profile* profile, msgpack_object* value_map)
 {
@@ -2514,8 +2685,170 @@ T2ERROR addParameterMsgpack_marker_config(Profile* profile, msgpack_object* valu
         else if(0 == msgpack_strcmp(Parameter_type_str, "dataModelTable"))
         {
 #ifdef ENABLE_DYNAMIC_TABLE_SUPPORT
-            T2Debug("MsgPack dataModelTable parsing is enabled only in JSON flow currently\n");
-            T2Error("%s dataModelTable in MsgPack profile is not supported in current implementation\n", __FUNCTION__);
+            T2Debug("Processing dataModelTable in MsgPack profile\n");
+            msgpack_object *mpBaseRef = msgpack_get_map_value(Parameter_array_map, "reference");
+            if (mpBaseRef)
+            {
+                char basePath[256] = "";
+                char *baseRefStr = msgpack_strdup(mpBaseRef);
+                if (baseRefStr)
+                {
+                    strncpy(basePath, baseRefStr, sizeof(basePath) - 1);
+                    basePath[sizeof(basePath) - 1] = '\0';
+                    free(baseRefStr);
+                }
+                if (basePath[0] == '\0')
+                {
+                    T2Error("Failed to extract or empty base reference for dataModelTable\n");
+                    free(paramtype);
+                    free(use);
+                    if (regex != NULL)
+                    {
+                        free(regex);
+                    }
+                    continue;
+                }
+                T2Debug("Base path for msgpack data model table: %s\n", basePath);
+
+                msgpack_object *mpIndex = msgpack_get_map_value(Parameter_array_map, "index");
+                if (mpIndex)
+                {
+                    char index[64] = "";
+                    char *indexStr = msgpack_strdup(mpIndex);
+                    if (indexStr)
+                    {
+                        strncpy(index, indexStr, sizeof(index) - 1);
+                        index[sizeof(index) - 1] = '\0';
+                        free(indexStr);
+                    }
+                    // Remove whitespace from index
+                    int ii = 0, jj = 0;
+                    while (index[ii])
+                    {
+                        if (!(index[ii] == ' ' || index[ii] == '\t' || index[ii] == '\n' ||
+                                index[ii] == '\r' || index[ii] == '\v' || index[ii] == '\f'))
+                        {
+                            index[jj++] = index[ii];
+                        }
+                        ii++;
+                    }
+                    index[jj] = '\0';
+
+                    int duplicate[256] = {0};
+                    char *token = strtok(index, ",");
+                    while (token != NULL)
+                    {
+                        int start, end;
+                        if (sscanf(token, "%d-%d", &start, &end) == 2)
+                        {
+                            for (int k = start; k <= end; ++k)
+                            {
+                                if (k < 0 || k >= 256)
+                                {
+                                    continue;
+                                }
+                                if (duplicate[k])
+                                {
+                                    continue;
+                                }
+                                duplicate[k] = 1;
+                                T2Debug("Processing index : %d\n", k);
+                                char basePathWithIndex[256];
+                                int written = snprintf(basePathWithIndex, sizeof(basePathWithIndex), "%s%d.", basePath, k);
+                                if (written < 0 || (size_t)written >= sizeof(basePathWithIndex))
+                                {
+                                    T2Error("%s: snprintf truncated or failed while building path: '%s'\n", __FUNCTION__, basePathWithIndex);
+                                }
+                                ret = addParameter(profile, basePathWithIndex, basePathWithIndex, logfile, skipFrequency, firstSeekFromEOF, "dataModel", use, reportEmpty, rtformat, trim, regex);
+                                if (ret != T2ERROR_SUCCESS)
+                                {
+                                    T2Error("%s Error in adding parameter to profile %s\n", __FUNCTION__, basePathWithIndex);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            int val = atoi(token);
+                            if (val < 0 || val >= 256)
+                            {
+                                token = strtok(NULL, ",");
+                                continue;
+                            }
+                            if (duplicate[val])
+                            {
+                                token = strtok(NULL, ",");
+                                continue;
+                            }
+                            duplicate[val] = 1;
+                            T2Debug("Processing index : %d\n", val);
+                            char basePathWithIndex[256];
+                            int written = snprintf(basePathWithIndex, sizeof(basePathWithIndex), "%s%d.", basePath, val);
+                            if (written < 0 || (size_t)written >= sizeof(basePathWithIndex))
+                            {
+                                T2Error("%s: snprintf truncated or failed while building path: '%s'\n", __FUNCTION__, basePathWithIndex);
+                            }
+                            ret = addParameter(profile, basePathWithIndex, basePathWithIndex, logfile, skipFrequency, firstSeekFromEOF, "dataModel", use, reportEmpty, rtformat, trim, regex);
+                            if (ret != T2ERROR_SUCCESS)
+                            {
+                                T2Error("%s Error in adding parameter to profile %s\n", __FUNCTION__, basePathWithIndex);
+                            }
+                        }
+                        token = strtok(NULL, ",");
+                    }
+                }
+                else
+                {
+                    // No index: use basePath directly as a dataModel parameter
+                    content = strdup(basePath);
+                    header = strdup(basePath);
+                    if (!content || !header)
+                    {
+                        T2Error("Memory allocation failed for content/header\n");
+                        free(content);
+                        free(header);
+                        free(paramtype);
+                        free(use);
+                        if (regex != NULL)
+                        {
+                            free(regex);
+                        }
+                        continue;
+                    }
+                    free(paramtype);
+                    paramtype = strdup("dataModel");
+                    if (!paramtype)
+                    {
+                        T2Error("Memory allocation failed for paramtype\n");
+                        free(content);
+                        free(header);
+                        free(use);
+                        if (regex != NULL)
+                        {
+                            free(regex);
+                        }
+                        continue;
+                    }
+                    // Parse sub-parameters for dynamic table structure (no-index case)
+                    T2ERROR tableRet2 = parseDataModelTableParamsMsgpack(profile, Parameter_array_map, basePath, NULL);
+                    if (tableRet2 != T2ERROR_SUCCESS)
+                    {
+                        T2Error("Failed to parse msgpack data model table configuration\n");
+                    }
+                    // Fall through to addParameter below
+                    goto msgpack_add_param;
+                }
+
+                // Parse sub-parameters for dynamic table structure
+                T2ERROR tableRet = parseDataModelTableParamsMsgpack(profile, Parameter_array_map, basePath, NULL);
+                if (tableRet != T2ERROR_SUCCESS)
+                {
+                    T2Error("Failed to parse msgpack data model table configuration\n");
+                }
+            }
+            else
+            {
+                T2Error("Missing reference in msgpack dataModelTable configuration\n");
+            }
 #else
             T2Debug("Dynamic table support disabled, ignoring dataModelTable parameter\n");
 #endif
@@ -2539,6 +2872,9 @@ T2ERROR addParameterMsgpack_marker_config(Profile* profile, msgpack_object* valu
             continue;
         }
 
+#ifdef ENABLE_DYNAMIC_TABLE_SUPPORT
+msgpack_add_param:
+#endif
         T2Debug("%s : reportTimestamp = %d\n", __FUNCTION__, rtformat);
         if(header != NULL && content != NULL)
         {
@@ -2610,6 +2946,17 @@ T2ERROR encodingSetMsgpack (Profile *profile, msgpack_object* value_map)
     {
         T2Error("Profile or value is NULL\n");
         return T2ERROR_INVALID_ARGS;
+    }
+    if(profile->jsonEncoding == NULL)
+    {
+        profile->jsonEncoding = (JSONEncoding *) malloc(sizeof(JSONEncoding));
+        if(NULL == profile->jsonEncoding)
+        {
+            T2Error("Malloc error: cannot allocate memory for jsonEncoding\n");
+            return T2ERROR_MEMALLOC_FAILED;
+        }
+        profile->jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
+        profile->jsonEncoding->tsFormat = TIMESTAMP_NONE;
     }
     msgpack_object *JSONEncoding_map;
     msgpack_object *ReportFormat_str;

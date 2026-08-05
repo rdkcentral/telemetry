@@ -57,6 +57,26 @@ make
 sudo make install
 ```
 
+### Optional Build Features
+
+| Flag | Macro | Default | Description |
+|------|-------|---------|-------------|
+| `--enable-dynamic-table-support` | `ENABLE_DYNAMIC_TABLE_SUPPORT` | Disabled | Dynamic TR-181 table traversal via `dataModelTable` profile entries |
+
+#### Dynamic Table Support
+
+When enabled (`./configure --enable-dynamic-table-support=yes`), this unlocks:
+
+- **`dataModelTable` parameter type** in report profiles — collect structured multi-row data from any TR-181 table (e.g., `Device.WiFi.Radio.`, `Device.DHCPv6.Server.Pool.`)
+- **Index-based row selection** — filter specific rows using comma-separated indices or ranges (e.g., `"1,2"`, `"1-4"`)
+- **Wildcard collection** — omit index to collect all available table rows automatically
+- **Nested table traversal** — support sub-tables within tables
+- **Structured JSON array encoding** — report output keyed by table base path with 1-based row positioning
+
+When disabled (default), profiles containing `dataModelTable` entries are silently ignored at runtime with no impact on existing functionality.
+
+See [Profile Schema](schemas/t2_reportProfileSchema.schema.json) for the `dataModelTable` JSON schema definition.
+
 ### Docker Development
 
 Refer to the provided Docker container for a consistent development environment:

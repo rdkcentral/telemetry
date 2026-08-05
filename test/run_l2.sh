@@ -36,12 +36,26 @@ fi
 
 gcc test/functional-tests/tests/app.c -o test/functional-tests/tests/t2_app -ltelemetry_msgsender -lt2utils
 
+# Compile mock table provider for dataModelTable L2 tests
+gcc -o test/functional-tests/tests/mock_table_provider test/functional-tests/tests/mock_table_provider.c \
+    -I/usr/local/include -I/usr/local/include/rbus \
+    -L/usr/local/lib -lrbus -lrbuscore -lrtMessage -lmsgpackc
+
+# Start mock table provider in background (provides Device.X_T2TEST_Table.AccessPoint.{1,2,3}.*)
+test/functional-tests/tests/mock_table_provider &
+MOCK_TABLE_PROVIDER_PID=$!
+sleep 2
+
 final_result=0
 # removing --exitfirst flag as it is causing the test to exit after first failure
 pytest -v --json-report --json-report-summary --json-report-file $RESULT_DIR/runs_as_daemon.json test/functional-tests/tests/test_runs_as_daemon.py || final_result=1
 pytest -v --json-report --json-report-summary --json-report-file $RESULT_DIR/bootup_sequence.json test/functional-tests/tests/test_bootup_sequence.py || final_result=1
 pytest -v --json-report --json-report-summary --json-report-file $RESULT_DIR/xconf_communications.json test/functional-tests/tests/test_xconf_communications.py || final_result=1
 pytest -v --json-report --json-report-summary --json-report-file $RESULT_DIR/msg_packet.json test/functional-tests/tests/test_multiprofile_msgpacket.py || final_result=1
+pytest -v --json-report --json-report-summary --json-report-file $RESULT_DIR/datamodeltable.json test/functional-tests/tests/test_datamodeltable.py || final_result=1
+
+# Stop mock table provider
+kill $MOCK_TABLE_PROVIDER_PID 2>/dev/null
 
 if [ $final_result -ne 0 ]; then
     echo "Some tests failed. Please check the JSON reports in $RESULT_DIR for details."

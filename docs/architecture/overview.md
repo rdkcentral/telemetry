@@ -113,6 +113,7 @@ graph TB
 - **Purpose**: Retrieve TR-181 data model parameters
 - **Protocol**: D-Bus (CCSP) or RBUS
 - **Caching**: Parameter value cache with TTL
+- **Dynamic Tables**: Supports structured traversal of multi-instance TR-181 objects via `dataModelTable` profile entries 
 - **Files**: `source/ccspinterface/`
 
 ### 3. Processing Layer

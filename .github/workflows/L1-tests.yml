@@ -54,6 +54,9 @@ jobs:
       image: ghcr.io/rdkcentral/docker-rdk-ci:latest
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Download test results
         uses: actions/download-artifact@v4
         with:

@@ -1569,7 +1569,7 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
             {
                 if(!eventMarker->reportEmptyParam && checkForEmptyString(eventMarker->u.markerValue))
                 {
-                    T2Debug("Skipping empty/null/zero subscribe marker value for : %s\n", eventMarker->markerName);
+                    T2Debug("Skipping empty/\"NULL\" marker value for : %s\n", eventMarker->markerName);
                     free(eventMarker->u.markerValue);
                     eventMarker->u.markerValue = NULL;
                     break;

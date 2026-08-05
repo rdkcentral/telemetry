@@ -2042,19 +2042,21 @@ void msgpack_print(msgpack_object *obj, char *obj_name)
 
 msgpack_object *msgpack_get_map_value(msgpack_object *obj, char *key)
 {
-    if (NULL == obj)
+    if (NULL == obj || NULL == key)
     {
         return NULL;
     }
     if (MSGPACK_OBJECT_MAP == obj->type)
         if(obj->via.map.size != 0)
         {
+            size_t keyLen = strlen(key);
             msgpack_object_kv* current = obj->via.map.ptr;
             msgpack_object_kv* const end = obj->via.map.ptr + obj->via.map.size;
             for(; current < end; current++)
                 if (current->key.type == MSGPACK_OBJECT_STR)
                 {
-                    if ( 0 == strncmp(key, current->key.via.str.ptr, current->key.via.str.size))
+                    if (current->key.via.str.size == keyLen &&
+                        0 == strncmp(key, current->key.via.str.ptr, keyLen))
                     {
                         return &current->val;
                     }
@@ -2944,6 +2946,17 @@ T2ERROR encodingSetMsgpack (Profile *profile, msgpack_object* value_map)
     {
         T2Error("Profile or value is NULL\n");
         return T2ERROR_INVALID_ARGS;
+    }
+    if(profile->jsonEncoding == NULL)
+    {
+        profile->jsonEncoding = (JSONEncoding *) malloc(sizeof(JSONEncoding));
+        if(NULL == profile->jsonEncoding)
+        {
+            T2Error("Malloc error: cannot allocate memory for jsonEncoding\n");
+            return T2ERROR_MEMALLOC_FAILED;
+        }
+        profile->jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
+        profile->jsonEncoding->tsFormat = TIMESTAMP_NONE;
     }
     msgpack_object *JSONEncoding_map;
     msgpack_object *ReportFormat_str;

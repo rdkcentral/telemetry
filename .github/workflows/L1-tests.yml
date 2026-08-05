@@ -39,16 +39,27 @@ jobs:
           docker cp native-platform:/tmp/Gtest_Report /tmp/Gtest_Report
           ls -l /tmp/Gtest_Report
 
+      - name: Upload test results as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gtest-results
+          path: /tmp/Gtest_Report
+          retention-days: 1
+
   upload-test-results:
     name: Upload L1 test results to automatic test result management system
     needs: execute-L1-tests-on-pr
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/rdkcentral/docker-rdk-ci:latest
-      volumes:
-        - /tmp/Gtest_Report:/tmp/Gtest_Report
 
     steps:
+      - name: Download test results
+        uses: actions/download-artifact@v4
+        with:
+          name: gtest-results
+          path: /tmp/Gtest_Report
+
       - name: Upload results
         if: github.repository_owner == 'rdkcentral'
         env:

@@ -2056,7 +2056,7 @@ msgpack_object *msgpack_get_map_value(msgpack_object *obj, char *key)
                 if (current->key.type == MSGPACK_OBJECT_STR)
                 {
                     if (current->key.via.str.size == keyLen &&
-                        0 == strncmp(key, current->key.via.str.ptr, keyLen))
+                            0 == strncmp(key, current->key.via.str.ptr, keyLen))
                     {
                         return &current->val;
                     }

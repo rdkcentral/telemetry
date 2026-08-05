@@ -31,13 +31,35 @@ jobs:
         run: |
           docker run -d --name native-platform -v ${{ github.workspace }}:/mnt/L1_CONTAINER_SHARED_VOLUME ghcr.io/rdkcentral/docker-device-mgt-service-test/native-platform:latest
 
-      - name: Run L1 Unit Tests inside container
-        run: docker exec -i native-platform /bin/bash -c "cd /mnt/L1_CONTAINER_SHARED_VOLUME/ && sh test/run_ut.sh"
+      - name: Run L1 Unit Tests inside container with coverage flags enabled
+        run: docker exec -i native-platform /bin/bash -c "cd /mnt/L1_CONTAINER_SHARED_VOLUME/ && sh test/run_ut.sh --enable-cov && lcov --list coverage.info | grep 'Lines\|Total' > /tmp/coverage_summary.txt"
+
+      - name: Copy coverage summary to runner
+        run: docker cp native-platform:/tmp/coverage_summary.txt /tmp/
 
       - name: Copy L1 test results to runner
         run: |
           docker cp native-platform:/tmp/Gtest_Report /tmp/Gtest_Report
           ls -l /tmp/Gtest_Report
+
+      - name: Update the coverage report to Pull request using actions
+        uses: actions/github-script@v4
+        with:
+          script: |
+            const fs = require('fs');
+            const lcov_result = fs.readFileSync('/tmp/coverage_summary.txt', 'utf8');
+          
+            github.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: 
+                    '## Code Coverage Summary \n' +
+                    ' ' +
+                    '```' +
+                    lcov_result + 
+                    '```'
+            });
 
       - name: Upload test results as artifact
         uses: actions/upload-artifact@v4

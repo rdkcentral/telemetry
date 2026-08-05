@@ -98,31 +98,34 @@
             },
             "dataModelSimple": {
                 "title": "\"dataModel\" Parameter (restricted for use in dataModelTable)",
+                "description": "A simplified dataModel parameter used within dataModelTable entries. The 'reference' is a leaf parameter name relative to the table row path (e.g. 'Enable', 'SSID', 'Channel').",
                 "type": "object",
                 "properties": {
                 "type": { "type": "string", "const": "dataModel" },
-                "reference": { "type": "string" }
+                "reference": { "type": "string", "description": "Leaf parameter name relative to the table row (e.g. 'Enable', 'Status', 'SSID')." }
                 },
                 "required": ["type", "reference"],
                 "additionalProperties": false
             },
             "dataModelTable": {
                 "title": "\"dataModelTable\" Parameter",
+                "description": "A dataModelTable parameter enables structured traversal of TR-181 multi-instance objects (tables). It collects sub-parameter values for each row in the table and encodes them as a JSON array keyed by the table base path.",
                 "type": "object",
                 "properties": {
-                "type": { "type": "string", "const": "dataModelTable" },
+                "type": { "type": "string", "const": "dataModelTable", "description": "Defines a dynamic table parameter for multi-row TR-181 data collection." },
                 "reference": {
                     "type": "string",
                     "pattern": ".*\\.$",
-                    "description": "Reference must end with a dot '.'"
+                    "description": "The TR-181 table base path. Must end with a dot '.', e.g. 'Device.WiFi.Radio.' or 'Device.DHCPv6.Server.Pool.'"
                 },
                 "index": {
                     "type": "string",
                     "pattern": "^(\\d+(-\\d+)?)(,(\\d+(-\\d+)?))*$",
-                    "description": "Comma separated numbers, ranges (e.g. 1-4), or combinations (e.g. 1,2,5-7)."
+                    "description": "Optional. Comma-separated row indices or ranges to collect. Examples: '1' (single row), '1-4' (range), '1,3,5' (list), '1-2,5,7-9' (mixed). Values must be 0-255. If omitted, all available rows are collected via wildcard query."
                 },
                 "Parameter": {
                     "type": "array",
+                    "description": "Array of sub-parameters to collect from each table row. Each item must be a dataModel (leaf parameter) or a nested dataModelTable (sub-table traversal).",
                     "items": {
                     "oneOf": [
                         { "$ref": "#/definitions/parmDefinitions/properties/dataModelSimple" },
@@ -132,7 +135,8 @@
                 }
                 },
                 "required": ["type", "reference", "Parameter"],
-                "additionalProperties": false
+                "additionalProperties": false,
+                "example": "{ \"type\": \"dataModelTable\", \"reference\": \"Device.WiFi.Radio.\", \"index\": \"1,2\", \"Parameter\": [ { \"type\": \"dataModel\", \"reference\": \"Enable\" }, { \"type\": \"dataModel\", \"reference\": \"Channel\" } ] }"
             }   
         }     
     },

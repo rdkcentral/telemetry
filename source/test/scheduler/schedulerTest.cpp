@@ -433,6 +433,44 @@ TEST(UNREGISTERPROFILEFROMSCHEDULER, ALREADY_REMOVED)
     EXPECT_EQ(T2ERROR_FAILURE, unregisterProfileFromScheduler("REMOVEME"));
     uninitScheduler();
 }
+TEST(ISPROFILESCHEDULERRUNNING, NOT_INITIALIZED)
+{
+    uninitScheduler();
+    EXPECT_FALSE(isProfileSchedulerRunning("RDKB_Profile"));
+}
+
+TEST(ISPROFILESCHEDULERRUNNING, NULL_PROFILE)
+{
+    initScheduler((TimeoutNotificationCB)ReportProfiles_ToutCb, (ActivationTimeoutCB)ReportProfiles_ActivationToutCb, (NotifySchedulerstartCB)NotifySchedulerstartCb);
+    EXPECT_FALSE(isProfileSchedulerRunning(NULL));
+    uninitScheduler();
+}
+
+TEST(ISPROFILESCHEDULERRUNNING, PROFILE_NOT_FOUND)
+{
+    initScheduler((TimeoutNotificationCB)ReportProfiles_ToutCb, (ActivationTimeoutCB)ReportProfiles_ActivationToutCb, (NotifySchedulerstartCB)NotifySchedulerstartCb);
+    EXPECT_FALSE(isProfileSchedulerRunning("NONEXISTENT"));
+    uninitScheduler();
+}
+
+TEST(ISPROFILESCHEDULERRUNNING, RUNNING_PROFILE)
+{
+    initScheduler((TimeoutNotificationCB)ReportProfiles_ToutCb, (ActivationTimeoutCB)ReportProfiles_ActivationToutCb, (NotifySchedulerstartCB)NotifySchedulerstartCb);
+    registerProfileWithScheduler("RUNNING_TEST", 300, 3600, false, true, false, 0, "0001-01-01T00:00:00Z");
+    EXPECT_TRUE(isProfileSchedulerRunning("RUNNING_TEST"));
+    unregisterProfileFromScheduler("RUNNING_TEST");
+    uninitScheduler();
+}
+
+TEST(ISPROFILESCHEDULERRUNNING, AFTER_UNREGISTER)
+{
+    initScheduler((TimeoutNotificationCB)ReportProfiles_ToutCb, (ActivationTimeoutCB)ReportProfiles_ActivationToutCb, (NotifySchedulerstartCB)NotifySchedulerstartCb);
+    registerProfileWithScheduler("UNREG_TEST", 300, 3600, false, true, false, 0, "0001-01-01T00:00:00Z");
+    unregisterProfileFromScheduler("UNREG_TEST");
+    EXPECT_FALSE(isProfileSchedulerRunning("UNREG_TEST"));
+    uninitScheduler();
+}
+
 #ifdef GTEST_ENABLE
 extern "C"
 {

@@ -993,7 +993,11 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
 
             if(!strcmp(existingProfileHash, profileEntry->hash))
             {
-                T2Debug("%s Profile hash for %s is same as previous profile, ignore processing config\n", __FUNCTION__, profileName);
+                if(!isProfileSchedulerRunning(profileName))
+                {
+                    T2Warning("Profile %s scheduler not running, re-enabling\n", profileName);
+                    enableProfile(profileName);
+                }
                 free(existingProfileHash);
                 continue;
             }
@@ -1404,7 +1408,11 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
         {
             if(0 == msgpack_strcmp(hashObj, existingProfileHash))
             {
-                T2Info("Profile %s with %s hash already exist \n", profileName, existingProfileHash);
+                if(!isProfileSchedulerRunning(profileName))
+                {
+                    T2Warning("Profile %s scheduler not running, re-enabling\n", profileName);
+                    enableProfile(profileName);
+                }
                 free(profileName);
                 free(existingProfileHash);
                 continue;

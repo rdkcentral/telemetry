@@ -60,6 +60,8 @@ T2ERROR unregisterProfileFromScheduler(const char* profileName);
 
 T2ERROR SendInterruptToTimeoutThread(char* profileName);
 
+bool isProfileSchedulerRunning(const char* profileName);
+
 bool get_retainseekmap();
 
 void set_retainseekmap(bool value);

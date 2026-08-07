@@ -129,4 +129,11 @@ int getLapsedTime(struct timespec *result, struct timespec *x, struct timespec *
     return 0;
 }
 
+bool isProfileSchedulerRunning(const char* profileName)
+{
+    if (g_schedulerMock)
+        return g_schedulerMock->isProfileSchedulerRunning(profileName);
+    return false;
+}
+
 } // extern "C"

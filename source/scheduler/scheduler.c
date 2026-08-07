@@ -430,6 +430,29 @@ T2ERROR SendInterruptToTimeoutThread(char* profileName)
     return T2ERROR_SUCCESS;
 }
 
+bool isProfileSchedulerRunning(const char* profileName)
+{
+    if(!sc_initialized || profileName == NULL)
+        return false;
+
+    if(pthread_mutex_lock(&scMutex) != 0)
+        return false;
+
+    size_t index = 0;
+    for(; index < profileList->count; ++index)
+    {
+        SchedulerProfile *tProfile = (SchedulerProfile *)Vector_At(profileList, index);
+        if(strcmp(tProfile->name, profileName) == 0)
+        {
+            bool running = (tProfile->repeat && !tProfile->terminated);
+            pthread_mutex_unlock(&scMutex);
+            return running;
+        }
+    }
+    pthread_mutex_unlock(&scMutex);
+    return false;
+}
+
 T2ERROR initScheduler(TimeoutNotificationCB notificationCb, ActivationTimeoutCB activationCB, NotifySchedulerstartCB notifyschedulerCB)
 {
     T2Debug("%s ++in\n", __FUNCTION__);

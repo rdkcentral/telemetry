@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <pthread.h>
+#include <signal.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stddef.h>
@@ -432,7 +433,7 @@ T2ERROR SendInterruptToTimeoutThread(char* profileName)
 
 bool isProfileSchedulerRunning(const char* profileName)
 {
-    if(!sc_initialized || profileName == NULL)
+    if(!sc_initialized || profileName == NULL || profileList == NULL)
         return false;
 
     if(pthread_mutex_lock(&scMutex) != 0)
@@ -442,9 +443,12 @@ bool isProfileSchedulerRunning(const char* profileName)
     for(; index < profileList->count; ++index)
     {
         SchedulerProfile *tProfile = (SchedulerProfile *)Vector_At(profileList, index);
+        if(tProfile == NULL || tProfile->name == NULL)
+            continue;
         if(strcmp(tProfile->name, profileName) == 0)
         {
-            bool running = (tProfile->repeat && !tProfile->terminated);
+            /* pthread_kill with signal 0 checks if the thread is still alive */
+            bool running = (pthread_kill(tProfile->tId, 0) == 0);
             pthread_mutex_unlock(&scMutex);
             return running;
         }

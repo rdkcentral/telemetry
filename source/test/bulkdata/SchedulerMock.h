@@ -38,6 +38,7 @@ public:
     MOCK_METHOD(bool, get_retainseekmap, (), ());
     MOCK_METHOD(void, set_retainseekmap, (bool value), ());
     MOCK_METHOD(int, getLapsedTime, (struct timespec *result, struct timespec *x, struct timespec *y), ());
+    MOCK_METHOD(bool, isProfileSchedulerRunning, (const char* profileName), ());
 };
 
 extern SchedulerMock* g_schedulerMock;

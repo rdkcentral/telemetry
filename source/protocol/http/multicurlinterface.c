@@ -615,6 +615,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
                 CURL_SETOPT_CHECK_STR(easy, CURLOPT_KEYPASSWD, pCertPC);
                 CURL_SETOPT_CHECK(easy, CURLOPT_SSL_VERIFYPEER, 1L);
 
+                curl_easy_setopt(easy, CURLOPT_VERBOSE, 1L);
                 // Execute the request and retry incase of certificate related error
                 curl_code = curl_easy_perform(easy);
 

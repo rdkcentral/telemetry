@@ -38,6 +38,7 @@ typedef struct _SchedulerProfile
     bool reportonupdate;
     unsigned int firstreportint;
     bool firstexecution;
+    bool isClearSeekMap;
     pthread_t tId;
     pthread_mutex_t tMutex;
     pthread_cond_t tCond;
@@ -58,7 +59,7 @@ T2ERROR registerProfileWithScheduler(const char* profileName, unsigned int timeI
 
 T2ERROR unregisterProfileFromScheduler(const char* profileName);
 
-T2ERROR SendInterruptToTimeoutThread(char* profileName);
+T2ERROR SendInterruptToTimeoutThread(char* profileName, bool isClearSeekMap);
 
 bool get_retainseekmap();
 

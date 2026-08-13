@@ -156,6 +156,20 @@ AC_ARG_ENABLE([libsyswrapper],
 AM_CONDITIONAL([IS_LIBSYSWRAPPER_ENABLED], [test x$IS_LIBSYSWRAPPER_ENABLED = xtrue])
 AC_SUBST(LIBSYSWRAPPER_FLAG)
 
+ENABLE_SUPPORT_TYPING_FIELDS=false
+AC_ARG_ENABLE([support-typing-fields],
+              AS_HELP_STRING([--enable-support-typing-fields],[enable SUPPORT_TYPING_FIELDS (default is no)]),
+              [
+                case "${enableval}" in
+                 yes) ENABLE_SUPPORT_TYPING_FIELDS=true;;
+                  no) AC_MSG_ERROR([SUPPORT_TYPING_FIELDS is disabled]) ;;
+                   *) AC_MSG_ERROR([bad value ${enableval} for --enable-support-typing-fields]) ;;
+                esac
+              ],
+              [echo "SUPPORT_TYPING_FIELDS is disabled"])
+
+AM_CONDITIONAL([ENABLE_SUPPORT_TYPING_FIELDS], [test x$ENABLE_SUPPORT_TYPING_FIELDS = xtrue])
+
 #privacy control flag
 IS_PRIVACYCONTROL_ENABLED=false
 AC_ARG_ENABLE([privacycontrol],
@@ -218,6 +232,25 @@ AC_ARG_ENABLE([tsan],
            esac
            ],
         [echo "ThreadSanitizer is disabled"])
+
+ENABLE_DYNAMIC_TABLE_SUPPORT=false
+AC_ARG_ENABLE([dynamic-table-support],
+        AS_HELP_STRING([--enable-dynamic-table-support],[enable dynamic TR-181 table traversal support (default is no)]),
+        [
+          case "${enableval}" in
+           yes) ENABLE_DYNAMIC_TABLE_SUPPORT=true ;;
+           no)  ENABLE_DYNAMIC_TABLE_SUPPORT=false ;;
+          *) AC_MSG_ERROR([bad value ${enableval} for --enable-dynamic-table-support]) ;;
+           esac
+           ],
+        [echo "dynamic table support is disabled"])
+AM_CONDITIONAL([ENABLE_DYNAMIC_TABLE_SUPPORT], [test x$ENABLE_DYNAMIC_TABLE_SUPPORT = xtrue])
+
+if test x$ENABLE_DYNAMIC_TABLE_SUPPORT = xtrue; then
+    CPPFLAGS="$CPPFLAGS -DENABLE_DYNAMIC_TABLE_SUPPORT"
+fi
+
+AC_MSG_NOTICE([Dynamic table support: $ENABLE_DYNAMIC_TABLE_SUPPORT])
 
 AC_CONFIG_FILES([Makefile
                  source/Makefile

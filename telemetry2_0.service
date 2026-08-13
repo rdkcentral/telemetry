@@ -18,7 +18,8 @@
 ##########################################################################
 [Unit]
 Description=To start telemetry2_0
-After=local-fs.target nvram.service previous-log-backup.service network-online.target systemd-timesyncd.service tr69hostif.service rbus.service
+After=local-fs.target nvram.service previous-log-backup.service network-online.target systemd-timesyncd.service tr69hostif.service rbus.service systimemgr.service
+Wants=systimemgr.service
 Requires=network-online.target
 
 [Service]

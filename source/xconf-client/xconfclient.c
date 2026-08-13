@@ -19,7 +19,12 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <errno.h>
+#include <limits.h>
+#include <time.h>
 #include <sys/time.h>
+#include <sys/select.h>
+#include <sys/inotify.h>
 #include <net/if.h>
 #include <ifaddrs.h>
 #include <stdbool.h>
@@ -61,6 +66,44 @@
 #define RFC_RETRY_TIMEOUT 60
 #define XCONF_RETRY_TIMEOUT 180
 #define MAX_XCONF_RETRY_COUNT 5
+#if defined(NTP_SYNC_INDICATION)
+/*
+ * NTP Sync Gating for Xconf Fetch
+ *
+ * The NTP sync indicator is a platform-provided one-time marker,
+ * created once after NTP synchronizes and NOT removed on network disconnection.
+ *   - RDKB:   /tmp/clock-event
+ *   - Others: /tmp/systimemgr/ntp
+ *
+ * Design decisions (confirmed with NTP team):
+ * - adjtimex() is redundant since the indicator file serves the same purpose
+ * - No dedicated monitor thread — reuses existing xconf worker thread
+ * - One-shot gate at boot only; not used for proactive xconf reload on
+ *   network reconnect (file is never removed, so re-triggering is not possible)
+ * - Uses inotify for instant zero-CPU detection, with select() for
+ *   interruptible shutdown
+ * - Waits indefinitely for the NTP sync indicator once the directory exists.
+ *   If the directory (NTP_SYNC_DIR) does not exist at startup, polls for up to
+ *   NTP_SYNC_DIR_WAIT_TIMEOUT_SEC for it to appear (systimemgr creates it).
+ *   If the directory never appears, proceeds without NTP — systimemgr is likely
+ *   not installed on this platform.
+ * - CLOCK_MONOTONIC used for directory-wait deadline — CLOCK_REALTIME is not
+ *   safe before NTP has synced.
+ */
+#if defined(ENABLE_RDKB_SUPPORT)
+#define NTP_SYNC_INDICATOR "/tmp/clock-event"
+#define NTP_SYNC_DIR "/tmp"
+#define NTP_SYNC_FILENAME "clock-event"
+#else
+#define NTP_SYNC_INDICATOR "/tmp/systimemgr/ntp"
+#define NTP_SYNC_DIR "/tmp/systimemgr"
+#define NTP_SYNC_FILENAME "ntp"
+#endif
+/* Maximum time to wait for NTP_SYNC_DIR to appear when it does not exist yet.
+ * 30 minutes covers typical systimemgr startup lag. If the directory never
+ * appears, systimemgr is likely absent and we proceed without NTP gate. */
+#define NTP_SYNC_DIR_WAIT_TIMEOUT_SEC  1800
+#endif /* NTP_SYNC_INDICATION */
 #define XCONF_CONFIG_FILE  "DCMresponse.txt"
 #define PROCESS_CONFIG_COMPLETE_FLAG "/tmp/t2DcmComplete"
 #define HTTP_RESPONSE_FILE "/tmp/httpOutput.txt"
@@ -264,30 +307,47 @@ static char *getTimezone ()
         {
             fseek(file, 0, SEEK_END);
             long numbytes = ftell(file);
-            char *zone = (char*)malloc(sizeof(char) * (numbytes + 1));
-            fseek(file, 0, SEEK_SET);
-
-            char fmt[32];
-            snprintf(fmt, sizeof(fmt), "%%%lds", numbytes); //using numbytes as the length for reading the file
-
-            while (fscanf(file, fmt, zone) != EOF)
+            if (numbytes < 0)
             {
-                if(zoneValue)
+                T2Warning("timeZoneDST file is unreadable (ftell returned %ld)\n", numbytes);
+                fclose(file);
+            }
+            else if (numbytes == 0 || numbytes > 256)
+            {
+                T2Warning("Warning: timeZoneDST file has unexpected size %ld, skipping\n", numbytes);
+                fclose(file);
+            }
+            else
+            {
+                char *zone = (char*)malloc(sizeof(char) * (numbytes + 1));
+                if (zone == NULL)
                 {
-                    free(zoneValue);
-                }
-                if (zone != NULL && strlen(zone) > 0)
-                {
-                    zoneValue = strdup(zone);
+                    T2Error("Failed to allocate %ld bytes for timezone\n", numbytes + 1);
+                    fclose(file);
                 }
                 else
                 {
-                    zoneValue = NULL;
-                    T2Warning("Warning: zone is NULL or empty, skipping\n");
+                    zone[0] = '\0';
+                    fseek(file, 0, SEEK_SET);
+
+                    char fmt[32];
+                    snprintf(fmt, sizeof(fmt), "%%%lds", numbytes);
+
+                    while (fscanf(file, fmt, zone) == 1)
+                    {
+                        if (strlen(zone) > 0)
+                        {
+                            if(zoneValue)
+                            {
+                                free(zoneValue);
+                            }
+                            zoneValue = strdup(zone);
+                        }
+                    }
+                    fclose(file);
+                    free(zone);
                 }
             }
-            fclose(file);
-            free(zone);
         }
 
     }
@@ -845,6 +905,215 @@ T2ERROR getRemoteConfigURL(char **configURL)
     return ret;
 }
 
+#if defined(NTP_SYNC_INDICATION)
+/**
+ * @brief Wait for NTP_SYNC_DIR to appear (max NTP_SYNC_DIR_WAIT_TIMEOUT_SEC).
+ *
+ * Called when inotify_add_watch fails because the watch directory does not yet
+ * exist (e.g. /tmp/systimemgr is created by systimemgr at startup). Polls
+ * every 2s, checking stopFetchRemoteConfiguration on each iteration.
+ *
+ * @return 0 if directory appeared (caller should proceed to inotify setup),
+ *         -1 on timeout/shutdown (directory never appeared).
+ */
+static int waitForNTPSyncDir(void)
+{
+    T2Info("NTP_SYNC_DIR %s does not exist, polling up to %ds for it to appear\n",
+           NTP_SYNC_DIR, NTP_SYNC_DIR_WAIT_TIMEOUT_SEC);
+
+    struct timespec deadline;
+    if (clock_gettime(CLOCK_MONOTONIC, &deadline) != 0)
+    {
+        T2Error("clock_gettime failed with errno=%d, cannot wait for NTP_SYNC_DIR\n", errno);
+        return -1;
+    }
+    deadline.tv_sec += NTP_SYNC_DIR_WAIT_TIMEOUT_SEC;
+
+    for (;;)
+    {
+        pthread_mutex_lock(&xcThreadMutex);
+        bool shouldStop = stopFetchRemoteConfiguration;
+        pthread_mutex_unlock(&xcThreadMutex);
+
+        if (shouldStop)
+        {
+            T2Info("NTP dir wait interrupted by shutdown\n");
+            return -1;
+        }
+
+        /* Check if the directory now exists */
+        if (access(NTP_SYNC_DIR, F_OK) == 0)
+        {
+            T2Info("NTP_SYNC_DIR %s appeared, proceeding to inotify watch\n", NTP_SYNC_DIR);
+            return 0;
+        }
+
+        /* Check deadline */
+        struct timespec now;
+        if (clock_gettime(CLOCK_MONOTONIC, &now) != 0)
+        {
+            T2Error("clock_gettime failed in dir wait with errno=%d, aborting\n", errno);
+            return -1;
+        }
+        if (now.tv_sec >= deadline.tv_sec)
+        {
+            T2Error("NTP_SYNC_DIR did not appear within %d seconds — systimemgr likely absent, proceeding without NTP sync\n",
+                    NTP_SYNC_DIR_WAIT_TIMEOUT_SEC);
+            return -1;
+        }
+
+        /* Interruptible 2s sleep */
+        struct timeval tv = {2, 0};
+        select(0, NULL, NULL, NULL, &tv);
+    }
+}
+
+/**
+ * @brief Wait for NTP time synchronization before proceeding with xconf fetch.
+ *
+ * Blocks indefinitely until the NTP indicator file exists, indicating NTP has
+ * synced and network + accurate system time are available (required for TLS).
+ * Only exits on file detection or shutdown signal.
+ *
+ * Strategy:
+ * 1. Fast path: indicator file already exists → return immediately.
+ * 2. Set up inotify on NTP_SYNC_DIR.
+ *    - If the directory does not exist yet, wait up to NTP_SYNC_DIR_WAIT_TIMEOUT_SEC
+ *      (30 minutes) for it to appear. If it never appears, systimemgr is likely
+ *      absent on this platform → return false.
+ *    - If inotify_init1 fails, return false and proceed without NTP gate
+ * 3. Once watching, wait indefinitely for NTP_SYNC_FILENAME creation.
+ *
+ * Interruptibility: select() with 2s timeout checks stopFetchRemoteConfiguration
+ * on every iteration — max 2s shutdown latency.
+ *
+ * Called once at boot, outside the do-while restart loop — startXConfClient()
+ * restarts skip this (NTP already synced by then).
+ *
+ * @return true if NTP sync detected, false on shutdown/error/dir-timeout
+ */
+static bool waitForNTPSync(void)
+{
+    /* Fast path: file already exists (e.g. daemon restart after NTP synced) */
+    if (access(NTP_SYNC_INDICATOR, F_OK) == 0)
+    {
+        T2Info("NTP sync already detected, proceeding with xconf fetch\n");
+        return true;
+    }
+
+    int ifd = inotify_init1(IN_CLOEXEC);
+    if (ifd < 0)
+    {
+        T2Error("inotify_init1 failed with errno=%d, proceeding without NTP sync\n", errno);
+        return false;
+    }
+
+    int wd = inotify_add_watch(ifd, NTP_SYNC_DIR, IN_CREATE | IN_MOVED_TO);
+    if (wd < 0)
+    {
+        /*
+         * Most likely cause: NTP_SYNC_DIR does not exist yet (e.g. /tmp/systimemgr
+         * is created by systimemgr at startup). Wait up to 30 minutes for the
+         * directory to appear.
+         */
+        T2Warning("inotify_add_watch on %s failed with errno=%d, waiting for directory\n", NTP_SYNC_DIR, errno);
+
+        int dirResult = waitForNTPSyncDir();
+        if (dirResult < 0)
+        {
+            /* Timeout or shutdown — directory never appeared */
+            close(ifd);
+            return false;
+        }
+
+        /* Directory appeared — retry inotify_add_watch */
+        wd = inotify_add_watch(ifd, NTP_SYNC_DIR, IN_CREATE | IN_MOVED_TO);
+        if (wd < 0)
+        {
+            T2Error("inotify_add_watch on %s still fails with errno=%d after dir appeared, proceeding without NTP sync\n",
+                    NTP_SYNC_DIR, errno);
+            close(ifd);
+            return false;
+        }
+    }
+
+    /* Re-check after watch is set to close the race window */
+    if (access(NTP_SYNC_INDICATOR, F_OK) == 0)
+    {
+        T2Info("NTP sync detected (race resolved), proceeding with xconf fetch\n");
+        inotify_rm_watch(ifd, wd);
+        close(ifd);
+        return true;
+    }
+
+    bool result = false;
+    char buf[sizeof(struct inotify_event) + NAME_MAX + 1];
+
+    T2Info("Waiting for NTP sync indicator: %s \n", NTP_SYNC_INDICATOR);
+    /* Wait indefinitely — only exits on shutdown or file detection */
+    while (!result)
+    {
+        pthread_mutex_lock(&xcThreadMutex);
+        bool shouldStop = stopFetchRemoteConfiguration;
+        pthread_mutex_unlock(&xcThreadMutex);
+
+        if (shouldStop)
+        {
+            T2Info("NTP wait interrupted by shutdown\n");
+            break;
+        }
+
+        /* select() with 2s timeout for interruptibility */
+        struct timeval tv;
+        tv.tv_sec = 2;
+        tv.tv_usec = 0;
+
+        fd_set fds;
+        FD_ZERO(&fds);
+        FD_SET(ifd, &fds);
+
+        int ret = select(ifd + 1, &fds, NULL, NULL, &tv);
+        if (ret < 0)
+        {
+            if (errno == EINTR)
+            {
+                continue;
+            }
+            T2Error("select() failed with errno=%d\n", errno);
+            break;
+        }
+        if (ret == 0)
+        {
+            continue;    /* timeout, loop back to check shutdown flag */
+        }
+
+        ssize_t len = read(ifd, buf, sizeof(buf));
+        if (len <= 0)
+        {
+            continue;
+        }
+
+        /* Parse inotify events for NTP sync indicator */
+        ssize_t offset = 0;
+        while (offset < len)
+        {
+            struct inotify_event *event = (struct inotify_event *)(buf + offset);
+            if (event->len > 0 && strcmp(event->name, NTP_SYNC_FILENAME) == 0)
+            {
+                T2Info("NTP sync detected (%s created), proceeding with xconf fetch\n", NTP_SYNC_INDICATOR);
+                result = true;
+                break;
+            }
+            offset += sizeof(struct inotify_event) + event->len;
+        }
+    }
+
+    inotify_rm_watch(ifd, wd);
+    close(ifd);
+    return result;
+}
+#endif /* NTP_SYNC_INDICATION */
+
 static void* getUpdatedConfigurationThread(void *data)
 {
     (void) data;
@@ -862,6 +1131,14 @@ static void* getUpdatedConfigurationThread(void *data)
     pthread_mutex_lock(&xcThreadMutex);
     stopFetchRemoteConfiguration = false ;
     pthread_mutex_unlock(&xcThreadMutex);
+
+#if defined(NTP_SYNC_INDICATION)
+    if (!waitForNTPSync())
+    {
+        T2Warning("Proceeding without NTP sync confirmation\n");
+    }
+#endif /* NTP_SYNC_INDICATION */
+
     do
     {
         T2Debug("%s while Loop -- START \n", __FUNCTION__);

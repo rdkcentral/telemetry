@@ -27,6 +27,7 @@
 #include "telemetry2_0.h"
 #include "profile.h"
 #include "msgpack.h"
+#define MAX_PATH_LENGTH 512
 
 #define T2REPORTCOMPONENT "RBUS_SUBSCRIPTION" //TR-181 event's component name
 

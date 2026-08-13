@@ -373,6 +373,7 @@ TEST(GETPROCINFO, PMINFO_NULL)
    pInfo.total_instance = 0;
    EXPECT_NE(0,getProcInfo(&pInfo, NULL));
    free(filename);
+   free(processName);
 }
 
 TEST(GETMEMINFO, PMINFO_NULL)
@@ -639,10 +640,10 @@ TEST_F(dcaTestFixture, saveSeekConfigtoFile)
     GrepSeekProfile *gsProfile = (GrepSeekProfile *)malloc(sizeof(GrepSeekProfile));
     gsProfile->logFileSeekMap = hash_map_create();
     gsProfile->execCounter = 0;
-    long *tempnum;
-    double val = 123456;
-    tempnum = (long *)malloc(sizeof(long));
-    *tempnum = (long)val;
+    LogSeekInfo *tempnum;
+    tempnum = (LogSeekInfo *)malloc(sizeof(LogSeekInfo));
+    tempnum->seekValue = 123456;
+    tempnum->inode = 12345;
     hash_map_put(gsProfile->logFileSeekMap, strdup("t2_log.txt"), (void*)tempnum, free);
     FILE* fp = (FILE*)NULL;
     EXPECT_CALL(*g_fileIOMock, fopen(_,_))
@@ -1169,10 +1170,10 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_1)
     GrepSeekProfile *gsProfile = (GrepSeekProfile *)malloc(sizeof(GrepSeekProfile));
     gsProfile->logFileSeekMap = hash_map_create();
     gsProfile->execCounter = 0;
-    long *tempnum;
-    double val = 1234;
-    tempnum = (long *)malloc(sizeof(long));
-    *tempnum = (long)val;
+    LogSeekInfo *tempnum;
+    tempnum = (LogSeekInfo *)malloc(sizeof(LogSeekInfo));
+    tempnum->seekValue = 1234;
+    tempnum->inode = 12345;
     hash_map_put(gsProfile->logFileSeekMap, strdup("t2_log.txt"), (void*)tempnum, free);
     
     Vector* vecMarkerList = NULL;
@@ -1248,10 +1249,10 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_2)
     GrepSeekProfile *gsProfile = (GrepSeekProfile *)malloc(sizeof(GrepSeekProfile));
     gsProfile->logFileSeekMap = hash_map_create();
     gsProfile->execCounter = 0;
-    long *tempnum;
-    double val = 1234;
-    tempnum = (long *)malloc(sizeof(long));
-    *tempnum = (long)val;
+    LogSeekInfo *tempnum;
+    tempnum = (LogSeekInfo *)malloc(sizeof(LogSeekInfo));
+    tempnum->seekValue = 1234;
+    tempnum->inode = 12345;
     hash_map_put(gsProfile->logFileSeekMap, strdup("t2_log.txt"), (void*)tempnum, free);
     
     Vector* vecMarkerList = NULL;
@@ -1329,10 +1330,10 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_3)
     GrepSeekProfile *gsProfile = (GrepSeekProfile *)malloc(sizeof(GrepSeekProfile));
     gsProfile->logFileSeekMap = hash_map_create();
     gsProfile->execCounter = 1;
-    long *tempnum;
-    double val = 1234;
-    tempnum = (long *)malloc(sizeof(long));
-    *tempnum = (long)val;
+    LogSeekInfo *tempnum;
+    tempnum = (LogSeekInfo *)malloc(sizeof(LogSeekInfo));
+    tempnum->seekValue = 1234;
+    tempnum->inode = 12345;
     hash_map_put(gsProfile->logFileSeekMap, strdup("t2_log.txt"), (void*)tempnum, free);
     
     Vector* vecMarkerList = NULL;
@@ -1435,10 +1436,10 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_Accum)
     GrepSeekProfile *gsProfile = (GrepSeekProfile *)malloc(sizeof(GrepSeekProfile));
     gsProfile->logFileSeekMap = hash_map_create();
     gsProfile->execCounter = 1;
-    long *tempnum;
-    double val = 1234;
-    tempnum = (long *)malloc(sizeof(long));
-    *tempnum = (long)val;
+    LogSeekInfo *tempnum;
+    tempnum = (LogSeekInfo *)malloc(sizeof(LogSeekInfo));
+    tempnum->seekValue = 1234;
+    tempnum->inode = 12345;
     hash_map_put(gsProfile->logFileSeekMap, strdup("t2_log.txt"), (void*)tempnum, free);
     
     Vector* vecMarkerList = NULL;
@@ -1526,6 +1527,250 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_Accum)
     Vector_Destroy(vecMarkerList, freeGMarker);
 }
 
+/**
+ * Test: Log rotation corner case — new file grows past seek_value after rotation.
+ *
+ * Scenario:
+ *   - Stored: seekValue=5000, inode=11111 for "Consolelog.txt.0"
+ *   - Current "Consolelog.txt.0": size=8000, inode=22222 (DIFFERENT inode → rotation detected)
+ *   - Rotated "Consolelog.txt.1": size=7000 (> 5000 → has unread data from offset 5000)
+ *
+ * Expected: reads rotated file from seek_value (5000) AND reads entire new current file.
+ * This verifies the inode-based rotation detection handles the flooding-logs corner case.
+ */
+TEST_F(dcaTestFixture, getDCAResultsInVector_InodeChanged_NewFileGrowsPastSeek)
+{
+    GrepSeekProfile *gsProfile = (GrepSeekProfile *)malloc(sizeof(GrepSeekProfile));
+    gsProfile->logFileSeekMap = hash_map_create();
+    gsProfile->execCounter = 1;
+    LogSeekInfo *tempnum;
+    tempnum = (LogSeekInfo *)malloc(sizeof(LogSeekInfo));
+    tempnum->seekValue = 5000;
+    tempnum->inode = 11111;  // Old inode before rotation
+    hash_map_put(gsProfile->logFileSeekMap, strdup("Consolelog.txt.0"), (void*)tempnum, free);
+
+    Vector* vecMarkerList = NULL;
+    Vector_Create(&vecMarkerList);
+    GrepMarker* marker = (GrepMarker*) malloc(sizeof(GrepMarker));
+    memset(marker, 0, sizeof(GrepMarker));
+    marker->markerName = strdup("SYS_INFO_ROTATION_TEST");
+    marker->searchString = strdup("RotationMarker");
+    marker->trimParam = true;
+    marker->regexParam = strdup("[0-9]+");
+    marker->logFile = strdup("Consolelog.txt.0");  // Must match hash_map key
+    marker->skipFreq = 0;
+    marker->paramType = strdup("grep");
+    marker->mType = MTYPE_COUNTER;
+    marker->u.count = 0;
+    marker->reportEmptyParam = true;
+    Vector_PushBack(vecMarkerList, (void*) marker);
+
+    // munmap for both main and rotated mmap regions
+    EXPECT_CALL(*g_fileIOMock, munmap(_, _))
+            .Times(2)
+            .WillRepeatedly(Return(0));
+
+    // close: tmp_rd, rd (rotated), tmp_fd (main), main fd
+    EXPECT_CALL(*g_fileIOMock, close(_))
+            .Times(4)
+            .WillRepeatedly(Return(0));
+
+    // open: main file in getLogFileDescriptor, rotated file in getRotatedLogFileDescriptor
+    EXPECT_CALL(*g_fileIOMock, open(_,_))
+            .Times(2)
+            .WillRepeatedly(Return(3));
+
+    // fstat calls:
+    //   1: getLogFileDescriptor on main → size=8000, inode=22222 (different from stored 11111)
+    //   2: getFileDeltaInMemMapAndSearch on main → size=8000
+    //   3: getRotatedLogFileDescriptor on rotated → size=7000
+    //   4: getFileDeltaInMemMapAndSearch on rotated → size=7000
+    EXPECT_CALL(*g_fileIOMock, fstat(_, _))
+        .Times(4)
+        .WillOnce([](int fd, struct stat* statbuf) {
+            statbuf->st_size = 8000;
+            statbuf->st_ino = 22222;  // Different inode → rotation detected
+            return 0;
+        })
+        .WillOnce([](int fd, struct stat* statbuf) {
+            statbuf->st_size = 8000;
+            statbuf->st_ino = 22222;
+            return 0;
+        })
+        .WillOnce([](int fd, struct stat* statbuf) {
+            statbuf->st_size = 7000;  // Rotated file (old log) > seek_value (5000)
+            statbuf->st_ino = 11111;  // Old inode
+            return 0;
+        })
+        .WillOnce([](int fd, struct stat* statbuf) {
+            statbuf->st_size = 7000;
+            statbuf->st_ino = 11111;
+            return 0;
+        });
+
+    // mkstemp: one for main tmp, one for rotated tmp
+    EXPECT_CALL(*g_fileIOMock, mkstemp(_))
+            .Times(2)
+            .WillRepeatedly(Return(4));
+    EXPECT_CALL(*g_systemMock, unlink(_))
+            .Times(2)
+            .WillRepeatedly(Return(0));
+
+    // sendfile: main (8000 bytes), rotated (7000 bytes)
+    EXPECT_CALL(*g_fileIOMock, sendfile(_,_,_,_))
+            .Times(2)
+            .WillOnce(Return(8000))
+            .WillOnce(Return(7000));
+
+    // mmap: main file (entire, offset 0) + rotated file (from page-aligned seek offset)
+    // Both contain the marker — verifies both regions are searched
+    EXPECT_CALL(*g_fileIOMock, mmap(_,_,_,_,_,_))
+            .Times(2)
+            .WillOnce([](void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
+                // Main file (new): mapped from offset 0 (entire file read)
+                const char* test_str = "New log data: RotationMarker value 42 found in new file\n";
+                char* mapped_mem = (char*)malloc(length);
+                memset(mapped_mem, 0, length);
+                strncpy(mapped_mem, test_str, length - 1);
+                return (void*)mapped_mem;
+            })
+            .WillOnce([](void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
+                // Rotated file: mapped from seek offset (unread portion of old file)
+                const char* test_str = "Old unread data: RotationMarker value 99 in rotated file\n";
+                char* mapped_mem = (char*)malloc(length);
+                memset(mapped_mem, 0, length);
+                strncpy(mapped_mem, test_str, length - 1);
+                return (void*)mapped_mem;
+            });
+
+    EXPECT_EQ(0, getDCAResultsInVector(gsProfile, vecMarkerList, false, "/opt/logs"));
+
+    // Verify the marker was found in BOTH files (count should be 2)
+    EXPECT_EQ(2, marker->u.count);
+
+    hash_map_destroy(gsProfile->logFileSeekMap, free);
+    gsProfile->logFileSeekMap = NULL;
+    free(gsProfile);
+    Vector_Destroy(vecMarkerList, freeGMarker);
+}
+
+/**
+ * Test: Multi-rotation corner case — rotated file is NOT the original.
+ *
+ * Scenario (from real device logs):
+ *   - Stored: seekValue=5000, inode=11111 (original file, now at .log.2 or deeper)
+ *   - Current "Consolelog.txt.0": size=8000, inode=22222 (newest file, rotation detected)
+ *   - Rotated "Consolelog.txt.1": size=3000, inode=33333 (INTERMEDIATE file, NOT the original)
+ *
+ * Expected: reads ENTIRE rotated file from 0 AND ENTIRE new current file from 0.
+ * Without the fix, seek_value would be incorrectly applied to the intermediate
+ * rotated file, causing data loss (as seen with missing WPE_INFO_MigStatus_split).
+ */
+TEST_F(dcaTestFixture, getDCAResultsInVector_MultiRotation_IntermediateFile)
+{
+    GrepSeekProfile *gsProfile = (GrepSeekProfile *)malloc(sizeof(GrepSeekProfile));
+    gsProfile->logFileSeekMap = hash_map_create();
+    gsProfile->execCounter = 1;
+    LogSeekInfo *tempnum;
+    tempnum = (LogSeekInfo *)malloc(sizeof(LogSeekInfo));
+    tempnum->seekValue = 5000;
+    tempnum->inode = 11111;  // Original file inode (now at .log.2 or deeper)
+    hash_map_put(gsProfile->logFileSeekMap, strdup("Consolelog.txt.0"), (void*)tempnum, free);
+
+    Vector* vecMarkerList = NULL;
+    Vector_Create(&vecMarkerList);
+    GrepMarker* marker = (GrepMarker*) malloc(sizeof(GrepMarker));
+    memset(marker, 0, sizeof(GrepMarker));
+    marker->markerName = strdup("WPE_INFO_MigStatus");
+    marker->searchString = strdup("Migration Status");
+    marker->trimParam = true;
+    marker->regexParam = strdup("[A-Z_]+");
+    marker->logFile = strdup("Consolelog.txt.0");
+    marker->skipFreq = 0;
+    marker->paramType = strdup("grep");
+    marker->mType = MTYPE_COUNTER;
+    marker->u.count = 0;
+    marker->reportEmptyParam = true;
+    Vector_PushBack(vecMarkerList, (void*) marker);
+
+    EXPECT_CALL(*g_fileIOMock, munmap(_, _))
+            .Times(2)
+            .WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_fileIOMock, close(_))
+            .Times(4)
+            .WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_fileIOMock, open(_,_))
+            .Times(2)
+            .WillRepeatedly(Return(3));
+
+    // fstat: main inode=22222, rotated inode=33333 (DIFFERENT from stored 11111)
+    EXPECT_CALL(*g_fileIOMock, fstat(_, _))
+        .Times(4)
+        .WillOnce([](int fd, struct stat* statbuf) {
+            statbuf->st_size = 8000;
+            statbuf->st_ino = 22222;  // Current file — different from stored
+            return 0;
+        })
+        .WillOnce([](int fd, struct stat* statbuf) {
+            statbuf->st_size = 8000;
+            statbuf->st_ino = 22222;
+            return 0;
+        })
+        .WillOnce([](int fd, struct stat* statbuf) {
+            statbuf->st_size = 3000;  // Intermediate rotated file
+            statbuf->st_ino = 33333;  // DIFFERENT from stored 11111 — multi-rotation!
+            return 0;
+        })
+        .WillOnce([](int fd, struct stat* statbuf) {
+            statbuf->st_size = 3000;
+            statbuf->st_ino = 33333;
+            return 0;
+        });
+
+    EXPECT_CALL(*g_fileIOMock, mkstemp(_))
+            .Times(2)
+            .WillRepeatedly(Return(4));
+    EXPECT_CALL(*g_systemMock, unlink(_))
+            .Times(2)
+            .WillRepeatedly(Return(0));
+    EXPECT_CALL(*g_fileIOMock, sendfile(_,_,_,_))
+            .Times(2)
+            .WillOnce(Return(8000))
+            .WillOnce(Return(3000));
+
+    // Both files mapped from offset 0 — multi-rotation reads everything
+    EXPECT_CALL(*g_fileIOMock, mmap(_,_,_,_,_,_))
+            .Times(2)
+            .WillOnce([](void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
+                // Main file: entire new file read from offset 0
+                EXPECT_EQ(0, offset);
+                const char* test_str = "New file: Migration Status is COMPLETED in current\n";
+                char* mapped_mem = (char*)malloc(length);
+                memset(mapped_mem, 0, length);
+                strncpy(mapped_mem, test_str, length - 1);
+                return (void*)mapped_mem;
+            })
+            .WillOnce([](void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
+                // Rotated (intermediate) file: read entirely from offset 0
+                EXPECT_EQ(0, offset);
+                const char* test_str = "Intermediate: Migration Status is STARTED in rotated\n";
+                char* mapped_mem = (char*)malloc(length);
+                memset(mapped_mem, 0, length);
+                strncpy(mapped_mem, test_str, length - 1);
+                return (void*)mapped_mem;
+            });
+
+    EXPECT_EQ(0, getDCAResultsInVector(gsProfile, vecMarkerList, false, "/opt/logs"));
+
+    // Marker found in BOTH files (no data lost from intermediate file)
+    EXPECT_EQ(2, marker->u.count);
+
+    hash_map_destroy(gsProfile->logFileSeekMap, free);
+    gsProfile->logFileSeekMap = NULL;
+    free(gsProfile);
+    Vector_Destroy(vecMarkerList, freeGMarker);
+}
+
 TEST_F(dcaTestFixture, T2InitProperties)
 {
    EXPECT_CALL(*g_fileIOMock, fopen(_,_))
@@ -1552,10 +1797,10 @@ TEST_F(dcaTestFixture, getGrepResults_success)
     GrepSeekProfile *gsProfile = (GrepSeekProfile *)malloc(sizeof(GrepSeekProfile));
     gsProfile->logFileSeekMap = hash_map_create();
     gsProfile->execCounter = 0;
-    long *tempnum;
-    double val = 1234;
-    tempnum = (long *)malloc(sizeof(long));
-    *tempnum = (long)val;
+    LogSeekInfo *tempnum;
+    tempnum = (LogSeekInfo *)malloc(sizeof(LogSeekInfo));
+    tempnum->seekValue = 1234;
+    tempnum->inode = 12345;
     hash_map_put(gsProfile->logFileSeekMap, strdup("t2_log.txt"), (void*)tempnum, free);
     
     Vector* vecMarkerList = NULL;
@@ -1625,13 +1870,455 @@ TEST_F(dcaTestFixture, getGrepResults_success)
     free(gsProfile);
     Vector_Destroy(vecMarkerList, freeGMarker);
 }
+
+// waitForBackupLogsDone L1 tests
+
+/* Fixture that enables clock_gettime/select mocking only during tests
+ * that need them — avoids intercepting gtest's internal timing calls. */
+class waitForBackupLogsDoneFixture : public dcaTestFixture {
+protected:
+    void SetUp() override
+    {
+        dcaTestFixture::SetUp();
+        g_mockClockGettime = true;
+        g_mockSelect       = true;
+    }
+    void TearDown() override
+    {
+        g_mockClockGettime = false;
+        g_mockSelect       = false;
+        dcaTestFixture::TearDown();
+    }
+};
+
+TEST_F(dcaTestFixture, waitForBackupLogsDone_SentinelAlreadyPresent)
+{
+    // Fast path: access() returns 0 meaning sentinel file exists
+    EXPECT_CALL(*g_systemMock, access(StrEq(BACKUP_LOGS_DONE_FLAG), _))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    EXPECT_EQ(true, waitForBackupLogsDone());
+}
+
+TEST_F(dcaTestFixture, waitForBackupLogsDone_InotifyInitFails)
+{
+    // access() returns -1 (sentinel not present), inotify_init1 fails
+    EXPECT_CALL(*g_systemMock, access(StrEq(BACKUP_LOGS_DONE_FLAG), _))
+            .Times(1)
+            .WillOnce(Return(-1));
+    EXPECT_CALL(*g_systemMock, inotify_init1(_))
+            .Times(1)
+            .WillOnce(Return(-1));
+
+    EXPECT_EQ(false, waitForBackupLogsDone());
+}
+
+TEST_F(dcaTestFixture, waitForBackupLogsDone_InotifyAddWatchFails)
+{
+    // access() returns -1, inotify_init1 succeeds, inotify_add_watch fails
+    EXPECT_CALL(*g_systemMock, access(StrEq(BACKUP_LOGS_DONE_FLAG), _))
+            .Times(1)
+            .WillOnce(Return(-1));
+    EXPECT_CALL(*g_systemMock, inotify_init1(_))
+            .Times(1)
+            .WillOnce(Return(5));
+    EXPECT_CALL(*g_systemMock, inotify_add_watch(5, StrEq(BACKUP_LOGS_DONE_DIR), _))
+            .Times(1)
+            .WillOnce(Return(-1));
+    EXPECT_CALL(*g_fileIOMock, close(5))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    EXPECT_EQ(false, waitForBackupLogsDone());
+}
+
+TEST_F(dcaTestFixture, waitForBackupLogsDone_RaceResolved)
+{
+    // First access() returns -1, inotify setup succeeds, second access() returns 0 (race resolved)
+    EXPECT_CALL(*g_systemMock, access(StrEq(BACKUP_LOGS_DONE_FLAG), _))
+            .Times(2)
+            .WillOnce(Return(-1))
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_systemMock, inotify_init1(_))
+            .Times(1)
+            .WillOnce(Return(5));
+    EXPECT_CALL(*g_systemMock, inotify_add_watch(5, StrEq(BACKUP_LOGS_DONE_DIR), _))
+            .Times(1)
+            .WillOnce(Return(1));
+    EXPECT_CALL(*g_systemMock, inotify_rm_watch(5, 1))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, close(5))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    EXPECT_EQ(true, waitForBackupLogsDone());
+}
+
+TEST_F(waitForBackupLogsDoneFixture, waitForBackupLogsDone_ClockGettimeFails)
+{
+    // access() returns -1 both times, inotify setup succeeds, clock_gettime fails
+    EXPECT_CALL(*g_systemMock, access(StrEq(BACKUP_LOGS_DONE_FLAG), _))
+            .Times(2)
+            .WillOnce(Return(-1))
+            .WillOnce(Return(-1));
+    EXPECT_CALL(*g_systemMock, inotify_init1(_))
+            .Times(1)
+            .WillOnce(Return(5));
+    EXPECT_CALL(*g_systemMock, inotify_add_watch(5, StrEq(BACKUP_LOGS_DONE_DIR), _))
+            .Times(1)
+            .WillOnce(Return(1));
+    EXPECT_CALL(*g_systemMock, clock_gettime(_, _))
+            .Times(1)
+            .WillOnce(Return(-1));
+    EXPECT_CALL(*g_systemMock, inotify_rm_watch(5, 1))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, close(5))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    EXPECT_EQ(false, waitForBackupLogsDone());
+}
+
+TEST_F(waitForBackupLogsDoneFixture, waitForBackupLogsDone_Timeout)
+{
+    // Sentinel never appears, select returns 0 (timeout heartbeat), deadline expires
+    EXPECT_CALL(*g_systemMock, access(StrEq(BACKUP_LOGS_DONE_FLAG), _))
+            .Times(2)
+            .WillOnce(Return(-1))
+            .WillOnce(Return(-1));
+    EXPECT_CALL(*g_systemMock, inotify_init1(_))
+            .Times(1)
+            .WillOnce(Return(5));
+    EXPECT_CALL(*g_systemMock, inotify_add_watch(5, StrEq(BACKUP_LOGS_DONE_DIR), _))
+            .Times(1)
+            .WillOnce(Return(1));
+
+    // First clock_gettime sets the deadline (tv_sec=100)
+    // Second clock_gettime returns past deadline (tv_sec >= 100 + BACKUP_LOGS_SYNC_TIMEOUT_S)
+    EXPECT_CALL(*g_systemMock, clock_gettime(_, _))
+            .Times(2)
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100;
+                tp->tv_nsec = 0;
+                return 0;
+            })
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100 + BACKUP_LOGS_SYNC_TIMEOUT_S;
+                tp->tv_nsec = 0;
+                return 0;
+            });
+
+    EXPECT_CALL(*g_systemMock, inotify_rm_watch(5, 1))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, close(5))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    EXPECT_EQ(false, waitForBackupLogsDone());
+}
+
+TEST_F(waitForBackupLogsDoneFixture, waitForBackupLogsDone_SelectFails)
+{
+    // select() fails with non-EINTR error
+    EXPECT_CALL(*g_systemMock, access(StrEq(BACKUP_LOGS_DONE_FLAG), _))
+            .Times(2)
+            .WillOnce(Return(-1))
+            .WillOnce(Return(-1));
+    EXPECT_CALL(*g_systemMock, inotify_init1(_))
+            .Times(1)
+            .WillOnce(Return(5));
+    EXPECT_CALL(*g_systemMock, inotify_add_watch(5, StrEq(BACKUP_LOGS_DONE_DIR), _))
+            .Times(1)
+            .WillOnce(Return(1));
+    EXPECT_CALL(*g_systemMock, clock_gettime(_, _))
+            .Times(2)
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100;
+                tp->tv_nsec = 0;
+                return 0;
+            })
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100;  // Not past deadline yet
+                tp->tv_nsec = 0;
+                return 0;
+            });
+    EXPECT_CALL(*g_systemMock, select(_, _, _, _, _))
+            .Times(1)
+            .WillOnce([](int, fd_set*, fd_set*, fd_set*, struct timeval*) {
+                errno = EBADF;
+                return -1;
+            });
+    EXPECT_CALL(*g_systemMock, inotify_rm_watch(5, 1))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, close(5))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    EXPECT_EQ(false, waitForBackupLogsDone());
+}
+
+TEST_F(waitForBackupLogsDoneFixture, waitForBackupLogsDone_SelectEINTR)
+{
+    // select() returns EINTR, then deadline expires
+    EXPECT_CALL(*g_systemMock, access(StrEq(BACKUP_LOGS_DONE_FLAG), _))
+            .Times(2)
+            .WillOnce(Return(-1))
+            .WillOnce(Return(-1));
+    EXPECT_CALL(*g_systemMock, inotify_init1(_))
+            .Times(1)
+            .WillOnce(Return(5));
+    EXPECT_CALL(*g_systemMock, inotify_add_watch(5, StrEq(BACKUP_LOGS_DONE_DIR), _))
+            .Times(1)
+            .WillOnce(Return(1));
+    EXPECT_CALL(*g_systemMock, clock_gettime(_, _))
+            .Times(3)
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100;
+                tp->tv_nsec = 0;
+                return 0;
+            })
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100;  // Not past deadline
+                tp->tv_nsec = 0;
+                return 0;
+            })
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100 + BACKUP_LOGS_SYNC_TIMEOUT_S;  // Past deadline
+                tp->tv_nsec = 0;
+                return 0;
+            });
+    EXPECT_CALL(*g_systemMock, select(_, _, _, _, _))
+            .Times(1)
+            .WillOnce([](int, fd_set*, fd_set*, fd_set*, struct timeval*) {
+                errno = EINTR;
+                return -1;
+            });
+    EXPECT_CALL(*g_systemMock, inotify_rm_watch(5, 1))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, close(5))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    EXPECT_EQ(false, waitForBackupLogsDone());
+}
+
+TEST_F(waitForBackupLogsDoneFixture, waitForBackupLogsDone_SentinelDetectedViaInotify)
+{
+    // Sentinel detected via inotify event
+    EXPECT_CALL(*g_systemMock, access(StrEq(BACKUP_LOGS_DONE_FLAG), _))
+            .Times(2)
+            .WillOnce(Return(-1))
+            .WillOnce(Return(-1));
+    EXPECT_CALL(*g_systemMock, inotify_init1(_))
+            .Times(1)
+            .WillOnce(Return(5));
+    EXPECT_CALL(*g_systemMock, inotify_add_watch(5, StrEq(BACKUP_LOGS_DONE_DIR), _))
+            .Times(1)
+            .WillOnce(Return(1));
+    EXPECT_CALL(*g_systemMock, clock_gettime(_, _))
+            .Times(2)
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100;
+                tp->tv_nsec = 0;
+                return 0;
+            })
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100;  // Not past deadline
+                tp->tv_nsec = 0;
+                return 0;
+            });
+    EXPECT_CALL(*g_systemMock, select(_, _, _, _, _))
+            .Times(1)
+            .WillOnce(Return(1));  // Data available to read
+
+    // Construct a fake inotify_event with the sentinel filename
+    struct inotify_event fake_event;
+    fake_event.wd = 1;
+    fake_event.mask = IN_CREATE;
+    fake_event.cookie = 0;
+    fake_event.len = strlen(BACKUP_LOGS_DONE_FILENAME) + 1;
+
+    // Build the buffer: struct inotify_event + filename (null-terminated)
+    size_t event_size = sizeof(struct inotify_event) + fake_event.len;
+    char *event_buf = (char *)malloc(event_size);
+    memcpy(event_buf, &fake_event, sizeof(struct inotify_event));
+    memcpy(event_buf + sizeof(struct inotify_event), BACKUP_LOGS_DONE_FILENAME, fake_event.len);
+
+    EXPECT_CALL(*g_fileIOMock, read(5, _, _))
+            .Times(1)
+            .WillOnce([event_buf, event_size](int, void* buf, size_t count) -> ssize_t {
+                size_t copy_size = (event_size < count) ? event_size : count;
+                memcpy(buf, event_buf, copy_size);
+                return (ssize_t)copy_size;
+            });
+
+    EXPECT_CALL(*g_systemMock, inotify_rm_watch(5, 1))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, close(5))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    EXPECT_EQ(true, waitForBackupLogsDone());
+    free(event_buf);
+}
+
+TEST_F(waitForBackupLogsDoneFixture, waitForBackupLogsDone_ReadReturnsZero)
+{
+    // select() returns data ready, but read() returns 0 — loop back, then deadline expires
+    EXPECT_CALL(*g_systemMock, access(StrEq(BACKUP_LOGS_DONE_FLAG), _))
+            .Times(2)
+            .WillOnce(Return(-1))
+            .WillOnce(Return(-1));
+    EXPECT_CALL(*g_systemMock, inotify_init1(_))
+            .Times(1)
+            .WillOnce(Return(5));
+    EXPECT_CALL(*g_systemMock, inotify_add_watch(5, StrEq(BACKUP_LOGS_DONE_DIR), _))
+            .Times(1)
+            .WillOnce(Return(1));
+    EXPECT_CALL(*g_systemMock, clock_gettime(_, _))
+            .Times(3)
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100;
+                tp->tv_nsec = 0;
+                return 0;
+            })
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100;
+                tp->tv_nsec = 0;
+                return 0;
+            })
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100 + BACKUP_LOGS_SYNC_TIMEOUT_S;
+                tp->tv_nsec = 0;
+                return 0;
+            });
+    EXPECT_CALL(*g_systemMock, select(_, _, _, _, _))
+            .Times(1)
+            .WillOnce(Return(1));
+    EXPECT_CALL(*g_fileIOMock, read(5, _, _))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_systemMock, inotify_rm_watch(5, 1))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, close(5))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    EXPECT_EQ(false, waitForBackupLogsDone());
+}
+
+TEST_F(waitForBackupLogsDoneFixture, waitForBackupLogsDone_UnrelatedInotifyEvent)
+{
+    // An inotify event for a different file, then deadline expires
+    EXPECT_CALL(*g_systemMock, access(StrEq(BACKUP_LOGS_DONE_FLAG), _))
+            .Times(2)
+            .WillOnce(Return(-1))
+            .WillOnce(Return(-1));
+    EXPECT_CALL(*g_systemMock, inotify_init1(_))
+            .Times(1)
+            .WillOnce(Return(5));
+    EXPECT_CALL(*g_systemMock, inotify_add_watch(5, StrEq(BACKUP_LOGS_DONE_DIR), _))
+            .Times(1)
+            .WillOnce(Return(1));
+    EXPECT_CALL(*g_systemMock, clock_gettime(_, _))
+            .Times(3)
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100;
+                tp->tv_nsec = 0;
+                return 0;
+            })
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100;
+                tp->tv_nsec = 0;
+                return 0;
+            })
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100 + BACKUP_LOGS_SYNC_TIMEOUT_S;
+                tp->tv_nsec = 0;
+                return 0;
+            });
+    EXPECT_CALL(*g_systemMock, select(_, _, _, _, _))
+            .Times(1)
+            .WillOnce(Return(1));
+
+    // Construct an inotify event for a different filename
+    const char *other_file = "other_file.txt";
+    struct inotify_event fake_event;
+    fake_event.wd = 1;
+    fake_event.mask = IN_CREATE;
+    fake_event.cookie = 0;
+    fake_event.len = strlen(other_file) + 1;
+
+    size_t event_size = sizeof(struct inotify_event) + fake_event.len;
+    char *event_buf = (char *)malloc(event_size);
+    memcpy(event_buf, &fake_event, sizeof(struct inotify_event));
+    memcpy(event_buf + sizeof(struct inotify_event), other_file, fake_event.len);
+
+    EXPECT_CALL(*g_fileIOMock, read(5, _, _))
+            .Times(1)
+            .WillOnce([event_buf, event_size](int, void* buf, size_t count) -> ssize_t {
+                size_t copy_size = (event_size < count) ? event_size : count;
+                memcpy(buf, event_buf, copy_size);
+                return (ssize_t)copy_size;
+            });
+
+    EXPECT_CALL(*g_systemMock, inotify_rm_watch(5, 1))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, close(5))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    EXPECT_EQ(false, waitForBackupLogsDone());
+    free(event_buf);
+}
+
+TEST_F(waitForBackupLogsDoneFixture, waitForBackupLogsDone_ClockGettimeFailsInLoop)
+{
+    // clock_gettime succeeds initially but fails inside the while loop
+    EXPECT_CALL(*g_systemMock, access(StrEq(BACKUP_LOGS_DONE_FLAG), _))
+            .Times(2)
+            .WillOnce(Return(-1))
+            .WillOnce(Return(-1));
+    EXPECT_CALL(*g_systemMock, inotify_init1(_))
+            .Times(1)
+            .WillOnce(Return(5));
+    EXPECT_CALL(*g_systemMock, inotify_add_watch(5, StrEq(BACKUP_LOGS_DONE_DIR), _))
+            .Times(1)
+            .WillOnce(Return(1));
+    EXPECT_CALL(*g_systemMock, clock_gettime(_, _))
+            .Times(2)
+            .WillOnce([](clockid_t, struct timespec *tp) {
+                tp->tv_sec = 100;
+                tp->tv_nsec = 0;
+                return 0;
+            })
+            .WillOnce(Return(-1));  // Fails in the loop
+    EXPECT_CALL(*g_systemMock, inotify_rm_watch(5, 1))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, close(5))
+            .Times(1)
+            .WillOnce(Return(0));
+
+    EXPECT_EQ(false, waitForBackupLogsDone());
+}
+
 #ifdef GTEST_ENABLE
 extern "C" {
 typedef const char *(*strnstrFunc)(const char *, const char *, size_t);
 strnstrFunc strnstrFuncCallback(void);
 typedef time_t (*extractUnixTimestampFunc)(const char*, size_t);
 extractUnixTimestampFunc extractUnixTimestampFuncCallback(void);
-typedef T2ERROR (*updateLogSeekFunc)(hash_map_t *, const char *, const long);
+typedef T2ERROR (*updateLogSeekFunc)(hash_map_t *, const char *, const long, const ino_t);
 updateLogSeekFunc updateLogSeekFuncCallback(void);
 }
 TEST(StaticStrnstrFunc, CoversMainBranches)
@@ -1702,11 +2389,11 @@ TEST(StaticUpdateLogSeekFunc, CoversNullBranches)
     ASSERT_NE(fn, nullptr);
 
     // First branch: logSeekMap == NULL
-    EXPECT_EQ(fn(NULL, "dummy.log", 100), T2ERROR_FAILURE);
+    EXPECT_EQ(fn(NULL, "dummy.log", 100, 12345), T2ERROR_FAILURE);
 
     // Second branch: logFileName == NULL
     hash_map_t dummyMap;
-    EXPECT_EQ(fn(&dummyMap, NULL, 100), T2ERROR_FAILURE);
+    EXPECT_EQ(fn(&dummyMap, NULL, 100, 12345), T2ERROR_FAILURE);
 
     // Additional test for a stub/empty map and filename to reach further code
     // (Will continue past the NULL check; optionally extend to later logic in the function)

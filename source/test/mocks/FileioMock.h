@@ -34,7 +34,10 @@
 
 #include <cstdio>
 #include <gmock/gmock.h>
+// Define this only if PATH_MAX is not defined in the test environment
+#ifndef PATH_MAX
 #define PATH_MAX 128
+#endif
 #define PARAM_MAX 64
 #define ENGINE_MAX 32
 #define LIST_MAX 6

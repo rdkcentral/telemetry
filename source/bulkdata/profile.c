@@ -31,6 +31,7 @@
 #include "t2markers.h"
 #include "t2log_wrapper.h"
 #include "busInterface.h"
+#include "ccspinterface.h"
 #include "curlinterface.h"
 #include "rbusmethodinterface.h"
 #include "scheduler.h"
@@ -106,7 +107,26 @@ static void freeReportProfileConfig(void *data)
     }
 }
 
-static void freeProfile(void *data)
+static void* deleteProfileAsync(void *data)
+{
+    char *profileName = (char *)data;
+
+    if(profileName == NULL)
+    {
+        T2Error("profileName is NULL in deleteProfileAsync\n");
+        return NULL;
+    }
+
+    if(T2ERROR_SUCCESS != deleteProfile(profileName))
+    {
+        T2Error("Failed to delete profile asynchronously: %s\n", profileName);
+    }
+
+    free(profileName);
+    return NULL;
+}
+
+void freeProfile(void *data)
 {
     T2Debug("%s ++in \n", __FUNCTION__);
     if(data != NULL)
@@ -202,6 +222,12 @@ static void freeProfile(void *data)
             Vector_Destroy(profile->cachedReportList, free);
             profile->cachedReportList = NULL;
         }
+#ifdef ENABLE_DYNAMIC_TABLE_SUPPORT
+        if(profile->dataModelTableList)
+        {
+            Vector_Destroy(profile->dataModelTableList, freeDataModelTable);
+        }
+#endif
         if(profile->jsonReportObj)
         {
             cJSON_Delete(profile->jsonReportObj);
@@ -504,7 +530,22 @@ static void* CollectAndReport(void* data)
                     profileParamVals = getProfileParameterValues(profile->paramList, count);
                     if(profileParamVals != NULL)
                     {
-                        encodeParamResultInJSON(valArray, profile->paramList, profileParamVals);
+#ifdef ENABLE_DYNAMIC_TABLE_SUPPORT
+                        /* dataModelTableList is populated once during profile parsing
+                         * (addParameter_marker_config / parseDataModelTableParams) before
+                         * the report thread is started.  It is never modified after
+                         * initialization, so no mutex is needed here — immutable-after-
+                         * publish pattern.  Thread safety is guaranteed by the lifecycle:
+                         * parse -> start thread -> (reads only) -> join thread -> free. */
+                        if (profile->dataModelTableList != NULL && Vector_Size(profile->dataModelTableList) > 0)
+                        {
+                            encodeParamResultInJSON(valArray, profile->paramList, profileParamVals, profile->dataModelTableList);
+                        }
+                        else
+#endif
+                        {
+                            encodeParamResultInJSON(valArray, profile->paramList, profileParamVals, NULL);
+                        }
                     }
                     Vector_Destroy(profileParamVals, freeProfileValues);
                 }
@@ -810,15 +851,27 @@ static void* CollectAndReport(void* data)
                                 }
                                 T2Error("ERROR: no method provider; profile will be deleted: %s %s\n", profile->name,
                                         profile->t2RBUSDest->rbusMethodName);
-                                if(T2ERROR_SUCCESS != deleteProfile(profile->name))
+                                char *profileNameCopy = strdup(profile->name);
+                                pthread_t deleteThread;
+                                if(profileNameCopy == NULL)
                                 {
-                                    T2Error("Failed to delete profile after RBUS_METHOD failures: %s\n", profile->name);
+                                    T2Error("Failed to allocate profile name for async delete: %s\n", profile->name);
                                     T2Info("%s --out\n", __FUNCTION__);
-                                    //return NULL;
                                     goto reportThreadEnd;
                                 }
+                                if(pthread_create(&deleteThread, NULL, deleteProfileAsync, profileNameCopy) != 0)
+                                {
+                                    T2Error("Failed to spawn async delete thread after RBUS_METHOD failures: %s\n", profile->name);
+                                    free(profileNameCopy);
+                                    T2Info("%s --out\n", __FUNCTION__);
+                                    goto reportThreadEnd;
+                                }
+                                if(pthread_detach(deleteThread) != 0)
+                                {
+                                    T2Warning("Failed to detach async delete thread for profile: %s\n", profile->name);
+                                }
+                                T2Info("Queued async delete for profile after RBUS_METHOD failures: %s\n", profile->name);
                                 T2Info("%s --out\n", __FUNCTION__);
-                                //return NULL;
                                 goto reportThreadEnd;
                             }
                         }

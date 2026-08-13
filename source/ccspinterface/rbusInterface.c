@@ -142,6 +142,40 @@ static void rBusInterface_Uninit( )
     rbus_close(t2bus_handle);
 }
 
+#ifdef SUPPORT_TYPING_FIELDS
+static TR181ParameterType getTR181TypeFromRbus(rbusValueType_t rbusValueType)
+{
+    switch(rbusValueType)
+    {
+    case RBUS_INT32:
+    case RBUS_INT16:
+    case RBUS_INT8:
+        return TR181_TYPE_INT;
+    case RBUS_UINT32:
+    case RBUS_UINT16:
+    case RBUS_UINT8:
+        return TR181_TYPE_UNSIGNED;
+    case RBUS_INT64:
+        return TR181_TYPE_LONG;
+    case RBUS_UINT64:
+        return TR181_TYPE_UNSIGNED_LONG;
+    case RBUS_BOOLEAN:
+        return TR181_TYPE_BOOLEAN;
+    case RBUS_SINGLE:
+        return TR181_TYPE_FLOAT;
+    case RBUS_DOUBLE:
+        return TR181_TYPE_DOUBLE;
+    case RBUS_DATETIME:
+        return TR181_TYPE_DATETIME;
+    case RBUS_BYTES:
+        return TR181_TYPE_BASE64;
+    case RBUS_STRING:
+    default:
+        return TR181_TYPE_STRING;
+    }
+}
+#endif
+
 T2ERROR getRbusParameterVal(const char* paramName, char **paramValue)
 {
     T2Debug("%s ++in \n", __FUNCTION__);
@@ -254,7 +288,7 @@ Vector* getRbusProfileParamValues(Vector *paramList, int execcount)
         if(paramNames[0] != NULL)
         {
             T2Debug("Calling rbus_getExt for %s \n", paramNames[0]);
-            if(RBUS_ERROR_SUCCESS != rbus_getExt(t2bus_handle, 1, (const char**)paramNames, &paramValCount, &rbusPropertyValues))
+            if(RBUS_ERROR_SUCCESS != rbus_getExt(t2bus_handle, 1, (const char * *)paramNames, &paramValCount, &rbusPropertyValues))
             {
                 T2Error("Failed to retrieve param : %s\n", paramNames[0]);
                 paramValCount = 0 ;
@@ -284,6 +318,9 @@ Vector* getRbusProfileParamValues(Vector *paramList, int execcount)
                 paramValues[0] = (tr181ValStruct_t*) malloc(sizeof(tr181ValStruct_t));
                 paramValues[0]->parameterName = (param != NULL) ? strdup(param) : strdup("UNKNOWN");
                 paramValues[0]->parameterValue = strdup("NULL");
+#ifdef SUPPORT_TYPING_FIELDS
+                paramValues[0]->type = TR181_TYPE_STRING;
+#endif
                 // If parameter doesn't exist in device we do populate with entry as NULL.
                 // So count of populated data list has 1 entry and is not 0
                 profVals->paramValueCount = 1;
@@ -327,6 +364,9 @@ Vector* getRbusProfileParamValues(Vector *paramList, int execcount)
                             {
                                 paramValues[iterate]->parameterValue = rbusValue_ToString(value, NULL, 0);
                             }
+#ifdef SUPPORT_TYPING_FIELDS
+                            paramValues[iterate]->type = getTR181TypeFromRbus(rbusValueType);
+#endif
 
 #if defined(ENABLE_RDKV_SUPPORT)
                             // Workaround as video platforms doesn't have a TR param which gives Firmware name
@@ -650,7 +690,7 @@ rbusError_t t2PropertyDataSetHandler(rbusHandle_t handle, rbusProperty_t prop, r
             }
             /* Dispatch heavy callbacks to a worker thread to avoid blocking the RBUS handler */
             pthread_t privacyWorker;
-            if(pthread_create(&privacyWorker, NULL, privacyModeCallbackWorker, (void*)data) == 0)
+            if(pthread_create(&privacyWorker, NULL, privacyModeCallbackWorker, (void * )data) == 0)
             {
                 pthread_detach(privacyWorker);
             }

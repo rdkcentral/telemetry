@@ -47,3 +47,7 @@ libccspinterface_la_CPPFLAGS +=  -I${top_srcdir}/source/privacycontrol
 libccspinterface_la_DEPENDENCIES = ${top_builddir}/source/privacycontrol/libt2thunder_privacycontrol.la
 libccspinterface_la_LIBADD = ${top_builddir}/source/privacycontrol/libt2thunder_privacycontrol.la
 endif
+
+if ENABLE_SUPPORT_TYPING_FIELDS
+libccspinterface_la_CPPFLAGS += -DSUPPORT_TYPING_FIELDS
+endif

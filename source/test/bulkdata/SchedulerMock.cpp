@@ -73,11 +73,11 @@ T2ERROR unregisterProfileFromScheduler(const char* profileName)
     return T2ERROR_SUCCESS;
 }
 
-T2ERROR SendInterruptToTimeoutThread(char* profileName)
+T2ERROR SendInterruptToTimeoutThread(char* profileName, bool isClearSeekMap)
 {
     if (g_schedulerMock)
     {
-        return g_schedulerMock->SendInterruptToTimeoutThread(profileName);
+        return g_schedulerMock->SendInterruptToTimeoutThread(profileName, isClearSeekMap);
     }
     
     // Fallback implementation for when mock is not set

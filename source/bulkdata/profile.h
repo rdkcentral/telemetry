@@ -139,7 +139,7 @@ void updateMarkerComponentMap();
 
 hash_map_t *getProfileHashMap();
 
-void sendLogUploadInterruptToScheduler();
+void sendLogUploadInterruptToScheduler(bool isClearSeekMap);
 
 void NotifyTimeout(const char* profileName, bool isClearSeekMap);
 

@@ -28,6 +28,12 @@ T2ERROR getParamValue(const char* paramName, char **paramValue);
 #include "../mocks/rbusMock.h"
 #include "../mocks/SystemMock.h"
 #include "../mocks/FileioMock.h"
+#include "../mocks/rdklogMock.h"
+
+rbusMock *g_rbusMock = nullptr;
+SystemMock *g_systemMock = nullptr;
+FileMock *g_fileIOMock = nullptr;
+rdklogMock *m_rdklogMock = nullptr;
 
 using namespace std;
 

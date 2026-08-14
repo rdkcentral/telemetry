@@ -262,6 +262,12 @@ static char *getTimezone ()
                     fclose(file);
                     free(jsonDoc);
                     T2Debug("Failed to read Timezone value from %s file...\n", jsonpath);
+                    count++;
+                    if (count == 10)
+                    {
+                        T2Debug("Timezone retry count reached the limit . Timezone data source is missing\n");
+                        break;
+                    }
                     continue;
                 }
             }

@@ -47,6 +47,10 @@ extern "C" {
 #include "test/mocks/rdkconfigMock.h"
 using namespace std;
 
+FileMock *g_fileIOMock = nullptr;
+SystemMock *g_systemMock = nullptr;
+rdklogMock *m_rdklogMock = nullptr;
+
 using ::testing::_;
 using ::testing::Return;
 using ::testing::StrEq;

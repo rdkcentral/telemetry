@@ -47,7 +47,7 @@ make -C source/test
 # Create test results directory
 mkdir -p /tmp/Gtest_Report
 
-# List of 13 test binaries to run
+# List of test binaries to run
 tests="
 ./source/test/bulkdata/profile_gtest.bin
 ./source/test/bulkdata/datamodel_gtest.bin
@@ -62,6 +62,10 @@ tests="
 ./source/test/t2parser/t2parser_dynamictable_gtest.bin
 ./source/test/dcautils/dcautil_gtest.bin
 ./source/test/ccspinterface/ccspinterface_gtest.bin
+./source/test/utils/utils_gtest.bin
+./source/test/protocol/protocol_gtest.bin
+./source/test/commonlib/commonlib_gtest.bin
+./source/test/xconf-client/xconfclient_gtest.bin
 "
 
 for test in $tests
@@ -105,12 +109,19 @@ fi
 #### Generate the coverage report ####
 if [ "$ENABLE_COV" = true ]; then
     echo "Generating coverage report"
-    lcov --directory . --capture --output-file coverage.info
-    lcov --remove coverage.info "${PWD}/source/test/*" "${PWD}/source/xconf-client/*" --output-file coverage.info
+    LCOV_OPTS="--rc lcov_branch_coverage=1"
 
-    lcov --remove coverage.info "$HOME/usr/*" --output-file coverage.info
-    lcov --remove coverage.info "/usr/*" --output-file coverage.info
-    lcov --list coverage.info
+    # Zero-coverage baseline so files never exercised by any test still appear in the report
+    lcov $LCOV_OPTS --directory . --capture --initial --output-file coverage.base
+    lcov $LCOV_OPTS --directory . --capture --output-file coverage.run
+    lcov $LCOV_OPTS --add-tracefile coverage.base --add-tracefile coverage.run --output-file coverage.info
+
+    lcov $LCOV_OPTS --remove coverage.info "${PWD}/source/test/*" --output-file coverage.info
+    lcov $LCOV_OPTS --remove coverage.info "$HOME/usr/*" --output-file coverage.info
+    lcov $LCOV_OPTS --remove coverage.info "/usr/*" --output-file coverage.info
+    lcov $LCOV_OPTS --list coverage.info
+
+    genhtml $LCOV_OPTS --branch-coverage --output-directory coverage-html coverage.info > /dev/null 2>&1
 fi
 
 if [ $fail -ne 0 ]; then

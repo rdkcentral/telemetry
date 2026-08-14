@@ -75,7 +75,12 @@ using namespace std;
 #include "protocolMock.h"
 #include "test/mocks/rdkconfigMock.h"
 
-extern FileMock *g_fileIOMock;
+FileMock *g_fileIOMock = nullptr;
+SystemMock *g_systemMock = nullptr;
+XconfclientMock *m_xconfclientMock = nullptr;
+rbusMock *g_rbusMock = nullptr;
+rdkconfigMock *g_rdkconfigMock = nullptr;
+rdklogMock *m_rdklogMock = nullptr;
 using ::testing::_;
 using ::testing::Return;
 using ::testing::StrEq;

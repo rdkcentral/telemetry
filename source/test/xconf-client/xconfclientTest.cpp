@@ -54,9 +54,11 @@ using ::testing::StrEq;
 using ::testing::SetArgPointee;
 using ::testing::DoAll;
 
-extern FileMock *g_fileIOMock;
+FileMock *g_fileIOMock = NULL;
+SystemMock *g_systemMock = NULL;
 XconfclientMock *m_xconfclientMock = NULL;
 rbusMock *g_rbusMock = NULL;
+rdklogMock *m_rdklogMock = NULL;
 
 // Helper macro to prevent deadlock from mocked fwrite and fputs calls in the protocol code when GTest tries to log output, which can cause a deadlock if the logging functions are mocked without allowing real calls to them.
 #define PREVENT_GTEST_LOGGING_DEADLOCK() \

@@ -198,8 +198,15 @@ void ReportProfiles_Interrupt()
 {
     T2Debug("%s ++in\n", __FUNCTION__);
 
+    /*
+     * Capture retainseekmap state once for this LOG_UPLOAD event.
+     * The same value must be propagated to all interrupted profiles
+     * to avoid race conditions between profile timeout threads.
+     */
+    bool isClearSeekMap = !get_retainseekmap();
+
     // Interrupt the multi profile first as the DCADONE Flag is added from the xconf
-    sendLogUploadInterruptToScheduler();
+    sendLogUploadInterruptToScheduler(isClearSeekMap);
 
     char* xconfProfileName = NULL ;
     if (ProfileXConf_isSet())
@@ -207,10 +214,16 @@ void ReportProfiles_Interrupt()
         xconfProfileName = ProfileXconf_getName();
         if (xconfProfileName)
         {
-            SendInterruptToTimeoutThread(xconfProfileName);
+            SendInterruptToTimeoutThread(xconfProfileName, isClearSeekMap);
             free(xconfProfileName);
         }
     }
+
+    /*
+     * Reset the global flag after the value has been distributed
+     * to all profiles.
+     */
+    set_retainseekmap(true);
 
     T2Debug("%s --out\n", __FUNCTION__);
 }

@@ -1509,7 +1509,7 @@ T2ERROR deleteProfile(const char *profileName)
     return T2ERROR_SUCCESS;
 }
 
-void sendLogUploadInterruptToScheduler()
+void sendLogUploadInterruptToScheduler(bool isClearSeekMap)
 {
     size_t profileIndex = 0;
     Profile *tempProfile = NULL;
@@ -1521,7 +1521,7 @@ void sendLogUploadInterruptToScheduler()
         tempProfile = (Profile *)Vector_At(profileList, profileIndex);
         if (Vector_Size(tempProfile->gMarkerList) > 0)
         {
-            SendInterruptToTimeoutThread(tempProfile->name);
+            SendInterruptToTimeoutThread(tempProfile->name, isClearSeekMap);
         }
     }
     pthread_rwlock_unlock(&profileListLock);
@@ -2013,7 +2013,7 @@ T2ERROR triggerReportOnCondtion(const char *referenceName, const char *reference
                                    triggerCondition->oprator, triggerCondition->threshold);
                             if(tempProfile->isSchedulerstarted)
                             {
-                                SendInterruptToTimeoutThread(tempProfilename);
+                                SendInterruptToTimeoutThread(tempProfilename, false);
                                 // triggerCondMutex will be unlocked by CollectAndReport after report generation
                             }
                             else

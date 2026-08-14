@@ -656,9 +656,14 @@ TEST_F(ProfileTest, ReportProfiles_Interrupt_Coverage) {
         .WillRepeatedly(Return(0)); // Return 1 to indicate only one profile (no duplicates)
     
     // ReportProfiles_Interrupt calls SendInterruptToTimeoutThread for xconf profile if ProfileXConf_isSet
-    EXPECT_CALL(*g_schedulerMock, SendInterruptToTimeoutThread(_))
+    EXPECT_CALL(*g_schedulerMock, SendInterruptToTimeoutThread(_, _))
         .Times(::testing::AtMost(1)); // ProfileXConf is not set in this test, so no interrupt call
     
+    EXPECT_CALL(*g_schedulerMock, get_retainseekmap())
+        .Times(::testing::AtMost(1));
+    EXPECT_CALL(*g_schedulerMock, set_retainseekmap(_))
+        .Times(::testing::AtMost(1));
+
     ReportProfiles_Interrupt();
 }
 
@@ -1030,7 +1035,12 @@ TEST_F(ProfileTest, SetAndIsSet) {
 
    test_set_reportThreadExits(true);
    generateDcaReport(false,true);
-    EXPECT_CALL(*g_schedulerMock, SendInterruptToTimeoutThread(_))
+    EXPECT_CALL(*g_schedulerMock, SendInterruptToTimeoutThread(_, _))
+        .Times(::testing::AtMost(1));
+
+    EXPECT_CALL(*g_schedulerMock, get_retainseekmap())
+        .Times(::testing::AtMost(1));
+    EXPECT_CALL(*g_schedulerMock, set_retainseekmap(_))
         .Times(::testing::AtMost(1));
 
     ReportProfiles_Interrupt();

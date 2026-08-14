@@ -1,0 +1,48 @@
+# Local development environment mirroring the CI containers.
+#
+#   docker compose -f containers/docker-compose.yml up -d
+#   docker compose -f containers/docker-compose.yml exec native-platform bash
+#
+# Inside the container the workspace is available at /mnt/L1_CONTAINER_SHARED_VOLUME
+# (also bind mounted as /mnt/L2_CONTAINER_SHARED_VOLUME for the L2 suite).
+#
+#   sh test/run_ut.sh                 # L1 unit tests
+#   sh test/run_ut.sh --enable-cov    # L1 unit tests + coverage.info
+#   sh build_inside_container.sh && sh test/run_l2.sh   # L2 integration tests
+
+services:
+  mockxconf:
+    image: ghcr.io/rdkcentral/docker-device-mgt-service-test/mockxconf:latest
+    container_name: mockxconf
+    environment:
+      ENABLE_MTLS: "true"
+    ports:
+      - "50050:50050"
+      - "50051:50051"
+      - "50052:50052"
+    volumes:
+      - ..:/mnt/L2_CONTAINER_SHARED_VOLUME
+    networks:
+      - t2net
+
+  native-platform:
+    image: ghcr.io/rdkcentral/docker-device-mgt-service-test/native-platform:latest
+    container_name: native-platform
+    depends_on:
+      - mockxconf
+    environment:
+      ENABLE_MTLS: "true"
+      LD_LIBRARY_PATH: /usr/local/lib:/usr/lib/x86_64-linux-gnu:/lib/aarch64-linux-gnu
+    volumes:
+      - ..:/mnt/L1_CONTAINER_SHARED_VOLUME
+      - ..:/mnt/L2_CONTAINER_SHARED_VOLUME
+    working_dir: /mnt/L1_CONTAINER_SHARED_VOLUME
+    # Keep the container alive so it can be exec'd into repeatedly.
+    tty: true
+    stdin_open: true
+    networks:
+      - t2net
+
+networks:
+  t2net:
+    driver: bridge

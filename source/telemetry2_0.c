@@ -338,7 +338,7 @@ static int checkAnotherTelemetryInstance (void)
 
 static void printVersion(void)
 {
-    printf("\nTelemetry 2.0 | Tag: %s | Revision: %s\n", T2_BUILD_TAG, T2_GIT_REVISION);
+    printf("Telemetry 2.0 | Tag: %s | Revision: %s\n", T2_BUILD_TAG, T2_GIT_REVISION);
 }
 
 int main(int argc, char *argv[])

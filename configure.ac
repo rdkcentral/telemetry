@@ -39,18 +39,21 @@ dnl time so the daemon can report it via --version and at startup. When the
 dnl source tree is not a git checkout (e.g. Yocto/SDK builds) fall back to
 dnl "unknown" so the build never fails.
 dnl **********************************
-T2_BUILD_TAG=`cd "$srcdir" && git describe --tags --always --dirty 2>/dev/null`
-if test -z "$T2_BUILD_TAG"; then
-    T2_BUILD_TAG="unknown"
+T2_BUILD_TAG_RAW=`cd "$srcdir" && git describe --tags --always --dirty 2>/dev/null`
+if test -z "$T2_BUILD_TAG_RAW"; then
+    T2_BUILD_TAG_RAW="unknown"
 fi
-T2_GIT_REVISION=`cd "$srcdir" && git rev-parse --short HEAD 2>/dev/null`
-if test -z "$T2_GIT_REVISION"; then
-    T2_GIT_REVISION="unknown"
+T2_GIT_REVISION_RAW=`cd "$srcdir" && git rev-parse --short HEAD 2>/dev/null`
+if test -z "$T2_GIT_REVISION_RAW"; then
+    T2_GIT_REVISION_RAW="unknown"
 fi
+
+dnl Escape for Makefile and for C string literals.
+T2_BUILD_TAG=`printf '%s' "$T2_BUILD_TAG_RAW" | sed 's/\$/$$/g; s/"/\\"/g'`
+T2_GIT_REVISION=`printf '%s' "$T2_GIT_REVISION_RAW" | sed 's/\$/$$/g; s/"/\\"/g'`
 AC_SUBST(T2_BUILD_TAG)
 AC_SUBST(T2_GIT_REVISION)
-AC_MSG_NOTICE([Telemetry build tag: $T2_BUILD_TAG, revision: $T2_GIT_REVISION])
-
+AC_MSG_NOTICE([Telemetry build tag: $T2_BUILD_TAG_RAW, revision: $T2_GIT_REVISION_RAW])
 LT_INIT
 GTEST_ENABLE_FLAG =" "
 LIBSYSWRAPPER_FLAG=" "

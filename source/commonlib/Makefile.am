@@ -36,7 +36,7 @@ libtelemetry_msgsender_la_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(included
                                 -I${top_srcdir}/include
 libtelemetry_msgsender_la_DEPENDENCIES = ${top_builddir}/source/utils/libt2utils.la
 
-bin_PROGRAMS = telemetry2_0_client
+bin_PROGRAMS = telemetry2_0_client dcm-bridge
 
 telemetry2_0_client_SOURCES = telemetry_client.c telemetry_busmessage_sender.c
 telemetry2_0_client_LDADD = -lrbus ${top_builddir}/source/utils/libt2utils.la -lpthread
@@ -50,3 +50,17 @@ telemetry2_0_client_CPPFLAGS = -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/db
                                 -I${top_srcdir}/source/utils \
                                 -I${top_srcdir}/include
 telemetry2_0_client_DEPENDENCIES = ${top_builddir}/source/utils/libt2utils.la
+
+dcm_bridge_SOURCES = dcm-bridge.c
+
+dcm_bridge_LDADD = \
+    libtelemetry_msgsender.la \
+    -lrbus \
+    ${top_builddir}/source/utils/libt2utils.la \
+    -lpthread
+
+dcm_bridge_CPPFLAGS = \
+    -fPIC \
+    -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/rbus \
+    -I${top_srcdir}/source/utils \
+    -I${top_srcdir}/include

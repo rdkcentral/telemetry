@@ -57,6 +57,19 @@ static bool reportThreadExits = false;
 static bool isAbortTriggered = false ;
 static bool isOnDemandReport = false ;
 
+static bool isEmptySubscriberValue(const char *value)
+{
+    if(value == NULL)
+    {
+        return true;
+    }
+    if(strlen(value) < 1 || value[0] == ' ' || strncmp(value, "NULL", 4) == 0)
+    {
+        return true;
+    }
+    return false;
+}
+
 #ifdef GTEST_ENABLE
 #define sendReportOverHTTP __wrap_sendReportOverHTTP
 #define sendCachedReportsOverHTTP __wrap_sendCachedReportsOverHTTP
@@ -1113,6 +1126,11 @@ T2ERROR ProfileXConf_storeMarkerEvent(T2Event *eventInfo)
 
         case MTYPE_XCONF_ACCUMULATE:
             T2Debug("Marker type is ACCUMULATE Event Value : %s\n", eventInfo->value);
+            if(!lookupEvent->reportEmptyParam && isEmptySubscriberValue(eventInfo->value))
+            {
+                T2Debug("Skipping empty/null subscribe marker value for %s\n", lookupEvent->markerName);
+                break;
+            }
             arraySize = Vector_Size(lookupEvent->u.accumulatedValues);
             T2Debug("Current array size : %d \n", arraySize);
             if( arraySize < MAX_ACCUMULATE)
@@ -1134,6 +1152,11 @@ T2ERROR ProfileXConf_storeMarkerEvent(T2Event *eventInfo)
 
         case MTYPE_XCONF_ABSOLUTE:
         default:
+            if(!lookupEvent->reportEmptyParam && isEmptySubscriberValue(eventInfo->value))
+            {
+                T2Debug("Skipping empty/null subscribe marker value for %s\n", lookupEvent->markerName);
+                break;
+            }
             if(lookupEvent->u.markerValue)
             {
                 free(lookupEvent->u.markerValue);

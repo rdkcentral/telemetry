@@ -343,15 +343,9 @@ void* TimeoutThread(void *arg)
 
             if(minThresholdTime == 0)
             {
-                if (get_retainseekmap() == true)
-                {
-                    timeoutNotificationCb(tProfile->name, false); // Passing clearseekvalue as false
-                }
-                else
-                {
-                    set_retainseekmap(true); //After triggering LOG upload resetting the retainseekmap value to true so the next report generation doesn't affect
-                    timeoutNotificationCb(tProfile->name, true); //Passing clearseek value as true
-                }
+                timeoutNotificationCb(tProfile->name, tProfile->isClearSeekMap);
+                tProfile->isClearSeekMap = false;
+
                 if(tProfile->terminated)
                 {
                     T2Warning("Profile : %s is being removed from scheduler \n", tProfile->name);
@@ -421,7 +415,7 @@ void* TimeoutThread(void *arg)
     return NULL;
 }
 
-T2ERROR SendInterruptToTimeoutThread(char* profileName)
+T2ERROR SendInterruptToTimeoutThread(char* profileName, bool isClearSeekMap)
 {
     SchedulerProfile *tProfile = NULL;
     T2Debug("%s ++in\n", __FUNCTION__);
@@ -458,6 +452,7 @@ T2ERROR SendInterruptToTimeoutThread(char* profileName)
                 pthread_mutex_unlock(&scMutex);
                 return T2ERROR_FAILURE;
             }
+            tProfile->isClearSeekMap = isClearSeekMap;
             pthread_cond_signal(&tProfile->tCond);
             if(pthread_mutex_unlock(&tProfile->tMutex) != 0)
             {
@@ -610,6 +605,7 @@ T2ERROR registerProfileWithScheduler(const char* profileName, unsigned int timeI
         tProfile->reportonupdate = reportOnUpdate;
         tProfile->firstreportint = firstReportingInterval;
         tProfile->firstexecution = false;
+        tProfile->isClearSeekMap = false;
         tProfile->timeRef = timeRef;
         tProfile->timeRefinSec = 0;
         if(tProfile->timeOutDuration < tProfile->firstreportint)

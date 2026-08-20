@@ -67,6 +67,19 @@ typedef struct __triggerConditionObj__
     char referenceValue[MAX_LEN];
 } triggerConditionObj ;
 
+static bool isEmptySubscriberValue(const char *value)
+{
+    if(value == NULL)
+    {
+        return true;
+    }
+    if(strlen(value) < 1 || value[0] == ' ' || strncmp(value, "NULL", 4) == 0)
+    {
+        return true;
+    }
+    return false;
+}
+
 static void freeRequestURIparam(void *data)
 {
     if(data != NULL)
@@ -1094,6 +1107,11 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
 
         case MTYPE_ACCUMULATE:
             T2Debug("Marker type is ACCUMULATE Event Value : %s\n", eventInfo->value);
+            if(!lookupEvent->reportEmptyParam && isEmptySubscriberValue(eventInfo->value))
+            {
+                T2Debug("Skipping empty/null subscribe marker value for %s\n", lookupEvent->markerName);
+                break;
+            }
             arraySize = Vector_Size(lookupEvent->u.accumulatedValues);
             T2Debug("Current array size : %d \n", arraySize);
             if( arraySize < MAX_ACCUMULATE)
@@ -1135,6 +1153,11 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
 
         case MTYPE_ABSOLUTE:
         default:
+            if(!lookupEvent->reportEmptyParam && isEmptySubscriberValue(eventInfo->value))
+            {
+                T2Debug("Skipping empty/null subscribe marker value for %s\n", lookupEvent->markerName);
+                break;
+            }
             if(lookupEvent->u.markerValue)
             {
                 free(lookupEvent->u.markerValue);
@@ -2116,5 +2139,4 @@ unsigned int getMinThresholdDuration(char *profileName)
     T2Debug("%s --out\n", __FUNCTION__);
     return minThresholdDuration;
 }
-
 

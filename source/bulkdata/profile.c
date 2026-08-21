@@ -71,6 +71,7 @@ static void freeRequestURIparam(void *data)
 {
     if(data != NULL)
     {
+        T2Warning("Data is not NULL \n"); // DO NOT MERGE , JUST DEBUGGING
         HTTPReqParam *hparam = (HTTPReqParam *)data;
         if(hparam->HttpName)
         {

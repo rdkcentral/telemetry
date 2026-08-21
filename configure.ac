@@ -170,6 +170,25 @@ AC_ARG_ENABLE([support-typing-fields],
 
 AM_CONDITIONAL([ENABLE_SUPPORT_TYPING_FIELDS], [test x$ENABLE_SUPPORT_TYPING_FIELDS = xtrue])
 
+ENABLE_T2_ENABLE_STS_TS_TIMESTAMP=false
+
+AC_ARG_ENABLE([t2-enable-sts-ts-timestamp],
+    [AS_HELP_STRING(
+        [--enable-t2-enable-sts-ts-timestamp],
+        [enable T2_ENABLE_STS_TS_TIMESTAMP (default is no)]
+    )],
+    [
+        case "${enableval}" in
+            yes) ENABLE_T2_ENABLE_STS_TS_TIMESTAMP=true ;;
+            no)  ENABLE_T2_ENABLE_STS_TS_TIMESTAMP=false ;;
+            *) AC_MSG_ERROR([bad value ${enableval} for --enable-t2-enable-sts-ts-timestamp]) ;;
+        esac
+    ]
+)
+
+AM_CONDITIONAL([ENABLE_T2_ENABLE_STS_TS_TIMESTAMP],
+    [test "x${ENABLE_T2_ENABLE_STS_TS_TIMESTAMP}" = "xtrue"])
+
 #privacy control flag
 IS_PRIVACYCONTROL_ENABLED=false
 AC_ARG_ENABLE([privacycontrol],

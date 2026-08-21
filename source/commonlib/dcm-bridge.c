@@ -5,7 +5,6 @@
 
 #include "telemetry_busmessage_sender.h"
 
-#define MARKER_LOG "/opt/logs/dcm-marker-matches.log"
 #define LINE_SIZE 8192
 #define HEADER_SIZE 256
 
@@ -100,38 +99,18 @@ static void send_marker_to_t2(const char *header, const char *message)
 
 int main(void)
 {
-    FILE *marker_file;
     char line[LINE_SIZE];
     char header[HEADER_SIZE];
     char message[LINE_SIZE];
 
     t2_init("dcm-pattern-bridge");
 
-    marker_file = fopen(MARKER_LOG, "r");
-    if (marker_file == NULL) {
-        perror("Unable to open dcm-marker-matches.log");
-        t2_uninit();
-        return EXIT_FAILURE;
-    }
-
-    /*
-     * Process only new PatternDB matches.
-     * Existing entries are not replayed after bridge startup.
-     */
-    fseek(marker_file, 0, SEEK_END);
-
-    while (1) {
-        if (fgets(line, sizeof(line), marker_file) == NULL) {
-            clearerr(marker_file);
-            usleep(250000);
-            continue;
-        }
-
+    while (fgets(line, sizeof(line), stdin) != NULL) {
         if (parse_marker_line(line,
-                               header,
-                               sizeof(header),
-                               message,
-                               sizeof(message)) != 0) {
+                             header,
+                             sizeof(header),
+                             message,
+                             sizeof(message)) != 0) {
             fprintf(stderr, "Invalid marker line: %s", line);
             continue;
         }
@@ -139,8 +118,6 @@ int main(void)
         send_marker_to_t2(header, message);
     }
 
-    fclose(marker_file);
     t2_uninit();
-
     return EXIT_SUCCESS;
 }

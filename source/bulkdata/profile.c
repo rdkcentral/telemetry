@@ -1106,8 +1106,10 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
             break;
 
         case MTYPE_ACCUMULATE:
-            T2Debug("Marker type is ACCUMULATE Event Value : %s\n", eventInfo->value);
-            if(!lookupEvent->reportEmptyParam && isEmptySubscriberValue(eventInfo->value))
+        {
+            const char *safeValue = (eventInfo->value != NULL) ? eventInfo->value : "";
+            T2Debug("Marker type is ACCUMULATE Event Value : %s\n", safeValue);
+            if(!lookupEvent->reportEmptyParam && isEmptySubscriberValue(safeValue))
             {
                 T2Debug("Skipping empty/null subscribe marker value for %s\n", lookupEvent->markerName);
                 break;
@@ -1116,7 +1118,7 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
             T2Debug("Current array size : %d \n", arraySize);
             if( arraySize < MAX_ACCUMULATE)
             {
-                Vector_PushBack(lookupEvent->u.accumulatedValues, strdup(eventInfo->value));
+                Vector_PushBack(lookupEvent->u.accumulatedValues, strdup(safeValue));
                 T2Debug("Sucessfully added value into vector New Size : %d\n", ++arraySize);
                 if(lookupEvent->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH)
                 {
@@ -1150,10 +1152,13 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
                 T2Warning("Max size of the array has been reached Ignore New Value\n");
             }
             break;
+        }
 
         case MTYPE_ABSOLUTE:
         default:
-            if(!lookupEvent->reportEmptyParam && isEmptySubscriberValue(eventInfo->value))
+        {
+            const char *safeValue = (eventInfo->value != NULL) ? eventInfo->value : "";
+            if(!lookupEvent->reportEmptyParam && isEmptySubscriberValue(safeValue))
             {
                 T2Debug("Skipping empty/null subscribe marker value for %s\n", lookupEvent->markerName);
                 break;
@@ -1164,7 +1169,7 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
                 lookupEvent->u.markerValue = NULL;
             }
 
-            lookupEvent->u.markerValue = strdup(eventInfo->value);
+            lookupEvent->u.markerValue = strdup(safeValue);
             T2Debug("New marker value saved : %s\n", lookupEvent->u.markerValue);
             if(lookupEvent->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH)
             {
@@ -1192,6 +1197,7 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
                 T2Debug("Timestamp for %s is %s\n", lookupEvent->markerName_CT, lookupEvent->timestamp);
             }
             break;
+        }
         }
         pthread_mutex_unlock(&profile->eventMutex);
     }

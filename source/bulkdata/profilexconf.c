@@ -1125,8 +1125,10 @@ T2ERROR ProfileXConf_storeMarkerEvent(T2Event *eventInfo)
             break;
 
         case MTYPE_XCONF_ACCUMULATE:
-            T2Debug("Marker type is ACCUMULATE Event Value : %s\n", eventInfo->value);
-            if(!lookupEvent->reportEmptyParam && isEmptySubscriberValue(eventInfo->value))
+        {
+            const char *safeValue = (eventInfo->value != NULL) ? eventInfo->value : "";
+            T2Debug("Marker type is ACCUMULATE Event Value : %s\n", safeValue);
+            if(!lookupEvent->reportEmptyParam && isEmptySubscriberValue(safeValue))
             {
                 T2Debug("Skipping empty/null subscribe marker value for %s\n", lookupEvent->markerName);
                 break;
@@ -1135,7 +1137,7 @@ T2ERROR ProfileXConf_storeMarkerEvent(T2Event *eventInfo)
             T2Debug("Current array size : %d \n", arraySize);
             if( arraySize < MAX_ACCUMULATE)
             {
-                Vector_PushBack(lookupEvent->u.accumulatedValues, strdup(eventInfo->value));
+                Vector_PushBack(lookupEvent->u.accumulatedValues, strdup(safeValue));
                 T2Debug("Sucessfully added value into vector New Size : %d\n", ++arraySize);
             }
             else if ( arraySize == MAX_ACCUMULATE )
@@ -1149,10 +1151,13 @@ T2ERROR ProfileXConf_storeMarkerEvent(T2Event *eventInfo)
                 T2Warning("Max size of the array has been reached Ignore New Value\n");
             }
             break;
+        }
 
         case MTYPE_XCONF_ABSOLUTE:
         default:
-            if(!lookupEvent->reportEmptyParam && isEmptySubscriberValue(eventInfo->value))
+        {
+            const char *safeValue = (eventInfo->value != NULL) ? eventInfo->value : "";
+            if(!lookupEvent->reportEmptyParam && isEmptySubscriberValue(safeValue))
             {
                 T2Debug("Skipping empty/null subscribe marker value for %s\n", lookupEvent->markerName);
                 break;
@@ -1161,9 +1166,10 @@ T2ERROR ProfileXConf_storeMarkerEvent(T2Event *eventInfo)
             {
                 free(lookupEvent->u.markerValue);
             }
-            lookupEvent->u.markerValue = strdup(eventInfo->value);
+            lookupEvent->u.markerValue = strdup(safeValue);
             T2Debug("New marker value saved : %s\n", lookupEvent->u.markerValue);
             break;
+        }
         }
     }
     else

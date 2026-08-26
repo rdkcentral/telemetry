@@ -479,13 +479,13 @@ extern "C" rbusError_t rbusEvent_SubscribeEx( rbusHandle_t handle, rbusEventSubs
     return g_rbusMock->rbusEvent_SubscribeEx(handle, subscription, numSubscriptions, timeout);
 }
 
-extern "C" rbusError_t rbusMethod_InvokeAsync( rbusHandle_t handle, char const* methodName, rbusObject_t inParams, rbusMethodAsyncRespHandler_t callback, int timeout)
+extern "C" rbusError_t rbusMethod_InvokeAsync( rbusHandle_t handle, char const* methodName, rbusObject_t inParams, rbusMethodAsyncRespHandler_t callback, int timeout, void* userData)
 {
     if (!g_rbusMock)
     {
         return RBUS_ERROR_SUCCESS;
     }
-    return g_rbusMock->rbusMethod_InvokeAsync(handle, methodName, inParams, callback, timeout);
+    return g_rbusMock->rbusMethod_InvokeAsync(handle, methodName, inParams, callback, timeout, NULL);
 }
 
 extern "C" const char* rbusError_ToString(rbusError_t e)

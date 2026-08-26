@@ -2009,7 +2009,7 @@ T2ERROR rbusMethodCaller(char *methodName, rbusObject_t* inputParams, char* payl
         T2Debug("%s --out\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
-    rc = rbusMethod_InvokeAsync(t2bus_handle, methodName, *inputParams, rbusMethodCallBack, RBUS_METHOD_TIMEOUT);
+    rc = rbusMethod_InvokeAsync(t2bus_handle, methodName, *inputParams, rbusMethodCallBack, RBUS_METHOD_TIMEOUT, NULL);
     if (rc == RBUS_ERROR_SUCCESS)
     {
         ret = T2ERROR_SUCCESS ;

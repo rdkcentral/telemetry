@@ -103,7 +103,7 @@ int main(void)
     char header[HEADER_SIZE];
     char message[LINE_SIZE];
 
-    t2_init("dcm-pattern-bridge");
+    t2_init("dcm-bridge");
 
     while (fgets(line, sizeof(line), stdin) != NULL) {
         if (parse_marker_line(line,

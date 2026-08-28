@@ -450,7 +450,7 @@ int filtered_event_send(const char* data, const char *markerName)
     {
 
         // Filter data from marker list
-        if(componentName && (0 != strcmp(componentName, T2_SCRIPT_EVENT_COMPONENT)))   // Events from scripts needs to be sent without filtering
+        if(componentName && (0 != strcmp(componentName, T2_SCRIPT_EVENT_COMPONENT) && (0 != strcmp(componentName, "dcm-bridge")))   // Events from scripts needs to be sent without filtering
         {
 
             EVENT_DEBUG("%s markerListMutex lock & get list of marker for component %s \n", __FUNCTION__, componentName);

@@ -450,10 +450,6 @@ int filtered_event_send(const char* data, const char *markerName)
     {
 
         // Filter data from marker list
-        if (componentName &&
-    strcmp(componentName, T2_SCRIPT_EVENT_COMPONENT) != 0 &&
-    strcmp(componentName, "dcm-bridge") != 0)
-{
         if(componentName && (0 != strcmp(componentName, T2_SCRIPT_EVENT_COMPONENT)) && (0 != strcmp(componentName, "dcm-bridge")))   // Events from scripts needs to be sent without filtering
         {
 

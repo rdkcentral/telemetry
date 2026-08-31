@@ -1181,7 +1181,7 @@ static void rbusDCMReloadSubscribeHandler(rbusHandle_t handle,
 
     if(error != RBUS_ERROR_SUCCESS)
     {
-        T2Error("Async subscribe for %s failed. Error code : %d\n", subscription->eventName, error);
+        T2Error("Async subscribe for %s failed. error=%s (%d)\n", subscription->eventName, rbusError_ToString(error), error);
     }
     else
     {

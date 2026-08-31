@@ -95,6 +95,7 @@ protected:
  */
 TEST_F(ProfileDynamicTableTestFixture, NullDataModelTableList_NoCrash)
 {
+#ifdef ENABLE_DYNAMIC_TABLE_SUPPORT
     // Create a profile without data model tables
     Profile* testProfile = (Profile*)calloc(1, sizeof(Profile));
     ASSERT_NE(testProfile, nullptr);
@@ -138,6 +139,9 @@ TEST_F(ProfileDynamicTableTestFixture, NullDataModelTableList_NoCrash)
     Vector_Destroy(testProfile->gMarkerList, NULL);
     Vector_Destroy(testProfile->staticParamList, NULL);
     free(testProfile);
+#else
+    GTEST_SKIP() << "Dynamic table support is disabled in this build";
+#endif
 }
 
 /**
@@ -150,6 +154,7 @@ TEST_F(ProfileDynamicTableTestFixture, NullDataModelTableList_NoCrash)
  */
 TEST_F(ProfileDynamicTableTestFixture, EmptyDataModelTableList_SkipsEncoding)
 {
+#ifdef ENABLE_DYNAMIC_TABLE_SUPPORT
     Profile* testProfile = (Profile*)calloc(1, sizeof(Profile));
     ASSERT_NE(testProfile, nullptr);
     
@@ -183,6 +188,9 @@ TEST_F(ProfileDynamicTableTestFixture, EmptyDataModelTableList_SkipsEncoding)
     Vector_Destroy(testProfile->gMarkerList, NULL);
     Vector_Destroy(testProfile->staticParamList, NULL);
     free(testProfile);
+#else
+    GTEST_SKIP() << "Dynamic table support is disabled in this build";
+#endif
 }
 
 /**
@@ -194,6 +202,7 @@ TEST_F(ProfileDynamicTableTestFixture, EmptyDataModelTableList_SkipsEncoding)
  */
 TEST_F(ProfileDynamicTableTestFixture, ValidDataModelTableList_ProceedsToEncoding)
 {
+#ifdef ENABLE_DYNAMIC_TABLE_SUPPORT
     Profile* testProfile = (Profile*)calloc(1, sizeof(Profile));
     ASSERT_NE(testProfile, nullptr);
     
@@ -232,6 +241,9 @@ TEST_F(ProfileDynamicTableTestFixture, ValidDataModelTableList_ProceedsToEncodin
     Vector_Destroy(testProfile->dataModelTableList, NULL);
     
     free(testProfile);
+#else
+    GTEST_SKIP() << "Dynamic table support is disabled in this build";
+#endif
 }
 
 /**
@@ -278,7 +290,9 @@ TEST_F(ProfileDynamicTableTestFixture, FreeProfile_ValidProfile_CleansUp)
     Vector_Create(&testProfile->eMarkerList);
     Vector_Create(&testProfile->gMarkerList);
     Vector_Create(&testProfile->staticParamList);
+#ifdef ENABLE_DYNAMIC_TABLE_SUPPORT
     Vector_Create(&testProfile->dataModelTableList);
+#endif
     
     // freeProfile() should clean up everything
     freeProfile(testProfile);

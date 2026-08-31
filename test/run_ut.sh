@@ -44,6 +44,9 @@ autoreconf --install
 
 make -C source/test
 
+# Create test results directory
+mkdir -p /tmp/Gtest_Report
+
 # List of 13 test binaries to run
 tests="
 ./source/test/bulkdata/profile_gtest.bin

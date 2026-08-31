@@ -36,7 +36,7 @@ t2parser_gtest_bin_SOURCES = gtest_main.cpp t2parserMock.cpp  ../mocks/rdklogMoc
 t2parser_gtest_bin_LDFLAGS = -lgtest -lgcov -L/src/googletest/googlemock/lib -L/usr/src/googletest/googlemock/lib/.libs -lgmock -lcjson -lcurl -lmsgpackc -L/usr/include/glib-2.0 -lglib-2.0
 
 # DataModelTable (PR-161) & Memory Safety (PR-363) Test Suite
-t2parser_dynamictable_gtest_bin_CPPFLAGS = $(t2parser_gtest_bin_CPPFLAGS)
+t2parser_dynamictable_gtest_bin_CPPFLAGS = $(t2parser_gtest_bin_CPPFLAGS) -DENABLE_DYNAMIC_TABLE_SUPPORT
 
 t2parser_dynamictable_gtest_bin_SOURCES = t2parser_dynamictable_Test.cpp t2parserMock.cpp ../mocks/rdklogMock.cpp ../mocks/rbusMock.cpp ../../utils/vector.c ../../utils/t2common.c ../../utils/t2log_wrapper.c ../../t2parser/t2parserxconf.c ../../t2parser/t2parser.c ../mocks/profileStub.c ../../dcautil/legacyutils.c ../../utils/t2collection.c
 

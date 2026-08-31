@@ -94,7 +94,9 @@ typedef struct _Profile
     Vector *gMarkerList;
     Vector *topMarkerList;
     Vector *cachedReportList;
+#ifdef ENABLE_DYNAMIC_TABLE_SUPPORT
     Vector *dataModelTableList;   // List of DataModelTable
+#endif
     cJSON *jsonReportObj;
     pthread_t reportThread;
     pthread_mutex_t triggerCondMutex;
@@ -137,7 +139,7 @@ void updateMarkerComponentMap();
 
 hash_map_t *getProfileHashMap();
 
-void sendLogUploadInterruptToScheduler();
+void sendLogUploadInterruptToScheduler(bool isClearSeekMap);
 
 void NotifyTimeout(const char* profileName, bool isClearSeekMap);
 

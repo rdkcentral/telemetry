@@ -50,6 +50,7 @@ void freeParam(void *data)
     }
 }
 
+#ifdef ENABLE_DYNAMIC_TABLE_SUPPORT
 void freeDataModelParam(void *data)
 {
     if (data)
@@ -87,6 +88,7 @@ void freeDataModelTable(void *data)
         free(table);
     }
 }
+#endif
 
 void freeStaticParam(void *data)
 {
@@ -340,6 +342,7 @@ bool isWhoAmiEnabled(void)
     return whoami_support;
 }
 
+#ifdef ENABLE_DYNAMIC_TABLE_SUPPORT
 // Function to check if configured parameter matches actual RBUS parameter
 bool matchesParameter(const char* pattern, const char* paramName)
 {
@@ -386,6 +389,7 @@ bool matchesParameter(const char* pattern, const char* paramName)
 
     return (*pattern == '\0' && *paramName == '\0');
 }
+#endif
 
 int sanitize_string(const char *str)
 {

@@ -29,6 +29,9 @@
 #include "t2common.h"
 #include "dcautil.h"
 #include "busInterface.h"
+#ifdef SUPPORT_TYPING_FIELDS
+#include <strings.h>
+#endif
 
 static bool checkForEmptyString( char* valueString )
 {
@@ -153,6 +156,52 @@ void trimLeadingAndTrailingws(char* string)
 
 }
 
+#ifdef SUPPORT_TYPING_FIELDS
+static cJSON* addTypedParamValueToObject(cJSON *object, const char *name, tr181ValStruct_t *paramValue)
+{
+    if(object == NULL || name == NULL || paramValue == NULL)
+    {
+        return NULL;
+    }
+
+    switch(paramValue->type)
+    {
+    case TR181_TYPE_BOOLEAN:
+    {
+        bool boolValue = false;
+        if(paramValue->parameterValue &&
+                (strcasecmp(paramValue->parameterValue, "true") == 0 ||
+                 strcmp(paramValue->parameterValue, "1") == 0))
+        {
+            boolValue = true;
+        }
+        return cJSON_AddBoolToObject(object, name, boolValue);
+    }
+
+    case TR181_TYPE_INT:
+    case TR181_TYPE_LONG:
+        return cJSON_AddNumberToObject(object, name,
+                                       (double)strtoll(paramValue->parameterValue ? paramValue->parameterValue : "0", NULL, 10));
+
+    case TR181_TYPE_UNSIGNED:
+    case TR181_TYPE_UNSIGNED_LONG:
+        return cJSON_AddNumberToObject(object, name,
+                                       (double)strtoull(paramValue->parameterValue ? paramValue->parameterValue : "0", NULL, 10));
+
+    case TR181_TYPE_FLOAT:
+    case TR181_TYPE_DOUBLE:
+        return cJSON_AddNumberToObject(object, name,
+                                       strtod(paramValue->parameterValue ? paramValue->parameterValue : "0", NULL));
+
+    case TR181_TYPE_STRING:
+    case TR181_TYPE_DATETIME:
+    case TR181_TYPE_BASE64:
+    default:
+        return cJSON_AddStringToObject(object, name, paramValue->parameterValue ? paramValue->parameterValue : "");
+    }
+}
+#endif
+
 /**
  * @brief Apply regex pattern to a string value and update it in place
  * @param inputValue Pointer to the string value to process (will be modified)
@@ -249,6 +298,7 @@ cJSON* findOrCreateArrayItem(cJSON *array, int targetIndex)
     return newItem;
 }
 
+#ifdef ENABLE_DYNAMIC_TABLE_SUPPORT
 //Function to get the basePath like Device.WiFi.AccessPoint.
 int getBasePath(const char *input, char *basePath, size_t maxLength)
 {
@@ -338,6 +388,7 @@ DataModelTable *findTableByReference(Vector *dataModelTableList, const char *ful
     }
     return table;
 }
+#endif
 
 bool isDataModelTable(const char *paramName)
 {
@@ -348,6 +399,9 @@ bool isDataModelTable(const char *paramName)
 
 T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *paramValueList, Vector *dataModelTableList)
 {
+#ifndef ENABLE_DYNAMIC_TABLE_SUPPORT
+    (void)dataModelTableList;
+#endif
     if(valArray == NULL || paramNameList == NULL || paramValueList == NULL)
     {
         T2Error("Invalid or NULL arguments\n");
@@ -379,13 +433,24 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
                     T2Error("cJSON_CreateObject failed.. arrayItem is NULL \n");
                     return T2ERROR_FAILURE;
                 }
-                T2Info("Paramter was not successfully retrieved... \n");
+                T2Info("Parameter was not successfully retrieved... \n");
+#ifdef SUPPORT_TYPING_FIELDS
+                cJSON *nullItem = cJSON_CreateNull();
+                if(nullItem == NULL)
+                {
+                    T2Error("cJSON_CreateNull failed.\n");
+                    cJSON_Delete(arrayItem);
+                    return T2ERROR_FAILURE;
+                }
+                cJSON_AddItemToObject(arrayItem, param->name, nullItem);
+#else
                 if(cJSON_AddStringToObject(arrayItem, param->name, "NULL")  == NULL)
                 {
                     T2Error("cJSON_AddStringToObject failed.\n");
                     cJSON_Delete(arrayItem);
                     return T2ERROR_FAILURE;
                 }
+#endif
                 cJSON_AddItemToArray(valArray, arrayItem);
             }
             else
@@ -442,18 +507,28 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
                         }
                     }
 
+#ifdef SUPPORT_TYPING_FIELDS
+                    if(addTypedParamValueToObject(arrayItem, param->name, paramValues[0]) == NULL)
+                    {
+                        T2Error("addTypedParamValueToObject failed.\n");
+                        cJSON_Delete(arrayItem);
+                        return T2ERROR_FAILURE;
+                    }
+#else
                     if(cJSON_AddStringToObject(arrayItem, param->name, paramValues[0]->parameterValue)  == NULL)
                     {
                         T2Error("cJSON_AddStringToObject failed.\n");
                         cJSON_Delete(arrayItem);
                         return T2ERROR_FAILURE;
                     }
+#endif
                     cJSON_AddItemToArray(valArray, arrayItem);
                 }
             }
         }
         else
         {
+#ifdef ENABLE_DYNAMIC_TABLE_SUPPORT
             if (((dataModelTableList != NULL) && (Vector_Size(dataModelTableList) > 0)))
             {
                 int valIndex = 0;
@@ -556,9 +631,15 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
                                 if (nextToken == NULL)
                                 {
                                     // Adding final parameter
+#ifdef SUPPORT_TYPING_FIELDS
+                                    if (addTypedParamValueToObject(currentObject, token, paramValues[valIndex]) == NULL)
+                                    {
+                                        T2Error("addTypedParamValueToObject failed.\n");
+#else
                                     if (cJSON_AddStringToObject(currentObject, token, paramValues[valIndex]->parameterValue) == NULL)
                                     {
                                         T2Error("cJSON_AddStringToObject failed.\n");
+#endif
                                         if (parameterName)
                                         {
                                             free(parameterName);
@@ -711,6 +792,7 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
                 }
             }
             else
+#endif
             {
                 cJSON *valList = NULL;
                 cJSON *valItem = NULL;
@@ -773,9 +855,15 @@ T2ERROR encodeParamResultInJSON(cJSON *valArray, Vector *paramNameList, Vector *
                                 }
                             }
 
+#ifdef SUPPORT_TYPING_FIELDS
+                            if (addTypedParamValueToObject(valItem, paramValues[valIndex]->parameterName, paramValues[valIndex]) == NULL)
+                            {
+                                T2Error("addTypedParamValueToObject failed.\n");
+#else
                             if (cJSON_AddStringToObject(valItem, paramValues[valIndex]->parameterName, paramValues[valIndex]->parameterValue) == NULL)
                             {
                                 T2Error("cJSON_AddStringToObject failed\n");
+#endif
                                 cJSON_Delete(arrayItem);
                                 cJSON_Delete(valItem);
                                 return T2ERROR_FAILURE;

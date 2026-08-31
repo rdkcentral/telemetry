@@ -1890,46 +1890,106 @@ T2ERROR T2RbusConsumer(TriggerCondition *triggerCondition)
         T2Debug("Consumer: rbus_open failed: %d\n", rc);
         return T2ERROR_FAILURE;
     }
+
+    /* Exponential backoff retry with max 2 minutes total */
+    int backoffRetryTime = 0;
+    int c = 2;  /* Start at 2^2 - 1 = 3 seconds */
+    int retry_count = 0;
+    int total_elapsed = 0;
+    #define MAX_TOTAL_RETRY_TIME_SEC 120  /* 2 minutes total */
+
     snprintf(user_data, sizeof(user_data), "Not used");
-    if(strcmp(triggerCondition->oprator, "any") == 0)
+    do
     {
-        T2Debug("filterOperator %s , threshold %d \n", triggerCondition->oprator, triggerCondition->threshold);
-        rc = rbusEvent_Subscribe(
-                 t2bus_handle,
-                 triggerCondition->reference,
-                 triggerCondtionReceiveHandler,
-                 user_data,
-                 0);
-        if (rc != RBUS_ERROR_SUCCESS)
+        if(strcmp(triggerCondition->oprator, "any") == 0)
         {
-            T2Error(" %s Subscribe failed\n", __FUNCTION__);
-            ret = T2ERROR_FAILURE;
+            T2Debug("filterOperator %s , threshold %d \n", triggerCondition->oprator, triggerCondition->threshold);
+            rc = rbusEvent_Subscribe(
+                     t2bus_handle,
+                     triggerCondition->reference,
+                     triggerCondtionReceiveHandler,
+                     user_data,
+                     0);
+            if (rc != RBUS_ERROR_SUCCESS)
+            {
+                T2Error(" %s Subscribe failed\n", __FUNCTION__);
+                ret = T2ERROR_FAILURE;
+            }
+            else
+            {
+                triggerCondition->isSubscribed = true;
+                ret = T2ERROR_SUCCESS;  /* Reset on success */
+            }
         }
         else
         {
-            triggerCondition->isSubscribed = true;
+            T2Debug("Ex filterOperator %s ( %d ) , threshold %d \n", triggerCondition->oprator, filterOperator, triggerCondition->threshold);
+            rbusValue_Init(&filterValue);
+            rbusValue_SetInt32(filterValue, triggerCondition->threshold);
+            rbusFilter_InitRelation(&filter, filterOperator, filterValue);
+            subscription.filter = filter;
+            rc = rbusEvent_SubscribeEx(t2bus_handle, &subscription, 1, 0);
+            if (rc != RBUS_ERROR_SUCCESS)
+            {
+                T2Error(" %s SubscribeEx failed\n", __FUNCTION__);
+                ret = T2ERROR_FAILURE;
+            }
+            else
+            {
+                triggerCondition->isSubscribed = true;
+                ret = T2ERROR_SUCCESS;  /* Reset on success */
+            }
+            rbusValue_Release(filterValue);
+            rbusFilter_Release(filter);
         }
-    }
-    else
-    {
-        T2Debug("Ex filterOperator %s ( %d ) , threshold %d \n", triggerCondition->oprator, filterOperator, triggerCondition->threshold);
-        rbusValue_Init(&filterValue);
-        rbusValue_SetInt32(filterValue, triggerCondition->threshold);
-        rbusFilter_InitRelation(&filter, filterOperator, filterValue);
-        subscription.filter = filter;
-        rc = rbusEvent_SubscribeEx(t2bus_handle, &subscription, 1, 0);
-        if (rc != RBUS_ERROR_SUCCESS)
+
+        /* Retry logic with exponential backoff if subscription failed */
+        if(rc != RBUS_ERROR_SUCCESS && total_elapsed < MAX_TOTAL_RETRY_TIME_SEC)
         {
-            T2Error(" %s SubscribeEx failed\n", __FUNCTION__);
-            ret = T2ERROR_FAILURE;
+            /* Calculate exponential backoff: 2^c - 1 */
+            backoffRetryTime = (1 << c) - 1;
+
+            /* Cap this retry to not exceed total time limit */
+            if(total_elapsed + backoffRetryTime > MAX_TOTAL_RETRY_TIME_SEC)
+            {
+                backoffRetryTime = MAX_TOTAL_RETRY_TIME_SEC - total_elapsed;
+            }
+
+            if(backoffRetryTime > 0)
+            {
+                T2Info("%s :0 %s subscribe retry %d, backoff %d seconds (total elapsed: %d)\n",
+                       __FUNCTION__, triggerCondition->reference, retry_count + 1, backoffRetryTime, total_elapsed);
+                sleep(backoffRetryTime);
+                total_elapsed += backoffRetryTime;
+                retry_count++;
+                c++;  /* Increase for next exponential step */
+            }
+            else
+            {
+                T2Error(" %s Subscribe failed for %s after %d seconds, giving up\n",
+                        __FUNCTION__, triggerCondition->reference, total_elapsed);
+                break;
+            }
+        }
+        else if(rc == RBUS_ERROR_SUCCESS && retry_count > 0)
+        {
+            T2Info("%s :0 %s subscribe retries succeeded after %d attempts (%d seconds total)\n",
+                   __FUNCTION__, triggerCondition->reference, retry_count, total_elapsed);
+            break;
         }
         else
         {
-            triggerCondition->isSubscribed = true;
+            break;
         }
-        rbusValue_Release(filterValue);
-        rbusFilter_Release(filter);
+    } while(total_elapsed < MAX_TOTAL_RETRY_TIME_SEC);
+
+    /* Log final result if still failing after all retries */
+    if(ret == T2ERROR_FAILURE)
+    {
+        T2Error(" %s Subscribe failed for %s after %d retries (%d seconds total), giving up\n",
+                __FUNCTION__, triggerCondition->reference, retry_count, total_elapsed);
     }
+
     return ret;
 }
 

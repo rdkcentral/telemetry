@@ -1819,50 +1819,22 @@ T2ERROR registerTriggerConditionConsumer()
 {
 
     T2Debug("%s ++in\n", __FUNCTION__);
-#define MAX_RETRY_COUNT 3
     size_t profileIndex = 0;
-    int retry_count = 0;
-    int retry = 0;
-    int timer = 16;
     int ret = T2ERROR_SUCCESS;
     Profile *tempProfile = NULL;
 
-    while(retry_count <= MAX_RETRY_COUNT)
+    pthread_rwlock_rdlock(&profileListLock);
+    for(profileIndex = 0; profileIndex < Vector_Size(profileList); profileIndex++)
     {
-        pthread_rwlock_rdlock(&profileListLock);
-        profileIndex = 0;
-        for(; profileIndex < Vector_Size(profileList); profileIndex++)
+        tempProfile = (Profile *)Vector_At(profileList, profileIndex);
+        if(tempProfile->triggerConditionList)
         {
-            tempProfile = (Profile *)Vector_At(profileList, profileIndex);
-            if(tempProfile->triggerConditionList)
-            {
-                ret = rbusT2ConsumerReg(tempProfile->triggerConditionList);
-                T2Debug("rbusT2ConsumerReg return = %d\n", ret);
-                if(ret != T2ERROR_SUCCESS)
-                {
-                    retry = 1;
-                }
-            }
-
-        }
-        pthread_rwlock_unlock(&profileListLock);
-        if(retry == 1)
-        {
-            if(retry_count >= MAX_RETRY_COUNT)
-            {
-                break;
-            }
-            T2Debug("Retry Consumer Registration in %d sec\n", timer);
-            retry_count++;
-            retry = 0;
-            sleep(timer);
-            timer = timer / 2;
-        }
-        else
-        {
-            break;
+            ret = rbusT2ConsumerReg(tempProfile->triggerConditionList);
+            T2Debug("rbusT2ConsumerReg return = %d\n", ret);
         }
     }
+    pthread_rwlock_unlock(&profileListLock);
+
     T2Debug("%s --out\n", __FUNCTION__);
     return ret;
 }

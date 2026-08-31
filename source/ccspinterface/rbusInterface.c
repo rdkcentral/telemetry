@@ -1160,6 +1160,7 @@ int getRbusDCMEventStatus()
     return dcmEventStatus;
 }
 
+#if defined(ENABLE_RDKC_SUPPORT)
 /*
  * Async subscription-response handler for the DCM reload config event.
  * With rbusEvent_SubscribeAsync the subscription is retried in the background
@@ -1187,6 +1188,7 @@ static void rbusDCMReloadSubscribeHandler(rbusHandle_t handle,
         T2Info("Async subscribe for %s succeeded\n", subscription->eventName);
     }
 }
+#endif /* ENABLE_RDKC_SUPPORT */
 
 T2ERROR registerRbusDCMEventListener()
 {
@@ -1217,6 +1219,7 @@ T2ERROR registerRbusDCMEventListener()
     }
 
     T2Debug("Subscribing to %s\n", T2_DCM_RELOAD_EVENT);
+#if defined(ENABLE_RDKC_SUPPORT)
     /*
      * Subscribe for the reload config event using the ASYNC variant so the
      * subscription is retried in the background until dcmd (the reload event
@@ -1232,6 +1235,16 @@ T2ERROR registerRbusDCMEventListener()
                                    rbusDCMReloadSubscribeHandler,
                                    NULL,
                                    0);
+#else
+    /* Non-RDKC DCMAGENT platforms rely on systemd unit ordering to guarantee
+     * dcmd is already up, so the original one-shot synchronous subscribe is
+     * preserved unchanged here. */
+    ret = rbusEvent_Subscribe(t2bus_handle,
+                              T2_DCM_RELOAD_EVENT,
+                              rbusReloadConf,
+                              NULL,
+                              0);
+#endif /* ENABLE_RDKC_SUPPORT */
     if(ret != RBUS_ERROR_SUCCESS)
     {
         T2Error("Failed to subscribe DCM reload event with rbus. Error code : %d\n", ret);

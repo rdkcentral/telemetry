@@ -42,6 +42,45 @@ static pthread_cond_t rbusMethodCond;
 static clockid_t rbusMethodCondClock = CLOCK_REALTIME;
 static bool rbusMethodCallbackDone = false;
 static bool isRbusMethod = false ;
+static rbusError_t gRbusAsyncRetStatus = RBUS_ERROR_BUS_ERROR;
+static int gParodusStatusCode = -1;
+static char gParodusErrMsg[256] = {0};
+
+typedef enum
+{
+    DELIVERED_SUCCESS = 0,
+    INVALID_MSG_TYPE,
+    MISSING_SOURCE,
+    MISSING_DEST,
+    MISSING_CONTENT_TYPE,
+    MISSING_PAYLOAD,
+    MISSING_PAYLOADLEN,
+    INVALID_CONTENT_TYPE,
+    ENQUEUE_FAILURE = 100,
+    CLIENT_DISCONNECT = 101,
+    QUEUE_SIZE_EXCEEDED = 102,
+    WRP_ENCODE_FAILURE = 103,
+    MSG_PROCESSING_FAILED = 104,
+    QOS_SEMANTICS_DISABLED = 105,
+    MSG_EXPIRED = 106,
+    QUEUE_OPTIMIZED = 107
+} XMIDT_STATUS;
+
+static int getIntOutParam(rbusObject_t params, const char* key, int* out)
+{
+    rbusValue_t val = NULL;
+    if(!params || !key || !out)
+    {
+        return -1;
+    }
+    rbusObject_GetValue(params, key, &val);
+    if(!val)
+    {
+        return -1;
+    }
+    *out = (int)rbusValue_GetInt32(val);
+    return 0;
+}
 
 static void sendOverRBUSMethodInit()
 {
@@ -85,7 +124,6 @@ static void sendOverRBUSMethodInit()
 static void asyncMethodHandler(rbusHandle_t handle, char const* methodName, rbusError_t retStatus, rbusObject_t params)
 {
     (void) handle;
-    (void) params;
 
     T2Info("T2 asyncMethodHandler called: %s with return error code  = %s \n", methodName, rbusError_ToString(retStatus));
 
@@ -93,6 +131,33 @@ static void asyncMethodHandler(rbusHandle_t handle, char const* methodName, rbus
      * This ensures no cross-thread unlock (which is UB for default mutexes)
      * and provides proper memory visibility for isRbusMethod. */
     pthread_mutex_lock(&rbusMethodMutex);
+    gRbusAsyncRetStatus = retStatus;
+    gParodusStatusCode = -1;
+    gParodusErrMsg[0] = '\0';
+    if(getIntOutParam(params, "status", &gParodusStatusCode) != 0)
+    {
+        if(getIntOutParam(params, "statusCode", &gParodusStatusCode) != 0)
+        {
+            (void)getIntOutParam(params, "statuscode", &gParodusStatusCode);
+        }
+    }
+    if(params)
+    {
+        rbusValue_t ev = NULL;
+        rbusObject_GetValue(params, "errorMessage", &ev);
+        if(!ev)
+        {
+            rbusObject_GetValue(params, "error_message", &ev);
+        }
+        if(ev)
+        {
+            const char* s = rbusValue_GetString(ev, NULL);
+            if(s)
+            {
+                snprintf(gParodusErrMsg, sizeof(gParodusErrMsg), "%s", s);
+            }
+        }
+    }
     if(retStatus == RBUS_ERROR_SUCCESS)
     {
         isRbusMethod = true ;
@@ -194,8 +259,23 @@ T2ERROR sendReportsOverRBUSMethod(char *methodName, Vector* inputParams, char* p
         }
         else if (rbusMethodCallbackDone)
         {
-            T2Info("Return status of send via rbusMethod is failure\n");
-            ret = T2ERROR_NO_RBUS_METHOD_PROVIDER;
+            T2Info("Return status of send via rbusMethod is failure: rbusRet=%s, statusCode=%d, errMsg=%s\n",
+                   rbusError_ToString(gRbusAsyncRetStatus),
+                   gParodusStatusCode,
+                   (gParodusErrMsg[0] ? gParodusErrMsg : "NA"));
+            /* Callback received => provider is up; don't classify as NO_RBUS_METHOD_PROVIDER. */
+            switch(gParodusStatusCode)
+            {
+                case QUEUE_SIZE_EXCEEDED:
+                case CLIENT_DISCONNECT:
+                case ENQUEUE_FAILURE:
+                case WRP_ENCODE_FAILURE:
+                case MSG_PROCESSING_FAILED:
+                case MSG_EXPIRED:
+                default:
+                    ret = T2ERROR_FAILURE;
+                    break;
+            }
         }
         else
         {

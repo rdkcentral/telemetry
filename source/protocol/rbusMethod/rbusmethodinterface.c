@@ -266,15 +266,15 @@ T2ERROR sendReportsOverRBUSMethod(char *methodName, Vector* inputParams, char* p
             /* Callback received => provider is up; don't classify as NO_RBUS_METHOD_PROVIDER. */
             switch(gParodusStatusCode)
             {
-                case QUEUE_SIZE_EXCEEDED:
-                case CLIENT_DISCONNECT:
-                case ENQUEUE_FAILURE:
-                case WRP_ENCODE_FAILURE:
-                case MSG_PROCESSING_FAILED:
-                case MSG_EXPIRED:
-                default:
-                    ret = T2ERROR_FAILURE;
-                    break;
+            case QUEUE_SIZE_EXCEEDED:
+            case CLIENT_DISCONNECT:
+            case ENQUEUE_FAILURE:
+            case WRP_ENCODE_FAILURE:
+            case MSG_PROCESSING_FAILED:
+            case MSG_EXPIRED:
+            default:
+                ret = T2ERROR_FAILURE;
+                break;
             }
         }
         else

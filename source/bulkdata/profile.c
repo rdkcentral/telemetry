@@ -1823,7 +1823,7 @@ T2ERROR registerTriggerConditionConsumer()
     size_t profileIndex = 0;
     int retry_count = 0;
     int retry = 0;
-    int timer = 16;
+    int timer = 60;
     int ret = T2ERROR_SUCCESS;
     Profile *tempProfile = NULL;
 
@@ -1856,7 +1856,6 @@ T2ERROR registerTriggerConditionConsumer()
             retry_count++;
             retry = 0;
             sleep(timer);
-            timer = timer / 2;
         }
         else
         {

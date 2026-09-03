@@ -756,7 +756,25 @@ static int report_or_cache_data(char* telemetry_data, const char* markerName)
  */
 void t2_init(char *component)
 {
-    componentName = strdup(component);
+    char *newComponentName = NULL;
+
+    if (component != NULL)
+    {
+        newComponentName = strdup(component);
+        if (newComponentName == NULL)
+        {
+            EVENT_ERROR("%s:%d Failed to allocate memory for component name\n", __func__, __LINE__);
+            return;
+        }
+    }
+
+    pthread_mutex_lock(&initMtx);
+    if (componentName != NULL)
+    {
+        free(componentName);
+    }
+    componentName = newComponentName;
+    pthread_mutex_unlock(&initMtx);
 }
 
 void t2_uninit(void)

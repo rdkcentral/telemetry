@@ -798,7 +798,7 @@ static void* CollectAndReport(void* data)
                             ret = sendReportsOverRBUSMethod(profile->t2RBUSDest->rbusMethodName, profile->t2RBUSDest->rbusMethodParamList, jsonReport);
                         }
                     }
-                    if((ret == T2ERROR_FAILURE && strcmp(profile->protocol, "HTTP") == 0) || ret == T2ERROR_NO_RBUS_METHOD_PROVIDER)
+                    if(ret == T2ERROR_FAILURE || ret == T2ERROR_NO_RBUS_METHOD_PROVIDER)
                     {
                         T2Debug("Vector list size = %lu\n",  (unsigned long) Vector_Size(profile->cachedReportList));
                         if(profile->cachedReportList != NULL && Vector_Size(profile->cachedReportList) >= MAX_CACHED_REPORTS)

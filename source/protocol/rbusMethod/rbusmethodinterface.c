@@ -73,7 +73,7 @@ static int getIntOutParam(rbusObject_t params, const char* key, int* out)
     {
         return -1;
     }
-    rbusObject_GetValue(params, key, &val);
+    val = rbusObject_GetValue(params, key);
     if(!val)
     {
         return -1;
@@ -144,10 +144,10 @@ static void asyncMethodHandler(rbusHandle_t handle, char const* methodName, rbus
     if(params)
     {
         rbusValue_t ev = NULL;
-        rbusObject_GetValue(params, "errorMessage", &ev);
+        ev = rbusObject_GetValue(params, "errorMessage");
         if(!ev)
         {
-            rbusObject_GetValue(params, "error_message", &ev);
+            ev = rbusObject_GetValue(params, "error_message");
         }
         if(ev)
         {

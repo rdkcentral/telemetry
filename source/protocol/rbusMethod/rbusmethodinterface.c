@@ -46,26 +46,6 @@ static rbusError_t gRbusAsyncRetStatus = RBUS_ERROR_BUS_ERROR;
 static int gParodusStatusCode = -1;
 static char gParodusErrMsg[256] = {0};
 
-typedef enum
-{
-    DELIVERED_SUCCESS = 0,
-    INVALID_MSG_TYPE,
-    MISSING_SOURCE,
-    MISSING_DEST,
-    MISSING_CONTENT_TYPE,
-    MISSING_PAYLOAD,
-    MISSING_PAYLOADLEN,
-    INVALID_CONTENT_TYPE,
-    ENQUEUE_FAILURE = 100,
-    CLIENT_DISCONNECT = 101,
-    QUEUE_SIZE_EXCEEDED = 102,
-    WRP_ENCODE_FAILURE = 103,
-    MSG_PROCESSING_FAILED = 104,
-    QOS_SEMANTICS_DISABLED = 105,
-    MSG_EXPIRED = 106,
-    QUEUE_OPTIMIZED = 107
-} XMIDT_STATUS;
-
 static int getIntOutParam(rbusObject_t params, const char* key, int* out)
 {
     rbusValue_t val = NULL;
@@ -264,18 +244,7 @@ T2ERROR sendReportsOverRBUSMethod(char *methodName, Vector* inputParams, char* p
                    gParodusStatusCode,
                    (gParodusErrMsg[0] ? gParodusErrMsg : "NA"));
             /* Callback received => provider is up; don't classify as NO_RBUS_METHOD_PROVIDER. */
-            switch(gParodusStatusCode)
-            {
-            case QUEUE_SIZE_EXCEEDED:
-            case CLIENT_DISCONNECT:
-            case ENQUEUE_FAILURE:
-            case WRP_ENCODE_FAILURE:
-            case MSG_PROCESSING_FAILED:
-            case MSG_EXPIRED:
-            default:
-                ret = T2ERROR_FAILURE;
-                break;
-            }
+            ret = T2ERROR_FAILURE;
         }
         else
         {

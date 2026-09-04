@@ -31,6 +31,10 @@
 #include <sys/wait.h>
 #include <curl/curl.h>
 #include <signal.h>
+#ifdef T2_ENABLE_STS_TS_TIMESTAMP
+#include <time.h>
+#include <cjson/cJSON.h>
+#endif
 
 #include "curlinterface.h"
 #include "reportprofiles.h"
@@ -73,6 +77,9 @@ typedef enum _ADDRESS_TYPE
 T2ERROR sendReportOverHTTP(char *httpUrl, char *payload)
 {
     T2ERROR ret = T2ERROR_FAILURE;
+#ifdef T2_ENABLE_STS_TS_TIMESTAMP
+    char *payloadWithSts = NULL;
+#endif
 
     T2Debug("%s ++in\n", __FUNCTION__);
     if(httpUrl == NULL || payload == NULL)
@@ -80,7 +87,50 @@ T2ERROR sendReportOverHTTP(char *httpUrl, char *payload)
         return ret;
     }
     // Use new dedicated POST API
+#ifdef T2_ENABLE_STS_TS_TIMESTAMP
+    cJSON *root = cJSON_Parse(payload);
+    if(root != NULL)
+    {
+        cJSON *report = cJSON_GetObjectItemCaseSensitive(root, "Report");
+        if(report != NULL && cJSON_IsArray(report))
+        {
+            struct timespec sendTime;
+            if(clock_gettime(CLOCK_REALTIME, &sendTime) == 0)
+            {
+                long long sendTimeMs =
+                    (long long)sendTime.tv_sec * 1000LL +
+                    sendTime.tv_nsec / 1000000LL;
+                cJSON *timestamp = cJSON_CreateObject();
+                if(timestamp != NULL)
+                {
+                    if(cJSON_AddNumberToObject(timestamp, "sts",
+                                              (double)sendTimeMs) != NULL)
+                    {
+                        if(cJSON_AddItemToArray(report, timestamp))
+                        {
+                            payloadWithSts = cJSON_PrintUnformatted(root);
+                        }
+                        else
+                        {
+                            cJSON_Delete(timestamp);
+                        }
+                    }
+                    else
+                    {
+                        cJSON_Delete(timestamp);
+                    }
+                }
+            }
+        }
+        cJSON_Delete(root);
+    }
+
+    ret = http_pool_post(httpUrl,
+                         payloadWithSts != NULL ? payloadWithSts : payload);
+    free(payloadWithSts);
+#else
     ret = http_pool_post(httpUrl, payload);
+#endif
 
     if(ret == T2ERROR_SUCCESS)
     {

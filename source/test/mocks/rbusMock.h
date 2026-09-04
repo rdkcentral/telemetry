@@ -26,7 +26,7 @@
 #include <rbus/rbus_value.h>
 
 typedef T2ERROR (*dataModelCallBack)(char* dataBlob, bool rprofiletypes);
-typedef void (*rbusMethodCallBackPtr) (rbusHandle_t handle, char const* methodName, rbusError_t retStatus, rbusObject_t params);
+typedef void (*rbusMethodCallBackPtr) (rbusHandle_t handle, char const* methodName, rbusError_t retStatus, rbusObject_t params, void* userData);
 class rbusMock
 {
 public:
@@ -76,7 +76,7 @@ public:
     MOCK_METHOD(void, rbusFilter_InitRelation, ( rbusFilter_t* filter, rbusFilter_RelationOperator_t op, rbusValue_t value), ());
     MOCK_METHOD(rbusError_t, rbusEvent_UnsubscribeEx, ( rbusHandle_t handle, rbusEventSubscription_t* subscriptions, int numSubscriptions), ());
     MOCK_METHOD(rbusError_t, rbusEvent_SubscribeEx, ( rbusHandle_t handle, rbusEventSubscription_t* subscription, int numSubscriptions, int timeout), ());
-    MOCK_METHOD(rbusError_t, rbusMethod_InvokeAsync, ( rbusHandle_t handle, char const* methodName, rbusObject_t inParams, rbusMethodAsyncRespHandler_t callback, int timeout), ());
+    MOCK_METHOD(rbusError_t, rbusMethod_InvokeAsync, ( rbusHandle_t handle, char const* methodName, rbusObject_t inParams, rbusMethodAsyncRespHandler_t callback, int timeout, void* userData), ());
     MOCK_METHOD(const char*, rbusError_ToString, (rbusError_t error), ());
     MOCK_METHOD(bool, rbusCheckMethodExists, (const char* methodName), ());
     MOCK_METHOD(void, rbusObject_SetPropertyString, (rbusObject_t object, char const* name, char const* s), ());
@@ -139,7 +139,7 @@ extern "C" rbusError_t rbusEvent_Publish( rbusHandle_t handle, rbusEvent_t* even
 extern "C" void rbusFilter_InitRelation( rbusFilter_t* filter, rbusFilter_RelationOperator_t op, rbusValue_t value);
 extern "C" rbusError_t rbusEvent_UnsubscribeEx( rbusHandle_t handle, rbusEventSubscription_t* subscriptions, int numSubscriptions);
 extern "C" rbusError_t rbusEvent_SubscribeEx( rbusHandle_t handle, rbusEventSubscription_t* subscription, int numSubscriptions, int timeout);
-extern "C" rbusError_t rbusMethod_InvokeAsync( rbusHandle_t handle, char const* methodName, rbusObject_t inParams, rbusMethodAsyncRespHandler_t callback, int timeout);
+extern "C" rbusError_t rbusMethod_InvokeAsync( rbusHandle_t handle, char const* methodName, rbusObject_t inParams, rbusMethodAsyncRespHandler_t callback, int timeout, void* userData);
 
 extern "C" const char* rbusError_ToString(rbusError_t error);
 extern "C" bool rbusCheckMethodExists(const char* methodName);

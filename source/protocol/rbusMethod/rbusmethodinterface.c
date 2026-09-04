@@ -82,10 +82,11 @@ static void sendOverRBUSMethodInit()
     }
 }
 
-static void asyncMethodHandler(rbusHandle_t handle, char const* methodName, rbusError_t retStatus, rbusObject_t params)
+static void asyncMethodHandler(rbusHandle_t handle, char const* methodName, rbusError_t retStatus, rbusObject_t params, void* userData)
 {
     (void) handle;
     (void) params;
+    (void) userData;
 
     T2Info("T2 asyncMethodHandler called: %s with return error code  = %s \n", methodName, rbusError_ToString(retStatus));
 

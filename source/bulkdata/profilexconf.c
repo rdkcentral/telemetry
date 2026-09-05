@@ -57,6 +57,19 @@ static bool reportThreadExits = false;
 static bool isAbortTriggered = false ;
 static bool isOnDemandReport = false ;
 
+static bool isEmptySubscriberValue(const char *value)
+{
+    if(value == NULL)
+    {
+        return true;
+    }
+    if(strlen(value) < 1 || value[0] == ' ' || strncmp(value, "NULL", 4) == 0)
+    {
+        return true;
+    }
+    return false;
+}
+
 #ifdef GTEST_ENABLE
 #define sendReportOverHTTP __wrap_sendReportOverHTTP
 #define sendCachedReportsOverHTTP __wrap_sendCachedReportsOverHTTP
@@ -1112,12 +1125,19 @@ T2ERROR ProfileXConf_storeMarkerEvent(T2Event *eventInfo)
             break;
 
         case MTYPE_XCONF_ACCUMULATE:
-            T2Debug("Marker type is ACCUMULATE Event Value : %s\n", eventInfo->value);
+        {
+            const char *safeValue = (eventInfo->value != NULL) ? eventInfo->value : "";
+            T2Debug("Marker type is ACCUMULATE Event Value : %s\n", safeValue);
+            if(!lookupEvent->reportEmptyParam && isEmptySubscriberValue(safeValue))
+            {
+                T2Debug("Skipping empty/null subscribe marker value for %s\n", lookupEvent->markerName);
+                break;
+            }
             arraySize = Vector_Size(lookupEvent->u.accumulatedValues);
             T2Debug("Current array size : %d \n", arraySize);
             if( arraySize < MAX_ACCUMULATE)
             {
-                Vector_PushBack(lookupEvent->u.accumulatedValues, strdup(eventInfo->value));
+                Vector_PushBack(lookupEvent->u.accumulatedValues, strdup(safeValue));
                 T2Debug("Sucessfully added value into vector New Size : %d\n", ++arraySize);
             }
             else if ( arraySize == MAX_ACCUMULATE )
@@ -1131,16 +1151,25 @@ T2ERROR ProfileXConf_storeMarkerEvent(T2Event *eventInfo)
                 T2Warning("Max size of the array has been reached Ignore New Value\n");
             }
             break;
+        }
 
         case MTYPE_XCONF_ABSOLUTE:
         default:
+        {
+            const char *safeValue = (eventInfo->value != NULL) ? eventInfo->value : "";
+            if(!lookupEvent->reportEmptyParam && isEmptySubscriberValue(safeValue))
+            {
+                T2Debug("Skipping empty/null subscribe marker value for %s\n", lookupEvent->markerName);
+                break;
+            }
             if(lookupEvent->u.markerValue)
             {
                 free(lookupEvent->u.markerValue);
             }
-            lookupEvent->u.markerValue = strdup(eventInfo->value);
+            lookupEvent->u.markerValue = strdup(safeValue);
             T2Debug("New marker value saved : %s\n", lookupEvent->u.markerValue);
             break;
+        }
         }
     }
     else

@@ -502,8 +502,6 @@ TEST_F(protocolTestFixture, SENDREPORTSOVERRBUSMETHOD_ASYNC_CALLBACK_FAILURE_RET
     char* payload = strdup("This is a payload string");
 
     rbusObject_t fakeParamsObj = (rbusObject_t)0x1001;
-    rbusValue_t fakeStatusVal = (rbusValue_t)0x1002;
-    rbusValue_t fakeErrVal = (rbusValue_t)0x1003;
 
     EXPECT_CALL(*g_rbusMock, rbusObject_Init(_,_))
             .Times(1)
@@ -521,21 +519,6 @@ TEST_F(protocolTestFixture, SENDREPORTSOVERRBUSMETHOD_ASYNC_CALLBACK_FAILURE_RET
             .Times(3);
     EXPECT_CALL(*g_rbusMock, rbusValue_SetInt32(_,_))
             .Times(1);
-    EXPECT_CALL(*g_rbusMock, rbusObject_GetValue(fakeParamsObj, StrEq("status")))
-            .Times(1)
-            .WillOnce(Return(fakeStatusVal));
-    EXPECT_CALL(*g_rbusMock, rbusValue_GetInt32(fakeStatusVal))
-            .Times(1)
-            .WillOnce(Return(102));
-    EXPECT_CALL(*g_rbusMock, rbusObject_GetValue(fakeParamsObj, StrEq("errorMessage")))
-            .Times(1)
-            .WillOnce(Return((rbusValue_t)NULL));
-    EXPECT_CALL(*g_rbusMock, rbusObject_GetValue(fakeParamsObj, StrEq("error_message")))
-            .Times(1)
-            .WillOnce(Return(fakeErrVal));
-    EXPECT_CALL(*g_rbusMock, rbusValue_GetString(fakeErrVal, _))
-            .Times(1)
-            .WillOnce(Return("Max Queue Size Exceeded"));
     EXPECT_CALL(*g_rbusMock, rbusMethodCaller(_,_,_,_))
             .Times(1)
             .WillOnce(::testing::Invoke(

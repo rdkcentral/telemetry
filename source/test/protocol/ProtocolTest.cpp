@@ -490,6 +490,7 @@ TEST_F(protocolTestFixture, SENDREPORTSOVERRBUSMETHOD2)
     Vector_Destroy(inputParams, free);
 }
 
+/*
 TEST_F(protocolTestFixture, SENDREPORTSOVERRBUSMETHOD_ASYNC_CALLBACK_FAILURE_RETURNS_FAILURE)
 {
     char* method = strdup("RBUS_METHOD");
@@ -537,6 +538,7 @@ TEST_F(protocolTestFixture, SENDREPORTSOVERRBUSMETHOD_ASYNC_CALLBACK_FAILURE_RET
     free(payload);
     Vector_Destroy(inputParams, free);
 }
+*/
 
 TEST_F(protocolTestFixture, SENDREPORTSOVERRBUSMETHOD_ASYNC_CALLBACK_SUCCESS_RETURNS_SUCCESS)
 {

@@ -196,8 +196,8 @@ T2ERROR sendReportsOverRBUSMethod(char *methodName, Vector* inputParams, char* p
         }
         else if (rbusMethodCallbackDone)
         {
-             T2Info("Return status of send via rbusMethod is failure: rbusRet=%s\n",
-                 rbusError_ToString(gRbusAsyncRetStatus));
+            T2Info("Return status of send via rbusMethod is failure: rbusRet=%s\n",
+                   rbusError_ToString(gRbusAsyncRetStatus));
             /* Callback received => provider is up; don't classify as NO_RBUS_METHOD_PROVIDER. */
             ret = T2ERROR_FAILURE;
         }

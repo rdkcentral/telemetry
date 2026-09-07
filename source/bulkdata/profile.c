@@ -1819,11 +1819,11 @@ T2ERROR registerTriggerConditionConsumer()
 {
 
     T2Debug("%s ++in\n", __FUNCTION__);
-#define MAX_RETRY_COUNT 3
+#define MAX_RETRY_COUNT 6
     size_t profileIndex = 0;
     int retry_count = 0;
     int retry = 0;
-    int timer = 16;
+    int timer = 30;
     int ret = T2ERROR_SUCCESS;
     Profile *tempProfile = NULL;
 
@@ -1856,7 +1856,6 @@ T2ERROR registerTriggerConditionConsumer()
             retry_count++;
             retry = 0;
             sleep(timer);
-            timer = timer / 2;
         }
         else
         {

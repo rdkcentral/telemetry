@@ -43,24 +43,6 @@ static clockid_t rbusMethodCondClock = CLOCK_REALTIME;
 static bool rbusMethodCallbackDone = false;
 static bool isRbusMethod = false ;
 static rbusError_t gRbusAsyncRetStatus = RBUS_ERROR_BUS_ERROR;
-static int gParodusStatusCode = -1;
-static char gParodusErrMsg[256] = {0};
-
-static int getIntOutParam(rbusObject_t params, const char* key, int* out)
-{
-    rbusValue_t val = NULL;
-    if(!params || !key || !out)
-    {
-        return -1;
-    }
-    val = rbusObject_GetValue(params, key);
-    if(!val)
-    {
-        return -1;
-    }
-    *out = (int)rbusValue_GetInt32(val);
-    return 0;
-}
 
 static void sendOverRBUSMethodInit()
 {
@@ -104,6 +86,7 @@ static void sendOverRBUSMethodInit()
 static void asyncMethodHandler(rbusHandle_t handle, char const* methodName, rbusError_t retStatus, rbusObject_t params)
 {
     (void) handle;
+    (void) params;
 
     T2Info("T2 asyncMethodHandler called: %s with return error code  = %s \n", methodName, rbusError_ToString(retStatus));
 
@@ -112,32 +95,6 @@ static void asyncMethodHandler(rbusHandle_t handle, char const* methodName, rbus
      * and provides proper memory visibility for isRbusMethod. */
     pthread_mutex_lock(&rbusMethodMutex);
     gRbusAsyncRetStatus = retStatus;
-    gParodusStatusCode = -1;
-    gParodusErrMsg[0] = '\0';
-    if(getIntOutParam(params, "status", &gParodusStatusCode) != 0)
-    {
-        if(getIntOutParam(params, "statusCode", &gParodusStatusCode) != 0)
-        {
-            (void)getIntOutParam(params, "statuscode", &gParodusStatusCode);
-        }
-    }
-    if(params)
-    {
-        rbusValue_t ev = NULL;
-        ev = rbusObject_GetValue(params, "errorMessage");
-        if(!ev)
-        {
-            ev = rbusObject_GetValue(params, "error_message");
-        }
-        if(ev)
-        {
-            const char* s = rbusValue_GetString(ev, NULL);
-            if(s)
-            {
-                snprintf(gParodusErrMsg, sizeof(gParodusErrMsg), "%s", s);
-            }
-        }
-    }
     if(retStatus == RBUS_ERROR_SUCCESS)
     {
         isRbusMethod = true ;
@@ -239,10 +196,8 @@ T2ERROR sendReportsOverRBUSMethod(char *methodName, Vector* inputParams, char* p
         }
         else if (rbusMethodCallbackDone)
         {
-            T2Info("Return status of send via rbusMethod is failure: rbusRet=%s, statusCode=%d, errMsg=%s\n",
-                   rbusError_ToString(gRbusAsyncRetStatus),
-                   gParodusStatusCode,
-                   (gParodusErrMsg[0] ? gParodusErrMsg : "NA"));
+             T2Info("Return status of send via rbusMethod is failure: rbusRet=%s\n",
+                 rbusError_ToString(gRbusAsyncRetStatus));
             /* Callback received => provider is up; don't classify as NO_RBUS_METHOD_PROVIDER. */
             ret = T2ERROR_FAILURE;
         }

@@ -17,40 +17,40 @@
  * limitations under the License.
  */
 
+#include "reportprofiles.h"
+#include <dirent.h>
+#include <fcntl.h>
+#include <limits.h>
 #include <pthread.h>
+#include <stddef.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
-#include <dirent.h>
-#include <stddef.h>
-#include <limits.h>
+#include <sys/resource.h>
+#include <sys/stat.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <sys/time.h>
-#include <sys/resource.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include "reportprofiles.h"
 
-#include "xconfclient.h"
-#include "t2collection.h"
 #include "persistence.h"
-#include "t2log_wrapper.h"
 #include "profile.h"
 #include "profilexconf.h"
+#include "t2collection.h"
 #include "t2eventreceiver.h"
+#include "t2log_wrapper.h"
+#include "xconfclient.h"
 #if defined(CCSP_SUPPORT_ENABLED)
 #include "t2_custom.h"
 #endif
-#include "scheduler.h"
-#include "t2markers.h"
+#include "busInterface.h"
 #include "datamodel.h"
 #include "msgpack.h"
-#include "busInterface.h"
+#include "persistence.h"
+#include "scheduler.h"
+#include "t2MtlsUtils.h"
+#include "t2markers.h"
 #include "t2parser.h"
 #include "telemetry2_0.h"
-#include "t2MtlsUtils.h"
-#include "persistence.h"
 #ifdef LIBRDKCERTSEL_BUILD
 #include "curlinterface.h"
 #endif
@@ -61,9 +61,8 @@
 
 #include "dcautil.h"
 
-
-//Including Webconfig Framework For Telemetry 2.0 As part of RDKB-28897
-#define SUBDOC_COUNT    1
+// Including Webconfig Framework For Telemetry 2.0 As part of RDKB-28897
+#define SUBDOC_COUNT 1
 #define SUBDOC_NAME "telemetry"
 #if defined(ENABLE_RDKB_SUPPORT)
 #define WEBCONFIG_BLOB_VERSION "/nvram/telemetry_webconfig_blob_version.txt"
@@ -73,13 +72,13 @@
 #define WEBCONFIG_BLOB_VERSION "/opt/telemetry_webconfig_blob_version.txt"
 #endif
 
-//Used in check_component_crash to inform Webconfig about telemetry component crash
+// Used in check_component_crash to inform Webconfig about telemetry component crash
 #define TELEMETRY_INIT_FILE_BOOTUP "/tmp/telemetry_initialized_bootup"
 
 #define MAX_PROFILENAMES_LENGTH 2048
-#define T2_VERSION_DATAMODEL_PARAM  "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.Version"
+#define T2_VERSION_DATAMODEL_PARAM "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.Version"
 
-//Timeout per profile for webconfig
+// Timeout per profile for webconfig
 #define MAXTIMEOUT_PERPROFILE 30
 
 #if defined(DROP_ROOT_PRIV)
@@ -93,13 +92,12 @@ static bool rpInitialized = false;
 static char *t2Version = NULL;
 
 pthread_mutex_t rpMutex = PTHREAD_MUTEX_INITIALIZER;
-T2ERROR RemovePreRPfromDisk(const char* path, hash_map_t *map);
+T2ERROR RemovePreRPfromDisk(const char *path, hash_map_t *map);
 static bool isT2MtlsEnable = false;
 static bool initT2MtlsEnable = false;
 struct rusage pusage;
 unsigned int profilemem = 0;
 bool previousLogCheck = false;
-
 
 #if defined(DROP_ROOT_PRIV)
 static void drop_root()
@@ -109,7 +107,7 @@ static void drop_root()
     T2Info("NonRoot feature is enabled, dropping root privileges for Telemetry 2.0 Process\n");
     init_capability();
     drop_root_caps(&appcaps);
-    if(update_process_caps(&appcaps) != -1)//CID 281096: Unchecked return value (CHECKED_RETURN)
+    if (update_process_caps(&appcaps) != -1) // CID 281096: Unchecked return value (CHECKED_RETURN)
     {
         read_capability(&appcaps);
     }
@@ -117,13 +115,13 @@ static void drop_root()
 #endif
 
 #if defined(FEATURE_SUPPORT_WEBCONFIG)
-uint32_t getTelemetryBlobVersion(char* subdoc)
+uint32_t getTelemetryBlobVersion(char *subdoc)
 {
     T2Debug("Inside getTelemetryBlobVersion subdoc %s \n", subdoc);
     uint32_t version = 0, ret = 0;
     FILE *file = NULL;
-    file = fopen(WEBCONFIG_BLOB_VERSION,  "r+");
-    if(file == NULL)
+    file = fopen(WEBCONFIG_BLOB_VERSION, "r+");
+    if (file == NULL)
     {
         T2Debug("Failed to read from /nvram/telemetry_webconfig_blob_version.txt \n");
     }
@@ -141,13 +139,12 @@ uint32_t getTelemetryBlobVersion(char* subdoc)
     return 0;
 }
 
-
-int setTelemetryBlobVersion(char* subdoc, uint32_t version)
+int setTelemetryBlobVersion(char *subdoc, uint32_t version)
 {
     T2Debug("Inside setTelemetryBlobVersion subdoc %s version %u \n", subdoc, version);
-    FILE* file  = NULL;
+    FILE *file = NULL;
     file = fopen(WEBCONFIG_BLOB_VERSION, "w+");
-    if(file != NULL)
+    if (file != NULL)
     {
         fprintf(file, "%u", version);
         T2Debug("New Version of Telemetry blob is %u\n", version);
@@ -161,15 +158,14 @@ int setTelemetryBlobVersion(char* subdoc, uint32_t version)
     return -1;
 }
 
-
 int tele_web_config_init()
 {
 
-    char *sub_docs[SUBDOC_COUNT + 1] = {SUBDOC_NAME, (char *) 0 };
+    char *sub_docs[SUBDOC_COUNT + 1] = {SUBDOC_NAME, (char *)0};
     blobRegInfo *blobData = NULL, *blobDataPointer = NULL;
     int i;
 
-    blobData = (blobRegInfo*) malloc(SUBDOC_COUNT * sizeof(blobRegInfo));
+    blobData = (blobRegInfo *)malloc(SUBDOC_COUNT * sizeof(blobRegInfo));
     if (blobData == NULL)
     {
         T2Error("%s: Malloc error\n", __FUNCTION__);
@@ -178,7 +174,7 @@ int tele_web_config_init()
     memset(blobData, 0, SUBDOC_COUNT * sizeof(blobRegInfo));
 
     blobDataPointer = blobData;
-    for (i = 0 ; i < SUBDOC_COUNT; i++)
+    for (i = 0; i < SUBDOC_COUNT; i++)
     {
         strncpy(blobDataPointer->subdoc_name, sub_docs[i], sizeof(blobDataPointer->subdoc_name) - 1);
         blobDataPointer++;
@@ -208,7 +204,7 @@ void ReportProfiles_Interrupt()
     // Interrupt the multi profile first as the DCADONE Flag is added from the xconf
     sendLogUploadInterruptToScheduler(isClearSeekMap);
 
-    char* xconfProfileName = NULL ;
+    char *xconfProfileName = NULL;
     if (ProfileXConf_isSet())
     {
         xconfProfileName = ProfileXconf_getName();
@@ -228,12 +224,12 @@ void ReportProfiles_Interrupt()
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
-void ReportProfiles_TimeoutCb(char* profileName, bool isClearSeekMap)
+void ReportProfiles_TimeoutCb(char *profileName, bool isClearSeekMap)
 {
     T2Info("%s ++in\n", __FUNCTION__);
 
     T2Info("calling ProfileXConf_isNameEqual function form %s and line %d\n", __FUNCTION__, __LINE__);
-    if(ProfileXConf_isNameEqual(profileName))
+    if (ProfileXConf_isNameEqual(profileName))
     {
         T2Debug("isclearSeekmap = %s \n", isClearSeekMap ? "true" : "false");
         ProfileXConf_notifyTimeout(isClearSeekMap, false);
@@ -247,14 +243,14 @@ void ReportProfiles_TimeoutCb(char* profileName, bool isClearSeekMap)
     T2Info("%s --out\n", __FUNCTION__);
 }
 
-void ReportProfiles_ActivationTimeoutCb(char* profileName)
+void ReportProfiles_ActivationTimeoutCb(char *profileName)
 {
     T2Info("%s ++in\n", __FUNCTION__);
 
     bool isDeleteRequired = false;
     T2Debug("calling ProfileXConf_isNameEqual function form %s and line %d\n", __FUNCTION__, __LINE__);
 
-    if(ProfileXConf_isNameEqual(profileName))
+    if (ProfileXConf_isNameEqual(profileName))
     {
         T2Error("ActivationTimeout received for Xconf profile. Ignoring!!!! \n");
     }
@@ -278,7 +274,7 @@ void ReportProfiles_ActivationTimeoutCb(char* profileName)
         T2ER_StopDispatchThread();
         clearT2MarkerComponentMap();
 
-        if(ProfileXConf_isSet())
+        if (ProfileXConf_isSet())
         {
             ProfileXConf_updateMarkerComponentMap();
         }
@@ -299,7 +295,7 @@ T2ERROR ReportProfiles_storeMarkerEvent(char *profileName, T2Event *eventInfo)
     T2Debug("%s ++in\n", __FUNCTION__);
     T2Debug("calling ProfileXConf_isNameEqual function form %s and line %d\n", __FUNCTION__, __LINE__);
 
-    if(ProfileXConf_isNameEqual(profileName))
+    if (ProfileXConf_isNameEqual(profileName))
     {
         ProfileXConf_storeMarkerEvent(eventInfo);
     }
@@ -315,7 +311,7 @@ T2ERROR ReportProfiles_storeMarkerEvent(char *profileName, T2Event *eventInfo)
 T2ERROR ReportProfiles_setProfileXConf(ProfileXConf *profile)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
-    if(T2ERROR_SUCCESS != ProfileXConf_set(profile))
+    if (T2ERROR_SUCCESS != ProfileXConf_set(profile))
     {
         T2Error("Failed to set XConf profile\n");
         return T2ERROR_FAILURE;
@@ -324,7 +320,7 @@ T2ERROR ReportProfiles_setProfileXConf(ProfileXConf *profile)
     T2ER_StopDispatchThread();
     // un-register and re-register Component Event List
     // This is done to support any new components added for events
-    if(isRbusEnabled())
+    if (isRbusEnabled())
     {
         unregisterDEforCompEventList();
         createComponentDataElements();
@@ -339,7 +335,7 @@ T2ERROR ReportProfiles_setProfileXConf(ProfileXConf *profile)
 T2ERROR ReportProfiles_deleteProfileXConf(ProfileXConf *profile)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
-    if(ProfileXConf_isSet())
+    if (ProfileXConf_isSet())
     {
         T2ER_StopDispatchThread();
 
@@ -357,42 +353,42 @@ T2ERROR ReportProfiles_addReportProfile(Profile *profile)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
 
-    if(T2ERROR_SUCCESS != addProfile(profile))
+    if (T2ERROR_SUCCESS != addProfile(profile))
     {
         T2Error("Failed to create/add new report profile : %s\n", profile->name);
         return T2ERROR_FAILURE;
     }
-    if(T2ERROR_SUCCESS != enableProfile(profile->name))
+    if (T2ERROR_SUCCESS != enableProfile(profile->name))
     {
         T2Error("Failed to enable profile : %s\n", profile->name);
         return T2ERROR_FAILURE;
     }
 
-    T2ER_StartDispatchThread(); //Error case can be ignored as Dispatch thread may be running already
+    T2ER_StartDispatchThread(); // Error case can be ignored as Dispatch thread may be running already
 
     T2Debug("%s --out\n", __FUNCTION__);
     return T2ERROR_SUCCESS;
 }
 
-T2ERROR ReportProfiles_deleteProfile(const char* profileName)
+T2ERROR ReportProfiles_deleteProfile(const char *profileName)
 {
 
     bool is_profile_enable = false;
     T2Debug("%s ++in\n", __FUNCTION__);
     is_profile_enable = isProfileEnabled(profileName);
 
-    if(T2ERROR_SUCCESS != deleteProfile(profileName))
+    if (T2ERROR_SUCCESS != deleteProfile(profileName))
     {
         T2Error("Failed to delete profile : %s\n", profileName);
         T2Debug("%s --out\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
-    if(is_profile_enable == true)
+    if (is_profile_enable == true)
     {
         T2ER_StopDispatchThread();
         clearT2MarkerComponentMap();
 
-        if(ProfileXConf_isSet())
+        if (ProfileXConf_isSet())
         {
             ProfileXConf_updateMarkerComponentMap();
         }
@@ -426,27 +422,28 @@ void T2totalmem_calculate()
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
-static void* reportOnDemand(void *input)
+static void *reportOnDemand(void *input)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
 
-    char* action = (char*) input;
-    if(!input)
+    char *action = (char *)input;
+    if (!input)
     {
         T2Warning("Input is NULL, no action specified \n");
-        return NULL ;
+        return NULL;
     }
 
     T2Debug("%s : action = %s \n", __FUNCTION__, action);
-    if(!strncmp(action, ON_DEMAND_ACTION_UPLOAD, MAX_PROFILENAMES_LENGTH))
+    if (!strncmp(action, ON_DEMAND_ACTION_UPLOAD, MAX_PROFILENAMES_LENGTH))
     {
         T2Info("Upload XCONF report on demand \n");
         generateDcaReport(false, true);
     }
-    else if(!strncmp(action, ON_DEMAND_ACTION_ABORT, MAX_PROFILENAMES_LENGTH))
+    else if (!strncmp(action, ON_DEMAND_ACTION_ABORT, MAX_PROFILENAMES_LENGTH))
     {
         T2Info("Abort report on demand\n");
-        T2Info("Abort of the on-demand report is no longer supported; fork-based report execution and termination have been removed\n");
+        T2Info("Abort of the on-demand report is no longer supported; fork-based report execution and termination have "
+               "been removed\n");
     }
     else
     {
@@ -457,12 +454,12 @@ static void* reportOnDemand(void *input)
     T2Debug("%s --out\n", __FUNCTION__);
 }
 
-T2ERROR privacymode_do_not_share ()
+T2ERROR privacymode_do_not_share()
 {
     T2Debug("%s ++in\n", __FUNCTION__);
 #ifndef DEVICE_EXTENDER
     stopXConfClient();
-    if(T2ERROR_SUCCESS == startXConfClient())
+    if (T2ERROR_SUCCESS == startXConfClient())
     {
         T2Info("XCONF Fetch with privacymode is enabled \n");
     }
@@ -480,13 +477,13 @@ T2ERROR privacymode_do_not_share ()
 T2ERROR initReportProfiles()
 {
     T2Debug("%s ++in\n", __FUNCTION__);
-    if(rpInitialized)
+    if (rpInitialized)
     {
         T2Error("%s ReportProfiles already initialized - ignoring\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
 #ifndef LIBRDKCERTSEL_BUILD
-    if(isMtlsEnabled() == true)
+    if (isMtlsEnabled() == true)
     {
         initMtls();
     }
@@ -498,18 +495,18 @@ T2ERROR initReportProfiles()
     drop_root();
 #endif
 
-    //Initialise the properties file RDK-58222
+    // Initialise the properties file RDK-58222
     T2InitProperties();
     T2Info("Initializing properties\n");
 
-#if defined (PRIVACYMODES_CONTROL)
-// Define scope
+#if defined(PRIVACYMODES_CONTROL)
+    // Define scope
     {
         DIR *dir = opendir(PRIVACYMODE_PATH);
-        if(dir == NULL)
+        if (dir == NULL)
         {
             T2Info("Persistence folder %s not present, creating folder\n", PRIVACYMODE_PATH);
-            if(mkdir(PRIVACYMODE_PATH, S_IRWXU | S_IRWXG | S_IRWXO) != 0)
+            if (mkdir(PRIVACYMODE_PATH, S_IRWXU | S_IRWXG | S_IRWXO) != 0)
             {
                 T2Error("%s,%d: Failed to make directory : %s  \n", __FUNCTION__, __LINE__, PRIVACYMODE_PATH);
             }
@@ -521,15 +518,14 @@ T2ERROR initReportProfiles()
     }
 #endif
 
-
 #ifdef PERSIST_LOG_MON_REF
-//Define scope
+    // Define scope
     {
         DIR *dir = opendir(SEEKFOLDER);
-        if(dir == NULL)
+        if (dir == NULL)
         {
             T2Info("SEEKMAP folder %s not present, creating folder\n", SEEKFOLDER);
-            if(mkdir(SEEKFOLDER, S_IRWXU | S_IRWXG | S_IRWXO) != 0)
+            if (mkdir(SEEKFOLDER, S_IRWXU | S_IRWXG | S_IRWXO) != 0)
             {
                 T2Error("%s,%d: Failed to make directory : %s  \n", __FUNCTION__, __LINE__, SEEKFOLDER);
             }
@@ -539,7 +535,6 @@ T2ERROR initReportProfiles()
             closedir(dir);
             previousLogCheck = true;
             T2Info("SEEKMAP folder is present notify the profiles for saved seekmap\n");
-
         }
     }
 #endif
@@ -554,7 +549,9 @@ T2ERROR initReportProfiles()
     bulkdata.maxNoOfParamReferences = MAX_PARAM_REFERENCES;
     bulkdata.maxReportSize = DEFAULT_MAX_REPORT_SIZE;
 
-    initScheduler((TimeoutNotificationCB)ReportProfiles_TimeoutCb, (ActivationTimeoutCB)ReportProfiles_ActivationTimeoutCb, (NotifySchedulerstartCB)NotifySchedulerstart);
+    initScheduler((TimeoutNotificationCB)ReportProfiles_TimeoutCb,
+                  (ActivationTimeoutCB)ReportProfiles_ActivationTimeoutCb,
+                  (NotifySchedulerstartCB)NotifySchedulerstart);
     initT2MarkerComponentMap();
     T2ER_Init();
 
@@ -570,13 +567,13 @@ T2ERROR initReportProfiles()
         if (T2ERROR_SUCCESS == datamodel_init())
         {
 #if defined(CCSP_SUPPORT_ENABLED)
-            if(isRbusEnabled())
+            if (isRbusEnabled())
 #endif
             {
                 T2Debug("Enabling datamodel for report profiles in RBUS mode \n");
                 callBackHandlers *interfaceListForBus = NULL;
-                interfaceListForBus = (callBackHandlers*) malloc(sizeof(callBackHandlers));
-                if(interfaceListForBus)
+                interfaceListForBus = (callBackHandlers *)malloc(sizeof(callBackHandlers));
+                if (interfaceListForBus)
                 {
                     interfaceListForBus->dmCallBack = datamodel_processProfile;
                     interfaceListForBus->dmMsgPckCallBackHandler = datamodel_MsgpackProcessProfile;
@@ -585,7 +582,7 @@ T2ERROR initReportProfiles()
                     interfaceListForBus->pmCallBack = profilemem_usage;
                     interfaceListForBus->reportonDemand = reportOnDemand;
                     interfaceListForBus->privacyModesDoNotShare = privacymode_do_not_share;
-                    interfaceListForBus->mprofilesdeleteDoNotShare =  deleteAllReportProfiles;
+                    interfaceListForBus->mprofilesdeleteDoNotShare = deleteAllReportProfiles;
                     regDEforProfileDataModel(interfaceListForBus);
 
                     free(interfaceListForBus);
@@ -600,17 +597,17 @@ T2ERROR initReportProfiles()
             {
                 // Register TR-181 DM for T2.0
                 T2Debug("Enabling datamodel for report profiles in DBUS mode \n");
-                if(0 != initTR181_dm())
+                if (0 != initTR181_dm())
                 {
                     T2Error("Unable to initialize TR181!!! \n");
                     datamodel_unInit();
                 }
             }
 #endif
-            // Message pack format is supported only for reportprofile which is activated only if version is set to 2.0.1
-            // Call webconfig init only when it is required and datamodel's have been initialized .
+            // Message pack format is supported only for reportprofile which is activated only if version is set
+            // to 2.0.1 Call webconfig init only when it is required and datamodel's have been initialized .
 #if defined(FEATURE_SUPPORT_WEBCONFIG)
-            if(tele_web_config_init() != 0)
+            if (tele_web_config_init() != 0)
             {
                 T2Error("Failed to intilize tele_web_config_init \n");
             }
@@ -618,16 +615,15 @@ T2ERROR initReportProfiles()
             {
                 T2Debug("tele_web_config_init Successful\n");
 
-                //Informing Webconfig about telemetry component crash
+                // Informing Webconfig about telemetry component crash
                 check_component_crash(TELEMETRY_INIT_FILE_BOOTUP);
 
-                //Touching TELEMETRY_INIT_FILE_BOOTUP during Bootup
+                // Touching TELEMETRY_INIT_FILE_BOOTUP during Bootup
                 system("touch /tmp/telemetry_initialized_bootup");
                 T2Debug(" %s Touched \n", TELEMETRY_INIT_FILE_BOOTUP);
             }
 #endif
-            //Web Config Framework init ends
-
+            // Web Config Framework init ends
         }
         else
         {
@@ -635,16 +631,16 @@ T2ERROR initReportProfiles()
         }
     }
 
-    if(ProfileXConf_isSet() || getProfileCount() > 0)
+    if (ProfileXConf_isSet() || getProfileCount() > 0)
     {
 
-        if(isRbusEnabled())
+        if (isRbusEnabled())
         {
             unregisterDEforCompEventList();
             createComponentDataElements();
-            FILE* cfgReadyFlag = NULL ;
+            FILE *cfgReadyFlag = NULL;
             cfgReadyFlag = fopen(T2_CONFIG_READY, "w+");
-            if(cfgReadyFlag)
+            if (cfgReadyFlag)
             {
                 fclose(cfgReadyFlag);
             }
@@ -653,14 +649,12 @@ T2ERROR initReportProfiles()
             getMarkerCompRbusSub(true);
         }
         T2ER_StartDispatchThread();
-
     }
 
-
     // This indicates telemetry has started
-    FILE* bootFlag = NULL ;
+    FILE *bootFlag = NULL;
     bootFlag = fopen(BOOTFLAG, "w+");
-    if(bootFlag)
+    if (bootFlag)
     {
         T2Debug("%s Touched \n", BOOTFLAG);
         fclose(bootFlag);
@@ -675,17 +669,16 @@ T2ERROR initReportProfiles()
     return T2ERROR_SUCCESS;
 }
 
-
 void generateDcaReport(bool isDelayed, bool isOnDemand)
 {
 
-    if(ProfileXConf_isSet())
+    if (ProfileXConf_isSet())
     {
         /**
          * Field requirement - Generate the first report at early stage after around 2 mins of stabilization during boot
          * This is to make it at par with legacy dca reporting pattern
          */
-        if(isDelayed)
+        if (isDelayed)
         {
             T2Info("Triggering XCONF report generation during boot with delay \n");
 #ifdef PERSIST_LOG_MON_REF
@@ -703,25 +696,24 @@ void generateDcaReport(bool isDelayed, bool isOnDemand)
     }
 }
 
-
-T2ERROR ReportProfiles_uninit( )
+T2ERROR ReportProfiles_uninit()
 {
     T2Debug("%s ++in\n", __FUNCTION__);
-    if(!rpInitialized)
+    if (!rpInitialized)
     {
         T2Error("%s ReportProfiles is not initialized yet - ignoring\n", __FUNCTION__);
         return T2ERROR_FAILURE;
     }
     rpInitialized = false;
-    if(isRbusEnabled())
+    if (isRbusEnabled())
     {
-        getMarkerCompRbusSub(false);    // remove Rbus subscription
+        getMarkerCompRbusSub(false); // remove Rbus subscription
     }
     T2ER_Uninit();
     destroyT2MarkerComponentMap();
     uninitScheduler();
 
-    if(t2Version && strcmp(t2Version, "2"))
+    if (t2Version && strcmp(t2Version, "2"))
     {
 #if defined(CCSP_SUPPORT_ENABLED)
         // Unregister TR-181 DM
@@ -738,16 +730,16 @@ T2ERROR ReportProfiles_uninit( )
     ProfileXConf_uninit();
 #endif
     free(bulkdata.protocols);
-    bulkdata.protocols = NULL ;
+    bulkdata.protocols = NULL;
     free(bulkdata.encodingTypes);
-    bulkdata.encodingTypes = NULL ;
+    bulkdata.encodingTypes = NULL;
 
     T2Debug("%s --out\n", __FUNCTION__);
     T2Info("Uninit ReportProfiles Successful\n");
     return T2ERROR_SUCCESS;
 }
 
-T2ERROR RemovePreRPfromDisk(const char* path, hash_map_t *map)
+T2ERROR RemovePreRPfromDisk(const char *path, hash_map_t *map)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
     struct dirent *entry;
@@ -761,17 +753,17 @@ T2ERROR RemovePreRPfromDisk(const char* path, hash_map_t *map)
     while ((entry = readdir(dir)) != NULL)
     {
         T2Info("Filename : %s \n", entry->d_name);
-        if((entry->d_name[0] == '.') || (strcmp(entry->d_name, "..") == 0))
+        if ((entry->d_name[0] == '.') || (strcmp(entry->d_name, "..") == 0))
         {
             continue;
         }
 
-        if(NULL == hash_map_get(map, entry->d_name))
+        if (NULL == hash_map_get(map, entry->d_name))
         {
-            T2Debug("%s : Removed %s report profile from the disk due to coming new report profile \n", __FUNCTION__, entry->d_name);
+            T2Debug("%s : Removed %s report profile from the disk due to coming new report profile \n", __FUNCTION__,
+                    entry->d_name);
             removeProfileFromDisk(REPORTPROFILES_PERSISTENCE_PATH, entry->d_name);
         }
-
     }
     closedir(dir);
     T2Debug("%s ++out\n", __FUNCTION__);
@@ -781,10 +773,10 @@ T2ERROR RemovePreRPfromDisk(const char* path, hash_map_t *map)
 static void freeProfilesHashMap(void *data)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
-    if(data != NULL)
+    if (data != NULL)
     {
-        hash_element_t *element = (hash_element_t *) data;
-        if(element->key)
+        hash_element_t *element = (hash_element_t *)data;
+        if (element->key)
         {
             T2Debug("Freeing hash entry element for Profiles object Name:%s\n", element->key);
             free(element->key);
@@ -803,7 +795,7 @@ static void freeReportProfileHashMap(void *data)
     T2Debug("%s ++in\n", __FUNCTION__);
     if (data != NULL)
     {
-        hash_element_t *element = (hash_element_t *) data;
+        hash_element_t *element = (hash_element_t *)data;
 
         if (element->key)
         {
@@ -830,7 +822,7 @@ static void freeReportProfileHashMap(void *data)
         }
 
         free(element);
-        element = NULL ;
+        element = NULL;
     }
     T2Debug("%s --out\n", __FUNCTION__);
 }
@@ -848,7 +840,7 @@ T2ERROR deleteAllReportProfiles()
 
     clearT2MarkerComponentMap();
 
-    if(ProfileXConf_isSet())
+    if (ProfileXConf_isSet())
     {
         ProfileXConf_updateMarkerComponentMap();
     }
@@ -869,16 +861,16 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
 {
 
     T2Debug("%s ++in\n", __FUNCTION__);
-    if(profiles_root == NULL)
+    if (profiles_root == NULL)
     {
         T2Error("Profile profiles_root is null . Unable to ReportProfiles_ProcessReportProfilesBlob \n");
         T2Debug("%s --out\n", __FUNCTION__);
         return;
     }
 #if defined(PRIVACYMODES_CONTROL)
-    char* paramValue = NULL;
+    char *paramValue = NULL;
     getPrivacyMode(&paramValue);
-    if(strcmp(paramValue, "DO_NOT_SHARE") == 0)
+    if (strcmp(paramValue, "DO_NOT_SHARE") == 0)
     {
         T2Warning("Privacy Mode is DO_NOT_SHARE. Reportprofiles is not supported\n");
         free(paramValue);
@@ -892,9 +884,9 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
     uint32_t profiles_count = cJSON_GetArraySize(profilesArray);
 
     T2Info("Number of report profiles in current configuration is %u \n", profiles_count);
-    if(profiles_count == 0)
+    if (profiles_count == 0)
     {
-        if(rprofiletypes == T2_TEMP_RP)
+        if (rprofiletypes == T2_TEMP_RP)
         {
             T2Info("Empty report profiles are not valid configuration for temporary report profiles. \n");
         }
@@ -910,36 +902,37 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
         return;
     }
 
-    char* profileName = NULL;
+    char *profileName = NULL;
     uint32_t profileIndex = 0;
 
     hash_map_t *profileHashMap = getProfileHashMap();
     hash_map_t *receivedProfileHashMap = hash_map_create();
     // Rbus subscription of Tr181 datamodel events
-    if(isRbusEnabled())
+    if (isRbusEnabled())
     {
         getMarkerCompRbusSub(false);
     }
 
     // Populate profile hash map for current configuration
-    for( profileIndex = 0; profileIndex < profiles_count; profileIndex++ )
+    for (profileIndex = 0; profileIndex < profiles_count; profileIndex++)
     {
-        cJSON* singleProfile = cJSON_GetArrayItem(profilesArray, profileIndex);
-        if(singleProfile == NULL)
+        cJSON *singleProfile = cJSON_GetArrayItem(profilesArray, profileIndex);
+        if (singleProfile == NULL)
         {
             T2Error("Incomplete profile information, unable to create profile for index %u \n", profileIndex);
             continue;
         }
 
-        cJSON* nameObj = cJSON_GetObjectItem(singleProfile, "name");
-        cJSON* hashObj = cJSON_GetObjectItem(singleProfile, "hash");
-        if(hashObj == NULL)
+        cJSON *nameObj = cJSON_GetObjectItem(singleProfile, "name");
+        cJSON *hashObj = cJSON_GetObjectItem(singleProfile, "hash");
+        if (hashObj == NULL)
         {
             hashObj = cJSON_GetObjectItem(singleProfile, "versionHash");
         }
-        cJSON* profileObj = cJSON_GetObjectItem(singleProfile, "value");
+        cJSON *profileObj = cJSON_GetObjectItem(singleProfile, "value");
 
-        if(nameObj == NULL || hashObj == NULL || profileObj == NULL || strcmp(nameObj->valuestring, "") == 0 || strcmp(hashObj->valuestring, "") == 0 )
+        if (nameObj == NULL || hashObj == NULL || profileObj == NULL || strcmp(nameObj->valuestring, "") == 0 ||
+            strcmp(hashObj->valuestring, "") == 0)
         {
             T2Error("Incomplete profile object information, unable to create profile\n");
             continue;
@@ -981,16 +974,17 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
     }
 
     bool rm_flag = false;
-    if(rprofiletypes == T2_RP)
+    if (rprofiletypes == T2_RP)
     {
 
-        while(count >= 0)
+        while (count >= 0)
         {
             profileNameKey = hash_map_lookupKey(profileHashMap, count--);
             T2Debug("%s Map content from disk = %s \n", __FUNCTION__, profileNameKey);
-            if(NULL == hash_map_get(receivedProfileHashMap, profileNameKey))
+            if (NULL == hash_map_get(receivedProfileHashMap, profileNameKey))
             {
-                T2Debug("%s Profile %s not present in current config . Remove profile from disk \n", __FUNCTION__, profileNameKey);
+                T2Debug("%s Profile %s not present in current config . Remove profile from disk \n", __FUNCTION__,
+                        profileNameKey);
                 removeProfileFromDisk(DirPath, profileNameKey);
                 T2Debug("%s Terminate profile %s \n", __FUNCTION__, profileNameKey);
                 ReportProfiles_deleteProfile(profileNameKey);
@@ -998,28 +992,29 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
             }
         }
 
-        if(T2ERROR_SUCCESS != RemovePreRPfromDisk(DirPath, receivedProfileHashMap))
+        if (T2ERROR_SUCCESS != RemovePreRPfromDisk(DirPath, receivedProfileHashMap))
         {
             T2Error("Failed to remove previous report profile from the disk\n");
         }
     }
-    if(isRbusEnabled())
+    if (isRbusEnabled())
     {
         unregisterDEforCompEventList();
     }
 
-    for( profileIndex = 0; profileIndex < hash_map_count(receivedProfileHashMap); profileIndex++ )
+    for (profileIndex = 0; profileIndex < hash_map_count(receivedProfileHashMap); profileIndex++)
     {
         ReportProfile *profileEntry = (ReportProfile *)hash_map_lookup(receivedProfileHashMap, profileIndex);
         profileName = hash_map_lookupKey(receivedProfileHashMap, profileIndex);
 
         char *existingProfileHash = hash_map_remove(profileHashMap, profileName);
-        if(existingProfileHash != NULL)
+        if (existingProfileHash != NULL)
         {
 
-            if(!strcmp(existingProfileHash, profileEntry->hash))
+            if (!strcmp(existingProfileHash, profileEntry->hash))
             {
-                T2Debug("%s Profile hash for %s is same as previous profile, ignore processing config\n", __FUNCTION__, profileName);
+                T2Debug("%s Profile hash for %s is same as previous profile, ignore processing config\n", __FUNCTION__,
+                        profileName);
                 free(existingProfileHash);
                 continue;
             }
@@ -1028,25 +1023,33 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
                 Profile *profile = 0;
                 free(existingProfileHash);
 
-                if(T2ERROR_SUCCESS == processConfiguration(&(profileEntry->config), profileName, profileEntry->hash, &profile))   //CHECK if process configuration should have locking mechanism
+                if (T2ERROR_SUCCESS ==
+                    processConfiguration(&(profileEntry->config), profileName, profileEntry->hash,
+                                         &profile)) // CHECK if process configuration should have locking mechanism
                 {
                     if (profile->reportOnUpdate)
                     {
-                        T2Info("%s Profile %s present in current config and hash value is different. Generating  cjson report for the profile. \n", __FUNCTION__, profileName);
+                        T2Info("%s Profile %s present in current config and hash value is different. Generating  cjson "
+                               "report for the profile. \n",
+                               __FUNCTION__, profileName);
                         NotifyTimeout(profileName, true);
                     }
-                    if(T2ERROR_SUCCESS != saveConfigToFile(DirPath, profile->name, profileEntry->config))
+                    if (T2ERROR_SUCCESS != saveConfigToFile(DirPath, profile->name, profileEntry->config))
                     {
                         T2Error("Unable to save profile : %s to disk\n", profile->name);
                     }
 
-                    if(T2ERROR_SUCCESS == ReportProfiles_deleteProfile(profile->name))
+                    if (T2ERROR_SUCCESS == ReportProfiles_deleteProfile(profile->name))
                     {
                         ReportProfiles_addReportProfile(profile);
-                        if(rprofiletypes == T2_RP)
+                        if (rprofiletypes == T2_RP)
                         {
                             rm_flag = true;
                         }
+                    }
+                    else
+                    {
+                        freeProfile(profile);
                     }
                 }
                 else
@@ -1065,16 +1068,18 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
             T2Debug("%s Previous entry for profile %s not found . Adding new profile.\n", __FUNCTION__, profileName);
             Profile *profile = 0;
 
-            if(T2ERROR_SUCCESS == processConfiguration(&(profileEntry->config), profileName, profileEntry->hash, &profile))   //CHECK if process configuration should have locking mechanism
+            if (T2ERROR_SUCCESS ==
+                processConfiguration(&(profileEntry->config), profileName, profileEntry->hash,
+                                     &profile)) // CHECK if process configuration should have locking mechanism
             {
 
-                if(T2ERROR_SUCCESS != saveConfigToFile(DirPath, profile->name, profileEntry->config))
+                if (T2ERROR_SUCCESS != saveConfigToFile(DirPath, profile->name, profileEntry->config))
                 {
                     T2Error("Unable to save profile : %s to disk\n", profile->name);
                 }
 
                 ReportProfiles_addReportProfile(profile);
-                if(rprofiletypes == T2_RP)
+                if (rprofiletypes == T2_RP)
                 {
                     rm_flag = true;
                 }
@@ -1095,10 +1100,10 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
         removeProfileFromDisk(DirPath, MSGPACK_REPORTPROFILES_PERSISTENT_FILE);
         T2Info("%s is removed from disk \n", MSGPACK_REPORTPROFILES_PERSISTENT_FILE);
     }
-    //To calculate the memory when the profiles are assigned
+    // To calculate the memory when the profiles are assigned
     T2totalmem_calculate();
 
-    if(isRbusEnabled())
+    if (isRbusEnabled())
     {
         createComponentDataElements();
         // Notify registered components that profile has received an update
@@ -1123,17 +1128,17 @@ pErr Process_Telemetry_WebConfigRequest(void *Data)
 {
     T2Info("FILE:%s\t FUNCTION:%s\t LINE:%d\n", __FILE__, __FUNCTION__, __LINE__);
     pErr execRetVal = NULL;
-    execRetVal = (pErr ) malloc (sizeof(Err));
+    execRetVal = (pErr)malloc(sizeof(Err));
     memset(execRetVal, 0, (sizeof(Err)));
     T2Info("FILE:%s\t FUNCTION:%s\t LINE:%d Execution in Handler, excuted \n", __FILE__, __FUNCTION__, __LINE__);
     T2Warning("Set canclable state to false");
     // no one should be able to cancle a thread executing telemetry code as it leaves it in inconsistent state
-    //int oldtype;
-    //pthread_setcanceltype(PTHREAD_CANCEL_DISABLE, &oldtype);
+    // int oldtype;
+    // pthread_setcanceltype(PTHREAD_CANCEL_DISABLE, &oldtype);
     // not using this as of now as the thread calling this can call free resources in such a case it will lead to crash
     int retval = __ReportProfiles_ProcessReportProfilesMsgPackBlob(Data, false);
-    //pthread_setcanceltype(oldtype,NULL);// do not restore now as we may get memleak from data
-    if(retval == T2ERROR_SUCCESS)
+    // pthread_setcanceltype(oldtype,NULL);// do not restore now as we may get memleak from data
+    if (retval == T2ERROR_SUCCESS)
     {
         execRetVal->ErrorCode = BLOB_EXEC_SUCCESS;
         return execRetVal;
@@ -1154,8 +1159,11 @@ size_t calculateTimeout(size_t numOfEntries)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
     int noOfProfilesInDevice = getProfileCount();
-    size_t timeOut = (noOfProfilesInDevice + 1) * MAXTIMEOUT_PERPROFILE * (numOfEntries + 1);//adding +1 to protect from any value being 0
-    T2Info("Timeout value for Webconfig is calculated with profile count : %d and maxtimeout per profile : %d is %zu \n", noOfProfilesInDevice, MAXTIMEOUT_PERPROFILE, timeOut);
+    size_t timeOut = (noOfProfilesInDevice + 1) * MAXTIMEOUT_PERPROFILE *
+                     (numOfEntries + 1); // adding +1 to protect from any value being 0
+    T2Info(
+        "Timeout value for Webconfig is calculated with profile count : %d and maxtimeout per profile : %d is %zu \n",
+        noOfProfilesInDevice, MAXTIMEOUT_PERPROFILE, timeOut);
     T2Debug("%s --out\n", __FUNCTION__);
     return timeOut;
 }
@@ -1200,7 +1208,7 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob, int msg
         return;
     }
     profiles_root = &result.data;
-    if(profiles_root == NULL)
+    if (profiles_root == NULL)
     {
         T2Error("Profile profiles_root is null . Unable to ReportProfiles_ProcessReportProfilesBlob \n");
         __msgpack_free_blob((void *)msgpack);
@@ -1228,7 +1236,8 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob, int msg
         __msgpack_free_blob((void *)msgpack);
         msgpack_unpacked_destroy(&result);
         T2Debug("%s --out\n", __FUNCTION__);
-        /* Return - further processing are only for webconfig framework which yet to be ported to generic layer from broadband */
+        /* Return - further processing are only for webconfig framework which yet to be ported to generic layer from
+         * broadband */
         return;
     }
 
@@ -1238,10 +1247,11 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob, int msg
     subdoc_version = (uint64_t)version->via.u64;
     transac_id = (uint16_t)transaction_id->via.u64;
     T2Debug("subdocversion is %llu transac_id in integer is %u"
-            " entry_count is %d \n", (long long unsigned int)subdoc_version, transac_id, entry_count);
+            " entry_count is %d \n",
+            (long long unsigned int)subdoc_version, transac_id, entry_count);
 
-    execDataPf = (execData*) malloc (sizeof(execData));
-    if ( NULL == execDataPf )
+    execDataPf = (execData *)malloc(sizeof(execData));
+    if (NULL == execDataPf)
     {
         T2Error("execData memory allocation failed\n");
         __msgpack_free_blob((void *)msgpack);
@@ -1254,14 +1264,15 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob, int msg
     execDataPf->txid = transac_id;
     execDataPf->version = (uint32_t)subdoc_version;
     execDataPf->numOfEntries = 1;
-    execDataPf->user_data = (void*)msgpack;
+    execDataPf->user_data = (void *)msgpack;
     execDataPf->calcTimeout = calculateTimeout;
     execDataPf->executeBlobRequest = Process_Telemetry_WebConfigRequest;
     execDataPf->rollbackFunc = NULL;
     execDataPf->freeResources = msgpack_free_blob;
     T2Debug("subdocversion is %d transac_id in integer is %d entry_count is %lu subdoc_name is %s"
-            " calcTimeout is %p\n", execDataPf->version, execDataPf->txid, (ulong) execDataPf->numOfEntries,
-            execDataPf->subdoc_name, execDataPf->calcTimeout);
+            " calcTimeout is %p\n",
+            execDataPf->version, execDataPf->txid, (ulong)execDataPf->numOfEntries, execDataPf->subdoc_name,
+            execDataPf->calcTimeout);
 
     PushBlobRequest(execDataPf);
     T2Debug("PushBlobRequest complete\n");
@@ -1273,11 +1284,11 @@ void ReportProfiles_ProcessReportProfilesMsgPackBlob(char *msgpack_blob, int msg
 
 int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkPreviousSeek)
 {
-    (void) checkPreviousSeek;
+    (void)checkPreviousSeek;
 #if defined(PRIVACYMODES_CONTROL)
-    char* paramValue = NULL;
+    char *paramValue = NULL;
     getPrivacyMode(&paramValue);
-    if(strcmp(paramValue, "DO_NOT_SHARE") == 0)
+    if (strcmp(paramValue, "DO_NOT_SHARE") == 0)
     {
         T2Warning("Privacy Mode is DO_NOT_SHARE. Reportprofiles is not supported\n");
         free(paramValue);
@@ -1307,7 +1318,7 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
         return T2ERROR_INVALID_ARGS;
     }
     profiles_root = &result.data;
-    if(profiles_root == NULL)
+    if (profiles_root == NULL)
     {
         T2Error("Profile profiles_root is null . Unable to ReportProfiles_ProcessReportProfilesBlob \n");
         T2Debug("%s --out\n", __FUNCTION__);
@@ -1318,7 +1329,7 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
     MSGPACK_GET_ARRAY_SIZE(profilesArray, profiles_count);
 
     T2Info("Number of report profiles in current configuration is %d \n", profiles_count);
-    if(profiles_count == 0)
+    if (profiles_count == 0)
     {
         T2Debug("Empty report profiles in configuration. Delete all active profiles. \n");
         if (T2ERROR_SUCCESS != deleteAllReportProfiles())
@@ -1340,7 +1351,7 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
     profileHashMap = getProfileHashMap();
 
     // Unregister the Component Subscriptions
-    if(isRbusEnabled())
+    if (isRbusEnabled())
     {
         getMarkerCompRbusSub(false);
     }
@@ -1358,14 +1369,14 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
     {
         count = (int)(hashmap_count - 1);
     }
-    while(count >= 0)
+    while (count >= 0)
     {
         profile_found_flag = false;
         profileNameKey = hash_map_lookupKey(profileHashMap, count--);
-        for( profileIndex = 0; profileIndex < profiles_count; profileIndex++ )
+        for (profileIndex = 0; profileIndex < profiles_count; profileIndex++)
         {
             singleProfile = msgpack_get_array_element(profilesArray, profileIndex);
-            msgpack_object* nameObj = msgpack_get_map_value(singleProfile, "name");
+            msgpack_object *nameObj = msgpack_get_map_value(singleProfile, "name");
             if (0 == msgpack_strcmp(nameObj, profileNameKey))
             {
                 T2Info("%s is found \n", profileNameKey);
@@ -1381,29 +1392,30 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
     }
 
     // Unregister the Component Event List
-    if(isRbusEnabled())
+    if (isRbusEnabled())
     {
         unregisterDEforCompEventList();
     }
 
     /* Populate profile hash map for current configuration */
-    for( profileIndex = 0; profileIndex < profiles_count; profileIndex++ )
+    for (profileIndex = 0; profileIndex < profiles_count; profileIndex++)
     {
         singleProfile = msgpack_get_array_element(profilesArray, profileIndex);
-        if(singleProfile == NULL)
+        if (singleProfile == NULL)
         {
             T2Error("Incomplete profile information, unable to create profile for index %d \n", profileIndex);
             continue;
         }
-        msgpack_object* nameObj = msgpack_get_map_value(singleProfile, "name");
-        msgpack_object* hashObj = msgpack_get_map_value(singleProfile, "hash");
+        msgpack_object *nameObj = msgpack_get_map_value(singleProfile, "name");
+        msgpack_object *hashObj = msgpack_get_map_value(singleProfile, "hash");
         if (hashObj == NULL)
         {
             T2Debug("Hash value is null checking for versionHash value \n");
             hashObj = msgpack_get_map_value(singleProfile, "versionHash");
         }
-        msgpack_object* profileObj = msgpack_get_map_value(singleProfile, "value");
-        if(nameObj == NULL || hashObj == NULL || profileObj == NULL || msgpack_strcmp(nameObj, "") == 0 || msgpack_strcmp(hashObj, "") == 0 )
+        msgpack_object *profileObj = msgpack_get_map_value(singleProfile, "value");
+        if (nameObj == NULL || hashObj == NULL || profileObj == NULL || msgpack_strcmp(nameObj, "") == 0 ||
+            msgpack_strcmp(hashObj, "") == 0)
         {
             T2Error("Incomplete profile object information, unable to create profile\n");
             continue;
@@ -1414,13 +1426,16 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
         Profile *profile = NULL;
         profileName = msgpack_strdup(nameObj);
         existingProfileHash = hash_map_remove(profileHashMap, profileName);
-        if(NULL == existingProfileHash)
+        if (NULL == existingProfileHash)
         {
-            if(T2ERROR_SUCCESS == processMsgPackConfiguration(singleProfile, &profile))
+            if (T2ERROR_SUCCESS == processMsgPackConfiguration(singleProfile, &profile))
             {
                 ReportProfiles_addReportProfile(profile);
 #ifdef PERSIST_LOG_MON_REF
-                if(checkPreviousSeek && profile->generateNow == false && profile->triggerConditionList == NULL && profile->grepSeekProfile && loadSavedSeekConfig(profile->name, profile->grepSeekProfile) == T2ERROR_SUCCESS && firstBootStatus() )
+                if (checkPreviousSeek && profile->generateNow == false && profile->triggerConditionList == NULL &&
+                    profile->grepSeekProfile &&
+                    loadSavedSeekConfig(profile->name, profile->grepSeekProfile) == T2ERROR_SUCCESS &&
+                    firstBootStatus())
                 {
                     T2Info("Previous seek is enabled for profile %s \n", profile->name);
                     profile->checkPreviousSeek = true;
@@ -1440,7 +1455,7 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
         }
         else
         {
-            if(0 == msgpack_strcmp(hashObj, existingProfileHash))
+            if (0 == msgpack_strcmp(hashObj, existingProfileHash))
             {
                 T2Info("Profile %s with %s hash already exist \n", profileName, existingProfileHash);
                 free(profileName);
@@ -1449,15 +1464,16 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
             }
             else
             {
-                if(T2ERROR_SUCCESS == processMsgPackConfiguration(singleProfile, &profile))
+                if (T2ERROR_SUCCESS == processMsgPackConfiguration(singleProfile, &profile))
                 {
-                    if(profile->reportOnUpdate)
+                    if (profile->reportOnUpdate)
                     {
-                        T2Info("%s Profile %s present in current config and hash value is different. Generating  cjson report for the profile. \n",
+                        T2Info("%s Profile %s present in current config and hash value is different. Generating  cjson "
+                               "report for the profile. \n",
                                __FUNCTION__, profileName);
                         NotifyTimeout(profileName, true);
                     }
-                    if(T2ERROR_SUCCESS == ReportProfiles_deleteProfile(profile->name))
+                    if (T2ERROR_SUCCESS == ReportProfiles_deleteProfile(profile->name))
                     {
                         ReportProfiles_addReportProfile(profile);
                         populateCachedReportList(profileName, profile->cachedReportList);
@@ -1473,13 +1489,13 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
     {
         clearPersistenceFolder(REPORTPROFILES_PERSISTENCE_PATH);
         T2Debug("Persistent folder is cleared\n");
-        MsgPackSaveConfig(REPORTPROFILES_PERSISTENCE_PATH, MSGPACK_REPORTPROFILES_PERSISTENT_FILE,
-                          msgpack_blob, msgpack_blob_size);
+        MsgPackSaveConfig(REPORTPROFILES_PERSISTENCE_PATH, MSGPACK_REPORTPROFILES_PERSISTENT_FILE, msgpack_blob,
+                          msgpack_blob_size);
         T2Debug("%s is saved on disk \n", MSGPACK_REPORTPROFILES_PERSISTENT_FILE);
     }
     T2totalmem_calculate();
 
-    if(isRbusEnabled())
+    if (isRbusEnabled())
     {
         createComponentDataElements();
         // Notify registered components that profile has received an update
@@ -1501,14 +1517,14 @@ bool isMtlsEnabled(void)
     isT2MtlsEnable = true;
     return true;
 #else
-#if !defined (ENABLE_RDKC_SUPPORT)
+#if !defined(ENABLE_RDKC_SUPPORT)
     char *paramValue = NULL;
 
-    if(initT2MtlsEnable == false)
+    if (initT2MtlsEnable == false)
     {
-        if(T2ERROR_SUCCESS == getParameterValue(T2_MTLS_RFC, &paramValue))
+        if (T2ERROR_SUCCESS == getParameterValue(T2_MTLS_RFC, &paramValue))
         {
-            if(paramValue != NULL && (strncasecmp(paramValue, "true", 4) == 0))
+            if (paramValue != NULL && (strncasecmp(paramValue, "true", 4) == 0))
             {
                 T2Debug("mTLS support is Enabled\n");
                 isT2MtlsEnable = true;
@@ -1522,12 +1538,12 @@ bool isMtlsEnabled(void)
             T2Error("getParameterValue failed\n");
         }
     }
-    if(isT2MtlsEnable != true)
+    if (isT2MtlsEnable != true)
     {
-        const char* returnPartnerInfo = isWhoAmiEnabled() ? TR181_DEVICE_PARTNER_ID : TR181_DEVICE_PARTNER_NAME;
-        if(T2ERROR_SUCCESS == getParameterValue(returnPartnerInfo, &paramValue))
+        const char *returnPartnerInfo = isWhoAmiEnabled() ? TR181_DEVICE_PARTNER_ID : TR181_DEVICE_PARTNER_NAME;
+        if (T2ERROR_SUCCESS == getParameterValue(returnPartnerInfo, &paramValue))
         {
-            if(paramValue != NULL && (strncasecmp(paramValue, "sky-uk", 6) == 0))
+            if (paramValue != NULL && (strncasecmp(paramValue, "sky-uk", 6) == 0))
             {
                 T2Debug("Enabling mTLS for sky-uk partner\n");
                 isT2MtlsEnable = true;
@@ -1537,7 +1553,7 @@ bool isMtlsEnabled(void)
             }
             else
             {
-                if(paramValue != NULL)
+                if (paramValue != NULL)
                 {
                     free(paramValue);
                 }
@@ -1554,19 +1570,10 @@ bool isMtlsEnabled(void)
 }
 
 #ifdef GTEST_ENABLE
-typedef void* (*reportOnDemandFunc)(void*);
-reportOnDemandFunc reportOnDemandFuncCallback(void)
-{
-    return reportOnDemand;
-}
+typedef void *(*reportOnDemandFunc)(void *);
+reportOnDemandFunc reportOnDemandFuncCallback(void) { return reportOnDemand; }
 typedef void (*freeProfilesHashMapFunc)(void *);
-freeProfilesHashMapFunc freeProfilesHashMapFuncCallback(void)
-{
-    return freeProfilesHashMap;
-}
+freeProfilesHashMapFunc freeProfilesHashMapFuncCallback(void) { return freeProfilesHashMap; }
 typedef void (*freeReportProfileHashMapFunc)(void *);
-freeReportProfileHashMapFunc freeReportProfileHashMapFuncCallback(void)
-{
-    return freeReportProfileHashMap;
-}
+freeReportProfileHashMapFunc freeReportProfileHashMapFuncCallback(void) { return freeReportProfileHashMap; }
 #endif

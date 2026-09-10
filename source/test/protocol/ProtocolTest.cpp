@@ -490,6 +490,102 @@ TEST_F(protocolTestFixture, SENDREPORTSOVERRBUSMETHOD2)
     Vector_Destroy(inputParams, free);
 }
 
+/*
+TEST_F(protocolTestFixture, SENDREPORTSOVERRBUSMETHOD_ASYNC_CALLBACK_FAILURE_RETURNS_FAILURE)
+{
+    char* method = strdup("RBUS_METHOD");
+    RBUSMethodParam *rbusMethodParam = (RBUSMethodParam *) malloc(sizeof(RBUSMethodParam));
+    rbusMethodParam->name = "Device.X_RDK_Xmidt.SendData";
+    rbusMethodParam->value = "This is a value string";
+    Vector* inputParams = NULL;
+    Vector_Create(&inputParams);
+    Vector_PushBack(inputParams, rbusMethodParam);
+    char* payload = strdup("This is a payload string");
+
+    rbusObject_t fakeParamsObj = (rbusObject_t)0x1001;
+
+    EXPECT_CALL(*g_rbusMock, rbusObject_Init(_,_))
+            .Times(1)
+            .WillOnce(Return((rbusObject_t)0xffffffff));
+    EXPECT_CALL(*g_rbusMock, rbusValue_Init(_))
+            .Times(3)
+            .WillOnce(Return((rbusValue_t)0xffffffff))
+            .WillOnce(Return((rbusValue_t)0xffffffff))
+            .WillOnce(Return((rbusValue_t)0xffffffff));
+    EXPECT_CALL(*g_rbusMock, rbusValue_SetString(_,_))
+            .Times(2);
+    EXPECT_CALL(*g_rbusMock, rbusObject_SetValue(_,_,_))
+            .Times(3);
+    EXPECT_CALL(*g_rbusMock, rbusValue_Release(_))
+            .Times(3);
+    EXPECT_CALL(*g_rbusMock, rbusValue_SetInt32(_,_))
+            .Times(1);
+    EXPECT_CALL(*g_rbusMock, rbusMethodCaller(_,_,_,_))
+            .Times(1)
+            .WillOnce(::testing::Invoke(
+                [fakeParamsObj](char *methodName, rbusObject_t* input, char* output, rbusMethodCallBackPtr rbusMethodCallBack) {
+                    (void)input;
+                    (void)output;
+                    rbusMethodCallBack(NULL, methodName, RBUS_ERROR_INVALID_RESPONSE_FROM_DESTINATION, fakeParamsObj);
+                    return T2ERROR_SUCCESS;
+                }));
+    EXPECT_CALL(*g_rbusMock, rbusObject_Release(_))
+            .Times(1);
+
+    EXPECT_EQ(T2ERROR_FAILURE, sendReportsOverRBUSMethod(method, inputParams, payload));
+
+    free(method);
+    free(payload);
+    Vector_Destroy(inputParams, free);
+}
+
+TEST_F(protocolTestFixture, SENDREPORTSOVERRBUSMETHOD_ASYNC_CALLBACK_SUCCESS_RETURNS_SUCCESS)
+{
+    char* method = strdup("RBUS_METHOD");
+    RBUSMethodParam *rbusMethodParam = (RBUSMethodParam *) malloc(sizeof(RBUSMethodParam));
+    rbusMethodParam->name = "Device.X_RDK_Xmidt.SendData";
+    rbusMethodParam->value = "This is a value string";
+    Vector* inputParams = NULL;
+    Vector_Create(&inputParams);
+    Vector_PushBack(inputParams, rbusMethodParam);
+    char* payload = strdup("This is a payload string");
+
+    EXPECT_CALL(*g_rbusMock, rbusObject_Init(_,_))
+            .Times(1)
+            .WillOnce(Return((rbusObject_t)0xffffffff));
+    EXPECT_CALL(*g_rbusMock, rbusValue_Init(_))
+            .Times(3)
+            .WillOnce(Return((rbusValue_t)0xffffffff))
+            .WillOnce(Return((rbusValue_t)0xffffffff))
+            .WillOnce(Return((rbusValue_t)0xffffffff));
+    EXPECT_CALL(*g_rbusMock, rbusValue_SetString(_,_))
+            .Times(2);
+    EXPECT_CALL(*g_rbusMock, rbusObject_SetValue(_,_,_))
+            .Times(3);
+    EXPECT_CALL(*g_rbusMock, rbusValue_Release(_))
+            .Times(3);
+    EXPECT_CALL(*g_rbusMock, rbusValue_SetInt32(_,_))
+            .Times(1);
+    EXPECT_CALL(*g_rbusMock, rbusMethodCaller(_,_,_,_))
+            .Times(1)
+            .WillOnce(::testing::Invoke(
+                [](char *methodName, rbusObject_t* input, char* output, rbusMethodCallBackPtr rbusMethodCallBack) {
+                    (void)input;
+                    (void)output;
+                    rbusMethodCallBack(NULL, methodName, RBUS_ERROR_SUCCESS, NULL);
+                    return T2ERROR_SUCCESS;
+                }));
+    EXPECT_CALL(*g_rbusMock, rbusObject_Release(_))
+            .Times(1);
+
+    EXPECT_EQ(T2ERROR_SUCCESS, sendReportsOverRBUSMethod(method, inputParams, payload));
+
+    free(method);
+    free(payload);
+    Vector_Destroy(inputParams, free);
+}
+*/
+
 TEST_F(protocolTestFixture, sendCachedReportsOverRBUSMethod)
 {
     char* method = strdup("RBUS_METHOD");

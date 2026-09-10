@@ -42,6 +42,7 @@ static pthread_cond_t rbusMethodCond;
 static clockid_t rbusMethodCondClock = CLOCK_REALTIME;
 static bool rbusMethodCallbackDone = false;
 static bool isRbusMethod = false ;
+static rbusError_t gRbusAsyncRetStatus = RBUS_ERROR_BUS_ERROR;
 
 static void sendOverRBUSMethodInit()
 {
@@ -93,6 +94,7 @@ static void asyncMethodHandler(rbusHandle_t handle, char const* methodName, rbus
      * This ensures no cross-thread unlock (which is UB for default mutexes)
      * and provides proper memory visibility for isRbusMethod. */
     pthread_mutex_lock(&rbusMethodMutex);
+    gRbusAsyncRetStatus = retStatus;
     if(retStatus == RBUS_ERROR_SUCCESS)
     {
         isRbusMethod = true ;
@@ -194,8 +196,10 @@ T2ERROR sendReportsOverRBUSMethod(char *methodName, Vector* inputParams, char* p
         }
         else if (rbusMethodCallbackDone)
         {
-            T2Info("Return status of send via rbusMethod is failure\n");
-            ret = T2ERROR_NO_RBUS_METHOD_PROVIDER;
+            T2Info("Return status of send via rbusMethod is failure: rbusRet=%s\n",
+                   rbusError_ToString(gRbusAsyncRetStatus));
+            /* Callback received => provider is up; don't classify as NO_RBUS_METHOD_PROVIDER. */
+            ret = T2ERROR_FAILURE;
         }
         else
         {

@@ -47,6 +47,8 @@
 #endif
 
 #define MAX_LEN 256
+#define COLLECTION_TIMESTAMP_NAME "ts"
+#define SEND_TIMESTAMP_NAME "sts"
 
 #ifdef GTEST_ENABLE
 #define sendReportOverHTTP __wrap_sendReportOverHTTP
@@ -124,6 +126,68 @@ static void* deleteProfileAsync(void *data)
 
     free(profileName);
     return NULL;
+}
+
+static bool isUnixEpochReportTimestampEnabled(const Profile *profile)
+{
+    return profile != NULL && profile->jsonEncoding != NULL &&
+           profile->jsonEncoding->tsFormat == TIMESTAMP_UNIXEPOCH;
+}
+
+static T2ERROR sendReportOverHTTPForProfile(const Profile *profile, char *httpUrl, char *payload)
+{
+    char *payloadWithSendTimestamp = NULL;
+    char *payloadToSend = payload;
+    T2ERROR ret = T2ERROR_FAILURE;
+
+    if(isUnixEpochReportTimestampEnabled(profile))
+    {
+        payloadWithSendTimestamp = addUnixEpochTimestampToReport(payload,
+                                                                 profile->RootName,
+                                                                 SEND_TIMESTAMP_NAME,
+                                                                 COLLECTION_TIMESTAMP_NAME);
+        if(payloadWithSendTimestamp != NULL)
+        {
+            payloadToSend = payloadWithSendTimestamp;
+        }
+        else
+        {
+            T2Warning("Failed to add sts for profile %s; sending the original payload\n",
+                      profile->name != NULL ? profile->name : "unknown");
+        }
+    }
+
+    ret = sendReportOverHTTP(httpUrl, payloadToSend);
+    cJSON_free(payloadWithSendTimestamp);
+    return ret;
+}
+
+static T2ERROR sendCachedReportsOverHTTPForProfile(Profile *profile, char *httpUrl)
+{
+    if(profile == NULL || httpUrl == NULL || profile->cachedReportList == NULL)
+    {
+        return T2ERROR_FAILURE;
+    }
+
+    if(!isUnixEpochReportTimestampEnabled(profile))
+    {
+        return sendCachedReportsOverHTTP(httpUrl, profile->cachedReportList);
+    }
+
+    while(Vector_Size(profile->cachedReportList) > 0)
+    {
+        char *payload = (char *)Vector_At(profile->cachedReportList, 0);
+        if(sendReportOverHTTPForProfile(profile, httpUrl, payload) != T2ERROR_SUCCESS)
+        {
+            T2Error("Failed to send cached report, left with %lu reports in cache \n",
+                    (unsigned long)Vector_Size(profile->cachedReportList));
+            return T2ERROR_FAILURE;
+        }
+        Vector_RemoveItem(profile->cachedReportList, payload, NULL);
+        free(payload);
+    }
+
+    return T2ERROR_SUCCESS;
 }
 
 void freeProfile(void *data)
@@ -569,35 +633,15 @@ static void* CollectAndReport(void* data)
                 {
                     cJSON_AddItemToArray(valArray, triggercondition);
                 }
-#ifdef T2_ENABLE_STS_TS_TIMESTAMP
-                /* Add the collection timestamp as a separate object in Report[]. */
-                if(valArray != NULL && cJSON_IsArray(valArray))
+                if(isUnixEpochReportTimestampEnabled(profile) &&
+                   valArray != NULL && cJSON_IsArray(valArray) &&
+                   cJSON_GetArraySize(valArray) > 0)
                 {
-                    struct timespec collectionTime;
-                    if(clock_gettime(CLOCK_REALTIME, &collectionTime) == 0)
+                    if(addUnixEpochTimestamp(valArray, COLLECTION_TIMESTAMP_NAME) != T2ERROR_SUCCESS)
                     {
-                        long long collectionTimeMs =
-                            (long long)collectionTime.tv_sec * 1000LL +
-                            collectionTime.tv_nsec / 1000000LL;
-                        cJSON *timestamp = cJSON_CreateObject();
-                        if(timestamp != NULL)
-                        {
-                            if(cJSON_AddNumberToObject(timestamp, "ts",
-                                                      (double)collectionTimeMs) != NULL)
-                            {
-                                if(!cJSON_AddItemToArray(valArray, timestamp))
-                                {
-                                    cJSON_Delete(timestamp);
-                                }
-                            }
-                            else
-                            {
-                                cJSON_Delete(timestamp);
-                            }
-                        }
+                        T2Warning("Failed to add ts for profile %s\n", profile->name);
                     }
                 }
-#endif
                 ret = prepareJSONReport(profile->jsonReportObj, &jsonReport);
                 destroyJSONReport(profile->jsonReportObj);
                 profile->jsonReportObj = NULL;
@@ -715,7 +759,7 @@ static void* CollectAndReport(void* data)
                             if(n == ETIMEDOUT)
                             {
                                 T2Info("TIMEOUT for maxUploadLatency of profile %s\n", profile->name);
-                                ret = sendReportOverHTTP(httpUrl, jsonReport);
+                                ret = sendReportOverHTTPForProfile(profile, httpUrl, jsonReport);
                             }
                             else if(n == 0)
                             {
@@ -762,7 +806,7 @@ static void* CollectAndReport(void* data)
                         }
                         else
                         {
-                            ret = sendReportOverHTTP(httpUrl, jsonReport);
+                            ret = sendReportOverHTTPForProfile(profile, httpUrl, jsonReport);
                         }
                     }
                     else
@@ -915,7 +959,7 @@ static void* CollectAndReport(void* data)
                         T2Info("Trying to send  %lu cached reports\n", (unsigned long )Vector_Size(profile->cachedReportList));
                         if(strcmp(profile->protocol, "HTTP") == 0)
                         {
-                            ret = sendCachedReportsOverHTTP(httpUrl, profile->cachedReportList);
+                            ret = sendCachedReportsOverHTTPForProfile(profile, httpUrl);
                         }
                         else
                         {
@@ -2149,5 +2193,3 @@ unsigned int getMinThresholdDuration(char *profileName)
     T2Debug("%s --out\n", __FUNCTION__);
     return minThresholdDuration;
 }
-
-

@@ -81,6 +81,13 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList);
 
 T2ERROR prepareJSONReport(cJSON* jsonObj, char** reportBuff);
 
+/* Adds a numeric millisecond Unix timestamp object to reportArray. */
+T2ERROR addUnixEpochTimestamp(cJSON *reportArray, const char *timestampName);
+
+/* Returns a cJSON-allocated payload that the caller must release with cJSON_free(). */
+char *addUnixEpochTimestampToReport(const char *payload, const char *rootName,
+                                    const char *timestampName, const char *minimumTimestampName);
+
 char *prepareHttpUrl(T2HTTP *http);
 
 void tagReportAsCached(char **jsonReport);

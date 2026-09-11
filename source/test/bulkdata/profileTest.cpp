@@ -85,6 +85,52 @@ protected:
     }
 };
 
+TEST(ReportTimestampTest, AddsNumericUnixEpochTimestamp)
+{
+    cJSON* reportArray = cJSON_CreateArray();
+    ASSERT_NE(nullptr, reportArray);
+
+    ASSERT_EQ(T2ERROR_SUCCESS, addUnixEpochTimestamp(reportArray, "ts"));
+    ASSERT_EQ(1, cJSON_GetArraySize(reportArray));
+
+    cJSON* timestampObject = cJSON_GetArrayItem(reportArray, 0);
+    cJSON* timestamp = cJSON_GetObjectItemCaseSensitive(timestampObject, "ts");
+    ASSERT_TRUE(cJSON_IsNumber(timestamp));
+    EXPECT_GT(timestamp->valuedouble, 0);
+
+    cJSON_Delete(reportArray);
+}
+
+TEST(ReportTimestampTest, AddsSendTimestampToCustomRoot)
+{
+    const char* payload = "{\"CustomRoot\":[{\"ts\":9999999999999}]}";
+    char* updatedPayload = addUnixEpochTimestampToReport(payload, "CustomRoot", "sts", "ts");
+    ASSERT_NE(nullptr, updatedPayload);
+
+    cJSON* root = cJSON_Parse(updatedPayload);
+    ASSERT_NE(nullptr, root);
+    cJSON* reportArray = cJSON_GetObjectItemCaseSensitive(root, "CustomRoot");
+    ASSERT_TRUE(cJSON_IsArray(reportArray));
+    ASSERT_EQ(2, cJSON_GetArraySize(reportArray));
+
+    cJSON* timestampObject = cJSON_GetArrayItem(reportArray, 1);
+    cJSON* timestamp = cJSON_GetObjectItemCaseSensitive(timestampObject, "sts");
+    ASSERT_TRUE(cJSON_IsNumber(timestamp));
+    EXPECT_EQ(timestamp->valuedouble, 9999999999999.0);
+
+    cJSON_Delete(root);
+    cJSON_free(updatedPayload);
+}
+
+TEST(ReportTimestampTest, InvalidPayloadsReturnNull)
+{
+    EXPECT_EQ(nullptr, addUnixEpochTimestampToReport("{", "Report", "sts", "ts"));
+    EXPECT_EQ(nullptr, addUnixEpochTimestampToReport("{}", "Report", "sts", "ts"));
+    EXPECT_EQ(nullptr, addUnixEpochTimestampToReport("{\"Report\":{}}", "Report", "sts", "ts"));
+    EXPECT_EQ(nullptr, addUnixEpochTimestampToReport("{\"Report\":[]}", "Report", "sts", "ts"));
+    EXPECT_EQ(nullptr, addUnixEpochTimestampToReport(nullptr, "Report", "sts", "ts"));
+}
+
 #if 1
 //comment
 //==================================== profile.c ===================
@@ -1491,4 +1537,3 @@ TEST_F(ProfileTest, createComponentDataElements) {
     EXPECT_CALL(*g_vectorMock, Vector_Size(_)).Times(::testing::AtMost(1)).WillRepeatedly(Return(0));
     createComponentDataElements();
 }
-

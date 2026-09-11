@@ -1666,6 +1666,112 @@ T2ERROR prepareJSONReport(cJSON* jsonObj, char** reportBuff)
     return T2ERROR_SUCCESS;
 }
 
+static T2ERROR addUnixEpochTimestampWithMinimum(cJSON *reportArray, const char *timestampName,
+                                                 double minimumTimestampMs)
+{
+    struct timespec currentTime;
+    cJSON *timestamp = NULL;
+    long long timestampMs = 0;
+    double timestampValue = 0;
+
+    if(reportArray == NULL || !cJSON_IsArray(reportArray) || timestampName == NULL)
+    {
+        return T2ERROR_INVALID_ARGS;
+    }
+
+    if(clock_gettime(CLOCK_REALTIME, &currentTime) != 0)
+    {
+        T2Warning("Failed to get Unix epoch timestamp\n");
+        return T2ERROR_FAILURE;
+    }
+
+    timestampMs = (long long)currentTime.tv_sec * 1000LL +
+                  currentTime.tv_nsec / 1000000LL;
+    timestampValue = (double)timestampMs;
+    if(timestampValue < minimumTimestampMs)
+    {
+        timestampValue = minimumTimestampMs;
+    }
+    timestamp = cJSON_CreateObject();
+    if(timestamp == NULL)
+    {
+        return T2ERROR_MEMALLOC_FAILED;
+    }
+
+    if(cJSON_AddNumberToObject(timestamp, timestampName, timestampValue) == NULL)
+    {
+        cJSON_Delete(timestamp);
+        return T2ERROR_MEMALLOC_FAILED;
+    }
+
+    if(!cJSON_AddItemToArray(reportArray, timestamp))
+    {
+        cJSON_Delete(timestamp);
+        return T2ERROR_FAILURE;
+    }
+
+    return T2ERROR_SUCCESS;
+}
+
+T2ERROR addUnixEpochTimestamp(cJSON *reportArray, const char *timestampName)
+{
+    return addUnixEpochTimestampWithMinimum(reportArray, timestampName, 0);
+}
+
+char *addUnixEpochTimestampToReport(const char *payload, const char *rootName,
+                                    const char *timestampName, const char *minimumTimestampName)
+{
+    cJSON *root = NULL;
+    cJSON *reportArray = NULL;
+    cJSON *reportItem = NULL;
+    cJSON *minimumTimestamp = NULL;
+    char *updatedPayload = NULL;
+
+    if(payload == NULL || rootName == NULL || timestampName == NULL)
+    {
+        return NULL;
+    }
+
+    root = cJSON_Parse(payload);
+    if(root == NULL)
+    {
+        return NULL;
+    }
+
+    reportArray = cJSON_GetObjectItemCaseSensitive(root, rootName);
+    if(reportArray == NULL || !cJSON_IsArray(reportArray))
+    {
+        cJSON_Delete(root);
+        return NULL;
+    }
+
+    if(minimumTimestampName != NULL)
+    {
+        cJSON_ArrayForEach(reportItem, reportArray)
+        {
+            cJSON *candidate = cJSON_GetObjectItemCaseSensitive(reportItem, minimumTimestampName);
+            if(cJSON_IsNumber(candidate))
+            {
+                minimumTimestamp = candidate;
+            }
+        }
+        if(minimumTimestamp == NULL)
+        {
+            cJSON_Delete(root);
+            return NULL;
+        }
+    }
+
+    double minimumTimestampMs = minimumTimestamp != NULL ? minimumTimestamp->valuedouble : 0;
+    if(addUnixEpochTimestampWithMinimum(reportArray, timestampName, minimumTimestampMs) == T2ERROR_SUCCESS)
+    {
+        updatedPayload = cJSON_PrintUnformatted(root);
+    }
+
+    cJSON_Delete(root);
+    return updatedPayload;
+}
+
 char *prepareHttpUrl(T2HTTP *http)
 {
     if(http == NULL)

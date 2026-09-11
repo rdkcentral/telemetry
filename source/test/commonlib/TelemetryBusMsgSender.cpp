@@ -24,6 +24,7 @@ extern "C" {
 #include "telemetry_busmessage_sender.h"
 
 T2ERROR getParamValue(const char* paramName, char **paramValue);
+void *cacheEventToFile(void *arg);
 }
 #include "../mocks/rbusMock.h"
 #include "../mocks/SystemMock.h"
@@ -63,6 +64,15 @@ protected:
     g_fileIOMock = nullptr;
     }
 };
+
+#ifdef GTEST_ENABLE
+extern "C" {
+    typedef T2ERROR (*doPopulateEventMarkerListFunc)(void);
+    doPopulateEventMarkerListFunc getDoPopulateEventMarkerListCallback(void);	
+    bool* test_get_isRbusEnabled_ptr(void);
+    bool* test_get_isT2Ready_ptr(void);
+}
+#endif
 
 // Positive test: Init and Uninit
 TEST_F(TelemetryBusmessageSenderTest, InitAndUninit) {
@@ -230,6 +240,75 @@ TEST_F(TelemetryBusmessageSenderTest, t2_event_s_iscachingenabled_false)
     EXPECT_EQ(ret, T2ERROR_SUCCESS);
 }
 
+TEST_F(TelemetryBusmessageSenderTest, t2_event_d_iscachingenabled_false)
+{
+    t2_init((char*)"sysint");
+    EXPECT_CALL(*g_systemMock, access(_,_))
+        .WillRepeatedly(Return(-1));
+    EXPECT_CALL(*g_rbusMock, rbus_getUint(_, _, _))
+            .Times(1)
+            .WillOnce([](rbusHandle_t handle, const char* name, uint32_t* value) {
+                *value = 0;
+                return RBUS_ERROR_BUS_ERROR;
+            });
+
+    int ret;
+    ret = t2_event_d("marker", 13);
+    EXPECT_EQ(ret, T2ERROR_SUCCESS);
+}
+
+TEST_F(TelemetryBusmessageSenderTest, t2_event_f_iscachingenabled_false)
+{
+    t2_init((char*)"sysint");
+    EXPECT_CALL(*g_systemMock, access(_,_))
+        .WillRepeatedly(Return(-1));
+    EXPECT_CALL(*g_rbusMock, rbus_getUint(_, _, _))
+            .Times(1)
+            .WillOnce([](rbusHandle_t handle, const char* name, uint32_t* value) {
+                *value = 0;
+                return RBUS_ERROR_BUS_ERROR;
+            });
+    int ret;
+    ret = t2_event_f("marker", 123.456);
+    EXPECT_EQ(ret, T2ERROR_SUCCESS);
+}
+
+TEST_F(TelemetryBusmessageSenderTest, t2_event_d_iscachingenabled_true)
+{
+    t2_init((char*)"sysint");
+
+    EXPECT_CALL(*g_systemMock, access(_,_))
+        .WillRepeatedly(Return(-1)); // Accept any number of calls
+
+    EXPECT_CALL(*g_rbusMock, rbus_getUint(_, _, _))
+        .Times(1)
+        .WillOnce([](rbusHandle_t handle, const char* name, uint32_t* value) {
+            *value = 0;
+            return RBUS_ERROR_SUCCESS; // <-- Simulate SUCCESS
+        });
+
+    int ret = t2_event_d("marker", 13);
+    EXPECT_EQ(ret, T2ERROR_SUCCESS);
+}
+TEST_F(TelemetryBusmessageSenderTest, t2_event_d_iscachingenabled_true_1)
+{
+    t2_init((char*)"sysinit");
+
+    EXPECT_CALL(*g_systemMock, access(_,_))
+        .WillRepeatedly(Return(-1)); // Accept any number of calls
+    EXPECT_CALL(*g_rbusMock, rbus_getUint(_, _, _))
+        .Times(1)
+        .WillOnce([](rbusHandle_t handle, const char* name, uint32_t* value) {
+            *value = 1;
+            return RBUS_ERROR_SUCCESS; // <-- Simulate SUCCESS
+        });
+    *test_get_isRbusEnabled_ptr() = false;
+    *test_get_isT2Ready_ptr() = true;
+    int ret = t2_event_d("marker", 13);
+
+    *test_get_isRbusEnabled_ptr() = true;
+    EXPECT_EQ(ret, T2ERROR_SUCCESS);
+}
 
 TEST_F(TelemetryBusmessageSenderTest, getParameterValue_success)
 {
@@ -270,6 +349,40 @@ TEST_F(TelemetryBusmessageSenderTest, getParameterValue_success_boolean)
   
     EXPECT_EQ(T2ERROR_SUCCESS, getParamValue("Device.DeviceInfo.SerialNumber", &paramValue));
 }
+
+TEST_F(TelemetryBusmessageSenderTest, getParameterValue_failure_boolean)
+{
+    char* paramValue = NULL;
+    t2_init((char*)"test_component");
+
+    EXPECT_CALL(*g_rbusMock, rbus_get(_, _, _))
+        .Times(1)
+        .WillOnce(Return(RBUS_ERROR_SUCCESS));
+    EXPECT_CALL(*g_rbusMock, rbusValue_GetType(_))
+        .Times(1)
+        .WillOnce(Return(RBUS_BOOLEAN));
+    EXPECT_CALL(*g_rbusMock, rbusValue_GetBoolean(_))
+        .Times(1)
+        .WillOnce(Return(false));
+    EXPECT_CALL(*g_rbusMock, rbusValue_Release(_))
+        .Times(1);
+
+    EXPECT_EQ(T2ERROR_SUCCESS, getParamValue("Device.DeviceInfo.SerialNumber", &paramValue));
+}
+
+#ifdef GTEST_ENABLE
+TEST_F(TelemetryBusmessageSenderTest, doPopulateEventMarkerList_ReturnsEarlyIfRbusDisabled) {
+    t2_init((char*)"test_component");
+
+    *test_get_isRbusEnabled_ptr() = false;
+
+    auto cb = getDoPopulateEventMarkerListCallback();
+    T2ERROR ret = cb();
+    EXPECT_EQ(ret, T2ERROR_SUCCESS);
+   *test_get_isRbusEnabled_ptr() = true;
+}
+#endif
+
 /*
 TEST_F(TelemetryBusmessageSenderTest, filtered_event_send_1)
 {

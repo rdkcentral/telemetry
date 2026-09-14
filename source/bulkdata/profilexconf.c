@@ -535,11 +535,20 @@ static void* CollectAndReportXconf(void* data)
         }
 
         // Notify status of upload in case of on demand report upload.
-        if(isOnDemandReport)
+        pthread_mutex_lock(&xconfProfileLock);
+        bool localIsOnDemandReport = isOnDemandReport;
+        bool localIsAbortTriggered = isAbortTriggered;
+        if(isAbortTriggered == true)
+        {
+            isAbortTriggered = false;
+        }
+        pthread_mutex_unlock(&xconfProfileLock);
+
+        if(localIsOnDemandReport)
         {
             if(ret == T2ERROR_FAILURE)
             {
-                if(isAbortTriggered)
+                if(localIsAbortTriggered)
                 {
                     publishReportUploadStatus("ABORTED");
                 }
@@ -552,12 +561,6 @@ static void* CollectAndReportXconf(void* data)
             {
                 publishReportUploadStatus("SUCCESS");
             }
-        }
-
-        // Reset the abort trigger flags
-        if(isAbortTriggered == true)
-        {
-            isAbortTriggered = false ;
         }
 
         /* CRITICAL SECTION START: Re-acquire xconfProfileLock before updating profile state.

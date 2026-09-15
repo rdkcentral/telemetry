@@ -811,7 +811,7 @@ static void* CollectAndReport(void* data)
                             ret = sendReportsOverRBUSMethod(profile->t2RBUSDest->rbusMethodName, profile->t2RBUSDest->rbusMethodParamList, jsonReport);
                         }
                     }
-                    if((ret == T2ERROR_FAILURE && strcmp(profile->protocol, "HTTP") == 0) || ret == T2ERROR_NO_RBUS_METHOD_PROVIDER)
+                    if(ret == T2ERROR_FAILURE || ret == T2ERROR_NO_RBUS_METHOD_PROVIDER)
                     {
                         T2Debug("Vector list size = %lu\n",  (unsigned long) Vector_Size(profile->cachedReportList));
                         if(profile->cachedReportList != NULL && Vector_Size(profile->cachedReportList) >= MAX_CACHED_REPORTS)
@@ -837,7 +837,7 @@ static void* CollectAndReport(void* data)
                         // Save messages from profile->cachedReportList to a file in persistent location .
                         saveCachedReportToPersistenceFolder(profile->name, profile->cachedReportList);
 
-                        if(strcmp(profile->protocol, "RBUS_METHOD") == 0)
+                        if(strcmp(profile->protocol, "RBUS_METHOD") == 0 && ret == T2ERROR_NO_RBUS_METHOD_PROVIDER)
                         {
                             profile->SendErr++;
                             if(profile->SendErr > 3 && !(rbusCheckMethodExists(profile->t2RBUSDest->rbusMethodName)))   //to delete the profile in the next CollectAndReport or triggercondition
@@ -887,6 +887,11 @@ static void* CollectAndReport(void* data)
                                 T2Info("%s --out\n", __FUNCTION__);
                                 goto reportThreadEnd;
                             }
+                        }
+                        else if(strcmp(profile->protocol, "RBUS_METHOD") == 0)
+                        {
+                            /* Only no-provider failures should contribute to profile deletion. */
+                            profile->SendErr = 0;
                         }
                     }
                     else if(profile->cachedReportList != NULL && Vector_Size(profile->cachedReportList) > 0)
@@ -1848,11 +1853,11 @@ T2ERROR registerTriggerConditionConsumer()
 {
 
     T2Debug("%s ++in\n", __FUNCTION__);
-#define MAX_RETRY_COUNT 3
+#define MAX_RETRY_COUNT 6
     size_t profileIndex = 0;
     int retry_count = 0;
     int retry = 0;
-    int timer = 16;
+    int timer = 30;
     int ret = T2ERROR_SUCCESS;
     Profile *tempProfile = NULL;
 
@@ -1885,7 +1890,6 @@ T2ERROR registerTriggerConditionConsumer()
             retry_count++;
             retry = 0;
             sleep(timer);
-            timer = timer / 2;
         }
         else
         {

@@ -264,11 +264,7 @@ void* T2ER_EventDispatchThread(void *arg)
         while(t2_queue_count(eQueue) == 0 && shouldContinue)
         {
             T2Debug("Event Queue size is 0, Waiting events from T2ER_Push\n");
-            int ret = pthread_cond_wait(&erCond, &erMutex);
-            if(ret != 0) // pthread cond wait failed return after unlock
-            {
-                T2Error("%s pthread_cond_wait failed with error code: %d\n", __FUNCTION__, ret);
-            }
+            pthread_cond_wait(&erCond, &erMutex); /* spurious wakeup handled by while loop */
             T2Debug("Received signal from T2ER_Push\n");
             // Release erMutex before acquiring sTDMutex to avoid lock order reversal and potential deadlock
             if(pthread_mutex_unlock(&erMutex) != 0)

@@ -268,6 +268,8 @@ void* T2ER_EventDispatchThread(void *arg)
             if(ret != 0) // pthread cond wait failed return after unlock
             {
                 T2Error("%s pthread_cond_wait failed with error code: %d\n", __FUNCTION__, ret);
+                pthread_mutex_unlock(&erMutex);
+                return NULL;
             }
             T2Debug("Received signal from T2ER_Push\n");
             // Release erMutex before acquiring sTDMutex to avoid lock order reversal and potential deadlock

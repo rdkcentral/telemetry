@@ -2070,8 +2070,13 @@ T2ERROR triggerReportOnCondtion(const char *referenceName, const char *reference
                                    triggerCondition->oprator, triggerCondition->threshold);
                             if(tempProfile->isSchedulerstarted)
                             {
-                                SendInterruptToTimeoutThread(tempProfilename, false);
-                                // triggerCondMutex will be unlocked by CollectAndReport after report generation
+                                T2ERROR sendRet = SendInterruptToTimeoutThread(tempProfilename, false);
+                                if(sendRet != T2ERROR_SUCCESS)
+                                {
+                                    // Handoff to CollectAndReport failed — unlock ourselves
+                                    pthread_mutex_unlock(&tempProfile->triggerCondMutex);
+                                }
+                                // On success, triggerCondMutex will be unlocked by CollectAndReport after report generation
                             }
                             else
                             {

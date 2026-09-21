@@ -70,6 +70,16 @@ static pthread_mutex_t FileCacheMutex ;
 static pthread_mutex_t markerListMutex ;
 static pthread_mutex_t loggerMutex ;
 
+
+ * Event markers are used as RBUS or CCSP parameter names. Keep validation
+ * private so the public telemetry API remains unchanged.
+ */
+static bool is_valid_event_marker(const char *marker)
+{
+    return marker != NULL && marker[0] != '\0';
+}
+
+
 static void EVENT_DEBUG(char* format, ...)
 {
 
@@ -789,7 +799,7 @@ T2ERROR t2_event_s(const char* marker, const char* value)
     }
     initMutex();
     pthread_mutex_lock(&sMutex);
-    if ( NULL == marker || NULL == value)
+    if (!is_valid_event_marker(marker) || value == NULL)
     {
         EVENT_ERROR("%s:%d Error in input parameters \n", __func__, __LINE__);
         pthread_mutex_unlock(&sMutex);
@@ -838,7 +848,7 @@ T2ERROR t2_event_f(const char* marker, double value)
 
     initMutex();
     pthread_mutex_lock(&fMutex);
-    if ( NULL == marker )
+    if (!is_valid_event_marker(marker))
     {
         EVENT_ERROR("%s:%d Error in input parameters \n", __func__, __LINE__);
         pthread_mutex_unlock(&fMutex);
@@ -882,7 +892,7 @@ T2ERROR t2_event_d(const char* marker, int value)
 
     initMutex();
     pthread_mutex_lock(&dMutex);
-    if ( NULL == marker )
+    if (!is_valid_event_marker(marker))
     {
         EVENT_ERROR("%s:%d Error in input parameters \n", __func__, __LINE__);
         pthread_mutex_unlock(&dMutex);

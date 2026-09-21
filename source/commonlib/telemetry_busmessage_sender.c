@@ -70,7 +70,7 @@ static pthread_mutex_t FileCacheMutex ;
 static pthread_mutex_t markerListMutex ;
 static pthread_mutex_t loggerMutex ;
 
-
+/*
  * Event markers are used as RBUS or CCSP parameter names. Keep validation
  * private so the public telemetry API remains unchanged.
  */

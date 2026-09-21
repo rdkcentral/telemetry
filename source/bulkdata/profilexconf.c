@@ -254,7 +254,7 @@ static void* CollectAndReportXconf(void* data)
         struct timespec endTime;
         struct timespec elapsedTime;
 
-
+        bool localIsOnDemandReport = isOnDemandReport;
 
         T2ERROR ret = T2ERROR_FAILURE;
         if(profile->name != NULL)
@@ -535,7 +535,7 @@ static void* CollectAndReportXconf(void* data)
         }
 
         // Notify status of upload in case of on demand report upload.
-        if(isOnDemandReport)
+        if(localIsOnDemandReport)
         {
             if(ret == T2ERROR_FAILURE)
             {

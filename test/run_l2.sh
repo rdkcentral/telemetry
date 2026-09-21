@@ -19,12 +19,15 @@
 # limitations under the License.
 ####################################################################################
 
-export top_srcdir=`pwd`
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+top_srcdir=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
+cd "$top_srcdir" || exit 1
 RESULT_DIR="/tmp/l2_test_report"
 mkdir -p "$RESULT_DIR"
 
 # ThreadSanitizer support (disabled by default, adds ~5-15x runtime overhead)
 ENABLE_TSAN=false
+final_result=0
 
 if ! grep -q "LOG_PATH=/opt/logs/" /etc/include.properties; then
     echo "LOG_PATH=/opt/logs/" >> /etc/include.properties
@@ -34,9 +37,13 @@ if ! grep -q "PERSISTENT_PATH=/opt/" /etc/include.properties; then
     echo "PERSISTENT_PATH=/opt/" >> /etc/include.properties
 fi
 
-gcc test/functional-tests/tests/app.c -o test/functional-tests/tests/t2_app -ltelemetry_msgsender -lt2utils
+if ! gcc test/functional-tests/tests/app.c \
+    -o test/functional-tests/tests/t2_app \
+    -ltelemetry_msgsender -lt2utils; then
+    echo "Failed to build the functional-test helper application."
+    exit 1
+fi
 
-final_result=0
 # removing --exitfirst flag as it is causing the test to exit after first failure
 pytest -v --json-report --json-report-summary --json-report-file $RESULT_DIR/runs_as_daemon.json test/functional-tests/tests/test_runs_as_daemon.py || final_result=1
 pytest -v --json-report --json-report-summary --json-report-file $RESULT_DIR/bootup_sequence.json test/functional-tests/tests/test_bootup_sequence.py || final_result=1

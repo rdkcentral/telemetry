@@ -86,6 +86,14 @@ TEST_F(TelemetryBusmessageSenderTest, SendStringEvent_NullComponent) {
     EXPECT_EQ(err, T2ERROR_COMPONENT_NULL);
 }
 
+ 
+TEST_F(TelemetryBusmessageSenderTest, SendStringEvent_EmptyMarker) {
+    t2_init((char*)"test_component");
+
+    EXPECT_EQ(T2ERROR_FAILURE, t2_event_s("", "value"));
+}
+
+
 // Negative test: t2_event_s with NULL marker
 /*
 TEST_F(TelemetryBusmessageSenderTest, SendStringEvent_NullMarker) {

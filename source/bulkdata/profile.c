@@ -2070,8 +2070,18 @@ T2ERROR triggerReportOnCondtion(const char *referenceName, const char *reference
                                    triggerCondition->oprator, triggerCondition->threshold);
                             if(tempProfile->isSchedulerstarted)
                             {
-                                SendInterruptToTimeoutThread(tempProfilename, false);
-                                // triggerCondMutex will be unlocked by CollectAndReport after report generation
+                                int sendRet = SendInterruptToTimeoutThread(tempProfilename, false);
+                                if(sendRet != 0)
+                                {
+                                    T2Info("For Profile %s SendInterruptToTimeoutThread failed, releasing lock\n", tempProfilename);
+                                    tempProfile->triggerReportOnCondition = false;
+                                    pthread_mutex_unlock(&tempProfile->triggerCondMutex);
+                                    if(tempProfile->callBackOnReportGenerationComplete)
+                                    {
+                                        tempProfile->callBackOnReportGenerationComplete(tempProfilename);
+                                    }
+                                }
+                                // On success: triggerCondMutex will be unlocked by CollectAndReport after report generation
                             }
                             else
                             {

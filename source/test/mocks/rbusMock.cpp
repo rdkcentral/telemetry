@@ -157,6 +157,15 @@ extern "C" bool rbusValue_GetBoolean(rbusValue_t value)
     return g_rbusMock->rbusValue_GetBoolean(value);
 }
 
+extern "C" int32_t rbusValue_GetInt32(rbusValue_t value)
+{
+    if (!g_rbusMock)
+    {
+        return 0;
+    }
+    return g_rbusMock->rbusValue_GetInt32(value);
+}
+
 extern "C" char const* rbusValue_GetString(rbusValue_t value, int* len)
 {
     if (!g_rbusMock)

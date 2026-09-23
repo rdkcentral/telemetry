@@ -74,6 +74,12 @@ static volatile sig_atomic_t g_sig_log_upload = 0;
 static volatile sig_atomic_t g_sig_log_upload_ondemand = 0;
 static volatile sig_atomic_t g_sig_reload = 0;
 
+/* signal-safe helpers: only touch sig_atomic_t */
+static inline void set_signal_flag(volatile sig_atomic_t *flag)
+{
+    *flag = 1;
+}
+
 T2ERROR initTelemetry()
 {
     T2ERROR ret = T2ERROR_FAILURE;
@@ -168,24 +174,24 @@ void sig_handler(int sig, siginfo_t* info, void* uc)
              * Force immediate exit.  _exit() is async-signal-safe. */
             _exit(1);
         }
-        g_sig_shutdown = 1;
+        set_signal_flag(&g_sig_shutdown);
     }
     else if ( sig == SIGUSR1 || sig == LOG_UPLOAD )
     {
-        g_sig_log_upload = 1;
+        set_signal_flag(&g_sig_log_upload);
     }
     else if ( sig == LOG_UPLOAD_ONDEMAND || sig == SIGIO )
     {
-        g_sig_log_upload_ondemand = 1;
+        set_signal_flag(&g_sig_log_upload_ondemand);
     }
     else if ( sig == SIGUSR2 || sig == EXEC_RELOAD )
     {
-        g_sig_reload = 1;
+        set_signal_flag(&g_sig_reload);
     }
     else
     {
         /* Unknown fatal signal — request shutdown */
-        g_sig_shutdown = 1;
+        set_signal_flag(&g_sig_shutdown);
     }
     errno = saved_errno;
 }
@@ -247,28 +253,37 @@ static void t2DaemonMainModeInit( )
      * in normal thread context, not in signal handler context. */
     while(1)
     {
-        if(g_sig_shutdown)
+        /* Snapshot-and-clear flags at top of loop.
+         * Safe because sig_atomic_t reads/writes are atomic w.r.t. signals. */
+        sig_atomic_t do_shutdown = g_sig_shutdown;
+        sig_atomic_t do_log_upload = g_sig_log_upload;
+        sig_atomic_t do_log_upload_ondemand = g_sig_log_upload_ondemand;
+        sig_atomic_t do_reload = g_sig_reload;
+
+        if (do_shutdown) g_sig_shutdown = 0;
+        if (do_log_upload) g_sig_log_upload = 0;
+        if (do_log_upload_ondemand) g_sig_log_upload_ondemand = 0;
+        if (do_reload) g_sig_reload = 0;
+
+        if(do_shutdown)
         {
             T2Info("Shutdown signal received, terminating\n");
             terminate();
             exit(0);
         }
-        if(g_sig_log_upload)
+        if(do_log_upload)
         {
-            g_sig_log_upload = 0;
             T2Info("LOG_UPLOAD received!\n");
             set_retainseekmap(false);
             ReportProfiles_Interrupt();
         }
-        if(g_sig_log_upload_ondemand)
+        if(do_log_upload_ondemand)
         {
-            g_sig_log_upload_ondemand = 0;
             T2Info("LOG_UPLOAD_ONDEMAND received!\n");
             ReportProfiles_Interrupt();
         }
-        if(g_sig_reload)
+        if(do_reload)
         {
-            g_sig_reload = 0;
             T2Info("EXEC_RELOAD signal received\n");
             {
                 int fd;
@@ -383,4 +398,3 @@ int main()
     t2DaemonMainModeInit();
     return 0;
 }
-

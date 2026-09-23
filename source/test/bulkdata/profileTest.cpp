@@ -89,6 +89,20 @@ protected:
 //comment
 //==================================== profile.c ===================
 
+TEST_F(ProfileTest, FreeProfile_CleansUpGrepSeekProfile) {
+    Profile *profile = (Profile *)calloc(1, sizeof(Profile));
+    ASSERT_NE(profile, nullptr);
+
+    profile->grepSeekProfile = createGrepSeekProfile(0);
+    if (profile->grepSeekProfile == nullptr)
+    {
+        freeProfile(profile);
+        FAIL() << "createGrepSeekProfile(0) failed";
+    }
+
+    freeProfile(profile);
+}
+
 // Test initProfileList
 TEST_F(ProfileTest, InitProfileList_Success) {
     const char* path = "/tmp/t2reportprofiles/";

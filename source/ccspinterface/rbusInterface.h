@@ -37,7 +37,7 @@ void publishReportUploadStatus(char* status);
 
 void setT2EventReceiveState(int T2_STATE);
 
-typedef void (*rbusMethodCallBackPtr) (rbusHandle_t handle, char const* methodName, rbusError_t retStatus, rbusObject_t params);
+typedef void (*rbusMethodCallBackPtr) (rbusHandle_t handle, char const* methodName, rbusError_t retStatus, rbusObject_t params, void* userData);
 
 T2ERROR getRbusParameterVal(const char* paramName, char **paramValue);
 

@@ -2101,16 +2101,17 @@ T2ERROR triggerReportOnCondtion(const char *referenceName, const char *reference
                             {
                                 SendInterruptToTimeoutThread(tempProfilename, false);
                                 // triggerCondMutex will be unlocked by CollectAndReport after report generation
+                                free(tempProfilename); //RDKB-42640
+                                return T2ERROR_SUCCESS ;
                             }
                             else
                             {
                                 T2Info("For Profile %s scheduler is not enabled yet so triggering the condition is ignored now\n", tempProfilename);
                                 tempProfile->triggerReportOnCondition = false;
                                 pthread_mutex_unlock(&tempProfile->triggerCondMutex);
-
+                                free(tempProfilename); //RDKB-42640
+                                return T2ERROR_SUCCESS ;
                             }
-                            free(tempProfilename); //RDKB-42640
-                            return T2ERROR_SUCCESS ;
                         }
                         else
                         {

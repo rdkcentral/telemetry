@@ -61,6 +61,16 @@
 #define EXEC_RELOAD 12
 #define LOG_UPLOAD_ONDEMAND 29
 
+/* Build version information injected by the build system (configure.ac).
+ * Fall back to "unknown" when the values are not provided so the source
+ * always compiles standalone. */
+#ifndef T2_BUILD_TAG
+#define T2_BUILD_TAG "unknown"
+#endif
+#ifndef T2_GIT_REVISION
+#define T2_GIT_REVISION "unknown"
+#endif
+
 sigset_t blocking_signal;
 
 static bool isDebugEnabled = true;
@@ -326,11 +336,32 @@ static int checkAnotherTelemetryInstance (void)
     return 0;
 }
 
-int main()
+static void printVersion(void)
+{
+    printf("Telemetry 2.0 | Tag: %s | Revision: %s\n", T2_BUILD_TAG, T2_GIT_REVISION);
+}
+
+int main(int argc, char *argv[])
 {
     pid_t process_id = 0;
     pid_t sid = 0;
+
+    /* Parse CLI arguments before any daemon initialization or fork() so that
+     * a query such as --version prints and exits without acquiring the lock
+     * file or spawning a process, leaving any running daemon untouched. */
+    for (int i = 1; i < argc; i++)
+    {
+        if (strcmp(argv[i], "--version") == 0 || strcmp(argv[i], "-v") == 0)
+        {
+            printVersion();
+            return 0;
+        }
+    }
+
     LOGInit();
+
+    /* Log the build version once at daemon startup for field diagnostics. */
+    T2Info("Telemetry 2.0 | Tag: %s | Revision: %s\n", T2_BUILD_TAG, T2_GIT_REVISION);
 
     /* Abort if another instance of telemetry2_0 is already running */
     if (checkAnotherTelemetryInstance())

@@ -25,12 +25,12 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/file.h>
-#include <fcntl.h>
 #include <errno.h>
 #include <string.h>
 #include <pthread.h>
 #include <signal.h>
 #include <curl/curl.h>
+
 #ifdef __GNUC__
 #ifndef _BUILD_ANDROID
 #ifdef __GLIBC__
@@ -38,6 +38,7 @@
 #endif
 #endif
 #endif
+
 #include "t2log_wrapper.h"
 #include "syslog.h"
 #include "reportprofiles.h"
@@ -56,7 +57,8 @@
 #endif
 
 #define MAX_PARAMETERNAME_LEN    512
-/*Define signals properly to make sure they don't get overide anywhere*/
+
+/* Define signals properly to make sure they don't get overridden anywhere. */
 #define LOG_UPLOAD 10
 #define EXEC_RELOAD 12
 #define LOG_UPLOAD_ONDEMAND 29
@@ -65,16 +67,18 @@ sigset_t blocking_signal;
 
 static bool isDebugEnabled = true;
 static int initcomplete = 0;
-static pid_t DAEMONPID; //static varible store the Main Pid
+static pid_t DAEMONPID; /* Static variable storing the main PID. */
 
-/* Signal-safe flags: sig_handler sets these; main loop dispatches.
- * volatile sig_atomic_t is the only type guaranteed safe from signal context. */
+/*
+ * Signal-safe flags: sig_handler sets these; main loop dispatches.
+ * volatile sig_atomic_t is the only type guaranteed safe from signal context.
+ */
 static volatile sig_atomic_t g_sig_shutdown = 0;
 static volatile sig_atomic_t g_sig_log_upload = 0;
 static volatile sig_atomic_t g_sig_log_upload_ondemand = 0;
 static volatile sig_atomic_t g_sig_reload = 0;
 
-/* signal-safe helpers: only touch sig_atomic_t */
+/* Signal-safe helper: only touches sig_atomic_t. */
 static inline void set_signal_flag(volatile sig_atomic_t *flag)
 {
     *flag = 1;
@@ -86,14 +90,16 @@ T2ERROR initTelemetry()
     T2Debug("%s ++in\n", __FUNCTION__);
 
     initWhoamiSupport();
+
     if (init_connection_pool() != 0)
     {
         T2Error("Failed to initialize HTTP connection pool\n");
     }
-    if(T2ERROR_SUCCESS == initReportProfiles())
+
+    if (T2ERROR_SUCCESS == initReportProfiles())
     {
 #ifndef DEVICE_EXTENDER
-        if(T2ERROR_SUCCESS == initXConfClient())
+        if (T2ERROR_SUCCESS == initXConfClient())
         {
             ret = T2ERROR_SUCCESS;
             generateDcaReport(true, false);
@@ -104,6 +110,7 @@ T2ERROR initTelemetry()
             T2Error("Failed to initializeXConfClient\n");
         }
 #endif
+
 #if defined(DEVICE_EXTENDER)
         ret = T2ERROR_SUCCESS;
 #endif
@@ -119,23 +126,23 @@ T2ERROR initTelemetry()
     return ret;
 }
 
-
 static void terminate()
 {
-    if(remove("/tmp/.t2ReadyToReceiveEvents") != 0)
+    if (remove("/tmp/.t2ReadyToReceiveEvents") != 0)
     {
         printf("removing the file /tmp/.t2ReadyToReceiveEvents failed!\n");
     }
 
-    if(remove("/tmp/telemetry_initialized_bootup") != 0)
+    if (remove("/tmp/telemetry_initialized_bootup") != 0)
     {
         printf("removing the file /tmp/telemetry_initialized_bootup failed!\n");
     }
 
-    if(remove(T2_CONFIG_READY) != 0)
+    if (remove(T2_CONFIG_READY) != 0)
     {
         printf("removing the file T2_CONFIG_READY failed!\n");
     }
+
     if (initcomplete)
     {
 #ifndef DEVICE_EXTENDER
@@ -144,63 +151,78 @@ static void terminate()
         ReportProfiles_uninit();
         http_pool_cleanup();
     }
-
 }
 
-void sig_handler(int sig, siginfo_t* info, void* uc)
+void sig_handler(int sig, siginfo_t *info, void *uc)
 {
     int saved_errno = errno;
+
     (void)info;
     (void)uc;
 
-    if(DAEMONPID != getpid())
+    if (DAEMONPID != getpid())
     {
-        /* Child process: terminate immediately for fatal signals */
-        if(!(sig == SIGUSR1 || sig == LOG_UPLOAD || sig == LOG_UPLOAD_ONDEMAND || sig == SIGIO || sig == SIGCHLD || sig == SIGPIPE || sig == SIGUSR2 || sig == EXEC_RELOAD || sig == SIGALRM ))
+        /* Child process: terminate immediately for fatal signals. */
+        if (!(sig == SIGUSR1 ||
+              sig == LOG_UPLOAD ||
+              sig == LOG_UPLOAD_ONDEMAND ||
+              sig == SIGIO ||
+              sig == SIGCHLD ||
+              sig == SIGPIPE ||
+              sig == SIGUSR2 ||
+              sig == EXEC_RELOAD ||
+              sig == SIGALRM))
         {
             _exit(1);
         }
+
         errno = saved_errno;
         return;
     }
 
-    /* POSIX async-signal-safe: only set flags here.
-     * The main loop polls these flags and performs the actual work. */
-    if ( sig == SIGINT || sig == SIGTERM )
+    /*
+     * POSIX async-signal-safe: only set flags here.
+     * The main loop polls these flags and performs the actual work.
+     */
+    if (sig == SIGINT || sig == SIGTERM)
     {
         if (g_sig_shutdown)
         {
-            /* Repeated shutdown signal while terminate() is still running.
-             * Force immediate exit.  _exit() is async-signal-safe. */
+            /*
+             * Repeated shutdown signal while terminate() is still running.
+             * Force immediate exit. _exit() is async-signal-safe.
+             */
             _exit(1);
         }
+
         set_signal_flag(&g_sig_shutdown);
     }
-    else if ( sig == SIGUSR1 || sig == LOG_UPLOAD )
+    else if (sig == SIGUSR1 || sig == LOG_UPLOAD)
     {
         set_signal_flag(&g_sig_log_upload);
     }
-    else if ( sig == LOG_UPLOAD_ONDEMAND || sig == SIGIO )
+    else if (sig == LOG_UPLOAD_ONDEMAND || sig == SIGIO)
     {
         set_signal_flag(&g_sig_log_upload_ondemand);
     }
-    else if ( sig == SIGUSR2 || sig == EXEC_RELOAD )
+    else if (sig == SIGUSR2 || sig == EXEC_RELOAD)
     {
         set_signal_flag(&g_sig_reload);
     }
     else
     {
-        /* Unknown fatal signal — request shutdown */
+        /* Unknown fatal signal: request shutdown. */
         set_signal_flag(&g_sig_shutdown);
     }
+
     errno = saved_errno;
 }
 
-static void t2DaemonMainModeInit( )
+static void t2DaemonMainModeInit()
 {
-
-    /**
-     * Signal handling is being used as way to handle log uploads . Double check whether we get minidump events for crashes
+    /*
+     * Signal handling is being used as a way to handle log uploads.
+     * Double-check whether we get minidump events for crashes.
      */
 #ifdef INCLUDE_BREAKPAD
 #ifndef ENABLE_RDKC_SUPPORT
@@ -210,13 +232,16 @@ static void t2DaemonMainModeInit( )
     eh = newBreakPadWrapExceptionHandler();
 #endif
 #endif
-    /**
-    * Create a Signal Mask for signals that need to be blocked while using fork
-    */
+
+    /*
+     * Create a signal mask for signals that need to be blocked while using
+     * fork.
+     */
     struct sigaction act;
-    memset (&act, 0, sizeof(act));
+
+    memset(&act, 0, sizeof(act));
     act.sa_sigaction = sig_handler;
-    act.sa_flags = SA_ONSTACK | SA_SIGINFO ;
+    act.sa_flags = SA_ONSTACK | SA_SIGINFO;
 
     sigemptyset(&blocking_signal);
     sigaddset(&blocking_signal, SIGUSR2);
@@ -226,10 +251,10 @@ static void t2DaemonMainModeInit( )
     sigaddset(&blocking_signal, LOG_UPLOAD_ONDEMAND);
     sigaddset(&blocking_signal, SIGIO);
 
-    act.sa_mask = blocking_signal; // block these signals while inside handler
+    act.sa_mask = blocking_signal;
 
-    DAEMONPID = getpid(); // save the pid of the deamon
-    T2Debug("Telemetry 2.0 Process PID %d\n", (int)DAEMONPID); //Debug line
+    DAEMONPID = getpid();
+    T2Debug("Telemetry 2.0 Process PID %d\n", (int)DAEMONPID);
 
     sigaction(SIGINT, &act, NULL);
     sigaction(SIGTERM, &act, NULL);
@@ -239,57 +264,80 @@ static void t2DaemonMainModeInit( )
     sigaction(LOG_UPLOAD_ONDEMAND, &act, NULL);
     sigaction(SIGIO, &act, NULL);
 
-    if(T2ERROR_SUCCESS != initTelemetry())
+    if (T2ERROR_SUCCESS != initTelemetry())
     {
         T2Error("Failed to initialize Telemetry.. exiting the process\n");
         exit(0);
     }
 
-
     T2Info("Telemetry 2.0 Component Init Success\n");
 
-    /* Main dispatch loop: poll signal flags set by sig_handler.
-     * All signal-unsafe work (uninit, logging, mutex ops) happens here
-     * in normal thread context, not in signal handler context. */
-    while(1)
+    /*
+     * Main dispatch loop: poll signal flags set by sig_handler.
+     * All signal-unsafe work, including uninitialization, logging, and mutex
+     * operations, happens here in normal thread context.
+     */
+    while (1)
     {
-        /* Snapshot-and-clear flags at top of loop.
-         * Safe because sig_atomic_t reads/writes are atomic w.r.t. signals. */
+        /*
+         * Snapshot-and-clear flags at the top of the loop.
+         * sig_atomic_t reads and writes are atomic with respect to signals.
+         */
         sig_atomic_t do_shutdown = g_sig_shutdown;
         sig_atomic_t do_log_upload = g_sig_log_upload;
         sig_atomic_t do_log_upload_ondemand = g_sig_log_upload_ondemand;
         sig_atomic_t do_reload = g_sig_reload;
 
-        if (do_shutdown) g_sig_shutdown = 0;
-        if (do_log_upload) g_sig_log_upload = 0;
-        if (do_log_upload_ondemand) g_sig_log_upload_ondemand = 0;
-        if (do_reload) g_sig_reload = 0;
+        if (do_shutdown)
+        {
+            g_sig_shutdown = 0;
+        }
 
-        if(do_shutdown)
+        if (do_log_upload)
+        {
+            g_sig_log_upload = 0;
+        }
+
+        if (do_log_upload_ondemand)
+        {
+            g_sig_log_upload_ondemand = 0;
+        }
+
+        if (do_reload)
+        {
+            g_sig_reload = 0;
+        }
+
+        if (do_shutdown)
         {
             T2Info("Shutdown signal received, terminating\n");
             terminate();
             exit(0);
         }
-        if(do_log_upload)
+
+        if (do_log_upload)
         {
             T2Info("LOG_UPLOAD received!\n");
             set_retainseekmap(false);
             ReportProfiles_Interrupt();
         }
-        if(do_log_upload_ondemand)
+
+        if (do_log_upload_ondemand)
         {
             T2Info("LOG_UPLOAD_ONDEMAND received!\n");
             ReportProfiles_Interrupt();
         }
-        if(do_reload)
+
+        if (do_reload)
         {
             T2Info("EXEC_RELOAD signal received\n");
+
             {
                 int fd;
                 const char *path = "/tmp/telemetry_logupload";
+
                 fd = open(path, O_RDONLY | O_CREAT, 0400);
-                if(fd == -1)
+                if (fd == -1)
                 {
                     T2Warning("Failed to open the file\n");
                 }
@@ -299,9 +347,11 @@ static void t2DaemonMainModeInit( )
                     close(fd);
                 }
             }
+
 #ifndef DEVICE_EXTENDER
             stopXConfClient();
-            if(T2ERROR_SUCCESS == startXConfClient())
+
+            if (T2ERROR_SUCCESS == startXConfClient())
             {
                 T2Info("XCONF config reload - SUCCESS \n");
             }
@@ -311,13 +361,14 @@ static void t2DaemonMainModeInit( )
             }
 #endif
         }
+
         sleep(1);
     }
+
     T2Info("Telemetry 2.0 Process Terminated\n");
 }
 
-
-static int checkAnotherTelemetryInstance (void)
+static int checkAnotherTelemetryInstance(void)
 {
     int fd;
 
@@ -336,8 +387,10 @@ static int checkAnotherTelemetryInstance (void)
         return 1;
     }
 
-    /* OK to proceed (lock will be released and file descriptor will be closed on exit) */
-
+    /*
+     * OK to proceed.
+     * The lock remains held while the file descriptor is open.
+     */
     return 0;
 }
 
@@ -345,9 +398,10 @@ int main()
 {
     pid_t process_id = 0;
     pid_t sid = 0;
+
     LOGInit();
 
-    /* Abort if another instance of telemetry2_0 is already running */
+    /* Abort if another instance of telemetry2_0 is already running. */
     if (checkAnotherTelemetryInstance())
     {
         return 1;
@@ -355,8 +409,9 @@ int main()
 
     T2Info("Starting Telemetry 2.0 Process\n");
 
-    // Create child process
+    /* Create child process. */
     process_id = fork();
+
     if (process_id < 0)
     {
         T2Error("fork failed!\n");
@@ -367,18 +422,19 @@ int main()
         return 0;
     }
 
-    //unmask the file mode
+    /* Unmask the file mode. */
     umask(0);
 
-    //set new session
+    /* Set a new session. */
     sid = setsid();
+
     if (sid < 0)
     {
         T2Error("setsid failed!\n");
         return 1;
     }
 
-    // Change the current working directory to root.
+    /* Change the current working directory to root. */
     if (chdir("/") < 0)
     {
         T2Error("chdir failed!\n");
@@ -387,14 +443,15 @@ int main()
 
     if (isDebugEnabled != true)
     {
-        // Close stdin. stdout and stderr
+        /* Close stdin, stdout, and stderr. */
         close(STDIN_FILENO);
         close(STDOUT_FILENO);
         close(STDERR_FILENO);
     }
 
-
     T2Info("Initializing Telemetry 2.0 Component\n");
+
     t2DaemonMainModeInit();
+
     return 0;
 }

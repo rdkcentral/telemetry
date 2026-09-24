@@ -712,6 +712,7 @@ T2ERROR unregisterProfileFromScheduler(const char* profileName)
                 {
                     break;
                 }
+                /* coverity[sleep] */ /* scMutex held to prevent concurrent removal of tProfile from profileList */
                 sleep(1);
             }
 

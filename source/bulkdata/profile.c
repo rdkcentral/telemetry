@@ -1982,6 +1982,7 @@ T2ERROR appendTriggerCondition (Profile *tempProfile, const char *referenceName,
                 else
                 {
                     T2Warning("%s : referenceName or referenceValue is published as null, ignoring trigger condition \n ", __FUNCTION__);
+                    free(triggerCond);
                 }
 
             }

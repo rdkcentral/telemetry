@@ -712,7 +712,13 @@ T2ERROR unregisterProfileFromScheduler(const char* profileName)
                 {
                     break;
                 }
+                pthread_mutex_unlock(&scMutex);
                 sleep(1);
+                if(pthread_mutex_lock(&scMutex) != 0)
+                {
+                    T2Error("scMutex lock failed\n");
+                    return T2ERROR_FAILURE;
+                }
             }
 
             // Keep scMutex held across the wait loop to prevent concurrent removal/free of tProfile.

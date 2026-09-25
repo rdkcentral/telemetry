@@ -117,7 +117,7 @@ T2ERROR initTelemetry()
     }
     else
     {
-        T2Error("Failed to initialize ReportProfiles\n");
+        T2Error("Failed to initialize ReportProfiles more details required\n");
     }
 
     initcomplete = 1;

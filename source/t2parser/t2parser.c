@@ -34,11 +34,16 @@ char *msgpack_strdup(msgpack_object *obj);
 msgpack_object *msgpack_get_map_value(msgpack_object *obj, char *key);
 msgpack_object *msgpack_get_array_element(msgpack_object *obj, int index);
 
+static const char *getProfileParameterName(const char *ref)
+{
+    const char *separator = strrchr(ref, '.');
+    return separator ? separator + 1 : ref;
+}
 
 static char * getProfileParameter(Profile * profile, const char *ref)
 {
     char *pValue = "NULL";
-    char *pName = strrchr(ref, '.') + 1;
+    const char *pName = getProfileParameterName(ref);
 
     pValue = (char*) calloc(MAX_STATIC_PROP_VAL_LEN, sizeof(char));
     if( pValue == NULL)

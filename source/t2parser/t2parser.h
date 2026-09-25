@@ -44,4 +44,6 @@ int msgpack_strcmp(msgpack_object *obj, char *str);
 
 T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile **profile_dp);
 
+const char *t2parser_get_abi_version(void);
+
 #endif /* _T2PARSER_H_ */

@@ -34,15 +34,19 @@ char *msgpack_strdup(msgpack_object *obj);
 msgpack_object *msgpack_get_map_value(msgpack_object *obj, char *key);
 msgpack_object *msgpack_get_array_element(msgpack_object *obj, int index);
 
-const char *t2parser_get_abi_version(void)
-{
-    return "1";
-}
-
 static const char *getProfileParameterName(const char *ref)
 {
-    const char *separator = strrchr(ref, '.');
-    return separator ? separator + 1 : ref;
+    const char *name = ref;
+
+    for (const char *cursor = ref; *cursor != '\0'; ++cursor)
+    {
+        if (*cursor == '.')
+        {
+            name = cursor + 1;
+        }
+    }
+
+    return name;
 }
 
 static char * getProfileParameter(Profile * profile, const char *ref)

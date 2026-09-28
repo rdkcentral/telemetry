@@ -246,6 +246,10 @@ void freeProfile(void *data)
             cJSON_Delete(profile->jsonReportObj);
             profile->jsonReportObj = NULL;
         }
+        if(profile->grepSeekProfile)
+        {
+            freeGrepSeekProfile(profile->grepSeekProfile);
+        }
         free(profile);
     }
     T2Debug("%s ++out \n", __FUNCTION__);
@@ -1445,13 +1449,6 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
              * after setting threadExists = false (see CollectAndReport cleanup). */
         }
 
-        /* grepSeekProfile cleanup is safe without profileListLock here:
-         * the profile's thread has been joined (or never existed), and
-         * initialized=false prevents concurrent access from other threads. */
-        if(tempProfile->grepSeekProfile)
-        {
-            freeGrepSeekProfile(tempProfile->grepSeekProfile);
-        }
         if(delFromDisk == true)
         {
             removeProfileFromDisk(REPORTPROFILES_PERSISTENCE_PATH, tempProfile->name);
@@ -1575,11 +1572,6 @@ T2ERROR deleteProfile(const char *profileName)
     if(Vector_Size(profile->triggerConditionList) > 0)
     {
         rbusT2ConsumerUnReg(profile->triggerConditionList);
-    }
-
-    if(profile->grepSeekProfile)
-    {
-        freeGrepSeekProfile(profile->grepSeekProfile);
     }
 
     pthread_mutex_destroy(&profile->reportInProgressMutex);
@@ -1982,6 +1974,7 @@ T2ERROR appendTriggerCondition (Profile *tempProfile, const char *referenceName,
                 else
                 {
                     T2Warning("%s : referenceName or referenceValue is published as null, ignoring trigger condition \n ", __FUNCTION__);
+                    free(triggerCond);
                 }
 
             }

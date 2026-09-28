@@ -31,6 +31,7 @@
 #define T2REPORTCOMPONENT "RBUS_SUBSCRIPTION" //TR-181 event's component name
 
 T2ERROR processConfiguration(char** configData, char* profileName, char* profileHash, Profile **localProfile);
+T2ERROR t2parserAbiRebuildTest(void);
 
 msgpack_object *msgpack_get_map_value(msgpack_object *obj, char *key);
 

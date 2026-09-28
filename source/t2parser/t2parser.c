@@ -1643,6 +1643,11 @@ int msgpack_strcmp(msgpack_object *obj, char *str)
     return strncmp(str, obj->via.str.ptr, obj->via.str.size);
 }
 
+T2ERROR t2parserAbiRebuildTest(void)
+{
+    return T2ERROR_SUCCESS;
+}
+
 void msgpack_print(msgpack_object *obj, char *obj_name)
 {
     if (obj)

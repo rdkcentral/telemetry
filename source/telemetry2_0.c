@@ -128,7 +128,9 @@ T2ERROR initTelemetry()
 
 static void terminate()
 {
-    if (remove("/tmp/.t2ReadyToReceiveEvents") != 0)
+    const char *ready_events_file = "/tmp/.t2ReadyToReceiveEvents";
+
+    if (remove(ready_events_file) != 0)
     {
         printf("removing the file /tmp/.t2ReadyToReceiveEvents failed!\n");
     }

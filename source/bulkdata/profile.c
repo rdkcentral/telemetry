@@ -67,19 +67,6 @@ typedef struct __triggerConditionObj__
     char referenceValue[MAX_LEN];
 } triggerConditionObj ;
 
-static bool isEmptySubscriberValue(const char *value)
-{
-    if(value == NULL)
-    {
-        return true;
-    }
-    if(strlen(value) < 1 || value[0] == ' ' || strncmp(value, "NULL", 4) == 0)
-    {
-        return true;
-    }
-    return false;
-}
-
 static void freeRequestURIparam(void *data)
 {
     if(data != NULL)
@@ -1115,19 +1102,12 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
             break;
 
         case MTYPE_ACCUMULATE:
-        {
-            const char *safeValue = (eventInfo->value != NULL) ? eventInfo->value : "";
-            T2Debug("Marker type is ACCUMULATE Event Value : %s\n", safeValue);
-            if(!lookupEvent->reportEmptyParam && isEmptySubscriberValue(safeValue))
-            {
-                T2Debug("Skipping empty/null subscribe marker value for %s\n", lookupEvent->markerName);
-                break;
-            }
+            T2Debug("Marker type is ACCUMULATE Event Value : %s\n", eventInfo->value);
             arraySize = Vector_Size(lookupEvent->u.accumulatedValues);
             T2Debug("Current array size : %d \n", arraySize);
             if( arraySize < MAX_ACCUMULATE)
             {
-                Vector_PushBack(lookupEvent->u.accumulatedValues, strdup(safeValue));
+                Vector_PushBack(lookupEvent->u.accumulatedValues, strdup(eventInfo->value));
                 T2Debug("Sucessfully added value into vector New Size : %d\n", ++arraySize);
                 if(lookupEvent->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH)
                 {
@@ -1161,24 +1141,16 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
                 T2Warning("Max size of the array has been reached Ignore New Value\n");
             }
             break;
-        }
 
         case MTYPE_ABSOLUTE:
         default:
-        {
-            const char *safeValue = (eventInfo->value != NULL) ? eventInfo->value : "";
-            if(!lookupEvent->reportEmptyParam && isEmptySubscriberValue(safeValue))
-            {
-                T2Debug("Skipping empty/null subscribe marker value for %s\n", lookupEvent->markerName);
-                break;
-            }
             if(lookupEvent->u.markerValue)
             {
                 free(lookupEvent->u.markerValue);
                 lookupEvent->u.markerValue = NULL;
             }
 
-            lookupEvent->u.markerValue = strdup(safeValue);
+            lookupEvent->u.markerValue = strdup(eventInfo->value);
             T2Debug("New marker value saved : %s\n", lookupEvent->u.markerValue);
             if(lookupEvent->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH)
             {
@@ -1206,7 +1178,6 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
                 T2Debug("Timestamp for %s is %s\n", lookupEvent->markerName_CT, lookupEvent->timestamp);
             }
             break;
-        }
         }
         pthread_mutex_unlock(&profile->eventMutex);
     }
@@ -2084,6 +2055,14 @@ T2ERROR triggerReportOnCondtion(const char *referenceName, const char *reference
                             tempProfile->callBackOnReportGenerationComplete = reportGenerationCompleteReceiver;
 
                             char *tempProfilename = strdup(tempProfile->name); //RDKB-42640
+                            if(tempProfilename == NULL)
+                            {
+                                T2Error("Failed to allocate profile name while triggering report condition\n");
+                                tempProfile->triggerReportOnCondition = false;
+                                pthread_mutex_unlock(&tempProfile->triggerCondMutex);
+                                pthread_rwlock_unlock(&profileListLock);
+                                return T2ERROR_FAILURE;
+                            }
 
                             // profileListLock should be unlocked before sending interrupt for report generation
                             T2Debug("%s : Release lock on &profileListLock\n ", __FUNCTION__);
@@ -2092,15 +2071,26 @@ T2ERROR triggerReportOnCondtion(const char *referenceName, const char *reference
                                    triggerCondition->oprator, triggerCondition->threshold);
                             if(tempProfile->isSchedulerstarted)
                             {
-                                int sendRet = SendInterruptToTimeoutThread(tempProfilename, false);
-                                if(sendRet != 0)
+                                T2ERROR sendRet = SendInterruptToTimeoutThread(tempProfilename, false);
+                                if(sendRet != T2ERROR_SUCCESS)
                                 {
-                                    T2Info("For Profile %s SendInterruptToTimeoutThread failed, releasing lock\n", tempProfilename);
-                                    tempProfile->triggerReportOnCondition = false;
-                                    pthread_mutex_unlock(&tempProfile->triggerCondMutex);
-                                    if(tempProfile->callBackOnReportGenerationComplete)
+                                    bool reportInProgress = false;
+                                    pthread_mutex_lock(&tempProfile->reportInProgressMutex);
+                                    reportInProgress = tempProfile->reportInProgress;
+                                    if(!reportInProgress)
                                     {
-                                        tempProfile->callBackOnReportGenerationComplete(tempProfilename);
+                                        tempProfile->triggerReportOnCondition = false;
+                                    }
+                                    pthread_mutex_unlock(&tempProfile->reportInProgressMutex);
+
+                                    if(!reportInProgress)
+                                    {
+                                        T2Info("For Profile %s SendInterruptToTimeoutThread failed, releasing lock\n", tempProfilename);
+                                        pthread_mutex_unlock(&tempProfile->triggerCondMutex);
+                                        if(tempProfile->callBackOnReportGenerationComplete)
+                                        {
+                                            tempProfile->callBackOnReportGenerationComplete(tempProfilename);
+                                        }
                                     }
                                 }
                                 // On success: triggerCondMutex will be unlocked by CollectAndReport after report generation
@@ -2132,6 +2122,22 @@ T2ERROR triggerReportOnCondtion(const char *referenceName, const char *reference
     return T2ERROR_SUCCESS;
 }
 
+#ifdef GTEST_ENABLE
+void test_set_profile_list(Vector *testProfileList)
+{
+    profileList = testProfileList;
+    initialized = true;
+    pthread_rwlock_init(&profileListLock, NULL);
+}
+
+void test_reset_profile_list(void)
+{
+    initialized = false;
+    profileList = NULL;
+    pthread_rwlock_destroy(&profileListLock);
+}
+#endif
+
 unsigned int getMinThresholdDuration(char *profileName)
 {
     unsigned int minThresholdDuration = 0;
@@ -2152,4 +2158,5 @@ unsigned int getMinThresholdDuration(char *profileName)
     T2Debug("%s --out\n", __FUNCTION__);
     return minThresholdDuration;
 }
+
 

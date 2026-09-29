@@ -39,6 +39,8 @@ extern "C" {
 #include <glib/gi18n.h>
 
 extern bool initialized;
+void test_set_profile_list(Vector *testProfileList);
+void test_reset_profile_list(void);
 
 sigset_t blocking_signal;
 hash_map_t *markerCompMap = NULL;
@@ -314,6 +316,47 @@ TEST_F(ProfileTest, reportGenerationCompleteReceiver) {
 TEST_F(ProfileTest, triggerReportOnCondtion) {
     EXPECT_CALL(*g_vectorMock, Vector_Size(_)).Times(::testing::AtMost(1)).WillRepeatedly(Return(0));
     EXPECT_EQ(triggerReportOnCondtion("refname", "refvalue"), T2ERROR_SUCCESS);
+}
+
+TEST_F(ProfileTest, TriggerReportOnCondition_SchedulerFailureKeepsActiveMutexOwner) {
+    delete g_vectorMock;
+    g_vectorMock = nullptr;
+
+    Vector *profiles = nullptr;
+    Vector *triggerConditions = nullptr;
+    Vector_Create(&profiles);
+    Vector_Create(&triggerConditions);
+
+    Profile *profile = (Profile *)calloc(1, sizeof(Profile));
+    TriggerCondition *condition = (TriggerCondition *)calloc(1, sizeof(TriggerCondition));
+    ASSERT_NE(profile, nullptr);
+    ASSERT_NE(condition, nullptr);
+
+    profile->name = strdup("FailureProfile");
+    profile->isSchedulerstarted = true;
+    profile->reportInProgress = true;
+    profile->triggerConditionList = triggerConditions;
+    pthread_mutex_init(&profile->triggerCondMutex, nullptr);
+    pthread_mutex_init(&profile->reportInProgressMutex, nullptr);
+    condition->reference = strdup("refname");
+    condition->report = true;
+    Vector_PushBack(triggerConditions, condition);
+    Vector_PushBack(profiles, profile);
+    test_set_profile_list(profiles);
+
+    EXPECT_CALL(*g_schedulerMock, SendInterruptToTimeoutThread(_, false))
+        .WillOnce(Return(T2ERROR_FAILURE));
+
+    EXPECT_EQ(triggerReportOnCondtion("refname", "refvalue"), T2ERROR_SUCCESS);
+    EXPECT_TRUE(profile->triggerReportOnCondition);
+    EXPECT_NE(pthread_mutex_trylock(&profile->triggerCondMutex), 0);
+
+    pthread_mutex_unlock(&profile->triggerCondMutex);
+    pthread_mutex_destroy(&profile->triggerCondMutex);
+    pthread_mutex_destroy(&profile->reportInProgressMutex);
+    freeProfile(profile);
+    Vector_Destroy(profiles, nullptr);
+    test_reset_profile_list();
 }
 
 TEST_F(ProfileTest, getMinThresholdDuration_Failure) {

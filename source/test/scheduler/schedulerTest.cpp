@@ -362,10 +362,14 @@ TEST(TIMEOUTTHREAD, WAIT_NO_REPORTING_INTERVAL)
     tProfile->reportonupdate = true;
     tProfile->firstreportint = 0;
     tProfile->firstexecution = false;
+    pthread_mutex_init(&tProfile->terminationMutex, NULL);
+    pthread_cond_init(&tProfile->terminationCond, NULL);
 
     // Call TimeoutThread directly – will exercise pthread_cond_wait branch
     TimeoutThread((void *)tProfile);
 
+    pthread_mutex_destroy(&tProfile->terminationMutex);
+    pthread_cond_destroy(&tProfile->terminationCond);
     free(tProfile->name);
     free(tProfile);
 }
@@ -414,6 +418,8 @@ TEST(FREE_SCHEDULER_PROFILE, NORMAL)
     sch->name = strdup("FREE_PROFILE");
     pthread_mutex_init(&sch->tMutex, NULL);
     pthread_cond_init(&sch->tCond, NULL);
+    pthread_mutex_init(&sch->terminationMutex, NULL);
+    pthread_cond_init(&sch->terminationCond, NULL);
     pthread_t threadId;
     ASSERT_EQ(0, pthread_create(&threadId, NULL, DummySchedulerThread, NULL));	
     freeSchedulerProfile(sch);

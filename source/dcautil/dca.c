@@ -518,7 +518,7 @@ static inline void formatCount(char* buffer, size_t size, int count)
     {
         count = INVALID_COUNT;
     }
-    snprintf(buffer, size, "%d", count);
+    snprintf(buffer, size, "%i", count);
 }
 
 static int getCountPatternMatch(FileDescriptor* fileDescriptor, GrepMarker* marker)

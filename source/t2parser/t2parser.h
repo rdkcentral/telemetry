@@ -30,6 +30,7 @@
 
 #define T2REPORTCOMPONENT "RBUS_SUBSCRIPTION" //TR-181 event's component name
 
+/* Header-only hash-equivalence experiment: interface remains unchanged. */
 T2ERROR processConfiguration(char** configData, char* profileName, char* profileHash, Profile **localProfile);
 
 msgpack_object *msgpack_get_map_value(msgpack_object *obj, char *key);

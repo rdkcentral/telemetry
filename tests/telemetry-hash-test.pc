@@ -1,0 +1,10 @@
+prefix=/usr
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: telemetry-hash-test
+Description: Hash equivalence metadata test
+Version: 1.9.9
+Libs:
+Cflags:

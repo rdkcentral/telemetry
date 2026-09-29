@@ -39,9 +39,14 @@ typedef struct _SchedulerProfile
     unsigned int firstreportint;
     bool firstexecution;
     bool isClearSeekMap;
+    bool removing;
+    bool removeOnThreadExit;
+    bool threadExited;
     pthread_t tId;
     pthread_mutex_t tMutex;
     pthread_cond_t tCond;
+    pthread_mutex_t terminationMutex;
+    pthread_cond_t terminationCond;
 
 } SchedulerProfile;
 

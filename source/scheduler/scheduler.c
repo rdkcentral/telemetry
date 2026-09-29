@@ -622,7 +622,18 @@ T2ERROR registerProfileWithScheduler(const char* profileName, unsigned int timeI
         }
 
         SchedulerProfile *tProfile = (SchedulerProfile *)malloc(sizeof(SchedulerProfile));
+        if(tProfile == NULL)
+        {
+            T2Error("Failed to allocate scheduler profile\n");
+            return T2ERROR_FAILURE;
+        }
         tProfile->name = strdup(profileName);
+        if(tProfile->name == NULL)
+        {
+            T2Error("Failed to allocate scheduler profile name\n");
+            free(tProfile);
+            return T2ERROR_FAILURE;
+        }
         tProfile->repeat = repeat;
         tProfile->timeOutDuration = timeInterval;
         tProfile->timeToLive = activationTimeout;
@@ -648,12 +659,16 @@ T2ERROR registerProfileWithScheduler(const char* profileName, unsigned int timeI
         if(pthread_mutex_init(&tProfile->tMutex, NULL) != 0)
         {
             T2Error("%s Mutex init has failed\n",  __FUNCTION__);
+            free(tProfile->name);
+            free(tProfile);
             return T2ERROR_FAILURE;
         }
         if(pthread_mutex_init(&tProfile->terminationMutex, NULL) != 0)
         {
             T2Error("%s termination mutex init has failed\n", __FUNCTION__);
             pthread_mutex_destroy(&tProfile->tMutex);
+            free(tProfile->name);
+            free(tProfile);
             return T2ERROR_FAILURE;
         }
         if(pthread_cond_init(&tProfile->terminationCond, NULL) != 0)
@@ -661,6 +676,8 @@ T2ERROR registerProfileWithScheduler(const char* profileName, unsigned int timeI
             T2Error("%s termination condition init has failed\n", __FUNCTION__);
             pthread_mutex_destroy(&tProfile->terminationMutex);
             pthread_mutex_destroy(&tProfile->tMutex);
+            free(tProfile->name);
+            free(tProfile);
             return T2ERROR_FAILURE;
         }
         pthread_cond_init(&tProfile->tCond, NULL);

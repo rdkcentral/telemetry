@@ -18,6 +18,8 @@
 ##########################################################################
 AC_PREREQ([2.53])
 AC_INIT(telemetry, 2.0)
+AC_DEFINE([HASH_EQUIVALENCE_GENERATED_CONFIG_TEST], [1],
+          [Enable the generated-config hash equivalence test])
 AC_CONFIG_SRCDIR([source])
 AC_CONFIG_SRCDIR([source/bulkdata])
 AC_CONFIG_SRCDIR([source/reportgen])

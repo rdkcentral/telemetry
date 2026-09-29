@@ -323,8 +323,14 @@ TEST(TIMEOUTTHREAD, TEST1)
     tProfile->reportonupdate = true;
     tProfile->firstreportint = 20;
     tProfile->firstexecution = true;
+    tProfile->removeOnThreadExit = false;
+    tProfile->threadExited = false;
+    pthread_mutex_init(&tProfile->terminationMutex, NULL);
+    pthread_cond_init(&tProfile->terminationCond, NULL);
  
     TimeoutThread((void *)tProfile);
+    pthread_mutex_destroy(&tProfile->terminationMutex);
+    pthread_cond_destroy(&tProfile->terminationCond);
     free(tProfile->name);
     free(tProfile);
 }
@@ -342,8 +348,14 @@ TEST(TIMEOUTTHREAD, TEST2)
     tProfile->reportonupdate = true;
     tProfile->firstreportint = 20;
     tProfile->firstexecution = false;
+    tProfile->removeOnThreadExit = false;
+    tProfile->threadExited = false;
+    pthread_mutex_init(&tProfile->terminationMutex, NULL);
+    pthread_cond_init(&tProfile->terminationCond, NULL);
 
     TimeoutThread((void *)tProfile);
+    pthread_mutex_destroy(&tProfile->terminationMutex);
+    pthread_cond_destroy(&tProfile->terminationCond);
     free(tProfile->name);
     free(tProfile);
 }
@@ -362,6 +374,8 @@ TEST(TIMEOUTTHREAD, WAIT_NO_REPORTING_INTERVAL)
     tProfile->reportonupdate = true;
     tProfile->firstreportint = 0;
     tProfile->firstexecution = false;
+    tProfile->removeOnThreadExit = false;
+    tProfile->threadExited = false;
     pthread_mutex_init(&tProfile->terminationMutex, NULL);
     pthread_cond_init(&tProfile->terminationCond, NULL);
 

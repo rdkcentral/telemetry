@@ -110,6 +110,7 @@ typedef struct _Profile
     pthread_mutex_t reuseThreadMutex;
     bool restartRequested;
     bool threadExists;
+    bool reportThreadCreated;
     GrepSeekProfile *grepSeekProfile; // To store GrepConfig
 } Profile;
 

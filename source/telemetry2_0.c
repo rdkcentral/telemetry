@@ -338,7 +338,7 @@ int main()
         return 1;
     }
 
-    T2Info("Starting Telemetry 2.0 Process\n");
+    T2Info("Starting Telemetry 2.0 Process (hash-equivalence executable test)\n");
 
     // Create child process
     process_id = fork();
@@ -383,4 +383,3 @@ int main()
     t2DaemonMainModeInit();
     return 0;
 }
-

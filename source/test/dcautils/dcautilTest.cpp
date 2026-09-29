@@ -1526,6 +1526,91 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_Accum)
     Vector_Destroy(vecMarkerList, freeGMarker);
 }
 
+// TCXB7-7251: PARODUSlog.txt truncated in place by log upload with no rotated
+// backup available - stale seek must not cause the marker to be dropped.
+TEST_F(dcaTestFixture, getDCAResultsInVector_TruncatedInPlace_NoRotatedFile)
+{
+    GrepSeekProfile *gsProfile = (GrepSeekProfile *)malloc(sizeof(GrepSeekProfile));
+    gsProfile->logFileSeekMap = hash_map_create();
+    gsProfile->execCounter = 2;
+    long *tempnum;
+    double val = 5000;
+    tempnum = (long *)malloc(sizeof(long));
+    *tempnum = (long)val;
+    hash_map_put(gsProfile->logFileSeekMap, strdup("PARODUSlog.txt"), (void*)tempnum, free);
+
+    Vector* vecMarkerList = NULL;
+    Vector_Create(&vecMarkerList);
+    GrepMarker* marker = (GrepMarker*) malloc(sizeof(GrepMarker));
+    memset(marker, 0, sizeof(GrepMarker));
+    marker->markerName = strdup("SYS_INFO_LowQosEvntUpload");
+    marker->searchString = strdup("PARODUS: Low qos event");
+    marker->trimParam = true;
+    marker->regexParam = strdup("[0-9]+");
+    marker->logFile = strdup("PARODUSlog.txt");
+    marker->skipFreq = 0;
+    marker->paramType = strdup("grep");
+    marker->mType = MTYPE_COUNTER;
+    marker->u.count = 0;
+    marker->reportEmptyParam = true;
+    Vector_PushBack(vecMarkerList, (void*) marker);
+
+    //freeFileDescriptor
+    EXPECT_CALL(*g_fileIOMock, munmap(_, _))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock, close(_))
+            .Times(2)
+            .WillOnce(Return(0))
+            .WillOnce(Return(0));
+
+    //getLogFileDescriptor opens the current (truncated) file, then
+    //getRotatedLogFileDescriptor fails to open the missing .1 file
+    EXPECT_CALL(*g_fileIOMock, open(_,_))
+            .Times(2)
+            .WillOnce(Return(0))
+            .WillOnce(Return(-1));
+    EXPECT_CALL(*g_fileIOMock, fstat(_, _))
+        .Times(2)
+        .WillOnce([](int fd, struct stat* statbuf) {
+        statbuf->st_size = 800;      // Truncated file size, smaller than stored seek 5000
+        return 0;
+    })
+        .WillOnce([](int fd, struct stat* statbuf) {
+        statbuf->st_size = 800;
+        return 0;
+    });
+
+    //getDeltainmmapsearch - only the current file is staged, no rotated tmp file
+    EXPECT_CALL(*g_fileIOMock, mkstemp(_))
+            .Times(1)
+            .WillOnce(Return(0));
+    EXPECT_CALL(*g_systemMock, unlink(_))
+                .Times(1)
+                .WillOnce(Return(0));
+    EXPECT_CALL(*g_fileIOMock,sendfile(_,_,_,_))
+            .Times(1)
+            .WillOnce(Return(800));
+    EXPECT_CALL(*g_fileIOMock, mmap(_,_,_,_,_,_))
+                .Times(1)
+                .WillOnce([](void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
+                    EXPECT_EQ(0, offset); // Entire current file read from offset 0 despite stale seek
+                    const char* test_str = "PARODUS: Low qos event, send success callback and delete\n";
+                    char* mapped_mem = (char*)malloc(length);
+                    memset(mapped_mem, 0, length);
+                    strncpy(mapped_mem, test_str, length - 1);
+                    return (void*)mapped_mem;
+                });
+
+    EXPECT_EQ(0, getDCAResultsInVector(gsProfile, vecMarkerList, false, "/opt/logs"));
+    EXPECT_EQ(1, marker->u.count); // Marker must still be captured despite the truncation
+
+    hash_map_destroy(gsProfile->logFileSeekMap, free);
+    gsProfile->logFileSeekMap = NULL;
+    free(gsProfile);
+    Vector_Destroy(vecMarkerList, freeGMarker);
+}
+
 TEST_F(dcaTestFixture, T2InitProperties)
 {
    EXPECT_CALL(*g_fileIOMock, fopen(_,_))

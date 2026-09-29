@@ -1053,6 +1053,9 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
     off_t offset_in_page_size_multiple ;
     unsigned int bytes_ignored = 0, bytes_ignored_main = 0, bytes_ignored_rotated = 0;
     off_t main_fsize = 0, rotated_fsize = 0;
+    // Log upload backs up and truncates in place, so the stored seek no longer refers
+    // to any data still present in this file.
+    const bool truncated = (seek_value > sb.st_size);
     // Find the nearest multiple of page size
     if (seek_value > 0 && PAGESIZE > 0)
     {
@@ -1149,9 +1152,19 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
             else
             {
                 rotated_fsize = rb.st_size;
-                main_fsize = sb.st_size - seek_value;
-                bytes_ignored_main = bytes_ignored;
-                addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, offset_in_page_size_multiple);
+                if(truncated)
+                {
+                    // Stale seek points past the truncated file - read all of it
+                    main_fsize = sb.st_size;
+                    bytes_ignored_main = 0;
+                    addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, 0);
+                }
+                else
+                {
+                    main_fsize = sb.st_size - seek_value;
+                    bytes_ignored_main = bytes_ignored;
+                    addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, offset_in_page_size_multiple);
+                }
                 addrrf = mmap(NULL, rb.st_size, PROT_READ, MAP_PRIVATE, tmp_rd, 0);
             }
             close(tmp_rd);
@@ -1167,6 +1180,16 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
                 addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, offset_in_page_size_multiple);
                 bytes_ignored_main = bytes_ignored;
                 main_fsize = sb.st_size - seek_value;
+            }
+            else if(truncated)
+            {
+                // Truncated in place with no rotated file to fall back on - read the
+                // entire current file so its markers are still collected this cycle
+                T2Info("Log file %s truncated (seek %jd > size %jd), reading entire current file\n",
+                       logFile, (intmax_t)seek_value, (intmax_t)sb.st_size);
+                addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, 0);
+                bytes_ignored_main = 0;
+                main_fsize = sb.st_size;
             }
             else
             {

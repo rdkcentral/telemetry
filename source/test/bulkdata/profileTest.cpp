@@ -335,6 +335,7 @@ TEST_F(ProfileTest, TriggerReportOnCondition_SchedulerFailureKeepsActiveMutexOwn
     profile->name = strdup("FailureProfile");
     profile->isSchedulerstarted = true;
     profile->reportInProgress = true;
+    profile->reportThreadCreated = true;
     profile->triggerConditionList = triggerConditions;
     pthread_mutex_init(&profile->triggerCondMutex, nullptr);
     pthread_mutex_init(&profile->reportInProgressMutex, nullptr);
@@ -345,13 +346,24 @@ TEST_F(ProfileTest, TriggerReportOnCondition_SchedulerFailureKeepsActiveMutexOwn
     test_set_profile_list(profiles);
 
     EXPECT_CALL(*g_schedulerMock, SendInterruptToTimeoutThread(_, false))
-        .WillOnce(Return(T2ERROR_FAILURE));
+        .Times(2)
+        .WillRepeatedly(Return(T2ERROR_FAILURE));
 
     EXPECT_EQ(triggerReportOnCondtion("refname", "refvalue"), T2ERROR_SUCCESS);
     EXPECT_TRUE(profile->triggerReportOnCondition);
     EXPECT_NE(pthread_mutex_trylock(&profile->triggerCondMutex), 0);
 
     pthread_mutex_unlock(&profile->triggerCondMutex);
+    profile->reportInProgress = false;
+    profile->reportThreadCreated = false;
+    cJSON_Delete(profile->jsonReportObj);
+    profile->jsonReportObj = nullptr;
+
+    EXPECT_EQ(triggerReportOnCondtion("refname", "refvalue"), T2ERROR_SUCCESS);
+    EXPECT_FALSE(profile->triggerReportOnCondition);
+    EXPECT_EQ(pthread_mutex_trylock(&profile->triggerCondMutex), 0);
+    pthread_mutex_unlock(&profile->triggerCondMutex);
+
     pthread_mutex_destroy(&profile->triggerCondMutex);
     pthread_mutex_destroy(&profile->reportInProgressMutex);
     freeProfile(profile);

@@ -67,6 +67,19 @@ typedef struct __triggerConditionObj__
     char referenceValue[MAX_LEN];
 } triggerConditionObj ;
 
+static bool isEmptySubscriberValue(const char *value)
+{
+    if(value == NULL)
+    {
+        return true;
+    }
+    if(strlen(value) < 1 || value[0] == ' ' || strncmp(value, "NULL", 4) == 0)
+    {
+        return true;
+    }
+    return false;
+}
+
 static void freeRequestURIparam(void *data)
 {
     if(data != NULL)
@@ -232,6 +245,10 @@ void freeProfile(void *data)
         {
             cJSON_Delete(profile->jsonReportObj);
             profile->jsonReportObj = NULL;
+        }
+        if(profile->grepSeekProfile)
+        {
+            freeGrepSeekProfile(profile->grepSeekProfile);
         }
         free(profile);
     }
@@ -1098,12 +1115,19 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
             break;
 
         case MTYPE_ACCUMULATE:
-            T2Debug("Marker type is ACCUMULATE Event Value : %s\n", eventInfo->value);
+        {
+            const char *safeValue = (eventInfo->value != NULL) ? eventInfo->value : "";
+            T2Debug("Marker type is ACCUMULATE Event Value : %s\n", safeValue);
+            if(!lookupEvent->reportEmptyParam && isEmptySubscriberValue(safeValue))
+            {
+                T2Debug("Skipping empty/null subscribe marker value for %s\n", lookupEvent->markerName);
+                break;
+            }
             arraySize = Vector_Size(lookupEvent->u.accumulatedValues);
             T2Debug("Current array size : %d \n", arraySize);
             if( arraySize < MAX_ACCUMULATE)
             {
-                Vector_PushBack(lookupEvent->u.accumulatedValues, strdup(eventInfo->value));
+                Vector_PushBack(lookupEvent->u.accumulatedValues, strdup(safeValue));
                 T2Debug("Sucessfully added value into vector New Size : %d\n", ++arraySize);
                 if(lookupEvent->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH)
                 {
@@ -1137,16 +1161,24 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
                 T2Warning("Max size of the array has been reached Ignore New Value\n");
             }
             break;
+        }
 
         case MTYPE_ABSOLUTE:
         default:
+        {
+            const char *safeValue = (eventInfo->value != NULL) ? eventInfo->value : "";
+            if(!lookupEvent->reportEmptyParam && isEmptySubscriberValue(safeValue))
+            {
+                T2Debug("Skipping empty/null subscribe marker value for %s\n", lookupEvent->markerName);
+                break;
+            }
             if(lookupEvent->u.markerValue)
             {
                 free(lookupEvent->u.markerValue);
                 lookupEvent->u.markerValue = NULL;
             }
 
-            lookupEvent->u.markerValue = strdup(eventInfo->value);
+            lookupEvent->u.markerValue = strdup(safeValue);
             T2Debug("New marker value saved : %s\n", lookupEvent->u.markerValue);
             if(lookupEvent->reportTimestampParam == REPORTTIMESTAMP_UNIXEPOCH)
             {
@@ -1174,6 +1206,7 @@ T2ERROR Profile_storeMarkerEvent(const char *profileName, T2Event *eventInfo)
                 T2Debug("Timestamp for %s is %s\n", lookupEvent->markerName_CT, lookupEvent->timestamp);
             }
             break;
+        }
         }
         pthread_mutex_unlock(&profile->eventMutex);
     }
@@ -1416,13 +1449,6 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
              * after setting threadExists = false (see CollectAndReport cleanup). */
         }
 
-        /* grepSeekProfile cleanup is safe without profileListLock here:
-         * the profile's thread has been joined (or never existed), and
-         * initialized=false prevents concurrent access from other threads. */
-        if(tempProfile->grepSeekProfile)
-        {
-            freeGrepSeekProfile(tempProfile->grepSeekProfile);
-        }
         if(delFromDisk == true)
         {
             removeProfileFromDisk(REPORTPROFILES_PERSISTENCE_PATH, tempProfile->name);
@@ -1546,11 +1572,6 @@ T2ERROR deleteProfile(const char *profileName)
     if(Vector_Size(profile->triggerConditionList) > 0)
     {
         rbusT2ConsumerUnReg(profile->triggerConditionList);
-    }
-
-    if(profile->grepSeekProfile)
-    {
-        freeGrepSeekProfile(profile->grepSeekProfile);
     }
 
     pthread_mutex_destroy(&profile->reportInProgressMutex);
@@ -1953,6 +1974,7 @@ T2ERROR appendTriggerCondition (Profile *tempProfile, const char *referenceName,
                 else
                 {
                     T2Warning("%s : referenceName or referenceValue is published as null, ignoring trigger condition \n ", __FUNCTION__);
+                    free(triggerCond);
                 }
 
             }
@@ -2120,5 +2142,4 @@ unsigned int getMinThresholdDuration(char *profileName)
     T2Debug("%s --out\n", __FUNCTION__);
     return minThresholdDuration;
 }
-
 

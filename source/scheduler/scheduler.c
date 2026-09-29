@@ -69,6 +69,7 @@ void freeSchedulerProfile(void *data)
         T2Info(" schProfile->name = %s schProfile->tId = %d\n", schProfile->name, (int)schProfile->tId);
         pthread_mutex_destroy(&schProfile->tMutex);
         pthread_cond_destroy(&schProfile->tCond);
+        pthread_detach(schProfile->tId);
         pthread_mutex_destroy(&schProfile->terminationMutex);
         pthread_cond_destroy(&schProfile->terminationCond);
         free(schProfile->name);

@@ -1048,6 +1048,10 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
                             rm_flag = true;
                         }
                     }
+                    else
+                    {
+                        freeProfile(profile);
+                    }
                 }
                 else
                 {

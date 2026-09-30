@@ -70,10 +70,31 @@ void freeSchedulerProfile(void *data)
         pthread_mutex_destroy(&schProfile->tMutex);
         pthread_cond_destroy(&schProfile->tCond);
         pthread_detach(schProfile->tId);
+        pthread_mutex_destroy(&schProfile->terminationMutex);
+        pthread_cond_destroy(&schProfile->terminationCond);
         free(schProfile->name);
         schProfile->name = NULL;
         free(schProfile);
     }
+}
+
+static void *schedulerThreadExit(SchedulerProfile *tProfile)
+{
+    bool removeOnExit = false;
+
+    pthread_mutex_lock(&tProfile->terminationMutex);
+    tProfile->threadExited = true;
+    removeOnExit = tProfile->removeOnThreadExit;
+    pthread_cond_broadcast(&tProfile->terminationCond);
+    pthread_mutex_unlock(&tProfile->terminationMutex);
+
+    if(removeOnExit)
+    {
+        pthread_mutex_lock(&scMutex);
+        Vector_RemoveItem(profileList, tProfile, freeSchedulerProfile);
+        pthread_mutex_unlock(&scMutex);
+    }
+    return NULL;
 }
 
 /*
@@ -169,7 +190,7 @@ void* TimeoutThread(void *arg)
     if (pthread_condattr_init(&Profile_attr) != 0)
     {
         T2Error("pthread_condattr_init failed");
-        return NULL;
+        return schedulerThreadExit(tProfile);
     }
 
     //Set the clock source for the condition variable as CLOCK_MONOTONIC
@@ -181,7 +202,7 @@ void* TimeoutThread(void *arg)
         {
             T2Error("pthread_condattr_destroy failed \n");
         }
-        return NULL;
+        return schedulerThreadExit(tProfile);
     }
 
     //Initialize the condition variable with the attributes
@@ -192,7 +213,7 @@ void* TimeoutThread(void *arg)
         {
             T2Error("pthread_condattr_destroy failed \n");
         }
-        return NULL;
+        return schedulerThreadExit(tProfile);
     }
 
     if (pthread_condattr_destroy(&Profile_attr) != 0)
@@ -208,7 +229,7 @@ void* TimeoutThread(void *arg)
         if(pthread_mutex_lock(&tProfile->tMutex) != 0)
         {
             T2Error("tProfile Mutex lock failed\n");
-            return NULL;
+            return schedulerThreadExit(tProfile);
         }
 
         // Check loop conditions while holding the lock
@@ -286,7 +307,7 @@ void* TimeoutThread(void *arg)
         if(pthread_mutex_lock(&tProfile->tMutex) != 0)
         {
             T2Error("tProfile Mutex lock failed after notifySchedulerstartcb\n");
-            return NULL;
+            return schedulerThreadExit(tProfile);
         }
         //When first reporting interval is given waiting for first report int vale
         if(tProfile->firstreportint > 0 && tProfile->firstexecution == true )
@@ -352,7 +373,7 @@ void* TimeoutThread(void *arg)
                     if(pthread_mutex_unlock(&tProfile->tMutex) != 0)
                     {
                         T2Error("tProfile Mutex unlock failed\n");
-                        return NULL;
+                        return schedulerThreadExit(tProfile);
                     }
                     break;
                 }
@@ -395,7 +416,7 @@ void* TimeoutThread(void *arg)
             {
                 T2Error("tProfile Mutex unlock failed\n");
                 free(profileName);
-                return NULL;
+                return schedulerThreadExit(tProfile);
             }
             activationTimeoutCb(profileName);
             is_activation_time_out = false;
@@ -408,11 +429,11 @@ void* TimeoutThread(void *arg)
         if(pthread_mutex_unlock(&tProfile->tMutex) != 0)
         {
             T2Error("tProfile Mutex unlock failed\n");
-            return NULL;
+            return schedulerThreadExit(tProfile);
         }
     }
     T2Debug("%s --out\n", __FUNCTION__);
-    return NULL;
+    return schedulerThreadExit(tProfile);
 }
 
 T2ERROR SendInterruptToTimeoutThread(char* profileName, bool isClearSeekMap)
@@ -440,6 +461,11 @@ T2ERROR SendInterruptToTimeoutThread(char* profileName, bool isClearSeekMap)
         tProfile = (SchedulerProfile *)Vector_At(profileList, index);
         if(profileName == NULL || (strcmp(profileName, tProfile->name) == 0))
         {
+            if(tProfile->removing)
+            {
+                pthread_mutex_unlock(&scMutex);
+                return T2ERROR_FAILURE;
+            }
             T2Info("Sending Interrupt signal to Timeout Thread of profile : %s\n", tProfile->name);
             int mutex_return = pthread_mutex_trylock(&tProfile->tMutex);
             if(mutex_return != 0)
@@ -596,7 +622,18 @@ T2ERROR registerProfileWithScheduler(const char* profileName, unsigned int timeI
         }
 
         SchedulerProfile *tProfile = (SchedulerProfile *)malloc(sizeof(SchedulerProfile));
+        if(tProfile == NULL)
+        {
+            T2Error("Failed to allocate scheduler profile\n");
+            return T2ERROR_FAILURE;
+        }
         tProfile->name = strdup(profileName);
+        if(tProfile->name == NULL)
+        {
+            T2Error("Failed to allocate scheduler profile name\n");
+            free(tProfile);
+            return T2ERROR_FAILURE;
+        }
         tProfile->repeat = repeat;
         tProfile->timeOutDuration = timeInterval;
         tProfile->timeToLive = activationTimeout;
@@ -606,6 +643,9 @@ T2ERROR registerProfileWithScheduler(const char* profileName, unsigned int timeI
         tProfile->firstreportint = firstReportingInterval;
         tProfile->firstexecution = false;
         tProfile->isClearSeekMap = false;
+        tProfile->removing = false;
+        tProfile->removeOnThreadExit = false;
+        tProfile->threadExited = false;
         tProfile->timeRef = timeRef;
         tProfile->timeRefinSec = 0;
         if(tProfile->timeOutDuration < tProfile->firstreportint)
@@ -619,6 +659,25 @@ T2ERROR registerProfileWithScheduler(const char* profileName, unsigned int timeI
         if(pthread_mutex_init(&tProfile->tMutex, NULL) != 0)
         {
             T2Error("%s Mutex init has failed\n",  __FUNCTION__);
+            free(tProfile->name);
+            free(tProfile);
+            return T2ERROR_FAILURE;
+        }
+        if(pthread_mutex_init(&tProfile->terminationMutex, NULL) != 0)
+        {
+            T2Error("%s termination mutex init has failed\n", __FUNCTION__);
+            pthread_mutex_destroy(&tProfile->tMutex);
+            free(tProfile->name);
+            free(tProfile);
+            return T2ERROR_FAILURE;
+        }
+        if(pthread_cond_init(&tProfile->terminationCond, NULL) != 0)
+        {
+            T2Error("%s termination condition init has failed\n", __FUNCTION__);
+            pthread_mutex_destroy(&tProfile->terminationMutex);
+            pthread_mutex_destroy(&tProfile->tMutex);
+            free(tProfile->name);
+            free(tProfile);
             return T2ERROR_FAILURE;
         }
         pthread_cond_init(&tProfile->tCond, NULL);
@@ -672,6 +731,11 @@ T2ERROR unregisterProfileFromScheduler(const char* profileName)
 
         if(strcmp(tProfile->name, profileName) == 0)
         {
+            if(tProfile->removing)
+            {
+                pthread_mutex_unlock(&scMutex);
+                return T2ERROR_FAILURE;
+            }
             if(pthread_mutex_lock(&tProfile->tMutex) != 0)
             {
                 T2Error("tProfile Mutex lock failed\n");
@@ -679,6 +743,7 @@ T2ERROR unregisterProfileFromScheduler(const char* profileName)
                 return T2ERROR_FAILURE;
             }
             tProfile->terminated = true;
+            tProfile->removing = true;
             signalrecived_and_executing = true;
             pthread_cond_signal(&tProfile->tCond);
             if(pthread_mutex_unlock(&tProfile->tMutex) != 0)
@@ -688,37 +753,25 @@ T2ERROR unregisterProfileFromScheduler(const char* profileName)
                 return T2ERROR_FAILURE;
             }
             T2Info(" tProfile->tId = %d tProfile->name = %s\n", (int)tProfile->tId, tProfile->name);
-            // pthread_join(tProfile->tId, NULL); // pthread_detach in freeSchedulerProfile will detach the thread
-            sched_yield(); // This will give chance for the signal receiving thread to start
 
-            int count = 0;
-            bool is_signal_executing = true;
-            while(is_signal_executing && !is_activation_time_out)
+            if(pthread_equal(pthread_self(), tProfile->tId))
             {
-                if(pthread_mutex_lock(&tProfile->tMutex) != 0)
-                {
-                    T2Error("tProfile Mutex lock failed\n");
-                    pthread_mutex_unlock(&scMutex);
-                    return T2ERROR_FAILURE;
-                }
-                is_signal_executing = signalrecived_and_executing;
-                if(pthread_mutex_unlock(&tProfile->tMutex) != 0)
-                {
-                    T2Error("tProfile Mutex unlock failed\n");
-                    pthread_mutex_unlock(&scMutex);
-                    return T2ERROR_FAILURE;
-                }
-                if(count++ > 10)
-                {
-                    break;
-                }
-                sleep(1);
+                pthread_mutex_lock(&tProfile->terminationMutex);
+                tProfile->removeOnThreadExit = true;
+                pthread_mutex_unlock(&tProfile->terminationMutex);
+                pthread_mutex_unlock(&scMutex);
+                return T2ERROR_SUCCESS;
             }
 
-            // Keep scMutex held across the wait loop to prevent concurrent removal/free of tProfile.
-            // This avoids using a potentially stale/freed pointer (Coverity ATOMICITY/CWE-662).
-            // Don't lock tProfile->tMutex here as Vector_RemoveItem will free tProfile via
-            // freeSchedulerProfile callback, which would cause use-after-free when unlocking.
+            pthread_mutex_unlock(&scMutex);
+            pthread_mutex_lock(&tProfile->terminationMutex);
+            while(!tProfile->threadExited)
+            {
+                pthread_cond_wait(&tProfile->terminationCond, &tProfile->terminationMutex);
+            }
+            pthread_mutex_unlock(&tProfile->terminationMutex);
+
+            pthread_mutex_lock(&scMutex);
             Vector_RemoveItem(profileList, tProfile, freeSchedulerProfile);
 
             T2Debug("%s:%d scMutex is unlocked\n", __FUNCTION__, __LINE__);

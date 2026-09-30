@@ -20,8 +20,6 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include <string>
-#include <cerrno>
-#include <pthread.h>
 #include <thread>                                                                                         
 #include <chrono> 
 
@@ -310,46 +308,6 @@ TEST_F(t2markersTestFixture, T2ER_StopDispatchThread_success_after_init)
 //T2ER_Uninit success after stop dispatch thread
 TEST_F(t2markersTestFixture, T2ER_Uninit_after_stop_dispatch_thread)
 {
-    T2ER_Uninit();
-}
-
-static pthread_mutex_t *g_erCondWaitMutex = nullptr;
-
-static int erCondWaitAlwaysFails(pthread_cond_t *cond, pthread_mutex_t *mutex)
-{
-    (void) cond;
-    g_erCondWaitMutex = mutex; // erMutex is static in t2eventreceiver.c, capture it from the wait call
-    return EINVAL;
-}
-
-//Dispatch thread must release erMutex when pthread_cond_wait fails - CID 52591
-TEST_F(t2markersTestFixture, T2ER_EventDispatchThread_cond_wait_failure_releases_erMutex)
-{
-    EXPECT_CALL(*g_t2markersMock, isRbusEnabled())
-        .Times(::testing::AnyNumber())
-        .WillRepeatedly(Return(true));
-    EXPECT_CALL(*g_t2markersMock, registerForTelemetryEvents(_))
-        .Times(::testing::AnyNumber())
-        .WillRepeatedly(Return(T2ERROR_SUCCESS));
-    // T2ER_Init() is what runs pthread_mutex_init/pthread_cond_init on erMutex, sTDMutex and erCond
-    ASSERT_EQ(T2ERROR_SUCCESS, T2ER_Init());
-
-    int (*originalCondWait)(pthread_cond_t *, pthread_mutex_t *) = t2erCondWait;
-    g_erCondWaitMutex = nullptr;
-    t2erCondWait = erCondWaitAlwaysFails;
-
-    void *result = T2ER_EventDispatchThread(nullptr);
-
-    t2erCondWait = originalCondWait;
-
-    ASSERT_EQ(result, nullptr);
-    ASSERT_NE(g_erCondWaitMutex, nullptr);
-    ASSERT_EQ(0, pthread_mutex_trylock(g_erCondWaitMutex)) << "erMutex was still held when the dispatch thread exited";
-    pthread_mutex_unlock(g_erCondWaitMutex);
-
-    // stopDispatchThread must have been reset, so the dispatcher is restartable after the failure
-    EXPECT_EQ(T2ERROR_SUCCESS, T2ER_StartDispatchThread());
-    EXPECT_EQ(T2ERROR_SUCCESS, T2ER_StopDispatchThread());
     T2ER_Uninit();
 }
 

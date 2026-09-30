@@ -562,6 +562,7 @@ TEST_F(profileXconfTestFixture, ProfileXConf_OnDemandStatusSnapshot)
     test_setReportUploadStatusState(true, true);
     test_publishReportUploadStatusForResult(T2ERROR_FAILURE);
     test_publishReportUploadStatusForResult(T2ERROR_FAILURE);
+    test_setReportUploadStatusState(false, false);
 }
 
 TEST_F(profileXconfTestFixture, ProfileXConf_NonOnDemandStatusIsIgnored)

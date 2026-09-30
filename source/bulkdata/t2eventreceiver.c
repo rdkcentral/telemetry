@@ -42,6 +42,12 @@ static pthread_mutex_t erMutex;
 static pthread_cond_t erCond;
 static pthread_mutex_t sTDMutex;
 
+// erThread has been created and not yet joined or detached, so T2ER_Uninit() must still join it.
+static bool erThreadJoinable = false;
+// A detached worker may outlive T2ER_Uninit(), so the sync objects must not be destroyed under it.
+static bool erThreadDetached = false;
+static bool erSyncObjectsInitialized = false;
+
 // Seam so unit tests can inject a pthread_cond_wait failure; defaults to the real call.
 int (*t2erCondWait)(pthread_cond_t *cond, pthread_mutex_t *mutex) = pthread_cond_wait;
 
@@ -383,24 +389,32 @@ T2ERROR T2ER_Init()
         T2Error("Failed to create Event Receiver Queue\n");
         return T2ERROR_FAILURE;
     }
-    int pthread_ret = 0;
-    pthread_ret = pthread_mutex_init(&sTDMutex, NULL);
-    if(pthread_ret != 0)
+    // Re-initializing a live mutex or condition variable is undefined, so only initialize once.
+    if(!erSyncObjectsInitialized)
     {
-        T2Error("%s Mutex init for sTDMutex failed with error code: %d\n", __FUNCTION__, pthread_ret);
-        return T2ERROR_FAILURE;
-    }
-    pthread_ret = pthread_mutex_init(&erMutex, NULL);
-    if(pthread_ret != 0)
-    {
-        T2Error("%s Mutex init for erMutex failed with error code: %d\n", __FUNCTION__, pthread_ret);
-        return T2ERROR_FAILURE;
-    }
-    pthread_ret = pthread_cond_init(&erCond, NULL);
-    if(pthread_ret != 0)
-    {
-        T2Error("%s Mutex init for erMutex failed with error code: %d\n", __FUNCTION__, pthread_ret);
-        return T2ERROR_FAILURE;
+        int pthread_ret = 0;
+        pthread_ret = pthread_mutex_init(&sTDMutex, NULL);
+        if(pthread_ret != 0)
+        {
+            T2Error("%s Mutex init for sTDMutex failed with error code: %d\n", __FUNCTION__, pthread_ret);
+            return T2ERROR_FAILURE;
+        }
+        pthread_ret = pthread_mutex_init(&erMutex, NULL);
+        if(pthread_ret != 0)
+        {
+            pthread_mutex_destroy(&sTDMutex);
+            T2Error("%s Mutex init for erMutex failed with error code: %d\n", __FUNCTION__, pthread_ret);
+            return T2ERROR_FAILURE;
+        }
+        pthread_ret = pthread_cond_init(&erCond, NULL);
+        if(pthread_ret != 0)
+        {
+            pthread_mutex_destroy(&erMutex);
+            pthread_mutex_destroy(&sTDMutex);
+            T2Error("%s Mutex init for erMutex failed with error code: %d\n", __FUNCTION__, pthread_ret);
+            return T2ERROR_FAILURE;
+        }
+        erSyncObjectsInitialized = true;
     }
 
     EREnabled = true;
@@ -446,9 +460,14 @@ T2ERROR T2ER_StartDispatchThread()
         return T2ERROR_FAILURE;
     }
     stopDispatchThread = false;
-    if(pthread_create(&erThread, NULL, T2ER_EventDispatchThread, NULL) != 0) // pthread_create failed so return after unlock as already stopDispatchThread is locked.
+    if(pthread_create(&erThread, NULL, T2ER_EventDispatchThread, NULL) != 0)
     {
         T2Error("%s T2ER_EventDispatchThread creation failed\n", __FUNCTION__);
+        stopDispatchThread = true; // no worker exists, keep the flag consistent so a retry is possible
+    }
+    else
+    {
+        erThreadJoinable = true;
     }
 
     if(pthread_mutex_unlock(&sTDMutex) != 0)
@@ -554,6 +573,15 @@ T2ERROR T2ER_StopDispatchThread()
         return T2ERROR_FAILURE;
     }
     ret = pthread_detach(erThread);
+    if(ret != 0)
+    {
+        T2Error("%s pthread_detach for erThread failed with error code %d\n", __FUNCTION__, ret);
+    }
+    else
+    {
+        erThreadJoinable = false;
+        erThreadDetached = true;
+    }
     pthread_mutex_unlock(&sTDMutex);
 
     flushCacheFromFile();
@@ -572,66 +600,68 @@ void T2ER_Uninit()
     EREnabled = false;
 
     pthread_t threadToJoin;
+    bool joinThread = false;
+    bool destroySyncObjects = false;
+
     if(pthread_mutex_lock(&sTDMutex) != 0) // mutex lock failed so return from T2ER_Uninit
     {
         T2Error("%s pthread_mutex_lock for sTDMutex failed\n", __FUNCTION__);
         return;
     }
-    if(!stopDispatchThread)
+    stopDispatchThread = true;
+    joinThread = erThreadJoinable; // true even if the worker already exited on its own, it still needs reaping
+    threadToJoin = erThread;
+    erThreadJoinable = false;
+    destroySyncObjects = erSyncObjectsInitialized && !erThreadDetached;
+    if(pthread_mutex_unlock(&sTDMutex) != 0) //mutex unlock failed so return from T2ER_Uninit
     {
-        stopDispatchThread = true;
-        threadToJoin = erThread; // Save thread handle while holding lock
-        if(pthread_mutex_unlock(&sTDMutex) != 0) //mutex unlock failed so return from T2ER_Uninit
-        {
-            T2Error("%s pthread_mutex_unlock for sTDMutex failed\n", __FUNCTION__);
-            return;
-        }
+        T2Error("%s pthread_mutex_unlock for sTDMutex failed\n", __FUNCTION__);
+        return;
+    }
 
-        if(pthread_mutex_lock(&erMutex) != 0) //mutex lock failed so return from T2ER_Uninit
+    if(joinThread)
+    {
+        if(pthread_mutex_lock(&erMutex) == 0)
+        {
+            int ret = pthread_cond_signal(&erCond);
+            if(ret != 0)
+            {
+                T2Error("%s pthread_cond_signal for erCond failed with error code %d\n", __FUNCTION__, ret);
+            }
+            if(pthread_mutex_unlock(&erMutex) != 0)
+            {
+                T2Error("%s pthread_mutex_unlock for erMutex failed\n", __FUNCTION__);
+            }
+        }
+        else
         {
             T2Error("%s pthread_mutex_lock for erMutex failed\n", __FUNCTION__);
-            return;
-        }
-        int ret = pthread_cond_signal(&erCond);
-        if(ret != 0)
-        {
-            T2Error("%s pthread_cond_signal for erCond failed with error code %d\n", __FUNCTION__, ret);
-        }
-        if(pthread_mutex_unlock(&erMutex) != 0)
-        {
-            T2Error("%s pthread_mutex_unlock for erMutex failed\n", __FUNCTION__);
-            return;
         }
 
         if(pthread_join(threadToJoin, NULL) != 0)
         {
             T2Error("%s erThread join failed\n", __FUNCTION__);
+            destroySyncObjects = false; // worker may still be using them
         }
+    }
 
+    if(destroySyncObjects)
+    {
         if(pthread_mutex_destroy(&erMutex) != 0)
         {
             T2Error("%s pthread_mutex_destroy for erMutex failed\n", __FUNCTION__);
-            return;
-        }
-        if(pthread_mutex_destroy(&sTDMutex) != 0)
-        {
-            T2Error("%s pthread_mutex_destroy for sTDMutex failed\n", __FUNCTION__);
-            return;
         }
         if(pthread_cond_destroy(&erCond) != 0)
         {
             T2Error("%s pthread_cond_destroy for erCond failed\n", __FUNCTION__);
-            return;
         }
-    }
-    else
-    {
-        if(pthread_mutex_unlock(&sTDMutex) != 0)
+        if(pthread_mutex_destroy(&sTDMutex) != 0)
         {
-            T2Error("%s pthread_mutex_unlock for sTDMutex failed\n", __FUNCTION__);
-            return;
+            T2Error("%s pthread_mutex_destroy for sTDMutex failed\n", __FUNCTION__);
         }
+        erSyncObjectsInitialized = false;
     }
+
     T2Debug("T2ER Event Dispatch Thread successfully terminated\n");
     t2_queue_destroy(eQueue, freeT2Event);
     eQueue = NULL;

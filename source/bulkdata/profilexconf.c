@@ -113,6 +113,29 @@ static void freeConfig(void *data)
     }
 }
 
+static void publishReportUploadStatusForResult(T2ERROR ret)
+{
+    pthread_mutex_lock(&xconfProfileLock);
+    bool localIsOnDemandReport = isOnDemandReport;
+    bool localIsAbortTriggered = isAbortTriggered;
+    isAbortTriggered = false;
+    pthread_mutex_unlock(&xconfProfileLock);
+
+    if(!localIsOnDemandReport)
+    {
+        return;
+    }
+
+    if(ret == T2ERROR_FAILURE)
+    {
+        publishReportUploadStatus(localIsAbortTriggered ? "ABORTED" : "FAILURE");
+    }
+    else
+    {
+        publishReportUploadStatus("SUCCESS");
+    }
+}
+
 static void freeProfileXConf()
 {
     if(singleProfile != NULL)
@@ -548,33 +571,7 @@ static void* CollectAndReportXconf(void* data)
         }
 
         // Notify status of upload in case of on demand report upload.
-        pthread_mutex_lock(&xconfProfileLock);
-        bool localIsOnDemandReport = isOnDemandReport;
-        bool localIsAbortTriggered = isAbortTriggered;
-        if(isAbortTriggered == true)
-        {
-            isAbortTriggered = false;
-        }
-        pthread_mutex_unlock(&xconfProfileLock);
-
-        if(localIsOnDemandReport)
-        {
-            if(ret == T2ERROR_FAILURE)
-            {
-                if(localIsAbortTriggered)
-                {
-                    publishReportUploadStatus("ABORTED");
-                }
-                else
-                {
-                    publishReportUploadStatus("FAILURE");
-                }
-            }
-            else
-            {
-                publishReportUploadStatus("SUCCESS");
-            }
-        }
+        publishReportUploadStatusForResult(ret);
 
         /* CRITICAL SECTION START: Re-acquire xconfProfileLock before updating profile state.
          * pthread_cond_wait requires us to hold xconfProfileLock, so we acquire it here
@@ -1189,6 +1186,15 @@ T2ERROR ProfileXConf_storeMarkerEvent(T2Event *eventInfo)
     return T2ERROR_SUCCESS;
 }
 #ifdef GTEST_ENABLE
+void test_publishReportUploadStatusForResult(T2ERROR ret, bool isOnDemand, bool isAbort)
+{
+    pthread_mutex_lock(&xconfProfileLock);
+    isOnDemandReport = isOnDemand;
+    isAbortTriggered = isAbort;
+    pthread_mutex_unlock(&xconfProfileLock);
+    publishReportUploadStatusForResult(ret);
+}
+
 void test_set_reportThreadExits(bool value)
 {
     reportThreadExits = value;

@@ -1186,12 +1186,16 @@ T2ERROR ProfileXConf_storeMarkerEvent(T2Event *eventInfo)
     return T2ERROR_SUCCESS;
 }
 #ifdef GTEST_ENABLE
-void test_publishReportUploadStatusForResult(T2ERROR ret, bool isOnDemand, bool isAbort)
+void test_setReportUploadStatusState(bool isOnDemand, bool isAbort)
 {
     pthread_mutex_lock(&xconfProfileLock);
     isOnDemandReport = isOnDemand;
     isAbortTriggered = isAbort;
     pthread_mutex_unlock(&xconfProfileLock);
+}
+
+void test_publishReportUploadStatusForResult(T2ERROR ret)
+{
     publishReportUploadStatusForResult(ret);
 }
 

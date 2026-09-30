@@ -42,6 +42,9 @@ static pthread_mutex_t erMutex;
 static pthread_cond_t erCond;
 static pthread_mutex_t sTDMutex;
 
+// Seam so unit tests can inject a pthread_cond_wait failure; defaults to the real call.
+int (*t2erCondWait)(pthread_cond_t *cond, pthread_mutex_t *mutex) = pthread_cond_wait;
+
 T2ERROR ReportProfiles_storeMarkerEvent(char *profileName, T2Event *eventInfo);
 
 /**
@@ -264,13 +267,22 @@ void* T2ER_EventDispatchThread(void *arg)
         while(t2_queue_count(eQueue) == 0 && shouldContinue)
         {
             T2Debug("Event Queue size is 0, Waiting events from T2ER_Push\n");
-            int ret = pthread_cond_wait(&erCond, &erMutex);
+            int ret = t2erCondWait(&erCond, &erMutex);
             if(ret != 0) // pthread cond wait failed return after unlock
             {
                 T2Error("%s pthread_cond_wait failed with error code: %d\n", __FUNCTION__, ret);
                 if(pthread_mutex_unlock(&erMutex) != 0)
                 {
                     T2Error("%s pthread_mutex_unlock for erMutex failed\n", __FUNCTION__);
+                }
+                if(pthread_mutex_lock(&sTDMutex) == 0)
+                {
+                    stopDispatchThread = true;
+                    pthread_mutex_unlock(&sTDMutex);
+                }
+                else
+                {
+                    T2Error("%s pthread_mutex_lock for sTDMutex failed\n", __FUNCTION__);
                 }
                 return NULL;
             }

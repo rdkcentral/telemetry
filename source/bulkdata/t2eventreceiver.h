@@ -20,7 +20,12 @@
 #ifndef _T2EVENTRECEIVER_H_
 #define _T2EVENTRECEIVER_H_
 
+#include <pthread.h>
+
 #include "telemetry2_0.h"
+
+// Seam so unit tests can inject a pthread_cond_wait failure; defaults to the real call.
+extern int (*t2erCondWait)(pthread_cond_t *cond, pthread_mutex_t *mutex);
 
 typedef struct _T2Event
 {

@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
+#include <cerrno>
 #include <thread>
 #include <chrono>
 
@@ -1392,6 +1393,30 @@ TEST_F(ProfileTest, EventDispatchThread_NoEventsWait) {
     pthread_join(t, nullptr);
 }
 */
+
+static pthread_mutex_t *g_erCondWaitMutex = nullptr;
+
+static int erCondWaitAlwaysFails(pthread_cond_t *cond, pthread_mutex_t *mutex)
+{
+    (void) cond;
+    g_erCondWaitMutex = mutex; // erMutex is static in t2eventreceiver.c, capture it from the wait call
+    return EINVAL;
+}
+
+TEST_F(ProfileTest, EventDispatchThread_CondWaitFailureReleasesErMutex) {
+    int (*originalCondWait)(pthread_cond_t *, pthread_mutex_t *) = t2erCondWait;
+    g_erCondWaitMutex = nullptr;
+    t2erCondWait = erCondWaitAlwaysFails;
+
+    void *result = T2ER_EventDispatchThread(nullptr);
+
+    t2erCondWait = originalCondWait;
+
+    ASSERT_EQ(result, nullptr);
+    ASSERT_NE(g_erCondWaitMutex, nullptr);
+    ASSERT_EQ(pthread_mutex_trylock(g_erCondWaitMutex), 0) << "erMutex was still held when the dispatch thread exited";
+    pthread_mutex_unlock(g_erCondWaitMutex);
+}
 
 /*
 TEST_F(ProfileTest, InitAlreadyInitialized) {

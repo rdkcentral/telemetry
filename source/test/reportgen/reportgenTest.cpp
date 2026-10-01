@@ -31,6 +31,7 @@ extern "C"
 #include <bulkdata/profilexconf.h>
 #include <dcautil/dcautil.h>
 #include <ccspinterface/busInterface.h>
+#include <dlfcn.h>	
 sigset_t blocking_signal;
 }
 #include "gmock/gmock.h"
@@ -50,6 +51,21 @@ rdklogMock *m_rdklogMock = NULL;
 extern "C"
 {
   void convertVectorToJson(cJSON *output, Vector *input);
+    static int g_test_realloc_fail_counter = 0; // set to N to fail on Nth call
+
+  void* (*real_realloc_fptr)(void*, size_t) = nullptr;
+
+  void* realloc(void* ptr, size_t size) {
+      if (g_test_realloc_fail_counter > 0) {
+          --g_test_realloc_fail_counter;
+          if (g_test_realloc_fail_counter == 0)
+              return nullptr;
+      }
+      if (!real_realloc_fptr) {
+          real_realloc_fptr = (void*(*)(void*, size_t))dlsym(RTLD_NEXT, "realloc");
+      }
+      return real_realloc_fptr(ptr, size);
+  }
 }
 
 class rdklogTestFixture : public ::testing::Test {
@@ -379,6 +395,55 @@ TEST_F(reportgenTestFixture, prepareHttpUrl_ParamValueIsEscapedAndFreed) {
     Vector_Destroy(paramList, NULL);
 }
 
+TEST_F(reportgenTestFixture, prepareHttpUrl_ReallocFails)
+{
+    T2HTTP* data = (T2HTTP *) malloc(sizeof(T2HTTP));
+    data->URL = strdup("https://mockxconf:50051/dataLakeMock/");
+    data->Compression  = COMP_NONE;
+    data->Method = HTTP_POST;
+    Vector_Create(&data->RequestURIparamList);
+
+    HTTPReqParam *httpreqparam = (HTTPReqParam *) malloc(sizeof(HTTPReqParam));
+    httpreqparam->HttpRef = strdup("reportName");
+    httpreqparam->HttpName = strdup("Profile.Name");
+    httpreqparam->HttpValue = strdup("RDK_Profile");
+    Vector_PushBack(data->RequestURIparamList, httpreqparam);
+
+    CURL* curl = (CURL*) 0xffee;
+    char* profile = strdup("RDK_Profile");
+
+    // Prepare the expectations for Curl and our mock functions
+    EXPECT_CALL(*m_reportgenMock, curl_easy_init())
+        .Times(1)
+        .WillOnce(Return(curl));
+    EXPECT_CALL(*m_reportgenMock, curl_easy_escape(_,_,_))
+        .Times(1)
+        .WillOnce(Return(profile));
+    EXPECT_CALL(*m_reportgenMock, curl_free(profile))
+        .Times(1);
+    EXPECT_CALL(*m_reportgenMock, curl_easy_cleanup(curl))
+        .Times(1);
+
+    // Cause realloc (for url_params) to fail the first allocation attempt
+    g_test_realloc_fail_counter = 1;
+
+    char* result = prepareHttpUrl(data);
+
+    // Should return original URL since it couldn't append
+    EXPECT_STREQ(result, data->URL);
+
+    free(result);
+    free(data->URL);
+    free(httpreqparam->HttpRef);
+    free(httpreqparam->HttpName);
+    free(httpreqparam->HttpValue);
+    Vector_Destroy(data->RequestURIparamList, free);
+    free(data);
+
+    // Reset for cleanliness!
+    g_test_realloc_fail_counter = 0;
+}
+
 TEST_F(reportgenTestFixture, PrepareJSONReport1)
 {
       cJSON* jsonobj = (cJSON*)malloc(sizeof(cJSON));
@@ -630,6 +695,7 @@ TEST_F(reportgenTestFixture, encodeGrepResultInJSON4)
     Vector_Destroy(grepMarkerList, free); // assuming it only contains malloc'd pointers
     cJSON_Delete(valArray);
 }
+
 TEST_F(reportgenTestFixture, encodeGrepResultInJSON_CreateObjectFails)
 {
     Vector* grepList = nullptr;
@@ -1127,6 +1193,161 @@ TEST_F(reportgenTestFixture, encodeParamResultInJSON8)
         free(valArray);
         valArray = NULL;
     }
+    Vector_Destroy(paramNameList, freeParam);
+    Vector_Destroy(paramValueList, freeProfileValues);
+}
+
+TEST_F(reportgenTestFixture, encodeParamResultInJSON_array_trim_and_regex)
+{
+    Vector *paramNameList = NULL, *paramValueList = NULL;
+    Vector_Create(&paramNameList);
+    Vector_Create(&paramValueList);
+    cJSON* valArray = (cJSON*)malloc(sizeof(cJSON));
+    Param* param = (Param *) malloc(sizeof(Param));
+    param->reportEmptyParam = true;
+    param->paramType = strdup("event");
+    param->name = strdup("EventTable");
+    param->alias = strdup("EventAlias");
+    param->trimParam = true;                    // trigger trim branch
+    param->regexParam = strdup("[0-9]+");       // trigger regex branch
+    Vector_PushBack(paramNameList, param);
+
+    profileValues *profVals = (profileValues *) malloc(sizeof(profileValues));
+    profVals->paramValues = (tr181ValStruct_t**) malloc(2 * sizeof(tr181ValStruct_t*));
+    profVals->paramValues[0] = (tr181ValStruct_t*) malloc(sizeof(tr181ValStruct_t));
+    profVals->paramValues[0]->parameterName = strdup("EventTable");
+    profVals->paramValues[0]->parameterValue = strdup("  123foo ");
+    profVals->paramValues[1] = (tr181ValStruct_t*) malloc(sizeof(tr181ValStruct_t));
+    profVals->paramValues[1]->parameterName = strdup("EventTable");
+    profVals->paramValues[1]->parameterValue = strdup("\t456bar\t");
+    profVals->paramValueCount = 2;
+    Vector_PushBack(paramValueList, profVals);
+
+    cJSON* mockObj = (cJSON*)0xb010;
+    cJSON* mockArr = (cJSON*)0xb011;
+    cJSON* mockItem1 = (cJSON*)0xb012;
+    cJSON* mockItem2 = (cJSON*)0xb013;
+    EXPECT_CALL(*m_reportgenMock, cJSON_CreateObject())
+        .Times(3)
+        .WillOnce(Return(mockObj))
+        .WillOnce(Return(mockItem1))
+        .WillOnce(Return(mockItem2));
+    EXPECT_CALL(*m_reportgenMock, cJSON_CreateArray())
+        .Times(1).WillOnce(Return(mockArr));
+    EXPECT_CALL(*m_reportgenMock, cJSON_AddStringToObject(mockItem1, _, _)).WillOnce(Return(mockItem1));
+    EXPECT_CALL(*m_reportgenMock, cJSON_AddStringToObject(mockItem2, _, _)).WillOnce(Return(mockItem2));
+    EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToArray(mockArr, mockItem1)).WillOnce(Return(true));
+    EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToArray(mockArr, mockItem2)).WillOnce(Return(true));
+    EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToObject(mockObj, StrEq("EventTable"), mockArr)).WillOnce(Return(true));
+    EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToArray(valArray, mockObj)).WillOnce(Return(true));
+    // Regex mocks for both values
+    EXPECT_CALL(*m_reportgenMock, regcomp(_, StrEq("[0-9]+"), _)).Times(2).WillRepeatedly(Return(0));
+    EXPECT_CALL(*m_reportgenMock, regexec(_, _, _, _, _)).Times(2)
+        .WillRepeatedly([](const regex_t*, const char* s, size_t, regmatch_t* pmatch, int){
+            // match the number at start after trimming
+            if (strstr(s, "123")) { pmatch[0].rm_so = 0; pmatch[0].rm_eo = 3; }
+            else if (strstr(s, "456")) { pmatch[0].rm_so = 0; pmatch[0].rm_eo = 3; }
+            else { pmatch[0].rm_so = 0; pmatch[0].rm_eo = 0; }
+            return 0;
+        });
+    EXPECT_CALL(*m_reportgenMock, regfree(_)).Times(2);
+
+    EXPECT_EQ(T2ERROR_SUCCESS, encodeParamResultInJSON(valArray,paramNameList,paramValueList));
+    cJSON_Delete(valArray);
+    free(valArray);
+    Vector_Destroy(paramNameList, freeParam);
+    Vector_Destroy(paramValueList, freeProfileValues);
+}
+
+TEST_F(reportgenTestFixture, encodeParamResultInJSON_regex_no_match)
+{
+    Vector *paramNameList = NULL;
+    Vector *paramValueList = NULL;
+    Vector_Create(&paramNameList);
+    Vector_Create(&paramValueList);
+
+    cJSON* valArray = (cJSON*)malloc(sizeof(cJSON));
+    Param* param = (Param *) malloc(sizeof(Param));
+    param->reportEmptyParam = true;
+    param->paramType = strdup("event");
+    param->name = strdup("Event1");
+    param->alias = strdup("EventMarker1");
+    param->trimParam = false;
+    param->regexParam = strdup("[a-z]+");
+    Vector_PushBack(paramNameList, param);
+
+    profileValues *profVals = (profileValues *) malloc(sizeof(profileValues));
+    profVals->paramValues = (tr181ValStruct_t**) malloc(sizeof(tr181ValStruct_t*));
+    profVals->paramValues[0] = (tr181ValStruct_t*) malloc(sizeof(tr181ValStruct_t));
+    profVals->paramValues[0]->parameterName = strdup("Event1");
+    profVals->paramValues[0]->parameterValue = strdup("VALUE123"); // UPPER, so won't match [a-z]+
+    profVals->paramValueCount = 1;
+    Vector_PushBack(paramValueList, profVals);
+
+    cJSON* mockObj = (cJSON*)0xabcd;
+    EXPECT_CALL(*m_reportgenMock, cJSON_CreateObject())
+            .Times(1).WillOnce(Return(mockObj));
+    // regcomp succeeds for the regex
+    EXPECT_CALL(*m_reportgenMock, regcomp(_, StrEq("[a-z]+"), _)).WillOnce(Return(0));
+    // regexec returns no match
+    EXPECT_CALL(*m_reportgenMock, regexec(_, StrEq("VALUE123"), _, _, _)).WillOnce(Return(REG_NOMATCH));
+    EXPECT_CALL(*m_reportgenMock, regfree(_)).Times(1);
+    // Accept string-add and array-add to let the operation pass
+    EXPECT_CALL(*m_reportgenMock, cJSON_AddStringToObject(mockObj, _, _)).WillOnce(Return(mockObj));
+    EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToArray(valArray, mockObj)).WillOnce(Return(true));
+
+    // It should succeed, because the function continues after branch
+    EXPECT_EQ(T2ERROR_SUCCESS, encodeParamResultInJSON(valArray, paramNameList, paramValueList));
+    cJSON_Delete(valArray);
+    free(valArray);
+    Vector_Destroy(paramNameList, freeParam);
+    Vector_Destroy(paramValueList, freeProfileValues);
+}
+
+TEST_F(reportgenTestFixture, encodeParamResultInJSON_regex_match)
+{
+    Vector *paramNameList = NULL;
+    Vector *paramValueList = NULL;
+    Vector_Create(&paramNameList);
+    Vector_Create(&paramValueList);
+
+    cJSON* valArray = (cJSON*)malloc(sizeof(cJSON));
+    Param* param = (Param *) malloc(sizeof(Param));
+    param->reportEmptyParam = true;
+    param->paramType = strdup("event");
+    param->name = strdup("Event2");
+    param->alias = strdup("EventMarker2");
+    param->trimParam = false;
+    param->regexParam = strdup("[A-Z]+");
+    Vector_PushBack(paramNameList, param);
+
+    profileValues *profVals = (profileValues *) malloc(sizeof(profileValues));
+    profVals->paramValues = (tr181ValStruct_t**) malloc(sizeof(tr181ValStruct_t*));
+    profVals->paramValues[0] = (tr181ValStruct_t*) malloc(sizeof(tr181ValStruct_t));
+    profVals->paramValues[0]->parameterName = strdup("Event2");
+    profVals->paramValues[0]->parameterValue = strdup("FOOabc"); // The match will be "FOO"
+    profVals->paramValueCount = 1;
+    Vector_PushBack(paramValueList, profVals);
+
+    cJSON* mockObj = (cJSON*)0xabce;
+    EXPECT_CALL(*m_reportgenMock, cJSON_CreateObject())
+            .Times(1).WillOnce(Return(mockObj));
+    // regcomp succeeds
+    EXPECT_CALL(*m_reportgenMock, regcomp(_, StrEq("[A-Z]+"), _)).WillOnce(Return(0));
+    // regexec: match "FOO" at offset 0-3
+    EXPECT_CALL(*m_reportgenMock, regexec(_, StrEq("FOOabc"), _, _, _))
+            .WillOnce([](const regex_t*, const char*, size_t, regmatch_t* pmatch, int){
+                pmatch[0].rm_so = 0; pmatch[0].rm_eo = 3;
+                return 0; // match!
+            });
+    EXPECT_CALL(*m_reportgenMock, regfree(_)).Times(1);
+    // Accept string-add and array-add to let the operation pass
+    EXPECT_CALL(*m_reportgenMock, cJSON_AddStringToObject(mockObj, _, _)).WillOnce(Return(mockObj));
+    EXPECT_CALL(*m_reportgenMock, cJSON_AddItemToArray(valArray, mockObj)).WillOnce(Return(true));
+
+    EXPECT_EQ(T2ERROR_SUCCESS, encodeParamResultInJSON(valArray, paramNameList, paramValueList));
+    cJSON_Delete(valArray);
+    free(valArray);
     Vector_Destroy(paramNameList, freeParam);
     Vector_Destroy(paramValueList, freeProfileValues);
 }
@@ -2014,6 +2235,40 @@ TEST_F(reportgenTestFixture, ApplyRegexToValue_viaCallback_RegexecFails) {
     EXPECT_STREQ(*inputValue, "");
 
     // Clean up
+    free(*inputValue);
+}
+
+TEST_F(reportgenTestFixture, ApplyRegexToValue_viaCallback_RegexecMatch_Success)
+{
+    applyRegexToValueFunc fp = applyRegexToValueCallback();
+    ASSERT_NE(fp, nullptr);
+
+    // Set up a string that will be partially matched
+    char *input = strdup("abc123def");
+    ASSERT_NE(input, nullptr);
+    char **inputValue = &input;
+    const char *pattern = "[0-9]+"; // will match "123" in "abc123def"
+
+    // Mock regcomp success
+    EXPECT_CALL(*m_reportgenMock, regcomp(_, StrEq(pattern), _))
+        .WillOnce(Return(0));
+    // Mock regexec: set pmatch to match "123" (positions 3 to 6)
+    EXPECT_CALL(*m_reportgenMock, regexec(_, StrEq("abc123def"), _, _, _))
+        .WillOnce([](const regex_t*, const char*, size_t, regmatch_t* pmatch, int){
+            pmatch[0].rm_so = 3;
+            pmatch[0].rm_eo = 6;
+            return 0; // success
+        });
+    // Should call regfree
+    EXPECT_CALL(*m_reportgenMock, regfree(_)).Times(1);
+
+    // Call the function
+    T2ERROR result = fp(inputValue, pattern);
+
+    // Ensure OK and user string is updated to "123"
+    EXPECT_EQ(result, T2ERROR_SUCCESS);
+    ASSERT_NE(*inputValue, nullptr);
+    EXPECT_STREQ(*inputValue, "123");
     free(*inputValue);
 }
 

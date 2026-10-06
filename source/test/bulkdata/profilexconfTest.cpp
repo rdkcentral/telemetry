@@ -55,6 +55,9 @@ using ::testing::Invoke;
 using ::testing::SetArgPointee;                                                                                                   
 using ::testing::DoAll;     
 
+extern "C" void test_setReportUploadStatusState(bool isOnDemand, bool isAbort);
+extern "C" void test_publishReportUploadStatusForResult(T2ERROR ret);
+
 rbusMock* g_rbusMock = nullptr;
 SystemMock* g_systemMock = nullptr;
 FileMock* g_fileIOMock = nullptr;
@@ -546,6 +549,29 @@ TEST_F(profileXconfTestFixture, ReportProfiles_storeMarkerEvent_success_2)
     free(eventInfo->name);
     free(eventInfo->value);
     free(eventInfo);
+}
+
+TEST_F(profileXconfTestFixture, ProfileXConf_OnDemandStatusSnapshot)
+{
+    testing::InSequence sequence;
+    EXPECT_CALL(*g_profileXConfMock, publishReportUploadStatus(StrEq("ABORTED")))
+        .Times(1);
+    EXPECT_CALL(*g_profileXConfMock, publishReportUploadStatus(StrEq("FAILURE")))
+        .Times(1);
+
+    test_setReportUploadStatusState(true, true);
+    test_publishReportUploadStatusForResult(T2ERROR_FAILURE);
+    test_publishReportUploadStatusForResult(T2ERROR_FAILURE);
+    test_setReportUploadStatusState(false, false);
+}
+
+TEST_F(profileXconfTestFixture, ProfileXConf_NonOnDemandStatusIsIgnored)
+{
+    EXPECT_CALL(*g_profileXConfMock, publishReportUploadStatus(_))
+        .Times(0);
+
+    test_setReportUploadStatusState(false, true);
+    test_publishReportUploadStatusForResult(T2ERROR_FAILURE);
 }
 
 //ProfileXConf_notifyTimeout Test the timeout of the profile

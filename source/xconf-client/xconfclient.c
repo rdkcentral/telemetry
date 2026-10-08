@@ -642,10 +642,10 @@ static T2ERROR fetchRemoteReportProfileConfiguration(char **configData)
     if (NULL != requestURL)
     {
         //T2Debug("%s remoteUrl::%s\n", __FUNCTION__, remoteUrl);
-        rc = curl_url_set(requestURL, CURLUPART_URL, configURL, 0);
+        rc = curl_url_set(requestURL, CURLUPART_URL, remoteUrl, 0);
         if(rc != CURLUE_OK)
         {
-            T2Error("T2: Curl unable to set config url %s\n",  configURL);
+            T2Error("T2: Curl unable to set config url %s\n",  remoteUrl);
             T2_CURL_ERRROR(rc);
             curl_url_cleanup(requestURL);
             return ret;

@@ -29,7 +29,7 @@ TEST(T2ParserXConf, DefaultScheduleUsed)
         "{"
         "  \"urn:settings:TelemetryProfile\": {"
         "    \"telemetryProfile:name\": \"DefaultSched\","
-        "    \"uploadRepository:URL\": \"http://example.com/upload\","
+        "    \"uploadRepository:URL\": \"https://example.com/upload\","
         "    \"schedule\": \"11 4 * * *\","
         "    \"telemetryProfile\": [ {"
         "        \"header\": \"param1\","
@@ -44,7 +44,7 @@ TEST(T2ParserXConf, DefaultScheduleUsed)
     // default should be 15 minutes -> 900 seconds
     EXPECT_EQ(900, profile->reportingInterval);
     ASSERT_NE(profile->t2HTTPDest, nullptr);
-    EXPECT_STREQ("http://example.com/upload", profile->t2HTTPDest->URL ? profile->t2HTTPDest->URL : "");
+    EXPECT_STREQ("https://example.com/upload", profile->t2HTTPDest->URL ? profile->t2HTTPDest->URL : "");
     // minimal cleanup (full deep-free is not attempted here)
     // tests rely on process teardown to reclaim memory in CI runs
 }
@@ -61,7 +61,7 @@ TEST(T2ParserXConf, SlashScheduleAndTopLogHandling)
         "{"
         "  \"urn:settings:TelemetryProfile\": {"
         "    \"telemetryProfile:name\": \"SlashSched\","
-        "    \"uploadRepository:URL\": \"http://example.com/upload2\","
+        "    \"uploadRepository:URL\": \"https://example.com/upload2\","
         "    \"schedule\": \"0/5 * * * *\","
         "    \"telemetryProfile\": ["
         "      {"
@@ -84,8 +84,29 @@ TEST(T2ParserXConf, SlashScheduleAndTopLogHandling)
     // schedule "0/5 * * * *" should parse to 5 minutes => 300 sec
     EXPECT_EQ(300, profile->reportingInterval);
     ASSERT_NE(profile->t2HTTPDest, nullptr);
-    EXPECT_STREQ("http://example.com/upload2", profile->t2HTTPDest->URL ? profile->t2HTTPDest->URL : "");
+    EXPECT_STREQ("https://example.com/upload2", profile->t2HTTPDest->URL ? profile->t2HTTPDest->URL : "");
     // Ensure the profile name got set
     EXPECT_STREQ("SlashSched", profile->name ? profile->name : "");
+}
+
+TEST(T2ParserXConf, RejectsInvalidUploadUrl)
+{
+    ProfileXConf *profile = NULL;
+    const char *json_invalid_url =
+        "{"
+        "  \"urn:settings:TelemetryProfile\": {"
+        "    \"telemetryProfile:name\": \"BadUrl\","
+        "    \"uploadRepository:URL\": \"http://localhost/test\","
+        "    \"schedule\": \"0/5 * * * *\","
+        "    \"telemetryProfile\": [ {"
+        "        \"header\": \"param1\","
+        "        \"content\": \"alias1\","
+        "        \"type\": \"/var/log/some.log\","
+        "        \"pollingFrequency\": \"0\""
+        "    } ]"
+        "  }"
+        "}";
+    EXPECT_EQ(T2ERROR_FAILURE, processConfigurationXConf((char*)json_invalid_url, &profile));
+    EXPECT_EQ((ProfileXConf*)NULL, profile);
 }
 

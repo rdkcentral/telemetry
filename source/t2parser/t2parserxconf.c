@@ -22,6 +22,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <arpa/inet.h>
+#include <strings.h>
 
 #include "t2parserxconf.h"
 #include "xconfclient.h"
@@ -44,6 +46,169 @@
 #define SPLITMARKER_SUFFIX  "_split"
 #define ACCUMULATE_MARKER_SUFFIX  "_accum"
 #define MAX_PARAM_LEN 15
+
+static bool is_valid_https_upload_url(const char *url)
+{
+    if (url == NULL || *url == '\0')
+    {
+        return false;
+    }
+
+    char url_copy[2048];
+    size_t url_len = strlen(url);
+    if (url_len == 0 || url_len >= sizeof(url_copy))
+    {
+        return false;
+    }
+
+    snprintf(url_copy, sizeof(url_copy), "%s", url);
+    char *scheme_end = strstr(url_copy, "://");
+    if (scheme_end == NULL)
+    {
+        return false;
+    }
+
+    *scheme_end = '\0';
+    if (strcasecmp(url_copy, "https") != 0)
+    {
+        return false;
+    }
+
+    char *authority = scheme_end + 3;
+    if (*authority == '\0')
+    {
+        return false;
+    }
+
+    if (strchr(authority, '@') != NULL)
+    {
+        return false;
+    }
+
+    char *path_start = strchr(authority, '/');
+    if (path_start != NULL)
+    {
+        *path_start = '\0';
+    }
+
+    char *query_start = strchr(authority, '?');
+    if (query_start != NULL)
+    {
+        *query_start = '\0';
+    }
+
+    char *fragment_start = strchr(authority, '#');
+    if (fragment_start != NULL)
+    {
+        *fragment_start = '\0';
+    }
+
+    char host[256];
+    memset(host, 0, sizeof(host));
+    if (authority[0] == '[')
+    {
+        char *close_bracket = strchr(authority, ']');
+        if (close_bracket == NULL)
+        {
+            return false;
+        }
+        size_t host_len = (size_t)(close_bracket - authority - 1);
+        if (host_len == 0 || host_len >= sizeof(host))
+        {
+            return false;
+        }
+        memcpy(host, authority + 1, host_len);
+        host[host_len] = '\0';
+    }
+    else
+    {
+        char *port_sep = strrchr(authority, ':');
+        if (port_sep != NULL)
+        {
+            char *first_colon = strchr(authority, ':');
+            if (first_colon != NULL && first_colon != port_sep)
+            {
+                return false;
+            }
+
+            size_t host_len = (size_t)(port_sep - authority);
+            if (host_len == 0 || host_len >= sizeof(host))
+            {
+                return false;
+            }
+            memcpy(host, authority, host_len);
+            host[host_len] = '\0';
+
+            char *port_value = port_sep + 1;
+            if (*port_value == '\0')
+            {
+                return false;
+            }
+            for (char *p = port_value; *p != '\0'; ++p)
+            {
+                if (*p < '0' || *p > '9')
+                {
+                    return false;
+                }
+            }
+        }
+        else
+        {
+            size_t hostname_len = strlen(authority);
+            if (hostname_len == 0 || hostname_len >= sizeof(host))
+            {
+                return false;
+            }
+            snprintf(host, sizeof(host), "%s", authority);
+        }
+    }
+
+    if (host[0] == '\0')
+    {
+        return false;
+    }
+
+    char lower_host[256];
+    size_t host_len = strlen(host);
+    if (host_len >= sizeof(lower_host))
+    {
+        return false;
+    }
+    for (size_t i = 0; i < host_len; ++i)
+    {
+        lower_host[i] = (char)tolower((unsigned char)host[i]);
+    }
+    lower_host[host_len] = '\0';
+
+    if (strcmp(lower_host, "localhost") == 0 ||
+        strcmp(lower_host, "localhost.localdomain") == 0 ||
+        (host_len >= 10 && strncmp(lower_host, "localhost.", 10) == 0) ||
+        (host_len >= 6 && strcmp(lower_host + host_len - 6, ".local") == 0) ||
+        (host_len >= 9 && strcmp(lower_host + host_len - 9, ".internal") == 0))
+    {
+        return false;
+    }
+
+    struct in_addr addr;
+    if (inet_pton(AF_INET, host, &addr) == 1)
+    {
+        uint32_t ip = ntohl(addr.s_addr);
+        if ((ip & 0xFF000000u) == 0x7F000000u ||
+            (ip & 0xFF000000u) == 0x00000000u ||
+            (ip & 0xFF000000u) == 0x0A000000u ||
+            (ip & 0xFFF00000u) == 0xAC100000u ||
+            (ip & 0xFFFF0000u) == 0xC0A80000u ||
+            (ip & 0xFFFF0000u) == 0xA9FE0000u ||
+            (ip & 0xFFC00000u) == 0x64400000u ||
+            (ip & 0xFF000000u) == 0xE0000000u ||
+            (ip & 0xFF000000u) == 0xF0000000u)
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
 
 static int getScheduleInSeconds(const char* cronPattern)
 {
@@ -255,6 +420,13 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
     if(jprofileName == NULL || juploadUrl == NULL || jschedule == NULL || profileData == NULL || marker_count == 0)
     {
         T2Error("Incomplete profile information, unable to create profile\n");
+        cJSON_Delete(json_root);
+        return T2ERROR_FAILURE;
+    }
+
+    if (!is_valid_https_upload_url(juploadUrl->valuestring))
+    {
+        T2Error("Rejected invalid upload URL in XCONF profile: %s\n", juploadUrl->valuestring ? juploadUrl->valuestring : "(null)");
         cJSON_Delete(json_root);
         return T2ERROR_FAILURE;
     }

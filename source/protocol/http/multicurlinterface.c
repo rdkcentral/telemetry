@@ -626,7 +626,6 @@ static void configure_wan_interface(CURL *easy)
 }
 #endif
 
-
 T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_output)
 {
     T2Debug("%s ++in\n", __FUNCTION__);

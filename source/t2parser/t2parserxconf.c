@@ -65,7 +65,14 @@ static int getScheduleInSeconds(const char* cronPattern)
                 discardPatternLen = strlen(discardPattern);
                 int timeInMinDataLen = inputMatchSize - discardPatternLen;
                 char scheduleString[10] = { '\0' };
-                strncpy(scheduleString, inputMatchPattern, timeInMinDataLen);
+                // Bounds check: ensure the schedule string doesn't exceed buffer
+                if (timeInMinDataLen >= sizeof(scheduleString)) {
+                    T2Error("Schedule string too long: %d bytes, max %zu\n", timeInMinDataLen, sizeof(scheduleString) - 1);
+                    free(input);
+                    return -1;
+                }
+                strncpy(scheduleString, inputMatchPattern, sizeof(scheduleString) - 1);
+                scheduleString[sizeof(scheduleString) - 1] = '\0';
                 scheduleIntervalInMin = atoi(scheduleString);
             }
 

@@ -775,6 +775,11 @@ void t2_uninit(void)
     uninitMutex();
 }
 
+const char *t2_get_component_version(void)
+{
+    return "2.0";
+}
+
 T2ERROR t2_event_s(const char* marker, const char* value)
 {
 

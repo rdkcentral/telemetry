@@ -76,6 +76,13 @@ T2ERROR t2_event_d(const char* marker, int value);
  */
 void t2_uninit(void);
 
+/*
+ * NAME        : t2_get_component_version
+ * DESCRIPTION : Returns the telemetry component API version string
+ * RETURN      : Null-terminated component version string
+ */
+const char *t2_get_component_version(void);
+
 
 /*
  * NAME        : filtered_event_send

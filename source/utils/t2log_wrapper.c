@@ -37,7 +37,7 @@ void  LOGInit()
 #ifdef RDK_LOGGER
     rdk_logger_init(DEBUG_INI_NAME);
 #else
-    printf("LOG.RDK.T2: LOGInit\n");
+    printf("LOG.RDK.T2: telemetry logging initialized\n");
 #endif
 
 }

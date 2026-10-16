@@ -240,7 +240,7 @@ static void t2DaemonMainModeInit( )
     }
 
 
-    T2Info("Telemetry 2.0 Component Init Success\n");
+    T2Info("Telemetry 2.0 daemon initialization succeeded\n");
 
     /* Main dispatch loop: poll signal flags set by sig_handler.
      * All signal-unsafe work (uninit, logging, mutex ops) happens here
@@ -383,4 +383,3 @@ int main()
     t2DaemonMainModeInit();
     return 0;
 }
-

@@ -446,6 +446,13 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
 
     profile->protocol = strdup("HTTP");
     profile->t2HTTPDest = (T2HTTP *)malloc(sizeof(T2HTTP));
+    if(profile->t2HTTPDest == NULL)
+    {
+        T2Error("Malloc error exiting: can not allocate memory to create profile->t2HTTPDest \n");
+        cJSON_Delete(json_root);
+        return T2ERROR_MEMALLOC_FAILED;
+    }
+    memset(profile->t2HTTPDest, 0, sizeof(*profile->t2HTTPDest));
 
     profile->t2HTTPDest->URL = strdup(juploadUrl->valuestring);
     profile->encodingType = strdup("JSON");

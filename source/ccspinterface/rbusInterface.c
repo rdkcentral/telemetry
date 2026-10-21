@@ -1038,6 +1038,10 @@ static rbusError_t dcmOnDemandMethodHandler(rbusHandle_t handle, char const* met
             if(pthread_create(&rpOnDemandTh, &rpOnDemandAttr, reportOnDemandCallBack, ON_DEMAND_ACTION_UPLOAD) != 0)
             {
                 T2Error("Failed to create thread for report on demand.\n");
+                onDemandReportCallBackHandler = NULL;
+                pthread_mutex_unlock(&asyncMutex);
+                pthread_attr_destroy(&rpOnDemandAttr);
+                return RBUS_ERROR_FAILURE;
             }
             pthread_attr_destroy(&rpOnDemandAttr);
 

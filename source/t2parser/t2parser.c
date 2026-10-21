@@ -1859,10 +1859,18 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     if((strcmp(jprofileProtocol->valuestring, "HTTP") == 0))
     {
         profile->t2HTTPDest = (T2HTTP *) malloc(sizeof(T2HTTP));
+        if(profile->t2HTTPDest)
+        {
+            memset(profile->t2HTTPDest, 0, sizeof(*profile->t2HTTPDest));
+        }
     }
     else if ((strcmp(jprofileProtocol->valuestring, "RBUS_METHOD") == 0))
     {
         profile->t2RBUSDest = malloc(sizeof(T2RBUS));
+        if(profile->t2RBUSDest)
+        {
+            memset(profile->t2RBUSDest, 0, sizeof(*profile->t2RBUSDest));
+        }
     }
 
     if ( (profile->t2HTTPDest == NULL) && (profile->t2RBUSDest  == NULL) )
@@ -3406,6 +3414,7 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
             T2Error("Malloc error exiting: can not allocate memory to create profile->t2HTTPDest \n");
             return T2ERROR_MEMALLOC_FAILED;
         }
+        memset(profile->t2HTTPDest, 0, sizeof(*profile->t2HTTPDest));
         msgpack_object *HTTP_map = msgpack_get_map_value(value_map, "HTTP");
         msgpack_object *URL_str = msgpack_get_map_value(HTTP_map, "URL");
         msgpack_object *Compression_str = msgpack_get_map_value(HTTP_map, "Compression");
@@ -3444,6 +3453,7 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
             T2Error("Malloc error exiting: can not allocate memory to create profile->t2RBUSDest \n");
             return T2ERROR_MEMALLOC_FAILED;
         }
+        memset(profile->t2RBUSDest, 0, sizeof(*profile->t2RBUSDest));
         RbusMethod_map = msgpack_get_map_value(value_map, "RBUS_METHOD");
         RbusMethod_str = msgpack_get_map_value(RbusMethod_map, "Method");
         msgpack_print(RbusMethod_str, msgpack_get_obj_name(RbusMethod_str));

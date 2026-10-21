@@ -30,6 +30,7 @@
 #include <sys/resource.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <errno.h>
 #include "reportprofiles.h"
 
 #include "xconfclient.h"
@@ -50,6 +51,7 @@
 #include "t2parser.h"
 #include "telemetry2_0.h"
 #include "t2MtlsUtils.h"
+#include "t2common.h"
 #include "persistence.h"
 #ifdef LIBRDKCERTSEL_BUILD
 #include "curlinterface.h"
@@ -622,8 +624,14 @@ T2ERROR initReportProfiles()
                 check_component_crash(TELEMETRY_INIT_FILE_BOOTUP);
 
                 //Touching TELEMETRY_INIT_FILE_BOOTUP during Bootup
-                system("touch /tmp/telemetry_initialized_bootup");
-                T2Debug(" %s Touched \n", TELEMETRY_INIT_FILE_BOOTUP);
+                if (!createSecureTempFlag(TELEMETRY_INIT_FILE_BOOTUP))
+                {
+                    T2Error("Failed to create secure boot flag %s\n", TELEMETRY_INIT_FILE_BOOTUP);
+                }
+                else
+                {
+                    T2Debug(" %s Touched \n", TELEMETRY_INIT_FILE_BOOTUP);
+                }
             }
 #endif
             //Web Config Framework init ends
@@ -642,11 +650,9 @@ T2ERROR initReportProfiles()
         {
             unregisterDEforCompEventList();
             createComponentDataElements();
-            FILE* cfgReadyFlag = NULL ;
-            cfgReadyFlag = fopen(T2_CONFIG_READY, "w+");
-            if(cfgReadyFlag)
+            if (!createSecureTempFlag(T2_CONFIG_READY))
             {
-                fclose(cfgReadyFlag);
+                T2Error("Failed to create secure config ready flag %s\n", T2_CONFIG_READY);
             }
             setT2EventReceiveState(T2_STATE_CONFIG_READY);
             T2Info("T2 is now Ready to be configured for report profiles\n");
@@ -658,16 +664,13 @@ T2ERROR initReportProfiles()
 
 
     // This indicates telemetry has started
-    FILE* bootFlag = NULL ;
-    bootFlag = fopen(BOOTFLAG, "w+");
-    if(bootFlag)
+    if (!createSecureTempFlag(BOOTFLAG))
     {
-        T2Debug("%s Touched \n", BOOTFLAG);
-        fclose(bootFlag);
+        T2Error("Failed to create secure T2 bootflag %s \n", BOOTFLAG);
     }
     else
     {
-        T2Error("Failed to create T2 bootflag %s \n", BOOTFLAG);
+        T2Debug("%s Touched \n", BOOTFLAG);
     }
 
     T2Debug("%s --out\n", __FUNCTION__);

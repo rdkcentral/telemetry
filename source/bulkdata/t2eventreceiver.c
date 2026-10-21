@@ -19,9 +19,14 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <errno.h>
 
 #include "t2eventreceiver.h"
 
+#include "t2common.h"
 #include "t2collection.h"
 #include "t2markers.h"
 #include "telemetry2_0.h"
@@ -404,7 +409,7 @@ T2ERROR T2ER_Init()
         registerForTelemetryEvents(T2ER_PushDataWithDelim);
     }
 
-    if (system("touch /tmp/.t2ReadyToReceiveEvents") != 0)
+    if (!createSecureTempFlag("/tmp/.t2ReadyToReceiveEvents"))
     {
         T2Error("Failed to create /tmp/.t2ReadyToReceiveEvents flag file\n");
     }

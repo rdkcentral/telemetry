@@ -41,6 +41,7 @@
 #include "t2log_wrapper.h"
 #include "reportprofiles.h"
 #include "t2MtlsUtils.h"
+#include "t2common.h"
 #ifdef LIBRDKCERTSEL_BUILD
 #include "rdkcertselector.h"
 #define FILESCHEME "file://"
@@ -843,7 +844,7 @@ T2ERROR http_pool_get(const char *url, char **response_data, bool enable_file_ou
             // Handle file output for GET requests
             if (enable_file_output)
             {
-                int fd = open(HTTP_RESPONSE_FILE, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+                int fd = openSecureTempFile(HTTP_RESPONSE_FILE, true);
                 if (fd >= 0)
                 {
                     FILE *httpOutput = fdopen(fd, "w");
@@ -998,7 +999,7 @@ T2ERROR http_pool_post(const char *url, const char *payload)
     // For now, we will set up file output for POST requests to ensure stability.
     // Set up file output for POST requests
     // If file opens successfully, override the default stdout with the file pointer
-    int curl_output_fd = open("/tmp/curlOutput.txt", O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+    int curl_output_fd = openSecureTempFile("/tmp/curlOutput.txt", true);
     FILE *fp = NULL;
     if (curl_output_fd >= 0)
     {
@@ -1036,7 +1037,7 @@ T2ERROR http_pool_post(const char *url, const char *payload)
         bool state_red_enable = false;
 
 #if defined(ENABLE_RED_RECOVERY_SUPPORT)
-        state_red_enable = (access("/tmp/stateRedEnabled", F_OK) == 0);
+        state_red_enable = isStateRedEnabled();
         T2Info("%s: state_red_enable: %d\n", __func__, state_red_enable);
 #endif
 

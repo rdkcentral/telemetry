@@ -177,24 +177,6 @@ static bool isValidHttpsUploadUrl(const char *url)
         return false;
     }
 
-    struct in_addr addr;
-    if (inet_pton(AF_INET, host, &addr) == 1)
-    {
-        uint32_t ip = ntohl(addr.s_addr);
-        if ((ip & 0xFF000000u) == 0x7F000000u ||
-                (ip & 0xFF000000u) == 0x00000000u ||
-                (ip & 0xFF000000u) == 0x0A000000u ||
-                (ip & 0xFFF00000u) == 0xAC100000u ||
-                (ip & 0xFFFF0000u) == 0xC0A80000u ||
-                (ip & 0xFFFF0000u) == 0xA9FE0000u ||
-                (ip & 0xFFC00000u) == 0x64400000u ||
-                (ip & 0xFF000000u) == 0xE0000000u ||
-                (ip & 0xFF000000u) == 0xF0000000u)
-        {
-            return false;
-        }
-    }
-
     return true;
 }
 

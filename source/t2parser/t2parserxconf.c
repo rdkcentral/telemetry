@@ -47,7 +47,7 @@
 #define ACCUMULATE_MARKER_SUFFIX  "_accum"
 #define MAX_PARAM_LEN 15
 
-static bool is_valid_https_upload_url(const char *url)
+static bool isValidHttpsUploadUrl(const char *url)
 {
     if (url == NULL || *url == '\0')
     {
@@ -85,22 +85,10 @@ static bool is_valid_https_upload_url(const char *url)
         return false;
     }
 
-    char *path_start = strchr(authority, '/');
-    if (path_start != NULL)
+    char *host_end = strpbrk(authority, "/?#");
+    if (host_end != NULL)
     {
-        *path_start = '\0';
-    }
-
-    char *query_start = strchr(authority, '?');
-    if (query_start != NULL)
-    {
-        *query_start = '\0';
-    }
-
-    char *fragment_start = strchr(authority, '#');
-    if (fragment_start != NULL)
-    {
-        *fragment_start = '\0';
+        *host_end = '\0';
     }
 
     char host[256];
@@ -231,7 +219,7 @@ static int getScheduleInSeconds(const char* cronPattern)
                 int timeInMinDataLen = inputMatchSize - discardPatternLen;
                 char scheduleString[10] = { '\0' };
                 // Bounds check: ensure the schedule string doesn't exceed buffer
-                if (timeInMinDataLen >= sizeof(scheduleString)) {
+                if (timeInMinDataLen >= (int)sizeof(scheduleString)) {
                     T2Error("Schedule string too long: %d bytes, max %zu\n", timeInMinDataLen, sizeof(scheduleString) - 1);
                 }
                 else
@@ -425,7 +413,7 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
         return T2ERROR_FAILURE;
     }
 
-    if (!is_valid_https_upload_url(juploadUrl->valuestring))
+    if (!isValidHttpsUploadUrl(juploadUrl->valuestring))
     {
         T2Error("Rejected invalid upload URL in XCONF profile: %s\n", juploadUrl->valuestring ? juploadUrl->valuestring : "(null)");
         cJSON_Delete(json_root);

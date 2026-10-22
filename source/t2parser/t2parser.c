@@ -1659,6 +1659,12 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
         cJSON_Delete(json_root);
         return T2ERROR_FAILURE;
     }
+    if (!profileName || !profileName[0] ||
+        strspn(profileName, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-") != strlen(profileName)) {
+        T2Error("ERROR: Profile name vulnerability, security threat on profile name \n");
+        cJSON_Delete(json_root);
+        return T2ERROR_FAILURE;
+    }
     if(jprofileReportingInterval && jprofilemaxUploadLatency && ((jprofileReportingInterval->valueint * 1000) < jprofilemaxUploadLatency->valueint))
     {
         T2Error("MaxUploadLatency is greater than reporting interval. Invalid Profile\n");
@@ -3158,6 +3164,7 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     msgpack_object *FirstReportInterval_u64 = NULL;
     msgpack_object *MaxUploadLatency_u64 = NULL;
     msgpack_object *RbusMethod_map;
+    size_t nameIndex;
     int ret = 0;
 
     T2Debug("%s --in\n", __FUNCTION__);
@@ -3171,8 +3178,34 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
 
 
     name_str = msgpack_get_map_value(profiles_array_map, "name");
+    if (name_str == NULL || name_str->type != MSGPACK_OBJECT_STR ||
+        name_str->via.str.ptr == NULL || name_str->via.str.size == 0)
+    {
+        T2Error("Invalid profile name in MsgPack configuration\n");
+        free(profile);
+        return T2ERROR_FAILURE;
+    }
+    for (nameIndex = 0; nameIndex < name_str->via.str.size; nameIndex++)
+    {
+        unsigned char character = (unsigned char)name_str->via.str.ptr[nameIndex];
+        if (!((character >= 'a' && character <= 'z') ||
+              (character >= 'A' && character <= 'Z') ||
+              (character >= '0' && character <= '9') ||
+              character == '_' || character == '-'))
+        {
+            T2Error("Invalid profile name in MsgPack configuration\n");
+            free(profile);
+            return T2ERROR_FAILURE;
+        }
+    }
     msgpack_print(name_str, msgpack_get_obj_name(name_str));
     profile->name = msgpack_strdup(name_str);
+    if (profile->name == NULL)
+    {
+        T2Error("Failed to copy profile name from MsgPack configuration\n");
+        free(profile);
+        return T2ERROR_MEMALLOC_FAILED;
+    }
 
     hash_str = msgpack_get_map_value(profiles_array_map, "hash");
     if(NULL == hash_str)

@@ -169,10 +169,10 @@ static bool isValidHttpsUploadUrl(const char *url)
     lower_host[host_len] = '\0';
 
     if (strcmp(lower_host, "localhost") == 0 ||
-        strcmp(lower_host, "localhost.localdomain") == 0 ||
-        (host_len >= 10 && strncmp(lower_host, "localhost.", 10) == 0) ||
-        (host_len >= 6 && strcmp(lower_host + host_len - 6, ".local") == 0) ||
-        (host_len >= 9 && strcmp(lower_host + host_len - 9, ".internal") == 0))
+            strcmp(lower_host, "localhost.localdomain") == 0 ||
+            (host_len >= 10 && strncmp(lower_host, "localhost.", 10) == 0) ||
+            (host_len >= 6 && strcmp(lower_host + host_len - 6, ".local") == 0) ||
+            (host_len >= 9 && strcmp(lower_host + host_len - 9, ".internal") == 0))
     {
         return false;
     }
@@ -182,14 +182,14 @@ static bool isValidHttpsUploadUrl(const char *url)
     {
         uint32_t ip = ntohl(addr.s_addr);
         if ((ip & 0xFF000000u) == 0x7F000000u ||
-            (ip & 0xFF000000u) == 0x00000000u ||
-            (ip & 0xFF000000u) == 0x0A000000u ||
-            (ip & 0xFFF00000u) == 0xAC100000u ||
-            (ip & 0xFFFF0000u) == 0xC0A80000u ||
-            (ip & 0xFFFF0000u) == 0xA9FE0000u ||
-            (ip & 0xFFC00000u) == 0x64400000u ||
-            (ip & 0xFF000000u) == 0xE0000000u ||
-            (ip & 0xFF000000u) == 0xF0000000u)
+                (ip & 0xFF000000u) == 0x00000000u ||
+                (ip & 0xFF000000u) == 0x0A000000u ||
+                (ip & 0xFFF00000u) == 0xAC100000u ||
+                (ip & 0xFFFF0000u) == 0xC0A80000u ||
+                (ip & 0xFFFF0000u) == 0xA9FE0000u ||
+                (ip & 0xFFC00000u) == 0x64400000u ||
+                (ip & 0xFF000000u) == 0xE0000000u ||
+                (ip & 0xFF000000u) == 0xF0000000u)
         {
             return false;
         }
@@ -219,7 +219,8 @@ static int getScheduleInSeconds(const char* cronPattern)
                 int timeInMinDataLen = inputMatchSize - discardPatternLen;
                 char scheduleString[10] = { '\0' };
                 // Bounds check: ensure the schedule string doesn't exceed buffer
-                if (timeInMinDataLen >= (int)sizeof(scheduleString)) {
+                if (timeInMinDataLen >= (int)sizeof(scheduleString))
+                {
                     T2Error("Schedule string too long: %d bytes, max %zu\n", timeInMinDataLen, sizeof(scheduleString) - 1);
                 }
                 else
@@ -392,7 +393,8 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
     }
 //    if(jprofileID)
 //        T2Debug("profile id = %s\n", jprofileID->valuestring);
-    if (!cJSON_IsString(jprofileName) || !jprofileName->valuestring || !jprofileName->valuestring[0] || strspn(jprofileName->valuestring, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-") != strlen(jprofileName->valuestring)) {
+    if (!cJSON_IsString(jprofileName) || !jprofileName->valuestring || !jprofileName->valuestring[0] || strspn(jprofileName->valuestring, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-") != strlen(jprofileName->valuestring))
+    {
         T2Error("ERROR: Profile name vulnerability, security threat on profile name \n");
         cJSON_Delete(json_root);
         return T2ERROR_FAILURE;

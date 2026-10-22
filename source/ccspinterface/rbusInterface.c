@@ -1041,7 +1041,7 @@ static rbusError_t dcmOnDemandMethodHandler(rbusHandle_t handle, char const* met
                 onDemandReportCallBackHandler = NULL;
                 pthread_mutex_unlock(&asyncMutex);
                 pthread_attr_destroy(&rpOnDemandAttr);
-                return RBUS_ERROR_FAILURE;
+                return RBUS_ERROR_BUS_ERROR;
             }
             pthread_attr_destroy(&rpOnDemandAttr);
 

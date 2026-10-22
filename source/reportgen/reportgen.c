@@ -251,7 +251,8 @@ static T2ERROR applyRegexToValue(char** inputValue, const char* regexPattern)
                     pmatch[0].rm_eo - pmatch[0].rm_so, &(*inputValue)[pmatch[0].rm_so]);
             // Bounds check: ensure match length doesn't exceed buffer
             int matchLen = pmatch[0].rm_eo - pmatch[0].rm_so;
-            if (matchLen >= (int)sizeof(string)) {
+            if (matchLen >= (int)sizeof(string))
+            {
                 T2Warning("Regex match too long: %d bytes, truncating to %zu\n", matchLen, sizeof(string) - 1);
                 matchLen = sizeof(string) - 1;
             }
@@ -1039,7 +1040,8 @@ T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepMarkerList)
                                     T2Debug("regexec successful, Match is found %.*s\n", pmatch[0].rm_eo - pmatch[0].rm_so, &stringValue[pmatch[0].rm_so]);
                                     // Bounds check: ensure match length doesn't exceed buffer
                                     int matchLen = pmatch[0].rm_eo - pmatch[0].rm_so;
-                                    if (matchLen >= (int)sizeof(string[0])) {
+                                    if (matchLen >= (int)sizeof(string[0]))
+                                    {
                                         T2Warning("Regex match too long: %d bytes, truncating to %zu\n", matchLen, sizeof(string[0]) - 1);
                                         matchLen = sizeof(string[0]) - 1;
                                     }
@@ -1416,7 +1418,8 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
                             T2Debug("regexec successful, Match is found %.*s\n", pmatch[0].rm_eo - pmatch[0].rm_so, &stringValue[pmatch[0].rm_so]);
                             // Bounds check: ensure match length doesn't exceed buffer
                             int matchLen = pmatch[0].rm_eo - pmatch[0].rm_so;
-                            if (matchLen >= (int)sizeof(string)) {
+                            if (matchLen >= (int)sizeof(string))
+                            {
                                 T2Warning("Regex match too long: %d bytes, truncating to %zu\n", matchLen, sizeof(string) - 1);
                                 matchLen = sizeof(string) - 1;
                             }

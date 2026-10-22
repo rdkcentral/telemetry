@@ -1660,7 +1660,8 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
         return T2ERROR_FAILURE;
     }
     if (!profileName || !profileName[0] ||
-        strspn(profileName, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-") != strlen(profileName)) {
+            strspn(profileName, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-") != strlen(profileName))
+    {
         T2Error("ERROR: Profile name vulnerability, security threat on profile name \n");
         cJSON_Delete(json_root);
         return T2ERROR_FAILURE;
@@ -3179,7 +3180,7 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
 
     name_str = msgpack_get_map_value(profiles_array_map, "name");
     if (name_str == NULL || name_str->type != MSGPACK_OBJECT_STR ||
-        name_str->via.str.ptr == NULL || name_str->via.str.size == 0)
+            name_str->via.str.ptr == NULL || name_str->via.str.size == 0)
     {
         T2Error("Invalid profile name in MsgPack configuration\n");
         free(profile);
@@ -3189,9 +3190,9 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     {
         unsigned char character = (unsigned char)name_str->via.str.ptr[nameIndex];
         if (!((character >= 'a' && character <= 'z') ||
-              (character >= 'A' && character <= 'Z') ||
-              (character >= '0' && character <= '9') ||
-              character == '_' || character == '-'))
+                (character >= 'A' && character <= 'Z') ||
+                (character >= '0' && character <= '9') ||
+                character == '_' || character == '-'))
         {
             T2Error("Invalid profile name in MsgPack configuration\n");
             free(profile);

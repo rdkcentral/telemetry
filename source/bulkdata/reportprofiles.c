@@ -936,7 +936,7 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
 
         cJSON* nameObj = cJSON_GetObjectItem(singleProfile, "name");
         if (!cJSON_IsString(nameObj) || !nameObj->valuestring || !nameObj->valuestring[0] ||
-            strspn(nameObj->valuestring, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-") != strlen(nameObj->valuestring))
+                strspn(nameObj->valuestring, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-") != strlen(nameObj->valuestring))
         {
             T2Error("Invalid profile name in JSON configuration\n");
             continue;
@@ -1422,7 +1422,7 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
         msgpack_object* nameObj = msgpack_get_map_value(singleProfile, "name");
         size_t nameIndex;
         if (nameObj == NULL || nameObj->type != MSGPACK_OBJECT_STR ||
-            nameObj->via.str.ptr == NULL || nameObj->via.str.size == 0)
+                nameObj->via.str.ptr == NULL || nameObj->via.str.size == 0)
         {
             T2Error("Invalid profile name in MsgPack configuration\n");
             continue;
@@ -1431,9 +1431,9 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
         {
             unsigned char character = (unsigned char)nameObj->via.str.ptr[nameIndex];
             if (!((character >= 'a' && character <= 'z') ||
-                  (character >= 'A' && character <= 'Z') ||
-                  (character >= '0' && character <= '9') ||
-                  character == '_' || character == '-'))
+                    (character >= 'A' && character <= 'Z') ||
+                    (character >= '0' && character <= '9') ||
+                    character == '_' || character == '-'))
             {
                 T2Error("Invalid profile name in MsgPack configuration\n");
                 break;

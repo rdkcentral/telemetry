@@ -935,6 +935,12 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
         }
 
         cJSON* nameObj = cJSON_GetObjectItem(singleProfile, "name");
+        if (!cJSON_IsString(nameObj) || !nameObj->valuestring || !nameObj->valuestring[0] ||
+            strspn(nameObj->valuestring, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-") != strlen(nameObj->valuestring))
+        {
+            T2Error("Invalid profile name in JSON configuration\n");
+            continue;
+        }
         cJSON* hashObj = cJSON_GetObjectItem(singleProfile, "hash");
         if(hashObj == NULL)
         {
@@ -949,7 +955,18 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
         }
 
         ReportProfile *profileEntry = (ReportProfile *)malloc(sizeof(ReportProfile));
+        if (profileEntry == NULL)
+        {
+            T2Error("Failed to allocate report profile entry\n");
+            continue;
+        }
         profileName = strdup(nameObj->valuestring);
+        if (profileName == NULL)
+        {
+            T2Error("Failed to copy profile name from JSON configuration\n");
+            free(profileEntry);
+            continue;
+        }
         profileEntry->hash = strdup(hashObj->valuestring);
         profileEntry->config = cJSON_PrintUnformatted(profileObj);
         hash_map_put(receivedProfileHashMap, profileName, profileEntry, freeReportProfileHashMap);
@@ -1403,6 +1420,29 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
             continue;
         }
         msgpack_object* nameObj = msgpack_get_map_value(singleProfile, "name");
+        size_t nameIndex;
+        if (nameObj == NULL || nameObj->type != MSGPACK_OBJECT_STR ||
+            nameObj->via.str.ptr == NULL || nameObj->via.str.size == 0)
+        {
+            T2Error("Invalid profile name in MsgPack configuration\n");
+            continue;
+        }
+        for (nameIndex = 0; nameIndex < nameObj->via.str.size; nameIndex++)
+        {
+            unsigned char character = (unsigned char)nameObj->via.str.ptr[nameIndex];
+            if (!((character >= 'a' && character <= 'z') ||
+                  (character >= 'A' && character <= 'Z') ||
+                  (character >= '0' && character <= '9') ||
+                  character == '_' || character == '-'))
+            {
+                T2Error("Invalid profile name in MsgPack configuration\n");
+                break;
+            }
+        }
+        if (nameIndex != nameObj->via.str.size)
+        {
+            continue;
+        }
         msgpack_object* hashObj = msgpack_get_map_value(singleProfile, "hash");
         if (hashObj == NULL)
         {
@@ -1420,6 +1460,11 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
         char *existingProfileHash = NULL;
         Profile *profile = NULL;
         profileName = msgpack_strdup(nameObj);
+        if (profileName == NULL)
+        {
+            T2Error("Failed to copy profile name from MsgPack configuration\n");
+            continue;
+        }
         existingProfileHash = hash_map_remove(profileHashMap, profileName);
         if(NULL == existingProfileHash)
         {

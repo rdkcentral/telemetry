@@ -392,6 +392,11 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
     }
 //    if(jprofileID)
 //        T2Debug("profile id = %s\n", jprofileID->valuestring);
+    if (!cJSON_IsString(jprofileName) || !jprofileName->valuestring || !jprofileName->valuestring[0] || strspn(jprofileName->valuestring, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-") != strlen(jprofileName->valuestring)) {
+        T2Error("ERROR: Profile name vulnerability, security threat on profile name \n");
+        cJSON_Delete(json_root);
+        return T2ERROR_FAILURE;
+    }
     if(jprofileName)
     {
         T2Debug("profile name = %s\n", jprofileName->valuestring);

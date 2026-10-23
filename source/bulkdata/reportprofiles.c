@@ -30,7 +30,7 @@
 #include <sys/resource.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <errno.h> 
+#include <errno.h>
 #include "reportprofiles.h"
 
 #include "xconfclient.h"

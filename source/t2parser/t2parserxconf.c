@@ -487,6 +487,11 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
     if(profile->t2HTTPDest == NULL)
     {
         T2Error("Malloc error exiting: can not allocate memory to create profile->t2HTTPDest \n");
+        free(profile->protocol);
+        free(profile->name);
+        pthread_cond_destroy(&profile->reportInProgressCond);
+        pthread_mutex_destroy(&profile->reportInProgressMutex);
+        free(profile);
         cJSON_Delete(json_root);
         return T2ERROR_MEMALLOC_FAILED;
     }

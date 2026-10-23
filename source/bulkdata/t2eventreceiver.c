@@ -96,7 +96,7 @@ static bool isValidEventLength(const char *name, const char *value)
 
     size_t nameLen = strlen(name);
     size_t valueLen = strlen(value);
-    if(nameLen == 0 || valueLen == 0 || nameLen > MAX_EVENT_NAME_LEN || valueLen > MAX_EVENT_VALUE_LEN)
+    if(nameLen == 0 || nameLen > MAX_EVENT_NAME_LEN || valueLen > MAX_EVENT_VALUE_LEN)
     {
         T2Warning("Dropping oversized telemetry event: nameLen=%zu valueLen=%zu\n", nameLen, valueLen);
         return false;

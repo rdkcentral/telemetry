@@ -23,6 +23,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <regex.h>
+#include <sys/stat.h>
 #include "vector.h"
 
 #define MAX_ACCUMULATE 20
@@ -184,6 +185,10 @@ void freeAccumulatedParam(void *data);
 int compareLogFileNames(const void *g1, const void *g2);
 
 bool getDevicePropertyData(const char *dev_prop_name, char *out_data, unsigned int buff_size);
+
+bool isSafeTempFilePath(const char *path);
+int openSecureTempFile(const char *path, bool truncateExisting);
+bool createSecureTempFlag(const char *path);
 
 void initWhoamiSupport(void);
 

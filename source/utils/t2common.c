@@ -19,11 +19,117 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
 #include "t2common.h"
 #include "t2log_wrapper.h"
 #include "dcautil.h"
 
 bool whoami_support = false;
+
+bool isSafeTempFilePath(const char *path)
+{
+    struct stat st;
+
+    if (path == NULL || *path == '\0')
+    {
+        return false;
+    }
+
+    if (lstat(path, &st) == 0)
+    {
+        if (S_ISLNK(st.st_mode) || !S_ISREG(st.st_mode))
+        {
+            T2Error("Refusing to use non-regular or symlinked temp file: %s\n", path);
+            return false;
+        }
+
+        if (st.st_uid != geteuid())
+        {
+            T2Error("Refusing to use temp file with unexpected owner: %s\n", path);
+            return false;
+        }
+    }
+
+    return true;
+}
+
+int openSecureTempFile(const char *path, bool truncateExisting)
+{
+    int fd = -1;
+
+    if (!isSafeTempFilePath(path))
+    {
+        return -1;
+    }
+
+    fd = open(path, O_WRONLY | O_CREAT | O_NOFOLLOW | O_NONBLOCK,
+              S_IRUSR | S_IWUSR);
+    if (fd < 0)
+    {
+        T2Error("Unable to safely open %s: %s\n", path, strerror(errno));
+        return -1;
+    }
+
+    struct stat st;
+    if (fstat(fd, &st) != 0 || !S_ISREG(st.st_mode) || st.st_uid != geteuid())
+    {
+        T2Error("Refusing to use unsafe temp file: %s\n", path);
+        close(fd);
+        return -1;
+    }
+
+    if (fchmod(fd, S_IRUSR | S_IWUSR) != 0)
+    {
+        T2Error("Unable to set 0600 permissions on %s: %s\n", path, strerror(errno));
+        close(fd);
+        return -1;
+    }
+
+    if (truncateExisting && ftruncate(fd, 0) != 0)
+    {
+        T2Error("Unable to truncate %s: %s\n", path, strerror(errno));
+        close(fd);
+        return -1;
+    }
+
+    return fd;
+}
+
+bool createSecureTempFlag(const char *path)
+{
+    if (path == NULL || *path == '\0')
+    {
+        return false;
+    }
+
+    if (!isSafeTempFilePath(path))
+    {
+        T2Error("Refusing to use unsafe flag path %s\n", path);
+        return false;
+    }
+
+    int fd = open(path, O_WRONLY | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
+    if (fd < 0)
+    {
+        if (errno != EEXIST)
+        {
+            T2Error("Unable to create secure flag %s: %s\n", path, strerror(errno));
+        }
+        return false;
+    }
+
+    if (fchmod(fd, S_IRUSR | S_IWUSR) != 0)
+    {
+        T2Error("Unable to set 0600 permissions on %s: %s\n", path, strerror(errno));
+        close(fd);
+        return false;
+    }
+
+    close(fd);
+    return true;
+}
 
 void freeParam(void *data)
 {

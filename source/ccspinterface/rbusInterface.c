@@ -1038,6 +1038,10 @@ static rbusError_t dcmOnDemandMethodHandler(rbusHandle_t handle, char const* met
             if(pthread_create(&rpOnDemandTh, &rpOnDemandAttr, reportOnDemandCallBack, ON_DEMAND_ACTION_UPLOAD) != 0)
             {
                 T2Error("Failed to create thread for report on demand.\n");
+                onDemandReportCallBackHandler = NULL;
+                pthread_mutex_unlock(&asyncMutex);
+                pthread_attr_destroy(&rpOnDemandAttr);
+                return RBUS_ERROR_BUS_ERROR;
             }
             pthread_attr_destroy(&rpOnDemandAttr);
 
@@ -1079,20 +1083,9 @@ static rbusError_t dcmOnDemandMethodHandler(rbusHandle_t handle, char const* met
     }
     else if(!strncmp(methodName, T2_ABORT_ON_DEMAND_REPORT, maxParamLen))
     {
-
         T2Info("%s Aborting previous ondemand report upload %s \n", __FUNCTION__, methodName);
+        T2Info("%s Abort is no longer supported; request is accepted without creating a detached worker thread to avoid thread-flood DoS\n", __FUNCTION__);
 
-        pthread_t rpOnDemandTh;
-        pthread_attr_t rpOnDemandAttr;
-        pthread_attr_init(&rpOnDemandAttr);
-        pthread_attr_setdetachstate(&rpOnDemandAttr, PTHREAD_CREATE_DETACHED);
-        // Calls within reportOnDemandCallBack are thread safe, thread synchronization is not required
-        if(pthread_create(&rpOnDemandTh, &rpOnDemandAttr, reportOnDemandCallBack, ON_DEMAND_ACTION_ABORT) != 0)
-        {
-            T2Error("Failed to create thread for report on demand.\n");
-        }
-
-        pthread_attr_destroy(&rpOnDemandAttr);
         if(NULL != asyncCallBackHandle)
         {
             rbusObject_t outputParams;

@@ -1659,6 +1659,13 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
         cJSON_Delete(json_root);
         return T2ERROR_FAILURE;
     }
+    if (!profileName || !profileName[0] ||
+            strspn(profileName, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-") != strlen(profileName))
+    {
+        T2Error("ERROR: Profile name vulnerability, security threat on profile name \n");
+        cJSON_Delete(json_root);
+        return T2ERROR_FAILURE;
+    }
     if(jprofileReportingInterval && jprofilemaxUploadLatency && ((jprofileReportingInterval->valueint * 1000) < jprofilemaxUploadLatency->valueint))
     {
         T2Error("MaxUploadLatency is greater than reporting interval. Invalid Profile\n");
@@ -1859,10 +1866,18 @@ T2ERROR processConfiguration(char** configData, char *profileName, char* profile
     if((strcmp(jprofileProtocol->valuestring, "HTTP") == 0))
     {
         profile->t2HTTPDest = (T2HTTP *) malloc(sizeof(T2HTTP));
+        if(profile->t2HTTPDest)
+        {
+            memset(profile->t2HTTPDest, 0, sizeof(*profile->t2HTTPDest));
+        }
     }
     else if ((strcmp(jprofileProtocol->valuestring, "RBUS_METHOD") == 0))
     {
         profile->t2RBUSDest = malloc(sizeof(T2RBUS));
+        if(profile->t2RBUSDest)
+        {
+            memset(profile->t2RBUSDest, 0, sizeof(*profile->t2RBUSDest));
+        }
     }
 
     if ( (profile->t2HTTPDest == NULL) && (profile->t2RBUSDest  == NULL) )
@@ -3150,6 +3165,7 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     msgpack_object *FirstReportInterval_u64 = NULL;
     msgpack_object *MaxUploadLatency_u64 = NULL;
     msgpack_object *RbusMethod_map;
+    size_t nameIndex;
     int ret = 0;
 
     T2Debug("%s --in\n", __FUNCTION__);
@@ -3163,8 +3179,34 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
 
 
     name_str = msgpack_get_map_value(profiles_array_map, "name");
+    if (name_str == NULL || name_str->type != MSGPACK_OBJECT_STR ||
+            name_str->via.str.ptr == NULL || name_str->via.str.size == 0)
+    {
+        T2Error("Invalid profile name in MsgPack configuration\n");
+        free(profile);
+        return T2ERROR_FAILURE;
+    }
+    for (nameIndex = 0; nameIndex < name_str->via.str.size; nameIndex++)
+    {
+        unsigned char character = (unsigned char)name_str->via.str.ptr[nameIndex];
+        if (!((character >= 'a' && character <= 'z') ||
+                (character >= 'A' && character <= 'Z') ||
+                (character >= '0' && character <= '9') ||
+                character == '_' || character == '-'))
+        {
+            T2Error("Invalid profile name in MsgPack configuration\n");
+            free(profile);
+            return T2ERROR_FAILURE;
+        }
+    }
     msgpack_print(name_str, msgpack_get_obj_name(name_str));
     profile->name = msgpack_strdup(name_str);
+    if (profile->name == NULL)
+    {
+        T2Error("Failed to copy profile name from MsgPack configuration\n");
+        free(profile);
+        return T2ERROR_MEMALLOC_FAILED;
+    }
 
     hash_str = msgpack_get_map_value(profiles_array_map, "hash");
     if(NULL == hash_str)
@@ -3406,6 +3448,7 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
             T2Error("Malloc error exiting: can not allocate memory to create profile->t2HTTPDest \n");
             return T2ERROR_MEMALLOC_FAILED;
         }
+        memset(profile->t2HTTPDest, 0, sizeof(*profile->t2HTTPDest));
         msgpack_object *HTTP_map = msgpack_get_map_value(value_map, "HTTP");
         msgpack_object *URL_str = msgpack_get_map_value(HTTP_map, "URL");
         msgpack_object *Compression_str = msgpack_get_map_value(HTTP_map, "Compression");
@@ -3444,6 +3487,7 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
             T2Error("Malloc error exiting: can not allocate memory to create profile->t2RBUSDest \n");
             return T2ERROR_MEMALLOC_FAILED;
         }
+        memset(profile->t2RBUSDest, 0, sizeof(*profile->t2RBUSDest));
         RbusMethod_map = msgpack_get_map_value(value_map, "RBUS_METHOD");
         RbusMethod_str = msgpack_get_map_value(RbusMethod_map, "Method");
         msgpack_print(RbusMethod_str, msgpack_get_obj_name(RbusMethod_str));

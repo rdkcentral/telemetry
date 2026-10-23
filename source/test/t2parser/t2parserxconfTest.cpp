@@ -110,3 +110,61 @@ TEST(T2ParserXConf, RejectsInvalidUploadUrl)
     EXPECT_EQ((ProfileXConf*)NULL, profile);
 }
 
+TEST(T2ParserXConf, RejectsNumericLoopbackUploadUrls)
+{
+    ProfileXConf *profile = NULL;
+
+    const char *json_v4_loopback =
+        "{"
+        "  \"urn:settings:TelemetryProfile\": {"
+        "    \"telemetryProfile:name\": \"LoopbackV4\","
+        "    \"uploadRepository:URL\": \"https://127.0.0.1/upload\","
+        "    \"schedule\": \"0/5 * * * *\","
+        "    \"telemetryProfile\": [ {"
+        "        \"header\": \"param1\","
+        "        \"content\": \"alias1\","
+        "        \"type\": \"/var/log/some.log\","
+        "        \"pollingFrequency\": \"0\""
+        "    } ]"
+        "  }"
+        "}";
+    EXPECT_EQ(T2ERROR_FAILURE, processConfigurationXConf((char*)json_v4_loopback, &profile));
+    EXPECT_EQ((ProfileXConf*)NULL, profile);
+
+    profile = NULL;
+    const char *json_v6_loopback =
+        "{"
+        "  \"urn:settings:TelemetryProfile\": {"
+        "    \"telemetryProfile:name\": \"LoopbackV6\","
+        "    \"uploadRepository:URL\": \"https://[::1]/upload\","
+        "    \"schedule\": \"0/5 * * * *\","
+        "    \"telemetryProfile\": [ {"
+        "        \"header\": \"param1\","
+        "        \"content\": \"alias1\","
+        "        \"type\": \"/var/log/some.log\","
+        "        \"pollingFrequency\": \"0\""
+        "    } ]"
+        "  }"
+        "}";
+    EXPECT_EQ(T2ERROR_FAILURE, processConfigurationXConf((char*)json_v6_loopback, &profile));
+    EXPECT_EQ((ProfileXConf*)NULL, profile);
+
+    profile = NULL;
+    const char *json_v4_mapped_loopback =
+        "{"
+        "  \"urn:settings:TelemetryProfile\": {"
+        "    \"telemetryProfile:name\": \"LoopbackMapped\","
+        "    \"uploadRepository:URL\": \"https://[::ffff:127.0.0.1]/upload\","
+        "    \"schedule\": \"0/5 * * * *\","
+        "    \"telemetryProfile\": [ {"
+        "        \"header\": \"param1\","
+        "        \"content\": \"alias1\","
+        "        \"type\": \"/var/log/some.log\","
+        "        \"pollingFrequency\": \"0\""
+        "    } ]"
+        "  }"
+        "}";
+    EXPECT_EQ(T2ERROR_FAILURE, processConfigurationXConf((char*)json_v4_mapped_loopback, &profile));
+    EXPECT_EQ((ProfileXConf*)NULL, profile);
+}
+

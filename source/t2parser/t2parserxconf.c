@@ -58,7 +58,7 @@ static bool isLocalNumericAddress(const char *host)
     if (inet_pton(AF_INET, host, &addr4) == 1)
     {
         uint32_t ip = ntohl(addr4.s_addr);
-        return (ip == 0x7F000001u) || (ip == 0x00000000u);
+        return ((ip & 0xFF000000u) == 0x7F000000u) || (ip == 0x00000000u);
     }
 
     struct in6_addr addr6;
@@ -74,7 +74,7 @@ static bool isLocalNumericAddress(const char *host)
             struct in_addr mapped_v4;
             memcpy(&mapped_v4, &addr6.s6_addr[12], sizeof(mapped_v4));
             uint32_t mapped_ip = ntohl(mapped_v4.s_addr);
-            return (mapped_ip == 0x7F000001u) || (mapped_ip == 0x00000000u);
+            return ((mapped_ip & 0xFF000000u) == 0x7F000000u) || (mapped_ip == 0x00000000u);
         }
     }
 

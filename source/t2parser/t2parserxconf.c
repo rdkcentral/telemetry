@@ -47,6 +47,40 @@
 #define ACCUMULATE_MARKER_SUFFIX  "_accum"
 #define MAX_PARAM_LEN 15
 
+static bool isLocalNumericAddress(const char *host)
+{
+    if (host == NULL || *host == '\0')
+    {
+        return false;
+    }
+
+    struct in_addr addr4;
+    if (inet_pton(AF_INET, host, &addr4) == 1)
+    {
+        uint32_t ip = ntohl(addr4.s_addr);
+        return (ip == 0x7F000001u) || (ip == 0x00000000u);
+    }
+
+    struct in6_addr addr6;
+    if (inet_pton(AF_INET6, host, &addr6) == 1)
+    {
+        if (IN6_IS_ADDR_LOOPBACK(&addr6) || IN6_IS_ADDR_UNSPECIFIED(&addr6))
+        {
+            return true;
+        }
+
+        if (IN6_IS_ADDR_V4MAPPED(&addr6))
+        {
+            struct in_addr mapped_v4;
+            memcpy(&mapped_v4, &addr6.s6_addr[12], sizeof(mapped_v4));
+            uint32_t mapped_ip = ntohl(mapped_v4.s_addr);
+            return (mapped_ip == 0x7F000001u) || (mapped_ip == 0x00000000u);
+        }
+    }
+
+    return false;
+}
+
 static bool isValidHttpsUploadUrl(const char *url)
 {
     if (url == NULL || *url == '\0')
@@ -152,6 +186,11 @@ static bool isValidHttpsUploadUrl(const char *url)
     }
 
     if (host[0] == '\0')
+    {
+        return false;
+    }
+
+    if (isLocalNumericAddress(host))
     {
         return false;
     }

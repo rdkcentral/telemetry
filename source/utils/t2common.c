@@ -64,24 +64,32 @@ int openSecureTempFile(const char *path, bool truncateExisting)
         return -1;
     }
 
-    if (access(path, F_OK) == 0)
-    {
-        fd = open(path, O_WRONLY | (truncateExisting ? O_TRUNC : O_EXCL), S_IRUSR | S_IWUSR);
-    }
-    else
-    {
-        fd = open(path, O_WRONLY | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
-    }
-
+    fd = open(path, O_WRONLY | O_CREAT | O_NOFOLLOW | O_NONBLOCK,
+              S_IRUSR | S_IWUSR);
     if (fd < 0)
     {
         T2Error("Unable to safely open %s: %s\n", path, strerror(errno));
         return -1;
     }
 
+    struct stat st;
+    if (fstat(fd, &st) != 0 || !S_ISREG(st.st_mode) || st.st_uid != geteuid())
+    {
+        T2Error("Refusing to use unsafe temp file: %s\n", path);
+        close(fd);
+        return -1;
+    }
+
     if (fchmod(fd, S_IRUSR | S_IWUSR) != 0)
     {
         T2Error("Unable to set 0600 permissions on %s: %s\n", path, strerror(errno));
+        close(fd);
+        return -1;
+    }
+
+    if (truncateExisting && ftruncate(fd, 0) != 0)
+    {
+        T2Error("Unable to truncate %s: %s\n", path, strerror(errno));
         close(fd);
         return -1;
     }

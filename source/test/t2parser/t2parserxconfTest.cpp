@@ -132,6 +132,60 @@ TEST(T2ParserXConf, RejectsNumericLoopbackUploadUrls)
     EXPECT_EQ((ProfileXConf*)NULL, profile);
 
     profile = NULL;
+    const char *json_v4_shortform_loopback =
+        "{"
+        "  \"urn:settings:TelemetryProfile\": {"
+        "    \"telemetryProfile:name\": \"LoopbackV4Short\","
+        "    \"uploadRepository:URL\": \"https://127.1/upload\","
+        "    \"schedule\": \"0/5 * * * *\","
+        "    \"telemetryProfile\": [ {"
+        "        \"header\": \"param1\","
+        "        \"content\": \"alias1\","
+        "        \"type\": \"/var/log/some.log\","
+        "        \"pollingFrequency\": \"0\""
+        "    } ]"
+        "  }"
+        "}";
+    EXPECT_EQ(T2ERROR_FAILURE, processConfigurationXConf((char*)json_v4_shortform_loopback, &profile));
+    EXPECT_EQ((ProfileXConf*)NULL, profile);
+
+    profile = NULL;
+    const char *json_v4_decimal_loopback =
+        "{"
+        "  \"urn:settings:TelemetryProfile\": {"
+        "    \"telemetryProfile:name\": \"LoopbackV4Decimal\","
+        "    \"uploadRepository:URL\": \"https://2130706433/upload\","
+        "    \"schedule\": \"0/5 * * * *\","
+        "    \"telemetryProfile\": [ {"
+        "        \"header\": \"param1\","
+        "        \"content\": \"alias1\","
+        "        \"type\": \"/var/log/some.log\","
+        "        \"pollingFrequency\": \"0\""
+        "    } ]"
+        "  }"
+        "}";
+    EXPECT_EQ(T2ERROR_FAILURE, processConfigurationXConf((char*)json_v4_decimal_loopback, &profile));
+    EXPECT_EQ((ProfileXConf*)NULL, profile);
+
+    profile = NULL;
+    const char *json_v4_hex_loopback =
+        "{"
+        "  \"urn:settings:TelemetryProfile\": {"
+        "    \"telemetryProfile:name\": \"LoopbackV4Hex\","
+        "    \"uploadRepository:URL\": \"https://0x7f000001/upload\","
+        "    \"schedule\": \"0/5 * * * *\","
+        "    \"telemetryProfile\": [ {"
+        "        \"header\": \"param1\","
+        "        \"content\": \"alias1\","
+        "        \"type\": \"/var/log/some.log\","
+        "        \"pollingFrequency\": \"0\""
+        "    } ]"
+        "  }"
+        "}";
+    EXPECT_EQ(T2ERROR_FAILURE, processConfigurationXConf((char*)json_v4_hex_loopback, &profile));
+    EXPECT_EQ((ProfileXConf*)NULL, profile);
+
+    profile = NULL;
     const char *json_v6_loopback =
         "{"
         "  \"urn:settings:TelemetryProfile\": {"

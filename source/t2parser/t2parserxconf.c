@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <errno.h>
 #include <arpa/inet.h>
 #include <strings.h>
 
@@ -59,6 +60,26 @@ static bool isLocalNumericAddress(const char *host)
     {
         uint32_t ip = ntohl(addr4.s_addr);
         return ((ip & 0xFF000000u) == 0x7F000000u) || (ip == 0x00000000u);
+    }
+
+    if (inet_aton(host, &addr4) == 1)
+    {
+        uint32_t ip = ntohl(addr4.s_addr);
+        return ((ip & 0xFF000000u) == 0x7F000000u) || (ip == 0x00000000u);
+    }
+
+    if (strchr(host, ':') == NULL)
+    {
+        errno = 0;
+        char *end = NULL;
+        unsigned long long numeric = strtoull(host, &end, 0);
+        if (errno == 0 && end != host && *end == '\0' && numeric <= 0xFFFFFFFFULL)
+        {
+            struct in_addr parsed;
+            parsed.s_addr = htonl((uint32_t)numeric);
+            uint32_t ip = ntohl(parsed.s_addr);
+            return ((ip & 0xFF000000u) == 0x7F000000u) || (ip == 0x00000000u);
+        }
     }
 
     struct in6_addr addr6;

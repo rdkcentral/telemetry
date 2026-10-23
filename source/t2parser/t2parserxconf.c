@@ -211,7 +211,7 @@ static bool isValidHttpsUploadUrl(const char *url)
         return false;
     }
 
-    if (isLocalNumericAddress(host))
+    if (strchr(host, '%') != NULL || isLocalNumericAddress(host))
     {
         return false;
     }

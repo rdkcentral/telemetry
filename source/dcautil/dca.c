@@ -957,7 +957,8 @@ static bool resolveApprovedLogPath(const char* logPath, const char* logFile, cha
         return false;
     }
 
-    const char* allowed_roots[] = {
+    const char* allowed_roots[] =
+    {
         LOGPATH,
         PREVIOUS_LOGS_PATH,
         "/opt/logs",
@@ -982,7 +983,7 @@ static bool resolveApprovedLogPath(const char* logPath, const char* logFile, cha
         }
 
         if (strncmp(resolved, root_path, root_len) == 0 &&
-            (resolved[root_len] == '\0' || resolved[root_len] == '/'))
+                (resolved[root_len] == '\0' || resolved[root_len] == '/'))
         {
             snprintf(out_path, out_size, "%s", resolved);
             return true;

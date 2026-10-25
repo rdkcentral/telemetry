@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <errno.h>
 #include <ctype.h>
 #include <pthread.h>
 #include <stdbool.h>
@@ -896,6 +897,102 @@ static int processPatternWithOptimizedFunction(GrepMarker* marker, FileDescripto
     return 0;
 }
 
+static bool isSimpleLogFilename(const char* logFile)
+{
+    if (!logFile || *logFile == '\0')
+    {
+        return false;
+    }
+
+    if (logFile[0] == '/' || strchr(logFile, '/') != NULL)
+    {
+        return false;
+    }
+
+    if (strstr(logFile, "..") != NULL)
+    {
+        return false;
+    }
+
+    return true;
+}
+
+static bool resolveApprovedLogPath(const char* logPath, const char* logFile, char* out_path, size_t out_size)
+{
+    if (!logFile || *logFile == '\0' || !out_path || out_size == 0)
+    {
+        return false;
+    }
+
+    if (isSimpleLogFilename(logFile))
+    {
+        if (!logPath || *logPath == '\0')
+        {
+            T2Debug("Rejected log file with no valid base path: %s\n", logFile);
+            return false;
+        }
+
+        snprintf(out_path, out_size, "%s/%s", logPath, logFile);
+        return true;
+    }
+
+    if (logFile[0] == '/')
+    {
+        snprintf(out_path, out_size, "%s", logFile);
+    }
+    else if (logPath && *logPath != '\0')
+    {
+        snprintf(out_path, out_size, "%s/%s", logPath, logFile);
+    }
+    else
+    {
+        T2Debug("Rejected log file with no valid base path: %s\n", logFile);
+        return false;
+    }
+
+    char resolved[PATH_MAX];
+    if (realpath(out_path, resolved) == NULL)
+    {
+        T2Debug("Rejected unsafe or unresolved log path %s: %s\n", out_path, strerror(errno));
+        return false;
+    }
+
+    const char* allowed_roots[] = {
+        LOGPATH,
+        PREVIOUS_LOGS_PATH,
+        "/opt/logs",
+        "/var/log/messages",
+        NULL
+    };
+
+    for (int i = 0; allowed_roots[i] != NULL; ++i)
+    {
+        const char* root = allowed_roots[i];
+        if (!root || *root == '\0')
+        {
+            continue;
+        }
+
+        char root_path[PATH_MAX];
+        snprintf(root_path, sizeof(root_path), "%s", root);
+        size_t root_len = strlen(root_path);
+        while (root_len > 1 && root_path[root_len - 1] == '/')
+        {
+            root_path[--root_len] = '\0';
+        }
+
+        if (strncmp(resolved, root_path, root_len) == 0 &&
+            (resolved[root_len] == '\0' || resolved[root_len] == '/'))
+        {
+            snprintf(out_path, out_size, "%s", resolved);
+            return true;
+        }
+    }
+
+    T2Debug("Rejected log path outside approved roots: %s -> %s\n", out_path, resolved);
+    return false;
+}
+
 static int getLogFileDescriptor(GrepSeekProfile* gsProfile, const char* logPath, const char* logFile, int old_fd, off_t* out_seek_value, bool* out_inode_changed, ino_t* out_stored_inode, bool isCustomPath)
 {
     long seek_value_from_map = 0;
@@ -907,19 +1004,15 @@ static int getLogFileDescriptor(GrepSeekProfile* gsProfile, const char* logPath,
     }
 
     char logFilePath[PATH_MAX];
-    if(logFile[0] == '/')
+    if (!resolveApprovedLogPath(logPath, logFile, logFilePath, sizeof(logFilePath)))
     {
-        // If the logFile is an absolute path, use it directly
-        T2Info("Log file is an absolute path not prefix in the directory: %s\n", logFile);
-        snprintf(logFilePath, sizeof(logFilePath), "%s", logFile);
-    }
-    else
-    {
-        snprintf(logFilePath, sizeof(logFilePath), "%s/%s", logPath, logFile);
+        T2Error("Refusing to open untrusted log path: %s\n", logFile);
+        return -1;
     }
 
+    T2Info("Log file resolved to approved path: %s\n", logFilePath);
     T2Debug("Opening log file %s\n", logFilePath);
-    int fd = open(logFilePath, O_RDONLY);
+    int fd = open(logFilePath, O_RDONLY | O_NOFOLLOW);
     if (fd == -1)
     {
         T2Debug("Failed to open log file %s\n", logFilePath);
@@ -927,9 +1020,9 @@ static int getLogFileDescriptor(GrepSeekProfile* gsProfile, const char* logPath,
     }
 
     struct stat sb;
-    if (fstat(fd, &sb) == -1)
+    if (fstat(fd, &sb) == -1 || !S_ISREG(sb.st_mode))
     {
-        T2Debug("Error getting file size for %s\n", logFile);
+        T2Debug("Error getting file size or invalid file type for %s\n", logFile);
         close(fd);
         return -1;
     }
@@ -978,22 +1071,25 @@ static int getLogFileDescriptor(GrepSeekProfile* gsProfile, const char* logPath,
 static int getRotatedLogFileDescriptor(const char* logPath, const char* logFile)
 {
     char logFilePath[PATH_MAX];
-    snprintf(logFilePath, sizeof(logFilePath), "%s/%s", logPath, logFile);
+    if (!resolveApprovedLogPath(logPath, logFile, logFilePath, sizeof(logFilePath)))
+    {
+        T2Error("Refusing to open untrusted rotated log path: %s\n", logFile);
+        return -1;
+    }
+
     //get the rotated filename
     char *fileExtn = ".1";
     char rotatedlogFilePath[PATH_MAX];
     size_t name_len = strlen(logFilePath);
     if(logFile[0] == '/')
     {
-        // If the logFile is an absolute path, use it directly
-        T2Debug("RotatedLog file is an absolute path not prefix in the directory: %s\n", logFile);
-        snprintf(rotatedlogFilePath, sizeof(logFilePath), "%s", logFile);
+        T2Debug("RotatedLog file is an absolute path within an approved root: %s\n", logFile);
+        snprintf(rotatedlogFilePath, sizeof(rotatedlogFilePath), "%s", logFilePath);
     }
     else
     {
-        // If the logFile is not an absolute path, prefix it with the logPath
         T2Debug("RotatedLog file is not an absolute path, prefixing with directory: %s\n", logPath);
-        snprintf(rotatedlogFilePath, sizeof(rotatedlogFilePath), "%s/%s", logPath, logFile);
+        snprintf(rotatedlogFilePath, sizeof(rotatedlogFilePath), "%s", logFilePath);
     }
     if(name_len > 2 && logFilePath[name_len - 2] == '.' && logFilePath[name_len - 1] == '0')
     {
@@ -1006,7 +1102,7 @@ static int getRotatedLogFileDescriptor(const char* logPath, const char* logFile)
         T2Debug("Rotated log file name is %s\n", rotatedlogFilePath);
     }
 
-    int rd = open(rotatedlogFilePath, O_RDONLY);
+    int rd = open(rotatedlogFilePath, O_RDONLY | O_NOFOLLOW);
     if (rd == -1)
     {
         T2Debug("Failed to open log file %s\n", rotatedlogFilePath);
@@ -1014,9 +1110,9 @@ static int getRotatedLogFileDescriptor(const char* logPath, const char* logFile)
     }
 
     struct stat rb;
-    if (fstat(rd, &rb) == -1)
+    if (fstat(rd, &rb) == -1 || !S_ISREG(rb.st_mode))
     {
-        T2Debug("Error getting file size for %s\n", rotatedlogFilePath);
+        T2Debug("Error getting file size or invalid file type for %s\n", rotatedlogFilePath);
         close(rd);
         return -1;
     }

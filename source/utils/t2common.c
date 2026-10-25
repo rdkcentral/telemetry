@@ -104,19 +104,38 @@ bool createSecureTempFlag(const char *path)
         return false;
     }
 
+    if (access(path, F_OK) == 0)
+    {
+        if (!isSafeTempFilePath(path))
+        {
+            T2Error("Refusing to use unsafe existing flag path %s\n", path);
+            return false;
+        }
+        T2Debug("Reusing existing secure flag %s\n", path);
+        return true;
+    }
+
     if (!isSafeTempFilePath(path))
     {
         T2Error("Refusing to use unsafe flag path %s\n", path);
         return false;
     }
 
-    int fd = open(path, O_WRONLY | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
+    int fd = open(path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, S_IRUSR | S_IWUSR);
     if (fd < 0)
     {
-        if (errno != EEXIST)
+        if (errno == EEXIST)
         {
-            T2Error("Unable to create secure flag %s: %s\n", path, strerror(errno));
+            if (isSafeTempFilePath(path))
+            {
+                T2Debug("Existing secure flag already present: %s\n", path);
+                return true;
+            }
+            T2Error("Refusing to use unsafe existing flag path %s\n", path);
+            return false;
         }
+
+        T2Error("Unable to create secure flag %s: %s\n", path, strerror(errno));
         return false;
     }
 

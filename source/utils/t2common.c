@@ -28,38 +28,11 @@
 
 bool whoami_support = false;
 
-bool isSafeTempFilePath(const char *path)
-{
-    struct stat st;
-
-    if (path == NULL || *path == '\0')
-    {
-        return false;
-    }
-
-    if (lstat(path, &st) == 0)
-    {
-        if (S_ISLNK(st.st_mode) || !S_ISREG(st.st_mode))
-        {
-            T2Error("Refusing to use non-regular or symlinked temp file: %s\n", path);
-            return false;
-        }
-
-        if (st.st_uid != geteuid())
-        {
-            T2Error("Refusing to use temp file with unexpected owner: %s\n", path);
-            return false;
-        }
-    }
-
-    return true;
-}
-
 int openSecureTempFile(const char *path, bool truncateExisting)
 {
     int fd = -1;
 
-    if (!isSafeTempFilePath(path))
+    if (path == NULL || *path == '\0')
     {
         return -1;
     }
@@ -104,35 +77,13 @@ bool createSecureTempFlag(const char *path)
         return false;
     }
 
-    if (access(path, F_OK) == 0)
-    {
-        if (!isSafeTempFilePath(path))
-        {
-            T2Error("Refusing to use unsafe existing flag path %s\n", path);
-            return false;
-        }
-        T2Debug("Reusing existing secure flag %s\n", path);
-        return true;
-    }
-
-    if (!isSafeTempFilePath(path))
-    {
-        T2Error("Refusing to use unsafe flag path %s\n", path);
-        return false;
-    }
-
     int fd = open(path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, S_IRUSR | S_IWUSR);
     if (fd < 0)
     {
         if (errno == EEXIST)
         {
-            if (isSafeTempFilePath(path))
-            {
-                T2Debug("Existing secure flag already present: %s\n", path);
-                return true;
-            }
-            T2Error("Refusing to use unsafe existing flag path %s\n", path);
-            return false;
+            T2Debug("Existing secure flag already present: %s\n", path);
+            return true;
         }
 
         T2Error("Unable to create secure flag %s: %s\n", path, strerror(errno));

@@ -1103,7 +1103,7 @@ static int getRotatedLogFileDescriptor(const char* logPath, const char* logFile)
         T2Debug("Rotated log file name is %s\n", rotatedlogFilePath);
     }
 
-    int rd = open(rotatedlogFilePath, O_RDONLY | O_NOFOLLOW);
+    int rd = open(rotatedlogFilePath, O_RDONLY);
     if (rd == -1)
     {
         T2Debug("Failed to open log file %s\n", rotatedlogFilePath);

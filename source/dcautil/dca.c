@@ -1013,7 +1013,7 @@ static int getLogFileDescriptor(GrepSeekProfile* gsProfile, const char* logPath,
 
     T2Info("Log file resolved to approved path: %s\n", logFilePath);
     T2Debug("Opening log file %s\n", logFilePath);
-    int fd = open(logFilePath, O_RDONLY | O_NOFOLLOW);
+    int fd = open(logFilePath, O_RDONLY );
     if (fd == -1)
     {
         T2Debug("Failed to open log file %s\n", logFilePath);

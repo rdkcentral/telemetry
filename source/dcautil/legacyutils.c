@@ -22,6 +22,9 @@
 #include <fcntl.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <stdbool.h>
+#include <string.h>
+#include <ctype.h>
 
 #include "t2log_wrapper.h"
 #include "legacyutils.h"
@@ -33,6 +36,31 @@
 static char* PERSISTENT_PATH = NULL;
 static char* LOG_PATH        = NULL;
 static char* DEVICE_TYPE     = NULL;
+
+static bool isValidLogBasePath(const char *path)
+{
+    if (path == NULL || path[0] != '/')
+    {
+        return false;
+    }
+
+    /* Prevent traversal and Windows-style separators */
+    if (strstr(path, "..") != NULL || strchr(path, '\\') != NULL)
+    {
+        return false;
+    }
+
+    /* Reject control characters */
+    for (const char *p = path; *p != '\0'; ++p)
+    {
+        if (iscntrl((unsigned char)*p))
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
 
 /**
  * Start of functions dealing with log seek values
@@ -224,11 +252,18 @@ void updateIncludeConfVal(char **logpath, char **perspath)
                 if(0 == strncmp(props, "LOG_PATH=", strlen("LOG_PATH=")))
                 {
                     property = property + strlen("LOG_PATH=");
-                    if(LOG_PATH != NULL)
+                    if (isValidLogBasePath(property))
                     {
-                        free(LOG_PATH);
+                        if(LOG_PATH != NULL)
+                        {
+                            free(LOG_PATH);
+                        }
+                        LOG_PATH = strdup(property);
                     }
-                    LOG_PATH = strdup(property);
+                    else
+                    {
+                        T2Error("Ignoring invalid LOG_PATH value from include.properties\n");
+                    }
                 }
             }
         }

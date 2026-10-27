@@ -51,6 +51,14 @@ using ::testing::_;
 using ::testing::Return;
 using ::testing::StrEq;
 
+static void setRegularFileStat(struct stat* statbuf, off_t size, ino_t inode = 12345)
+{
+    memset(statbuf, 0, sizeof(*statbuf));
+    statbuf->st_mode = S_IFREG | 0644;
+    statbuf->st_size = size;
+    statbuf->st_ino = inode;
+}
+
 FileMock *g_fileIOMock = NULL;
 SystemMock * g_systemMock = NULL;
 rdklogMock *m_rdklogMock = NULL;
@@ -1208,11 +1216,11 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_1)
     EXPECT_CALL(*g_fileIOMock, fstat(_, _))
         .Times(2)
         .WillOnce([](int fd, struct stat* statbuf) {
-        statbuf->st_size = 1235;      // Set file size
+        setRegularFileStat(statbuf, 1235, 12345);
         return 0; // Success
     })
         .WillOnce([](int fd, struct stat* statbuf) {
-        statbuf->st_size = 1300;      // Set file size
+        setRegularFileStat(statbuf, 1300, 12345);
         return 0; // Success
     });
 
@@ -1288,11 +1296,11 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_2)
     EXPECT_CALL(*g_fileIOMock, fstat(_, _))
         .Times(2)
         .WillOnce([](int fd, struct stat* statbuf) {
-        statbuf->st_size = 1300;      // Set file size
+        setRegularFileStat(statbuf, 1300, 12345);
         return 0; // Success
     })
         .WillOnce([](int fd, struct stat* statbuf) {
-        statbuf->st_size = 1300;      // Set file size
+        setRegularFileStat(statbuf, 1300, 12345);
         return 0; // Success
     });
 
@@ -1375,19 +1383,19 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_3)
     EXPECT_CALL(*g_fileIOMock, fstat(_, _))
         .Times(4)
         .WillOnce([](int fd, struct stat* statbuf) {
-        statbuf->st_size = 1235;      // Set file size
+        setRegularFileStat(statbuf, 1235, 12345);
         return 0; // Success
     })
         .WillOnce([](int fd, struct stat* statbuf) {
-        statbuf->st_size = 1235;      // Set file size
+        setRegularFileStat(statbuf, 1235, 12345);
         return 0; // Success
     })
         .WillOnce([](int fd, struct stat* statbuf) {
-        statbuf->st_size = 1000;      // Set file size
+        setRegularFileStat(statbuf, 1000, 12345);
         return 0; // Success
     })
         .WillOnce([](int fd, struct stat* statbuf) {
-        statbuf->st_size = 1000;      // Set file size
+        setRegularFileStat(statbuf, 1000, 12345);
         return 0; // Success
     });
 
@@ -1478,19 +1486,19 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_Accum)
     EXPECT_CALL(*g_fileIOMock, fstat(_, _))
         .Times(testing::AtMost(4))
         .WillOnce([](int fd, struct stat* statbuf) {
-        statbuf->st_size = 1235;      // Set file size
+        setRegularFileStat(statbuf, 1235, 12345);
         return 0; // Success
     })
         .WillOnce([](int fd, struct stat* statbuf) {
-        statbuf->st_size = 1235;      // Set file size
+        setRegularFileStat(statbuf, 1235, 12345);
         return 0; // Success
     })
         .WillOnce([](int fd, struct stat* statbuf) {
-        statbuf->st_size = 1000;      // Set file size
+        setRegularFileStat(statbuf, 1000, 12345);
         return 0; // Success
     })
         .WillOnce([](int fd, struct stat* statbuf) {
-        statbuf->st_size = 1000;      // Set file size
+        setRegularFileStat(statbuf, 1000, 12345);
         return 0; // Success
     });
     //getDeltainmmapsearch 
@@ -1588,23 +1596,19 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_InodeChanged_NewFileGrowsPastSeek)
     EXPECT_CALL(*g_fileIOMock, fstat(_, _))
         .Times(4)
         .WillOnce([](int fd, struct stat* statbuf) {
-            statbuf->st_size = 8000;
-            statbuf->st_ino = 22222;  // Different inode → rotation detected
+            setRegularFileStat(statbuf, 8000, 22222);
             return 0;
         })
         .WillOnce([](int fd, struct stat* statbuf) {
-            statbuf->st_size = 8000;
-            statbuf->st_ino = 22222;
+            setRegularFileStat(statbuf, 8000, 22222);
             return 0;
         })
         .WillOnce([](int fd, struct stat* statbuf) {
-            statbuf->st_size = 7000;  // Rotated file (old log) > seek_value (5000)
-            statbuf->st_ino = 11111;  // Old inode
+            setRegularFileStat(statbuf, 7000, 11111);
             return 0;
         })
         .WillOnce([](int fd, struct stat* statbuf) {
-            statbuf->st_size = 7000;
-            statbuf->st_ino = 11111;
+            setRegularFileStat(statbuf, 7000, 11111);
             return 0;
         });
 
@@ -1707,23 +1711,19 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_MultiRotation_IntermediateFile)
     EXPECT_CALL(*g_fileIOMock, fstat(_, _))
         .Times(4)
         .WillOnce([](int fd, struct stat* statbuf) {
-            statbuf->st_size = 8000;
-            statbuf->st_ino = 22222;  // Current file — different from stored
+            setRegularFileStat(statbuf, 8000, 22222);
             return 0;
         })
         .WillOnce([](int fd, struct stat* statbuf) {
-            statbuf->st_size = 8000;
-            statbuf->st_ino = 22222;
+            setRegularFileStat(statbuf, 8000, 22222);
             return 0;
         })
         .WillOnce([](int fd, struct stat* statbuf) {
-            statbuf->st_size = 3000;  // Intermediate rotated file
-            statbuf->st_ino = 33333;  // DIFFERENT from stored 11111 — multi-rotation!
+            setRegularFileStat(statbuf, 3000, 33333);
             return 0;
         })
         .WillOnce([](int fd, struct stat* statbuf) {
-            statbuf->st_size = 3000;
-            statbuf->st_ino = 33333;
+            setRegularFileStat(statbuf, 3000, 33333);
             return 0;
         });
 
@@ -1818,11 +1818,11 @@ TEST_F(dcaTestFixture, getDCAResultsInVector_TruncatedInPlace_NoRotatedFile)
     EXPECT_CALL(*g_fileIOMock, fstat(_, _))
         .Times(2)
         .WillOnce([](int fd, struct stat* statbuf) {
-        statbuf->st_size = 800;      // Truncated file size, smaller than stored seek 5000
+        setRegularFileStat(statbuf, 800, 12345);
         return 0;
     })
         .WillOnce([](int fd, struct stat* statbuf) {
-        statbuf->st_size = 800;
+        setRegularFileStat(statbuf, 800, 12345);
         return 0;
     });
 
@@ -1920,11 +1920,11 @@ TEST_F(dcaTestFixture, getGrepResults_success)
     EXPECT_CALL(*g_fileIOMock, fstat(_, _))
         .Times(2)
         .WillOnce([](int fd, struct stat* statbuf) {
-        statbuf->st_size = 1300;      // Set file size
+        setRegularFileStat(statbuf, 1300, 12345);
         return 0; // Success
     })
         .WillOnce([](int fd, struct stat* statbuf) {
-        statbuf->st_size = 1300;      // Set file size
+        setRegularFileStat(statbuf, 1300, 12345);
         return 0; // Success
     });
 

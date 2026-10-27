@@ -24,6 +24,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <pthread.h>
+#include <stdbool.h>
 #ifdef LIBSYSWRAPPER_BUILD
 #include "secure_wrapper.h"
 #endif

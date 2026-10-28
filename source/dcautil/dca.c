@@ -47,6 +47,7 @@
 #include "t2log_wrapper.h"
 #include "t2common.h"
 #include "busInterface.h"
+#include "multicurlinterface.h"
 
 
 static bool check_rotated_logs = false; // using this variable to indicate whether it needs to check the rotated logs or not . Initialising it with false.
@@ -59,6 +60,11 @@ static bool firstreport_after_bootup = false; // the rotated logs check should r
 #define BUFFER_SIZE 4096  // TODO fine tune this value based on the size of the data    
 #define LARGE_FILE_THRESHOLD 1000000 // 1MB
 #define MAX_TIMESTAMP_LENGTH 24
+/*
+ * CPU contention avoidance window:
+ * prevent overlap between top/process sampling and telemetry curl work.
+ */
+#define DCA_SAMPLING_CURL_WAIT_TIMEOUT_MS 15000
 /**
  * @addtogroup DCA_TYPES
  * @{
@@ -256,6 +262,7 @@ static time_t extractUnixTimestamp(const char* line_start, size_t line_length)
 int processTopPattern(char* profileName,  Vector* topMarkerList, int profileExecCounter)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
+    bool isSamplingActive = false;
     if(profileName == NULL || topMarkerList == NULL)
     {
         T2Error("Invalid arguments for %s\n", __FUNCTION__);
@@ -314,6 +321,18 @@ int processTopPattern(char* profileName,  Vector* topMarkerList, int profileExec
 
     for (; var < vCount; ++var) // Loop of marker list starts here
     {
+        if(!isSamplingActive)
+        {
+            /*
+             * Enter sampling window so new curl work is deferred while
+             * top/process markers are being collected.
+             */
+            if(http_pool_begin_sampling_window(DCA_SAMPLING_CURL_WAIT_TIMEOUT_MS) == T2ERROR_SUCCESS)
+            {
+                isSamplingActive = true;
+            }
+        }
+
         TopMarker* topMarkerObj = (TopMarker*) Vector_At(topMarkerList, var);
         if (!topMarkerObj || !topMarkerObj->logFile || !topMarkerObj->searchString || !topMarkerObj->markerName)
         {
@@ -368,6 +387,12 @@ int processTopPattern(char* profileName,  Vector* topMarkerList, int profileExec
             getProcUsage(topMarkerObj->searchString, topMarkerObj, filename);
         }
 
+    }
+
+    if(isSamplingActive)
+    {
+        /* Leave sampling window and allow deferred curl work to proceed. */
+        http_pool_end_sampling_window();
     }
 
 #if !defined(ENABLE_RDKC_SUPPORT) && !defined(ENABLE_RDKB_SUPPORT)
@@ -1055,6 +1080,9 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
     off_t offset_in_page_size_multiple ;
     unsigned int bytes_ignored = 0, bytes_ignored_main = 0, bytes_ignored_rotated = 0;
     off_t main_fsize = 0, rotated_fsize = 0;
+    // Log upload backs up and truncates in place, so the stored seek no longer refers
+    // to any data still present in this file.
+    const bool truncated = (seek_value > sb.st_size);
     // Find the nearest multiple of page size
     if (seek_value > 0 && PAGESIZE > 0)
     {
@@ -1186,9 +1214,19 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
                 // No inode change (seek_value > sb.st_size or check_rotated path)
                 // Legacy behavior: read entire rotated + current from seek
                 rotated_fsize = rb.st_size;
-                main_fsize = sb.st_size - seek_value;
-                bytes_ignored_main = bytes_ignored;
-                addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, offset_in_page_size_multiple);
+                if(truncated)
+                {
+                    // Stale seek points past the truncated file - read all of it
+                    main_fsize = sb.st_size;
+                    bytes_ignored_main = 0;
+                    addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, 0);
+                }
+                else
+                {
+                    main_fsize = sb.st_size - seek_value;
+                    bytes_ignored_main = bytes_ignored;
+                    addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, offset_in_page_size_multiple);
+                }
                 addrrf = mmap(NULL, rb.st_size, PROT_READ, MAP_PRIVATE, tmp_rd, 0);
             }
             if(tmp_rd != -1)
@@ -1215,6 +1253,16 @@ static FileDescriptor* getFileDeltaInMemMapAndSearch(const int fd, const off_t s
                 addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, offset_in_page_size_multiple);
                 bytes_ignored_main = bytes_ignored;
                 main_fsize = sb.st_size - seek_value;
+            }
+            else if(truncated)
+            {
+                // Truncated in place with no rotated file to fall back on - read the
+                // entire current file so its markers are still collected this cycle
+                T2Info("Log file %s truncated (seek %jd > size %jd), reading entire current file\n",
+                       logFile, (intmax_t)seek_value, (intmax_t)sb.st_size);
+                addrcf = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, tmp_fd, 0);
+                bytes_ignored_main = 0;
+                main_fsize = sb.st_size;
             }
             else
             {

@@ -113,6 +113,29 @@ static void freeConfig(void *data)
     }
 }
 
+static void publishReportUploadStatusForResult(T2ERROR ret)
+{
+    pthread_mutex_lock(&xconfProfileLock);
+    bool localIsOnDemandReport = isOnDemandReport;
+    bool localIsAbortTriggered = isAbortTriggered;
+    isAbortTriggered = false;
+    pthread_mutex_unlock(&xconfProfileLock);
+
+    if(!localIsOnDemandReport)
+    {
+        return;
+    }
+
+    if(ret == T2ERROR_FAILURE)
+    {
+        publishReportUploadStatus(localIsAbortTriggered ? "ABORTED" : "FAILURE");
+    }
+    else
+    {
+        publishReportUploadStatus("SUCCESS");
+    }
+}
+
 static void freeProfileXConf()
 {
     if(singleProfile != NULL)
@@ -548,30 +571,7 @@ static void* CollectAndReportXconf(void* data)
         }
 
         // Notify status of upload in case of on demand report upload.
-        if(isOnDemandReport)
-        {
-            if(ret == T2ERROR_FAILURE)
-            {
-                if(isAbortTriggered)
-                {
-                    publishReportUploadStatus("ABORTED");
-                }
-                else
-                {
-                    publishReportUploadStatus("FAILURE");
-                }
-            }
-            else
-            {
-                publishReportUploadStatus("SUCCESS");
-            }
-        }
-
-        // Reset the abort trigger flags
-        if(isAbortTriggered == true)
-        {
-            isAbortTriggered = false ;
-        }
+        publishReportUploadStatusForResult(ret);
 
         /* CRITICAL SECTION START: Re-acquire xconfProfileLock before updating profile state.
          * pthread_cond_wait requires us to hold xconfProfileLock, so we acquire it here
@@ -1186,6 +1186,19 @@ T2ERROR ProfileXConf_storeMarkerEvent(T2Event *eventInfo)
     return T2ERROR_SUCCESS;
 }
 #ifdef GTEST_ENABLE
+void test_setReportUploadStatusState(bool isOnDemand, bool isAbort)
+{
+    pthread_mutex_lock(&xconfProfileLock);
+    isOnDemandReport = isOnDemand;
+    isAbortTriggered = isAbort;
+    pthread_mutex_unlock(&xconfProfileLock);
+}
+
+void test_publishReportUploadStatusForResult(T2ERROR ret)
+{
+    publishReportUploadStatusForResult(ret);
+}
+
 void test_set_reportThreadExits(bool value)
 {
     reportThreadExits = value;

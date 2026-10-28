@@ -310,6 +310,10 @@ void freeProfile(void *data)
             cJSON_Delete(profile->jsonReportObj);
             profile->jsonReportObj = NULL;
         }
+        if(profile->grepSeekProfile)
+        {
+            freeGrepSeekProfile(profile->grepSeekProfile);
+        }
         free(profile);
     }
     T2Debug("%s ++out \n", __FUNCTION__);
@@ -1055,6 +1059,7 @@ reportThreadEnd :
     pthread_mutex_lock(&profile->reuseThreadMutex);
     pthread_mutex_lock(&profile->reportInProgressMutex);
     profile->reportInProgress = false;
+    profile->reportThreadCreated = false;
     pthread_cond_signal(&profile->reportInProgressCond);
     pthread_mutex_unlock(&profile->reportInProgressMutex);
     pthread_mutex_unlock(&profile->reuseThreadMutex);
@@ -1104,7 +1109,20 @@ void NotifyTimeout(const char* profileName, bool isClearSeekMap)
         else
         {
             pthread_mutex_unlock(&profile->reuseThreadMutex);
-            pthread_create(&profile->reportThread, NULL, CollectAndReport, (void*)profile);
+            int createStatus = pthread_create(&profile->reportThread, NULL, CollectAndReport, (void*)profile);
+            pthread_mutex_lock(&profile->reportInProgressMutex);
+            if(createStatus == 0 && profile->reportInProgress)
+            {
+                profile->reportThreadCreated = true;
+            }
+            else
+            {
+                profile->reportInProgress = false;
+                profile->reportThreadCreated = false;
+                pthread_cond_signal(&profile->reportInProgressCond);
+                T2Error("Failed to create report thread for profile %s: %d\n", profileName, createStatus);
+            }
+            pthread_mutex_unlock(&profile->reportInProgressMutex);
         }
     }
     else
@@ -1518,13 +1536,6 @@ T2ERROR deleteAllProfiles(bool delFromDisk)
              * after setting threadExists = false (see CollectAndReport cleanup). */
         }
 
-        /* grepSeekProfile cleanup is safe without profileListLock here:
-         * the profile's thread has been joined (or never existed), and
-         * initialized=false prevents concurrent access from other threads. */
-        if(tempProfile->grepSeekProfile)
-        {
-            freeGrepSeekProfile(tempProfile->grepSeekProfile);
-        }
         if(delFromDisk == true)
         {
             removeProfileFromDisk(REPORTPROFILES_PERSISTENCE_PATH, tempProfile->name);
@@ -1648,11 +1659,6 @@ T2ERROR deleteProfile(const char *profileName)
     if(Vector_Size(profile->triggerConditionList) > 0)
     {
         rbusT2ConsumerUnReg(profile->triggerConditionList);
-    }
-
-    if(profile->grepSeekProfile)
-    {
-        freeGrepSeekProfile(profile->grepSeekProfile);
     }
 
     pthread_mutex_destroy(&profile->reportInProgressMutex);
@@ -2055,6 +2061,7 @@ T2ERROR appendTriggerCondition (Profile *tempProfile, const char *referenceName,
                 else
                 {
                     T2Warning("%s : referenceName or referenceValue is published as null, ignoring trigger condition \n ", __FUNCTION__);
+                    free(triggerCond);
                 }
 
             }
@@ -2164,6 +2171,19 @@ T2ERROR triggerReportOnCondtion(const char *referenceName, const char *reference
                             tempProfile->callBackOnReportGenerationComplete = reportGenerationCompleteReceiver;
 
                             char *tempProfilename = strdup(tempProfile->name); //RDKB-42640
+                            if(tempProfilename == NULL)
+                            {
+                                T2Error("Failed to allocate profile name while triggering report condition\n");
+                                if(tempProfile->jsonReportObj != NULL)
+                                {
+                                    cJSON_Delete(tempProfile->jsonReportObj);
+                                    tempProfile->jsonReportObj = NULL;
+                                }
+                                tempProfile->triggerReportOnCondition = false;
+                                pthread_mutex_unlock(&tempProfile->triggerCondMutex);
+                                pthread_rwlock_unlock(&profileListLock);
+                                return T2ERROR_FAILURE;
+                            }
 
                             // profileListLock should be unlocked before sending interrupt for report generation
                             T2Debug("%s : Release lock on &profileListLock\n ", __FUNCTION__);
@@ -2172,8 +2192,29 @@ T2ERROR triggerReportOnCondtion(const char *referenceName, const char *reference
                                    triggerCondition->oprator, triggerCondition->threshold);
                             if(tempProfile->isSchedulerstarted)
                             {
-                                SendInterruptToTimeoutThread(tempProfilename, false);
-                                // triggerCondMutex will be unlocked by CollectAndReport after report generation
+                                T2ERROR sendRet = SendInterruptToTimeoutThread(tempProfilename, false);
+                                if(sendRet != T2ERROR_SUCCESS)
+                                {
+                                    bool workerOwnsTrigger = false;
+                                    pthread_mutex_lock(&tempProfile->reportInProgressMutex);
+                                    workerOwnsTrigger = tempProfile->reportInProgress && tempProfile->reportThreadCreated;
+                                    if(!workerOwnsTrigger)
+                                    {
+                                        tempProfile->triggerReportOnCondition = false;
+                                    }
+                                    pthread_mutex_unlock(&tempProfile->reportInProgressMutex);
+
+                                    if(!workerOwnsTrigger)
+                                    {
+                                        T2Info("For Profile %s SendInterruptToTimeoutThread failed, releasing lock\n", tempProfilename);
+                                        pthread_mutex_unlock(&tempProfile->triggerCondMutex);
+                                        if(tempProfile->callBackOnReportGenerationComplete)
+                                        {
+                                            tempProfile->callBackOnReportGenerationComplete(tempProfilename);
+                                        }
+                                    }
+                                }
+                                // On success: triggerCondMutex will be unlocked by CollectAndReport after report generation
                             }
                             else
                             {
@@ -2202,6 +2243,22 @@ T2ERROR triggerReportOnCondtion(const char *referenceName, const char *reference
     return T2ERROR_SUCCESS;
 }
 
+#ifdef GTEST_ENABLE
+void test_set_profile_list(Vector *testProfileList)
+{
+    profileList = testProfileList;
+    initialized = true;
+    pthread_rwlock_init(&profileListLock, NULL);
+}
+
+void test_reset_profile_list(void)
+{
+    initialized = false;
+    profileList = NULL;
+    pthread_rwlock_destroy(&profileListLock);
+}
+#endif
+
 unsigned int getMinThresholdDuration(char *profileName)
 {
     unsigned int minThresholdDuration = 0;
@@ -2222,4 +2279,5 @@ unsigned int getMinThresholdDuration(char *profileName)
     T2Debug("%s --out\n", __FUNCTION__);
     return minThresholdDuration;
 }
+
 

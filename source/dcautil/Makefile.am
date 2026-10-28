@@ -34,6 +34,7 @@ libdcautil_la_CFLAGS += -fPIC -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/dbus-1.0 
                                 -I${top_srcdir}/source/ccspinterface \
                                 -I${top_srcdir}/source/utils \
                                 -I${top_srcdir}/source/bulkdata \
+                                -I${top_srcdir}/source/protocol/http \
                                 -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/ccsp
 
 libdcautil_la_DEPENDENCIES = ${top_builddir}/source/ccspinterface/libccspinterface.la ${top_builddir}/source/utils/libt2utils.la

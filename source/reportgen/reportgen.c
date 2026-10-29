@@ -249,7 +249,14 @@ static T2ERROR applyRegexToValue(char** inputValue, const char* regexPattern)
         {
             T2Debug("regexec successful, Match is found %.*s\n",
                     pmatch[0].rm_eo - pmatch[0].rm_so, &(*inputValue)[pmatch[0].rm_so]);
-            sprintf(string, "%.*s", pmatch[0].rm_eo - pmatch[0].rm_so, &(*inputValue)[pmatch[0].rm_so]);
+            // Bounds check: ensure match length doesn't exceed buffer
+            int matchLen = pmatch[0].rm_eo - pmatch[0].rm_so;
+            if (matchLen >= (int)sizeof(string))
+            {
+                T2Warning("Regex match too long: %d bytes, truncating to %zu\n", matchLen, sizeof(string) - 1);
+                matchLen = sizeof(string) - 1;
+            }
+            snprintf(string, sizeof(string), "%.*s", matchLen, &(*inputValue)[pmatch[0].rm_so]);
             free(*inputValue);
             *inputValue = strdup(string);
             if (*inputValue == NULL)
@@ -1031,7 +1038,14 @@ T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepMarkerList)
                                 else
                                 {
                                     T2Debug("regexec successful, Match is found %.*s\n", pmatch[0].rm_eo - pmatch[0].rm_so, &stringValue[pmatch[0].rm_so]);
-                                    sprintf(string[i], "%.*s", pmatch[0].rm_eo - pmatch[0].rm_so, &stringValue[pmatch[0].rm_so]);
+                                    // Bounds check: ensure match length doesn't exceed buffer
+                                    int matchLen = pmatch[0].rm_eo - pmatch[0].rm_so;
+                                    if (matchLen >= (int)sizeof(string[0]))
+                                    {
+                                        T2Warning("Regex match too long: %d bytes, truncating to %zu\n", matchLen, sizeof(string[0]) - 1);
+                                        matchLen = sizeof(string[0]) - 1;
+                                    }
+                                    snprintf(string[i], sizeof(string[i]), "%.*s", matchLen, &stringValue[pmatch[0].rm_so]);
                                 }
                                 Vector_PushBack(regaccumulateValues, string[i]);
                             }
@@ -1402,7 +1416,14 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
                         else
                         {
                             T2Debug("regexec successful, Match is found %.*s\n", pmatch[0].rm_eo - pmatch[0].rm_so, &stringValue[pmatch[0].rm_so]);
-                            sprintf(string, "%.*s", pmatch[0].rm_eo - pmatch[0].rm_so, &stringValue[pmatch[0].rm_so]);
+                            // Bounds check: ensure match length doesn't exceed buffer
+                            int matchLen = pmatch[0].rm_eo - pmatch[0].rm_so;
+                            if (matchLen >= (int)sizeof(string))
+                            {
+                                T2Warning("Regex match too long: %d bytes, truncating to %zu\n", matchLen, sizeof(string) - 1);
+                                matchLen = sizeof(string) - 1;
+                            }
+                            snprintf(string, sizeof(string), "%.*s", matchLen, &stringValue[pmatch[0].rm_so]);
                             strncpy(stringValue, string, strlen(string) + 1);
                         }
                         regfree(&regpattern);

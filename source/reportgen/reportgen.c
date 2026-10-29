@@ -20,6 +20,7 @@
 #include <time.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <curl/curl.h>
 #include <stdbool.h>
 
@@ -53,6 +54,20 @@ static bool checkForEmptyString( char* valueString )
     }
     T2Debug("%s --Out with return status as %s \n", __FUNCTION__, (isEmpty ? "true" : "false"));
     return isEmpty;
+}
+
+// Unlike checkForEmptyString, a value with leading/trailing spaces but real content is not empty.
+static bool isEmptyMarkerValue(const char *value)
+{
+    if(value == NULL || strcmp(value, "NULL") == 0)
+    {
+        return true;
+    }
+    while(*value != '\0' && isspace((unsigned char)*value))
+    {
+        value++;
+    }
+    return (*value == '\0');
 }
 
 void freeParamValueSt(tr181ValStruct_t **valStructs, int valSize)
@@ -1567,7 +1582,7 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
         default:
             if(eventMarker->u.markerValue != NULL)
             {
-                if(!eventMarker->reportEmptyParam && checkForEmptyString(eventMarker->u.markerValue))
+                if(!eventMarker->reportEmptyParam && isEmptyMarkerValue(eventMarker->u.markerValue))
                 {
                     T2Debug("Skipping empty/\"NULL\" marker value for : %s\n", eventMarker->markerName);
                     free(eventMarker->u.markerValue);

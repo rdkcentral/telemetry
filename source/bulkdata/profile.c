@@ -24,6 +24,7 @@
 #include <time.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <ctype.h>
 
 #include "profile.h"
 #include "reportprofiles.h"
@@ -73,11 +74,15 @@ static bool isEmptySubscriberValue(const char *value)
     {
         return true;
     }
-    if(strlen(value) < 1 || value[0] == ' ' || strncmp(value, "NULL", 4) == 0)
+    if(strcmp(value, "NULL") == 0)
     {
         return true;
     }
-    return false;
+    while(*value != '\0' && isspace((unsigned char)*value))
+    {
+        value++;
+    }
+    return (*value == '\0');
 }
 
 static void freeRequestURIparam(void *data)

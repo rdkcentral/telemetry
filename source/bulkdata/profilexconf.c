@@ -21,6 +21,7 @@
 #include <malloc.h>
 #include <string.h>
 #include <signal.h>
+#include <ctype.h>
 #include <cjson/cJSON.h>
 
 #include "profilexconf.h"
@@ -63,11 +64,15 @@ static bool isEmptySubscriberValue(const char *value)
     {
         return true;
     }
-    if(strlen(value) < 1 || value[0] == ' ' || strncmp(value, "NULL", 4) == 0)
+    if(strcmp(value, "NULL") == 0)
     {
         return true;
     }
-    return false;
+    while(*value != '\0' && isspace((unsigned char)*value))
+    {
+        value++;
+    }
+    return (*value == '\0');
 }
 
 #ifdef GTEST_ENABLE

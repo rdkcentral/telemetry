@@ -938,6 +938,46 @@ TEST(T2ParserEncodingSet, JSONEncodingMapping)
     cJSON_Delete(jJSONReportFormat);
     cJSON_Delete(jJSONReportTimestamp);
 }
+
+TEST(T2ParserEncodingSet, MissingReportTimestampDefaultsToNone)
+{
+    Profile p;
+    memset(&p, 0, sizeof(p));
+    p.jsonEncoding = (JSONEncoding*)malloc(sizeof(JSONEncoding));
+    ASSERT_NE(nullptr, p.jsonEncoding);
+    p.jsonEncoding->tsFormat = TIMESTAMP_UNIXEPOCH;
+
+    cJSON* jEncodingType = cJSON_CreateString("JSON");
+    cJSON* jJSONReportFormat = cJSON_CreateString("NameValuePair");
+
+    EXPECT_EQ(T2ERROR_SUCCESS, encodingSet(&p, jEncodingType, jJSONReportFormat, nullptr));
+    EXPECT_EQ(TIMESTAMP_NONE, p.jsonEncoding->tsFormat);
+
+    free(p.jsonEncoding);
+    cJSON_Delete(jEncodingType);
+    cJSON_Delete(jJSONReportFormat);
+}
+
+TEST(T2ParserEncodingSet, NonStringReportTimestampDefaultsToNone)
+{
+    Profile p;
+    memset(&p, 0, sizeof(p));
+    p.jsonEncoding = (JSONEncoding*)malloc(sizeof(JSONEncoding));
+    ASSERT_NE(nullptr, p.jsonEncoding);
+    p.jsonEncoding->tsFormat = TIMESTAMP_UNIXEPOCH;
+
+    cJSON* jEncodingType = cJSON_CreateString("JSON");
+    cJSON* jJSONReportFormat = cJSON_CreateString("NameValuePair");
+    cJSON* jJSONReportTimestamp = cJSON_CreateNumber(1);
+
+    EXPECT_EQ(T2ERROR_SUCCESS, encodingSet(&p, jEncodingType, jJSONReportFormat, jJSONReportTimestamp));
+    EXPECT_EQ(TIMESTAMP_NONE, p.jsonEncoding->tsFormat);
+
+    free(p.jsonEncoding);
+    cJSON_Delete(jEncodingType);
+    cJSON_Delete(jJSONReportFormat);
+    cJSON_Delete(jJSONReportTimestamp);
+}
 /* protocolSet tests: HTTP branch */
 TEST(T2ParserProtocolSet, HTTPBranchSetsURLAndParams)
 {

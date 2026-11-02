@@ -501,30 +501,39 @@ static T2ERROR flushCacheFromFile(void)
     char telemetry_data[255] = "";
     size_t data_len = 0 ;
 
-    fp = fopen(T2_CACHE_FILE, "r");
-    if(fp)
+    int cache_fd = openSecureFileNoFollow(T2_CACHE_FILE, O_RDONLY, 0);
+    if(cache_fd >= 0)
     {
-        while(fgets(telemetry_data, 255, (FILE * )fp) != NULL)
+        fp = fdopen(cache_fd, "r");
+        if(fp)
         {
-            data_len = strlen(telemetry_data);
-            if(data_len > 0 && telemetry_data[data_len - 1] == '\n' )
+            while(fgets(telemetry_data, 255, (FILE * )fp) != NULL)
             {
-                telemetry_data[data_len - 1] = '\0' ;
-            }
+                data_len = strlen(telemetry_data);
+                if(data_len > 0 && telemetry_data[data_len - 1] == '\n' )
+                {
+                    telemetry_data[data_len - 1] = '\0' ;
+                }
 
-            T2Debug("T2: Sending cache event : %s\n", telemetry_data);
-            T2ER_PushDataWithDelim(telemetry_data, NULL);
-            memset(telemetry_data, 0, sizeof(telemetry_data));
+                T2Debug("T2: Sending cache event : %s\n", telemetry_data);
+                T2ER_PushDataWithDelim(telemetry_data, NULL);
+                memset(telemetry_data, 0, sizeof(telemetry_data));
+            }
+            fclose(fp);
+            if(remove(T2_CACHE_FILE) != 0)
+            {
+                T2Error("Failed to remove the file %s\n", T2_CACHE_FILE);
+            }
         }
-        fclose(fp);
-        if(remove(T2_CACHE_FILE) != 0)
+        else
         {
-            T2Error("Failed to remove the file %s\n", T2_CACHE_FILE);
+            close(cache_fd);
+            T2Debug("fdopen failed for %s\n", T2_CACHE_FILE);
         }
     }
     else
     {
-        T2Debug("fopen failed for %s\n", T2_CACHE_FILE);
+        T2Debug("openSecureFileNoFollow failed for %s\n", T2_CACHE_FILE);
     }
 
     T2Debug("%s --out\n", __FUNCTION__);

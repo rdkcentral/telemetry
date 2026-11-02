@@ -31,7 +31,7 @@
 
 bool whoami_support = false;
 
-int openSecureTempFile(const char *path, bool truncateExisting)
+int openSecureFileNoFollow(const char *path, int flags, mode_t mode)
 {
     int fd = -1;
 
@@ -40,8 +40,7 @@ int openSecureTempFile(const char *path, bool truncateExisting)
         return -1;
     }
 
-    fd = open(path, O_WRONLY | O_CREAT | O_NOFOLLOW | O_NONBLOCK,
-              S_IRUSR | S_IWUSR);
+    fd = open(path, flags | O_NOFOLLOW, mode);
     if (fd < 0)
     {
         T2Error("Unable to safely open %s: %s\n", path, strerror(errno));
@@ -51,7 +50,7 @@ int openSecureTempFile(const char *path, bool truncateExisting)
     struct stat st;
     if (fstat(fd, &st) != 0 || !S_ISREG(st.st_mode) || st.st_uid != geteuid())
     {
-        T2Error("Refusing to use unsafe temp file: %s\n", path);
+        T2Error("Refusing to use unsafe file: %s\n", path);
         close(fd);
         return -1;
     }
@@ -60,6 +59,23 @@ int openSecureTempFile(const char *path, bool truncateExisting)
     {
         T2Error("Unable to set 0600 permissions on %s: %s\n", path, strerror(errno));
         close(fd);
+        return -1;
+    }
+
+    return fd;
+}
+
+int openSecureTempFile(const char *path, bool truncateExisting)
+{
+    int flags = O_WRONLY | O_CREAT;
+    if (truncateExisting)
+    {
+        flags |= O_TRUNC;
+    }
+
+    int fd = openSecureFileNoFollow(path, flags, S_IRUSR | S_IWUSR);
+    if (fd < 0)
+    {
         return -1;
     }
 

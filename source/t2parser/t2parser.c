@@ -1494,6 +1494,12 @@ T2ERROR protocolSet (Profile *profile, cJSON *jprofileProtocol, cJSON *jprofileH
 
     if((profile->t2HTTPDest) && (strcmp(jprofileProtocol->valuestring, "HTTP") == 0))
     {
+        if (jprofileHTTPURL == NULL || !cJSON_IsString(jprofileHTTPURL) || jprofileHTTPURL->valuestring == NULL || !isValidHttpsUploadUrl(jprofileHTTPURL->valuestring))
+        {
+            T2Error("Rejected invalid upload URL in report profile: %s\n", jprofileHTTPURL && jprofileHTTPURL->valuestring ? jprofileHTTPURL->valuestring : "(null)");
+            return T2ERROR_FAILURE;
+        }
+
         profile->t2HTTPDest->URL = strdup(jprofileHTTPURL->valuestring);
         profile->t2HTTPDest->Compression = COMP_NONE; /*in 1911_sprint default none*/
         profile->t2HTTPDest->Method = HTTP_POST; /*1911_sprint default to POST */

@@ -193,6 +193,8 @@ void initWhoamiSupport(void);
 
 bool isWhoAmiEnabled(void);
 
+bool isValidHttpsUploadUrl(const char *url);
+
 #ifdef ENABLE_DYNAMIC_TABLE_SUPPORT
 bool matchesParameter(const char* pattern, const char* paramName);
 #endif

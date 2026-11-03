@@ -39,6 +39,8 @@ sigset_t blocking_signal;
 #include "../mocks/rdklogMock.h"
 #include <iostream>
 #include <stdexcept>
+#include <dlfcn.h>
+#include <tuple>
 
 using namespace std;
 using ::testing::_;
@@ -1525,6 +1527,96 @@ TEST_F(reportgenTestFixture,  encodeEventMarkersInJSON7)
     }
     Vector_Destroy(eventMarkerList, freeEMarker);
 }
+
+class MarkerReportFilterTest : public reportgenTestFixture,
+    public ::testing::WithParamInterface<std::tuple<bool, bool>> {
+protected:
+    EventMarker marker = {};
+    Vector *markers = nullptr;
+    cJSON *report = nullptr;
+    void *jsonLibrary = nullptr;
+    cJSON *(*createArray)() = nullptr;
+    void (*deleteJson)(cJSON *) = nullptr;
+
+    void SetUp() override {
+        jsonLibrary = dlopen("libcjson.so.1", RTLD_NOW | RTLD_LOCAL);
+        ASSERT_NE(jsonLibrary, nullptr) << dlerror();
+        createArray = reinterpret_cast<cJSON *(*)()>(dlsym(jsonLibrary, "cJSON_CreateArray"));
+        auto createObject = reinterpret_cast<cJSON *(*)()>(dlsym(jsonLibrary, "cJSON_CreateObject"));
+        auto addString = reinterpret_cast<cJSON *(*)(cJSON *, const char *, const char *)>(
+            dlsym(jsonLibrary, "cJSON_AddStringToObject"));
+        auto addItem = reinterpret_cast<cJSON_bool (*)(cJSON *, cJSON *)>(
+            dlsym(jsonLibrary, "cJSON_AddItemToArray"));
+        deleteJson = reinterpret_cast<void (*)(cJSON *)>(dlsym(jsonLibrary, "cJSON_Delete"));
+        ASSERT_NE(createArray, nullptr);
+        ASSERT_NE(createObject, nullptr);
+        ASSERT_NE(addString, nullptr);
+        ASSERT_NE(addItem, nullptr);
+        ASSERT_NE(deleteJson, nullptr);
+        EXPECT_CALL(mock_IO, cJSON_CreateObject()).Times(::testing::AnyNumber())
+            .WillRepeatedly(::testing::Invoke(createObject));
+        EXPECT_CALL(mock_IO, cJSON_AddStringToObject(_, _, _)).Times(::testing::AnyNumber())
+            .WillRepeatedly(::testing::Invoke(addString));
+        EXPECT_CALL(mock_IO, cJSON_AddItemToArray(_, _)).Times(::testing::AnyNumber())
+            .WillRepeatedly(::testing::Invoke(addItem));
+        EXPECT_CALL(mock_IO, cJSON_Delete(_)).Times(::testing::AnyNumber())
+            .WillRepeatedly(::testing::Invoke(deleteJson));
+        ASSERT_EQ(Vector_Create(&markers), T2ERROR_SUCCESS);
+        marker.markerName = strdup("StorageMarker");
+        marker.mType = MTYPE_ABSOLUTE;
+        marker.reportEmptyParam = std::get<0>(GetParam());
+        marker.trimParam = std::get<1>(GetParam());
+        ASSERT_EQ(Vector_PushBack(markers, &marker), T2ERROR_SUCCESS);
+    }
+
+    void TearDown() override {
+        if(deleteJson) {
+            deleteJson(report);
+        }
+        free(marker.u.markerValue);
+        free(marker.markerName);
+        Vector_Destroy(markers, nullptr);
+        if(jsonLibrary) {
+            dlclose(jsonLibrary);
+        }
+    }
+};
+
+TEST_P(MarkerReportFilterTest, SerializesRetainedValuesWithOptionalTrimming) {
+    const struct {
+        const char *value;
+        const char *trimmed;
+        bool empty;
+    } cases[] = {
+        {" test log ", "test log", false}, {" xyz ", "xyz", false},
+        {"NULLsuffix", "NULLsuffix", false}, {"", "", true},
+        {"   ", "", true}, {"\t\r\n", "\r\n", true}, {"NULL", "NULL", true}
+    };
+    for(const auto &testCase : cases) {
+        SCOPED_TRACE(testCase.value);
+        report = createArray();
+        ASSERT_NE(report, nullptr);
+        marker.u.markerValue = strdup(testCase.value);
+        ASSERT_NE(marker.u.markerValue, nullptr);
+        EXPECT_EQ(encodeEventMarkersInJSON(report, markers), T2ERROR_SUCCESS);
+        EXPECT_EQ(marker.u.markerValue, nullptr);
+        if(marker.reportEmptyParam || !testCase.empty) {
+            ASSERT_NE(report->child, nullptr);
+            EXPECT_EQ(report->child->next, nullptr);
+            ASSERT_NE(report->child->child, nullptr);
+            EXPECT_STREQ(report->child->child->string, marker.markerName);
+            EXPECT_STREQ(report->child->child->valuestring,
+                marker.trimParam ? testCase.trimmed : testCase.value);
+        } else {
+            EXPECT_EQ(report->child, nullptr);
+        }
+        deleteJson(report);
+        report = nullptr;
+    }
+}
+
+INSTANTIATE_TEST_SUITE_P(SubscriberValues, MarkerReportFilterTest,
+    ::testing::Combine(::testing::Bool(), ::testing::Bool()));
 
 TEST_F(reportgenTestFixture,  encodeEventMarkersInJSON8)
 {

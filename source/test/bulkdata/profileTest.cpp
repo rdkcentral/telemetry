@@ -18,6 +18,7 @@
 #include "test/mocks/VectorMock.h"
 #include "test/bulkdata/SchedulerMock.h"
 #include "test/bulkdata/profileMock.h"
+#include <tuple>
 
 using namespace std;
 
@@ -370,6 +371,86 @@ TEST_F(ProfileTest, TriggerReportOnCondition_SchedulerFailureKeepsActiveMutexOwn
     Vector_Destroy(profiles, nullptr);
     test_reset_profile_list();
 }
+
+class ProfileMarkerStorageTest : public ProfileTest,
+    public ::testing::WithParamInterface<std::tuple<MarkerType, bool>> {
+protected:
+    Profile profile = {};
+    EventMarker marker = {};
+    Vector *profiles = nullptr;
+
+    void SetUp() override {
+        ProfileTest::SetUp();
+        delete g_vectorMock;
+        g_vectorMock = nullptr;
+        ASSERT_EQ(Vector_Create(&profiles), T2ERROR_SUCCESS);
+        ASSERT_EQ(Vector_Create(&profile.eMarkerList), T2ERROR_SUCCESS);
+        profile.name = strdup("StorageProfile");
+        profile.enable = true;
+        ASSERT_EQ(pthread_mutex_init(&profile.eventMutex, nullptr), 0);
+        marker.markerName = strdup("StorageMarker");
+        marker.mType = std::get<0>(GetParam());
+        marker.reportEmptyParam = std::get<1>(GetParam());
+        if(marker.mType == MTYPE_ACCUMULATE) {
+            ASSERT_EQ(Vector_Create(&marker.u.accumulatedValues), T2ERROR_SUCCESS);
+        }
+        ASSERT_EQ(Vector_PushBack(profile.eMarkerList, &marker), T2ERROR_SUCCESS);
+        ASSERT_EQ(Vector_PushBack(profiles, &profile), T2ERROR_SUCCESS);
+        test_set_profile_list(profiles);
+    }
+
+    void TearDown() override {
+        test_reset_profile_list();
+        if(marker.mType == MTYPE_ACCUMULATE) {
+            Vector_Destroy(marker.u.accumulatedValues, free);
+        } else {
+            free(marker.u.markerValue);
+        }
+        free(marker.markerName);
+        Vector_Destroy(profile.eMarkerList, nullptr);
+        Vector_Destroy(profiles, nullptr);
+        pthread_mutex_destroy(&profile.eventMutex);
+        free(profile.name);
+        ProfileTest::TearDown();
+    }
+};
+
+TEST_P(ProfileMarkerStorageTest, StoresClassifiedValuesWithoutTrimming) {
+    const struct {
+        const char *value;
+        bool empty;
+    } cases[] = {
+        {" test log ", false}, {" xyz ", false}, {"NULLify", false},
+        {"", true}, {"   ", true}, {"\t\r\n", true}, {"NULL", true}
+    };
+    for(const auto &testCase : cases) {
+        SCOPED_TRACE(testCase.value);
+        const bool retained = marker.reportEmptyParam || !testCase.empty;
+        if(marker.mType == MTYPE_ACCUMULATE) {
+            Vector_Clear(marker.u.accumulatedValues, free);
+            ASSERT_EQ(Vector_PushBack(marker.u.accumulatedValues, strdup("previous")), T2ERROR_SUCCESS);
+        } else {
+            free(marker.u.markerValue);
+            marker.u.markerValue = strdup("previous");
+        }
+        T2Event event = {};
+        event.name = marker.markerName;
+        event.value = const_cast<char *>(testCase.value);
+        EXPECT_EQ(Profile_storeMarkerEvent(profile.name, &event), T2ERROR_SUCCESS);
+        if(marker.mType == MTYPE_ACCUMULATE) {
+            ASSERT_EQ(Vector_Size(marker.u.accumulatedValues), retained ? 2u : 1u);
+            EXPECT_STREQ(static_cast<char *>(Vector_At(marker.u.accumulatedValues, 0)), "previous");
+            if(retained) {
+                EXPECT_STREQ(static_cast<char *>(Vector_At(marker.u.accumulatedValues, 1)), testCase.value);
+            }
+        } else {
+            EXPECT_STREQ(marker.u.markerValue, retained ? testCase.value : "previous");
+        }
+    }
+}
+
+INSTANTIATE_TEST_SUITE_P(SubscriberValues, ProfileMarkerStorageTest,
+    ::testing::Combine(::testing::Values(MTYPE_ABSOLUTE, MTYPE_ACCUMULATE), ::testing::Bool()));
 
 TEST_F(ProfileTest, getMinThresholdDuration_Failure) {
     EXPECT_CALL(*g_vectorMock, Vector_Size(_)).Times(::testing::AtMost(1)).WillRepeatedly(Return(0));

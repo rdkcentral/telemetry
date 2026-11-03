@@ -273,8 +273,8 @@ def test_for_invalid_activation_timeout():
     assert "MODEL_NAME\":\"NULL" in grep_T2logs("cJSON Report ") # 239 - Support for reportEmpty of profiles
     assert "TR_AC6919" in grep_T2logs("firstreporting interval is given") # 240 - Support for First Reporting Interval -1 
     assert "5 sec" in grep_T2logs("firstreporting interval is given") # 240 - Support for First Reporting Interval - 2
-    assert "NEW TEST PROFILE" in grep_T2logs(LOG_PROFILE_SET) # 101 - Report fetch and parse via HTTP
-    assert "60 sec" in grep_T2logs("reporting interval is taken - NEW TEST PROFILE") # 107 - Configurable reporting interval 
+    assert "NEW_TEST_PROFILE" in grep_T2logs(LOG_PROFILE_SET) # 101 - Report fetch and parse via HTTP
+    assert "60 sec" in grep_T2logs("reporting interval is taken - NEW_TEST_PROFILE") # 107 - Configurable reporting interval 
                                                                                      # 241 - Support for DCM profile and multiprofile parallel execution
     assert "AccountId\":\"Platform_Container_Test_DEVICE" in grep_T2logs("cJSON Report ") # 102 - Include data from data source as TR181 Parameter
     assert "SYS_GREP_TEST" in grep_T2logs("cJSON Report ") # 110, 111 - Data harvesting from previous logs folder for DCA profiles with log file search markers. 

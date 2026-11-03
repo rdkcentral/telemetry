@@ -36,6 +36,7 @@
 
 #include "telemetry_busmessage_sender.h"
 
+#include "t2common.h"
 #include "t2collection.h"
 #include "vector.h"
 #include "telemetry2_0.h"
@@ -336,7 +337,7 @@ void *cacheEventToFile(void *arg)
     }
     pthread_mutex_lock(&FileCacheMutex);
 
-    if ((fd = open(T2_CACHE_LOCK_FILE, O_RDWR | O_CREAT, 0666)) == -1)
+    if ((fd = openSecureFileNoFollow(T2_CACHE_LOCK_FILE, O_RDWR | O_CREAT, 0666)) == -1)
     {
         EVENT_ERROR("%s:%d, T2:open failed\n", __func__, __LINE__);
         pthread_mutex_unlock(&FileCacheMutex);
@@ -357,31 +358,46 @@ void *cacheEventToFile(void *arg)
         return NULL;
     }
 
-    FILE *fp = fopen(T2_CACHE_FILE, "a");
-    if (fp == NULL)
+    int cache_fd = openSecureFileNoFollow(T2_CACHE_FILE, O_WRONLY | O_CREAT | O_APPEND, 0600);
+    if (cache_fd < 0)
     {
         EVENT_ERROR("%s: File open error %s\n", __FUNCTION__, T2_CACHE_FILE);
         goto unlock;
     }
-
-    fs = fopen(T2_CACHE_FILE, "r");
-    if (fs != NULL)
+    FILE *fp = fdopen(cache_fd, "a");
+    if (fp == NULL)
     {
-        while ((ch = fgetc(fs)) != EOF)
+        close(cache_fd);
+        EVENT_ERROR("%s: File open error %s\n", __FUNCTION__, T2_CACHE_FILE);
+        goto unlock;
+    }
+
+    int read_fd = openSecureFileNoFollow(T2_CACHE_FILE, O_RDONLY, 0);
+    if (read_fd >= 0)
+    {
+        fs = fdopen(read_fd, "r");
+        if (fs != NULL)
         {
-            if (ch == '\n')
+            while ((ch = fgetc(fs)) != EOF)
+            {
+                if (ch == '\n')
+                {
+                    count++;
+                }
+            }
+
+            //If the file is not empty and does not contain a newline, call it one line
+            if (count == 0 && ftell(fs) > 0)
             {
                 count++;
             }
+            fclose(fs);
+            fs = NULL;
         }
-
-        //If the file is not empty and does not contain a newline, call it one line
-        if (count == 0 && ftell(fs) > 0)
+        else
         {
-            count++;
+            close(read_fd);
         }
-        fclose(fs);
-        fs = NULL;
     }
     if(count < MAX_EVENT_CACHE)
     {

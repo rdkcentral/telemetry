@@ -199,7 +199,7 @@ TEST_F(profileXconfTestFixture, InitandUninit)
     "],"
     "\"schedule\":\"*/1 * * * *\","
     "\"expires\":0,"
-    "\"telemetryProfile:name\":\"NEW TEST PROFILE\","
+    "\"telemetryProfile:name\":\"NEW_TEST_PROFILE\","
     "\"uploadRepository:URL\":\"https://mock1xconf:50051/dataLakeMockXconf\","
     "\"uploadRepository:uploadProtocol\":\"HTTP\""
 "}"

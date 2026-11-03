@@ -24,6 +24,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <pthread.h>
+#include <stdbool.h>
 #ifdef LIBSYSWRAPPER_BUILD
 #include "secure_wrapper.h"
 #endif
@@ -45,6 +46,38 @@ static void persistReportMethodInit( )
     }
 }
 
+static bool isValidProfileName(const char *name)
+{
+    if (name == NULL || *name == '\0')
+    {
+        return false;
+    }
+
+    if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
+    {
+        return false;
+    }
+
+    if (strstr(name, "..") != NULL)
+    {
+        return false;
+    }
+
+    if (strchr(name, '/') != NULL || strchr(name, '\\') != NULL)
+    {
+        return false;
+    }
+
+    for (const unsigned char *p = (const unsigned char *)name; *p != '\0'; ++p)
+    {
+        if (*p < 0x20 || *p == 0x7f)
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
 
 T2ERROR fetchLocalConfigs(const char* path, Vector *configList)
 {
@@ -159,6 +192,13 @@ T2ERROR saveConfigToFile(const char* path, const char *profileName, const char* 
     {
         return T2ERROR_INVALID_ARGS;
     }
+
+    if (!isValidProfileName(profileName))
+    {
+        T2Error("Refusing to use unsafe profile name for persistence: %s\n", profileName);
+        return T2ERROR_FAILURE;
+    }
+
     FILE *fp = NULL;
     char filePath[256] = {'\0'};
     T2Debug("%s ++in\n", __FUNCTION__);
@@ -198,6 +238,13 @@ T2ERROR MsgPackSaveConfig(const char* path, const char *fileName, const char *ms
     {
         return T2ERROR_INVALID_ARGS;
     }
+
+    if (!isValidProfileName(fileName))
+    {
+        T2Error("Refusing to use unsafe persistence file name: %s\n", fileName);
+        return T2ERROR_FAILURE;
+    }
+
     FILE *fp;
     char filePath[256] = {'\0'};
 
@@ -258,6 +305,13 @@ void removeProfileFromDisk(const char* path, const char* fileName)
     {
         return;
     }
+
+    if (!isValidProfileName(fileName))
+    {
+        T2Error("Refusing to remove unsafe profile path component: %s\n", fileName);
+        return;
+    }
+
     size_t len = strlen(path) + strlen(fileName) + 1;
     char *str = malloc(len);
     if (! str)
@@ -285,6 +339,12 @@ T2ERROR saveCachedReportToPersistenceFolder(const char *profileName, Vector *rep
     {
         T2Error("%s : %d Either of input arguments are NULL \n", __FUNCTION__, __LINE__);
         return ret ;
+    }
+
+    if (!isValidProfileName(profileName))
+    {
+        T2Error("Refusing to cache report for unsafe profile name: %s\n", profileName);
+        return T2ERROR_FAILURE;
     }
 
     // Lock a mutex to write to common file
@@ -356,6 +416,13 @@ T2ERROR populateCachedReportList(const char *profileName, Vector *outReportList)
         T2Error("%s : %d Either of input arguments are NULL \n", __FUNCTION__, __LINE__);
         T2Debug("%s --out\n", __FUNCTION__);
         return ret ;
+    }
+
+    if (!isValidProfileName(profileName))
+    {
+        T2Error("Refusing to read cached report for unsafe profile name: %s\n", profileName);
+        T2Debug("%s --out\n", __FUNCTION__);
+        return T2ERROR_FAILURE;
     }
 
     FILE *filePtr = NULL ;

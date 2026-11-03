@@ -22,6 +22,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <errno.h>
+#include <arpa/inet.h>
+#include <strings.h>
 
 #include "t2parserxconf.h"
 #include "xconfclient.h"
@@ -45,6 +48,198 @@
 #define ACCUMULATE_MARKER_SUFFIX  "_accum"
 #define MAX_PARAM_LEN 15
 
+static bool isLocalNumericAddress(const char *host)
+{
+    if (host == NULL || *host == '\0')
+    {
+        return false;
+    }
+
+    struct in_addr addr4;
+    if (inet_pton(AF_INET, host, &addr4) == 1)
+    {
+        uint32_t ip = ntohl(addr4.s_addr);
+        return ((ip & 0xFF000000u) == 0x7F000000u) || (ip == 0x00000000u);
+    }
+
+    if (inet_aton(host, &addr4) == 1)
+    {
+        uint32_t ip = ntohl(addr4.s_addr);
+        return ((ip & 0xFF000000u) == 0x7F000000u) || (ip == 0x00000000u);
+    }
+
+    if (strchr(host, ':') == NULL)
+    {
+        errno = 0;
+        char *end = NULL;
+        unsigned long long numeric = strtoull(host, &end, 0);
+        if (errno == 0 && end != host && *end == '\0' && numeric <= 0xFFFFFFFFULL)
+        {
+            struct in_addr parsed;
+            parsed.s_addr = htonl((uint32_t)numeric);
+            uint32_t ip = ntohl(parsed.s_addr);
+            return ((ip & 0xFF000000u) == 0x7F000000u) || (ip == 0x00000000u);
+        }
+    }
+
+    struct in6_addr addr6;
+    if (inet_pton(AF_INET6, host, &addr6) == 1)
+    {
+        if (IN6_IS_ADDR_LOOPBACK(&addr6) || IN6_IS_ADDR_UNSPECIFIED(&addr6))
+        {
+            return true;
+        }
+
+        if (IN6_IS_ADDR_V4MAPPED(&addr6))
+        {
+            struct in_addr mapped_v4;
+            memcpy(&mapped_v4, &addr6.s6_addr[12], sizeof(mapped_v4));
+            uint32_t mapped_ip = ntohl(mapped_v4.s_addr);
+            return ((mapped_ip & 0xFF000000u) == 0x7F000000u) || (mapped_ip == 0x00000000u);
+        }
+    }
+
+    return false;
+}
+
+static bool isValidHttpsUploadUrl(const char *url)
+{
+    if (url == NULL || *url == '\0')
+    {
+        return false;
+    }
+
+    char url_copy[2048];
+    size_t url_len = strlen(url);
+    if (url_len == 0 || url_len >= sizeof(url_copy))
+    {
+        return false;
+    }
+
+    snprintf(url_copy, sizeof(url_copy), "%s", url);
+    char *scheme_end = strstr(url_copy, "://");
+    if (scheme_end == NULL)
+    {
+        return false;
+    }
+
+    *scheme_end = '\0';
+    if (strcasecmp(url_copy, "https") != 0)
+    {
+        return false;
+    }
+
+    char *authority = scheme_end + 3;
+    if (*authority == '\0')
+    {
+        return false;
+    }
+
+    if (strchr(authority, '@') != NULL)
+    {
+        return false;
+    }
+
+    char *host_end = strpbrk(authority, "/?#");
+    if (host_end != NULL)
+    {
+        *host_end = '\0';
+    }
+
+    char host[256];
+    memset(host, 0, sizeof(host));
+    if (authority[0] == '[')
+    {
+        char *close_bracket = strchr(authority, ']');
+        if (close_bracket == NULL)
+        {
+            return false;
+        }
+        size_t host_len = (size_t)(close_bracket - authority - 1);
+        if (host_len == 0 || host_len >= sizeof(host))
+        {
+            return false;
+        }
+        memcpy(host, authority + 1, host_len);
+        host[host_len] = '\0';
+    }
+    else
+    {
+        char *port_sep = strrchr(authority, ':');
+        if (port_sep != NULL)
+        {
+            char *first_colon = strchr(authority, ':');
+            if (first_colon != NULL && first_colon != port_sep)
+            {
+                return false;
+            }
+
+            size_t host_len = (size_t)(port_sep - authority);
+            if (host_len == 0 || host_len >= sizeof(host))
+            {
+                return false;
+            }
+            memcpy(host, authority, host_len);
+            host[host_len] = '\0';
+
+            char *port_value = port_sep + 1;
+            if (*port_value == '\0')
+            {
+                return false;
+            }
+            for (char *p = port_value; *p != '\0'; ++p)
+            {
+                if (*p < '0' || *p > '9')
+                {
+                    return false;
+                }
+            }
+        }
+        else
+        {
+            size_t hostname_len = strlen(authority);
+            if (hostname_len == 0 || hostname_len >= sizeof(host))
+            {
+                return false;
+            }
+            snprintf(host, sizeof(host), "%s", authority);
+        }
+    }
+
+    if (host[0] == '\0')
+    {
+        return false;
+    }
+
+    if (strchr(host, '%') != NULL || isLocalNumericAddress(host))
+    {
+        return false;
+    }
+
+    char lower_host[256];
+    size_t host_len = strlen(host);
+    if (host_len >= sizeof(lower_host))
+    {
+        return false;
+    }
+    for (size_t i = 0; i < host_len; ++i)
+    {
+        lower_host[i] = (char)tolower((unsigned char)host[i]);
+    }
+    lower_host[host_len] = '\0';
+
+    if (strcmp(lower_host, "localhost") == 0 ||
+            strcmp(lower_host, "localhost.localdomain") == 0 ||
+            (host_len >= 10 && strncmp(lower_host, "localhost.", 10) == 0) ||
+            (host_len >= 6 && strcmp(lower_host + host_len - 6, ".local") == 0) ||
+            (host_len >= 9 && strcmp(lower_host + host_len - 9, ".internal") == 0))
+    {
+        return false;
+    }
+
+    return true;
+}
+
 static int getScheduleInSeconds(const char* cronPattern)
 {
     unsigned int scheduleIntervalInMin = 15; // Default value from field settings
@@ -65,8 +260,17 @@ static int getScheduleInSeconds(const char* cronPattern)
                 discardPatternLen = strlen(discardPattern);
                 int timeInMinDataLen = inputMatchSize - discardPatternLen;
                 char scheduleString[10] = { '\0' };
-                strncpy(scheduleString, inputMatchPattern, timeInMinDataLen);
-                scheduleIntervalInMin = atoi(scheduleString);
+                // Bounds check: ensure the schedule string doesn't exceed buffer
+                if (timeInMinDataLen >= (int)sizeof(scheduleString))
+                {
+                    T2Error("Schedule string too long: %d bytes, max %zu\n", timeInMinDataLen, sizeof(scheduleString) - 1);
+                }
+                else
+                {
+                    strncpy(scheduleString, inputMatchPattern, sizeof(scheduleString) - 1);
+                    scheduleString[sizeof(scheduleString) - 1] = '\0';
+                    scheduleIntervalInMin = atoi(scheduleString);
+                }
             }
 
         }
@@ -231,6 +435,12 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
     }
 //    if(jprofileID)
 //        T2Debug("profile id = %s\n", jprofileID->valuestring);
+    if (!cJSON_IsString(jprofileName) || !jprofileName->valuestring || !jprofileName->valuestring[0] || strspn(jprofileName->valuestring, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-") != strlen(jprofileName->valuestring))
+    {
+        T2Error("ERROR: Profile name vulnerability, security threat on profile name \n");
+        cJSON_Delete(json_root);
+        return T2ERROR_FAILURE;
+    }
     if(jprofileName)
     {
         T2Debug("profile name = %s\n", jprofileName->valuestring);
@@ -252,6 +462,13 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
         return T2ERROR_FAILURE;
     }
 
+    if (!isValidHttpsUploadUrl(juploadUrl->valuestring))
+    {
+        T2Error("Rejected invalid upload URL in XCONF profile: %s\n", juploadUrl->valuestring ? juploadUrl->valuestring : "(null)");
+        cJSON_Delete(json_root);
+        return T2ERROR_FAILURE;
+    }
+
     int reportIntervalInSec = getScheduleInSeconds(jschedule->valuestring);
 
     T2Info("Received profile name : %s with interval of : %d secs and upload url : %s \n", jprofileName->valuestring, reportIntervalInSec, juploadUrl->valuestring);
@@ -267,6 +484,18 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
 
     profile->protocol = strdup("HTTP");
     profile->t2HTTPDest = (T2HTTP *)malloc(sizeof(T2HTTP));
+    if(profile->t2HTTPDest == NULL)
+    {
+        T2Error("Malloc error exiting: can not allocate memory to create profile->t2HTTPDest \n");
+        free(profile->protocol);
+        free(profile->name);
+        pthread_cond_destroy(&profile->reportInProgressCond);
+        pthread_mutex_destroy(&profile->reportInProgressMutex);
+        free(profile);
+        cJSON_Delete(json_root);
+        return T2ERROR_MEMALLOC_FAILED;
+    }
+    memset(profile->t2HTTPDest, 0, sizeof(*profile->t2HTTPDest));
 
     profile->t2HTTPDest->URL = strdup(juploadUrl->valuestring);
     profile->encodingType = strdup("JSON");

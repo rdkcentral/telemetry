@@ -156,6 +156,7 @@ void trimLeadingAndTrailingws(char* string)
         string[j++] = string[i];
     }
     string[j] = '\0';
+    j = -1;
 
     for(i = 0; string[i] != '\0'; i++)
     {

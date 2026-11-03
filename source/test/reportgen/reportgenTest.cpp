@@ -1543,6 +1543,8 @@ protected:
         ASSERT_NE(jsonLibrary, nullptr) << dlerror();
         createArray = reinterpret_cast<cJSON *(*)()>(dlsym(jsonLibrary, "cJSON_CreateArray"));
         auto createObject = reinterpret_cast<cJSON *(*)()>(dlsym(jsonLibrary, "cJSON_CreateObject"));
+        auto createString = reinterpret_cast<cJSON *(*)(const char *)>(
+            dlsym(jsonLibrary, "cJSON_CreateString"));
         auto addString = reinterpret_cast<cJSON *(*)(cJSON *, const char *, const char *)>(
             dlsym(jsonLibrary, "cJSON_AddStringToObject"));
         auto addItem = reinterpret_cast<cJSON_bool (*)(cJSON *, cJSON *)>(
@@ -1550,11 +1552,14 @@ protected:
         deleteJson = reinterpret_cast<void (*)(cJSON *)>(dlsym(jsonLibrary, "cJSON_Delete"));
         ASSERT_NE(createArray, nullptr);
         ASSERT_NE(createObject, nullptr);
+        ASSERT_NE(createString, nullptr);
         ASSERT_NE(addString, nullptr);
         ASSERT_NE(addItem, nullptr);
         ASSERT_NE(deleteJson, nullptr);
         EXPECT_CALL(mock_IO, cJSON_CreateObject()).Times(::testing::AnyNumber())
             .WillRepeatedly(::testing::Invoke(createObject));
+        EXPECT_CALL(mock_IO, cJSON_CreateString(_)).Times(::testing::AnyNumber())
+            .WillRepeatedly(::testing::Invoke(createString));
         EXPECT_CALL(mock_IO, cJSON_AddStringToObject(_, _, _)).Times(::testing::AnyNumber())
             .WillRepeatedly(::testing::Invoke(addString));
         EXPECT_CALL(mock_IO, cJSON_AddItemToArray(_, _)).Times(::testing::AnyNumber())

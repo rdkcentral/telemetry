@@ -36,6 +36,7 @@
 
 #include "telemetry_busmessage_sender.h"
 
+#include "t2common.h"
 #include "t2collection.h"
 #include "vector.h"
 #include "telemetry2_0.h"

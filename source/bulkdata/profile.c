@@ -74,11 +74,11 @@ static bool isEmptySubscriberValue(const char *value)
     {
         return true;
     }
-    if(strcmp(value, "NULL") == 0)
+    if(strncmp(value, "NULL", sizeof("NULL")) == 0)
     {
         return true;
     }
-    while(*value != '\0' && isspace((unsigned char)*value))
+    while(*value != '\0' && isspace((unsigned char) * value))
     {
         value++;
     }

@@ -59,11 +59,11 @@ static bool checkForEmptyString( char* valueString )
 // Unlike checkForEmptyString, a value with leading/trailing spaces but real content is not empty.
 static bool isEmptyMarkerValue(const char *value)
 {
-    if(value == NULL || strcmp(value, "NULL") == 0)
+    if(value == NULL || strncmp(value, "NULL", sizeof("NULL")) == 0)
     {
         return true;
     }
-    while(*value != '\0' && isspace((unsigned char)*value))
+    while(*value != '\0' && isspace((unsigned char) * value))
     {
         value++;
     }

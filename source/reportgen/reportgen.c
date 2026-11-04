@@ -998,7 +998,7 @@ T2ERROR encodeGrepResultInJSON(cJSON *valArray, Vector *grepMarkerList)
                     int rc = 0;
                     size_t nmatch = 1;
                     regmatch_t pmatch[2];
-                    char string[21][256];
+                    char string[101][256];
                     memset(string, '\0', sizeof(char) * 21 * 256);
                     rc = regcomp(&regpattern, grepMarker->regexParam, REG_EXTENDED);
                     if(rc != 0)
@@ -1475,7 +1475,7 @@ T2ERROR encodeEventMarkersInJSON(cJSON *valArray, Vector *eventMarkerList)
                     int rc = 0;
                     size_t nmatch = 1;
                     regmatch_t pmatch[2];
-                    char string[21][256];
+                    char string[101][256];
                     memset(string, '\0', sizeof(char) * 21 * 256);
                     rc = regcomp(&regpattern, eventMarker->regexParam, REG_EXTENDED);
                     if(rc != 0)

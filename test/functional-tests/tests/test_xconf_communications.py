@@ -96,7 +96,7 @@ def test_change_profile():
     kill_telemetry(12)
     sleep(10)
     assert os.path.exists(XCONF_PERSISTANT_FILE)
-    assert "NEW TEST PROFILE" in grep_T2logs("NEW TEST PROFILE")
+    assert "NEW_TEST_PROFILE" in grep_T2logs("NEW_TEST_PROFILE")
 
 @pytest.mark.run(order=6)
 def test_verify_urlencoding():
@@ -118,7 +118,7 @@ def test_verify_schedule():
     command = ["echo 'This is Test Log' > /opt/logs/test.log"]
     run_shell_command(command)
     sleep(60)
-    ERROR_MSG = "Waiting for 60 sec for next TIMEOUT for profile as reporting interval is taken - NEW TEST PROFILE"
+    ERROR_MSG = "Waiting for 60 sec for next TIMEOUT for profile as reporting interval is taken - NEW_TEST_PROFILE"
     assert ERROR_MSG in grep_T2logs(ERROR_MSG)
 
 @pytest.mark.run(order=8)
@@ -131,14 +131,14 @@ def test_verify_markers():
 
 @pytest.mark.run(order=9)
 def test_verify_report():
-    ERROR_MSG1 = "CollectAndReportXconf ++in profileName : NEW TEST PROFILE"
+    ERROR_MSG1 = "CollectAndReportXconf ++in profileName : NEW_TEST_PROFILE"
     ERROR_MSG2 = "cJSON Report ="
     assert ERROR_MSG1 in grep_T2logs(ERROR_MSG1)
     assert ERROR_MSG2 in grep_T2logs(ERROR_MSG2)
 
 @pytest.mark.run(order=10)
 def test_log_upload():
-    LOG_MSG1 = "CollectAndReportXconf ++in profileName : NEW TEST PROFILE"
+    LOG_MSG1 = "CollectAndReportXconf ++in profileName : NEW_TEST_PROFILE"
     LOG_MSG2 = "cJSON Report ="
     clear_T2logs()
     kill_telemetry(10)
@@ -148,7 +148,7 @@ def test_log_upload():
 
 @pytest.mark.run(order=11)
 def test_log_upload_on_demand():
-    LOG_MSG1 = "CollectAndReportXconf ++in profileName : NEW TEST PROFILE"
+    LOG_MSG1 = "CollectAndReportXconf ++in profileName : NEW_TEST_PROFILE"
     LOG_MSG2 = "cJSON Report ="
     clear_T2logs()
     kill_telemetry(29)

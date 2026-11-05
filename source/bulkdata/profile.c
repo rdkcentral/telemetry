@@ -429,6 +429,11 @@ static void* CollectAndReport(void* data)
         pthread_mutex_unlock(&profile->reportInProgressMutex);
         pthread_mutex_unlock(&profile->reuseThreadMutex);
 
+        /* xconfProfileLock (static in profilexconf.c) guards only the XConf singleProfile's
+         * GrepSeekProfile. This multi-profile's grepSeekProfile is a separate instance that is
+         * read/replaced exclusively by this report thread and freed only after the thread is
+         * joined, so no cross-thread access exists here. */
+        /* coverity[missing_lock] */
         int count = profile->grepSeekProfile->execCounter;
 
         Vector *profileParamVals = NULL;

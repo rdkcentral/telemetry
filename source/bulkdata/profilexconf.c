@@ -389,10 +389,10 @@ static void* CollectAndReportXconf(void* data)
             {
                 encodeEventMarkersInJSON(valArray, profile->eMarkerList);
             }
-            pthread_mutex_unlock(&xconfProfileLock);
 
             profile->grepSeekProfile->execCounter += 1;
             T2Info("Xconf Profile Execution Count = %d\n", profile->grepSeekProfile->execCounter);
+            pthread_mutex_unlock(&xconfProfileLock);
 
             ret = prepareJSONReport(profile->jsonReportObj, &jsonReport);
             destroyJSONReport(profile->jsonReportObj);

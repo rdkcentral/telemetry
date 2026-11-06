@@ -1,0 +1,8 @@
+# L1 module map: module|test_dir|binaries (comma)|production source dirs (comma)
+# Keep in sync with SUBDIRS in source/test/Makefile.am and the tests list in test/run_ut.sh.
+bulkdata|source/test/bulkdata|profile_gtest.bin,datamodel_gtest.bin,profilexconf_gtest.bin,t2markers_gtest.bin,reportprofiles_gtest.bin,profile_dynamictable_gtest.bin|source/bulkdata
+t2parser|source/test/t2parser|t2parser_gtest.bin,t2parser_dynamictable_gtest.bin|source/t2parser
+reportgen|source/test/reportgen|reportgen_gtest.bin,reportgen_dynamictable_gtest.bin|source/reportgen
+scheduler|source/test/scheduler|scheduler_gtest.bin|source/scheduler
+dcautils|source/test/dcautils|dcautil_gtest.bin|source/dcautil
+ccspinterface|source/test/ccspinterface|ccspinterface_gtest.bin|source/ccspinterface

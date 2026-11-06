@@ -24,6 +24,7 @@
 #include <time.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <ctype.h>
 
 #include "profile.h"
 #include "reportprofiles.h"
@@ -73,11 +74,15 @@ static bool isEmptySubscriberValue(const char *value)
     {
         return true;
     }
-    if(strlen(value) < 1 || value[0] == ' ' || strncmp(value, "NULL", 4) == 0)
+    if(strncmp(value, "NULL", sizeof("NULL")) == 0)
     {
         return true;
     }
-    return false;
+    while(*value != '\0' && isspace((unsigned char) * value))
+    {
+        value++;
+    }
+    return (*value == '\0');
 }
 
 static void freeRequestURIparam(void *data)
@@ -424,6 +429,11 @@ static void* CollectAndReport(void* data)
         pthread_mutex_unlock(&profile->reportInProgressMutex);
         pthread_mutex_unlock(&profile->reuseThreadMutex);
 
+        /* xconfProfileLock (static in profilexconf.c) guards only the XConf singleProfile's
+         * GrepSeekProfile. This multi-profile's grepSeekProfile is a separate instance that is
+         * read/replaced exclusively by this report thread and freed only after the thread is
+         * joined, so no cross-thread access exists here. */
+        /* coverity[missing_lock] */
         int count = profile->grepSeekProfile->execCounter;
 
         Vector *profileParamVals = NULL;

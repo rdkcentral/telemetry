@@ -551,6 +551,80 @@ TEST_F(profileXconfTestFixture, ReportProfiles_storeMarkerEvent_success_2)
     free(eventInfo);
 }
 
+class XconfMarkerStorageTest : public profileXconfTestFixture,
+    public ::testing::WithParamInterface<std::tuple<MarkerType, bool>> {
+protected:
+    ProfileXConf *profile = nullptr;
+    EventMarker *marker = nullptr;
+
+    void SetUp() override {
+        profileXconfTestFixture::SetUp();
+        delete g_fileIOMock;
+        g_fileIOMock = new ::testing::NiceMock<FileMock>();
+        EXPECT_CALL(*g_fileIOMock, opendir(_))
+            .WillRepeatedly(Return(nullptr));
+        ASSERT_EQ(ProfileXConf_init(false), T2ERROR_SUCCESS);
+        profile = static_cast<ProfileXConf *>(calloc(1, sizeof(ProfileXConf)));
+        ASSERT_NE(profile, nullptr);
+        profile->name = strdup("StorageProfile");
+        ASSERT_EQ(Vector_Create(&profile->eMarkerList), T2ERROR_SUCCESS);
+        EXPECT_CALL(*g_schedulerMock, registerProfileWithScheduler(_, _, _, _, _, _, _, _))
+            .WillOnce(Return(T2ERROR_SUCCESS));
+        ASSERT_EQ(ProfileXConf_set(profile), T2ERROR_SUCCESS);
+        marker = static_cast<EventMarker *>(calloc(1, sizeof(EventMarker)));
+        ASSERT_NE(marker, nullptr);
+        marker->markerName = strdup("StorageMarker");
+        marker->mType = std::get<0>(GetParam());
+        marker->reportEmptyParam = std::get<1>(GetParam());
+        if(marker->mType == MTYPE_XCONF_ACCUMULATE) {
+            ASSERT_EQ(Vector_Create(&marker->u.accumulatedValues), T2ERROR_SUCCESS);
+        }
+        ASSERT_EQ(Vector_PushBack(profile->eMarkerList, marker), T2ERROR_SUCCESS);
+    }
+
+    void TearDown() override {
+        EXPECT_EQ(ProfileXConf_uninit(), T2ERROR_SUCCESS);
+        profileXconfTestFixture::TearDown();
+    }
+};
+
+TEST_P(XconfMarkerStorageTest, StoresClassifiedValuesWithoutTrimming) {
+    const struct {
+        const char *value;
+        bool empty;
+    } cases[] = {
+        {" test log ", false}, {" xyz ", false}, {"NULLify", false},
+        {"", true}, {"   ", true}, {"\t\r\n", true}, {"NULL", true}
+    };
+    for(const auto &testCase : cases) {
+        SCOPED_TRACE(testCase.value);
+        const bool retained = marker->reportEmptyParam || !testCase.empty;
+        if(marker->mType == MTYPE_XCONF_ACCUMULATE) {
+            Vector_Clear(marker->u.accumulatedValues, free);
+            ASSERT_EQ(Vector_PushBack(marker->u.accumulatedValues, strdup("previous")), T2ERROR_SUCCESS);
+        } else {
+            free(marker->u.markerValue);
+            marker->u.markerValue = strdup("previous");
+        }
+        T2Event event = {};
+        event.name = marker->markerName;
+        event.value = const_cast<char *>(testCase.value);
+        EXPECT_EQ(ProfileXConf_storeMarkerEvent(&event), T2ERROR_SUCCESS);
+        if(marker->mType == MTYPE_XCONF_ACCUMULATE) {
+            ASSERT_EQ(Vector_Size(marker->u.accumulatedValues), retained ? 2u : 1u);
+            EXPECT_STREQ(static_cast<char *>(Vector_At(marker->u.accumulatedValues, 0)), "previous");
+            if(retained) {
+                EXPECT_STREQ(static_cast<char *>(Vector_At(marker->u.accumulatedValues, 1)), testCase.value);
+            }
+        } else {
+            EXPECT_STREQ(marker->u.markerValue, retained ? testCase.value : "previous");
+        }
+    }
+}
+
+INSTANTIATE_TEST_SUITE_P(SubscriberValues, XconfMarkerStorageTest,
+    ::testing::Combine(::testing::Values(MTYPE_XCONF_ABSOLUTE, MTYPE_XCONF_ACCUMULATE), ::testing::Bool()));
+
 TEST_F(profileXconfTestFixture, ProfileXConf_OnDemandStatusSnapshot)
 {
     testing::InSequence sequence;

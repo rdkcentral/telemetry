@@ -25,7 +25,7 @@
 #include <regex.h>
 #include "vector.h"
 
-#define MAX_ACCUMULATE 20
+#define MAX_ACCUMULATE 100
 #define MAX_ACCUMULATE_MSG "maximum accumulation reached"
 #define MAX_DEVICE_PROP_BUFF_SIZE 80
 #define DEVICE_PROPERTIES_FILE  "/etc/device.properties"

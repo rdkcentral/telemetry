@@ -1,134 +1,76 @@
+# L1 test agent
+
+Autonomous L1 unit-test development for this repository. Rules live in `AGENTS.md`; procedures live in skills; measurement lives in scripts.
+
+| Piece | Path | Role |
+|---|---|---|
+| Prompt | `.github/prompts/l1-coverage.prompt.md` | Entry point (`/l1-coverage`) |
+| Agent | `.github/agents/l1-test-engineer.agent.md` | Workflow, tool limits, output format |
+| Skills | `.github/skills/l1-gap-analyzer`, `l1-test-writer`, `l1-register-binary`, `l1-test-verifier` | How to find gaps, write tests, register binaries, verify |
+| Scripts | `test/l1_gaps.sh`, `test/l1_check.sh`, `test/l1_modules.txt` | Build, run, coverage, gates (in the CI container) |
+
+The previous bootstrap prompt is kept for reference in `archive/l1-agent-bootstrap.md` and is no longer a slash command.
+
+## Prerequisites
+
+- Docker running on the host. Both scripts start the CI image (`native-platform`) themselves; the host tree is mounted read-only.
+- The repository is a git checkout; the verifier compares the working tree with `HEAD`.
+- On Apple Silicon the current image runs under amd64 emulation. A first full `l1_check.sh` run on `scheduler` took about 12 minutes.
+
 ## How to invoke
 
-In VS Code Copilot Chat, type `/` and pick the prompt file, then paste the input block:
-
-```
-/l1-agent-bootstrap
-```
-
-Everything after it is your input block. Always supply the block — the agent treats unsupplied values as defaults, and unsupplied *commands* as "derive" (greenfield only).
-
----
-
-## Input block template
+In Copilot Chat (Agent mode), type:
 
 ```text
-SOURCE_FOLDER=
-UNIT_TEST_FOLDER=
-BUILD_COMMAND=
-TEST_COMMAND=
-COVERAGE_COMMAND=
-LINE_COVERAGE_THRESHOLD=90
-FUNCTION_COVERAGE_THRESHOLD=95
-ALLOW_BOOTSTRAP=true
+/l1-coverage MODULE=scheduler MAX_FUNCTIONS=2
 ```
 
----
+Optional: `FOCUS=registerProfileWithScheduler` to restrict targets. Modules: `test/l1_gaps.sh --list`.
 
-## Greenfield — this repo is a real example
+You can also select the **L1 Test Engineer** agent in the agent picker and describe the task in plain words.
 
-lostandfound-cpc has no `test/` folder and no GTest wiring, so it will classify as GREENFIELD.
+## What you should see
 
-```text
-/l1-agent-bootstrap
+1. Gap list from `test/l1_gaps.sh` with the coverage summary.
+2. For each target: the chosen function, its class (A/B/C/D), the lines it aims to reach.
+3. Tests added to the module's existing test file.
+4. `test/l1_check.sh` gate lines after each function, and a mutation check per new test.
+5. A final table: functions, tests, coverage before and after, skipped gaps with reasons.
 
-SOURCE_FOLDER=plugin/refactorImpl/src
-UNIT_TEST_FOLDER=test/l1
-BUILD_COMMAND=
-TEST_COMMAND=
-COVERAGE_COMMAND=
-LINE_COVERAGE_THRESHOLD=90
-FUNCTION_COVERAGE_THRESHOLD=95
-ALLOW_BOOTSTRAP=true
+## Run the scripts yourself
 
-Run ITERATION 0 bootstrap only. Stop after the bootstrap deliverable report.
-Build inside the existing Thunder dev container.
-
-BUILD_COMMAND=./test/l1/build_l1.sh
-TEST_COMMAND=bash test/l1/run_l1.sh --gtest_filter=LnfUtils*
-COVERAGE_COMMAND=./test/l1/coverage.sh --clean --src plugin/refactorImpl/src
+```bash
+test/l1_gaps.sh scheduler --top 10        # ranked gaps
+test/l1_check.sh scheduler --no-valgrind  # quick gates vs HEAD
+test/l1_check.sh scheduler                # full gates incl. valgrind
 ```
 
-Leaving the three commands blank is deliberate — the agent derives them and reports them back.
+Results are in `/tmp/l1` (`L1_OUT` to change). See the skills for details and exit codes.
 
-**What you should see, in order:**
-1. Environment report (compiler, cmake, GTest availability, lcov).
-2. `Mode: GREENFIELD` + evidence.
-3. Testability assessment of `src` — likely flagging `LnfHttpTransport`, `LnfBackendClient`, and the Thunder/`WPEFramework` dependency as the things needing stubs, and `LnfUtils` as the low-link-complexity first target.
-4. Files created: `test/l1/CMakeLists.txt`, `test/l1/LnfUtilsTest.cpp`, maybe `test/l1/mocks/`.
-5. One guarded `if(BUILD_UNIT_TESTS)` line in the top-level `CMakeLists.txt`.
-6. Build → pass → fail-check → coverage → production-build-unchanged proof.
-7. Derived commands echoed back.
+## Review checklist
 
-**Then, in a follow-up message:**
-
-```text
-Bootstrap approved. Continue with iterations 1-3 using the derived commands.
-```
-
----
-
-## Brownfield — after the harness exists
-
-Now the commands are known, so supply them and they become authoritative:
-
-```text
-/l1-agent-bootstrap
-
-SOURCE_FOLDER=plugin/refactorImpl/src
-UNIT_TEST_FOLDER=test/l1
-BUILD_COMMAND=cmake -S . -B build -DBUILD_UNIT_TESTS=ON -DENABLE_COVERAGE=ON && cmake --build build -j
-TEST_COMMAND=ctest --test-dir build --output-on-failure
-COVERAGE_COMMAND=lcov --capture --directory build --output-file build/cov.info && lcov --extract build/cov.info '*/plugin/refactorImpl/src/*' --output-file build/cov-src.info && lcov --list build/cov-src.info
-LINE_COVERAGE_THRESHOLD=90
-FUNCTION_COVERAGE_THRESHOLD=95
-
-Run 2 iterations. Focus on error paths in LnfHttpTransport.
-```
-
-Confirm the first line of its response says `Mode: BROWNFIELD` and `Bootstrap required: no`. If it says GREENFIELD, your `UNIT_TEST_FOLDER` path is wrong — stop and fix it before letting it write anything.
-
----
-
-## Step-by-step operating procedure
-
-**Greenfield**
-
-| # | You do | Agent does |
-|---|--------|-----------|
-| 1 | Attach/open the dev container | — |
-| 2 | Send input block, ask for Iteration 0 only | Env + mode + testability report |
-| 3 | **Review the file list before approving** | Waits |
-| 4 | "Bootstrap approved, continue iterations 1-3" | Adds real tests |
-| 5 | `git diff` — verify nothing under `SOURCE_FOLDER` changed | — |
-| 6 | Ask for the final L1 report | Summary + follow-ups |
-
-**Brownfield**
-
-| # | You do | Agent does |
-|---|--------|-----------|
-| 1 | Send input block with all 3 commands | Validates, confirms BROWNFIELD |
-| 2 | — | Runs baseline build/test/coverage |
-| 3 | — | Picks cluster, adds ≤3 tests, re-measures |
-| 4 | "Next iteration" per cycle | Repeats |
-| 5 | `git status` — only `UNIT_TEST_FOLDER` should be dirty | — |
+| # | Check |
+|---|---|
+| 1 | `git status`: only files under `source/test/` (and registration files, if a binary was added) changed |
+| 2 | `test/l1_check.sh <module>` prints `RESULT: PASS` |
+| 3 | Each new test asserts behavior and has a meaningful name |
+| 4 | Reported coverage numbers match the script output |
 
 ---
 
 ## Useful follow-up prompts
 
-- `Show the mode detection evidence again — I want to confirm it found the existing tests.`
-- `Iteration 2: target the null/error branches in LnfDataAccessor only.`
-- `That test has no meaningful assertion. Rewrite it to assert the actual return value and side effect.`
-- `Classify the remaining gaps as A/B/C/D and stop — do not add more tests.`
-- `You want a production seam. Explain the exact diff, the risk, and the coverage gain before I approve.`
-- `Confirm the production build still succeeds with -DBUILD_UNIT_TESTS=OFF.`
+- `Only target the NULL and error-return branches in unregisterProfileFromScheduler.`
+- `That test has no meaningful assertion. Rewrite it to assert the return value and the mock interaction.`
+- `Classify the remaining gaps as A/B/C/D and stop; do not add more tests.`
+- `You want a production seam. Show the exact diff, the risk, and the coverage gain before I approve.`
+- `Run the full test/l1_check.sh with valgrind and paste the gate lines.`
 
 ---
 
 ## Guardrails worth watching
 
-- **Wrong-mode detection is the main failure risk.** Always read the `Mode:` line first.
-- Set `ALLOW_BOOTSTRAP=false` when you want a hard guarantee no infrastructure is created.
-- If you supply a `BUILD_COMMAND` that is wrong, the agent will **stop and report** rather than guess — that's intended, just fix the input.
-- After any run, `git diff --stat` is the fastest check that the test-only boundary held.
+- The agent must not edit production code. `git diff --stat -- source ':!source/test'` should be empty.
+- Pre-existing valgrind leaks at HEAD do not fail the gate; only growth does.
+- cppcheck is not in the current CI image, so that gate is skipped with a NOTE.
+- Coverage thresholds are not a per-run target; each run should leave touched files at equal or higher coverage.

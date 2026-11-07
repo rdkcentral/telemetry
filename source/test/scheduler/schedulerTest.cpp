@@ -28,6 +28,7 @@ extern "C"
 #include <string.h>
 #include <unistd.h>
 #include <limits.h>
+#include <time.h>
 #include "scheduler/scheduler.h"
 #include <utils/vector.h>
 #include <bulkdata/profile.h>
@@ -467,5 +468,53 @@ TEST(getSchdInSec, IndirectCall)
     unsigned int result = fn(timeRef);
     EXPECT_GE(result, 0u);
     EXPECT_LE(result, 86400u);
+}
+
+// getSchdInSec reads the local wall clock (ctime), so expectations are bounded by readings taken around the call.
+static long localSecondsOfDay(void)
+{
+    time_t now = time(NULL);
+    struct tm tmNow;
+    localtime_r(&now, &tmNow);
+    return (tmNow.tm_hour * 3600L) + (tmNow.tm_min * 60L) + tmNow.tm_sec;
+}
+
+TEST(getSchdInSec, TimeRefAtMidnight_ReturnsSecondsSinceMidnight)
+{
+    getSchdInSec_fn fn = getSchdInSec_fnCallback();
+    ASSERT_NE(nullptr, fn);
+    char timeRef[] = "2022-12-20T00:00:00Z";
+    long before = 0;
+    long after = -1;
+    unsigned int result = 0;
+    // Retry once if the call straddles midnight.
+    for (int attempt = 0; attempt < 2 && after < before; attempt++)
+    {
+        before = localSecondsOfDay();
+        result = fn(timeRef);
+        after = localSecondsOfDay();
+    }
+    ASSERT_LE(before, after);
+    EXPECT_GE((long)result, before);
+    EXPECT_LE((long)result, after);
+}
+
+TEST(getSchdInSec, TimeRefEndOfDay_ReturnsSecondsUntilTimeRef)
+{
+    getSchdInSec_fn fn = getSchdInSec_fnCallback();
+    ASSERT_NE(nullptr, fn);
+    char timeRef[] = "2022-12-20T23:59:59Z";
+    // Keep the current time strictly before 23:59:59 so the time reference is in the future.
+    if (localSecondsOfDay() >= 86390L)
+    {
+        sleep(10);
+    }
+    long before = localSecondsOfDay();
+    unsigned int result = fn(timeRef);
+    long after = localSecondsOfDay();
+    ASSERT_LE(before, after);
+    EXPECT_GE((long)result, 86399L - after);
+    EXPECT_LE((long)result, 86399L - before);
+    EXPECT_GT(result, 0u);
 }
 #endif

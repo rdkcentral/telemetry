@@ -1437,13 +1437,18 @@ T2ERROR addParameter_marker_config(Profile* profile, cJSON *jprofileParameter, i
 
 T2ERROR encodingSet(Profile* profile, cJSON *jprofileEncodingType, cJSON *jprofileJSONReportFormat, cJSON *jprofileJSONReportTimestamp)
 {
-    if(profile == NULL)
+    if(profile == NULL || profile->jsonEncoding == NULL ||
+       !cJSON_IsString(jprofileEncodingType) ||
+       !cJSON_IsString(jprofileJSONReportFormat))
     {
-        T2Error("Profile is NULL\n");
+        T2Error("Invalid JSON encoding configuration\n");
         return T2ERROR_INVALID_ARGS;
     }
-    if((profile->jsonEncoding) && (strcmp(jprofileEncodingType->valuestring, "JSON") == 0))
+    if(strcmp(jprofileEncodingType->valuestring, "JSON") == 0)
     {
+
+        profile->jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
+        profile->jsonEncoding->tsFormat = TIMESTAMP_NONE;
 
         if(!(strcmp(jprofileJSONReportFormat->valuestring, "NameValuePair")))
         {
@@ -1459,7 +1464,7 @@ T2ERROR encodingSet(Profile* profile, cJSON *jprofileEncodingType, cJSON *jprofi
         }
 
         T2Debug("[[profile->jsonEncoding->reportFormat:%d]]\n", profile->jsonEncoding->reportFormat);
-        if(jprofileJSONReportTimestamp)
+        if(cJSON_IsString(jprofileJSONReportTimestamp))
         {
             if(!(strcmp(jprofileJSONReportTimestamp->valuestring, "None")))
             {
@@ -2955,46 +2960,42 @@ T2ERROR encodingSetMsgpack (Profile *profile, msgpack_object* value_map)
             T2Error("Malloc error: cannot allocate memory for jsonEncoding\n");
             return T2ERROR_MEMALLOC_FAILED;
         }
-        profile->jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
-        profile->jsonEncoding->tsFormat = TIMESTAMP_NONE;
     }
     msgpack_object *JSONEncoding_map;
     msgpack_object *ReportFormat_str;
     msgpack_object *ReportTimestamp_str;
+    profile->jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
+    profile->jsonEncoding->tsFormat = TIMESTAMP_NONE;
     JSONEncoding_map = msgpack_get_map_value(value_map, "JSONEncoding");
 
+    if(JSONEncoding_map == NULL)
+    {
+        T2Error("JSONEncoding is missing from MessagePack profile\n");
+        return T2ERROR_INVALID_ARGS;
+    }
+
     ReportFormat_str = msgpack_get_map_value(JSONEncoding_map, "ReportFormat");
-    msgpack_print(ReportFormat_str, msgpack_get_obj_name(ReportFormat_str));
-    if(0 == msgpack_strcmp(ReportFormat_str, "NameValuePair"))
+    if(ReportFormat_str != NULL)
     {
-        profile->jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
-    }
-    else if(0 == msgpack_strcmp(ReportFormat_str, "ObjectHierarchy"))
-    {
-        profile->jsonEncoding->reportFormat = JSONRF_OBJHIERARCHY;
-    }
-    else    /* defaulting it to NameValuePair */
-    {
-        profile->jsonEncoding->reportFormat = JSONRF_KEYVALUEPAIR;
+        msgpack_print(ReportFormat_str, msgpack_get_obj_name(ReportFormat_str));
+        if(0 == msgpack_strcmp(ReportFormat_str, "ObjectHierarchy"))
+        {
+            profile->jsonEncoding->reportFormat = JSONRF_OBJHIERARCHY;
+        }
     }
 
     ReportTimestamp_str = msgpack_get_map_value(JSONEncoding_map, "ReportTimestamp");
-    msgpack_print(ReportTimestamp_str, msgpack_get_obj_name(ReportTimestamp_str));
-    if(0 == msgpack_strcmp(ReportTimestamp_str, "None"))
+    if(ReportTimestamp_str != NULL)
     {
-        profile->jsonEncoding->tsFormat = TIMESTAMP_NONE;
-    }
-    else if(0 == msgpack_strcmp(ReportTimestamp_str, "Unix-Epoch"))
-    {
-        profile->jsonEncoding->tsFormat = TIMESTAMP_UNIXEPOCH;
-    }
-    else if(0 == msgpack_strcmp(ReportTimestamp_str, "ISO-8601"))
-    {
-        profile->jsonEncoding->tsFormat = TIMESTAMP_ISO_8601;
-    }
-    else   /*default value for profile->jsonEncoding->tsFormat is None */
-    {
-        profile->jsonEncoding->tsFormat = TIMESTAMP_NONE;
+        msgpack_print(ReportTimestamp_str, msgpack_get_obj_name(ReportTimestamp_str));
+        if(0 == msgpack_strcmp(ReportTimestamp_str, "Unix-Epoch"))
+        {
+            profile->jsonEncoding->tsFormat = TIMESTAMP_UNIXEPOCH;
+        }
+        else if(0 == msgpack_strcmp(ReportTimestamp_str, "ISO-8601"))
+        {
+            profile->jsonEncoding->tsFormat = TIMESTAMP_ISO_8601;
+        }
     }
     return T2ERROR_SUCCESS;
 }

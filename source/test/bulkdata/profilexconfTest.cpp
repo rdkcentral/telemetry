@@ -729,3 +729,156 @@ TEST_F(profileXconfTestFixture, ProfileXConf_uninit)
 {
     EXPECT_EQ(ProfileXConf_uninit(), T2ERROR_SUCCESS);
 }
+
+// ---------------------------------------------------------------------------
+// Tests for CollectAndReportXconf (the report-generation thread started by
+// ProfileXConf_notifyTimeout). The function itself is static, so it is
+// exercised end to end through the public API: ProfileXConf_set() installs a
+// profile, ProfileXConf_notifyTimeout() spawns the report thread, and
+// ProfileXConf_uninit() (called from TearDown) deterministically stops and
+// joins it -- it flips the module's "initialized" flag before signalling/
+// joining, so the thread finishes its current iteration and exits instead of
+// waiting on the next timeout, with no real sleeps required.
+// ---------------------------------------------------------------------------
+
+namespace
+{
+// Builds a minimal ProfileXConf usable to drive CollectAndReportXconf.
+// encodingType/protocol may be nullptr to exercise the "unsupported"/NULL branches.
+ProfileXConf *createXconfReportTestProfile(const char *name, const char *encodingType, const char *protocol, bool isUpdated)
+{
+    ProfileXConf *profile = (ProfileXConf *)calloc(1, sizeof(ProfileXConf));
+    profile->name = strdup(name);
+    profile->encodingType = encodingType ? strdup(encodingType) : nullptr;
+    profile->protocol = protocol ? strdup(protocol) : nullptr;
+    profile->isUpdated = isUpdated;
+    profile->reportInProgress = false;
+    profile->reportingInterval = 60;
+    profile->grepSeekProfile = (GrepSeekProfile *)calloc(1, sizeof(GrepSeekProfile));
+    // cachedReportList is intentionally left NULL (not Vector_Create()'d): freeProfileXConf()
+    // only does a bare free() of this Vector, not Vector_Destroy(), so any test that pushes
+    // an item into it leaks the Vector's internal array once ProfileXConf_uninit() runs. The
+    // cached-report branches of CollectAndReportXconf (caching on send failure/on-demand
+    // abort/profile update, and draining a non-empty cache on success) are reported as a
+    // class C gap in the task summary for that reason.
+    if(protocol && strcmp(protocol, "HTTP") == 0)
+    {
+        profile->t2HTTPDest = (T2HTTP *)calloc(1, sizeof(T2HTTP));
+        profile->t2HTTPDest->URL = strdup("https://mock.xconf.test/report");
+    }
+    return profile;
+}
+} // namespace
+
+class XconfCollectAndReportTest : public profileXconfTestFixture {
+protected:
+    void SetUp() override {
+        profileXconfTestFixture::SetUp();
+        // A plain (non-Nice) FileMock deadlocks here: any unmocked FileMock call
+        // (e.g. mkdir() from fetchLocalConfigs()) makes gtest print an "uninteresting
+        // call" warning through fwrite(), which is itself mocked, recursing back into
+        // the same warning path and self-deadlocking on gtest's log mutex.
+        // XconfMarkerStorageTest works around this the same way.
+        delete g_fileIOMock;
+        g_fileIOMock = new ::testing::NiceMock<FileMock>();
+        // Guarantee a clean module state regardless of what earlier tests left behind.
+        ProfileXConf_uninit();
+        EXPECT_CALL(*g_fileIOMock, opendir(_)).WillRepeatedly(Return(nullptr));
+        ASSERT_EQ(ProfileXConf_init(false), T2ERROR_SUCCESS);
+    }
+    void TearDown() override {
+        // Joins any report thread started by the test before mocks are destroyed.
+        ProfileXConf_uninit();
+        profileXconfTestFixture::TearDown();
+    }
+};
+
+//Covers: JSON encoding success, param/top/grep/event marker lists all populated,
+//and a successful HTTP send with no cached reports pending (cachedReportList == NULL).
+TEST_F(XconfCollectAndReportTest, CollectAndReportXconf_JsonHttpSuccess_SendsReportWithNoCachedReports)
+{
+    ProfileXConf *profile = createXconfReportTestProfile("XconfReportProfile", "JSON", "HTTP", false);
+    ASSERT_EQ(Vector_Create(&profile->paramList), T2ERROR_SUCCESS);
+    Param *param = (Param *)calloc(1, sizeof(Param));
+    ASSERT_NE(param, nullptr);
+    param->name = strdup("Device.DeviceInfo.UpTime");
+    ASSERT_EQ(Vector_PushBack(profile->paramList, param), T2ERROR_SUCCESS);
+
+    ASSERT_EQ(Vector_Create(&profile->topMarkerList), T2ERROR_SUCCESS);
+    GrepMarker *topMarker = (GrepMarker *)calloc(1, sizeof(GrepMarker));
+    ASSERT_NE(topMarker, nullptr);
+    ASSERT_EQ(Vector_PushBack(profile->topMarkerList, topMarker), T2ERROR_SUCCESS);
+
+    ASSERT_EQ(Vector_Create(&profile->gMarkerList), T2ERROR_SUCCESS);
+    GrepMarker *gMarker = (GrepMarker *)calloc(1, sizeof(GrepMarker));
+    ASSERT_NE(gMarker, nullptr);
+    ASSERT_EQ(Vector_PushBack(profile->gMarkerList, gMarker), T2ERROR_SUCCESS);
+
+    const std::string url = profile->t2HTTPDest->URL;
+
+    EXPECT_CALL(*g_schedulerMock, registerProfileWithScheduler(_, _, _, _, _, _, _, _))
+        .WillOnce(Return(T2ERROR_SUCCESS));
+    ASSERT_EQ(ProfileXConf_set(profile), T2ERROR_SUCCESS);
+
+    // eMarkerList is populated after ProfileXConf_set(): the set() path forwards every
+    // existing marker to addT2EventMarker(), which requires a non-NULL markerName/compName.
+    ASSERT_EQ(Vector_Create(&profile->eMarkerList), T2ERROR_SUCCESS);
+    EventMarker *eMarker = (EventMarker *)calloc(1, sizeof(EventMarker));
+    ASSERT_NE(eMarker, nullptr);
+    ASSERT_EQ(Vector_PushBack(profile->eMarkerList, eMarker), T2ERROR_SUCCESS);
+
+    EXPECT_CALL(*g_profileXConfMock, getProfileParameterValues(_, _)).Times(1).WillOnce(Return(nullptr));
+    EXPECT_CALL(*g_profileXConfMock, processTopPattern(_, _, _)).Times(1).WillOnce(Return(0));
+    EXPECT_CALL(*g_profileXConfMock, getGrepResults(_, _, _, _, _)).Times(1).WillOnce(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_profileXConfMock, sendReportOverHTTP(StrEq(url), _)).Times(1).WillOnce(Return(T2ERROR_SUCCESS));
+    EXPECT_CALL(*g_profileXConfMock, sendCachedReportsOverHTTP(_, _)).Times(0);
+    EXPECT_CALL(*g_systemMock, unlink(_)).Times(0);
+
+    ProfileXConf_notifyTimeout(false, false);
+}
+
+//Covers: protocol other than "HTTP", which logs "Unsupported report send protocol"
+//and never touches the cached report list.
+TEST_F(XconfCollectAndReportTest, CollectAndReportXconf_UnsupportedProtocol_SkipsReportUpload)
+{
+    ProfileXConf *profile = createXconfReportTestProfile("XconfProtoProfile", "JSON", "MQTT", false);
+
+    EXPECT_CALL(*g_schedulerMock, registerProfileWithScheduler(_, _, _, _, _, _, _, _))
+        .WillOnce(Return(T2ERROR_SUCCESS));
+    ASSERT_EQ(ProfileXConf_set(profile), T2ERROR_SUCCESS);
+
+    EXPECT_CALL(*g_profileXConfMock, sendReportOverHTTP(_, _)).Times(0);
+    EXPECT_CALL(*g_profileXConfMock, sendCachedReportsOverHTTP(_, _)).Times(0);
+
+    ProfileXConf_notifyTimeout(false, false);
+}
+
+//Covers: encodingType set but not "JSON", which logs "Unsupported encoding format"
+//and skips report generation entirely.
+TEST_F(XconfCollectAndReportTest, CollectAndReportXconf_NonJsonEncoding_SkipsReportGeneration)
+{
+    ProfileXConf *profile = createXconfReportTestProfile("XconfEncodingProfile", "MSGPACK", "HTTP", false);
+
+    EXPECT_CALL(*g_schedulerMock, registerProfileWithScheduler(_, _, _, _, _, _, _, _))
+        .WillOnce(Return(T2ERROR_SUCCESS));
+    ASSERT_EQ(ProfileXConf_set(profile), T2ERROR_SUCCESS);
+
+    EXPECT_CALL(*g_profileXConfMock, sendReportOverHTTP(_, _)).Times(0);
+
+    ProfileXConf_notifyTimeout(false, false);
+}
+
+//Covers: encodingType == NULL (the left-hand side of the "!= NULL && !strcmp(...)"
+//check), a distinct branch from a non-matching non-NULL encoding string.
+TEST_F(XconfCollectAndReportTest, CollectAndReportXconf_NullEncodingType_LogsUnsupportedFormat)
+{
+    ProfileXConf *profile = createXconfReportTestProfile("XconfNullEncodingProfile", nullptr, "HTTP", false);
+
+    EXPECT_CALL(*g_schedulerMock, registerProfileWithScheduler(_, _, _, _, _, _, _, _))
+        .WillOnce(Return(T2ERROR_SUCCESS));
+    ASSERT_EQ(ProfileXConf_set(profile), T2ERROR_SUCCESS);
+
+    EXPECT_CALL(*g_profileXConfMock, sendReportOverHTTP(_, _)).Times(0);
+
+    ProfileXConf_notifyTimeout(false, false);
+}

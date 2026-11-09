@@ -15,7 +15,7 @@ The previous bootstrap prompt is kept for reference in `archive/l1-agent-bootstr
 
 - Docker running on the host. Both scripts start the CI image (`native-platform`) themselves; the host tree is mounted read-only.
 - The repository is a git checkout; the verifier compares the working tree with `HEAD`.
-- On Apple Silicon the current image runs under amd64 emulation. A first full `l1_check.sh` run on `scheduler` took about 12 minutes.
+
 
 ## How to invoke
 

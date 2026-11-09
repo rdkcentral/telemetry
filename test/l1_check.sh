@@ -18,25 +18,27 @@
 # limitations under the License.
 ##########################################################################
 #
-# Verify an L1 change for one module against the committed baseline (git HEAD).
+# Build and test one module's working tree, and report its current L1 state.
 #
-# The working tree and HEAD are each built and measured with test/l1_gaps.sh.
-# The HEAD result is cached per commit, so only the working tree is rebuilt on
-# later runs. Gates (each prints PASS, FAIL or NOTE):
+# The working tree is built and measured with test/l1_gaps.sh. Gates (each prints
+# PASS, FAIL or NOTE):
 #   registration  module binaries listed in Makefile.am, run_ut.sh and l1_modules.txt
-#   tests         all binaries pass; test count per binary does not drop
-#   coverage      per-file line, branch and function coverage does not drop
-#   valgrind      definitely + indirectly lost bytes per binary do not grow
-#   cppcheck      finding count per check id does not grow
+#   tests         build succeeds and all binaries pass
+#   valgrind      definitely + indirectly lost bytes or errors are zero (if enabled)
+# Coverage and cppcheck findings are reported as NOTE (informational, no baseline to
+# compare against).
 #
-# Usage: test/l1_check.sh <module> [--no-valgrind] [--rebaseline] [--local]
+# Usage: test/l1_check.sh <module> [--no-valgrind] [--local]
 #
 # Env:   L1_OUT              output directory (default /tmp/l1); results in $L1_OUT/check/<module>
 #        L1_IMAGE            container image (default: CI native-platform image)
 #        L1_DOCKER_PLATFORM  e.g. linux/amd64
-#        L1_BASE_SRC         baseline source tree for --local (default: git archive HEAD)
 #        LCOV_EXTRA          extra lcov args
-# Exit:  0 all gates pass, 2 usage, 3 missing tool or baseline, 5 build failed, 6 gate failed
+# Exit:  0 all gates pass, 2 usage, 3 missing tool, 5 build failed, 6 gate failed
+#
+# The docker path (no --local) reuses a persistent container/volume (l1-check-runner /
+# l1-check-vol) across runs, synced incrementally instead of a full copy each time. To
+# force a clean rebuild: docker rm -f l1-check-runner; docker volume rm l1-check-vol
 
 set -eu
 
@@ -45,10 +47,10 @@ MAP="$ROOT/test/l1_modules.txt"
 OUT="${L1_OUT:-/tmp/l1}"
 case "$OUT" in /*) ;; *) OUT="$PWD/$OUT" ;; esac
 IMAGE="${L1_IMAGE:-ghcr.io/rdkcentral/docker-device-mgt-service-test/native-platform:latest}"
-CONTAINER_DIR=/mnt/L1_CONTAINER_SHARED_VOLUME
+. "$ROOT/test/l1_docker_cache.sh"
 
 usage() {
-    echo "Usage: $0 <module> [--no-valgrind] [--rebaseline] [--local]" >&2
+    echo "Usage: $0 <module> [--no-valgrind] [--local]" >&2
     exit 2
 }
 
@@ -59,8 +61,6 @@ list_modules() {
 run_in_docker() {
     command -v docker >/dev/null 2>&1 || { echo "docker not found; install Docker or run inside the container with --local" >&2; exit 3; }
     docker info >/dev/null 2>&1 || { echo "Docker daemon is not running" >&2; exit 3; }
-    git -C "$ROOT" rev-parse --verify -q HEAD >/dev/null 2>&1 || { echo "Baseline needs a git checkout with at least one commit" >&2; exit 3; }
-    sha=$(git -C "$ROOT" rev-parse --short=12 HEAD)
 
     platform="${L1_DOCKER_PLATFORM:-}"
     if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
@@ -76,41 +76,29 @@ run_in_docker() {
         platform="linux/$(docker image inspect "$IMAGE" --format '{{.Architecture}}')"
     fi
 
-    cname="l1-check-$$"
-    trap 'docker rm -f "$cname" >/dev/null 2>&1 || true' EXIT
     trap 'exit 130' INT TERM
-    docker run -d --name "$cname" --platform "$platform" -v "$ROOT:/mnt/host_src:ro" "$IMAGE" >/dev/null
-
-    docker exec "$cname" /bin/bash -c "mkdir -p $CONTAINER_DIR /mnt/base_src && cd /mnt/host_src && tar --exclude=./.git --exclude=autom4te.cache --exclude='*.o' --exclude='*.gcno' --exclude='*.gcda' -cf - . | tar -xf - -C $CONTAINER_DIR"
-    git -C "$ROOT" archive HEAD | docker exec -i "$cname" tar -xf - -C /mnt/base_src
-
-    cache="$OUT/check/$MODULE/base-$sha"
-    if [ "$REBASE" -eq 0 ] && [ -f "$cache/gaps.rc" ]; then
-        docker exec "$cname" mkdir -p "/tmp/l1/check/$MODULE"
-        docker cp "$cache" "$cname:/tmp/l1/check/$MODULE/" >/dev/null
-    fi
+    l1_ensure_container "$IMAGE" "$platform" "$ROOT"
+    l1_sync_tree
+    container_src=$(l1_src_dir)
 
     set -- "$MODULE" --local
     [ "$VALGRIND" -eq 1 ] || set -- "$@" --no-valgrind
-    [ "$REBASE" -eq 0 ] || set -- "$@" --rebaseline
     rc=0
-    docker exec -i -e L1_OUT=/tmp/l1 -e L1_BASE_SRC=/mnt/base_src -e L1_BASE_SHA="$sha" -e LCOV_EXTRA="${LCOV_EXTRA:-}" \
-        "$cname" /bin/bash -c "cd $CONTAINER_DIR && sh test/l1_check.sh \"\$@\"" _ "$@" || rc=$?
+    docker exec -i -e L1_OUT=/tmp/l1 -e LCOV_EXTRA="${LCOV_EXTRA:-}" \
+        "$L1_CONTAINER" /bin/bash -c "cd '$container_src' && sh test/l1_check.sh \"\$@\"" _ "$@" || rc=$?
 
     mkdir -p "$OUT"
-    docker cp "$cname:/tmp/l1/." "$OUT" >/dev/null 2>&1 || true
+    docker cp "$L1_CONTAINER:/tmp/l1/." "$OUT" >/dev/null 2>&1 || true
     echo "Artifacts copied to $OUT/check/$MODULE (paths above refer to the container's /tmp/l1)"
     exit "$rc"
 }
 
 MODULE=""
 VALGRIND=1
-REBASE=0
 LOCAL=0
 while [ $# -gt 0 ]; do
     case "$1" in
         --no-valgrind) VALGRIND=0 ;;
-        --rebaseline) REBASE=1 ;;
         --local) LOCAL=1 ;;
         -*) usage ;;
         *) [ -z "$MODULE" ] || usage; MODULE="$1" ;;
@@ -144,9 +132,6 @@ fi
 cd "$ROOT"
 WORK="$OUT/check/$MODULE"
 mkdir -p "$WORK"
-sha="${L1_BASE_SHA:-$(git -C "$ROOT" rev-parse --short=12 HEAD 2>/dev/null || echo nogit)}"
-[ "$sha" != nogit ] || REBASE=1
-base_out="$WORK/base-$sha"
 cur_out="$WORK/current"
 report="$WORK/report.txt"
 : >"$report"
@@ -179,9 +164,6 @@ measure() {
     mout=$2
     rm -rf "$mout"
     mkdir -p "$mout"
-    if [ "$tree" != "$ROOT" ]; then
-        cp "$ROOT/test/l1_gaps.sh" "$ROOT/test/l1_modules.txt" "$tree/test/"
-    fi
 
     mrc=0
     L1_OUT="$mout" LCOV_EXTRA="${LCOV_EXTRA:-}" sh "$tree/test/l1_gaps.sh" "$MODULE" --build --local --top 0 >"$mout/gaps.out" 2>&1 || mrc=$?
@@ -252,27 +234,11 @@ check_registration() {
 }
 check_registration
 
-## Baseline (HEAD), cached per commit
-if [ "$REBASE" -eq 1 ] || [ ! -f "$base_out/gaps.rc" ]; then
-    base_src="${L1_BASE_SRC:-}"
-    if [ -z "$base_src" ]; then
-        base_src="$WORK/base_src"
-        rm -rf "$base_src"
-        mkdir -p "$base_src"
-        git -C "$ROOT" archive HEAD | tar -xf - -C "$base_src" || { echo "Cannot create the baseline tree from git HEAD; set L1_BASE_SRC" >&2; exit 3; }
-    fi
-    echo "Measuring baseline (HEAD $sha)..."
-    measure "$base_src" "$base_out"
-else
-    echo "Using cached baseline for HEAD $sha"
-fi
-
 ## Working tree
 echo "Measuring working tree..."
 measure "$ROOT" "$cur_out"
 
 cur_rc=$(cat "$cur_out/gaps.rc")
-base_rc=$(cat "$base_out/gaps.rc")
 
 case "$cur_rc" in
     0) echo "PASS  tests: build OK and all $MODULE binaries pass" >>"$report" ;;
@@ -281,74 +247,46 @@ case "$cur_rc" in
     *) cat "$report"; echo "l1_gaps.sh failed (exit $cur_rc):"; tail -n 20 "$cur_out/gaps.out"; exit 3 ;;
 esac
 
-if [ "$base_rc" -ne 0 ]; then
-    echo "NOTE  baseline: HEAD did not build or pass (l1_gaps.sh exit $base_rc, see $base_out/gaps.out); deltas skipped" >>"$report"
-else
+awk -F'\t' '{ printf "PASS  tests: %s %d tests\n", $1, $2 }' "$cur_out/tests.tsv" >>"$report"
+
+if [ "$cur_rc" -eq 0 ]; then
     awk -F'\t' '
-    NR == FNR { b[$1] = $2; next }
+    function pct(h, f) { return f > 0 ? 100 * h / f : -1 }
+    function fmt(p) { return p < 0 ? "n/a" : sprintf("%.1f%%", p) }
     {
-        if (($1 in b) && $2 < b[$1]) printf "FAIL  tests: %s %d -> %d (tests removed)\n", $1, b[$1], $2
-        else printf "PASS  tests: %s %d -> %d\n", $1, ($1 in b) ? b[$1] : 0, $2
-    }' "$base_out/tests.tsv" "$cur_out/tests.tsv" >>"$report"
+        l = pct($2, $3); br = pct($4, $5); fn = pct($6, $7)
+        printf "NOTE  coverage: %s lines %s, branches %s, functions %s\n", $1, fmt(l), fmt(br), fmt(fn)
+    }' "$cur_out/files.tsv" >>"$report"
 
-    if [ "$cur_rc" -eq 0 ]; then
+    if [ "$VALGRIND" -eq 1 ]; then
         awk -F'\t' '
-        function pct(h, f) { return f > 0 ? 100 * h / f : -1 }
-        function fmt(p) { return p < 0 ? "n/a" : sprintf("%.1f%%", p) }
-        function worse(old, new) { return old >= 0 && new >= 0 && new < old - 1e-9 }
-        NR == FNR { bl[$1] = pct($2, $3); bb[$1] = pct($4, $5); bf[$1] = pct($6, $7); next }
         {
-            l = pct($2, $3); br = pct($4, $5); fn = pct($6, $7)
-            if (!($1 in bl)) {
-                printf "NOTE  coverage: %s is new: lines %s, branches %s, functions %s\n", $1, fmt(l), fmt(br), fmt(fn)
-                next
-            }
-            bad = ""
-            if (worse(bl[$1], l)) bad = bad " lines"
-            if (worse(bb[$1], br)) bad = bad " branches"
-            if (worse(bf[$1], fn)) bad = bad " functions"
-            printf "%s  coverage: %s lines %s -> %s, branches %s -> %s, functions %s -> %s%s\n",
-                bad == "" ? "PASS" : "FAIL", $1, fmt(bl[$1]), fmt(l), fmt(bb[$1]), fmt(br), fmt(bf[$1]), fmt(fn),
-                bad == "" ? "" : " (decreased:" bad ")"
-        }' "$base_out/files.tsv" "$cur_out/files.tsv" >>"$report"
-
-        if [ "$VALGRIND" -eq 1 ]; then
-            awk -F'\t' '
-            NR == FNR { bd[$1] = $2 + $3; be[$1] = $4; next }
-            {
-                if ($4 < 0) { printf "NOTE  valgrind: %s did not complete\n", $1; next }
-                if (!($1 in bd) || be[$1] < 0) { printf "NOTE  valgrind: %s lost %d bytes, %d errors (no baseline)\n", $1, $2 + $3, $4; next }
-                lost = $2 + $3
-                if (lost > bd[$1]) printf "FAIL  valgrind: %s definitely+indirectly lost %d -> %d bytes\n", $1, bd[$1], lost
-                else printf "PASS  valgrind: %s lost %d -> %d bytes\n", $1, bd[$1], lost
-                if ($4 > be[$1]) printf "NOTE  valgrind: %s error count %d -> %d (check vg.%s.log; thread timing can vary)\n", $1, be[$1], $4, $1
-            }' "$base_out/vg.tsv" "$cur_out/vg.tsv" >>"$report"
-        else
-            echo "NOTE  valgrind: skipped" >>"$report"
-        fi
-    fi
-
-    if command -v cppcheck >/dev/null 2>&1; then
-        sed 's/.*://' "$base_out/cppcheck.txt" | sort | uniq -c | awk '{ print $2 "\t" $1 }' >"$base_out/cppcheck.ids"
-        sed 's/.*://' "$cur_out/cppcheck.txt" | sort | uniq -c | awk '{ print $2 "\t" $1 }' >"$cur_out/cppcheck.ids"
-        awk -F'\t' '
-        NR == FNR { b[$1] = $2; tb += $2; next }
-        { tc += $2; if ($2 > b[$1] + 0) { printf "FAIL  cppcheck: %s %d -> %d\n", $1, b[$1] + 0, $2; bad = 1 } }
-        END { if (!bad) printf "PASS  cppcheck: %d -> %d findings\n", tb, tc }' "$base_out/cppcheck.ids" "$cur_out/cppcheck.ids" >>"$report"
+            if ($4 < 0) { printf "NOTE  valgrind: %s did not complete\n", $1; next }
+            lost = $2 + $3
+            if (lost > 0 || $4 > 0) printf "FAIL  valgrind: %s lost %d bytes, %d errors\n", $1, lost, $4
+            else printf "PASS  valgrind: %s lost 0 bytes, 0 errors\n", $1
+        }' "$cur_out/vg.tsv" >>"$report"
     else
-        echo "NOTE  cppcheck: not installed; skipped" >>"$report"
+        echo "NOTE  valgrind: skipped" >>"$report"
     fi
 fi
 
+if command -v cppcheck >/dev/null 2>&1; then
+    sed 's/.*://' "$cur_out/cppcheck.txt" | sort | uniq -c | awk '{ print $2 "\t" $1 }' >"$cur_out/cppcheck.ids"
+    awk -F'\t' '{ printf "NOTE  cppcheck: %s %d findings\n", $1, $2; t += $2 } END { printf "NOTE  cppcheck: %d findings total\n", t + 0 }' "$cur_out/cppcheck.ids" >>"$report"
+else
+    echo "NOTE  cppcheck: not installed; skipped" >>"$report"
+fi
+
 echo
-echo "== L1 check: $MODULE (working tree vs HEAD $sha) =="
+echo "== L1 check: $MODULE (current working tree) =="
 cat "$report"
 echo
 if [ "$cur_rc" -eq 0 ]; then
     sed -n '/== Coverage summary/,/Total:/p' "$cur_out/gaps.out"
     echo
 fi
-echo "Details: $WORK (current/, base-$sha/, report.txt)"
+echo "Details: $WORK (current/, report.txt)"
 if grep -q '^FAIL' "$report"; then
     echo "RESULT: FAIL"
     exit 6

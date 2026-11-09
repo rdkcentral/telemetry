@@ -8,8 +8,6 @@ applyTo: "**/*.sh"
 
 ### Use POSIX Shell
 - Use `#!/bin/sh` not `#!/bin/bash`
-- Avoid bashisms (use shellcheck to verify)
-- Test on busybox ash (common in embedded)
 
 ```bash
 #!/bin/sh

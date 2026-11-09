@@ -20,10 +20,12 @@
 #
 # Rank uncovered L1 coverage gaps for one module (see test/l1_modules.txt).
 #
-# On a host (for example macOS) the script starts the CI test container, copies the
-# workspace into it (host tree is mounted read-only and never modified), builds with
-# coverage, runs the module's binaries, and prints the gaps. Inside the container,
-# or with --local, it runs directly.
+# On a host (for example macOS) the script runs in a persistent CI test container/volume
+# (host tree is mounted read-only and never modified), syncing the working tree into the
+# volume incrementally with rsync instead of a full copy each run, builds with coverage,
+# runs the module's binaries, and prints the gaps. Inside the container, or with --local,
+# it runs directly. The container/volume are reused across invocations; to force a clean
+# rebuild: docker rm -f l1-check-runner; docker volume rm l1-check-vol
 #
 # Usage: test/l1_gaps.sh <module> [--build] [--top N] [--local]
 #        test/l1_gaps.sh --list
@@ -50,7 +52,7 @@ list_modules() {
 }
 
 IMAGE="${L1_IMAGE:-ghcr.io/rdkcentral/docker-device-mgt-service-test/native-platform:latest}"
-CONTAINER_DIR=/mnt/L1_CONTAINER_SHARED_VOLUME
+. "$ROOT/test/l1_docker_cache.sh"
 
 run_in_docker() {
     command -v docker >/dev/null 2>&1 || { echo "docker not found; install Docker or run inside the container with --local" >&2; exit 3; }
@@ -72,20 +74,19 @@ run_in_docker() {
         platform="linux/$(docker image inspect "$IMAGE" --format '{{.Architecture}}')"
     fi
 
-    cname="l1-gaps-$$"
-    trap 'docker rm -f "$cname" >/dev/null 2>&1 || true' EXIT
     trap 'exit 130' INT TERM
-    # Same start pattern as .github/workflows/L1-tests.yml, but the host tree is read-only.
-    docker run -d --name "$cname" --platform "$platform" -v "$ROOT:/mnt/host_src:ro" "$IMAGE" >/dev/null
-
-    docker exec "$cname" /bin/bash -c "mkdir -p $CONTAINER_DIR && cd /mnt/host_src && tar --exclude=./.git --exclude=autom4te.cache --exclude='*.o' --exclude='*.gcno' --exclude='*.gcda' -cf - . | tar -xf - -C $CONTAINER_DIR"
+    # Persistent container/volume reused across runs; see test/l1_docker_cache.sh header
+    # for the manual reset commands.
+    l1_ensure_container "$IMAGE" "$platform" "$ROOT"
+    l1_sync_tree
+    container_src=$(l1_src_dir)
 
     rc=0
-    docker exec -i -e L1_OUT=/tmp/l1 "$cname" /bin/bash -c "cd $CONTAINER_DIR && sh test/l1_gaps.sh \"\$@\"" _ \
+    docker exec -i -e L1_OUT=/tmp/l1 "$L1_CONTAINER" /bin/bash -c "cd '$container_src' && sh test/l1_gaps.sh \"\$@\"" _ \
         "$MODULE" --top "$TOP" --build --local || rc=$?
 
     mkdir -p "$OUT"
-    docker cp "$cname:/tmp/l1/." "$OUT" >/dev/null 2>&1 || true
+    docker cp "$L1_CONTAINER:/tmp/l1/." "$OUT" >/dev/null 2>&1 || true
     echo "Artifacts copied to $OUT (paths above refer to the container's /tmp/l1)"
     exit "$rc"
 }

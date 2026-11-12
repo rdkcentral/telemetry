@@ -3574,6 +3574,7 @@ T2ERROR processMsgPackConfiguration(msgpack_object *profiles_array_map, Profile 
     if(retval != T2ERROR_SUCCESS)
     {
         T2Error("Protocol Parameter is invalid\n");
+        freeProfile(profile);
         return retval;
     }
     //Encoding Configuration

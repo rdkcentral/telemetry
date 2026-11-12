@@ -202,6 +202,7 @@ static T2ERROR getCCSPParamVal(const char* paramName, char **paramValue)
 static void rBusInterface_Uninit( )
 {
     rbus_close(bus_handle);
+    bus_handle = NULL;
 }
 
 static T2ERROR initMessageBus( )

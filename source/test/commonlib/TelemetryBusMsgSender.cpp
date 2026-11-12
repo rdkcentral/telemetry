@@ -20,6 +20,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include <string>
+#include <unistd.h>
 extern "C" {
 #include "telemetry_busmessage_sender.h"
 
@@ -45,6 +46,8 @@ protected:
     void SetUp() override {
         // Always start with a clean state
         t2_uninit();
+        // fprintf/fwrite are mocked: logging uninteresting calls re-enters the mocks and deadlocks on gmock's log mutex
+        ::testing::GMOCK_FLAG(verbose) = "error";
 	 g_rbusMock = new rbusMock();
      g_systemMock = new SystemMock();
      g_fileIOMock = new FileMock();
@@ -234,6 +237,8 @@ TEST_F(TelemetryBusmessageSenderTest, t2_event_s_iscachingenabled_false)
 TEST_F(TelemetryBusmessageSenderTest, busInitFailure_noRetryDuringCooldown)
 {
     t2_init((char*)"sysint");
+    EXPECT_CALL(*g_fileIOMock, open(_,_,_))
+            .WillRepeatedly(Return(-1));
     EXPECT_CALL(*g_systemMock, access(_,_))
             .WillRepeatedly(Return(-1));
     EXPECT_CALL(*g_rbusMock, rbus_checkStatus())
@@ -248,11 +253,15 @@ TEST_F(TelemetryBusmessageSenderTest, busInitFailure_noRetryDuringCooldown)
     // Both events are cached; only the first one attempts to open the bus
     EXPECT_EQ(t2_event_s((char*)"Test_marker:", (char*)"first"), T2ERROR_SUCCESS);
     EXPECT_EQ(t2_event_s((char*)"Test_marker:", (char*)"second"), T2ERROR_SUCCESS);
+    // Let the detached cache threads finish while the mocks are still alive
+    usleep(200000);
 }
 
 TEST_F(TelemetryBusmessageSenderTest, busInitFailure_uninitClearsCooldown)
 {
     t2_init((char*)"sysint");
+    EXPECT_CALL(*g_fileIOMock, open(_,_,_))
+            .WillRepeatedly(Return(-1));
     EXPECT_CALL(*g_systemMock, access(_,_))
             .WillRepeatedly(Return(-1));
     EXPECT_CALL(*g_rbusMock, rbus_checkStatus())
@@ -276,12 +285,23 @@ TEST_F(TelemetryBusmessageSenderTest, busInitFailure_uninitClearsCooldown)
     t2_uninit();
     t2_init((char*)"sysint");
     EXPECT_EQ(t2_event_s((char*)"Test_marker:", (char*)"second"), T2ERROR_SUCCESS);
+    // Let the detached cache threads finish while the mocks are still alive
+    usleep(200000);
 }
 
 TEST_F(TelemetryBusmessageSenderTest, getParameterValue_success)
 {
     char* paramValue = NULL;
     t2_init((char*)"test_component");
+    EXPECT_CALL(*g_rbusMock, rbus_checkStatus())
+            .Times(1)
+            .WillOnce(Return(RBUS_ENABLED));
+    EXPECT_CALL(*g_rbusMock, rbus_open(_, _))
+            .Times(1)
+            .WillOnce([](rbusHandle_t* handle, const char* componentName) {
+                *handle = (rbusHandle_t)0xdeadbeef;
+                return RBUS_ERROR_SUCCESS;
+            });
     
     EXPECT_CALL(*g_rbusMock, rbus_get(_, _, _))
         .Times(1)
@@ -302,6 +322,15 @@ TEST_F(TelemetryBusmessageSenderTest, getParameterValue_success_boolean)
 {
     char* paramValue = NULL;
     t2_init((char*)"test_component");
+    EXPECT_CALL(*g_rbusMock, rbus_checkStatus())
+            .Times(1)
+            .WillOnce(Return(RBUS_ENABLED));
+    EXPECT_CALL(*g_rbusMock, rbus_open(_, _))
+            .Times(1)
+            .WillOnce([](rbusHandle_t* handle, const char* componentName) {
+                *handle = (rbusHandle_t)0xdeadbeef;
+                return RBUS_ERROR_SUCCESS;
+            });
     
     EXPECT_CALL(*g_rbusMock, rbus_get(_, _, _))
         .Times(1)
@@ -359,6 +388,15 @@ TEST_F(TelemetryBusmessageSenderTest, SendStringEvent_Valid) {
     t2_init((char*)"test_component");
     EXPECT_CALL(*g_systemMock, access(_,_))
             .WillRepeatedly(Return(-1));
+    EXPECT_CALL(*g_rbusMock, rbus_checkStatus())
+            .Times(1)
+            .WillOnce(Return(RBUS_ENABLED));
+    EXPECT_CALL(*g_rbusMock, rbus_open(_, _))
+            .Times(1)
+            .WillOnce([](rbusHandle_t* handle, const char* componentName) {
+                *handle = (rbusHandle_t)0xdeadbeef;
+                return RBUS_ERROR_SUCCESS;
+            });
     
     EXPECT_CALL(*g_rbusMock, rbus_getUint(_, _, _))
             .Times(1)

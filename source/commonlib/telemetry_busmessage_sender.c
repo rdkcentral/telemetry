@@ -54,6 +54,8 @@ static char *componentName = NULL;
 static void *bus_handle = NULL;
 static bool isRFCT2Enable = false ;
 static bool isT2Ready = false;
+#define T2_BUS_INIT_RETRY_INTERVAL_SEC 60
+static struct timespec busInitFailureTime = { 0, 0 };
 static bool isRbusEnabled = false ;
 static pthread_mutex_t initMtx = PTHREAD_MUTEX_INITIALIZER;
 static bool isMutexInitialized = false ;
@@ -416,13 +418,26 @@ static bool initRFC( )
     // Check for RFC and proceed - if true - else return now .
     if(!bus_handle)
     {
+        struct timespec now = { 0, 0 };
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        // Do not retry a failed bus init on every event: rbus_open can block for seconds
+        if((busInitFailureTime.tv_sec != 0) && ((now.tv_sec - busInitFailureTime.tv_sec) < T2_BUS_INIT_RETRY_INTERVAL_SEC))
+        {
+            return false;
+        }
         if(initMessageBus() != 0)
         {
             EVENT_ERROR("initMessageBus failed\n");
+            busInitFailureTime = now;
+            if(busInitFailureTime.tv_sec == 0)
+            {
+                busInitFailureTime.tv_sec = 1;
+            }
             status = false ;
         }
         else
         {
+            busInitFailureTime.tv_sec = 0;
             status = true;
         }
         isRFCT2Enable = true;

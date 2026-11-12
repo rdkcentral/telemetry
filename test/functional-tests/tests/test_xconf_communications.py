@@ -96,7 +96,7 @@ def test_change_profile():
     kill_telemetry(12)
     sleep(10)
     assert os.path.exists(XCONF_PERSISTANT_FILE)
-    assert "NEW TEST PROFILE" in grep_T2logs("NEW_TEST_PROFILE")
+    assert "NEW TEST PROFILE" in grep_T2logs("NEW TEST PROFILE")
 
 @pytest.mark.run(order=6)
 def test_verify_urlencoding():

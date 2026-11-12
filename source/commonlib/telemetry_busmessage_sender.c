@@ -786,6 +786,8 @@ void t2_uninit(void)
     {
         rBusInterface_Uninit();
     }
+    busInitFailureTime.tv_sec = 0;
+    busInitFailureTime.tv_nsec = 0;
 
     uninitMutex();
 }

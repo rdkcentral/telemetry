@@ -231,6 +231,53 @@ TEST_F(TelemetryBusmessageSenderTest, t2_event_s_iscachingenabled_false)
 }
 
 
+TEST_F(TelemetryBusmessageSenderTest, busInitFailure_noRetryDuringCooldown)
+{
+    t2_init((char*)"sysint");
+    EXPECT_CALL(*g_systemMock, access(_,_))
+            .WillRepeatedly(Return(-1));
+    EXPECT_CALL(*g_rbusMock, rbus_checkStatus())
+            .Times(1)
+            .WillOnce(Return(RBUS_ENABLED));
+    EXPECT_CALL(*g_rbusMock, rbus_open(_, _))
+            .Times(1)
+            .WillOnce(Return(RBUS_ERROR_BUS_ERROR));
+    EXPECT_CALL(*g_rbusMock, rbus_getUint(_, _, _))
+            .Times(0);
+
+    // Both events are cached; only the first one attempts to open the bus
+    EXPECT_EQ(t2_event_s((char*)"Test_marker:", (char*)"first"), T2ERROR_SUCCESS);
+    EXPECT_EQ(t2_event_s((char*)"Test_marker:", (char*)"second"), T2ERROR_SUCCESS);
+}
+
+TEST_F(TelemetryBusmessageSenderTest, busInitFailure_uninitClearsCooldown)
+{
+    t2_init((char*)"sysint");
+    EXPECT_CALL(*g_systemMock, access(_,_))
+            .WillRepeatedly(Return(-1));
+    EXPECT_CALL(*g_rbusMock, rbus_checkStatus())
+            .Times(2)
+            .WillRepeatedly(Return(RBUS_ENABLED));
+    EXPECT_CALL(*g_rbusMock, rbus_open(_, _))
+            .Times(2)
+            .WillOnce(Return(RBUS_ERROR_BUS_ERROR))
+            .WillOnce([](rbusHandle_t* handle, const char* componentName) {
+                *handle = (rbusHandle_t)0xdeadbeef;
+                return RBUS_ERROR_SUCCESS;
+            });
+    EXPECT_CALL(*g_rbusMock, rbus_getUint(_, _, _))
+            .Times(1)
+            .WillOnce([](rbusHandle_t handle, const char* name, uint32_t* value) {
+                *value = 0;
+                return RBUS_ERROR_BUS_ERROR;
+            });
+
+    EXPECT_EQ(t2_event_s((char*)"Test_marker:", (char*)"first"), T2ERROR_SUCCESS);
+    t2_uninit();
+    t2_init((char*)"sysint");
+    EXPECT_EQ(t2_event_s((char*)"Test_marker:", (char*)"second"), T2ERROR_SUCCESS);
+}
+
 TEST_F(TelemetryBusmessageSenderTest, getParameterValue_success)
 {
     char* paramValue = NULL;

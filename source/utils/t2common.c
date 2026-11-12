@@ -196,7 +196,7 @@ bool isValidHttpsUploadUrl(const char *url)
     }
 
     *scheme_end = '\0';
-    if (strcasecmp(url_copy, "https") != 0)
+    if (strcasecmp(url_copy, "http") != 0 && strcasecmp(url_copy, "https") != 0)
     {
         return false;
     }

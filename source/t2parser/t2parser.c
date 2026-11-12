@@ -3056,7 +3056,15 @@ T2ERROR protocolSetMsgpack(Profile *profile, msgpack_object* value_map, msgpack_
         Method_str = msgpack_get_map_value(HTTP_map, "Method");
         msgpack_print(Method_str, msgpack_get_obj_name(Method_str));
 
-        profile->t2HTTPDest->URL = msgpack_strdup(URL_str);
+        char *validatedURL = msgpack_strdup(URL_str);
+        if (validatedURL == NULL || strlen(validatedURL) != URL_str->via.str.size || !isValidHttpsUploadUrl(validatedURL))
+        {
+            T2Error("Rejected invalid upload URL in MsgPack profile: %s\n", validatedURL ? validatedURL : "(null)");
+            free(validatedURL);
+            return T2ERROR_FAILURE;
+        }
+
+        profile->t2HTTPDest->URL = validatedURL;
         profile->t2HTTPDest->Compression = COMP_NONE;  /*in 1911_sprint default none*/
         profile->t2HTTPDest->Method = HTTP_POST; /*1911_sprint default to POST */
 

@@ -990,6 +990,37 @@ TEST(T2ParserProtocolSet, HTTPBranchSetsURLAndParams)
     cJSON_Delete(jHTTP);
 }
 
+TEST(T2ParserProtocolSet, HTTPBranchRejectsInvalidURL)
+{
+    Profile p;
+    memset(&p, 0, sizeof(p));
+    p.t2HTTPDest = (T2HTTP*)malloc(sizeof(T2HTTP));
+    memset(p.t2HTTPDest, 0, sizeof(T2HTTP));
+    p.name = strdup("BadUrlProfile");
+
+    cJSON* jProtocol = cJSON_CreateString("HTTP");
+    cJSON* jHTTP = cJSON_CreateObject();
+    cJSON_AddStringToObject(jHTTP, "URL", "http://127.0.0.1:8080/evil");
+    cJSON_AddStringToObject(jHTTP, "Compression", "None");
+    cJSON_AddStringToObject(jHTTP, "Method", "POST");
+
+    EXPECT_EQ(T2ERROR_FAILURE, protocolSet(&p, jProtocol, cJSON_GetObjectItem(jHTTP, "URL"), NULL, 0, NULL, NULL, 0));
+
+    if (p.t2HTTPDest)
+    {
+        free(p.t2HTTPDest);
+        p.t2HTTPDest = NULL;
+    }
+    if (p.name)
+    {
+        free(p.name);
+        p.name = NULL;
+    }
+
+    cJSON_Delete(jProtocol);
+    cJSON_Delete(jHTTP);
+}
+
 /* protocolSet tests: RBUS_METHOD branch */
 TEST(T2ParserProtocolSet, RBUSMethodBranchSetsMethodAndParams)
 {

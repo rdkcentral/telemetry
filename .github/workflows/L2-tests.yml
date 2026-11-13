@@ -25,9 +25,18 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install C astyle
+        # Build astyle 3.1 from source to match the version (3.1) in the local
+        # L2 container. The apt package on newer ubuntu-latest images is 3.6.x,
+        # which formats differently and causes false formatting-check failures.
         run: |
           sudo apt-get update
-          sudo apt-get install astyle -y
+          sudo apt-get install -y build-essential wget
+          wget -q "https://sourceforge.net/projects/astyle/files/astyle/astyle%203.1/astyle_3.1_linux.tar.gz/download" -O astyle_3.1.tar.gz
+          tar -xzf astyle_3.1.tar.gz
+          make -C astyle/build/gcc
+          sudo install -m 0755 astyle/build/gcc/bin/astyle /usr/local/bin/astyle
+          rm -rf astyle astyle_3.1.tar.gz
+          astyle --version
 
       - name: Check for formatting errors
         run: |

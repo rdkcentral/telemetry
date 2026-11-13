@@ -30,6 +30,7 @@
 #include <sys/resource.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <errno.h>
 #include "reportprofiles.h"
 
 #include "xconfclient.h"
@@ -50,6 +51,7 @@
 #include "t2parser.h"
 #include "telemetry2_0.h"
 #include "t2MtlsUtils.h"
+#include "t2common.h"
 #include "persistence.h"
 #ifdef LIBRDKCERTSEL_BUILD
 #include "curlinterface.h"
@@ -622,8 +624,14 @@ T2ERROR initReportProfiles()
                 check_component_crash(TELEMETRY_INIT_FILE_BOOTUP);
 
                 //Touching TELEMETRY_INIT_FILE_BOOTUP during Bootup
-                system("touch /tmp/telemetry_initialized_bootup");
-                T2Debug(" %s Touched \n", TELEMETRY_INIT_FILE_BOOTUP);
+                if (!createSecureTempFlag(TELEMETRY_INIT_FILE_BOOTUP))
+                {
+                    T2Error("Failed to create secure boot flag %s\n", TELEMETRY_INIT_FILE_BOOTUP);
+                }
+                else
+                {
+                    T2Debug(" %s Touched \n", TELEMETRY_INIT_FILE_BOOTUP);
+                }
             }
 #endif
             //Web Config Framework init ends
@@ -642,11 +650,9 @@ T2ERROR initReportProfiles()
         {
             unregisterDEforCompEventList();
             createComponentDataElements();
-            FILE* cfgReadyFlag = NULL ;
-            cfgReadyFlag = fopen(T2_CONFIG_READY, "w+");
-            if(cfgReadyFlag)
+            if (!createSecureTempFlag(T2_CONFIG_READY))
             {
-                fclose(cfgReadyFlag);
+                T2Error("Failed to create secure config ready flag %s\n", T2_CONFIG_READY);
             }
             setT2EventReceiveState(T2_STATE_CONFIG_READY);
             T2Info("T2 is now Ready to be configured for report profiles\n");
@@ -658,16 +664,13 @@ T2ERROR initReportProfiles()
 
 
     // This indicates telemetry has started
-    FILE* bootFlag = NULL ;
-    bootFlag = fopen(BOOTFLAG, "w+");
-    if(bootFlag)
+    if (!createSecureTempFlag(BOOTFLAG))
     {
-        T2Debug("%s Touched \n", BOOTFLAG);
-        fclose(bootFlag);
+        T2Error("Failed to create secure T2 bootflag %s \n", BOOTFLAG);
     }
     else
     {
-        T2Error("Failed to create T2 bootflag %s \n", BOOTFLAG);
+        T2Debug("%s Touched \n", BOOTFLAG);
     }
 
     T2Debug("%s --out\n", __FUNCTION__);
@@ -932,6 +935,12 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
         }
 
         cJSON* nameObj = cJSON_GetObjectItem(singleProfile, "name");
+        if (!cJSON_IsString(nameObj) || !nameObj->valuestring || !nameObj->valuestring[0] ||
+                strspn(nameObj->valuestring, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-") != strlen(nameObj->valuestring))
+        {
+            T2Error("Invalid profile name in JSON configuration\n");
+            continue;
+        }
         cJSON* hashObj = cJSON_GetObjectItem(singleProfile, "hash");
         if(hashObj == NULL)
         {
@@ -946,7 +955,18 @@ void ReportProfiles_ProcessReportProfilesBlob(cJSON *profiles_root, bool rprofil
         }
 
         ReportProfile *profileEntry = (ReportProfile *)malloc(sizeof(ReportProfile));
+        if (profileEntry == NULL)
+        {
+            T2Error("Failed to allocate report profile entry\n");
+            continue;
+        }
         profileName = strdup(nameObj->valuestring);
+        if (profileName == NULL)
+        {
+            T2Error("Failed to copy profile name from JSON configuration\n");
+            free(profileEntry);
+            continue;
+        }
         profileEntry->hash = strdup(hashObj->valuestring);
         profileEntry->config = cJSON_PrintUnformatted(profileObj);
         hash_map_put(receivedProfileHashMap, profileName, profileEntry, freeReportProfileHashMap);
@@ -1400,6 +1420,29 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
             continue;
         }
         msgpack_object* nameObj = msgpack_get_map_value(singleProfile, "name");
+        size_t nameIndex;
+        if (nameObj == NULL || nameObj->type != MSGPACK_OBJECT_STR ||
+                nameObj->via.str.ptr == NULL || nameObj->via.str.size == 0)
+        {
+            T2Error("Invalid profile name in MsgPack configuration\n");
+            continue;
+        }
+        for (nameIndex = 0; nameIndex < nameObj->via.str.size; nameIndex++)
+        {
+            unsigned char character = (unsigned char)nameObj->via.str.ptr[nameIndex];
+            if (!((character >= 'a' && character <= 'z') ||
+                    (character >= 'A' && character <= 'Z') ||
+                    (character >= '0' && character <= '9') ||
+                    character == '_' || character == '-'))
+            {
+                T2Error("Invalid profile name in MsgPack configuration\n");
+                break;
+            }
+        }
+        if (nameIndex != nameObj->via.str.size)
+        {
+            continue;
+        }
         msgpack_object* hashObj = msgpack_get_map_value(singleProfile, "hash");
         if (hashObj == NULL)
         {
@@ -1417,6 +1460,11 @@ int __ReportProfiles_ProcessReportProfilesMsgPackBlob(void *msgpack, bool checkP
         char *existingProfileHash = NULL;
         Profile *profile = NULL;
         profileName = msgpack_strdup(nameObj);
+        if (profileName == NULL)
+        {
+            T2Error("Failed to copy profile name from MsgPack configuration\n");
+            continue;
+        }
         existingProfileHash = hash_map_remove(profileHashMap, profileName);
         if(NULL == existingProfileHash)
         {

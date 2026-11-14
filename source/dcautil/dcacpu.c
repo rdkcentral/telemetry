@@ -47,6 +47,7 @@ int getCpuUsage(char * cpuUtil);
  */
 int main()
 {
+    
     char cpuUsage[MAXLEN] = {'\0'};
 
     if(getCpuUsage(cpuUsage))

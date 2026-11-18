@@ -19,9 +19,14 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <errno.h>
 
 #include "t2eventreceiver.h"
 
+#include "t2common.h"
 #include "t2collection.h"
 #include "t2markers.h"
 #include "telemetry2_0.h"
@@ -32,6 +37,8 @@
 
 #define T2EVENTQUEUE_MAX_LIMIT 200
 #define MESSAGE_DELIMITER "<#=#>"
+#define MAX_EVENT_NAME_LEN 256
+#define MAX_EVENT_VALUE_LEN 4096
 
 static queue_t *eQueue = NULL;
 static bool EREnabled = false;
@@ -80,6 +87,24 @@ static char *strSplit(char *str, char *delim)
     return ret;
 }
 
+static bool isValidEventLength(const char *name, const char *value)
+{
+    if(name == NULL || value == NULL)
+    {
+        return false;
+    }
+
+    size_t nameLen = strlen(name);
+    size_t valueLen = strlen(value);
+    if(nameLen == 0 || nameLen > MAX_EVENT_NAME_LEN || valueLen > MAX_EVENT_VALUE_LEN)
+    {
+        T2Warning("Dropping oversized telemetry event: nameLen=%zu valueLen=%zu\n", nameLen, valueLen);
+        return false;
+    }
+
+    return true;
+}
+
 void freeT2Event(void *data)
 {
     if(data != NULL)
@@ -114,51 +139,59 @@ void T2ER_PushDataWithDelim(char* eventInfo, char* user_data)
             char* token = strSplit(eventInfo, MESSAGE_DELIMITER);
             if(token != NULL)
             {
-                T2Event *event = (T2Event *) malloc(sizeof(T2Event));
-                if(event)
+                char* valueToken = strSplit(NULL, MESSAGE_DELIMITER);
+                if(valueToken != NULL)
                 {
-                    event->name = strdup(token);
-                    token = strSplit(NULL, MESSAGE_DELIMITER);
-                    if(token != NULL)
+                    if(!isValidEventLength(token, valueToken))
                     {
-                        event->value = strdup(token);
-                        if(t2_queue_count(eQueue) > T2EVENTQUEUE_MAX_LIMIT)
-                        {
-                            T2Warning("T2EventQueue max limit : %d reached, dropping packet for  eventName : %s eventValue : %s\n",
-                                      T2EVENTQUEUE_MAX_LIMIT, event->name, event->value);
-                            free(event->value);
-                            free(event->name);
-                            free(event);
-                        }
-                        else
-                        {
-                            T2Debug("Adding eventName : %s eventValue : %s to t2event queue\n", event->name, event->value);
-                            t2_queue_push(eQueue, (void *) event);
-                            // Check stopDispatchThread with proper lock to avoid stale reads from compiler
-                            // optimizations or CPU caching. We hold sTDMutex while reading stopDispatchThread
-                            // to ensure proper synchronization with the thread that sets this flag.
-                            if(pthread_mutex_lock(&sTDMutex) == 0)
-                            {
-                                bool shouldSignal = !stopDispatchThread;
-                                pthread_mutex_unlock(&sTDMutex);
-                                if(shouldSignal)
-                                {
-                                    ret = pthread_cond_signal(&erCond);
-                                    if(ret != 0) // pthread cond signal failed so return after unlocking the mutex
-                                    {
-                                        T2Error("%s pthread_cond_signal for erCond failed with error code : %d\n", __FUNCTION__, ret);
-                                    }
-                                }
-
-                            }
-                        }
+                        T2Warning("Dropping event with invalid length for eventName : %s eventValue : %s\n", token, valueToken);
+                    }
+                    else if(t2_queue_count(eQueue) > T2EVENTQUEUE_MAX_LIMIT)
+                    {
+                        T2Warning("T2EventQueue max limit : %d reached, dropping packet for eventName : %s eventValue : %s\n",
+                                  T2EVENTQUEUE_MAX_LIMIT, token, valueToken);
                     }
                     else
                     {
-                        free(event->name);
-                        free(event);
-                        T2Error("Missing event value\n");
+                        T2Event *event = (T2Event *) malloc(sizeof(T2Event));
+                        if(event != NULL)
+                        {
+                            event->name = strdup(token);
+                            event->value = strdup(valueToken);
+                            if(event->name != NULL && event->value != NULL)
+                            {
+                                T2Debug("Adding eventName : %s eventValue : %s to t2event queue\n", event->name, event->value);
+                                t2_queue_push(eQueue, (void *) event);
+                                // Check stopDispatchThread with proper lock to avoid stale reads from compiler
+                                // optimizations or CPU caching. We hold sTDMutex while reading stopDispatchThread
+                                // to ensure proper synchronization with the thread that sets this flag.
+                                if(pthread_mutex_lock(&sTDMutex) == 0)
+                                {
+                                    bool shouldSignal = !stopDispatchThread;
+                                    pthread_mutex_unlock(&sTDMutex);
+                                    if(shouldSignal)
+                                    {
+                                        ret = pthread_cond_signal(&erCond);
+                                        if(ret != 0) // pthread cond signal failed so return after unlocking the mutex
+                                        {
+                                            T2Error("%s pthread_cond_signal for erCond failed with error code : %d\n", __FUNCTION__, ret);
+                                        }
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                free(event->name);
+                                free(event->value);
+                                free(event);
+                                T2Error("Failed to duplicate event memory\n");
+                            }
+                        }
                     }
+                }
+                else
+                {
+                    T2Error("Missing event value\n");
                 }
             }
             else
@@ -197,7 +230,11 @@ void T2ER_Push(char* eventName, char* eventValue)
                 T2Error("%s pthread_mutex_lock for erMutex failed\n", __FUNCTION__);
                 return;
             }
-            if(t2_queue_count(eQueue) > T2EVENTQUEUE_MAX_LIMIT)
+            if(!isValidEventLength(eventName, eventValue))
+            {
+                T2Warning("Dropping event with invalid length for eventName : %s eventValue : %s\n", eventName, eventValue);
+            }
+            else if(t2_queue_count(eQueue) > T2EVENTQUEUE_MAX_LIMIT)
             {
                 T2Warning("T2EventQueue max limit : %d reached, dropping packet for eventName : %s eventValue : %s\n",
                           T2EVENTQUEUE_MAX_LIMIT, eventName, eventValue);
@@ -210,9 +247,18 @@ void T2ER_Push(char* eventName, char* eventValue)
                 {
                     event->name = strdup(eventName);
                     event->value = strdup(eventValue);
-                    T2Debug("Adding eventName : %s eventValue : %s to t2event queue\n", event->name, event->value);
-                    t2_queue_push(eQueue, (void *) event);
-
+                    if(event->name != NULL && event->value != NULL)
+                    {
+                        T2Debug("Adding eventName : %s eventValue : %s to t2event queue\n", event->name, event->value);
+                        t2_queue_push(eQueue, (void *) event);
+                    }
+                    else
+                    {
+                        free(event->name);
+                        free(event->value);
+                        free(event);
+                        T2Error("Failed to duplicate event memory\n");
+                    }
                 }
 
             }
@@ -404,7 +450,7 @@ T2ERROR T2ER_Init()
         registerForTelemetryEvents(T2ER_PushDataWithDelim);
     }
 
-    if (system("touch /tmp/.t2ReadyToReceiveEvents") != 0)
+    if (!createSecureTempFlag("/tmp/.t2ReadyToReceiveEvents"))
     {
         T2Error("Failed to create /tmp/.t2ReadyToReceiveEvents flag file\n");
     }
@@ -455,30 +501,39 @@ static T2ERROR flushCacheFromFile(void)
     char telemetry_data[255] = "";
     size_t data_len = 0 ;
 
-    fp = fopen(T2_CACHE_FILE, "r");
-    if(fp)
+    int cache_fd = openSecureFileNoFollow(T2_CACHE_FILE, O_RDONLY, 0);
+    if(cache_fd >= 0)
     {
-        while(fgets(telemetry_data, 255, (FILE * )fp) != NULL)
+        fp = fdopen(cache_fd, "r");
+        if(fp)
         {
-            data_len = strlen(telemetry_data);
-            if(data_len > 0 && telemetry_data[data_len - 1] == '\n' )
+            while(fgets(telemetry_data, 255, (FILE * )fp) != NULL)
             {
-                telemetry_data[data_len - 1] = '\0' ;
-            }
+                data_len = strlen(telemetry_data);
+                if(data_len > 0 && telemetry_data[data_len - 1] == '\n' )
+                {
+                    telemetry_data[data_len - 1] = '\0' ;
+                }
 
-            T2Debug("T2: Sending cache event : %s\n", telemetry_data);
-            T2ER_PushDataWithDelim(telemetry_data, NULL);
-            memset(telemetry_data, 0, sizeof(telemetry_data));
+                T2Debug("T2: Sending cache event : %s\n", telemetry_data);
+                T2ER_PushDataWithDelim(telemetry_data, NULL);
+                memset(telemetry_data, 0, sizeof(telemetry_data));
+            }
+            fclose(fp);
+            if(remove(T2_CACHE_FILE) != 0)
+            {
+                T2Error("Failed to remove the file %s\n", T2_CACHE_FILE);
+            }
         }
-        fclose(fp);
-        if(remove(T2_CACHE_FILE) != 0)
+        else
         {
-            T2Error("Failed to remove the file %s\n", T2_CACHE_FILE);
+            close(cache_fd);
+            T2Debug("fdopen failed for %s\n", T2_CACHE_FILE);
         }
     }
     else
     {
-        T2Debug("fopen failed for %s\n", T2_CACHE_FILE);
+        T2Debug("openSecureFileNoFollow failed for %s\n", T2_CACHE_FILE);
     }
 
     T2Debug("%s --out\n", __FUNCTION__);

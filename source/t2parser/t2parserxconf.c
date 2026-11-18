@@ -21,7 +21,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
 
 #include "t2parserxconf.h"
 #include "xconfclient.h"
@@ -65,8 +64,17 @@ static int getScheduleInSeconds(const char* cronPattern)
                 discardPatternLen = strlen(discardPattern);
                 int timeInMinDataLen = inputMatchSize - discardPatternLen;
                 char scheduleString[10] = { '\0' };
-                strncpy(scheduleString, inputMatchPattern, timeInMinDataLen);
-                scheduleIntervalInMin = atoi(scheduleString);
+                // Bounds check: ensure the schedule string doesn't exceed buffer
+                if (timeInMinDataLen >= (int)sizeof(scheduleString))
+                {
+                    T2Error("Schedule string too long: %d bytes, max %zu\n", timeInMinDataLen, sizeof(scheduleString) - 1);
+                }
+                else
+                {
+                    strncpy(scheduleString, inputMatchPattern, sizeof(scheduleString) - 1);
+                    scheduleString[sizeof(scheduleString) - 1] = '\0';
+                    scheduleIntervalInMin = atoi(scheduleString);
+                }
             }
 
         }
@@ -231,6 +239,12 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
     }
 //    if(jprofileID)
 //        T2Debug("profile id = %s\n", jprofileID->valuestring);
+    if (!cJSON_IsString(jprofileName) || !jprofileName->valuestring || !jprofileName->valuestring[0] || strspn(jprofileName->valuestring, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-") != strlen(jprofileName->valuestring))
+    {
+        T2Error("ERROR: Profile name vulnerability, security threat on profile name \n");
+        cJSON_Delete(json_root);
+        return T2ERROR_FAILURE;
+    }
     if(jprofileName)
     {
         T2Debug("profile name = %s\n", jprofileName->valuestring);
@@ -252,6 +266,13 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
         return T2ERROR_FAILURE;
     }
 
+    if (!isValidHttpsUploadUrl(juploadUrl->valuestring))
+    {
+        T2Error("Rejected invalid upload URL in XCONF profile: %s\n", juploadUrl->valuestring ? juploadUrl->valuestring : "(null)");
+        cJSON_Delete(json_root);
+        return T2ERROR_FAILURE;
+    }
+
     int reportIntervalInSec = getScheduleInSeconds(jschedule->valuestring);
 
     T2Info("Received profile name : %s with interval of : %d secs and upload url : %s \n", jprofileName->valuestring, reportIntervalInSec, juploadUrl->valuestring);
@@ -267,6 +288,18 @@ T2ERROR processConfigurationXConf(char* configData, ProfileXConf **localProfile)
 
     profile->protocol = strdup("HTTP");
     profile->t2HTTPDest = (T2HTTP *)malloc(sizeof(T2HTTP));
+    if(profile->t2HTTPDest == NULL)
+    {
+        T2Error("Malloc error exiting: can not allocate memory to create profile->t2HTTPDest \n");
+        free(profile->protocol);
+        free(profile->name);
+        pthread_cond_destroy(&profile->reportInProgressCond);
+        pthread_mutex_destroy(&profile->reportInProgressMutex);
+        free(profile);
+        cJSON_Delete(json_root);
+        return T2ERROR_MEMALLOC_FAILED;
+    }
+    memset(profile->t2HTTPDest, 0, sizeof(*profile->t2HTTPDest));
 
     profile->t2HTTPDest->URL = strdup(juploadUrl->valuestring);
     profile->encodingType = strdup("JSON");

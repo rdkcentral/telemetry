@@ -498,8 +498,9 @@ static T2ERROR flushCacheFromFile(void)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
     FILE *fp;
-    char telemetry_data[255] = "";
-    size_t data_len = 0 ;
+    char *telemetry_data = NULL;
+    size_t data_capacity = 0;
+    ssize_t data_len;
 
     int cache_fd = openSecureFileNoFollow(T2_CACHE_FILE, O_RDONLY, 0);
     if(cache_fd >= 0)
@@ -507,7 +508,7 @@ static T2ERROR flushCacheFromFile(void)
         fp = fdopen(cache_fd, "r");
         if(fp)
         {
-            while(fgets(telemetry_data, 255, (FILE * )fp) != NULL)
+            while((data_len = getline(&telemetry_data, &data_capacity, (FILE * )fp)) != -1)
             {
                 data_len = strlen(telemetry_data);
                 if(data_len > 0 && telemetry_data[data_len - 1] == '\n' )
@@ -517,8 +518,9 @@ static T2ERROR flushCacheFromFile(void)
 
                 T2Debug("T2: Sending cache event : %s\n", telemetry_data);
                 T2ER_PushDataWithDelim(telemetry_data, NULL);
-                memset(telemetry_data, 0, sizeof(telemetry_data));
             }
+            free(telemetry_data);
+            telemetry_data = NULL;
             fclose(fp);
             if(remove(T2_CACHE_FILE) != 0)
             {

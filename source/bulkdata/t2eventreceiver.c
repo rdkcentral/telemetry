@@ -501,6 +501,7 @@ static T2ERROR flushCacheFromFile(void)
     char *telemetry_data = NULL;
     size_t data_capacity = 0;
     ssize_t data_len;
+    int read_error = 0;
 
     int cache_fd = openSecureFileNoFollow(T2_CACHE_FILE, O_RDONLY, 0);
     if(cache_fd >= 0)

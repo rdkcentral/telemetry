@@ -520,22 +520,23 @@ static T2ERROR flushCacheFromFile(void)
                 T2ER_PushDataWithDelim(telemetry_data, NULL);
             }
 
-	    //If getline() returned -1. Confirm whether this was normal EOF or a read failure
-            if(ferror(fp) || !feof(fp)){
-                    read_error = 1;
-                    T2Error("Failed to read cache file %s\n", T2_CACHE_FILE);
-	    }
+            //If getline() returned -1. Confirm whether this was normal EOF or a read failure
+            if(ferror(fp) || !feof(fp))
+            {
+                read_error = 1;
+                T2Error("Failed to read cache file %s\n", T2_CACHE_FILE);
+            }
             free(telemetry_data);
             telemetry_data = NULL;
             fclose(fp);
-	    //Remove the cache file only after successful reading
+            //Remove the cache file only after successful reading
             if(!read_error)
             {
-		 if(remove(T2_CACHE_FILE) != 0)
-		 {
-			 T2Error("Failed to remove the file %s\n", T2_CACHE_FILE);
-		 }
-	    }
+                if(remove(T2_CACHE_FILE) != 0)
+                {
+                    T2Error("Failed to remove the file %s\n", T2_CACHE_FILE);
+                }
+            }
         }
         else
         {

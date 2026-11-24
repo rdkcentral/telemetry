@@ -498,8 +498,10 @@ static T2ERROR flushCacheFromFile(void)
 {
     T2Debug("%s ++in\n", __FUNCTION__);
     FILE *fp;
-    char telemetry_data[255] = "";
-    size_t data_len = 0 ;
+    char *telemetry_data = NULL;
+    size_t data_capacity = 0;
+    ssize_t data_len;
+    int read_error = 0;
 
     int cache_fd = openSecureFileNoFollow(T2_CACHE_FILE, O_RDONLY, 0);
     if(cache_fd >= 0)
@@ -507,9 +509,8 @@ static T2ERROR flushCacheFromFile(void)
         fp = fdopen(cache_fd, "r");
         if(fp)
         {
-            while(fgets(telemetry_data, 255, (FILE * )fp) != NULL)
+            while((data_len = getline(&telemetry_data, &data_capacity, fp)) != -1)
             {
-                data_len = strlen(telemetry_data);
                 if(data_len > 0 && telemetry_data[data_len - 1] == '\n' )
                 {
                     telemetry_data[data_len - 1] = '\0' ;
@@ -517,12 +518,24 @@ static T2ERROR flushCacheFromFile(void)
 
                 T2Debug("T2: Sending cache event : %s\n", telemetry_data);
                 T2ER_PushDataWithDelim(telemetry_data, NULL);
-                memset(telemetry_data, 0, sizeof(telemetry_data));
             }
-            fclose(fp);
-            if(remove(T2_CACHE_FILE) != 0)
+
+            //If getline() returned -1. Confirm whether this was normal EOF or a read failure
+            if(ferror(fp) || !feof(fp))
             {
-                T2Error("Failed to remove the file %s\n", T2_CACHE_FILE);
+                read_error = 1;
+                T2Error("Failed to read cache file %s\n", T2_CACHE_FILE);
+            }
+            free(telemetry_data);
+            telemetry_data = NULL;
+            fclose(fp);
+            //Remove the cache file only after successful reading
+            if(!read_error)
+            {
+                if(remove(T2_CACHE_FILE) != 0)
+                {
+                    T2Error("Failed to remove the file %s\n", T2_CACHE_FILE);
+                }
             }
         }
         else
